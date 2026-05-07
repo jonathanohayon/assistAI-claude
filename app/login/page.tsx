@@ -1,3 +1,4 @@
+import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
@@ -12,11 +13,21 @@ export default async function LoginPage(props: {
 
   async function handleLogin(formData: FormData) {
     "use server";
-    await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirectTo: "/dashboard",
-    });
+    try {
+      await signIn("credentials", {
+        email: formData.get("email"),
+        password: formData.get("password"),
+        redirectTo: "/dashboard",
+      });
+    } catch (e) {
+      // AuthError = bad creds. Redirect back to /login with a flag so the
+      // form can render an inline error. Anything else (especially the
+      // NEXT_REDIRECT thrown on success) must propagate.
+      if (e instanceof AuthError) {
+        redirect(`/login?error=${e.type}`);
+      }
+      throw e;
+    }
   }
 
   return (
