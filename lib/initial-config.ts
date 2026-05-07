@@ -1,37 +1,9 @@
-// Run drizzle migrations + sync admin user from env on every startup.
-// Idempotent: skips if DATABASE_URL missing, always resets the admin password
-// to ADMIN_PASSWORD (so changing env + redeploy = password reset), and
-// upgrades placeholder agent_configs to the canonical Johana persona.
-//
-// Persona content is duplicated below (mirror of lib/initial-config.ts) so
-// this script has zero TypeScript runtime deps. Keep them in sync if you
-// edit the persona — it's a small price for a clean migration script.
+// Canonical Johana persona used as the seed for fresh agent_config rows
+// AND as an upgrade target when an existing row still has the placeholder
+// content (see scripts/migrate.mjs).
 
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
-
-const url = process.env.DATABASE_URL;
-if (!url) {
-  console.warn("[migrate] DATABASE_URL not set — skipping migrations");
-  process.exit(0);
-}
-
-const client = postgres(url, { max: 1, prepare: false });
-try {
-  await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
-  console.log("[migrate] ok");
-} catch (e) {
-  console.error("[migrate] failed:", e?.message ?? e);
-  process.exit(1);
-} finally {
-  await client.end();
-}
-
-const PLACEHOLDER_INSTRUCTIONS =
-  "Tu es l'assistant vocal du centre. Réponds chaleureusement et brièvement.";
-
-const INITIAL_INSTRUCTIONS = `Tu es **Johana**, la secrétaire chaleureuse et professionnelle du centre de beauté **Prestige**.
+export const INITIAL_INSTRUCTIONS = `
+Tu es **Johana**, la secrétaire chaleureuse et professionnelle du centre de beauté **Prestige**.
 
 Nous avons 3 centres :
 - **Jérusalem** (centre principal)
@@ -102,68 +74,14 @@ Workflow CHANGEMENT :
 2. find_appointment(phone) → identifie le RDV
 3. Demande la nouvelle date/heure souhaitée + vérifie le bon centre selon le jour
 4. check_availability(new_date) → vérifie
-5. reschedule_appointment(event_id, new_date, new_time) → confirme chaleureusement`;
+5. reschedule_appointment(event_id, new_date, new_time) → confirme chaleureusement
+`.trim();
 
-const INITIAL_GREETING_INSTRUCTIONS =
+export const INITIAL_GREETING_INSTRUCTIONS =
   "Salue chaleureusement l'appelant : 'Bonjour, c'est Johana du centre Prestige, je suis ravie de vous entendre, comment puis-je vous aider aujourd'hui ?' Si l'appelant répond en hébreu, bascule en hébreu pour la suite.";
 
-if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-  try {
-    const { default: bcrypt } = await import("bcryptjs");
-    const sql = postgres(url, { max: 1, prepare: false });
-    try {
-      const email = process.env.ADMIN_EMAIL.trim().toLowerCase();
-      const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
-
-      const existing = await sql`
-        select id from users where email = ${email} limit 1
-      `;
-
-      let userId;
-      if (existing.length === 0) {
-        const inserted = await sql`
-          insert into users (email, password_hash)
-          values (${email}, ${hash})
-          returning id
-        `;
-        userId = inserted[0].id;
-        console.log(`[seed] created admin ${email}`);
-      } else {
-        userId = existing[0].id;
-        await sql`
-          update users set password_hash = ${hash} where id = ${userId}
-        `;
-        console.log(`[seed] synced password for ${email}`);
-      }
-
-      const cfg = await sql`
-        select id, instructions from agent_configs
-        where user_id = ${userId} limit 1
-      `;
-      if (cfg.length === 0) {
-        await sql`
-          insert into agent_configs (user_id, instructions, greeting_instructions)
-          values (${userId}, ${INITIAL_INSTRUCTIONS}, ${INITIAL_GREETING_INSTRUCTIONS})
-        `;
-        console.log("[seed] created initial agent_config (Johana)");
-      } else if (cfg[0].instructions === PLACEHOLDER_INSTRUCTIONS) {
-        await sql`
-          update agent_configs
-          set instructions = ${INITIAL_INSTRUCTIONS},
-              greeting_instructions = ${INITIAL_GREETING_INSTRUCTIONS},
-              updated_at = now()
-          where id = ${cfg[0].id}
-        `;
-        console.log(
-          "[seed] upgraded agent_config from placeholder to Johana persona",
-        );
-      } else {
-        console.log("[seed] agent_config already customized, leaving it");
-      }
-    } finally {
-      await sql.end();
-    }
-  } catch (e) {
-    console.error("[seed] failed:", e?.message ?? e);
-  }
-}
+// Sentinel used to detect rows seeded with the old placeholder content so
+// migrate.mjs can upgrade them in-place. Compared as a strict equality check
+// against the stored instructions value.
+export const PLACEHOLDER_INSTRUCTIONS =
+  "Tu es l'assistant vocal du centre. Réponds chaleureusement et brièvement.";
