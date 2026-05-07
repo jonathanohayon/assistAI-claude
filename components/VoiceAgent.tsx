@@ -286,17 +286,17 @@ export default function VoiceAgent() {
   // ── UI ────────────────────────────────────────────────────────────────────
 
   const statusLabel: Record<Status, string> = {
-    idle:       "Appuyez pour démarrer",
+    idle: "Prêt",
     connecting: "Connexion en cours…",
-    connected:  "En ligne — parlez maintenant",
-    error:      "Erreur de connexion",
+    connected: "En ligne — parlez",
+    error: "Erreur",
   };
 
-  const statusColor: Record<Status, string> = {
-    idle:       "bg-zinc-200 text-zinc-700",
-    connecting: "bg-yellow-100 text-yellow-700",
-    connected:  "bg-green-100 text-green-700",
-    error:      "bg-red-100 text-red-700",
+  const statusDotClass: Record<Status, string> = {
+    idle: "bg-[var(--color-muted-foreground)]/40",
+    connecting: "bg-[var(--color-warning)] animate-pulse",
+    connected: "bg-[var(--color-success)] animate-pulse",
+    error: "bg-[var(--color-destructive)]",
   };
 
   const isLive = status === "connecting" || status === "connected";
@@ -304,7 +304,6 @@ export default function VoiceAgent() {
   const onModelChange = (m: string) => {
     setModel(m);
     localStorage.setItem(STORAGE_MODEL, m);
-    // If the new provider doesn't support the current voice, snap to its default.
     const allowed = voicesFor(m);
     if (!allowed.includes(voice)) {
       const v = defaultVoiceFor(m);
@@ -319,16 +318,16 @@ export default function VoiceAgent() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-lg mx-auto">
+    <div className="flex w-full flex-col gap-5">
       {/* Model / voice picker */}
-      <div className="grid grid-cols-2 gap-3 w-full">
-        <label className="flex flex-col gap-1 text-xs text-zinc-600">
-          Modèle
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1.5 text-xs">
+          <span className="font-medium text-[var(--color-muted-foreground)]">Modèle</span>
           <select
             value={model}
             disabled={isLive}
             onChange={(e) => onModelChange(e.target.value)}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-100 disabled:text-zinc-500"
+            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {REALTIME_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -336,90 +335,109 @@ export default function VoiceAgent() {
               </option>
             ))}
           </select>
-          {isUnsupported && (
-            <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 leading-snug">
-              ⚠ Transport {transport.toUpperCase()} — non implémenté côté client. La connexion échouera.
-            </span>
-          )}
         </label>
-        <label className="flex flex-col gap-1 text-xs text-zinc-600">
-          Voix
+        <label className="flex flex-col gap-1.5 text-xs">
+          <span className="font-medium text-[var(--color-muted-foreground)]">Voix</span>
           <select
             value={voice}
             disabled={isLive}
             onChange={(e) => onVoiceChange(e.target.value)}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-100 disabled:text-zinc-500"
+            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {availableVoices.map((v) => (
-              <option key={v} value={v}>{v}</option>
+              <option key={v} value={v}>
+                {v}
+              </option>
             ))}
           </select>
         </label>
       </div>
 
-      {/* Status badge */}
-      <span className={`px-4 py-1 rounded-full text-sm font-medium ${statusColor[status]}`}>
-        {statusLabel[status]}
-      </span>
+      {isUnsupported && (
+        <p
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"
+          role="alert"
+        >
+          Transport {transport.toUpperCase()} non implémenté côté client. La connexion échouera.
+        </p>
+      )}
 
-      {/* Error */}
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2 text-center">
+        <p
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700"
+          role="alert"
+        >
           {error}
         </p>
       )}
 
-      {/* Main button */}
-      <button
-        onClick={status === "idle" || status === "error" ? startSession : stopSession}
-        disabled={status === "connecting"}
-        className={`relative w-24 h-24 rounded-full shadow-lg transition-all duration-200 flex items-center justify-center text-white text-3xl
-          ${status === "idle" || status === "error"
-            ? "bg-blue-600 hover:bg-blue-700 active:scale-95"
-            : status === "connecting"
-            ? "bg-yellow-400 cursor-not-allowed"
-            : "bg-red-500 hover:bg-red-600 active:scale-95"}
-        `}
-      >
-        {status === "connecting" ? (
-          <span className="animate-spin text-2xl">⟳</span>
-        ) : status === "connected" ? (
-          "⏹"
-        ) : (
-          "🎙"
-        )}
-        {status === "connected" && (
-          <span className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-30" />
-        )}
-      </button>
-
-      {/* Mute button (only when connected) */}
-      {status === "connected" && (
+      {/* Mic button */}
+      <div className="flex flex-col items-center gap-3 py-2">
         <button
-          onClick={toggleMute}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            isMuted
-              ? "bg-zinc-700 text-white"
-              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-          }`}
+          onClick={status === "idle" || status === "error" ? startSession : stopSession}
+          disabled={status === "connecting"}
+          aria-label={isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
+          className={`relative inline-flex h-20 w-20 items-center justify-center rounded-full text-white shadow-md transition-all duration-200 disabled:cursor-not-allowed
+            ${
+              status === "idle" || status === "error"
+                ? "bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] hover:scale-[1.04] hover:shadow-lg active:scale-95"
+                : status === "connecting"
+                ? "bg-[var(--color-warning)]/80"
+                : "bg-gradient-to-br from-[var(--color-destructive)] to-[#a21717] hover:scale-[1.02] active:scale-95"
+            }`}
         >
-          {isMuted ? "🔇 Micro coupé" : "🎤 Couper le micro"}
+          {status === "connecting" ? (
+            <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 animate-spin">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+              <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          ) : isLive ? (
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
+              <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          )}
+          {status === "connected" && (
+            <span className="absolute inset-0 -z-10 rounded-full bg-[var(--color-primary)] opacity-30 motion-safe:animate-ping" />
+          )}
         </button>
-      )}
+
+        <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-medium text-[var(--color-foreground)]">
+          <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass[status]}`} />
+          {statusLabel[status]}
+        </div>
+
+        {status === "connected" && (
+          <button
+            onClick={toggleMute}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              isMuted
+                ? "bg-[var(--color-foreground)] text-white"
+                : "bg-white text-[var(--color-foreground)] border border-[var(--color-border)] hover:bg-[var(--color-muted)]"
+            }`}
+          >
+            {isMuted ? "Micro coupé" : "Couper le micro"}
+          </button>
+        )}
+      </div>
 
       {/* Transcript */}
       {transcript.length > 0 && (
-        <div className="w-full bg-white rounded-2xl border border-zinc-200 shadow-sm p-4 max-h-72 overflow-y-auto flex flex-col gap-3">
+        <div className="flex max-h-60 flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3">
           {transcript.map((entry, i) => (
             <div
               key={i}
               className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                   entry.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-sm"
-                    : "bg-zinc-100 text-zinc-800 rounded-bl-sm"
+                    ? "bg-[var(--color-primary)] text-white rounded-br-md"
+                    : "bg-white text-[var(--color-foreground)] border border-[var(--color-border)] rounded-bl-md"
                 }`}
               >
                 {entry.text}
