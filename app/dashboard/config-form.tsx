@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 
+import { LiveTestPanel } from "@/components/LiveTestPanel";
 import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
 
 type FormState = {
@@ -170,6 +171,17 @@ export function ConfigForm({
           </Field>
         </div>
       </Card>
+
+      {/* Live test — uses current form values, no save required */}
+      <LiveTestPanel
+        model={form.model}
+        voice={form.voice}
+        instructions={form.instructions}
+        greetingInstructions={form.greetingInstructions}
+        temperature={form.temperature}
+        speed={form.speed}
+        dirty={dirty}
+      />
 
       {/* Save bar — sticky at bottom */}
       <div className="sticky bottom-4 z-30 mt-2">
