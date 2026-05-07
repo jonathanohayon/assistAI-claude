@@ -2,7 +2,13 @@ import VoiceAgent from "@/components/VoiceAgent";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex flex-col items-center justify-center px-4 py-16">
+    <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 flex flex-col items-center justify-center px-4 py-16 relative">
+      <a
+        href="/dashboard"
+        className="absolute top-4 right-4 text-xs text-zinc-500 hover:text-zinc-900 underline"
+      >
+        Dashboard
+      </a>
       <div className="w-full max-w-lg flex flex-col items-center gap-8">
         {/* Header */}
         <div className="text-center">
