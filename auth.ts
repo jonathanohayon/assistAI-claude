@@ -19,9 +19,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // /api/auth/login + /api/auth/callback Google OAuth flow used by
   // Calendar/Sheets refresh-token auth.
   basePath: "/api/admin/auth",
+  // Trust the proxy's host header (Railway, Vercel). Combined with AUTH_URL
+  // env var (canonical public origin), Auth.js generates correct redirects.
   trustHost: true,
   session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/login", error: "/login" },
   providers: [
     Credentials({
       credentials: {
