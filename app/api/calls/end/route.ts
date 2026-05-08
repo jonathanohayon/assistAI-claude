@@ -75,7 +75,13 @@ export async function POST(req: NextRequest) {
 
   if (cfg.ownerWhatsapp) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
-    const r = await sendWhatsApp({ to: cfg.ownerWhatsapp, body: ownerBody });
+    // Owner is unlikely to have messaged us in the last 24h → enable
+    // template fallback so the recap still ships outside the service window.
+    const r = await sendWhatsApp({
+      to: cfg.ownerWhatsapp,
+      body: ownerBody,
+      ownerTemplateFallback: true,
+    });
     if (r.ok && r.sid) ownerSid = r.sid;
     else waError = (waError ? waError + " | " : "") + `owner: ${r.error}`;
   }
