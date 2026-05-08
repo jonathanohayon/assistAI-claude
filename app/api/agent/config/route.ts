@@ -1,17 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
-import { agentConfigs } from "@/lib/db/schema";
+import { resolveTenant } from "@/lib/tenant";
 
 // Read-only endpoint consumed by the LiveKit agent worker at session start.
-// Phase 1 = single user / single config row. For phase 2, accept ?phone=...
-// and look up the matching tenant.
-export async function GET() {
-  const [config] = await db.select().from(agentConfigs).limit(1);
-  if (!config) {
-    return NextResponse.json({ error: "No config" }, { status: 404 });
+// Phase 2: routes by `?phone=<called number>` to load the right tenant's
+// config. If phone is missing or unmatched, falls back to the first tenant.
+export async function GET(req: NextRequest) {
+  const phone = req.nextUrl.searchParams.get("phone");
+  const tenant = await resolveTenant(phone);
+  if (!tenant) {
+    return NextResponse.json({ error: "No tenant" }, { status: 404 });
   }
 
+  const { config } = tenant;
   // Strip internal IDs — the agent only needs the runtime values.
   const { id: _id, userId: _userId, updatedAt, ...runtime } = config;
   void _id;

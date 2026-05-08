@@ -122,18 +122,21 @@ if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
       let userId;
       if (existing.length === 0) {
         const inserted = await sql`
-          insert into users (email, password_hash)
-          values (${email}, ${hash})
+          insert into users (email, password_hash, role, display_name)
+          values (${email}, ${hash}, 'admin', 'Admin')
           returning id
         `;
         userId = inserted[0].id;
         console.log(`[seed] created admin ${email}`);
       } else {
         userId = existing[0].id;
+        // Always sync password and ensure this seed user keeps admin rights.
         await sql`
-          update users set password_hash = ${hash} where id = ${userId}
+          update users
+          set password_hash = ${hash}, role = 'admin'
+          where id = ${userId}
         `;
-        console.log(`[seed] synced password for ${email}`);
+        console.log(`[seed] synced password + admin role for ${email}`);
       }
 
       const cfg = await sql`
@@ -159,6 +162,22 @@ if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
         );
       } else {
         console.log("[seed] agent_config already customized, leaving it");
+      }
+
+      // Phase 2: claim the legacy single-tenant phone number for the admin
+      // user so existing calls keep routing to them after multi-tenant migration.
+      const legacyNumber = process.env.TWILIO_PHONE_NUMBER;
+      if (legacyNumber) {
+        const existingPhone = await sql`
+          select id from phone_numbers where phone_number = ${legacyNumber} limit 1
+        `;
+        if (existingPhone.length === 0) {
+          await sql`
+            insert into phone_numbers (user_id, phone_number, label)
+            values (${userId}, ${legacyNumber}, 'Numéro principal')
+          `;
+          console.log(`[seed] assigned ${legacyNumber} to admin`);
+        }
       }
     } finally {
       await sql.end();

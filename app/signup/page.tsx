@@ -1,24 +1,70 @@
+import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Logo } from "@/components/ui/Logo";
 import { auth, signIn } from "@/auth";
+import { db } from "@/lib/db";
+import { agentConfigs, users } from "@/lib/db/schema";
+import {
+  INITIAL_GREETING_INSTRUCTIONS,
+  INITIAL_INSTRUCTIONS,
+} from "@/lib/initial-config";
 
-export default async function LoginPage(props: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+export default async function SignupPage(props: {
+  searchParams: Promise<{ error?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const { error, callbackUrl = "/dashboard" } = await props.searchParams;
+  const { error } = await props.searchParams;
 
-  async function handleLogin(formData: FormData) {
+  async function handleSignup(formData: FormData) {
     "use server";
+
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    const displayName = String(formData.get("displayName") ?? "").trim();
+
+    if (!email.includes("@") || password.length < 8) {
+      redirect("/signup?error=invalid");
+    }
+
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    if (existing.length > 0) {
+      redirect("/signup?error=exists");
+    }
+
+    const hash = await bcrypt.hash(password, 12);
+    const [created] = await db
+      .insert(users)
+      .values({
+        email,
+        passwordHash: hash,
+        displayName,
+        role: "user",
+      })
+      .returning();
+
+    // Bootstrap an agent_config so the new tenant has something to edit
+    // immediately. Persona seeded with the canonical Johana template — they
+    // can rebrand from the dashboard.
+    await db.insert(agentConfigs).values({
+      userId: created.id,
+      instructions: INITIAL_INSTRUCTIONS,
+      greetingInstructions: INITIAL_GREETING_INSTRUCTIONS,
+    });
+
     try {
       await signIn("credentials", {
-        email: formData.get("email"),
-        password: formData.get("password"),
+        email,
+        password,
         redirectTo: "/dashboard",
       });
     } catch (e) {
@@ -28,6 +74,11 @@ export default async function LoginPage(props: {
       throw e;
     }
   }
+
+  const errorMsg: Record<string, string> = {
+    invalid: "Email invalide ou mot de passe trop court (8 caractères min).",
+    exists: "Un compte existe déjà avec cet email.",
+  };
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
@@ -44,26 +95,39 @@ export default async function LoginPage(props: {
         </div>
 
         <form
-          action={handleLogin}
+          action={handleSignup}
           className="relative flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur"
         >
           <div className="space-y-1">
             <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
-              Connexion
+              Créer un compte
             </h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              Accède à la configuration de ta secrétaire vocale.
+              Donnez une voix à votre cabinet en 5 minutes.
             </p>
           </div>
 
-          {error && (
+          {error && errorMsg[error] && (
             <p
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
             >
-              Identifiants incorrects.
+              {errorMsg[error]}
             </p>
           )}
+
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium text-[var(--color-foreground)]">
+              Nom du salon / cabinet
+            </span>
+            <input
+              name="displayName"
+              type="text"
+              required
+              placeholder="Salon Prestige"
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+            />
+          </label>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-foreground)]">Email</span>
@@ -71,42 +135,42 @@ export default async function LoginPage(props: {
               name="email"
               type="email"
               required
-              autoFocus
               autoComplete="email"
               className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
             />
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">Mot de passe</span>
+            <span className="font-medium text-[var(--color-foreground)]">
+              Mot de passe
+            </span>
             <input
               name="password"
               type="password"
               required
-              autoComplete="current-password"
+              minLength={8}
+              autoComplete="new-password"
               className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
             />
+            <span className="text-xs text-[var(--color-muted-foreground)]">
+              8 caractères minimum.
+            </span>
           </label>
-
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
           <button
             type="submit"
             className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
           >
-            Se connecter
+            Créer mon compte
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
               <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
           <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-            Pas encore de compte ?{" "}
-            <Link
-              href="/signup"
-              className="text-[var(--color-primary)] hover:underline"
-            >
-              Créer un compte
+            Déjà un compte ?{" "}
+            <Link href="/login" className="text-[var(--color-primary)] hover:underline">
+              Connexion
             </Link>
           </p>
         </form>

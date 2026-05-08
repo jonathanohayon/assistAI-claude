@@ -2,20 +2,22 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { agentConfigs, calls } from "@/lib/db/schema";
+import { calls } from "@/lib/db/schema";
 import { summarizeCall } from "@/lib/summarize";
+import { resolveTenant } from "@/lib/tenant";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 interface EndBody {
   fromNumber?: string;
+  toNumber?: string;
   transcript?: Array<{ role: "user" | "assistant"; text: string }>;
 }
 
 // Internal endpoint hit by the LiveKit agent worker when a call ends.
-// Auth via shared INTERNAL_SECRET header so it doesn't need a session cookie.
+// Auth via shared INTERNAL_SECRET header.
 //
-// Phase 1: single user / single config → we use the first agent_config row.
-// Phase 2: route by called number → user_id mapping.
+// Multi-tenant: looks up the tenant via the called number (`toNumber`).
+// Falls back to the first tenant if not provided / not matched.
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-internal-secret");
   const expected = process.env.INTERNAL_SECRET;
@@ -25,17 +27,18 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) as EndBody;
   const fromNumber = (body.fromNumber ?? "").trim();
+  const toNumber = (body.toNumber ?? "").trim();
   const transcript = Array.isArray(body.transcript) ? body.transcript : [];
 
-  const [cfg] = await db.select().from(agentConfigs).limit(1);
-  if (!cfg) {
-    return NextResponse.json({ error: "no agent config" }, { status: 500 });
+  const tenant = await resolveTenant(toNumber || null);
+  if (!tenant) {
+    return NextResponse.json({ error: "no tenant" }, { status: 500 });
   }
+  const { user, config: cfg } = tenant;
 
-  // Persist the call up front so we don't lose the transcript on summary failure.
   const [callRow] = await db
     .insert(calls)
-    .values({ userId: cfg.userId, fromNumber, transcript, summary: "" })
+    .values({ userId: user.id, fromNumber, transcript, summary: "" })
     .returning();
 
   if (transcript.length === 0) {
@@ -75,8 +78,6 @@ export async function POST(req: NextRequest) {
 
   if (cfg.ownerWhatsapp) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
-    // Owner is unlikely to have messaged us in the last 24h → enable
-    // template fallback so the recap still ships outside the service window.
     const r = await sendWhatsApp({
       to: cfg.ownerWhatsapp,
       body: ownerBody,
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     callId: callRow.id,
+    tenant: { id: user.id, email: user.email, displayName: user.displayName },
     summary: summary.raw,
     delivered: { client: !!clientSid, owner: !!ownerSid },
     error: waError,

@@ -16,6 +16,10 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  // 'admin' = global ops (manage tenants, assign numbers); 'user' = standard tenant.
+  role: text("role").notNull().default("user"),
+  // Optional human label shown in /admin (e.g. salon name).
+  displayName: text("display_name").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
@@ -69,8 +73,26 @@ export const calls = pgTable("calls", {
     .default(sql`now()`),
 });
 
+// One row per tenant-owned phone number. The agent looks up the called
+// number on each inbound call to know which tenant's persona to load.
+export const phoneNumbers = pgTable("phone_numbers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // E.164 — globally unique. Index ensures fast lookup on every call.
+  phoneNumber: text("phone_number").notNull().unique(),
+  // Optional friendly label ("Cabinet principal", "Salon Tel Aviv", etc.).
+  label: text("label").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type PhoneNumber = typeof phoneNumbers.$inferSelect;
+export type NewPhoneNumber = typeof phoneNumbers.$inferInsert;
 export type AgentConfig = typeof agentConfigs.$inferSelect;
 export type NewAgentConfig = typeof agentConfigs.$inferInsert;
 export type Call = typeof calls.$inferSelect;

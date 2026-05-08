@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
-import { agentConfigs } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
 import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
 
 import { ConfigForm } from "./config-form";
@@ -13,6 +13,12 @@ import { ConfigForm } from "./config-form";
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const [me] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
 
   const [config] = await db
     .select()
@@ -57,6 +63,14 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {me?.role === "admin" && (
+              <Link
+                href="/admin"
+                className="hidden rounded-full bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 sm:inline-flex"
+              >
+                Admin
+              </Link>
+            )}
             <span className="hidden text-xs text-[var(--color-muted-foreground)] sm:inline">
               {session.user.email}
             </span>
