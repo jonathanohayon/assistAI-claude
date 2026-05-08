@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   integer,
+  jsonb,
   pgTable,
   real,
   text,
@@ -35,7 +36,35 @@ export const agentConfigs = pgTable("agent_configs", {
   speed: real("speed").notNull().default(1.0),
   maxResponseTokens: integer("max_response_tokens").notNull().default(220),
 
+  // WhatsApp number of the salon owner — receives a recap after every call.
+  // Stored E.164 (e.g. +972585001007); empty = WhatsApp recap disabled.
+  ownerWhatsapp: text("owner_whatsapp").notNull().default(""),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// Log of every call handled by the agent. Stores raw transcript + AI summary
+// + WhatsApp delivery sids so we can audit / re-send if needed.
+export const calls = pgTable("calls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  fromNumber: text("from_number").notNull().default(""),
+  transcript: jsonb("transcript")
+    .$type<Array<{ role: "user" | "assistant"; text: string }>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  summary: text("summary").notNull().default(""),
+
+  whatsappClientSid: text("whatsapp_client_sid"),
+  whatsappOwnerSid: text("whatsapp_owner_sid"),
+  whatsappError: text("whatsapp_error"),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
 });
@@ -44,3 +73,5 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AgentConfig = typeof agentConfigs.$inferSelect;
 export type NewAgentConfig = typeof agentConfigs.$inferInsert;
+export type Call = typeof calls.$inferSelect;
+export type NewCall = typeof calls.$inferInsert;

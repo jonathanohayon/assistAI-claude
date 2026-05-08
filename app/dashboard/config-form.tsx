@@ -13,6 +13,7 @@ type FormState = {
   temperature: number;
   speed: number;
   maxResponseTokens: number;
+  ownerWhatsapp: string;
 };
 
 export function ConfigForm({
@@ -94,6 +95,32 @@ export function ConfigForm({
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
+      </Card>
+
+      {/* Notifications */}
+      <Card
+        title="Notifications WhatsApp"
+        subtitle="Après chaque appel, un récap est envoyé par WhatsApp à la cliente et au propriétaire."
+      >
+        <Field
+          label="Numéro WhatsApp du propriétaire"
+          hint="Format international, ex: +972585001007. Laisse vide pour désactiver."
+        >
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="+972..."
+            value={form.ownerWhatsapp}
+            onChange={(e) => update("ownerWhatsapp", e.target.value)}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+          />
+        </Field>
+        <p className="rounded-xl bg-[var(--color-muted)]/60 px-4 py-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+          La cliente reçoit aussi un récap si Twilio détecte qu&apos;elle accepte les
+          messages WhatsApp depuis son numéro d&apos;appel. Configure
+          <code className="mx-1 rounded bg-white/60 px-1.5 py-0.5 font-mono">TWILIO_WHATSAPP_FROM</code>
+          côté Railway pour activer l&apos;envoi.
+        </p>
       </Card>
 
       {/* Voice config */}

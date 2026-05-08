@@ -102,6 +102,7 @@ export default async function DashboardPage() {
             temperature: config.temperature,
             speed: config.speed,
             maxResponseTokens: config.maxResponseTokens,
+            ownerWhatsapp: config.ownerWhatsapp,
           }}
           modelIds={modelIds}
           initialVoices={voices}

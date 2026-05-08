@@ -42,6 +42,7 @@ export async function PUT(req: NextRequest) {
     temperature: number;
     speed: number;
     maxResponseTokens: number;
+    ownerWhatsapp: string;
   }>;
 
   // Validate model + voice against the catalog so the user can't ship a typo
@@ -72,6 +73,17 @@ export async function PUT(req: NextRequest) {
     updates.maxResponseTokens = Math.round(
       clamp(body.maxResponseTokens, 50, 4000),
     );
+  if (body.ownerWhatsapp != null) {
+    // Light normalization: strip spaces / dashes; accept E.164 or empty.
+    const cleaned = body.ownerWhatsapp.replace(/[\s()-]/g, "");
+    if (cleaned && !/^\+?\d{6,15}$/.test(cleaned)) {
+      return NextResponse.json(
+        { error: "WhatsApp invalide (format E.164 attendu, ex: +972585001007)" },
+        { status: 400 },
+      );
+    }
+    updates.ownerWhatsapp = cleaned ? (cleaned.startsWith("+") ? cleaned : `+${cleaned}`) : "";
+  }
 
   const [updated] = await db
     .update(agentConfigs)
