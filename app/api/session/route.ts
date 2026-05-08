@@ -52,26 +52,30 @@ export async function POST(req: NextRequest) {
       ? body.instructions
       : REALTIME_INSTRUCTIONS;
 
+  // OpenAI's client_secrets endpoint doesn't accept temperature at the top
+  // level — it must be applied via a `session.update` event after the
+  // WebRTC data channel opens. We strip it here and echo the requested
+  // value back so the browser can send the update itself.
+  const requestedTemperature =
+    typeof body.temperature === "number"
+      ? clamp(body.temperature, 0, 2)
+      : null;
+  const requestedSpeed =
+    typeof body.speed === "number" ? clamp(body.speed, 0.25, 2) : null;
+
   const sessionPayload: Record<string, unknown> = {
     type: "realtime",
     model,
     instructions,
     audio: {
       input: { transcription: { model: REALTIME_TRANSCRIPTION_MODEL } },
-      output: { voice },
+      output: requestedSpeed != null
+        ? { voice, speed: requestedSpeed }
+        : { voice },
     },
     tools: REALTIME_TOOLS,
     tool_choice: "auto",
   };
-
-  if (typeof body.temperature === "number") {
-    sessionPayload.temperature = clamp(body.temperature, 0, 2);
-  }
-  if (typeof body.speed === "number") {
-    // OpenAI realtime accepts speed in audio.output. xAI may ignore it.
-    const audio = sessionPayload.audio as Record<string, Record<string, unknown>>;
-    audio.output.speed = clamp(body.speed, 0.25, 2);
-  }
 
   const res = await fetch(clientSecretsUrl(provider), {
     method: "POST",
@@ -93,6 +97,10 @@ export async function POST(req: NextRequest) {
     model,
     provider,
     webrtc_url: webrtcUrl(provider),
+    // Temperature must be applied client-side via a session.update event.
+    // null means "use OpenAI's default" — the client can skip the update.
+    requested_temperature: requestedTemperature,
+    requested_speed: requestedSpeed,
   });
 }
 

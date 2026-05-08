@@ -155,6 +155,8 @@ export function LiveTestPanel({
       const ephemeralKey = tokenData.value;
       const sessionModel = tokenData.model ?? tokenData.session?.model;
       const webrtcUrl = tokenData.webrtc_url;
+      const requestedTemperature: number | null =
+        tokenData.requested_temperature ?? null;
       if (!ephemeralKey) throw new Error("Token invalide");
       if (!sessionModel) throw new Error("Modèle absent de la session");
       if (!webrtcUrl) throw new Error("URL WebRTC absente");
@@ -200,6 +202,16 @@ export function LiveTestPanel({
 
       dc.onopen = () => {
         setStatus("connected");
+        // Apply temperature now that we have a live session — OpenAI rejects
+        // it at client_secrets time but accepts it via session.update.
+        if (requestedTemperature != null) {
+          dc.send(
+            JSON.stringify({
+              type: "session.update",
+              session: { temperature: requestedTemperature },
+            }),
+          );
+        }
         // Fire the configured greeting so the test mirrors a real call.
         dc.send(
           JSON.stringify({
