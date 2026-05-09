@@ -1,11 +1,9 @@
 import { eq } from "drizzle-orm";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/auth";
-import { Logo } from "@/components/ui/Logo";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { agentConfigs, users } from "@/lib/db/schema";
+import { agentConfigs } from "@/lib/db/schema";
 import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
 
 import { ConfigForm } from "./config-form";
@@ -13,12 +11,6 @@ import { ConfigForm } from "./config-form";
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
 
   const [config] = await db
     .select()
@@ -28,7 +20,7 @@ export default async function DashboardPage() {
 
   if (!config) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4">
+      <main className="mx-auto w-full max-w-5xl px-6 py-12">
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6 text-sm text-[var(--color-muted-foreground)]">
           Aucune config trouvée. Lance{" "}
           <code className="rounded bg-[var(--color-muted)] px-1.5 py-0.5 font-mono text-xs">
@@ -43,50 +35,11 @@ export default async function DashboardPage() {
   const modelIds = REALTIME_MODELS.map((m) => m.id);
   const voices = voicesFor(config.model);
 
-  async function handleLogout() {
-    "use server";
-    await signOut({ redirectTo: "/login" });
-  }
-
   return (
-    <main className="min-h-screen">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Logo />
-            </Link>
-            <span className="hidden h-4 w-px bg-[var(--color-border)] sm:block" />
-            <p className="hidden text-sm text-[var(--color-muted-foreground)] sm:block">
-              Configuration de la secrétaire
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {me?.role === "admin" && (
-              <Link
-                href="/admin"
-                className="hidden rounded-full bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 sm:inline-flex"
-              >
-                Admin
-              </Link>
-            )}
-            <span className="hidden text-xs text-[var(--color-muted-foreground)] sm:inline">
-              {session.user.email}
-            </span>
-            <form action={handleLogout}>
-              <button className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]">
-                Déconnexion
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      {/* Page hero */}
+    <main>
       <section className="mx-auto w-full max-w-5xl px-6 pt-10">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          Dashboard
+          Configuration
         </p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
           Donnez sa voix à votre secrétaire.
@@ -105,7 +58,6 @@ export default async function DashboardPage() {
         </p>
       </section>
 
-      {/* Form */}
       <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
         <ConfigForm
           initial={{
