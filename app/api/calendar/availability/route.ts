@@ -1,9 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { getCalendar } from "@/lib/google";
+import { type Center, centerForDate, dayNameFr, labelFor } from "@/lib/schedule";
 import { jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
-  const { date } = await req.json();
+  const { date, center } = await req.json();
+
+  if (!date) {
+    return NextResponse.json(
+      { error: "date requise (YYYY-MM-DD)" },
+      { status: 400 },
+    );
+  }
+
+  // Compute the unique centre open that day. If the agent asked for a
+  // specific centre, refuse to look up availability there if the day says
+  // otherwise — saves a Google round-trip and forces the LLM to suggest
+  // the right one.
+  let allowedCenter: Center;
+  try {
+    allowedCenter = centerForDate(date);
+  } catch (e) {
+    return NextResponse.json(
+      { error: (e as Error).message },
+      { status: 400 },
+    );
+  }
+
+  if (center && center !== allowedCenter) {
+    return NextResponse.json({
+      date,
+      center: allowedCenter,
+      label: labelFor(allowedCenter),
+      available_slots: [],
+      reason: `Le ${date} (${dayNameFr(date)}), le centre ouvert est ${labelFor(allowedCenter)} — pas ${center}.`,
+    });
+  }
+
   const calendar = getCalendar();
   const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
 
@@ -31,7 +65,9 @@ export async function POST(req: NextRequest) {
       for (const m of [0, 30]) {
         const hh = String(h).padStart(2, "0");
         const mm = String(m).padStart(2, "0");
-        const slotStartMs = new Date(jerusalemToUTCISO(date, `${hh}:${mm}:00`)).getTime();
+        const slotStartMs = new Date(
+          jerusalemToUTCISO(date, `${hh}:${mm}:00`),
+        ).getTime();
         const slotEndMs = slotStartMs + 30 * 60_000;
         const busy = busySlots.some((b) => {
           if (!b.start || !b.end) return false;
@@ -43,7 +79,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ date, available_slots: slots });
+    return NextResponse.json({
+      date,
+      center: allowedCenter,
+      label: labelFor(allowedCenter),
+      available_slots: slots,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur calendrier";
     return NextResponse.json({ error: msg }, { status: 500 });
