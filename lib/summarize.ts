@@ -3,7 +3,7 @@
 // owner (factual, action-oriented).
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = process.env.SUMMARY_MODEL ?? "gpt-4o-mini";
+const MODEL = process.env.SUMMARY_MODEL ?? "gpt-5.4-mini";
 
 export interface CallSummary {
   raw: string;
