@@ -7,6 +7,7 @@ const TABS = [
   { href: "/dashboard", label: "Configuration" },
   { href: "/dashboard/calendar", label: "Calendrier" },
   { href: "/dashboard/contacts", label: "Contacts" },
+  { href: "/dashboard/logs", label: "Logs" },
 ];
 
 export function DashboardTabs() {

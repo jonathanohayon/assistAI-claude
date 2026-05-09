@@ -89,10 +89,32 @@ export const phoneNumbers = pgTable("phone_numbers", {
     .default(sql`now()`),
 });
 
+// Append-only event log. Surfaced live in /dashboard/logs so the operator
+// can see end-to-end call/tool/whatsapp activity without grepping Railway logs.
+export const events = pgTable("events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  // 'info' | 'warn' | 'error' — drives the badge colour in the dashboard.
+  level: text("level").notNull().default("info"),
+  // 'agent' | 'web' | 'calendar' | 'sheets' | 'whatsapp' | 'auth' | 'tenant'
+  source: text("source").notNull(),
+  // Stable machine-readable event name, e.g. 'call_received', 'tool_invoked'.
+  event: text("event").notNull(),
+  // Human-readable one-line summary.
+  message: text("message").notNull(),
+  // Free-form structured payload (call ids, durations, errors, etc.)
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PhoneNumber = typeof phoneNumbers.$inferSelect;
 export type NewPhoneNumber = typeof phoneNumbers.$inferInsert;
+export type EventRow = typeof events.$inferSelect;
+export type NewEvent = typeof events.$inferInsert;
 export type AgentConfig = typeof agentConfigs.$inferSelect;
 export type NewAgentConfig = typeof agentConfigs.$inferInsert;
 export type Call = typeof calls.$inferSelect;

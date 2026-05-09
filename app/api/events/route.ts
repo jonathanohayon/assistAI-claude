@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { logEvent, type LogLevel, type LogSource } from "@/lib/logger";
+
+// Internal POST endpoint for the LiveKit agent worker (or any other service)
+// to push events into the centralized log. Gated by INTERNAL_SECRET.
+//
+// Body: { source, event, message, level?, userId?, metadata? }
+export async function POST(req: NextRequest) {
+  const secret = req.headers.get("x-internal-secret");
+  if (!secret || secret !== process.env.INTERNAL_SECRET) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const body = (await req.json().catch(() => ({}))) as {
+    source?: string;
+    event?: string;
+    message?: string;
+    level?: string;
+    userId?: string | null;
+    metadata?: Record<string, unknown>;
+  };
+
+  if (!body.source || !body.event || !body.message) {
+    return NextResponse.json(
+      { error: "source + event + message requis" },
+      { status: 400 },
+    );
+  }
+
+  await logEvent({
+    source: body.source as LogSource,
+    event: body.event,
+    message: body.message,
+    level: (body.level as LogLevel) ?? "info",
+    userId: body.userId ?? null,
+    metadata: body.metadata,
+  });
+
+  return NextResponse.json({ ok: true });
+}

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
+import { logEvent } from "@/lib/logger";
 import {
   REALTIME_MODELS,
   voicesFor,
@@ -90,6 +91,16 @@ export async function PUT(req: NextRequest) {
     .set(updates)
     .where(eq(agentConfigs.userId, session.user.id))
     .returning();
+
+  await logEvent({
+    source: "web",
+    event: "config_updated",
+    message: `Config mise à jour (${Object.keys(updates).length - 1} champs)`,
+    userId: session.user.id,
+    metadata: {
+      changedFields: Object.keys(updates).filter((k) => k !== "updatedAt"),
+    },
+  });
 
   return NextResponse.json(updated);
 }

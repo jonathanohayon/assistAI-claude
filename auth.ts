@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { logEvent } from "@/lib/logger";
 
 declare module "next-auth" {
   interface Session {
@@ -40,11 +41,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .from(users)
           .where(eq(users.email, email))
           .limit(1);
-        if (!user) return null;
+        if (!user) {
+          await logEvent({
+            source: "auth",
+            event: "login_failed",
+            message: `Login refusé — email inconnu (${email})`,
+            level: "warn",
+            metadata: { email },
+          });
+          return null;
+        }
 
         const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          await logEvent({
+            source: "auth",
+            event: "login_failed",
+            message: `Login refusé — mot de passe incorrect`,
+            level: "warn",
+            userId: user.id,
+            metadata: { email },
+          });
+          return null;
+        }
 
+        await logEvent({
+          source: "auth",
+          event: "login_success",
+          message: `Login réussi : ${email}`,
+          userId: user.id,
+        });
         return { id: user.id, email: user.email };
       },
     }),
