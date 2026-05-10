@@ -59,6 +59,7 @@ interface ModelEntry {
 
 export const REALTIME_MODELS: readonly ModelEntry[] = [
   // Aliases (may not resolve on the WebRTC /calls endpoint — try a dated snapshot if so)
+  { id: "gpt-realtime-2", provider: "openai" },
   { id: "gpt-realtime-1.5", provider: "openai" },
   { id: "gpt-realtime", provider: "openai" },
   { id: "gpt-realtime-mini", provider: "openai" },
