@@ -25,6 +25,9 @@ export const users = pgTable("users", {
   // 'trialing' (default for new signups, 7 days), 'active' (paid),
   // 'expired' (trial ended without subscribing), 'cancelled' (was active).
   subscriptionStatus: text("subscription_status").notNull().default("trialing"),
+  // Chosen plan key — see lib/plans.ts. Captured at signup (?plan=…) and
+  // updatable from /dashboard/billing.
+  subscriptionPlan: text("subscription_plan").notNull().default("essential"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
 
   // Per-tenant Google integration. When refresh_token is null the agent

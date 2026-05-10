@@ -50,6 +50,13 @@
       "when": 1778375215979,
       "tag": "0006_steep_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778404850028,
+      "tag": "0007_empty_shiver_man",
+      "breakpoints": true
     }
   ]
 }

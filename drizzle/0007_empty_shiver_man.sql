@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "subscription_plan" text DEFAULT 'essential' NOT NULL;

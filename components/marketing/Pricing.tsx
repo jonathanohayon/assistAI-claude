@@ -4,79 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { useState } from "react";
 
-type Plan = {
-  name: string;
-  tagline: string;
-  monthly: number;
-  annualTotal: number;
-  annualMonthly: number;
-  model: string;
-  popular?: boolean;
-  features: string[];
-};
-
-const PLANS: Plan[] = [
-  {
-    name: "Essentielle",
-    tagline: "Pour démarrer en douceur.",
-    monthly: 59,
-    annualTotal: 590,
-    annualMonthly: 49,
-    model: "gpt-realtime-mini",
-    features: [
-      "500 minutes de conversation / mois",
-      "Voix naturelle bilingue FR / Hébreu",
-      "Prise de rendez-vous vocale",
-    ],
-  },
-  {
-    name: "WhatsApp",
-    tagline: "Le choix de la majorité des centres.",
-    monthly: 99,
-    annualTotal: 990,
-    annualMonthly: 82,
-    model: "gpt-realtime-mini",
-    popular: true,
-    features: [
-      "Tout de la formule Essentielle",
-      "800 minutes / mois",
-      "Confirmation WhatsApp automatique",
-      "Résumé de conversation par email",
-    ],
-  },
-  {
-    name: "Globale",
-    tagline: "Pour gérer plusieurs centres.",
-    monthly: 179,
-    annualTotal: 1790,
-    annualMonthly: 149,
-    model: "gpt-realtime-mini",
-    features: [
-      "Tout de la formule WhatsApp",
-      "1 200 minutes / mois",
-      "Agenda Google complet (3 centres)",
-      "CRM Google Sheet fourni & synchronisé",
-    ],
-  },
-  {
-    name: "Premium Entreprise",
-    tagline: "Sans limite, configuration sur mesure.",
-    monthly: 299,
-    annualTotal: 2990,
-    annualMonthly: 249,
-    model: "gpt-realtime-1.5",
-    features: [
-      "Modèle gpt-realtime-1.5 (ultra naturel)",
-      "Minutes illimitées",
-      "Agenda + CRM complet",
-      "WhatsApp + Résumé + historique",
-      "Configuration sur mesure & support dédié",
-    ],
-  },
-];
-
-const formatEuro = (n: number): string =>
-  n.toLocaleString("fr-FR", { maximumFractionDigits: 0 });
+import { type Plan, PLANS, formatEuro } from "@/lib/plans";
 
 type Billing = "monthly" | "annual";
 
@@ -195,7 +123,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
         <div className="flex items-baseline gap-1">
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span
-              key={`${plan.name}-${billing}`}
+              key={`${plan.key}-${billing}`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -233,14 +161,12 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
       </ul>
 
       <div className="mt-auto pt-7">
+        {/* Unified CTA — same gradient on every card. The popular card is
+            still distinguished by the gold halo, ring, and badge. */}
         <Link
-          href="/signup"
+          href={`/signup?plan=${plan.key}&billing=${billing}`}
           aria-label={`Choisir la formule ${plan.name}`}
-          className={`group inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all ${
-            plan.popular
-              ? "bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white shadow-md hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
-              : "border border-[var(--color-border)] bg-white text-[var(--color-foreground)] hover:border-[var(--color-primary)] hover:bg-[var(--color-muted)]"
-          }`}
+          className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
         >
           Choisir cette formule
           <svg
@@ -321,7 +247,7 @@ export function Pricing() {
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
           {PLANS.map((plan, i) => (
             <motion.div
-              key={plan.name}
+              key={plan.key}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
