@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { logEvent } from "@/lib/logger";
 import { getGlobalInstructions } from "@/lib/settings";
-import { resolveTenant } from "@/lib/tenant";
+import {
+  resolveDefaultTenant,
+  resolveTenantByPhone,
+} from "@/lib/tenant";
 
 // Read-only endpoint consumed by the LiveKit agent worker at session start.
 // Routes by `?phone=<called number>` to load the right tenant's config.
@@ -11,10 +15,30 @@ import { resolveTenant } from "@/lib/tenant";
 // description, response length, etc.) without each having to re-paste them.
 export async function GET(req: NextRequest) {
   const phone = req.nextUrl.searchParams.get("phone");
-  const tenant = await resolveTenant(phone);
+  // Inline resolution so we can log WHICH path was taken — silent fallback
+  // to default tenant has burned us before (calendar tools used the wrong
+  // user's Google credentials → "Google not connected" symptom).
+  let tenant = phone ? await resolveTenantByPhone(phone) : null;
+  const resolution: "phone_match" | "default_fallback" | "no_phone" =
+    tenant ? "phone_match" : phone ? "default_fallback" : "no_phone";
+  if (!tenant) tenant = await resolveDefaultTenant();
   if (!tenant) {
     return NextResponse.json({ error: "No tenant" }, { status: 404 });
   }
+
+  await logEvent({
+    source: "tenant",
+    event: "agent_config_loaded",
+    message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
+    level: resolution === "phone_match" ? "info" : "warn",
+    userId: tenant.user.id,
+    metadata: {
+      resolution,
+      calledPhone: phone,
+      hasGoogle: Boolean(tenant.user.googleRefreshToken),
+      hasCalendarId: Boolean(tenant.user.googleCalendarId),
+    },
+  });
 
   const { config } = tenant;
   const globalInstructions = await getGlobalInstructions();
