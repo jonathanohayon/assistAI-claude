@@ -20,6 +20,13 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   // Optional human label shown in /admin (e.g. salon name).
   displayName: text("display_name").notNull().default(""),
+
+  // Subscription state — drives trial gating & dashboard banners.
+  // 'trialing' (default for new signups, 7 days), 'active' (paid),
+  // 'expired' (trial ended without subscribing), 'cancelled' (was active).
+  subscriptionStatus: text("subscription_status").notNull().default("trialing"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
@@ -84,6 +91,11 @@ export const phoneNumbers = pgTable("phone_numbers", {
   phoneNumber: text("phone_number").notNull().unique(),
   // Optional friendly label ("Cabinet principal", "Salon Tel Aviv", etc.).
   label: text("label").notNull().default(""),
+  // Twilio resource SID so we can release the number when the tenant cancels.
+  // Empty for legacy numbers attached manually before auto-provisioning.
+  twilioSid: text("twilio_sid").notNull().default(""),
+  // ISO country code for billing/UI ("US", "IL", ...).
+  countryCode: text("country_code").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

@@ -42,6 +42,10 @@ export default async function SignupPage(props: {
     }
 
     const hash = await bcrypt.hash(password, 12);
+    // 7-day free trial starts at signup. Onboarding may bump trialEndsAt
+    // again if the user takes a few days to provision their number.
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
     const [created] = await db
       .insert(users)
       .values({
@@ -49,6 +53,8 @@ export default async function SignupPage(props: {
         passwordHash: hash,
         displayName,
         role: "user",
+        subscriptionStatus: "trialing",
+        trialEndsAt,
       })
       .returning();
 
@@ -65,7 +71,7 @@ export default async function SignupPage(props: {
       await signIn("credentials", {
         email,
         password,
-        redirectTo: "/dashboard",
+        redirectTo: "/onboarding",
       });
     } catch (e) {
       if (e instanceof AuthError) {

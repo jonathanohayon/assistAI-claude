@@ -23,6 +23,15 @@ export default async function DashboardLayout({
     .where(eq(users.id, session.user.id))
     .limit(1);
 
+  // Trial countdown — shown as a banner above the tabs.
+  const trialDaysLeft = (() => {
+    if (!me?.trialEndsAt) return null;
+    if (me.subscriptionStatus !== "trialing") return null;
+    const ms = new Date(me.trialEndsAt).getTime() - Date.now();
+    if (ms <= 0) return 0;
+    return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  })();
+
   async function handleLogout() {
     "use server";
     await signOut({ redirectTo: "/login" });
@@ -61,6 +70,45 @@ export default async function DashboardLayout({
           </div>
         </div>
       </header>
+
+      {trialDaysLeft != null && (
+        <div
+          className={`mx-auto w-full max-w-5xl px-6 pt-4 ${
+            trialDaysLeft <= 0
+              ? "text-red-700"
+              : trialDaysLeft <= 2
+              ? "text-amber-700"
+              : "text-[var(--color-muted-foreground)]"
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2 text-xs sm:text-sm ${
+              trialDaysLeft <= 0
+                ? "border-red-200 bg-red-50"
+                : trialDaysLeft <= 2
+                ? "border-amber-200 bg-amber-50"
+                : "border-[var(--color-border)] bg-white"
+            }`}
+          >
+            <span>
+              {trialDaysLeft <= 0 ? (
+                <>Votre essai est terminé. Activez un plan pour continuer.</>
+              ) : (
+                <>
+                  Essai gratuit · <strong>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
+                </>
+              )}
+            </span>
+            <button
+              disabled
+              className="rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white opacity-60"
+              title="Bientôt disponible"
+            >
+              Souscrire
+            </button>
+          </div>
+        </div>
+      )}
 
       <DashboardTabs />
 
