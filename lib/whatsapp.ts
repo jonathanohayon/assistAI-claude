@@ -27,6 +27,21 @@ export interface WhatsAppResult {
   error?: string;
 }
 
+export interface WhatsAppOptions {
+  to: string;
+  body: string;
+  /** For Meta provider: fall back to a pre-approved template outside the 24h window. */
+  ownerTemplateFallback?: boolean;
+  /**
+   * Twilio Content Template SID (HX...) to send via instead of free-form.
+   * Templates bypass the 24h window — use this for client-facing messages.
+   * The body string is passed as the {{1}} variable.
+   */
+  templateSid?: string;
+  /** Optional override for template variables. Defaults to {"1": body}. */
+  templateVariables?: Record<string, string>;
+}
+
 const META_API = "https://graph.facebook.com";
 
 const normalizeE164 = (number: string): string => {
@@ -41,17 +56,12 @@ const metaNumber = (e164: string): string => e164.replace(/^\+/, "");
 // Twilio accepts E.164 prefixed with "whatsapp:".
 const twilioNumber = (e164: string): string => `whatsapp:${e164}`;
 
-export async function sendWhatsApp(opts: {
-  to: string;
-  body: string;
-  /** Pour le proprio: nom de template Meta à utiliser hors fenêtre 24h. */
-  ownerTemplateFallback?: boolean;
-}): Promise<WhatsAppResult> {
+export async function sendWhatsApp(opts: WhatsAppOptions): Promise<WhatsAppResult> {
   const provider = (process.env.WHATSAPP_PROVIDER ?? "meta").toLowerCase();
   const e164 = normalizeE164(opts.to);
 
   if (provider === "twilio") {
-    return sendViaTwilio(e164, opts.body);
+    return sendViaTwilio(e164, opts);
   }
   return sendViaMeta(e164, opts.body, opts.ownerTemplateFallback ?? false);
 }
@@ -172,7 +182,7 @@ async function sendOwnerTemplate(
 
 async function sendViaTwilio(
   e164: string,
-  body: string,
+  opts: WhatsAppOptions,
 ): Promise<WhatsAppResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -190,24 +200,59 @@ async function sendViaTwilio(
     ? from
     : twilioNumber(normalizeE164(from));
 
-  const params = new URLSearchParams({
-    To: twilioNumber(e164),
-    From: fromNormalized,
-    Body: body,
-  });
-
   const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+
+  // ── Path 1: pre-approved Content Template (bypasses 24h window) ────────
+  // Use this for client-facing messages where the customer hasn't initiated
+  // a WhatsApp conversation yet. Twilio Content templates are pre-approved
+  // by Meta so they ship anywhere.
+  if (opts.templateSid) {
+    const variables =
+      opts.templateVariables ?? { "1": opts.body.slice(0, 1024) };
+    const params = new URLSearchParams({
+      To: twilioNumber(e164),
+      From: fromNormalized,
+      ContentSid: opts.templateSid,
+      ContentVariables: JSON.stringify(variables),
+    });
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      return {
+        ok: false,
+        error: `template ${res.status}: ${errBody.slice(0, 300)}`,
+      };
+    }
+
+    const data = (await res.json()) as { sid?: string };
+    return { ok: true, sid: data.sid };
+  }
+
+  // ── Path 2: free-form text (only works inside 24h window) ──────────────
+  const params = new URLSearchParams({
+    To: twilioNumber(e164),
+    From: fromNormalized,
+    Body: opts.body,
+  });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-  );
+    body: params.toString(),
+  });
 
   if (!res.ok) {
     const errBody = await res.text();

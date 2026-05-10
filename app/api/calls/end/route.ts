@@ -116,7 +116,18 @@ export async function POST(req: NextRequest) {
   let waError: string | null = null;
 
   if (fromNumber) {
-    const r = await sendWhatsApp({ to: fromNumber, body: summary.forClient });
+    // Client-facing recap: use Twilio Content Template if configured, so
+    // the message ships even if the customer never WhatsApped us first.
+    // Free-form falls back to the 24h-window rule.
+    const clientTemplate = process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
+    const r = await sendWhatsApp({
+      to: fromNumber,
+      body: summary.forClient,
+      templateSid: clientTemplate || undefined,
+      templateVariables: clientTemplate
+        ? { "1": summary.forClient.slice(0, 1000) }
+        : undefined,
+    });
     if (r.ok && r.sid) {
       clientSid = r.sid;
       await logEvent({
