@@ -6,7 +6,7 @@ import { auth, signOut } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
-import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
+import { voicesFor } from "@/lib/realtime";
 
 import { AdminTenantConfigForm } from "./tenant-config-form";
 
@@ -64,7 +64,6 @@ export default async function AdminTenantPage({
     await signOut({ redirectTo: "/login" });
   }
 
-  const modelIds = REALTIME_MODELS.map((m) => m.id);
   const voices = cfg ? voicesFor(cfg.model) : [];
 
   return (
@@ -142,7 +141,6 @@ export default async function AdminTenantPage({
               ownerWhatsapp: cfg.ownerWhatsapp,
               primaryLanguage: cfg.primaryLanguage ?? "fr",
             }}
-            modelIds={modelIds}
             initialVoices={voices}
           />
         ) : (

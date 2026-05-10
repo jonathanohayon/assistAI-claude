@@ -28,11 +28,9 @@ const PRIMARY_LANGUAGES = [
 export function AdminTenantConfigForm({
   userId,
   initial,
-  modelIds,
 }: {
   userId: string;
   initial: FormState;
-  modelIds: string[];
   initialVoices: readonly string[];
 }) {
   const [form, setForm] = useState<FormState>(initial);
@@ -142,10 +140,7 @@ export function AdminTenantConfigForm({
               onChange={(e) => update("model", e.target.value)}
               className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm shadow-xs"
             >
-              {(catalog.models.length > 0
-                ? catalog.models.map((m) => m.id)
-                : modelIds
-              ).map((m) => (
+              {catalog.models.map((m) => m.id).map((m) => (
                 <option key={m} value={m}>
                   {m} ·{" "}
                   {catalog.models.find((r) => r.id === m)?.provider ?? "?"}

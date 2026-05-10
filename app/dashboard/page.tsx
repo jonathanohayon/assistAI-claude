@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
-import { REALTIME_MODELS } from "@/lib/realtime";
 
 import { ConfigForm } from "./config-form";
 
@@ -76,7 +75,6 @@ export default async function DashboardPage() {
             primaryLanguage: config.primaryLanguage ?? "fr",
           }}
           isAdmin={isAdmin}
-          modelIds={isAdmin ? REALTIME_MODELS.map((m) => m.id) : undefined}
         />
       </section>
     </main>

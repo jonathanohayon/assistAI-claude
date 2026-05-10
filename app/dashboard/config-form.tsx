@@ -29,11 +29,9 @@ const PRIMARY_LANGUAGES = [
 export function ConfigForm({
   initial,
   isAdmin = false,
-  modelIds,
 }: {
   initial: FormState;
   isAdmin?: boolean;
-  modelIds?: string[];
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -166,7 +164,7 @@ export function ConfigForm({
         }
       >
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {isAdmin && modelIds && (
+          {isAdmin && (
             <Field
               label="Modèle"
               hint="Visible uniquement pour l'admin · sert au testing cross-modèles."
@@ -176,7 +174,7 @@ export function ConfigForm({
                 onChange={(e) => update("model", e.target.value)}
                 className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
               >
-                {(modelIds ?? catalog.models.map((m) => m.id)).map((m) => (
+                {catalog.models.map((m) => m.id).map((m) => (
                   <option key={m} value={m}>
                     {m} ·{" "}
                     {catalog.models.find((r) => r.id === m)?.provider ?? "?"}
