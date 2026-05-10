@@ -3,16 +3,50 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
+import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import {
+  ensureSheet,
+  forceTextPhone,
+  prependRow,
+} from "@/lib/sheets-helpers";
 import { summarizeCall } from "@/lib/summarize";
 import { resolveTenant } from "@/lib/tenant";
 import { sendWhatsApp } from "@/lib/whatsapp";
+
+const APPELS_SHEET_TITLE = "Appels";
+const APPELS_HEADERS = [
+  "Date",
+  "Heure",
+  "Caller",
+  "Numéro",
+  "Durée",
+  "Type",
+  "Résumé",
+];
 
 interface EndBody {
   fromNumber?: string;
   toNumber?: string;
   transcript?: Array<{ role: "user" | "assistant"; text: string }>;
+  /** Durée de l'appel en secondes (best-effort, peut être undefined). */
+  durationSeconds?: number;
 }
+
+/**
+ * Heuristique pour déduire le TYPE d'appel à partir du résumé / transcript :
+ * RDV, Annulation, Modification, Message, ou Info. Affichage Sheets only.
+ */
+const inferCallType = (summary: string, transcript: string[]): string => {
+  const all = (summary + " " + transcript.join(" ")).toLowerCase();
+  if (/annul|cancel/.test(all)) return "Annulation";
+  if (/déplac|report|reschedule|chang.*heure|chang.*date/.test(all))
+    return "Modification";
+  if (/take_message|laisse.*message|transmettre|rappelle/.test(all))
+    return "Message";
+  if (/réserv|book_appointment|rendez-vous|RDV/i.test(all)) return "RDV";
+  return "Info";
+};
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-internal-secret");
@@ -187,6 +221,79 @@ export async function POST(req: NextRequest) {
       whatsappError: waError,
     })
     .where(eq(calls.id, callRow.id));
+
+  // Push au TOP de la sheet "Appels" (le plus récent en haut). Best-effort :
+  // on log l'erreur mais on ne fait pas planter le endpoint si Sheets fail.
+  // Le récap WhatsApp est plus critique que le log Sheets.
+  try {
+    const google = await getTenantGoogleClients(user.id);
+    if (google?.sheetId) {
+      const now = new Date();
+      const date = now.toLocaleDateString("fr-FR", {
+        timeZone: "Asia/Jerusalem",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      const heure = now.toLocaleTimeString("fr-FR", {
+        timeZone: "Asia/Jerusalem",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const dur = body.durationSeconds;
+      const durFormatted =
+        typeof dur === "number" && dur > 0
+          ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`
+          : "";
+      const callType = inferCallType(
+        summary.raw,
+        transcript.map((t) => t.text),
+      );
+      // Format local du numéro pour lisibilité (cohérent avec ce que dit
+      // l'agent au téléphone). +972 → 0XXX.
+      const localFromNumber = fromNumber.startsWith("+972")
+        ? "0" + fromNumber.slice(4)
+        : fromNumber;
+      const sheetId = await ensureSheet({
+        sheets: google.sheets,
+        spreadsheetId: google.sheetId,
+        title: APPELS_SHEET_TITLE,
+        headers: APPELS_HEADERS,
+      });
+      await prependRow({
+        sheets: google.sheets,
+        spreadsheetId: google.sheetId,
+        sheetId,
+        sheetTitle: APPELS_SHEET_TITLE,
+        newRow: [
+          date,
+          heure,
+          "", // caller name pas connu ici (l'agent ne le passe pas) — vide
+          forceTextPhone(localFromNumber),
+          durFormatted,
+          callType,
+          summary.forOwner.slice(0, 500), // truncate pour pas saturer la cellule
+        ],
+      });
+      await logEvent({
+        source: "sheets",
+        event: "call_log_added",
+        message: `Appel loggé dans Sheets : ${localFromNumber || "?"} · ${callType}`,
+        userId: user.id,
+        metadata: { callId: callRow.id, type: callType },
+      });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "sheets failed";
+    await logEvent({
+      source: "sheets",
+      event: "call_log_failed",
+      message: `Push Appels échoué : ${msg.slice(0, 200)}`,
+      level: "error",
+      userId: user.id,
+      metadata: { callId: callRow.id, error: msg },
+    });
+  }
 
   return NextResponse.json({
     ok: true,
