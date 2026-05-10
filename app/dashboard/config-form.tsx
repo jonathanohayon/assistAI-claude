@@ -74,25 +74,13 @@ export function ConfigForm({
       >
         <Field
           label="Instructions"
-          hint="Markdown supporté. Décrivez les centres, horaires, prestations, ton, et les workflows à respecter."
+          hint="Markdown supporté. Décrivez prénom + nom du centre, horaires, prestations, ton, et les workflows à respecter. La phrase d'accueil est dérivée automatiquement de ces instructions."
         >
           <textarea
             value={form.instructions}
             onChange={(e) => update("instructions", e.target.value)}
-            rows={18}
+            rows={20}
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-          />
-        </Field>
-
-        <Field
-          label="Phrase d'accueil"
-          hint="Premier message dit quand l'appel commence."
-        >
-          <textarea
-            value={form.greetingInstructions}
-            onChange={(e) => update("greetingInstructions", e.target.value)}
-            rows={3}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
       </Card>
