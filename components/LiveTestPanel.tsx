@@ -202,26 +202,20 @@ export function LiveTestPanel({
 
       dc.onopen = () => {
         setStatus("connected");
-        // Apply temperature now that we have a live session — OpenAI rejects
-        // it at client_secrets time but accepts it via session.update.
-        // OpenAI now requires `type: "realtime"` inside every session.update
-        // payload (returns missing_required_parameter session.type otherwise).
-        if (requestedTemperature != null) {
-          dc.send(
-            JSON.stringify({
-              type: "session.update",
-              session: {
-                type: "realtime",
-                temperature: requestedTemperature,
-              },
-            }),
-          );
-        }
+        // OpenAI Realtime no longer accepts `temperature` at the session
+        // level (returns unknown_parameter). It's also not accepted at
+        // client_secrets time. Per-response temperature override on
+        // response.create is the new path — applied below for the greeting.
         // Fire the configured greeting so the test mirrors a real call.
         dc.send(
           JSON.stringify({
             type: "response.create",
-            response: { instructions: greetingInstructions },
+            response: {
+              instructions: greetingInstructions,
+              ...(requestedTemperature != null
+                ? { temperature: requestedTemperature }
+                : {}),
+            },
           }),
         );
       };
