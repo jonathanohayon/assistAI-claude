@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_REALTIME_MODEL,
-  REALTIME_MODELS,
-  defaultVoiceFor,
   transportFor,
-  voicesFor,
 } from "@/lib/realtime";
+import {
+  defaultVoiceForCatalog,
+  useRealtimeCatalog,
+  voicesForCatalog,
+} from "@/lib/use-realtime-catalog";
 
 type Status = "idle" | "connecting" | "connected" | "error";
 
@@ -29,28 +31,43 @@ export default function VoiceAgent() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError]   = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const catalog = useRealtimeCatalog();
   const [model, setModel] = useState<string>(DEFAULT_REALTIME_MODEL);
-  const [voice, setVoice] = useState<string>(defaultVoiceFor(DEFAULT_REALTIME_MODEL));
+  const [voice, setVoice] = useState<string>(
+    defaultVoiceForCatalog(catalog, DEFAULT_REALTIME_MODEL),
+  );
   // null = pas de timer en cours, sinon secondes restantes (décrémente à 1Hz).
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [demoEnded, setDemoEnded] = useState(false);
 
-  const modelIds = useMemo(() => REALTIME_MODELS.map((m) => m.id), []);
-  const availableVoices = useMemo(() => voicesFor(model), [model]);
+  const modelIds = useMemo(
+    () => catalog.models.map((m) => m.id),
+    [catalog.models],
+  );
+  const availableVoices = useMemo(
+    () => voicesForCatalog(catalog, model),
+    [catalog, model],
+  );
   const transport = useMemo(() => transportFor(model), [model]);
   const isUnsupported = transport !== "webrtc";
 
-  // Restore last selection from localStorage on mount.
+  // Restore last selection from localStorage on mount AND every time the
+  // catalog refreshes (so a freshly fetched model becomes selectable
+  // immediately even if the previous render didn't list it).
   /* eslint-disable react-hooks/set-state-in-effect -- legitimate browser-API sync (no SSR access to localStorage) */
   useEffect(() => {
     const m = localStorage.getItem(STORAGE_MODEL);
     const v = localStorage.getItem(STORAGE_VOICE);
-    const validModel = m && modelIds.includes(m) ? m : DEFAULT_REALTIME_MODEL;
-    const allowed = voicesFor(validModel);
-    const validVoice = v && allowed.includes(v) ? v : defaultVoiceFor(validModel);
+    const validModel =
+      m && modelIds.includes(m) ? m : DEFAULT_REALTIME_MODEL;
+    const allowed = voicesForCatalog(catalog, validModel);
+    const validVoice =
+      v && allowed.includes(v)
+        ? v
+        : defaultVoiceForCatalog(catalog, validModel);
     setModel(validModel);
     setVoice(validVoice);
-  }, [modelIds]);
+  }, [modelIds, catalog]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pcRef       = useRef<RTCPeerConnection | null>(null);
@@ -345,9 +362,9 @@ export default function VoiceAgent() {
   const onModelChange = (m: string) => {
     setModel(m);
     localStorage.setItem(STORAGE_MODEL, m);
-    const allowed = voicesFor(m);
+    const allowed = voicesForCatalog(catalog, m);
     if (!allowed.includes(voice)) {
-      const v = defaultVoiceFor(m);
+      const v = defaultVoiceForCatalog(catalog, m);
       setVoice(v);
       localStorage.setItem(STORAGE_VOICE, v);
     }
@@ -370,9 +387,10 @@ export default function VoiceAgent() {
             onChange={(e) => onModelChange(e.target.value)}
             className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {REALTIME_MODELS.map((m) => (
+            {catalog.models.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.id} · {m.provider}
+                {m.live ? "" : " (cache)"}
               </option>
             ))}
           </select>

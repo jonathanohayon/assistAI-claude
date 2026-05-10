@@ -19,7 +19,7 @@ interface ProviderConfig {
   transport: Transport;
 }
 
-const PROVIDERS: Record<Provider, ProviderConfig> = {
+export const PROVIDERS: Record<Provider, ProviderConfig> = {
   openai: {
     baseUrl: process.env.REALTIME_API_BASE ?? "https://api.openai.com/v1",
     apiKey: process.env.REALTIME_API_KEY ?? process.env.OPENAI_API_KEY ?? "",
@@ -59,7 +59,9 @@ interface ModelEntry {
 
 export const REALTIME_MODELS: readonly ModelEntry[] = [
   // Aliases (may not resolve on the WebRTC /calls endpoint — try a dated snapshot if so)
-  { id: "gpt-realtime-2", provider: "openai" },
+  // NOTE: this is FALLBACK only — the live list is fetched from OpenAI's
+  // /v1/models via /api/realtime/catalog. Update only if OpenAI is down at
+  // boot AND the fallback ships with stale info.
   { id: "gpt-realtime-1.5", provider: "openai" },
   { id: "gpt-realtime", provider: "openai" },
   { id: "gpt-realtime-mini", provider: "openai" },
@@ -77,7 +79,7 @@ export const REALTIME_MODELS: readonly ModelEntry[] = [
 ] as const;
 
 export const DEFAULT_REALTIME_MODEL: string =
-  process.env.REALTIME_MODEL ?? "gpt-realtime-2";
+  process.env.REALTIME_MODEL ?? "gpt-realtime";
 
 export function providerFor(modelId: string): Provider {
   return REALTIME_MODELS.find((m) => m.id === modelId)?.provider ?? "openai";

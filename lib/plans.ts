@@ -33,7 +33,7 @@ export const PLANS: readonly Plan[] = [
     monthly: 149,
     annualTotal: 1485,
     annualMonthly: 123,
-    model: "gpt-realtime-2",
+    model: "gpt-realtime",
     popular: true,
     features: [
       "800 minutes de conversation / mois",
@@ -54,7 +54,7 @@ export const PLANS: readonly Plan[] = [
     monthly: 269,
     annualTotal: 2685,
     annualMonthly: 224,
-    model: "gpt-realtime-2",
+    model: "gpt-realtime",
     features: [
       "Tout de la formule WhatsApp",
       "1 200 minutes / mois",
@@ -73,9 +73,9 @@ export const PLANS: readonly Plan[] = [
     monthly: 449,
     annualTotal: 4485,
     annualMonthly: 374,
-    model: "gpt-realtime-2",
+    model: "gpt-realtime",
     features: [
-      "Modèle gpt-realtime-2 (ultra naturel)",
+      "Modèle gpt-realtime (ultra naturel)",
       "Minutes illimitées",
       "Agenda + CRM complet",
       "WhatsApp + Résumé + historique",
@@ -83,7 +83,7 @@ export const PLANS: readonly Plan[] = [
     ],
     onboardingNotes: [
       "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
-      "Modèle gpt-realtime-2 activé automatiquement après l'onboarding.",
+      "Modèle gpt-realtime activé automatiquement après l'onboarding.",
     ],
   },
 ] as const;

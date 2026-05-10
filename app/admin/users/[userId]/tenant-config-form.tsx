@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 
-import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
+import {
+  useRealtimeCatalog,
+  voicesForCatalog,
+} from "@/lib/use-realtime-catalog";
 
 type FormState = {
   instructions: string;
@@ -38,14 +41,18 @@ export function AdminTenantConfigForm({
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const availableVoices = useMemo(() => voicesFor(form.model), [form.model]);
+  const catalog = useRealtimeCatalog();
+  const availableVoices = useMemo(
+    () => voicesForCatalog(catalog, form.model),
+    [catalog, form.model],
+  );
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
     setForm((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "model") {
-        const allowed = voicesFor(value as string);
+        const allowed = voicesForCatalog(catalog, value as string);
         if (!allowed.includes(prev.voice) && allowed.length > 0) {
           next.voice = allowed[0]!;
         }
@@ -135,9 +142,13 @@ export function AdminTenantConfigForm({
               onChange={(e) => update("model", e.target.value)}
               className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm shadow-xs"
             >
-              {modelIds.map((m) => (
+              {(catalog.models.length > 0
+                ? catalog.models.map((m) => m.id)
+                : modelIds
+              ).map((m) => (
                 <option key={m} value={m}>
-                  {m} · {REALTIME_MODELS.find((r) => r.id === m)?.provider ?? "?"}
+                  {m} ·{" "}
+                  {catalog.models.find((r) => r.id === m)?.provider ?? "?"}
                 </option>
               ))}
             </select>
