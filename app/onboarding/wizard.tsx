@@ -12,11 +12,8 @@ interface AvailableNumber {
 }
 
 const COUNTRIES = [
-  { code: "US", label: "États-Unis (recommandé pour test)" },
-  { code: "IL", label: "Israël" },
-  { code: "FR", label: "France" },
-  { code: "GB", label: "Royaume-Uni" },
-  { code: "CA", label: "Canada" },
+  { code: "FR", label: "🇫🇷 France" },
+  { code: "IL", label: "🇮🇱 Israël" },
 ];
 
 type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
@@ -24,8 +21,7 @@ type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 export function OnboardingWizard() {
   const router = useRouter();
   const [stage, setStage] = useState<Stage>("pick");
-  const [country, setCountry] = useState("US");
-  const [areaCode, setAreaCode] = useState("");
+  const [country, setCountry] = useState("FR");
   const [numbers, setNumbers] = useState<AvailableNumber[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [provisioned, setProvisioned] = useState<{
@@ -40,7 +36,6 @@ export function OnboardingWizard() {
     setStage("loading");
     startTransition(async () => {
       const params = new URLSearchParams({ country, limit: "5" });
-      if (areaCode.trim()) params.set("area", areaCode.trim());
       const res = await fetch(`/api/onboarding/search?${params}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -50,7 +45,7 @@ export function OnboardingWizard() {
       }
       const data = (await res.json()) as { numbers: AvailableNumber[] };
       if (data.numbers.length === 0) {
-        setError("Aucun numéro disponible avec ces critères. Essaie un autre indicatif.");
+        setError("Aucun numéro disponible pour ce pays pour le moment. Réessaie dans quelques minutes ou choisis un autre pays.");
         setStage("error");
         return;
       }
@@ -116,9 +111,9 @@ export function OnboardingWizard() {
 
   return (
     <div className="space-y-5">
-      {/* Country + area code */}
-      <form onSubmit={search} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+      {/* Country picker */}
+      <form onSubmit={search} className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-[var(--color-foreground)]">Pays</span>
           <select
             value={country}
@@ -133,24 +128,10 @@ export function OnboardingWizard() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-[var(--color-foreground)]">
-            Indicatif
-          </span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={areaCode}
-            onChange={(e) => setAreaCode(e.target.value)}
-            placeholder="212"
-            disabled={isPending}
-            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 font-mono text-sm shadow-xs"
-          />
-        </label>
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-sm font-medium text-white shadow-sm sm:col-span-3 disabled:opacity-50"
+          className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50"
         >
           {stage === "loading" ? "Recherche…" : "Chercher des numéros disponibles"}
         </button>
