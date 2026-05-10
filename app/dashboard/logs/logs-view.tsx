@@ -14,6 +14,7 @@ interface EventRow {
 
 const SOURCE_FILTERS = [
   { id: "agent", label: "Agent" },
+  { id: "latency", label: "⏱️ Latence" },
   { id: "calendar", label: "Calendar" },
   { id: "sheets", label: "Sheets" },
   { id: "whatsapp", label: "WhatsApp" },
@@ -27,6 +28,7 @@ const LEVEL_FILTERS = ["info", "warn", "error"] as const;
 
 const SOURCE_BADGE: Record<string, string> = {
   agent: "bg-blue-100 text-blue-800 ring-blue-200",
+  latency: "bg-orange-100 text-orange-800 ring-orange-200 font-semibold",
   calendar: "bg-emerald-100 text-emerald-800 ring-emerald-200",
   sheets: "bg-amber-100 text-amber-800 ring-amber-200",
   whatsapp: "bg-green-100 text-green-800 ring-green-200",
