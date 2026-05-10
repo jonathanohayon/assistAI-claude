@@ -5,10 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import {
-  REALTIME_MODELS,
-  voicesFor,
-} from "@/lib/realtime";
+import { voicesFor } from "@/lib/realtime";
 
 export async function GET() {
   const session = await auth();
@@ -38,7 +35,6 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as Partial<{
     instructions: string;
     greetingInstructions: string;
-    model: string;
     voice: string;
     temperature: number;
     speed: number;
@@ -46,13 +42,18 @@ export async function PUT(req: NextRequest) {
     ownerWhatsapp: string;
   }>;
 
-  // Validate model + voice against the catalog so the user can't ship a typo
-  // into the agent config.
-  const modelIds = REALTIME_MODELS.map((m) => m.id);
-  if (body.model && !modelIds.includes(body.model)) {
-    return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+  // Tenants can't change their model — only admins can, via /admin. Look up
+  // the current stored model so we can validate the requested voice against
+  // it instead of trusting a client-supplied model.
+  const [current] = await db
+    .select({ model: agentConfigs.model })
+    .from(agentConfigs)
+    .where(eq(agentConfigs.userId, session.user.id))
+    .limit(1);
+  if (!current) {
+    return NextResponse.json({ error: "No config" }, { status: 404 });
   }
-  if (body.model && body.voice && !voicesFor(body.model).includes(body.voice)) {
+  if (body.voice && !voicesFor(current.model).includes(body.voice)) {
     return NextResponse.json(
       { error: "Voice not supported by this model" },
       { status: 400 },
@@ -65,7 +66,6 @@ export async function PUT(req: NextRequest) {
   if (body.instructions != null) updates.instructions = body.instructions;
   if (body.greetingInstructions != null)
     updates.greetingInstructions = body.greetingInstructions;
-  if (body.model != null) updates.model = body.model;
   if (body.voice != null) updates.voice = body.voice;
   if (body.temperature != null)
     updates.temperature = clamp(body.temperature, 0, 1.5);

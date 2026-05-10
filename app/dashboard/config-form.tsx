@@ -16,14 +16,7 @@ type FormState = {
   ownerWhatsapp: string;
 };
 
-export function ConfigForm({
-  initial,
-  modelIds,
-}: {
-  initial: FormState;
-  modelIds: string[];
-  initialVoices: readonly string[];
-}) {
+export function ConfigForm({ initial }: { initial: FormState }) {
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,19 +24,14 @@ export function ConfigForm({
   const [isPending, startTransition] = useTransition();
 
   const availableVoices = useMemo(() => voicesFor(form.model), [form.model]);
+  const modelProvider = useMemo(
+    () => REALTIME_MODELS.find((m) => m.id === form.model)?.provider ?? "?",
+    [form.model],
+  );
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "model") {
-        const allowed = voicesFor(value as string);
-        if (!allowed.includes(prev.voice) && allowed.length > 0) {
-          next.voice = allowed[0]!;
-        }
-      }
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -113,23 +101,22 @@ export function ConfigForm({
 
       {/* Voice config */}
       <Card
-        title="Voix & modèle"
+        title="Voix"
         subtitle="Paramètres techniques du moteur vocal. Tester sur la home avant d'enregistrer."
       >
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field label="Modèle">
-            <select
-              value={form.model}
-              onChange={(e) => update("model", e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            >
-              {modelIds.map((m) => (
-                <option key={m} value={m}>
-                  {m} ·{" "}
-                  {REALTIME_MODELS.find((r) => r.id === m)?.provider ?? "?"}
-                </option>
-              ))}
-            </select>
+          <Field
+            label="Modèle"
+            hint="Géré par l'équipe Assist AI. Contacte-nous pour changer."
+          >
+            <div className="inline-flex w-full items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 px-3 py-2.5 text-sm">
+              <span className="font-mono text-xs text-[var(--color-foreground)]">
+                {form.model}
+              </span>
+              <span className="text-[11px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                {modelProvider}
+              </span>
+            </div>
           </Field>
 
           <Field label="Voix">

@@ -93,35 +93,62 @@ export default async function AdminPage() {
           Admin
         </p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          Tenants & numéros
+          Console d&apos;administration
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          Liste des comptes inscrits. Assigne un numéro à un tenant pour que
-          ses appels soient routés vers sa configuration. Format E.164
-          (ex: +97223764700).
+          Deux niveaux de configuration : les <strong>réglages partagés</strong>{" "}
+          en haut (s&apos;appliquent à tous les tenants) et la{" "}
+          <strong>configuration par tenant</strong> en bas (assigner numéros,
+          éditer la persona, choisir le modèle).
         </p>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 py-8">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-display text-xl tracking-tight text-[var(--color-foreground)]">
-            Instructions globales
-          </h2>
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            Préfixées au persona de chaque tenant. Idéal pour les règles
-            cross-cutting (ton, anti-silence, formats).
-          </p>
+      <section className="mx-auto w-full max-w-6xl px-6 pt-10">
+        <div className="rounded-3xl border-2 border-dashed border-[var(--color-primary)]/30 bg-[var(--color-primary)]/[0.03] p-6 sm:p-8">
+          <div className="mb-5 flex items-start gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/15 text-[var(--color-primary)]">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="font-display text-xl tracking-tight text-[var(--color-foreground)]">
+                Réglages partagés (tous tenants)
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+                Modifications visibles par <strong>tous les tenants existants
+                et futurs</strong>. À utiliser pour les règles transverses (ton,
+                anti-silence, format de réponse) et le squelette de persona
+                proposé aux nouveaux comptes.
+              </p>
+            </div>
+          </div>
+          <GlobalInstructionsForm
+            initialGlobal={globalInstructions}
+            initialTemplate={onboardingTemplate}
+          />
         </div>
-        <GlobalInstructionsForm
-          initialGlobal={globalInstructions}
-          initialTemplate={onboardingTemplate}
-        />
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 py-8 pb-20">
-        <h2 className="mb-3 font-display text-xl tracking-tight text-[var(--color-foreground)]">
-          Tenants
-        </h2>
+      <section className="mx-auto w-full max-w-6xl px-6 py-10 pb-20">
+        <div className="mb-5 flex items-start gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)] text-[var(--color-foreground)]">
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+              <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM3 21v-1a6 6 0 0 1 6-6h6a6 6 0 0 1 6 6v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </span>
+          <div>
+            <h2 className="font-display text-xl tracking-tight text-[var(--color-foreground)]">
+              Tenants individuels
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+              {rows.length} compte{rows.length > 1 ? "s" : ""} inscrit
+              {rows.length > 1 ? "s" : ""}. Assigne un numéro pour router les
+              appels vers sa config. Clique « Éditer » pour modifier sa
+              persona, son modèle ou sa voix.
+            </p>
+          </div>
+        </div>
         <AdminTable rows={rows} />
       </section>
     </main>

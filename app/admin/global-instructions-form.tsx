@@ -59,14 +59,26 @@ export function GlobalInstructionsForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Global system rules */}
+      {/* Global system rules — applied at runtime to every tenant */}
       <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-          Règles transverses
-        </p>
-        <p className="mb-3 text-xs text-[var(--color-muted-foreground)]">
-          Préfixées au persona de chaque tenant à chaque appel. Toutes les
-          tenants en bénéficient sans intervention de leur part.
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+              1 · Règles communes appliquées à chaque appel
+            </p>
+            <h3 className="mt-1 font-display text-base text-[var(--color-foreground)]">
+              Préfixe du système
+            </h3>
+          </div>
+          <span className="whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            Live · prochain appel
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+          Ce texte est <strong>collé devant la persona de chaque tenant</strong>{" "}
+          au début de chaque appel. Idéal pour : ton général, anti-silence,
+          format de réponse, règles légales. Modifié → s&apos;applique
+          immédiatement à tout le monde.
         </p>
         <textarea
           value={globalText}
@@ -82,13 +94,24 @@ export function GlobalInstructionsForm({
 
       {/* Onboarding template — seed for new tenants */}
       <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-          Template onboarding
-        </p>
-        <p className="mb-3 text-xs text-[var(--color-muted-foreground)]">
-          Persona seed copiée dans la config de chaque nouveau tenant à son
-          inscription. Modifications ultérieures à faire sur leur dashboard.
-          Vide → utilise le persona Johana hard-codé en fallback.
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+              2 · Persona par défaut des nouveaux tenants
+            </p>
+            <h3 className="mt-1 font-display text-base text-[var(--color-foreground)]">
+              Template d&apos;inscription
+            </h3>
+          </div>
+          <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
+            Seed · nouveaux comptes uniquement
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+          Copié dans la config d&apos;un tenant <strong>au moment de son
+          inscription</strong>, puis personnalisable depuis son dashboard. Les
+          modifs ici n&apos;affectent <strong>pas</strong> les tenants déjà
+          existants. Laisse vide pour utiliser le persona Johana hard-codé.
         </p>
         <textarea
           value={templateText}

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
-import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
 
 import { ConfigForm } from "./config-form";
 
@@ -31,9 +30,6 @@ export default async function DashboardPage() {
       </main>
     );
   }
-
-  const modelIds = REALTIME_MODELS.map((m) => m.id);
-  const voices = voicesFor(config.model);
 
   return (
     <main>
@@ -70,8 +66,6 @@ export default async function DashboardPage() {
             maxResponseTokens: config.maxResponseTokens,
             ownerWhatsapp: config.ownerWhatsapp,
           }}
-          modelIds={modelIds}
-          initialVoices={voices}
         />
       </section>
     </main>
