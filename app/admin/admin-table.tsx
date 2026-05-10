@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 interface AdminRow {
@@ -21,13 +22,14 @@ export function AdminTable({ rows }: { rows: AdminRow[] }) {
             <th className="px-6 py-3 font-medium">Rôle</th>
             <th className="px-6 py-3 font-medium">Numéros assignés</th>
             <th className="px-6 py-3 font-medium">Inscription</th>
+            <th className="px-6 py-3 font-medium text-right">Config</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--color-border)]/60">
           {rows.length === 0 && (
             <tr>
               <td
-                colSpan={4}
+                colSpan={5}
                 className="px-6 py-10 text-center text-sm text-[var(--color-muted-foreground)]"
               >
                 Aucun tenant.
@@ -35,14 +37,19 @@ export function AdminTable({ rows }: { rows: AdminRow[] }) {
             </tr>
           )}
           {rows.map((r) => (
-            <tr key={r.id}>
+            <tr key={r.id} className="hover:bg-[var(--color-muted)]/30">
               <td className="px-6 py-4 align-top">
-                <div className="font-medium text-[var(--color-foreground)]">
-                  {r.displayName || "(sans nom)"}
-                </div>
-                <div className="text-xs text-[var(--color-muted-foreground)]">
-                  {r.email}
-                </div>
+                <Link
+                  href={`/admin/users/${r.id}`}
+                  className="block hover:underline"
+                >
+                  <div className="font-medium text-[var(--color-foreground)]">
+                    {r.displayName || "(sans nom)"}
+                  </div>
+                  <div className="text-xs text-[var(--color-muted-foreground)]">
+                    {r.email}
+                  </div>
+                </Link>
               </td>
               <td className="px-6 py-4 align-top">
                 <span
@@ -64,6 +71,14 @@ export function AdminTable({ rows }: { rows: AdminRow[] }) {
                   month: "short",
                   year: "numeric",
                 })}
+              </td>
+              <td className="px-6 py-4 align-top text-right">
+                <Link
+                  href={`/admin/users/${r.id}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-primary)]"
+                >
+                  Éditer →
+                </Link>
               </td>
             </tr>
           ))}
