@@ -45,6 +45,7 @@ export function OnboardingWizard({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [showGoogleSetup, setShowGoogleSetup] = useState(false);
 
   const googleStatusKey = searchParams.get("google");
   const googleStatusMessage = googleStatusKey
@@ -155,14 +156,63 @@ export function OnboardingWizard({
               ✓ Connecté
             </span>
           ) : (
-            <a
-              href="/api/onboarding/google/start"
-              className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
-            >
-              Connecter Google
-            </a>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleSetup((v) => !v)}
+                aria-label="Pré-requis Google Cloud Console"
+                aria-expanded={showGoogleSetup}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="12" cy="8" r="1" fill="currentColor" />
+                </svg>
+              </button>
+              <a
+                href="/api/onboarding/google/start"
+                className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
+              >
+                Connecter Google
+              </a>
+            </div>
           )}
         </div>
+        {showGoogleSetup && !googleConnected && (
+          <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-900">
+            <p className="font-medium">
+              Pré-requis : ajoute le redirect URI dans Google Cloud Console
+            </p>
+            <ol className="mt-1.5 list-decimal space-y-1 pl-4">
+              <li>
+                Va sur{" "}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  console.cloud.google.com
+                </a>{" "}
+                → API &amp; Services → Credentials → ton OAuth client.
+              </li>
+              <li>
+                Dans <strong>Authorized redirect URIs</strong>, ajoute :
+                <code className="mt-1 block break-all rounded bg-white px-2 py-1 font-mono text-[11px] text-sky-900 ring-1 ring-inset ring-sky-200">
+                  https://assistai-claude-production.up.railway.app/api/onboarding/google/callback
+                </code>
+              </li>
+              <li>Save.</li>
+            </ol>
+            <p className="mt-2 text-[11px] text-sky-800/80">
+              Sans ça, Google refuse l&apos;OAuth avec{" "}
+              <code className="font-mono">redirect_uri_mismatch</code>.
+              L&apos;ancienne URI <code className="font-mono">/api/auth/callback</code>{" "}
+              peut rester (utilisée par le legacy mutualisé).
+            </p>
+          </div>
+        )}
         {googleStatusMessage && !googleConnected && (
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             {googleStatusMessage}
