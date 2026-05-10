@@ -27,6 +27,13 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status").notNull().default("trialing"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
 
+  // Per-tenant Google integration. When refresh_token is null the agent
+  // tools fall back to the global Google credentials in env. Calendar +
+  // Sheets share the same OAuth scopes so one refresh_token covers both.
+  googleRefreshToken: text("google_refresh_token"),
+  googleCalendarId: text("google_calendar_id").notNull().default("primary"),
+  googleSheetId: text("google_sheet_id").notNull().default(""),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

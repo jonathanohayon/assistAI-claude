@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 interface AvailableNumber {
@@ -11,6 +11,17 @@ interface AvailableNumber {
   region: string;
 }
 
+const GOOGLE_STATUS_MESSAGES: Record<string, string> = {
+  connected: "✅ Google Calendar et Sheets connectés.",
+  denied: "Connexion refusée — réessaie ou continue sans pour l'instant.",
+  no_refresh:
+    "Google n'a pas renvoyé de refresh token. Va sur https://myaccount.google.com/permissions, retire l'accès à l'app, et reconnecte.",
+  bad_state: "État de session invalide — réessaie.",
+  user_mismatch: "Compte Google différent du tenant connecté.",
+  missing: "Code OAuth manquant — réessaie.",
+  error: "Erreur lors de la connexion Google.",
+};
+
 const COUNTRIES = [
   { code: "FR", label: "🇫🇷 France" },
   { code: "IL", label: "🇮🇱 Israël" },
@@ -18,8 +29,13 @@ const COUNTRIES = [
 
 type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 
-export function OnboardingWizard() {
+export function OnboardingWizard({
+  googleConnected: googleConnectedInitial,
+}: {
+  googleConnected: boolean;
+}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>("pick");
   const [country, setCountry] = useState("FR");
   const [numbers, setNumbers] = useState<AvailableNumber[]>([]);
@@ -29,6 +45,13 @@ export function OnboardingWizard() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const googleStatusKey = searchParams.get("google");
+  const googleStatusMessage = googleStatusKey
+    ? GOOGLE_STATUS_MESSAGES[googleStatusKey] ?? null
+    : null;
+  const googleConnected =
+    googleConnectedInitial || googleStatusKey === "connected";
 
   const search = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -110,7 +133,50 @@ export function OnboardingWizard() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Step 1: Connect Google (skippable) */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-white/70 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+              Étape 1 · optionnel
+            </p>
+            <h3 className="mt-1 font-display text-lg text-[var(--color-foreground)]">
+              Connecter Google Calendar & Sheets
+            </h3>
+            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+              Pour que ton agent puisse réserver des RDV dans TON calendrier
+              et enregistrer les contacts dans TON sheet. Tu peux aussi le
+              faire plus tard depuis le dashboard.
+            </p>
+          </div>
+          {googleConnected ? (
+            <span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
+              ✓ Connecté
+            </span>
+          ) : (
+            <a
+              href="/api/onboarding/google/start"
+              className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
+            >
+              Connecter Google
+            </a>
+          )}
+        </div>
+        {googleStatusMessage && !googleConnected && (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {googleStatusMessage}
+          </p>
+        )}
+      </div>
+
+      {/* Step 2: Pick number */}
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+          Étape 2 · numéro de téléphone
+        </p>
+      </div>
+
       {/* Country picker */}
       <form onSubmit={search} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">

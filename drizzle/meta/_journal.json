@@ -43,6 +43,13 @@
       "when": 1778374685189,
       "tag": "0005_marvelous_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778375215979,
+      "tag": "0006_steep_purifiers",
+      "breakpoints": true
     }
   ]
 }

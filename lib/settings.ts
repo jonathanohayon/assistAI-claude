@@ -8,6 +8,9 @@ import { appSettings } from "@/lib/db/schema";
 
 export const SETTING_KEYS = {
   GLOBAL_INSTRUCTIONS: "global_instructions",
+  // Default persona seeded into a new tenant's agent_config at signup time.
+  // Empty → fall back to the hard-coded INITIAL_INSTRUCTIONS in lib/initial-config.
+  ONBOARDING_TEMPLATE: "onboarding_persona_template",
 } as const;
 
 export async function getSetting(key: string): Promise<string | null> {
@@ -31,4 +34,8 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function getGlobalInstructions(): Promise<string> {
   return (await getSetting(SETTING_KEYS.GLOBAL_INSTRUCTIONS)) ?? "";
+}
+
+export async function getOnboardingTemplate(): Promise<string> {
+  return (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
 }

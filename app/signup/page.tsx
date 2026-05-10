@@ -12,6 +12,7 @@ import {
   INITIAL_GREETING_INSTRUCTIONS,
   INITIAL_INSTRUCTIONS,
 } from "@/lib/initial-config";
+import { getOnboardingTemplate } from "@/lib/settings";
 
 export default async function SignupPage(props: {
   searchParams: Promise<{ error?: string }>;
@@ -59,11 +60,16 @@ export default async function SignupPage(props: {
       .returning();
 
     // Bootstrap an agent_config so the new tenant has something to edit
-    // immediately. Persona seeded with the canonical Johana template — they
-    // can rebrand from the dashboard.
+    // immediately. Use the admin-defined onboarding template if present,
+    // otherwise fall back to the hard-coded canonical Johana persona.
+    const adminTemplate = await getOnboardingTemplate();
+    const seedInstructions = adminTemplate.trim()
+      ? adminTemplate
+      : INITIAL_INSTRUCTIONS;
+
     await db.insert(agentConfigs).values({
       userId: created.id,
-      instructions: INITIAL_INSTRUCTIONS,
+      instructions: seedInstructions,
       greetingInstructions: INITIAL_GREETING_INSTRUCTIONS,
     });
 

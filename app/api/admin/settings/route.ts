@@ -22,14 +22,16 @@ const requireAdmin = async () => {
   return me?.role === "admin" ? me : null;
 };
 
-// GET — return all known settings (just one for now: global instructions).
+// GET — return all known settings.
 export async function GET() {
   const me = await requireAdmin();
   if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const globalInstructions =
     (await getSetting(SETTING_KEYS.GLOBAL_INSTRUCTIONS)) ?? "";
-  return NextResponse.json({ globalInstructions });
+  const onboardingTemplate =
+    (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
+  return NextResponse.json({ globalInstructions, onboardingTemplate });
 }
 
 // PUT — update one or more settings.
@@ -39,22 +41,33 @@ export async function PUT(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) as {
     globalInstructions?: string;
+    onboardingTemplate?: string;
   };
+
+  const changed: string[] = [];
 
   if (typeof body.globalInstructions === "string") {
     await setSetting(
       SETTING_KEYS.GLOBAL_INSTRUCTIONS,
       body.globalInstructions,
     );
+    changed.push("global_instructions");
+  }
+  if (typeof body.onboardingTemplate === "string") {
+    await setSetting(
+      SETTING_KEYS.ONBOARDING_TEMPLATE,
+      body.onboardingTemplate,
+    );
+    changed.push("onboarding_persona_template");
+  }
+
+  if (changed.length > 0) {
     await logEvent({
       source: "web",
       event: "admin_settings_updated",
-      message: `Admin ${me.email} a édité les instructions globales (${body.globalInstructions.length} chars)`,
+      message: `Admin ${me.email} a édité ${changed.join(", ")}`,
       userId: me.id,
-      metadata: {
-        key: "global_instructions",
-        length: body.globalInstructions.length,
-      },
+      metadata: { keys: changed },
     });
   }
 

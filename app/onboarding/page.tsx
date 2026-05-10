@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
-import { phoneNumbers } from "@/lib/db/schema";
+import { phoneNumbers, users } from "@/lib/db/schema";
 
 import { OnboardingWizard } from "./wizard";
 
@@ -26,6 +26,14 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
+  // Has the user already connected Google in a prior session?
+  const [me] = await db
+    .select({ googleRefreshToken: users.googleRefreshToken })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+  const googleConnected = Boolean(me?.googleRefreshToken);
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
       <div
@@ -45,19 +53,18 @@ export default async function OnboardingPage() {
 
         <div className="rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            Étape 1/1
+            Onboarding
           </p>
           <h1 className="mt-3 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-            Choisissez votre numéro.
+            Quelques minutes pour activer votre secrétaire.
           </h1>
           <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            Votre secrétaire vocale aura besoin d&apos;une ligne dédiée. On en
-            achète une chez Twilio et on la branche automatiquement à
-            l&apos;agent — c&apos;est compris dans l&apos;essai gratuit.
+            Connectez votre Google Calendar (optionnel), puis on vous
+            attribue un numéro Twilio dédié — tout compris dans l&apos;essai gratuit.
           </p>
 
           <div className="mt-8">
-            <OnboardingWizard />
+            <OnboardingWizard googleConnected={googleConnected} />
           </div>
         </div>
       </div>

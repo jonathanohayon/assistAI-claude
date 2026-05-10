@@ -32,6 +32,8 @@ export default async function DashboardLayout({
     return Math.ceil(ms / (24 * 60 * 60 * 1000));
   })();
 
+  const googleConnected = Boolean(me?.googleRefreshToken);
+
   async function handleLogout() {
     "use server";
     await signOut({ redirectTo: "/login" });
@@ -70,6 +72,23 @@ export default async function DashboardLayout({
           </div>
         </div>
       </header>
+
+      {!googleConnected && (
+        <div className="mx-auto w-full max-w-5xl px-6 pt-4">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 sm:text-sm">
+            <span>
+              Google Calendar non connecté. Sans ça, votre agent ne peut pas
+              prendre de rendez-vous dans VOTRE calendrier.
+            </span>
+            <a
+              href="/api/onboarding/google/start"
+              className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white"
+            >
+              Connecter
+            </a>
+          </div>
+        </div>
+      )}
 
       {trialDaysLeft != null && (
         <div

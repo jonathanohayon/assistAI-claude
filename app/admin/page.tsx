@@ -6,7 +6,10 @@ import { auth, signOut } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-import { getGlobalInstructions } from "@/lib/settings";
+import {
+  getGlobalInstructions,
+  getOnboardingTemplate,
+} from "@/lib/settings";
 
 import { AdminTable } from "./admin-table";
 import { GlobalInstructionsForm } from "./global-instructions-form";
@@ -29,6 +32,7 @@ export default async function AdminPage() {
     .orderBy(users.createdAt);
   const allNumbers = await db.select().from(phoneNumbers);
   const globalInstructions = await getGlobalInstructions();
+  const onboardingTemplate = await getOnboardingTemplate();
 
   // Group numbers per user.
   const byUser = new Map<string, typeof allNumbers>();
@@ -108,7 +112,10 @@ export default async function AdminPage() {
             cross-cutting (ton, anti-silence, formats).
           </p>
         </div>
-        <GlobalInstructionsForm initial={globalInstructions} />
+        <GlobalInstructionsForm
+          initialGlobal={globalInstructions}
+          initialTemplate={onboardingTemplate}
+        />
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-6 py-8 pb-20">
