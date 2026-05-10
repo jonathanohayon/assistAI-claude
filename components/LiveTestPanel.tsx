@@ -204,11 +204,16 @@ export function LiveTestPanel({
         setStatus("connected");
         // Apply temperature now that we have a live session — OpenAI rejects
         // it at client_secrets time but accepts it via session.update.
+        // OpenAI now requires `type: "realtime"` inside every session.update
+        // payload (returns missing_required_parameter session.type otherwise).
         if (requestedTemperature != null) {
           dc.send(
             JSON.stringify({
               type: "session.update",
-              session: { temperature: requestedTemperature },
+              session: {
+                type: "realtime",
+                temperature: requestedTemperature,
+              },
             }),
           );
         }
