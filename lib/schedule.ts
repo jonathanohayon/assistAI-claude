@@ -88,3 +88,57 @@ export function dayNameFr(yyyyMmDd: string): string {
   const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   return DAY_NAMES_FR[dow] ?? "?";
 }
+
+/**
+ * Today's date in Asia/Jerusalem civil calendar as YYYY-MM-DD. Independent
+ * of server TZ — what matters is the calendar day in Israel.
+ */
+export function todayJerusalem(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+export interface DateForCenter {
+  date: string; // YYYY-MM-DD
+  weekday: string; // French day name (lundi, mardi, …)
+}
+
+/**
+ * Walk forward day by day starting from `after` (exclusive) — or today
+ * Jerusalem time if `after` is omitted — and return the next `count` dates
+ * whose canonical center matches `center`. Deterministic, no LLM needed.
+ *
+ * Used by:
+ *   - /api/calendar/list-dates (the agent's primary "what's next?" query)
+ *   - availability + book error responses (suggested_dates field)
+ */
+export function nextDatesForCenter(
+  center: Center,
+  count = 3,
+  after?: string,
+): DateForCenter[] {
+  if (count <= 0) return [];
+  const start = after ?? todayJerusalem();
+  const [y, m, d] = start.split("-").map((s) => Number(s));
+  if (!y || !m || !d) {
+    throw new Error(`date invalide : ${start} (YYYY-MM-DD attendu)`);
+  }
+  const cursor = new Date(Date.UTC(y, m - 1, d));
+  const out: DateForCenter[] = [];
+  // 60-day horizon is safe — even a once-a-week center yields ~8 hits.
+  for (let i = 0; i < 60 && out.length < count; i++) {
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    const yy = cursor.getUTCFullYear();
+    const mm = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(cursor.getUTCDate()).padStart(2, "0");
+    const iso = `${yy}-${mm}-${dd}`;
+    if (centerForDate(iso) === center) {
+      out.push({ date: iso, weekday: dayNameFr(iso) });
+    }
+  }
+  return out;
+}

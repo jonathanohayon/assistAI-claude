@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
-import { type Center, validateBooking } from "@/lib/schedule";
+import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
@@ -52,6 +52,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!resolved.ok) {
+    // Caller booked the wrong center for this date. Hand back the next
+    // valid dates FOR THE CENTER THEY ASKED FOR so the agent can re-propose
+    // without recomputing anything.
+    const suggested = nextDatesForCenter(center as Center, 3, date);
     await logEvent({
       source: "calendar",
       event: "book_wrong_center",
@@ -68,9 +72,11 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(
       {
-        error: resolved.reason,
+        error: "wrong_day_for_center",
+        message: resolved.reason,
         expectedCenter: resolved.expectedCenter,
         expectedLabel: resolved.expectedLabel,
+        suggested_dates: suggested,
       },
       { status: 400 },
     );

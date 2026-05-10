@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveAgentCallerGoogle } from "@/lib/google";
-import { type Center, centerForDate, dayNameFr, labelFor } from "@/lib/schedule";
+import {
+  type Center,
+  centerForDate,
+  dayNameFr,
+  labelFor,
+  nextDatesForCenter,
+} from "@/lib/schedule";
 import { jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
@@ -29,12 +35,20 @@ export async function POST(req: NextRequest) {
   }
 
   if (center && center !== allowedCenter) {
+    // The agent asked for a center that isn't open this day. Don't just say
+    // no — return the next valid dates for THE CENTER THE CALLER WANTED so
+    // the agent can directly propose them ("Jérusalem est fermé lundi, mais
+    // mardi 12 ça marche"). Eliminates a re-derivation step on the LLM.
+    const suggested = nextDatesForCenter(center as Center, 3, date);
     return NextResponse.json({
+      error: "wrong_day_for_center",
       date,
-      center: allowedCenter,
-      label: labelFor(allowedCenter),
-      available_slots: [],
-      reason: `Le ${date} (${dayNameFr(date)}), le centre ouvert est ${labelFor(allowedCenter)} — pas ${center}.`,
+      weekday: dayNameFr(date),
+      requested_center: center,
+      open_center_that_day: allowedCenter,
+      open_label_that_day: labelFor(allowedCenter),
+      suggested_dates: suggested,
+      message: `Le ${date} (${dayNameFr(date)}), seul ${labelFor(allowedCenter)} est ouvert. Prochaines dates pour ${labelFor(center as Center)} : ${suggested.map((d) => `${d.weekday} ${d.date}`).join(", ")}.`,
     });
   }
 
@@ -98,13 +112,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const suggested = slots.length === 0
+      ? nextDatesForCenter(allowedCenter, 3, date)
+      : [];
     return NextResponse.json({
       date,
       center: allowedCenter,
       label: labelFor(allowedCenter),
       available_slots: slots,
       ...(slots.length === 0
-        ? { reason: `Plus de créneau disponible pour le ${date}. Propose la prochaine date du centre ${labelFor(allowedCenter)}.` }
+        ? {
+            reason: `Plus de créneau disponible pour le ${date}. Prochaines dates ${labelFor(allowedCenter)} : ${suggested.map((d) => `${d.weekday} ${d.date}`).join(", ")}.`,
+            suggested_dates: suggested,
+          }
         : {}),
     });
   } catch (err) {
