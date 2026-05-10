@@ -10,11 +10,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nom et téléphone requis" }, { status: 400 });
   }
 
-  const caller = await resolveAgentCallerGoogle();
+  const caller = await resolveAgentCallerGoogle(req);
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Sheet non connecté pour ce compte." },
       { status: 409 },
+    );
+  }
+  if (caller.mode === "unknown_tenant") {
+    return NextResponse.json(
+      { error: `Tenant inconnu pour ${caller.dialedPhone || "(numéro absent)"}` },
+      { status: 404 },
     );
   }
   if (!caller.sheetId) {

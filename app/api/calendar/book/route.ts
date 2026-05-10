@@ -76,11 +76,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const caller = await resolveAgentCallerGoogle();
+  const caller = await resolveAgentCallerGoogle(req);
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Calendar non connecté pour ce compte." },
       { status: 409 },
+    );
+  }
+  if (caller.mode === "unknown_tenant") {
+    return NextResponse.json(
+      { error: `Tenant inconnu pour ${caller.dialedPhone || "(numéro absent)"}` },
+      { status: 404 },
     );
   }
   const endParts = addMinutesJerusalem(date, time, duration);

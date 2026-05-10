@@ -11,11 +11,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Téléphone requis" }, { status: 400 });
   }
 
-  const caller = await resolveAgentCallerGoogle();
+  const caller = await resolveAgentCallerGoogle(req);
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Calendar non connecté pour ce compte." },
       { status: 409 },
+    );
+  }
+  if (caller.mode === "unknown_tenant") {
+    return NextResponse.json(
+      { error: `Tenant inconnu pour ${caller.dialedPhone || "(numéro absent)"}` },
+      { status: 404 },
     );
   }
   const phoneDigits = normalize(phone);

@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { resolveTenantByPhone } from "@/lib/tenant";
 
 const ONBOARDING_REDIRECT_PATH = "/api/onboarding/google/callback";
 
@@ -113,6 +114,7 @@ export type AgentCallerGoogle =
       sheetId: string | null;
     }
   | { mode: "user_no_google" }
+  | { mode: "unknown_tenant"; dialedPhone: string }
   | {
       mode: "demo";
       calendar: ReturnType<typeof getCalendar>;
@@ -122,22 +124,48 @@ export type AgentCallerGoogle =
     };
 
 /**
- * Resolves the Google clients an agent route should use:
- *  - logged-in user with Google connected → their own calendar/sheet
- *  - logged-in user WITHOUT Google connected → "user_no_google" so the route
- *    can refuse rather than leaking the admin's calendar
- *  - no session (e.g. public marketing demo on Hero) → global admin credentials
+ * Resolves the Google clients an agent route should use, in priority order:
  *
- * Phone-routed agent calls (SIP) aren't yet covered — they need a separate
- * mechanism (signed header + dialed number → tenant).
+ *   1. **SIP/LiveKit worker** — when the request carries
+ *      `x-internal-secret: $INTERNAL_SECRET` and `x-tenant-phone: <E.164>`,
+ *      we resolve the tenant by the dialed number via resolveTenantByPhone()
+ *      and use their stored Google credentials. Refuses (`unknown_tenant` /
+ *      `user_no_google`) instead of falling back to admin.
+ *
+ *   2. **Logged-in user** (dashboard live-test) — uses the session user's
+ *      own credentials. Refuses with `user_no_google` if they haven't
+ *      connected Google yet.
+ *
+ *   3. **Public demo** (marketing Hero, no session) — uses the global admin
+ *      credentials so the homepage demo keeps working.
+ *
+ * `req` is optional only so callers without one (none currently) keep
+ * compiling; pass it whenever available so SIP routing works.
  */
-export async function resolveAgentCallerGoogle(): Promise<AgentCallerGoogle> {
+export async function resolveAgentCallerGoogle(
+  req?: { headers: Headers },
+): Promise<AgentCallerGoogle> {
+  if (req) {
+    const secret = req.headers.get("x-internal-secret");
+    const expected = process.env.INTERNAL_SECRET;
+    if (expected && secret === expected) {
+      const dialed = (req.headers.get("x-tenant-phone") ?? "").trim();
+      if (!dialed) return { mode: "unknown_tenant", dialedPhone: "" };
+      const tenant = await resolveTenantByPhone(dialed);
+      if (!tenant) return { mode: "unknown_tenant", dialedPhone: dialed };
+      const clients = await getTenantGoogleClients(tenant.user.id);
+      if (!clients) return { mode: "user_no_google" };
+      return { mode: "tenant", ...clients };
+    }
+  }
+
   const session = await auth();
   if (session?.user?.id) {
     const tenant = await getTenantGoogleClients(session.user.id);
     if (tenant) return { mode: "tenant", ...tenant };
     return { mode: "user_no_google" };
   }
+
   return {
     mode: "demo",
     calendar: getCalendar(),
