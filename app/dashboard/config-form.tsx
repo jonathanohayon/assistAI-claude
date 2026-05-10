@@ -75,13 +75,26 @@ export function ConfigForm({
       >
         <Field
           label="Instructions"
-          hint="Markdown supporté. Décrivez prénom + nom du centre, horaires, prestations, ton, et les workflows à respecter. La phrase d'accueil est dérivée automatiquement de ces instructions."
+          hint="Markdown supporté. Décrivez prénom + nom du centre, horaires, prestations, ton, et les workflows à respecter."
         >
           <textarea
             value={form.instructions}
             onChange={(e) => update("instructions", e.target.value)}
             rows={20}
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+          />
+        </Field>
+
+        <Field
+          label="Phrase d'entrée"
+          hint="Première phrase prononcée à chaque appel — avant que la cliente parle. Garde-la courte et chaleureuse (1 à 2 phrases). Ex : « Bonjour, c'est Johana du centre Prestige, comment puis-je vous aider ? »"
+        >
+          <textarea
+            value={form.greetingInstructions}
+            onChange={(e) => update("greetingInstructions", e.target.value)}
+            rows={3}
+            placeholder="Bonjour, c'est <prénom> de <centre>. Comment puis-je vous aider ?"
+            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
       </Card>
