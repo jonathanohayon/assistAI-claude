@@ -1,4 +1,9 @@
+import { eq } from "drizzle-orm";
 import { google } from "googleapis";
+
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 
 const ONBOARDING_REDIRECT_PATH = "/api/onboarding/google/callback";
 
@@ -63,4 +68,81 @@ export function getSheetsFor(refreshToken: string) {
     version: "v4",
     auth: getAuthenticatedClientFor(refreshToken),
   });
+}
+
+export interface TenantGoogleClients {
+  calendar: ReturnType<typeof getCalendarFor>;
+  sheets: ReturnType<typeof getSheetsFor>;
+  calendarId: string;
+  sheetId: string | null;
+}
+
+/**
+ * Returns Google clients scoped to the user's own refresh token, or null if
+ * they haven't connected Google yet. Never falls back to the global admin
+ * credentials — callers must handle the null case (typically: render a
+ * "connect Google" CTA instead of leaking the admin calendar/sheet).
+ */
+export async function getTenantGoogleClients(
+  userId: string,
+): Promise<TenantGoogleClients | null> {
+  const [me] = await db
+    .select({
+      refreshToken: users.googleRefreshToken,
+      calendarId: users.googleCalendarId,
+      sheetId: users.googleSheetId,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!me?.refreshToken) return null;
+  return {
+    calendar: getCalendarFor(me.refreshToken),
+    sheets: getSheetsFor(me.refreshToken),
+    calendarId: me.calendarId || "primary",
+    sheetId: me.sheetId || null,
+  };
+}
+
+export type AgentCallerGoogle =
+  | {
+      mode: "tenant";
+      calendar: ReturnType<typeof getCalendarFor>;
+      sheets: ReturnType<typeof getSheetsFor>;
+      calendarId: string;
+      sheetId: string | null;
+    }
+  | { mode: "user_no_google" }
+  | {
+      mode: "demo";
+      calendar: ReturnType<typeof getCalendar>;
+      sheets: ReturnType<typeof getSheets>;
+      calendarId: string;
+      sheetId: string | null;
+    };
+
+/**
+ * Resolves the Google clients an agent route should use:
+ *  - logged-in user with Google connected → their own calendar/sheet
+ *  - logged-in user WITHOUT Google connected → "user_no_google" so the route
+ *    can refuse rather than leaking the admin's calendar
+ *  - no session (e.g. public marketing demo on Hero) → global admin credentials
+ *
+ * Phone-routed agent calls (SIP) aren't yet covered — they need a separate
+ * mechanism (signed header + dialed number → tenant).
+ */
+export async function resolveAgentCallerGoogle(): Promise<AgentCallerGoogle> {
+  const session = await auth();
+  if (session?.user?.id) {
+    const tenant = await getTenantGoogleClients(session.user.id);
+    if (tenant) return { mode: "tenant", ...tenant };
+    return { mode: "user_no_google" };
+  }
+  return {
+    mode: "demo",
+    calendar: getCalendar(),
+    sheets: getSheets(),
+    calendarId: process.env.GOOGLE_CALENDAR_ID || "primary",
+    sheetId: process.env.GOOGLE_SHEET_ID || null,
+  };
 }

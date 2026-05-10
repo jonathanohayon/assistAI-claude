@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCalendar } from "@/lib/google";
+import { resolveAgentCallerGoogle } from "@/lib/google";
 import { JERUSALEM_TZ, addMinutesJerusalem } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
@@ -12,11 +12,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const caller = await resolveAgentCallerGoogle();
+  if (caller.mode === "user_no_google") {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté pour ce compte." },
+      { status: 409 },
+    );
+  }
 
   try {
-    const existing = await calendar.events.get({ calendarId, eventId });
+    const existing = await caller.calendar.events.get({
+      calendarId: caller.calendarId,
+      eventId,
+    });
     const oldStart = existing.data.start?.dateTime
       ? new Date(existing.data.start.dateTime)
       : null;
@@ -31,8 +39,8 @@ export async function POST(req: NextRequest) {
 
     const endParts = addMinutesJerusalem(newDate, newTime, durationMin);
 
-    const updated = await calendar.events.patch({
-      calendarId,
+    const updated = await caller.calendar.events.patch({
+      calendarId: caller.calendarId,
       eventId,
       requestBody: {
         start: { dateTime: `${newDate}T${newTime}:00`, timeZone: JERUSALEM_TZ },

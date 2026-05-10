@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { getSheets } from "@/lib/google";
+import { getTenantGoogleClients, type TenantGoogleClients } from "@/lib/google";
 
 const SHEET_RANGE = "Contacts!A:E";
 // Columns: timestamp | name | phone | email | notes (matches /api/sheets/contact)
@@ -22,10 +22,15 @@ const requireAuth = async () => {
   return session;
 };
 
-const requireSheetId = () => {
-  const id = process.env.GOOGLE_SHEET_ID;
-  if (!id) throw new Error("GOOGLE_SHEET_ID non configuré");
-  return id;
+// Resolve the connected user's own Sheet. Returns null if Google isn't
+// connected or no sheet is configured — callers must short-circuit so we
+// never read/write the admin's sheet.
+const requireTenantSheet = async (
+  userId: string,
+): Promise<{ clients: TenantGoogleClients; sheetId: string } | null> => {
+  const clients = await getTenantGoogleClients(userId);
+  if (!clients || !clients.sheetId) return null;
+  return { clients, sheetId: clients.sheetId };
 };
 
 // GET — list all contacts (newest first)
@@ -35,17 +40,21 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const sheets = getSheets();
-  const spreadsheetId = requireSheetId();
+  const tenant = await requireTenantSheet(session.user.id);
+  if (!tenant) {
+    return NextResponse.json({
+      contacts: [],
+      headers: HEADERS,
+      notConnected: true,
+    });
+  }
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const res = await tenant.clients.sheets.spreadsheets.values.get({
+    spreadsheetId: tenant.sheetId,
     range: SHEET_RANGE,
   });
 
   const rows = res.data.values ?? [];
-  // Detect header row (first row matching the expected schema). If absent,
-  // start from row 1.
   const startIndex =
     rows[0]?.[0]?.toString().toLowerCase().includes("timestamp") ||
     rows[0]?.[1]?.toString().toLowerCase().includes("nom")
@@ -53,7 +62,7 @@ export async function GET() {
       : 0;
 
   const contacts: Contact[] = rows.slice(startIndex).map((r, i) => ({
-    rowIndex: startIndex + i + 1, // 1-based
+    rowIndex: startIndex + i + 1,
     timestamp: r[0] ?? "",
     name: r[1] ?? "",
     phone: r[2] ?? "",
@@ -61,7 +70,6 @@ export async function GET() {
     notes: r[4] ?? "",
   }));
 
-  // Newest first.
   contacts.reverse();
 
   return NextResponse.json({ contacts, headers: HEADERS });
@@ -87,12 +95,16 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "rowIndex invalide" }, { status: 400 });
   }
 
-  const sheets = getSheets();
-  const spreadsheetId = requireSheetId();
+  const tenant = await requireTenantSheet(session.user.id);
+  if (!tenant) {
+    return NextResponse.json(
+      { error: "Google Sheet non connecté" },
+      { status: 409 },
+    );
+  }
 
-  // Read the existing row first so we can patch only changed fields.
-  const existing = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const existing = await tenant.clients.sheets.spreadsheets.values.get({
+    spreadsheetId: tenant.sheetId,
     range: `Contacts!A${body.rowIndex}:E${body.rowIndex}`,
   });
   const current = existing.data.values?.[0] ?? [];
@@ -104,8 +116,8 @@ export async function PUT(req: NextRequest) {
     body.notes ?? current[4] ?? "",
   ];
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
+  await tenant.clients.sheets.spreadsheets.values.update({
+    spreadsheetId: tenant.sheetId,
     range: `Contacts!A${body.rowIndex}:E${body.rowIndex}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [next] },
@@ -126,11 +138,16 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "rowIndex invalide" }, { status: 400 });
   }
 
-  const sheets = getSheets();
-  const spreadsheetId = requireSheetId();
+  const tenant = await requireTenantSheet(session.user.id);
+  if (!tenant) {
+    return NextResponse.json(
+      { error: "Google Sheet non connecté" },
+      { status: 409 },
+    );
+  }
 
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId,
+  await tenant.clients.sheets.spreadsheets.values.clear({
+    spreadsheetId: tenant.sheetId,
     range: `Contacts!A${rowIndex}:E${rowIndex}`,
   });
 

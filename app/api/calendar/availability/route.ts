@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getCalendar } from "@/lib/google";
+import { resolveAgentCallerGoogle } from "@/lib/google";
 import { type Center, centerForDate, dayNameFr, labelFor } from "@/lib/schedule";
 import { jerusalemToUTCISO } from "@/lib/tz";
 
@@ -38,15 +38,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const caller = await resolveAgentCallerGoogle();
+  if (caller.mode === "user_no_google") {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté pour ce compte." },
+      { status: 409 },
+    );
+  }
 
   const timeMin = jerusalemToUTCISO(date, "08:00:00");
   const timeMax = jerusalemToUTCISO(date, "20:00:00");
 
   try {
-    const res = await calendar.events.list({
-      calendarId,
+    const res = await caller.calendar.events.list({
+      calendarId: caller.calendarId,
       timeMin,
       timeMax,
       singleEvents: true,

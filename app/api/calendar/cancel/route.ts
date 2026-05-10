@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getCalendar } from "@/lib/google";
+import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
@@ -10,11 +10,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const caller = await resolveAgentCallerGoogle();
+  if (caller.mode === "user_no_google") {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté pour ce compte." },
+      { status: 409 },
+    );
+  }
 
   try {
-    await calendar.events.delete({ calendarId, eventId });
+    await caller.calendar.events.delete({
+      calendarId: caller.calendarId,
+      eventId,
+    });
     await logEvent({
       source: "calendar",
       event: "cancel_success",

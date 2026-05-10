@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCalendar } from "@/lib/google";
+import { resolveAgentCallerGoogle } from "@/lib/google";
 import { jerusalemToUTCISO } from "@/lib/tz";
 
 const normalize = (s: string) => s.replace(/[^\d]/g, "");
@@ -11,8 +11,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Téléphone requis" }, { status: 400 });
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const caller = await resolveAgentCallerGoogle();
+  if (caller.mode === "user_no_google") {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté pour ce compte." },
+      { status: 409 },
+    );
+  }
   const phoneDigits = normalize(phone);
 
   let timeMin: string;
@@ -28,8 +33,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const res = await calendar.events.list({
-      calendarId,
+    const res = await caller.calendar.events.list({
+      calendarId: caller.calendarId,
       timeMin,
       timeMax,
       singleEvents: true,

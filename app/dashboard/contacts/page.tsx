@@ -1,4 +1,7 @@
-import { getSheets } from "@/lib/google";
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
+import { getTenantGoogleClients } from "@/lib/google";
 
 import { ContactsTable } from "./contacts-table";
 
@@ -13,13 +16,18 @@ interface Contact {
   notes: string;
 }
 
-async function fetchContacts(): Promise<Contact[]> {
-  const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  if (!spreadsheetId) throw new Error("GOOGLE_SHEET_ID non configuré");
+type FetchResult =
+  | { status: "ok"; contacts: Contact[] }
+  | { status: "no_google" }
+  | { status: "no_sheet" };
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+async function fetchContacts(userId: string): Promise<FetchResult> {
+  const clients = await getTenantGoogleClients(userId);
+  if (!clients) return { status: "no_google" };
+  if (!clients.sheetId) return { status: "no_sheet" };
+
+  const res = await clients.sheets.spreadsheets.values.get({
+    spreadsheetId: clients.sheetId,
     range: "Contacts!A:E",
   });
   const rows = res.data.values ?? [];
@@ -38,17 +46,22 @@ async function fetchContacts(): Promise<Contact[]> {
     notes: r[4] ?? "",
   }));
   contacts.reverse();
-  return contacts;
+  return { status: "ok", contacts };
 }
 
 export default async function ContactsPage() {
-  let contacts: Contact[] = [];
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  let result: FetchResult = { status: "ok", contacts: [] };
   let error: string | null = null;
   try {
-    contacts = await fetchContacts();
+    result = await fetchContacts(session.user.id);
   } catch (e) {
     error = e instanceof Error ? e.message : "Erreur sheet";
   }
+
+  const contacts = result.status === "ok" ? result.contacts : [];
 
   return (
     <main>
@@ -60,14 +73,28 @@ export default async function ContactsPage() {
           Vos clientes en un coup d&apos;œil.
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          {contacts.filter((c) => c.name || c.phone).length} contact
-          {contacts.length > 1 ? "s" : ""} enregistrés dans votre Google Sheet.
-          Chaque appel ajoute une ligne automatiquement.
+          {result.status === "ok"
+            ? `${contacts.filter((c) => c.name || c.phone).length} contact${contacts.length > 1 ? "s" : ""} enregistrés dans votre Google Sheet. Chaque appel ajoute une ligne automatiquement.`
+            : "Connectez Google et configurez votre Sheet pour suivre vos contacts ici."}
         </p>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
-        {error ? (
+        {result.status === "no_google" ? (
+          <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <p>Google n&apos;est pas connecté à votre compte.</p>
+            <a
+              href="/api/onboarding/google/start"
+              className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
+            >
+              Connecter Google
+            </a>
+          </div>
+        ) : result.status === "no_sheet" ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            Aucun Google Sheet configuré. Renseignez l&apos;ID de votre Sheet dans les paramètres pour activer le CRM.
+          </div>
+        ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>

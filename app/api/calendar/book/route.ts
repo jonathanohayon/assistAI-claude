@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getCalendar } from "@/lib/google";
+import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { type Center, validateBooking } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem } from "@/lib/tz";
@@ -76,13 +76,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const caller = await resolveAgentCallerGoogle();
+  if (caller.mode === "user_no_google") {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté pour ce compte." },
+      { status: 409 },
+    );
+  }
   const endParts = addMinutesJerusalem(date, time, duration);
 
   try {
-    const event = await calendar.events.insert({
-      calendarId,
+    const event = await caller.calendar.events.insert({
+      calendarId: caller.calendarId,
       requestBody: {
         summary: `RDV ${resolved.label} — ${name}`,
         description: [

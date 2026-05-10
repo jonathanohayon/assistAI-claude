@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { getCalendar } from "@/lib/google";
+import { getTenantGoogleClients } from "@/lib/google";
 import { JERUSALEM_TZ } from "@/lib/tz";
 
 interface CalendarEvent {
@@ -13,14 +13,18 @@ interface CalendarEvent {
   link: string;
 }
 
-// GET /api/dashboard/calendar?days=30 — upcoming events.
-// Tenant-routing note (phase 1): credentials are mutualized → single shared
-// calendar. Each tenant sees the same dataset for now. Move to per-tenant
-// Google OAuth in a later phase.
+// All routes here read/write the *connected user's own* Google Calendar via
+// their stored refresh_token. If the user hasn't connected Google, we refuse
+// (409) rather than silently falling back to the admin's calendar.
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const clients = await getTenantGoogleClients(session.user.id);
+  if (!clients) {
+    return NextResponse.json({ events: [], notConnected: true });
   }
 
   const days = Math.min(
@@ -28,16 +32,13 @@ export async function GET(req: NextRequest) {
     90,
   );
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
-
   const timeMin = new Date().toISOString();
   const timeMax = new Date(
     Date.now() + days * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const res = await calendar.events.list({
-    calendarId,
+  const res = await clients.calendar.events.list({
+    calendarId: clients.calendarId,
     timeMin,
     timeMax,
     singleEvents: true,
@@ -80,8 +81,13 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const clients = await getTenantGoogleClients(session.user.id);
+  if (!clients) {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté" },
+      { status: 409 },
+    );
+  }
 
   const patch: Record<string, unknown> = {};
   if (body.summary != null) patch.summary = body.summary;
@@ -100,8 +106,8 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const updated = await calendar.events.patch({
-      calendarId,
+    const updated = await clients.calendar.events.patch({
+      calendarId: clients.calendarId,
       eventId: body.eventId,
       requestBody: patch,
     });
@@ -134,11 +140,19 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  const calendar = getCalendar();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+  const clients = await getTenantGoogleClients(session.user.id);
+  if (!clients) {
+    return NextResponse.json(
+      { error: "Google Calendar non connecté" },
+      { status: 409 },
+    );
+  }
 
   try {
-    await calendar.events.delete({ calendarId, eventId });
+    await clients.calendar.events.delete({
+      calendarId: clients.calendarId,
+      eventId,
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
