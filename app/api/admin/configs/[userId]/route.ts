@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
+import { voicesFor } from "@/lib/realtime";
 
 const requireAdmin = async () => {
   const session = await auth();
@@ -60,9 +60,11 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     primaryLanguage: string;
   }>;
 
-  const modelIds = REALTIME_MODELS.map((m) => m.id);
-  if (body.model && !modelIds.includes(body.model)) {
-    return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+  // Model accepted as-is — picker is fed by live OpenAI catalog
+  // (/api/realtime/catalog), and OpenAI validates at session-create time.
+  // Hardcoded allowlist drift was rejecting valid new aliases.
+  if (body.model != null && body.model.trim() === "") {
+    return NextResponse.json({ error: "Empty model" }, { status: 400 });
   }
   if (body.model && body.voice && !voicesFor(body.model).includes(body.voice)) {
     return NextResponse.json(

@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
+import { voicesFor } from "@/lib/realtime";
 
 export async function GET() {
   const session = await auth();
@@ -62,14 +62,19 @@ export async function PUT(req: NextRequest) {
   }
   const isAdmin = current.role === "admin";
 
-  // Validate model (admin only). If a non-admin posts body.model, ignore it.
+  // Model (admin only). Non-admins ignored. We don't validate against a
+  // hardcoded allowlist anymore — the dashboard picker is fed by the live
+  // OpenAI catalog (/api/realtime/catalog), and OpenAI itself validates
+  // when a session is created. Hardcoded allowlists drift behind OpenAI's
+  // releases and silently reject valid new aliases (e.g. gpt-realtime-2).
+  // We still enforce a minimal sanity check (non-empty string).
   let nextModel = current.model;
   if (isAdmin && body.model) {
-    const modelIds = REALTIME_MODELS.map((m) => m.id);
-    if (!modelIds.includes(body.model)) {
-      return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+    const candidate = body.model.trim();
+    if (!candidate) {
+      return NextResponse.json({ error: "Empty model" }, { status: 400 });
     }
-    nextModel = body.model;
+    nextModel = candidate;
   }
   // Voice must be valid for the (potentially-updated) model.
   if (body.voice && !voicesFor(nextModel).includes(body.voice)) {
