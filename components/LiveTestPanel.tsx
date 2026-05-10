@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  buildResponseCreate,
+  type RealtimeErrorTriage,
+  triageRealtimeError,
+} from "@/lib/realtime-events";
+
 type Status = "idle" | "connecting" | "connected" | "error";
 
 interface TranscriptEntry {
@@ -35,6 +41,9 @@ export function LiveTestPanel({
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorTriage, setErrorTriage] = useState<RealtimeErrorTriage | null>(
+    null,
+  );
   const [isMuted, setIsMuted] = useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -98,7 +107,9 @@ export function LiveTestPanel({
 
       if (type === "error") {
         console.error("[realtime] error", event);
-        setError(`Realtime: ${JSON.stringify(event.error ?? event)}`);
+        const triage = triageRealtimeError(event);
+        setErrorTriage(triage);
+        setError(triage.summary);
         return;
       }
       if (type === "response.output_item.added") {
@@ -135,6 +146,7 @@ export function LiveTestPanel({
 
   const startSession = useCallback(async () => {
     setError(null);
+    setErrorTriage(null);
     setTranscript([]);
     setStatus("connecting");
 
@@ -202,21 +214,16 @@ export function LiveTestPanel({
 
       dc.onopen = () => {
         setStatus("connected");
-        // OpenAI Realtime no longer accepts `temperature` at the session
-        // level NOR at response.create level (both return unknown_parameter
-        // since late 2025). The model uses its default temperature; the
-        // dashboard slider is now informational only. The `_temp` reference
-        // here keeps requestedTemperature in scope so the prop API and
-        // the linter stay happy until we drop the field entirely.
-        const _temp = requestedTemperature;
-        void _temp;
-        // Fire the configured greeting so the test mirrors a real call.
-        dc.send(
-          JSON.stringify({
-            type: "response.create",
-            response: { instructions: greetingInstructions },
-          }),
-        );
+        // Centralized event builder — handles the OpenAI API contract drift
+        // in one place (lib/realtime-events.ts). The dashboard temperature
+        // slider used to be applied here but the param is no longer accepted
+        // by OpenAI at any level (session.update or response.create both
+        // return unknown_parameter since late 2025). Slider stays for visual
+        // consistency, no longer plumbed.
+        void requestedTemperature;
+        dc.send(JSON.stringify(buildResponseCreate({
+          instructions: greetingInstructions,
+        })));
       };
 
       pc.onconnectionstatechange = () => {
@@ -362,13 +369,35 @@ export function LiveTestPanel({
 
         {/* Right: transcript / errors */}
         <div className="flex flex-col gap-3">
-          {error && (
+          {error && !errorTriage && (
             <p
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
             >
               {error}
             </p>
+          )}
+          {errorTriage && (
+            <div
+              role="alert"
+              className="flex flex-col gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800"
+            >
+              <p className="font-semibold">{errorTriage.summary}</p>
+              <p className="text-red-700">{errorTriage.hint}</p>
+              {errorTriage.eventId && (
+                <p className="font-mono text-[10px] opacity-70">
+                  event_id: {errorTriage.eventId}
+                </p>
+              )}
+              <details className="mt-1">
+                <summary className="cursor-pointer text-[10px] opacity-60 hover:opacity-100">
+                  Voir le JSON brut
+                </summary>
+                <pre className="mt-1 overflow-x-auto rounded bg-white/60 p-2 text-[10px] leading-tight">
+                  {JSON.stringify(errorTriage.raw, null, 2)}
+                </pre>
+              </details>
+            </div>
           )}
 
           <div className="flex max-h-72 min-h-[200px] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3">

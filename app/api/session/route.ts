@@ -77,15 +77,42 @@ export async function POST(req: NextRequest) {
     tool_choice: "auto",
   };
 
-  const res = await fetch(clientSecretsUrl(provider), {
+  // Resilient fetch: if OpenAI rejects with `unknown_parameter`, strip the
+  // offending field from the payload and retry once. Surfaces a structured
+  // warning in the response so the client knows the API contract drifted
+  // and the code should be patched (lib/realtime-events.ts on data-channel
+  // side, this route on REST side).
+  const sentPayload = { session: { ...sessionPayload } };
+  let res = await fetch(clientSecretsUrl(provider), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ session: sessionPayload }),
+    body: JSON.stringify(sentPayload),
   });
-
+  let stripped: string | null = null;
+  if (!res.ok) {
+    const errText = await res.text();
+    const m = errText.match(/Unknown parameter: '?session\.([^'"\s.]+)'?/i);
+    if (m && m[1] && m[1] in sentPayload.session) {
+      stripped = m[1];
+      delete (sentPayload.session as Record<string, unknown>)[m[1]];
+      console.warn(
+        `[session] OpenAI rejected session.${m[1]}; retrying without it. Patch app/api/session/route.ts to drop this field permanently.`,
+      );
+      res = await fetch(clientSecretsUrl(provider), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sentPayload),
+      });
+    } else {
+      return NextResponse.json({ error: errText }, { status: 500 });
+    }
+  }
   if (!res.ok) {
     const err = await res.text();
     return NextResponse.json({ error: err }, { status: 500 });
@@ -97,10 +124,11 @@ export async function POST(req: NextRequest) {
     model,
     provider,
     webrtc_url: webrtcUrl(provider),
-    // Temperature must be applied client-side via a session.update event.
-    // null means "use OpenAI's default" — the client can skip the update.
     requested_temperature: requestedTemperature,
     requested_speed: requestedSpeed,
+    // When non-null, OpenAI rejected this field and we retried without it.
+    // Surface to the client so the dashboard can render a "code drift" badge.
+    stripped_field: stripped,
   });
 }
 
