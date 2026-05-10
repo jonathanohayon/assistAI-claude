@@ -140,6 +140,7 @@ export default async function AdminTenantPage({
               speed: cfg.speed,
               maxResponseTokens: cfg.maxResponseTokens,
               ownerWhatsapp: cfg.ownerWhatsapp,
+              primaryLanguage: cfg.primaryLanguage ?? "fr",
             }}
             modelIds={modelIds}
             initialVoices={voices}

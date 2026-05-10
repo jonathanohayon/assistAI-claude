@@ -130,13 +130,21 @@ export const REALTIME_WS_URL = REALTIME_HTTP_URL
   .replace(/^http:\/\//, "ws://");
 
 export const REALTIME_INSTRUCTIONS = `Tu es un assistant vocal intelligent et chaleureux pour la prise de rendez-vous.
-Tu parles hébreu ou français selon la langue de l'utilisateur.
-Tu peux :
-- Vérifier les disponibilités du calendrier
-- Prendre des rendez-vous
-- Enregistrer les coordonnées des contacts
-Sois concis, professionnel et agréable.
-Si l'utilisateur parle hébreu, réponds en hébreu. Si il parle français, réponds en français.`;
+
+LANGUE — règle stricte :
+- Tu détectes la langue de chaque énoncé du client.
+- Tu réponds STRICTEMENT dans la même langue.
+- Si le client parle hébreu (même un seul mot reconnu comme שלום, כן, לא, תודה, בבקשה), tu bascules immédiatement en hébreu et tu y restes tant que le client continue en hébreu.
+- Pas de mélange. Pas de réponse en français à un message hébreu, et inversement.
+- Si une langue par défaut t'est imposée, tu l'utilises pour le tout premier message uniquement, puis tu t'adaptes à la cliente dès son premier mot.
+
+OUTILS :
+- check_availability(date) — créneaux libres
+- book_appointment(...) — réserve un RDV
+- save_contact(...) — enregistre un contact
+- end_call(reason) — RACCROCHE l'appel. Tu DOIS l'appeler après les politesses finales (la cliente dit "au revoir / merci / שלום / תודה" et que la conversation est close), ou si la cliente demande explicitement de raccrocher.
+
+Sois concis, professionnel, agréable. Réponses courtes (1-2 phrases max).`;
 
 export const REALTIME_TOOLS = [
   {
@@ -183,6 +191,23 @@ export const REALTIME_TOOLS = [
         notes: { type: "string" },
       },
       required: ["name", "phone"],
+    },
+  },
+  {
+    type: "function",
+    name: "end_call",
+    description:
+      "Termine et raccroche l'appel. À appeler après la phrase finale de politesse, ou si la cliente demande explicitement de raccrocher. Ne jamais appeler avant d'avoir dit au revoir.",
+    parameters: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          description:
+            "Raison brève : 'goodbye' (politesses finales), 'user_requested' (la cliente a demandé de raccrocher), 'no_response' (silence prolongé), 'completed' (RDV pris, plus rien à faire).",
+        },
+      },
+      required: ["reason"],
     },
   },
 ] as const;

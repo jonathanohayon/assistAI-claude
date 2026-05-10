@@ -1,9 +1,11 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 export function CTA() {
+  const t = useTranslations("CTA");
   return (
     <section className="relative px-6 py-20 sm:py-28">
       <div className="mx-auto w-full max-w-6xl">
@@ -30,14 +32,13 @@ export function CTA() {
 
           <div className="relative max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-widest text-pink-200">
-              Prêt à essayer ?
+              {t("kicker")}
             </p>
             <h2 className="mt-3 font-display text-4xl leading-tight tracking-tight text-white sm:text-5xl">
-              Donnez une voix à votre cabinet en 5 minutes.
+              {t("title")}
             </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-pink-100/80">
-              Pas de carte bleue. Pas d&apos;engagement. Configurez votre persona,
-              testez la voix dans le dashboard, et basculez votre numéro quand vous êtes prêt.
+              {t("subtitle")}
             </p>
 
             <div className="mt-9 flex flex-wrap gap-3">
@@ -46,7 +47,7 @@ export function CTA() {
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-6 py-3 text-sm font-medium text-[var(--color-foreground)] shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-pink-200/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                <span className="relative">Démarrer gratuitement</span>
+                <span className="relative">{t("ctaPrimary")}</span>
                 <svg viewBox="0 0 24 24" fill="none" className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5">
                   <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -55,12 +56,12 @@ export function CTA() {
                 href="#demo"
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur transition-colors hover:bg-white/10"
               >
-                Tester la voix
+                {t("ctaSecondary")}
               </a>
             </div>
 
             <p className="mt-8 text-xs text-pink-200/60">
-              Conforme RGPD · Hébergé en Europe · Données chiffrées en transit
+              {t("footer")}
             </p>
           </div>
         </motion.div>

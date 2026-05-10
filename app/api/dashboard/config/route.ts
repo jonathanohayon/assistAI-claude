@@ -41,6 +41,7 @@ export async function PUT(req: NextRequest) {
     speed: number;
     maxResponseTokens: number;
     ownerWhatsapp: string;
+    primaryLanguage: string;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -103,6 +104,15 @@ export async function PUT(req: NextRequest) {
       );
     }
     updates.ownerWhatsapp = cleaned ? (cleaned.startsWith("+") ? cleaned : `+${cleaned}`) : "";
+  }
+  if (body.primaryLanguage != null) {
+    if (!["fr", "he", "en"].includes(body.primaryLanguage)) {
+      return NextResponse.json(
+        { error: "Langue invalide (fr, he ou en attendus)" },
+        { status: 400 },
+      );
+    }
+    updates.primaryLanguage = body.primaryLanguage;
   }
 
   const [updated] = await db

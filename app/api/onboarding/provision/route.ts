@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { phoneNumbers, users } from "@/lib/db/schema";
+import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { addNumberToTrunk } from "@/lib/livekit-sip";
 import { logEvent } from "@/lib/logger";
 import {
@@ -18,6 +18,8 @@ interface ProvisionBody {
   /** If set, skip search and try to purchase this exact number. */
   phoneNumber?: string;
   label?: string;
+  /** Default greeting language for this tenant's agent: 'fr' | 'he' | 'en'. */
+  primaryLanguage?: string;
 }
 
 // POST /api/onboarding/provision
@@ -119,6 +121,16 @@ export async function POST(req: NextRequest) {
       twilioSid: purchased.sid,
       countryCode,
     });
+
+    // Persist primary language preference on the agent config (if one exists).
+    // The migrate script creates the row before onboarding, so this is just
+    // an UPDATE — silently skipped if no config row yet.
+    if (body.primaryLanguage && ["fr", "he", "en"].includes(body.primaryLanguage)) {
+      await db
+        .update(agentConfigs)
+        .set({ primaryLanguage: body.primaryLanguage, updatedAt: new Date() })
+        .where(eq(agentConfigs.userId, session.user.id));
+    }
 
     // Refresh trial start so onboarding ⇒ first day of trial.
     const [me] = await db

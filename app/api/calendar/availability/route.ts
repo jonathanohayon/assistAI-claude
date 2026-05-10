@@ -71,6 +71,13 @@ export async function POST(req: NextRequest) {
       end: e.end?.dateTime,
     }));
 
+    // Hide slots that have already started (or are about to in <30 min) when
+    // the requested date is today in Jerusalem. Buffer prevents the agent
+    // from offering "11h00" at 10h59 — by the time the cliente confirme et
+    // qu'on book, c'est déjà passé.
+    const SLOT_BUFFER_MS = 30 * 60_000;
+    const nowMs = Date.now();
+
     const slots: string[] = [];
     for (let h = 9; h < 18; h++) {
       for (const m of [0, 30]) {
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
           jerusalemToUTCISO(date, `${hh}:${mm}:00`),
         ).getTime();
         const slotEndMs = slotStartMs + 30 * 60_000;
+        if (slotStartMs <= nowMs + SLOT_BUFFER_MS) continue;
         const busy = busySlots.some((b) => {
           if (!b.start || !b.end) return false;
           const bs = new Date(b.start).getTime();
@@ -95,6 +103,9 @@ export async function POST(req: NextRequest) {
       center: allowedCenter,
       label: labelFor(allowedCenter),
       available_slots: slots,
+      ...(slots.length === 0
+        ? { reason: `Plus de créneau disponible pour le ${date}. Propose la prochaine date du centre ${labelFor(allowedCenter)}.` }
+        : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur calendrier";

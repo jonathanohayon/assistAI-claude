@@ -61,6 +61,11 @@ export const agentConfigs = pgTable("agent_configs", {
   // Stored E.164 (e.g. +972585001007); empty = WhatsApp recap disabled.
   ownerWhatsapp: text("owner_whatsapp").notNull().default(""),
 
+  // Default greeting language. The agent will use this for the very first
+  // message of each call, then auto-detect and adapt to the caller. Values:
+  // 'fr' | 'he' | 'en'.
+  primaryLanguage: text("primary_language").notNull().default("fr"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

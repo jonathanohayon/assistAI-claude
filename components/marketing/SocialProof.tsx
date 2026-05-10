@@ -1,26 +1,16 @@
 "use client";
 
 import { motion } from "motion/react";
-
-const QUOTES = [
-  {
-    text: "Avant Prestige, on perdait 20% des appels en heure de pointe. Aujourd'hui : zéro. Et notre agenda est plein.",
-    author: "Salon Prestige · Tel Aviv",
-    role: "Centre de beauté",
-  },
-  {
-    text: "L'IA prend les RDV, gère les annulations, et parle hébreu et français. C'est exactement ce qu'on cherchait.",
-    author: "Dr. Cohen",
-    role: "Cabinet médical",
-  },
-  {
-    text: "Configurer le ton de la voix depuis un dashboard simple — game changer pour notre identité de marque.",
-    author: "Studio Eleven",
-    role: "Coiffeur · Jérusalem",
-  },
-];
+import { useTranslations } from "next-intl";
 
 export function SocialProof() {
+  const t = useTranslations("SocialProof");
+  const QUOTES = [
+    { text: t("q1.text"), author: t("q1.author"), role: t("q1.role") },
+    { text: t("q2.text"), author: t("q2.author"), role: t("q2.role") },
+    { text: t("q3.text"), author: t("q3.author"), role: t("q3.role") },
+  ];
+
   return (
     <section className="relative bg-gradient-to-b from-[#fdf2f8] to-white py-24 sm:py-32">
       <div className="mx-auto w-full max-w-6xl px-6">
@@ -32,10 +22,10 @@ export function SocialProof() {
           className="max-w-2xl"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            Ils nous font confiance
+            {t("kicker")}
           </p>
           <h2 className="mt-3 font-display text-4xl tracking-tight text-[var(--color-foreground)] sm:text-5xl">
-            Des professionnels qui ne ratent plus un appel.
+            {t("title")}
           </h2>
         </motion.div>
 

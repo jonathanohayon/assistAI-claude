@@ -57,6 +57,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     speed: number;
     maxResponseTokens: number;
     ownerWhatsapp: string;
+    primaryLanguage: string;
   }>;
 
   const modelIds = REALTIME_MODELS.map((m) => m.id);
@@ -98,6 +99,15 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         ? cleaned
         : `+${cleaned}`
       : "";
+  }
+  if (body.primaryLanguage != null) {
+    if (!["fr", "he", "en"].includes(body.primaryLanguage)) {
+      return NextResponse.json(
+        { error: "Langue invalide (fr, he ou en attendus)" },
+        { status: 400 },
+      );
+    }
+    updates.primaryLanguage = body.primaryLanguage;
   }
 
   const [updated] = await db

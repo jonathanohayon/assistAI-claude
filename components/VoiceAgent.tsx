@@ -16,8 +16,8 @@ interface TranscriptEntry {
   text: string;
 }
 
-const STORAGE_MODEL = "assist-ai:model";
-const STORAGE_VOICE = "assist-ai:voice";
+const STORAGE_MODEL = "tamara:model";
+const STORAGE_VOICE = "tamara:voice";
 
 export default function VoiceAgent() {
   const [status, setStatus] = useState<Status>("idle");
@@ -50,11 +50,13 @@ export default function VoiceAgent() {
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const streamRef   = useRef<MediaStream | null>(null);
   const pendingCalls = useRef<Map<string, string>>(new Map()); // call_id → function_name
+  const stopSessionRef = useRef<() => void>(() => {});
 
   // ── Tool execution ────────────────────────────────────────────────────────
 
   const executeTool = useCallback(async (name: string, args: Record<string, unknown>, callId: string) => {
     let result: unknown;
+    let shouldHangUp = false;
 
     try {
       if (name === "check_availability") {
@@ -78,6 +80,9 @@ export default function VoiceAgent() {
           body: JSON.stringify(args),
         });
         result = await res.json();
+      } else if (name === "end_call") {
+        result = { success: true, ended: true, reason: args.reason ?? "completed" };
+        shouldHangUp = true;
       } else {
         result = { error: `Outil inconnu: ${name}` };
       }
@@ -97,6 +102,12 @@ export default function VoiceAgent() {
         },
       })
     );
+
+    if (shouldHangUp) {
+      // Give the agent a beat to flush its closing audio, then tear down.
+      setTimeout(() => stopSessionRef.current(), 1500);
+      return;
+    }
 
     dcRef.current.send(JSON.stringify({ type: "response.create" }));
   }, []);
@@ -241,7 +252,7 @@ export default function VoiceAgent() {
             type: "response.create",
             response: {
               instructions:
-                "Salue l'appelant en français : 'Bonjour, AssistAI à votre écoute, comment puis-je vous aider ?' Si l'appelant répond en hébreu, bascule en hébreu.",
+                "Salue l'appelant en français : 'Bonjour, Tamara à votre écoute, comment puis-je vous aider ?' Si l'appelant répond en hébreu, bascule en hébreu.",
             },
           })
         );
@@ -280,6 +291,10 @@ export default function VoiceAgent() {
     });
     setIsMuted((m) => !m);
   }, [isMuted]);
+
+  useEffect(() => {
+    stopSessionRef.current = stopSession;
+  }, [stopSession]);
 
   useEffect(() => () => stopSession(), [stopSession]);
 

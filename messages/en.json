@@ -1,0 +1,186 @@
+{
+  "Nav": {
+    "links": {
+      "industries": "Who it's for",
+      "how": "How it works",
+      "features": "Features",
+      "pricing": "Pricing",
+      "demo": "Demo"
+    },
+    "login": "Sign in",
+    "ctaTry": "Try it now"
+  },
+  "Hero": {
+    "badge": "Real-time voice concierge · Live",
+    "title": "A voice receptionist that {emphasis} a single call.",
+    "titleEmphasis": "never misses",
+    "subtitle": "For medical practices, beauty salons and barbershops. A voice AI that picks up 24/7, books appointments, handles cancellations, and syncs your calendar — in French, Hebrew and English.",
+    "ctaDemo": "Try the live demo",
+    "ctaConfigure": "Configure my agent",
+    "stats": {
+      "availability": "Availability",
+      "latency": "Voice latency",
+      "languages": "Languages · 🇫🇷 🇮🇱 🇺🇸",
+      "calls": "Concurrent calls"
+    },
+    "demo": {
+      "title": "Live demo",
+      "subtitle": "Talk to Johana from your browser"
+    }
+  },
+  "Industries": {
+    "kicker": "Who it's for",
+    "title": "Built for businesses where every call matters.",
+    "subtitle": "One platform, configurable in minutes for the tone and workflows specific to your industry.",
+    "medical": {
+      "title": "Medical practices",
+      "desc": "Booking, reminders, cancellations, emergency triage. Compliant with medical confidentiality.",
+      "f1": "Doctolib / calendar sync",
+      "f2": "Automatic SMS reminders",
+      "f3": "Emergency filtering"
+    },
+    "beauty": {
+      "title": "Beauty salons",
+      "desc": "Care services, variable duration, choice of practitioner. Multi-location native.",
+      "f1": "Multi-location",
+      "f2": "Per-service duration",
+      "f3": "Automatic loyalty tracking"
+    },
+    "barber": {
+      "title": "Barbershops",
+      "desc": "Quick booking, processing time management, suggests free slots on the fly.",
+      "f1": "Slot optimization",
+      "f2": "Processing time management",
+      "f3": "Client notifications"
+    }
+  },
+  "HowItWorks": {
+    "kicker": "How it works",
+    "title": "Four steps. Zero friction.",
+    "step1": {
+      "title": "Configure your persona",
+      "desc": "Locations, hours, services, voice tone, languages — from a simple dashboard. No code."
+    },
+    "step2": {
+      "title": "Connect your calendar",
+      "desc": "Google Calendar in two clicks. The agent reads your slots and writes to them in real time."
+    },
+    "step3": {
+      "title": "Hook up your number",
+      "desc": "A dedicated Twilio number, or redirect from your existing line. Keep your number."
+    },
+    "step4": {
+      "title": "Your clients talk to the AI",
+      "desc": "Sub-300ms latency. The conversation is natural, polite, and always in the client's language."
+    }
+  },
+  "Features": {
+    "kicker": "Features",
+    "title": "Everything a real secretary does. Without coffee breaks.",
+    "list": {
+      "bilingual": {
+        "title": "Native trilingual",
+        "desc": "Automatic language detection. Switches mid-call seamlessly between French, Hebrew and English."
+      },
+      "latency": {
+        "title": "Sub-300ms",
+        "desc": "Imperceptible voice latency — the conversation flows like with a human."
+      },
+      "calendar": {
+        "title": "Live calendar",
+        "desc": "Reads and writes to Google Calendar in real time. No double bookings."
+      },
+      "crm": {
+        "title": "Auto-filled CRM",
+        "desc": "Every call records the customer in your Sheet. No lost contact ever."
+      },
+      "reschedule": {
+        "title": "Cancellations & rescheduling",
+        "desc": "Searches by phone, confirms verbally, frees the slot and proposes a new one."
+      },
+      "antiSilence": {
+        "title": "Anti-silence",
+        "desc": "Before every action, the agent announces what it's doing. No awkward pauses."
+      },
+      "voice": {
+        "title": "Premium voice",
+        "desc": "Natural OpenAI Realtime voices. Choose between marin, cedar, alloy, and more."
+      },
+      "config": {
+        "title": "Live configuration",
+        "desc": "Update tone or workflows from the dashboard. Effect on the next call."
+      }
+    }
+  },
+  "Pricing": {
+    "kicker": "Pricing",
+    "title": "A plan for every business.",
+    "subtitle": "All plans include premium voice, the live calendar and technical support. No commitment, cancel anytime.",
+    "billing": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "save": "Save 20% with the annual plan.",
+      "discount": "−20%"
+    },
+    "card": {
+      "popular": "Most popular",
+      "perMonth": "ex. VAT / month",
+      "monthlyHint": "Monthly billing, no commitment.",
+      "annualHint": "{total} € ex. VAT / year",
+      "cta": "Choose this plan",
+      "ctaAria": "Choose the {name} plan",
+      "model": "Model"
+    },
+    "footer": "Prices in euros, ex. VAT. VAT applies depending on your country. Need a custom offer for more than 5 locations? Let's talk."
+  },
+  "SocialProof": {
+    "kicker": "They trust us",
+    "title": "Professionals who never miss a call again.",
+    "q1": {
+      "text": "Before Tamara, we lost 20% of calls in peak hours. Today: zero. And our calendar is full.",
+      "author": "Eden Salon · Tel Aviv",
+      "role": "Beauty center"
+    },
+    "q2": {
+      "text": "The AI takes appointments, handles cancellations, and speaks Hebrew, French and English. Exactly what we were looking for.",
+      "author": "Dr. Cohen",
+      "role": "Medical practice"
+    },
+    "q3": {
+      "text": "Tweaking the voice tone from a simple dashboard — game changer for our brand.",
+      "author": "Studio Eleven",
+      "role": "Barber · Jerusalem"
+    }
+  },
+  "CTA": {
+    "kicker": "Ready to try?",
+    "title": "Give your business a voice in 5 minutes.",
+    "subtitle": "No credit card. No commitment. Configure your persona, test the voice from the dashboard, and switch your number when you're ready.",
+    "ctaPrimary": "Start free",
+    "ctaSecondary": "Try the voice",
+    "footer": "GDPR compliant · Hosted in Europe · Encrypted in transit"
+  },
+  "Footer": {
+    "tagline": "Real-time voice concierge for medical practices, salons and barbershops. Native Hebrew, French and English.",
+    "categories": {
+      "product": "Product",
+      "account": "Account",
+      "industries": "Industries"
+    },
+    "links": {
+      "demo": "Demo",
+      "features": "Features",
+      "how": "How it works",
+      "login": "Sign in",
+      "dashboard": "Dashboard",
+      "medical": "Medical practices",
+      "beauty": "Beauty salons",
+      "barbers": "Barbershops"
+    },
+    "copyright": "© {year} Tamara · Voice AI concierge",
+    "status": "All services online"
+  },
+  "LocaleSwitcher": {
+    "label": "Language"
+  }
+}

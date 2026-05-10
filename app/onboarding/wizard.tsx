@@ -27,6 +27,12 @@ const COUNTRIES = [
   { code: "IL", label: "🇮🇱 Israël" },
 ];
 
+const PRIMARY_LANGUAGES = [
+  { value: "fr", label: "🇫🇷 Français" },
+  { value: "he", label: "🇮🇱 עברית (Hébreu)" },
+  { value: "en", label: "🇺🇸 English (US)" },
+] as const;
+
 type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 
 export function OnboardingWizard({
@@ -38,6 +44,7 @@ export function OnboardingWizard({
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>("pick");
   const [country, setCountry] = useState("FR");
+  const [primaryLanguage, setPrimaryLanguage] = useState<"fr" | "he" | "en">("fr");
   const [numbers, setNumbers] = useState<AvailableNumber[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [provisioned, setProvisioned] = useState<{
@@ -87,7 +94,11 @@ export function OnboardingWizard({
       const res = await fetch("/api/onboarding/provision", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ countryCode: country, phoneNumber: selected }),
+        body: JSON.stringify({
+          countryCode: country,
+          phoneNumber: selected,
+          primaryLanguage,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -220,10 +231,37 @@ export function OnboardingWizard({
         )}
       </div>
 
-      {/* Step 2: Pick number */}
+      {/* Step 2: Primary language */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-white/70 p-5">
+        <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+          Étape 2 · langue principale de l&apos;agent
+        </p>
+        <h3 className="mt-1 font-display text-lg text-[var(--color-foreground)]">
+          Dans quelle langue ton agent doit-il accueillir les appels ?
+        </h3>
+        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+          Cette langue sera utilisée pour la phrase d&apos;accueil. L&apos;agent bascule
+          automatiquement vers la langue de la cliente dès qu&apos;elle parle.
+        </p>
+        <select
+          value={primaryLanguage}
+          onChange={(e) =>
+            setPrimaryLanguage(e.target.value as "fr" | "he" | "en")
+          }
+          className="mt-3 w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm shadow-xs"
+        >
+          {PRIMARY_LANGUAGES.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Step 3: Pick number */}
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-          Étape 2 · numéro de téléphone
+          Étape 3 · numéro de téléphone
         </p>
       </div>
 

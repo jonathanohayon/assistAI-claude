@@ -73,6 +73,7 @@ export default async function DashboardPage() {
             speed: config.speed,
             maxResponseTokens: config.maxResponseTokens,
             ownerWhatsapp: config.ownerWhatsapp,
+            primaryLanguage: config.primaryLanguage ?? "fr",
           }}
           isAdmin={isAdmin}
           modelIds={isAdmin ? REALTIME_MODELS.map((m) => m.id) : undefined}

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { type Center, validateBooking } from "@/lib/schedule";
-import { JERUSALEM_TZ, addMinutesJerusalem } from "@/lib/tz";
+import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
   const {
@@ -72,6 +72,32 @@ export async function POST(req: NextRequest) {
         expectedCenter: resolved.expectedCenter,
         expectedLabel: resolved.expectedLabel,
       },
+      { status: 400 },
+    );
+  }
+
+  // Refuse bookings in the past (with 5-min grace for clock skew). The agent
+  // should never propose a passé créneau, but if it does, we block here.
+  try {
+    const slotMs = new Date(jerusalemToUTCISO(date, `${time}:00`)).getTime();
+    if (slotMs < Date.now() - 5 * 60_000) {
+      await logEvent({
+        source: "calendar",
+        event: "book_past",
+        message: `Réservation refusée : créneau dans le passé (${date} ${time})`,
+        level: "warn",
+        metadata: { name, phone, date, time },
+      });
+      return NextResponse.json(
+        {
+          error: `Le créneau ${date} ${time} est déjà passé. Propose un horaire futur.`,
+        },
+        { status: 400 },
+      );
+    }
+  } catch {
+    return NextResponse.json(
+      { error: `Date/heure invalide : ${date} ${time}` },
       { status: 400 },
     );
   }

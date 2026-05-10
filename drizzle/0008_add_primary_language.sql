@@ -1,0 +1,1 @@
+ALTER TABLE "agent_configs" ADD COLUMN "primary_language" text DEFAULT 'fr' NOT NULL;

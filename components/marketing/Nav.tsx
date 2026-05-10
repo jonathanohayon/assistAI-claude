@@ -1,12 +1,16 @@
 "use client";
 
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
 
+import { LocaleSwitcher } from "./LocaleSwitcher";
+
 export function Nav() {
+  const t = useTranslations("Nav");
   const [scrolled, setScrolled] = useState(false);
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
@@ -32,46 +36,47 @@ export function Nav() {
             href="#industries"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >
-            Pour qui
+            {t("links.industries")}
           </a>
           <a
             href="#how"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >
-            Comment ça marche
+            {t("links.how")}
           </a>
           <a
             href="#features"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >
-            Fonctionnalités
+            {t("links.features")}
           </a>
           <a
             href="#pricing"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >
-            Tarifs
+            {t("links.pricing")}
           </a>
           <a
             href="#demo"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >
-            Démo
+            {t("links.demo")}
           </a>
         </nav>
 
         <div className="flex items-center gap-2">
+          <LocaleSwitcher />
           <Link
             href="/login"
             className="hidden rounded-full px-4 py-2 text-sm text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] sm:inline-flex"
           >
-            Connexion
+            {t("login")}
           </Link>
           <Link
             href="#demo"
             className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]"
           >
-            Tester maintenant
+            {t("ctaTry")}
           </Link>
         </div>
       </div>

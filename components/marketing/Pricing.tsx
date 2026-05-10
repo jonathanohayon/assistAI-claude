@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,10 +16,11 @@ function BillingToggle({
   value: Billing;
   onChange: (v: Billing) => void;
 }) {
+  const t = useTranslations("Pricing.billing");
   return (
     <div
       role="tablist"
-      aria-label="Période de facturation"
+      aria-label={t("monthly")}
       className="relative inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-white/80 p-1 shadow-sm backdrop-blur"
     >
       {(["monthly", "annual"] as const).map((opt) => {
@@ -43,7 +45,7 @@ function BillingToggle({
                 className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] shadow-md"
               />
             )}
-            {opt === "monthly" ? "Mensuel" : "Annuel"}
+            {opt === "monthly" ? t("monthly") : t("annual")}
             {opt === "annual" && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
@@ -52,7 +54,7 @@ function BillingToggle({
                     : "bg-[#fef3c7] text-[#b45309]"
                 }`}
               >
-                −20%
+                {t("discount")}
               </span>
             )}
           </button>
@@ -78,9 +80,12 @@ function CheckIcon({ className }: { className?: string }) {
 }
 
 function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
+  const t = useTranslations("Pricing.card");
   const price = billing === "monthly" ? plan.monthly : plan.annualMonthly;
   const annualHint =
-    billing === "annual" ? `${formatEuro(plan.annualTotal)} € HT / an` : null;
+    billing === "annual"
+      ? t("annualHint", { total: formatEuro(plan.annualTotal) })
+      : null;
 
   return (
     <motion.article
@@ -104,7 +109,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
                 <path d="m10 1.5 2.4 5.5 6 .6-4.5 4 1.3 5.9L10 14.6l-5.2 2.9 1.3-5.9-4.5-4 6-.6L10 1.5Z" />
               </svg>
-              Le plus populaire
+              {t("popular")}
             </span>
           </div>
         </>
@@ -134,11 +139,11 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
             </motion.span>
           </AnimatePresence>
           <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
-            HT / mois
+            {t("perMonth")}
           </span>
         </div>
         <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
-          {annualHint ?? "Facturation mensuelle, sans engagement."}
+          {annualHint ?? t("monthlyHint")}
         </p>
       </div>
 
@@ -161,14 +166,12 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
       </ul>
 
       <div className="mt-auto pt-7">
-        {/* Unified CTA — same gradient on every card. The popular card is
-            still distinguished by the gold halo, ring, and badge. */}
         <Link
           href={`/signup?plan=${plan.key}&billing=${billing}`}
-          aria-label={`Choisir la formule ${plan.name}`}
+          aria-label={t("ctaAria", { name: plan.name })}
           className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
         >
-          Choisir cette formule
+          {t("cta")}
           <svg
             viewBox="0 0 16 16"
             fill="none"
@@ -184,7 +187,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
           </svg>
         </Link>
         <p className="mt-3 text-center text-[11px] text-[var(--color-muted-foreground)]">
-          Modèle <span className="font-mono">{plan.model}</span>
+          {t("model")} <span className="font-mono">{plan.model}</span>
         </p>
       </div>
     </motion.article>
@@ -192,6 +195,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
 }
 
 export function Pricing() {
+  const t = useTranslations("Pricing");
   const [billing, setBilling] = useState<Billing>("monthly");
 
   return (
@@ -218,14 +222,13 @@ export function Pricing() {
           className="mx-auto max-w-2xl text-center"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            Tarifs
+            {t("kicker")}
           </p>
           <h2 className="mt-3 font-display text-4xl tracking-tight text-[var(--color-foreground)] sm:text-5xl">
-            Une formule pour chaque centre.
+            {t("title")}
           </h2>
           <p className="mt-4 text-base text-[var(--color-muted-foreground)] sm:text-lg">
-            Tous les plans incluent la voix premium, l&apos;agenda vivant et le
-            support technique. Pas d&apos;engagement, annulable à tout moment.
+            {t("subtitle")}
           </p>
         </motion.div>
 
@@ -238,9 +241,7 @@ export function Pricing() {
         >
           <BillingToggle value={billing} onChange={setBilling} />
           <p className="text-xs text-[var(--color-muted-foreground)]">
-            Économisez{" "}
-            <span className="font-semibold text-[#b45309]">20%</span> avec
-            l&apos;abonnement annuel.
+            {t("billing.save")}
           </p>
         </motion.div>
 
@@ -264,15 +265,7 @@ export function Pricing() {
         </div>
 
         <p className="mt-12 text-center text-xs text-[var(--color-muted-foreground)]">
-          Prix HT en euros. TVA applicable selon votre pays. Besoin d&apos;une
-          offre sur mesure pour plus de 5 centres ?{" "}
-          <a
-            href="mailto:hello@prestige.app"
-            className="underline underline-offset-2 hover:text-[var(--color-foreground)]"
-          >
-            Parlons-en
-          </a>
-          .
+          {t("footer")}
         </p>
       </div>
     </section>

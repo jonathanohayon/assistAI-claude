@@ -1,0 +1,186 @@
+{
+  "Nav": {
+    "links": {
+      "industries": "Pour qui",
+      "how": "Comment ça marche",
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "demo": "Démo"
+    },
+    "login": "Connexion",
+    "ctaTry": "Tester maintenant"
+  },
+  "Hero": {
+    "badge": "Conciergerie vocale temps réel · Live",
+    "title": "Une secrétaire vocale qui ne {emphasis} aucun appel.",
+    "titleEmphasis": "rate",
+    "subtitle": "Pour les cabinets médicaux, salons de beauté et coiffeurs. Une IA vocale qui décroche 24/7, prend les rendez-vous, gère les annulations, et synchronise votre agenda — en français, en hébreu et en anglais.",
+    "ctaDemo": "Essayer la démo en direct",
+    "ctaConfigure": "Configurer mon agent",
+    "stats": {
+      "availability": "Disponibilité",
+      "latency": "Latence vocale",
+      "languages": "Langues · 🇫🇷 🇮🇱 🇺🇸",
+      "calls": "Appels simultanés"
+    },
+    "demo": {
+      "title": "Démo en direct",
+      "subtitle": "Parlez à Johana depuis votre navigateur"
+    }
+  },
+  "Industries": {
+    "kicker": "Pour qui",
+    "title": "Pensé pour les métiers où chaque appel compte.",
+    "subtitle": "Une seule plateforme, configurable en quelques minutes pour le ton et les workflows propres à votre métier.",
+    "medical": {
+      "title": "Cabinets médicaux",
+      "desc": "Prise de RDV, rappels, annulations, triage des urgences. Conforme au secret médical.",
+      "f1": "Synchro Doctolib / agenda",
+      "f2": "Rappels SMS automatiques",
+      "f3": "Filtre les urgences"
+    },
+    "beauty": {
+      "title": "Salons de beauté",
+      "desc": "Prestations soin, durée variable, choix des praticiennes. Multi-centres natif.",
+      "f1": "Multi-centres",
+      "f2": "Durée par prestation",
+      "f3": "Fidélité automatique"
+    },
+    "barber": {
+      "title": "Coiffeurs",
+      "desc": "Réservation rapide, gestion des temps de pose, propose les créneaux libres au calé.",
+      "f1": "Optimisation des créneaux",
+      "f2": "Gestion temps de pose",
+      "f3": "Notifications client"
+    }
+  },
+  "HowItWorks": {
+    "kicker": "Comment ça marche",
+    "title": "Quatre étapes. Zéro friction.",
+    "step1": {
+      "title": "Configurez votre persona",
+      "desc": "Centres, horaires, prestations, ton de la voix, langues — depuis un dashboard simple. Aucune ligne de code."
+    },
+    "step2": {
+      "title": "Connectez votre calendrier",
+      "desc": "Google Calendar en deux clics. L'agent voit vos créneaux et écrit dedans en temps réel."
+    },
+    "step3": {
+      "title": "Rebranchez votre numéro",
+      "desc": "Un numéro Twilio dédié, ou redirection de votre ligne existante. Vous gardez votre numéro."
+    },
+    "step4": {
+      "title": "Vos clients parlent à l'IA",
+      "desc": "Latence sub-300ms. La conversation est naturelle, polie, et toujours dans la langue du client."
+    }
+  },
+  "Features": {
+    "kicker": "Fonctionnalités",
+    "title": "Tout ce qu'une vraie secrétaire fait. Sans pause-café.",
+    "list": {
+      "bilingual": {
+        "title": "Trilingue natif",
+        "desc": "Détection automatique de la langue. Bascule en cours d'appel sans rupture entre français, hébreu et anglais."
+      },
+      "latency": {
+        "title": "Sub-300ms",
+        "desc": "Latence vocale imperceptible — la conversation se déroule comme avec un humain."
+      },
+      "calendar": {
+        "title": "Calendrier vivant",
+        "desc": "Lit et écrit dans Google Calendar en temps réel. Aucun double booking."
+      },
+      "crm": {
+        "title": "CRM auto-rempli",
+        "desc": "Chaque appel enregistre la cliente dans votre Sheet. Aucune fiche perdue."
+      },
+      "reschedule": {
+        "title": "Annulations & déplacements",
+        "desc": "Recherche par téléphone, confirme oralement, libère le créneau et propose un nouveau."
+      },
+      "antiSilence": {
+        "title": "Anti-silence",
+        "desc": "Avant chaque action, l'agent annonce vocalement ce qu'il fait. Aucun blanc gênant."
+      },
+      "voice": {
+        "title": "Voix premium",
+        "desc": "Voix naturelles OpenAI Realtime. Choisissez entre marin, cedar, alloy, et plus."
+      },
+      "config": {
+        "title": "Configuration live",
+        "desc": "Modifiez le ton ou les workflows depuis le dashboard. Effet immédiat au prochain appel."
+      }
+    }
+  },
+  "Pricing": {
+    "kicker": "Tarifs",
+    "title": "Une formule pour chaque centre.",
+    "subtitle": "Tous les plans incluent la voix premium, l'agenda vivant et le support technique. Pas d'engagement, annulable à tout moment.",
+    "billing": {
+      "monthly": "Mensuel",
+      "annual": "Annuel",
+      "save": "Économisez 20% avec l'abonnement annuel.",
+      "discount": "−20%"
+    },
+    "card": {
+      "popular": "Le plus populaire",
+      "perMonth": "HT / mois",
+      "monthlyHint": "Facturation mensuelle, sans engagement.",
+      "annualHint": "{total} € HT / an",
+      "cta": "Choisir cette formule",
+      "ctaAria": "Choisir la formule {name}",
+      "model": "Modèle"
+    },
+    "footer": "Prix HT en euros. TVA applicable selon votre pays. Besoin d'une offre sur mesure pour plus de 5 centres ? Parlons-en."
+  },
+  "SocialProof": {
+    "kicker": "Ils nous font confiance",
+    "title": "Des professionnels qui ne ratent plus un appel.",
+    "q1": {
+      "text": "Avant Tamara, on perdait 20% des appels en heure de pointe. Aujourd'hui : zéro. Et notre agenda est plein.",
+      "author": "Salon Eden · Tel Aviv",
+      "role": "Centre de beauté"
+    },
+    "q2": {
+      "text": "L'IA prend les RDV, gère les annulations, et parle hébreu, français et anglais. C'est exactement ce qu'on cherchait.",
+      "author": "Dr. Cohen",
+      "role": "Cabinet médical"
+    },
+    "q3": {
+      "text": "Configurer le ton de la voix depuis un dashboard simple — game changer pour notre identité de marque.",
+      "author": "Studio Eleven",
+      "role": "Coiffeur · Jérusalem"
+    }
+  },
+  "CTA": {
+    "kicker": "Prêt à essayer ?",
+    "title": "Donnez une voix à votre cabinet en 5 minutes.",
+    "subtitle": "Pas de carte bleue. Pas d'engagement. Configurez votre persona, testez la voix dans le dashboard, et basculez votre numéro quand vous êtes prêt.",
+    "ctaPrimary": "Démarrer gratuitement",
+    "ctaSecondary": "Tester la voix",
+    "footer": "Conforme RGPD · Hébergé en Europe · Données chiffrées en transit"
+  },
+  "Footer": {
+    "tagline": "Conciergerie vocale temps réel pour cabinets médicaux, salons et coiffeurs. Hébreu, français et anglais natifs.",
+    "categories": {
+      "product": "Produit",
+      "account": "Compte",
+      "industries": "Métiers"
+    },
+    "links": {
+      "demo": "Démo",
+      "features": "Fonctionnalités",
+      "how": "Comment ça marche",
+      "login": "Connexion",
+      "dashboard": "Dashboard",
+      "medical": "Cabinets médicaux",
+      "beauty": "Salons de beauté",
+      "barbers": "Coiffeurs"
+    },
+    "copyright": "© {year} Tamara · Conciergerie vocale IA",
+    "status": "Tous les services en ligne"
+  },
+  "LocaleSwitcher": {
+    "label": "Langue"
+  }
+}

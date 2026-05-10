@@ -14,7 +14,14 @@ type FormState = {
   speed: number;
   maxResponseTokens: number;
   ownerWhatsapp: string;
+  primaryLanguage: string;
 };
+
+const PRIMARY_LANGUAGES = [
+  { value: "fr", label: "🇫🇷 Français" },
+  { value: "he", label: "🇮🇱 עברית (Hébreu)" },
+  { value: "en", label: "🇺🇸 English (US)" },
+] as const;
 
 export function ConfigForm({
   initial,
@@ -73,6 +80,23 @@ export function ConfigForm({
         title="Persona"
         subtitle="La grosse string système qui définit l'identité, le style et les workflows."
       >
+        <Field
+          label="Langue principale"
+          hint="Langue utilisée pour la phrase d'accueil. L'agent bascule automatiquement vers la langue de la cliente dès qu'elle parle."
+        >
+          <select
+            value={form.primaryLanguage}
+            onChange={(e) => update("primaryLanguage", e.target.value)}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+          >
+            {PRIMARY_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
         <Field
           label="Instructions"
           hint="Markdown supporté. Décrivez prénom + nom du centre, horaires, prestations, ton, et les workflows à respecter."

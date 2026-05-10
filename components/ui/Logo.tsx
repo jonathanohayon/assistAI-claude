@@ -2,7 +2,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span
       className={`inline-flex items-center gap-2 ${className ?? ""}`}
-      aria-label="Prestige"
+      aria-label="Tamara"
     >
       <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ec4899] to-[#8b5cf6] text-white shadow-[0_4px_12px_-2px_rgb(236_72_153_/_0.4)]">
         <svg
@@ -24,7 +24,7 @@ export function Logo({ className }: { className?: string }) {
         </svg>
       </span>
       <span className="font-display text-lg leading-none tracking-tight text-[var(--color-foreground)]">
-        Prestige
+        Tamara
       </span>
     </span>
   );

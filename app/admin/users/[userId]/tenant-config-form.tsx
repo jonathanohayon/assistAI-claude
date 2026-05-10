@@ -13,7 +13,14 @@ type FormState = {
   speed: number;
   maxResponseTokens: number;
   ownerWhatsapp: string;
+  primaryLanguage: string;
 };
+
+const PRIMARY_LANGUAGES = [
+  { value: "fr", label: "🇫🇷 Français" },
+  { value: "he", label: "🇮🇱 עברית" },
+  { value: "en", label: "🇺🇸 English" },
+] as const;
 
 export function AdminTenantConfigForm({
   userId,
@@ -69,6 +76,22 @@ export function AdminTenantConfigForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
       <Card title="Persona" subtitle="Instructions système qui définissent l'identité, les workflows et les règles.">
+        <Field
+          label="Langue principale"
+          hint="Langue de la phrase d'accueil. L'agent bascule auto vers la langue de la cliente après."
+        >
+          <select
+            value={form.primaryLanguage}
+            onChange={(e) => update("primaryLanguage", e.target.value)}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm shadow-xs"
+          >
+            {PRIMARY_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Instructions">
           <textarea
             value={form.instructions}
