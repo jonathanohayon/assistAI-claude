@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_REALTIME_MODEL,
   REALTIME_INSTRUCTIONS,
-  REALTIME_MODELS,
   REALTIME_TOOLS,
   REALTIME_TRANSCRIPTION_MODEL,
   clientSecretsUrl,
@@ -27,11 +26,17 @@ interface SessionBody {
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as SessionBody;
 
-  const modelIds = REALTIME_MODELS.map((m) => m.id);
-  const model = modelIds.includes(body.model ?? "")
-    ? (body.model as string)
-    : DEFAULT_REALTIME_MODEL;
+  // Trust the model id from the client — it was picked from the live OpenAI
+  // catalog (/api/realtime/catalog). The previous hardcoded REALTIME_MODELS
+  // allowlist silently rewrote unknown ids to DEFAULT, which broke gpt-realtime-2
+  // and any new alias OpenAI ships. If OpenAI rejects, the resilient fetch
+  // below surfaces the error to the client triage panel.
+  const requestedModel = (body.model ?? "").trim();
+  const model = requestedModel || DEFAULT_REALTIME_MODEL;
 
+  // Voices : on garde la validation locale parce qu'OpenAI n'expose pas la
+  // liste par modèle. La liste PROVIDERS est centralisée dans lib/realtime.ts
+  // et facile à mettre à jour quand OpenAI ajoute une voix.
   const allowedVoices = voicesFor(model);
   const voice = allowedVoices.includes(body.voice ?? "")
     ? (body.voice as string)
