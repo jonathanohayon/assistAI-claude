@@ -8,6 +8,11 @@ import {
   triageRealtimeError,
 } from "@/lib/realtime-events";
 
+// Same demo cap as the public landing page widget — both client-side
+// realtime sessions are capped to keep API spend bounded for free/trial
+// usage (paid users hit the SIP/Twilio path which is metered separately).
+const DEMO_SESSION_SECONDS = 40;
+
 type Status = "idle" | "connecting" | "connected" | "error";
 
 interface TranscriptEntry {
@@ -45,6 +50,8 @@ export function LiveTestPanel({
     null,
   );
   const [isMuted, setIsMuted] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [demoEnded, setDemoEnded] = useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -147,6 +154,7 @@ export function LiveTestPanel({
   const startSession = useCallback(async () => {
     setError(null);
     setErrorTriage(null);
+    setDemoEnded(false);
     setTranscript([]);
     setStatus("connecting");
 
@@ -214,6 +222,7 @@ export function LiveTestPanel({
 
       dc.onopen = () => {
         setStatus("connected");
+        setSecondsLeft(DEMO_SESSION_SECONDS);
         // Centralized event builder — handles the OpenAI API contract drift
         // in one place (lib/realtime-events.ts). The dashboard temperature
         // slider used to be applied here but the param is no longer accepted
@@ -259,6 +268,7 @@ export function LiveTestPanel({
     streamRef.current = null;
     setStatus("idle");
     setIsMuted(false);
+    setSecondsLeft(null);
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -267,6 +277,20 @@ export function LiveTestPanel({
     });
     setIsMuted((m) => !m);
   }, [isMuted]);
+
+  // Countdown : décrémente secondsLeft à 1Hz, déclenche stopSession à 0.
+  useEffect(() => {
+    if (secondsLeft == null) return;
+    if (secondsLeft <= 0) {
+      setDemoEnded(true);
+      stopSession();
+      return;
+    }
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s == null ? null : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [secondsLeft, stopSession]);
 
   useEffect(() => () => stopSession(), [stopSession]);
 
@@ -397,6 +421,34 @@ export function LiveTestPanel({
                   {JSON.stringify(errorTriage.raw, null, 2)}
                 </pre>
               </details>
+            </div>
+          )}
+
+          {demoEnded && (
+            <p
+              role="status"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800"
+            >
+              ⏰ Session de test terminée ({DEMO_SESSION_SECONDS}s). Les
+              appels via ton numéro Twilio ne sont pas limités — c'est juste
+              le test browser qui l'est.
+            </p>
+          )}
+
+          {secondsLeft != null && secondsLeft > 0 && (
+            <div
+              role="timer"
+              aria-live="polite"
+              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium tabular-nums transition-colors ${
+                secondsLeft <= 10
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-[var(--color-border)] bg-white/60 text-[var(--color-muted-foreground)]"
+              }`}
+            >
+              <span>⏱️ Test en cours</span>
+              <span className="font-mono">
+                00:{String(secondsLeft).padStart(2, "0")}
+              </span>
             </div>
           )}
 

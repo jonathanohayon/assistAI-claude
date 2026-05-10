@@ -9,10 +9,9 @@ import { type Plan, type PlanKey, formatEuro } from "@/lib/plans";
 type Billing = "monthly" | "annual";
 
 const RANK: Record<PlanKey, number> = {
-  essential: 0,
-  whatsapp: 1,
-  global: 2,
-  premium: 3,
+  whatsapp: 0,
+  global: 1,
+  premium: 2,
 };
 
 function CheckIcon({ className }: { className?: string }) {

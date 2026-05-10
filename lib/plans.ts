@@ -6,7 +6,7 @@
 //
 // Keep keys stable — they're stored on users.subscription_plan in the DB.
 
-export type PlanKey = "essential" | "whatsapp" | "global" | "premium";
+export type PlanKey = "whatsapp" | "global" | "premium";
 
 export interface Plan {
   key: PlanKey;
@@ -27,35 +27,18 @@ export interface Plan {
 
 export const PLANS: readonly Plan[] = [
   {
-    key: "essential",
-    name: "Essentielle",
-    tagline: "Pour démarrer en douceur.",
-    monthly: 59,
-    annualTotal: 590,
-    annualMonthly: 49,
-    model: "gpt-realtime-mini",
-    features: [
-      "500 minutes de conversation / mois",
-      "Voix naturelle bilingue FR / Hébreu",
-      "Prise de rendez-vous vocale",
-    ],
-    onboardingNotes: [
-      "Tu démarres avec 500 minutes / mois et un numéro Twilio dédié.",
-      "Connecte Google Calendar pour activer la prise de RDV vocale.",
-    ],
-  },
-  {
     key: "whatsapp",
     name: "WhatsApp",
     tagline: "Le choix de la majorité des centres.",
-    monthly: 99,
-    annualTotal: 990,
-    annualMonthly: 82,
-    model: "gpt-realtime-mini",
+    monthly: 149,
+    annualTotal: 1485,
+    annualMonthly: 123,
+    model: "gpt-realtime-2",
     popular: true,
     features: [
-      "Tout de la formule Essentielle",
-      "800 minutes / mois",
+      "800 minutes de conversation / mois",
+      "Voix naturelle bilingue FR / Hébreu",
+      "Prise de rendez-vous vocale",
       "Confirmation WhatsApp automatique",
       "Résumé de conversation par email",
     ],
@@ -68,10 +51,10 @@ export const PLANS: readonly Plan[] = [
     key: "global",
     name: "Globale",
     tagline: "Pour gérer plusieurs centres.",
-    monthly: 179,
-    annualTotal: 1790,
-    annualMonthly: 149,
-    model: "gpt-realtime-mini",
+    monthly: 269,
+    annualTotal: 2685,
+    annualMonthly: 224,
+    model: "gpt-realtime-2",
     features: [
       "Tout de la formule WhatsApp",
       "1 200 minutes / mois",
@@ -87,12 +70,12 @@ export const PLANS: readonly Plan[] = [
     key: "premium",
     name: "Premium Entreprise",
     tagline: "Sans limite, configuration sur mesure.",
-    monthly: 299,
-    annualTotal: 2990,
-    annualMonthly: 249,
-    model: "gpt-realtime-1.5",
+    monthly: 449,
+    annualTotal: 4485,
+    annualMonthly: 374,
+    model: "gpt-realtime-2",
     features: [
-      "Modèle gpt-realtime-1.5 (ultra naturel)",
+      "Modèle gpt-realtime-2 (ultra naturel)",
       "Minutes illimitées",
       "Agenda + CRM complet",
       "WhatsApp + Résumé + historique",
@@ -100,12 +83,12 @@ export const PLANS: readonly Plan[] = [
     ],
     onboardingNotes: [
       "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
-      "Modèle gpt-realtime-1.5 activé automatiquement après l'onboarding.",
+      "Modèle gpt-realtime-2 activé automatiquement après l'onboarding.",
     ],
   },
 ] as const;
 
-export const DEFAULT_PLAN_KEY: PlanKey = "essential";
+export const DEFAULT_PLAN_KEY: PlanKey = "whatsapp";
 
 export function planByKey(key: string | null | undefined): Plan {
   const found = PLANS.find((p) => p.key === key);

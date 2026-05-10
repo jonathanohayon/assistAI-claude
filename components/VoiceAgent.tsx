@@ -19,6 +19,11 @@ interface TranscriptEntry {
 const STORAGE_MODEL = "tamara:model";
 const STORAGE_VOICE = "tamara:voice";
 
+// Public landing demo : capped session duration so anonymous visitors can
+// try the agent but can't burn unlimited Realtime API budget. After this
+// many seconds the session auto-disconnects with a "demo terminée" UX.
+const DEMO_SESSION_SECONDS = 40;
+
 export default function VoiceAgent() {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
@@ -26,6 +31,9 @@ export default function VoiceAgent() {
   const [isMuted, setIsMuted] = useState(false);
   const [model, setModel] = useState<string>(DEFAULT_REALTIME_MODEL);
   const [voice, setVoice] = useState<string>(defaultVoiceFor(DEFAULT_REALTIME_MODEL));
+  // null = pas de timer en cours, sinon secondes restantes (décrémente à 1Hz).
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [demoEnded, setDemoEnded] = useState(false);
 
   const modelIds = useMemo(() => REALTIME_MODELS.map((m) => m.id), []);
   const availableVoices = useMemo(() => voicesFor(model), [model]);
@@ -172,6 +180,7 @@ export default function VoiceAgent() {
 
   const startSession = useCallback(async () => {
     setError(null);
+    setDemoEnded(false);
     setTranscript([]);
 
     if (transport !== "webrtc") {
@@ -247,6 +256,8 @@ export default function VoiceAgent() {
 
       dc.onopen = () => {
         setStatus("connected");
+        // Démarrer le countdown de session démo dès que le canal est ouvert.
+        setSecondsLeft(DEMO_SESSION_SECONDS);
         dc.send(
           JSON.stringify({
             type: "response.create",
@@ -283,7 +294,22 @@ export default function VoiceAgent() {
     pcRef.current  = null;
     streamRef.current = null;
     setStatus("idle");
+    setSecondsLeft(null);
   }, []);
+
+  // Countdown : décrémente secondsLeft à 1Hz, déclenche stopSession à 0.
+  useEffect(() => {
+    if (secondsLeft == null) return;
+    if (secondsLeft <= 0) {
+      setDemoEnded(true);
+      stopSession();
+      return;
+    }
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s == null ? null : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [secondsLeft, stopSession]);
 
   const toggleMute = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => {
@@ -384,6 +410,37 @@ export default function VoiceAgent() {
         >
           {error}
         </p>
+      )}
+
+      {demoEnded && (
+        <p
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800"
+          role="status"
+        >
+          ⏰ Session de démo terminée ({DEMO_SESSION_SECONDS}s).{" "}
+          <a href="/signup" className="font-semibold underline hover:no-underline">
+            Crée un compte
+          </a>{" "}
+          pour passer/recevoir des appels sans limite.
+        </p>
+      )}
+
+      {/* Countdown banner (active uniquement pendant la session démo) */}
+      {secondsLeft != null && secondsLeft > 0 && (
+        <div
+          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium tabular-nums transition-colors ${
+            secondsLeft <= 10
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-[var(--color-border)] bg-white/60 text-[var(--color-muted-foreground)]"
+          }`}
+          role="timer"
+          aria-live="polite"
+        >
+          <span>⏱️ Démo</span>
+          <span className="font-mono">
+            00:{String(secondsLeft).padStart(2, "0")}
+          </span>
+        </div>
       )}
 
       {/* Mic button */}

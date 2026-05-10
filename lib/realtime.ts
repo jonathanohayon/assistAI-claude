@@ -77,7 +77,7 @@ export const REALTIME_MODELS: readonly ModelEntry[] = [
 ] as const;
 
 export const DEFAULT_REALTIME_MODEL: string =
-  process.env.REALTIME_MODEL ?? "gpt-realtime-mini";
+  process.env.REALTIME_MODEL ?? "gpt-realtime-2";
 
 export function providerFor(modelId: string): Provider {
   return REALTIME_MODELS.find((m) => m.id === modelId)?.provider ?? "openai";
