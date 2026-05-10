@@ -149,7 +149,7 @@ export default async function AdminPage() {
             </p>
           </div>
         </div>
-        <AdminTable rows={rows} />
+        <AdminTable rows={rows} currentUserId={me.id} />
       </section>
     </main>
   );

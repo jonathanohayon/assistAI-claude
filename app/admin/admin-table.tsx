@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 interface AdminRow {
@@ -12,7 +13,13 @@ interface AdminRow {
   numbers: Array<{ id: string; phoneNumber: string; label: string }>;
 }
 
-export function AdminTable({ rows }: { rows: AdminRow[] }) {
+export function AdminTable({
+  rows,
+  currentUserId,
+}: {
+  rows: AdminRow[];
+  currentUserId: string;
+}) {
   return (
     <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-white shadow-sm">
       <table className="w-full text-sm">
@@ -73,17 +80,92 @@ export function AdminTable({ rows }: { rows: AdminRow[] }) {
                 })}
               </td>
               <td className="px-6 py-4 align-top text-right">
-                <Link
-                  href={`/admin/users/${r.id}`}
-                  className="inline-flex items-center gap-1 rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-primary)]"
-                >
-                  Éditer →
-                </Link>
+                <div className="inline-flex items-center gap-2">
+                  <Link
+                    href={`/admin/users/${r.id}`}
+                    className="inline-flex items-center gap-1 rounded-full bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-primary)]"
+                  >
+                    Éditer →
+                  </Link>
+                  <DeleteTenantButton
+                    userId={r.id}
+                    email={r.email}
+                    displayName={r.displayName}
+                    disabled={r.id === currentUserId}
+                  />
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function DeleteTenantButton({
+  userId,
+  email,
+  displayName,
+  disabled,
+}: {
+  userId: string;
+  email: string;
+  displayName: string;
+  disabled: boolean;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const onClick = () => {
+    if (disabled) return;
+    const label = displayName || email;
+    // Two-step confirm: typing the email forces deliberate intent on prod
+    // tenants. Cheap insurance against fat-finger deletes that cascade
+    // agent_configs / calls / phone_numbers.
+    const typed = window.prompt(
+      `Supprimer définitivement le tenant "${label}" ?\n\nTape l'email (${email}) pour confirmer.\nCette action supprime aussi sa config, ses appels, ses numéros — irréversible.`,
+    );
+    if (typed == null) return;
+    if (typed.trim().toLowerCase() !== email.toLowerCase()) {
+      setError("L'email tapé ne matche pas — annulé.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.error ?? `Erreur ${res.status}`);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="inline-flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled || isPending}
+        title={
+          disabled
+            ? "Tu ne peux pas te supprimer toi-même"
+            : "Supprimer ce tenant"
+        }
+        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-destructive)]/40 px-3 py-1 text-xs font-medium text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-destructive)] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--color-destructive)]"
+      >
+        {isPending ? "…" : "Supprimer"}
+      </button>
+      {error && (
+        <span className="text-[10px] text-[var(--color-destructive)]">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
