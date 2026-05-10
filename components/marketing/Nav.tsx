@@ -47,6 +47,12 @@ export function Nav() {
             Fonctionnalités
           </a>
           <a
+            href="#pricing"
+            className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
+          >
+            Tarifs
+          </a>
+          <a
             href="#demo"
             className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           >

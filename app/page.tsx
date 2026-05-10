@@ -5,6 +5,7 @@ import { Hero } from "@/components/marketing/Hero";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { Industries } from "@/components/marketing/Industries";
 import { Nav } from "@/components/marketing/Nav";
+import { Pricing } from "@/components/marketing/Pricing";
 import { SocialProof } from "@/components/marketing/SocialProof";
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
       <Industries />
       <HowItWorks />
       <Features />
+      <Pricing />
       <SocialProof />
       <CTA />
       <Footer />
