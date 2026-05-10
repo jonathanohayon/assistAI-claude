@@ -36,7 +36,7 @@ export const PLANS: readonly Plan[] = [
     model: "gpt-realtime",
     popular: true,
     features: [
-      "800 minutes de conversation / mois",
+      "500 minutes de conversation / mois",
       "Voix naturelle bilingue FR / Hébreu",
       "Prise de rendez-vous vocale",
       "Confirmation WhatsApp automatique",
@@ -57,7 +57,7 @@ export const PLANS: readonly Plan[] = [
     model: "gpt-realtime",
     features: [
       "Tout de la formule WhatsApp",
-      "1 200 minutes / mois",
+      "500 minutes / mois",
       "Agenda Google complet (3 centres)",
       "CRM Google Sheet fourni & synchronisé",
     ],
@@ -76,7 +76,7 @@ export const PLANS: readonly Plan[] = [
     model: "gpt-realtime",
     features: [
       "Modèle gpt-realtime (ultra naturel)",
-      "Minutes illimitées",
+      "500 minutes / mois",
       "Agenda + CRM complet",
       "WhatsApp + Résumé + historique",
       "Configuration sur mesure & support dédié",

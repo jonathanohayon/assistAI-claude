@@ -141,6 +141,9 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
           <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
             {t("perMonth")}
           </span>
+          <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+            TTC
+          </span>
         </div>
         <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
           {annualHint ?? t("monthlyHint")}
@@ -245,7 +248,16 @@ export function Pricing() {
           </p>
         </motion.div>
 
-        <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+        {/*
+          Responsive grid optimisée pour 3 plans :
+          - mobile (<640px) : 1 colonne pleine largeur, stack vertical
+          - tablette ≥640px : la card "popular" prend toute la ligne en haut,
+            les 2 autres se partagent 50/50 en dessous (visuellement la
+            popular reste mise en avant sans casser l'alignement)
+          - desktop ≥1024px : 3 colonnes égales, popular au centre légèrement
+            agrandie via `lg:scale-[1.03]`
+        */}
+        <div className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.key}
@@ -257,7 +269,11 @@ export function Pricing() {
                 delay: i * 0.08,
                 ease: [0.16, 1, 0.3, 1],
               }}
-              className={plan.popular ? "lg:-my-2" : ""}
+              className={
+                plan.popular
+                  ? "sm:col-span-2 lg:col-span-1 lg:scale-[1.03] lg:z-10"
+                  : ""
+              }
             >
               <PlanCard plan={plan} billing={billing} />
             </motion.div>
