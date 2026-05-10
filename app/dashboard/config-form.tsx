@@ -16,7 +16,15 @@ type FormState = {
   ownerWhatsapp: string;
 };
 
-export function ConfigForm({ initial }: { initial: FormState }) {
+export function ConfigForm({
+  initial,
+  isAdmin = false,
+  modelIds,
+}: {
+  initial: FormState;
+  isAdmin?: boolean;
+  modelIds?: string[];
+}) {
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,14 +32,19 @@ export function ConfigForm({ initial }: { initial: FormState }) {
   const [isPending, startTransition] = useTransition();
 
   const availableVoices = useMemo(() => voicesFor(form.model), [form.model]);
-  const modelProvider = useMemo(
-    () => REALTIME_MODELS.find((m) => m.id === form.model)?.provider ?? "?",
-    [form.model],
-  );
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "model") {
+        const allowed = voicesFor(value as string);
+        if (!allowed.includes(prev.voice) && allowed.length > 0) {
+          next.voice = allowed[0]!;
+        }
+      }
+      return next;
+    });
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -102,22 +115,32 @@ export function ConfigForm({ initial }: { initial: FormState }) {
       {/* Voice config */}
       <Card
         title="Voix"
-        subtitle="Paramètres techniques du moteur vocal. Tester sur la home avant d'enregistrer."
+        subtitle={
+          isAdmin
+            ? "Paramètres techniques du moteur vocal. Visible admin uniquement."
+            : "Choisis la voix de ton agent et sa vitesse de parole."
+        }
       >
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field
-            label="Modèle"
-            hint="Géré par l'équipe Assist AI. Contacte-nous pour changer."
-          >
-            <div className="inline-flex w-full items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 px-3 py-2.5 text-sm">
-              <span className="font-mono text-xs text-[var(--color-foreground)]">
-                {form.model}
-              </span>
-              <span className="text-[11px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                {modelProvider}
-              </span>
-            </div>
-          </Field>
+          {isAdmin && modelIds && (
+            <Field
+              label="Modèle"
+              hint="Visible uniquement pour l'admin · sert au testing cross-modèles."
+            >
+              <select
+                value={form.model}
+                onChange={(e) => update("model", e.target.value)}
+                className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+              >
+                {modelIds.map((m) => (
+                  <option key={m} value={m}>
+                    {m} ·{" "}
+                    {REALTIME_MODELS.find((r) => r.id === m)?.provider ?? "?"}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <Field label="Voix">
             <select
@@ -134,17 +157,6 @@ export function ConfigForm({ initial }: { initial: FormState }) {
           </Field>
 
           <Slider
-            label="Température"
-            value={form.temperature}
-            min={0}
-            max={1.2}
-            step={0.05}
-            onChange={(v) => update("temperature", v)}
-            hint="0 = déterministe · 1 = très créatif"
-            display={form.temperature.toFixed(2)}
-          />
-
-          <Slider
             label="Vitesse de parole"
             value={form.speed}
             min={0.5}
@@ -155,22 +167,37 @@ export function ConfigForm({ initial }: { initial: FormState }) {
             display={form.speed.toFixed(2) + "×"}
           />
 
-          <Field
-            label="Max tokens / réponse"
-            hint="Hint via prompt — 220 ≈ 1 ou 2 phrases courtes"
-          >
-            <input
-              type="number"
-              min={50}
-              max={1000}
-              step={10}
-              value={form.maxResponseTokens}
-              onChange={(e) =>
-                update("maxResponseTokens", Number(e.target.value))
-              }
-              className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            />
-          </Field>
+          {isAdmin && (
+            <>
+              <Slider
+                label="Température"
+                value={form.temperature}
+                min={0}
+                max={1.2}
+                step={0.05}
+                onChange={(v) => update("temperature", v)}
+                hint="0 = déterministe · 1 = très créatif (admin)"
+                display={form.temperature.toFixed(2)}
+              />
+
+              <Field
+                label="Max tokens / réponse"
+                hint="Hint via prompt — 220 ≈ 1 ou 2 phrases courtes (admin)"
+              >
+                <input
+                  type="number"
+                  min={50}
+                  max={1000}
+                  step={10}
+                  value={form.maxResponseTokens}
+                  onChange={(e) =>
+                    update("maxResponseTokens", Number(e.target.value))
+                  }
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+                />
+              </Field>
+            </>
+          )}
         </div>
       </Card>
 

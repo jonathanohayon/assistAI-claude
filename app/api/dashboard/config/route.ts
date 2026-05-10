@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { agentConfigs } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import { voicesFor } from "@/lib/realtime";
+import { REALTIME_MODELS, voicesFor } from "@/lib/realtime";
 
 export async function GET() {
   const session = await auth();
@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as Partial<{
     instructions: string;
     greetingInstructions: string;
+    model: string;
     voice: string;
     temperature: number;
     speed: number;
@@ -42,18 +43,35 @@ export async function PUT(req: NextRequest) {
     ownerWhatsapp: string;
   }>;
 
-  // Tenants can't change their model — only admins can, via /admin. Look up
-  // the current stored model so we can validate the requested voice against
-  // it instead of trusting a client-supplied model.
+  // Look up current config + user role. Tenants can only change persona,
+  // voice, speed, and WhatsApp number. Admin-only fields (model, temperature,
+  // maxResponseTokens) are silently ignored when posted by a non-admin so the
+  // UI stays simple — they're not exposed to tenants in the form.
   const [current] = await db
-    .select({ model: agentConfigs.model })
+    .select({
+      model: agentConfigs.model,
+      role: users.role,
+    })
     .from(agentConfigs)
+    .innerJoin(users, eq(users.id, agentConfigs.userId))
     .where(eq(agentConfigs.userId, session.user.id))
     .limit(1);
   if (!current) {
     return NextResponse.json({ error: "No config" }, { status: 404 });
   }
-  if (body.voice && !voicesFor(current.model).includes(body.voice)) {
+  const isAdmin = current.role === "admin";
+
+  // Validate model (admin only). If a non-admin posts body.model, ignore it.
+  let nextModel = current.model;
+  if (isAdmin && body.model) {
+    const modelIds = REALTIME_MODELS.map((m) => m.id);
+    if (!modelIds.includes(body.model)) {
+      return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+    }
+    nextModel = body.model;
+  }
+  // Voice must be valid for the (potentially-updated) model.
+  if (body.voice && !voicesFor(nextModel).includes(body.voice)) {
     return NextResponse.json(
       { error: "Voice not supported by this model" },
       { status: 400 },
@@ -66,11 +84,12 @@ export async function PUT(req: NextRequest) {
   if (body.instructions != null) updates.instructions = body.instructions;
   if (body.greetingInstructions != null)
     updates.greetingInstructions = body.greetingInstructions;
+  if (isAdmin && nextModel !== current.model) updates.model = nextModel;
   if (body.voice != null) updates.voice = body.voice;
-  if (body.temperature != null)
+  if (isAdmin && body.temperature != null)
     updates.temperature = clamp(body.temperature, 0, 1.5);
   if (body.speed != null) updates.speed = clamp(body.speed, 0.5, 1.5);
-  if (body.maxResponseTokens != null)
+  if (isAdmin && body.maxResponseTokens != null)
     updates.maxResponseTokens = Math.round(
       clamp(body.maxResponseTokens, 50, 4000),
     );

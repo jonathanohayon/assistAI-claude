@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { agentConfigs } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
+import { REALTIME_MODELS } from "@/lib/realtime";
 
 import { ConfigForm } from "./config-form";
 
@@ -16,6 +17,13 @@ export default async function DashboardPage() {
     .from(agentConfigs)
     .where(eq(agentConfigs.userId, session.user.id))
     .limit(1);
+
+  const [me] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+  const isAdmin = me?.role === "admin";
 
   if (!config) {
     return (
@@ -66,6 +74,8 @@ export default async function DashboardPage() {
             maxResponseTokens: config.maxResponseTokens,
             ownerWhatsapp: config.ownerWhatsapp,
           }}
+          isAdmin={isAdmin}
+          modelIds={isAdmin ? REALTIME_MODELS.map((m) => m.id) : undefined}
         />
       </section>
     </main>
