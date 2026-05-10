@@ -203,19 +203,18 @@ export function LiveTestPanel({
       dc.onopen = () => {
         setStatus("connected");
         // OpenAI Realtime no longer accepts `temperature` at the session
-        // level (returns unknown_parameter). It's also not accepted at
-        // client_secrets time. Per-response temperature override on
-        // response.create is the new path — applied below for the greeting.
+        // level NOR at response.create level (both return unknown_parameter
+        // since late 2025). The model uses its default temperature; the
+        // dashboard slider is now informational only. The `_temp` reference
+        // here keeps requestedTemperature in scope so the prop API and
+        // the linter stay happy until we drop the field entirely.
+        const _temp = requestedTemperature;
+        void _temp;
         // Fire the configured greeting so the test mirrors a real call.
         dc.send(
           JSON.stringify({
             type: "response.create",
-            response: {
-              instructions: greetingInstructions,
-              ...(requestedTemperature != null
-                ? { temperature: requestedTemperature }
-                : {}),
-            },
+            response: { instructions: greetingInstructions },
           }),
         );
       };
