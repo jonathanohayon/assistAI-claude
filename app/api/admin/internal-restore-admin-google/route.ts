@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
     label?: string;
     twilioSid?: string;
     countryCode?: string;
+    role?: "admin" | "user";
   };
 
   let userId = body.userId;
@@ -105,17 +106,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const updateSet: {
+    googleRefreshToken: string;
+    googleCalendarId: string;
+    googleSheetId: string;
+    role?: string;
+  } = {
+    googleRefreshToken: refreshToken,
+    googleCalendarId: calendarId || "primary",
+    googleSheetId: sheetId || "",
+  };
+  if (body.role === "admin" || body.role === "user") {
+    updateSet.role = body.role;
+  }
+
   const [updated] = await db
     .update(users)
-    .set({
-      googleRefreshToken: refreshToken,
-      googleCalendarId: calendarId || "primary",
-      googleSheetId: sheetId || "",
-    })
+    .set(updateSet)
     .where(eq(users.id, userId))
     .returning({
       id: users.id,
       email: users.email,
+      role: users.role,
       googleCalendarId: users.googleCalendarId,
       googleSheetId: users.googleSheetId,
     });
