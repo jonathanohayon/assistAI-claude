@@ -107,8 +107,12 @@ export const REALTIME_MODEL = DEFAULT_REALTIME_MODEL;
 export const REALTIME_VOICE = DEFAULT_REALTIME_VOICE;
 export const REALTIME_API_KEY = PROVIDERS.openai.apiKey;
 export const REALTIME_API_BASE = PROVIDERS.openai.baseUrl;
+// gpt-realtime-whisper : modèle de transcription dédié au Realtime
+// (meilleur multilingue HE/FR/EN que whisper-1 et tuned pour faible latence
+// audio streaming). Override par REALTIME_TRANSCRIPTION_MODEL si OpenAI
+// renomme/déprécie.
 export const REALTIME_TRANSCRIPTION_MODEL =
-  process.env.REALTIME_TRANSCRIPTION_MODEL ?? "whisper-1";
+  process.env.REALTIME_TRANSCRIPTION_MODEL ?? "gpt-realtime-whisper";
 
 // Per-provider derived endpoints.
 export function clientSecretsUrl(provider: Provider): string {
