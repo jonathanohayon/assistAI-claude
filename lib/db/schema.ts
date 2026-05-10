@@ -121,6 +121,20 @@ export const events = pgTable("events", {
     .default(sql`now()`),
 });
 
+// Singleton key-value store for app-wide settings (system prompt that
+// every tenant inherits, default Twilio config, etc.). Read-mostly so a
+// single row per key is fine.
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+export type NewAppSetting = typeof appSettings.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PhoneNumber = typeof phoneNumbers.$inferSelect;
