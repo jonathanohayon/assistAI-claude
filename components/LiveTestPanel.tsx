@@ -57,7 +57,15 @@ export function LiveTestPanel({
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
   const pendingCalls = useRef<Map<string, string>>(new Map());
+
+  // Auto-scroll bas du transcript à chaque nouveau message.
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [transcript]);
 
   const executeTool = useCallback(
     async (name: string, args: Record<string, unknown>, callId: string) => {
@@ -452,7 +460,7 @@ export function LiveTestPanel({
             </div>
           )}
 
-          <div className="flex max-h-72 min-h-[200px] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3">
+          <div ref={transcriptRef} className="scroll-visible flex max-h-72 min-h-[200px] flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3">
             {transcript.length === 0 ? (
               <p className="m-auto text-center text-xs text-[var(--color-muted-foreground)]">
                 {isLive

@@ -115,3 +115,29 @@ body {
     radial-gradient(at 80% 0%, rgb(139 92 246 / 0.35) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgb(236 72 153 / 0.25) 0px, transparent 55%);
 }
+
+/*
+ * Always-visible thin scrollbar — par défaut macOS cache la scrollbar
+ * (overlay), ce qui donne l'impression qu'on ne peut pas scroller dans
+ * un container qui overflow. À appliquer sur les zones scrollables avec
+ * du contenu type chat/log/transcript pour signaler visuellement.
+ */
+.scroll-visible {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.2) transparent;
+  scrollbar-gutter: stable;
+}
+.scroll-visible::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-visible::-webkit-scrollbar-thumb {
+  background-color: rgb(0 0 0 / 0.2);
+  border-radius: 3px;
+}
+.scroll-visible::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(0 0 0 / 0.35);
+}
+.scroll-visible::-webkit-scrollbar-track {
+  background: transparent;
+}

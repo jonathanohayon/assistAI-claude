@@ -40,7 +40,7 @@ export const PLANS: readonly Plan[] = [
       "Voix naturelle bilingue FR / Hébreu",
       "Prise de rendez-vous vocale",
       "Confirmation WhatsApp automatique",
-      "Résumé de conversation par email",
+      "Résumé de conversation par WhatsApp",
     ],
     onboardingNotes: [
       "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",

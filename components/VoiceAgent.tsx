@@ -98,8 +98,17 @@ export default function VoiceAgent() {
   const dcRef       = useRef<RTCDataChannel | null>(null);
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const streamRef   = useRef<MediaStream | null>(null);
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
   const pendingCalls = useRef<Map<string, string>>(new Map()); // call_id → function_name
   const stopSessionRef = useRef<() => void>(() => {});
+
+  // Auto-scroll vers le bas à chaque nouvelle entrée transcript pour suivre
+  // la conversation live sans avoir à scroller à la main.
+  useEffect(() => {
+    if (transcriptRef.current) {
+      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+    }
+  }, [transcript]);
 
   // ── Tool execution ────────────────────────────────────────────────────────
 
@@ -540,7 +549,10 @@ export default function VoiceAgent() {
 
       {/* Transcript */}
       {transcript.length > 0 && (
-        <div className="flex max-h-60 flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3">
+        <div
+          ref={transcriptRef}
+          className="scroll-visible flex max-h-60 flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3"
+        >
           {transcript.map((entry, i) => (
             <div
               key={i}
