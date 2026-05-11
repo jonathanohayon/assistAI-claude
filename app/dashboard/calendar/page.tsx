@@ -5,6 +5,7 @@ import { getTenantGoogleClients } from "@/lib/google";
 import { JERUSALEM_TZ } from "@/lib/tz";
 
 import { CalendarTable } from "./calendar-table";
+import { SyncNowButton } from "./sync-button";
 
 export const dynamic = "force-dynamic";
 
@@ -62,17 +63,22 @@ export default async function CalendarPage() {
   return (
     <main>
       <section className="mx-auto w-full max-w-5xl px-6 pt-10">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          Calendrier
-        </p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          Vos prochains rendez-vous.
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          {notConnected
-            ? "Connectez Google Calendar pour voir vos rendez-vous ici."
-            : `${list.length} événement${list.length > 1 ? "s" : ""} dans les 30 prochains jours, synchronisés avec Google Calendar. Modifiez l'heure, le titre, ou annulez en un clic.`}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
+              Calendrier
+            </p>
+            <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
+              Vos prochains rendez-vous.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
+              {notConnected
+                ? "Connectez Google Calendar pour voir vos rendez-vous ici."
+                : `${list.length} événement${list.length > 1 ? "s" : ""} dans les 30 prochains jours, synchronisés avec Google Calendar. Modifiez l'heure, le titre, ou annulez en un clic.`}
+            </p>
+          </div>
+          {!notConnected && <SyncNowButton />}
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">

@@ -28,7 +28,9 @@ export type LogSource =
   | "whatsapp"
   | "auth"
   | "tenant"
-  | "summary";
+  | "summary"
+  | "latency"
+  | "sync";
 
 export interface LogEvent {
   source: LogSource;
