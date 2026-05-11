@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   integer,
   jsonb,
   pgTable,
@@ -37,6 +38,30 @@ export const users = pgTable("users", {
   googleCalendarId: text("google_calendar_id").notNull().default("primary"),
   googleSheetId: text("google_sheet_id").notNull().default(""),
 
+  // Email verification gate : false jusqu'à ce que le user entre le code
+  // à 4 chiffres reçu par mail. Bloque l'accès à /onboarding et /dashboard
+  // tant que pas true (le user reste sur /verify-email après signup).
+  emailVerified: boolean("email_verified").notNull().default(false),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+// 4-digit codes envoyés par email pour valider l'adresse au signup.
+// Une ligne par tentative : on garde l'historique pour audit, le code
+// "actif" est le plus récent non-consumé. Hash bcrypt du code en DB
+// (jamais en clair). attempts incrémenté à chaque mauvaise saisie pour
+// rate-limit (max 5 tentatives par code, après quoi il faut resend).
+export const emailVerifications = pgTable("email_verifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

@@ -24,6 +24,14 @@ export default async function DashboardLayout({
     .where(eq(users.id, session.user.id))
     .limit(1);
 
+  // Email verification gate : un user inscrit mais qui n'a pas encore
+  // validé son adresse est bouncé vers /verify-email. Empêche d'accéder
+  // au dashboard tant que le code 4 chiffres reçu par mail n'est pas
+  // entré. Le bypass admin (déjà migrés en backfill TRUE) est implicite.
+  if (me && !me.emailVerified) {
+    redirect(`/verify-email?email=${encodeURIComponent(me.email)}`);
+  }
+
   // Trial countdown — shown as a banner above the tabs.
   const trialDaysLeft = (() => {
     if (!me?.trialEndsAt) return null;

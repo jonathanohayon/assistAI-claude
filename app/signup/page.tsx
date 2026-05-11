@@ -8,10 +8,12 @@ import { Logo } from "@/components/ui/Logo";
 import { auth, signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
+import { sendVerificationEmail } from "@/lib/email";
 import {
   INITIAL_GREETING_INSTRUCTIONS,
   INITIAL_INSTRUCTIONS,
 } from "@/lib/initial-config";
+import { logEvent } from "@/lib/logger";
 import {
   DEFAULT_PLAN_KEY,
   PLANS,
@@ -19,6 +21,7 @@ import {
   planByKey,
 } from "@/lib/plans";
 import { getOnboardingTemplate } from "@/lib/settings";
+import { createEmailVerification } from "@/lib/verify-code";
 
 export default async function SignupPage(props: {
   searchParams: Promise<{ error?: string; plan?: string; billing?: string }>;
@@ -101,11 +104,41 @@ export default async function SignupPage(props: {
       greetingInstructions: INITIAL_GREETING_INSTRUCTIONS,
     });
 
+    // Email verification gate : crée un code 4 chiffres, l'envoie par mail.
+    // On signIn IMMÉDIATEMENT après création pour que le user reste loggué,
+    // mais les layouts /dashboard /admin /onboarding détectent
+    // emailVerified=false et redirigent vers /verify-email tant que pas
+    // validé. Évite au user d'avoir à retaper son mdp après verify.
+    const verif = await createEmailVerification(created.id, {
+      skipCooldown: true,
+    });
+    if (verif.ok && verif.code) {
+      const sent = await sendVerificationEmail(email, verif.code);
+      await logEvent({
+        source: "auth",
+        event: sent.ok ? "verification_email_sent" : "verification_email_failed",
+        message: sent.ok
+          ? `Code envoyé à ${email}${sent.fallback ? " (fallback console)" : ""}`
+          : `Envoi du code à ${email} échoué : ${sent.error}`,
+        level: sent.ok ? "info" : "error",
+        userId: created.id,
+        metadata: { fallback: sent.fallback, error: sent.error },
+      });
+    } else {
+      await logEvent({
+        source: "auth",
+        event: "verification_email_skipped",
+        message: `Création de code échouée pour ${email} : ${verif.reason}`,
+        level: "warn",
+        userId: created.id,
+      });
+    }
+
     try {
       await signIn("credentials", {
         email,
         password,
-        redirectTo: "/onboarding",
+        redirectTo: "/verify-email",
       });
     } catch (e) {
       if (e instanceof AuthError) {

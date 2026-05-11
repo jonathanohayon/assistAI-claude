@@ -16,6 +16,16 @@ export default async function OnboardingPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  // Email verification gate : bouncer si pas encore verify.
+  const [meCheck] = await db
+    .select({ email: users.email, emailVerified: users.emailVerified })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+  if (meCheck && !meCheck.emailVerified) {
+    redirect(`/verify-email?email=${encodeURIComponent(meCheck.email)}`);
+  }
+
   // Already provisioned? Skip onboarding.
   const [existing] = await db
     .select()
