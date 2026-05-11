@@ -4,17 +4,26 @@ import { useState, useTransition } from "react";
 
 /**
  * Bouton (×) en haut à droite de la card /verify-email.
- * Effet : signOut (clear cookie session) + redirige vers /. Le compte reste
- * en DB ; le user peut se reconnecter plus tard pour finir la vérification.
+ * Effet : ANNULE le signup → DELETE le compte unverified + signOut +
+ * redirect /. Évite que le user se reconnecte plus tard et soit
+ * re-bouncé sur /verify-email indéfiniment. Pas de confirm pour pas
+ * friction : l'icône × signale clairement une annulation.
  */
 export function CancelButton() {
   const [isPending, startTransition] = useTransition();
   const onClick = () => {
     startTransition(async () => {
       try {
-        await fetch("/api/admin/auth/signout", { method: "POST" });
+        // cancel-signup delete le user unverified + signOut
+        await fetch("/api/auth/cancel-signup", { method: "POST" });
       } catch {
-        /* ignore */
+        // Fallback : si l'endpoint plante, au moins signOut pour pas
+        // laisser une session zombie
+        try {
+          await fetch("/api/admin/auth/signout", { method: "POST" });
+        } catch {
+          /* ignore */
+        }
       }
       window.location.href = "/";
     });
@@ -24,7 +33,8 @@ export function CancelButton() {
       type="button"
       onClick={onClick}
       disabled={isPending}
-      aria-label="Annuler et retourner à l'accueil"
+      aria-label="Annuler l'inscription et retourner à l'accueil"
+      title="Annuler"
       className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)] disabled:opacity-50"
     >
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
