@@ -23,7 +23,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Trust the proxy's host header (Railway, Vercel). Combined with AUTH_URL
   // env var (canonical public origin), Auth.js generates correct redirects.
   trustHost: true,
-  session: { strategy: "jwt" },
+  // Idle timeout : 1h sans activité = logout. updateAge plus court (5min)
+  // → la session se renouvelle à chaque request si le user est actif, sans
+  // burn de DB writes. Couvre les sessions inactives côté serveur. Le
+  // composant IdleWatcher complète avec un timer côté client (pour les
+  // onglets ouverts sans interaction).
+  session: { strategy: "jwt", maxAge: 60 * 60, updateAge: 60 * 5 },
   pages: { signIn: "/login", error: "/login" },
   providers: [
     Credentials({

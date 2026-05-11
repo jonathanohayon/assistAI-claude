@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
+import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
@@ -68,6 +69,7 @@ export default async function AdminTenantPage({
 
   return (
     <main className="min-h-screen">
+      <IdleWatcher />
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">

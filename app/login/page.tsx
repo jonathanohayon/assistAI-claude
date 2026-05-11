@@ -6,12 +6,16 @@ import { Logo } from "@/components/ui/Logo";
 import { auth, signIn } from "@/auth";
 
 export default async function LoginPage(props: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    callbackUrl?: string;
+    reason?: string;
+  }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const { error, callbackUrl = "/dashboard" } = await props.searchParams;
+  const { error, callbackUrl = "/dashboard", reason } = await props.searchParams;
 
   async function handleLogin(formData: FormData) {
     "use server";
@@ -62,6 +66,15 @@ export default async function LoginPage(props: {
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
             >
               Identifiants incorrects.
+            </p>
+          )}
+          {reason === "idle" && !error && (
+            <p
+              role="status"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+            >
+              ⏰ Vous avez été déconnecté après 1 heure d&apos;inactivité.
+              Reconnectez-vous pour reprendre.
             </p>
           )}
 
