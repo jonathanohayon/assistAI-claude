@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
+import { CancelButton, RestartLink } from "./cancel-controls";
 import { VerifyForm } from "./verify-form";
 
 export default async function VerifyEmailPage(props: {
@@ -44,7 +45,12 @@ export default async function VerifyEmailPage(props: {
           <Logo />
         </div>
         <div className="relative flex flex-col gap-5 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur">
-          <div className="space-y-1">
+          {/* Bouton fermer (×) en haut à droite : signOut + retour /. Le
+              compte reste en DB (le user pourra reprendre la verif au
+              prochain login). */}
+          <CancelButton />
+
+          <div className="space-y-1 pr-7">
             <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
               Vérifiez votre email
             </h1>
@@ -60,6 +66,9 @@ export default async function VerifyEmailPage(props: {
           <p className="text-center text-[11px] text-[var(--color-muted-foreground)]">
             Le code expire dans 15 minutes.
           </p>
+          {/* Recommencer à zéro : delete le compte unverified + redirige
+              /signup. Permet de changer d'email ou repartir clean. */}
+          <RestartLink />
         </div>
       </div>
     </main>
