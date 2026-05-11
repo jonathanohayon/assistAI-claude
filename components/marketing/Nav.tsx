@@ -25,15 +25,20 @@ export function Nav() {
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
 
   // Bloque le scroll du body quand le menu mobile est ouvert (évite le
-  // "bleed-through" du contenu derrière l'overlay).
+  // "bleed-through" du contenu derrière l'overlay). Écoute aussi Escape
+  // pour fermer (accessibilité standard pour dialog/drawer).
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (
@@ -111,45 +116,66 @@ export function Nav() {
         </div>
       </div>
 
-      {/* Mobile menu drawer */}
+      {/* Mobile side-drawer with translucent backdrop */}
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="border-t border-[var(--color-border)]/60 bg-white/95 backdrop-blur-lg md:hidden"
-          >
-            <nav className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-6 py-4 text-sm">
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-xl px-3 py-3 text-base text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)]"
-                >
-                  {t(`links.${l.labelKey}`)}
-                </a>
-              ))}
-              <div className="mt-2 flex flex-col gap-2 border-t border-[var(--color-border)]/60 pt-3">
-                <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="rounded-xl px-3 py-3 text-base text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
-                >
-                  {t("login")}
-                </Link>
-                <Link
-                  href="#demo"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-3 text-base font-medium text-white shadow-md"
-                >
-                  {t("ctaTry")}
-                </Link>
-              </div>
-            </nav>
-          </motion.div>
+          <>
+            {/* Backdrop : opacity transition + click handler ferme le menu.
+                Pointer-events transparent dès que open=false grâce à
+                AnimatePresence qui retire le node. */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onClick={() => setOpen(false)}
+              aria-hidden
+              className="fixed inset-0 top-[64px] z-40 bg-[var(--color-foreground)]/30 backdrop-blur-[2px] md:hidden"
+            />
+            {/* Drawer : slide depuis la droite. width 80vw max 320px pour
+                garder un peu de contenu visible derrière (UX standard). */}
+            <motion.aside
+              key="drawer"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              className="fixed right-0 top-[64px] bottom-0 z-50 w-[80vw] max-w-[320px] overflow-y-auto border-l border-[var(--color-border)]/60 bg-white/95 backdrop-blur-lg shadow-2xl md:hidden"
+            >
+              <nav className="flex flex-col gap-1 px-5 py-5 text-sm">
+                {NAV_LINKS.map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl px-3 py-3 text-base text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                  >
+                    {t(`links.${l.labelKey}`)}
+                  </a>
+                ))}
+                <div className="mt-2 flex flex-col gap-2 border-t border-[var(--color-border)]/60 pt-3">
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl px-3 py-3 text-base text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+                  >
+                    {t("login")}
+                  </Link>
+                  <Link
+                    href="#demo"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-3 text-base font-medium text-white shadow-md"
+                  >
+                    {t("ctaTry")}
+                  </Link>
+                </div>
+              </nav>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
     </motion.header>
