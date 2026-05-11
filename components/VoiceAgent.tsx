@@ -58,12 +58,15 @@ export default function VoiceAgent() {
   const demoModels = useMemo(
     () =>
       DEMO_MODEL_ORDER.map((id) => ({
-        id,
+        id: id as string,
         label: DEMO_MODEL_ALLOWLIST[id] ?? id,
       })),
     [],
   );
-  const allowedModelIds = useMemo(() => demoModels.map((m) => m.id), [demoModels]);
+  const allowedModelIds = useMemo<string[]>(
+    () => demoModels.map((m) => m.id),
+    [demoModels],
+  );
 
   const availableVoices = useMemo(
     () => voicesForCatalog(catalog, model),
