@@ -114,15 +114,27 @@ export default async function SignupPage(props: {
     });
     if (verif.ok && verif.code) {
       const sent = await sendVerificationEmail(email, verif.code);
+      // Dev escape-hatch : si RESEND_API_KEY n'est pas configuré, on log
+      // le code en CLAIR dans le message pour le retrouver depuis
+      // /dashboard/logs (filtre Auth). EN PROD avec RESEND_API_KEY set,
+      // sent.fallback est undefined → code jamais loggué en clair.
+      const isDevFallback = sent.fallback === "console_log";
       await logEvent({
         source: "auth",
         event: sent.ok ? "verification_email_sent" : "verification_email_failed",
         message: sent.ok
-          ? `Code envoyé à ${email}${sent.fallback ? " (fallback console)" : ""}`
+          ? isDevFallback
+            ? `[DEV] Code envoyé à ${email} : ${verif.code} (RESEND_API_KEY absent, vrai email pas envoyé)`
+            : `Code envoyé à ${email}`
           : `Envoi du code à ${email} échoué : ${sent.error}`,
-        level: sent.ok ? "info" : "error",
+        level: sent.ok ? (isDevFallback ? "warn" : "info") : "error",
         userId: created.id,
-        metadata: { fallback: sent.fallback, error: sent.error },
+        metadata: {
+          fallback: sent.fallback,
+          error: sent.error,
+          // Code en clair UNIQUEMENT en fallback dev — jamais en prod.
+          devCode: isDevFallback ? verif.code : undefined,
+        },
       });
     } else {
       await logEvent({

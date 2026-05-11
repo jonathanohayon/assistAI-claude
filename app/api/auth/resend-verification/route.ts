@@ -56,15 +56,22 @@ export async function POST(req: NextRequest) {
   }
 
   const sent = await sendVerificationEmail(email, verif.code!);
+  const isDevFallback = sent.fallback === "console_log";
   await logEvent({
     source: "auth",
     event: sent.ok ? "verification_resent" : "verification_resend_failed",
     message: sent.ok
-      ? `Code renvoyé à ${email}${sent.fallback ? " (fallback console)" : ""}`
+      ? isDevFallback
+        ? `[DEV] Code renvoyé à ${email} : ${verif.code} (RESEND_API_KEY absent)`
+        : `Code renvoyé à ${email}`
       : `Renvoi du code à ${email} échoué : ${sent.error}`,
-    level: sent.ok ? "info" : "error",
+    level: sent.ok ? (isDevFallback ? "warn" : "info") : "error",
     userId: user.id,
-    metadata: { fallback: sent.fallback, error: sent.error },
+    metadata: {
+      fallback: sent.fallback,
+      error: sent.error,
+      devCode: isDevFallback ? verif.code : undefined,
+    },
   });
 
   return NextResponse.json({ ok: sent.ok, error: sent.error });
