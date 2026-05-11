@@ -287,14 +287,13 @@ export default async function SignupPage(props: {
               <div className="grid grid-cols-2 gap-2">
                 {PLANS.map((p) => {
                   const checked = p.key === selectedPlanKey;
+                  // Style driven by :has(:checked) (Tailwind 4) → la card
+                  // se met à jour visuellement quand le user clique une
+                  // autre option, pas seulement au render initial.
                   return (
                     <label
                       key={p.key}
-                      className={`relative cursor-pointer rounded-xl border bg-white px-3 py-2.5 transition-all hover:border-[var(--color-primary)]/50 ${
-                        checked
-                          ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20"
-                          : "border-[var(--color-border)]"
-                      }`}
+                      className="relative cursor-pointer rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 transition-all hover:border-[var(--color-primary)]/50 has-[:checked]:border-[var(--color-primary)] has-[:checked]:ring-2 has-[:checked]:ring-[var(--color-primary)]/20"
                     >
                       <input
                         type="radio"
