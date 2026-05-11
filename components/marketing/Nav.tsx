@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
 
@@ -24,20 +24,29 @@ export function Nav() {
   const { scrollY } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
 
-  // Bloque le scroll du body quand le menu mobile est ouvert (évite le
-  // "bleed-through" du contenu derrière l'overlay). Écoute aussi Escape
-  // pour fermer (accessibilité standard pour dialog/drawer).
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const burgerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Pas de scroll-lock — le user veut pouvoir scroller la page derrière.
+  // Écoute Escape pour fermer + click hors du drawer (mais pas sur le
+  // bouton burger qui a son propre toggle).
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (drawerRef.current?.contains(target)) return;
+      if (burgerRef.current?.contains(target)) return;
+      setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointerDown);
     return () => {
-      document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointerDown);
     };
   }, [open]);
 
@@ -88,6 +97,7 @@ export function Nav() {
 
           {/* Burger button — mobile only */}
           <button
+            ref={burgerRef}
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
@@ -119,36 +129,23 @@ export function Nav() {
 
     </motion.header>
 
-    {/* Drawer + backdrop OUTSIDE motion.header parce que le transform
-        appliqué par motion à l'header crée un containing block pour les
-        descendants fixed → les éléments fixed étaient positionnés relatif
-        à l'header (~64px de haut) au lieu du viewport et donc invisibles.
-        En les sortant comme siblings, ils retrouvent leur référence
-        viewport. */}
+    {/* Drawer mobile : fin, transparent (blur), pas de backdrop dim →
+        l'utilisateur peut scroller la page derrière. Click hors drawer
+        géré par le pointerdown listener (useEffect). Pas de scroll-lock. */}
     <AnimatePresence>
       {open && (
-        <>
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            onClick={() => setOpen(false)}
-            aria-hidden
-            className="fixed inset-0 top-[64px] z-40 bg-[var(--color-foreground)]/30 backdrop-blur-[2px] md:hidden"
-          />
-          <motion.aside
-            key="drawer"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu"
-            className="fixed right-0 top-[64px] bottom-0 z-50 w-[80vw] max-w-[320px] overflow-y-auto border-l border-[var(--color-border)]/60 bg-white/95 backdrop-blur-lg shadow-2xl md:hidden"
-          >
+        <motion.aside
+          ref={drawerRef as React.RefObject<HTMLElement>}
+          key="drawer"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          role="dialog"
+          aria-modal="false"
+          aria-label="Menu"
+          className="fixed right-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-l border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl md:hidden"
+        >
             <nav className="flex flex-col gap-1 px-5 py-5 text-sm">
               {NAV_LINKS.map((l) => (
                 <a
@@ -177,8 +174,7 @@ export function Nav() {
                 </Link>
               </div>
             </nav>
-          </motion.aside>
-        </>
+        </motion.aside>
       )}
     </AnimatePresence>
     </>
