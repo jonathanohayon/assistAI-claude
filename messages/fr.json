@@ -8,7 +8,8 @@
       "demo": "Démo"
     },
     "login": "Connexion",
-    "ctaTry": "Tester maintenant"
+    "ctaTry": "Tester maintenant",
+    "ctaSignup": "S'inscrire"
   },
   "Hero": {
     "badge": "Conciergerie vocale temps réel · Live",

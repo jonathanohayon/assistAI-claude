@@ -89,10 +89,10 @@ export function Nav() {
             {t("login")}
           </Link>
           <Link
-            href="#demo"
+            href="/signup"
             className="hidden items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-[0.97] md:inline-flex"
           >
-            {t("ctaTry")}
+            {t("ctaSignup")}
           </Link>
 
           {/* Burger button — mobile only */}
@@ -166,11 +166,11 @@ export function Nav() {
                   {t("login")}
                 </Link>
                 <Link
-                  href="#demo"
+                  href="/signup"
                   onClick={() => setOpen(false)}
                   className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-3 text-base font-medium text-white shadow-md"
                 >
-                  {t("ctaTry")}
+                  {t("ctaSignup")}
                 </Link>
               </div>
             </nav>
