@@ -1,10 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  DEFAULT_REALTIME_MODEL,
-  transportFor,
-} from "@/lib/realtime";
+import { transportFor } from "@/lib/realtime";
 import {
   defaultVoiceForCatalog,
   useRealtimeCatalog,
@@ -26,24 +23,48 @@ const STORAGE_VOICE = "tamara:voice";
 // many seconds the session auto-disconnects with a "demo terminée" UX.
 const DEMO_SESSION_SECONDS = 40;
 
+// Modèles autorisés sur la demo publique. On masque le reste du catalog
+// OpenAI (admin uniquement) et on les présente sous des noms "marque"
+// pour ne pas exposer la techno sous-jacente aux visiteurs.
+// Mapping id OpenAI → label visible. L'ID réel reste envoyé à OpenAI.
+const DEMO_MODEL_ALLOWLIST: Record<string, string> = {
+  "gpt-realtime-2": "tamara-realtime-2",
+  "gpt-realtime-mini-2025-12-15": "tamara-realtime-1",
+};
+// Ordre d'affichage (le plus avancé en premier).
+const DEMO_MODEL_ORDER = [
+  "gpt-realtime-2",
+  "gpt-realtime-mini-2025-12-15",
+] as const;
+const DEMO_DEFAULT_MODEL = "gpt-realtime-2";
+
 export default function VoiceAgent() {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError]   = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const catalog = useRealtimeCatalog();
-  const [model, setModel] = useState<string>(DEFAULT_REALTIME_MODEL);
+  const [model, setModel] = useState<string>(DEMO_DEFAULT_MODEL);
   const [voice, setVoice] = useState<string>(
-    defaultVoiceForCatalog(catalog, DEFAULT_REALTIME_MODEL),
+    defaultVoiceForCatalog(catalog, DEMO_DEFAULT_MODEL),
   );
   // null = pas de timer en cours, sinon secondes restantes (décrémente à 1Hz).
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [demoEnded, setDemoEnded] = useState(false);
 
-  const modelIds = useMemo(
-    () => catalog.models.map((m) => m.id),
-    [catalog.models],
+  // Liste filtrée pour le dropdown public : uniquement les modèles de la
+  // allowlist, dans l'ordre défini. On garde l'ID OpenAI réel mais on
+  // affiche le label "tamara-realtime-X" pour ne pas exposer la techno.
+  const demoModels = useMemo(
+    () =>
+      DEMO_MODEL_ORDER.map((id) => ({
+        id,
+        label: DEMO_MODEL_ALLOWLIST[id] ?? id,
+      })),
+    [],
   );
+  const allowedModelIds = useMemo(() => demoModels.map((m) => m.id), [demoModels]);
+
   const availableVoices = useMemo(
     () => voicesForCatalog(catalog, model),
     [catalog, model],
@@ -51,15 +72,15 @@ export default function VoiceAgent() {
   const transport = useMemo(() => transportFor(model), [model]);
   const isUnsupported = transport !== "webrtc";
 
-  // Restore last selection from localStorage on mount AND every time the
-  // catalog refreshes (so a freshly fetched model becomes selectable
-  // immediately even if the previous render didn't list it).
+  // Restore last selection from localStorage. Si la valeur stockée
+  // n'est plus dans l'allowlist (ancien visiteur qui avait choisi un
+  // modèle maintenant masqué), on fallback au default demo.
   /* eslint-disable react-hooks/set-state-in-effect -- legitimate browser-API sync (no SSR access to localStorage) */
   useEffect(() => {
     const m = localStorage.getItem(STORAGE_MODEL);
     const v = localStorage.getItem(STORAGE_VOICE);
     const validModel =
-      m && modelIds.includes(m) ? m : DEFAULT_REALTIME_MODEL;
+      m && allowedModelIds.includes(m) ? m : DEMO_DEFAULT_MODEL;
     const allowed = voicesForCatalog(catalog, validModel);
     const validVoice =
       v && allowed.includes(v)
@@ -67,7 +88,7 @@ export default function VoiceAgent() {
         : defaultVoiceForCatalog(catalog, validModel);
     setModel(validModel);
     setVoice(validVoice);
-  }, [modelIds, catalog]);
+  }, [allowedModelIds, catalog]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pcRef       = useRef<RTCPeerConnection | null>(null);
@@ -387,10 +408,9 @@ export default function VoiceAgent() {
             onChange={(e) => onModelChange(e.target.value)}
             className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {catalog.models.map((m) => (
+            {demoModels.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.id} · {m.provider}
-                {m.live ? "" : " (cache)"}
+                {m.label}
               </option>
             ))}
           </select>
