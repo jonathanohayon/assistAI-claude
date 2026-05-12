@@ -6,6 +6,10 @@ import { calls } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import {
+  featuresForPlan,
+  getPlanFeatureMatrix,
+} from "@/lib/plan-features";
+import {
   ensureSheet,
   forceTextPhone,
   prependRow,
@@ -183,7 +187,13 @@ export async function POST(req: NextRequest) {
   let ownerSid: string | null = null;
   let waError: string | null = null;
 
-  if (fromNumber) {
+  // Matrice features (admin/Réglages partagés) → décide si on envoie le
+  // recap client (whatsapp_confirm) et/ou le recap owner (whatsapp_recap).
+  // Read une fois par appel : c'est négligeable vs. le coût de l'appel.
+  const planMatrix = await getPlanFeatureMatrix();
+  const tenantFeatures = featuresForPlan(planMatrix, user.subscriptionPlan);
+
+  if (fromNumber && tenantFeatures.whatsapp_confirm !== false) {
     // Client-facing recap: use Twilio Content Template if configured, so
     // the message ships even if the customer never WhatsApped us first.
     // Free-form falls back to the 24h-window rule.
@@ -219,7 +229,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (cfg.ownerWhatsapp) {
+  if (cfg.ownerWhatsapp && tenantFeatures.whatsapp_recap !== false) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
     // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
     // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
