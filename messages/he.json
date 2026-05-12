@@ -266,5 +266,17 @@
     "alreadyAccount": "כבר יש לך חשבון?",
     "loginLink": "התחברות",
     "backHome": "→ חזרה"
+  },
+  "Login": {
+    "title": "התחברות",
+    "subtitle": "גש להגדרות המזכירה הקולית שלך.",
+    "errBadCredentials": "פרטי כניסה שגויים.",
+    "idleNotice": "⏰ נותקת לאחר שעה של חוסר פעילות. התחברי מחדש כדי להמשיך.",
+    "emailLabel": "אימייל",
+    "passwordLabel": "סיסמה",
+    "submitButton": "התחברות",
+    "noAccount": "אין לך עדיין חשבון?",
+    "signupLink": "פתיחת חשבון",
+    "backHome": "→ חזרה"
   }
 }

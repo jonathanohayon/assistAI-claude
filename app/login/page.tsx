@@ -1,135 +1,43 @@
-import { AuthError } from "next-auth";
-import Link from "next/link";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { Logo } from "@/components/ui/Logo";
-import { auth, signIn } from "@/auth";
+import { routing, type Locale } from "@/i18n/routing";
 
-export default async function LoginPage(props: {
-  searchParams: Promise<{
-    error?: string;
-    callbackUrl?: string;
-    reason?: string;
-  }>;
+// Back-compat redirect /login → /<locale>/login. La page localisée vit
+// désormais sous app/[locale]/login. On préserve cet alias pour ne pas
+// casser les server-side redirects existants (page guards qui appellent
+// redirect("/login") depuis /dashboard, /admin, etc.) ni les bookmarks.
+//
+// Choix de locale par ordre :
+//   1. cookie NEXT_LOCALE (posé par next-intl à la navigation)
+//   2. Accept-Language header (préférence navigateur, premier match)
+//   3. defaultLocale (fr)
+export default async function LegacyLoginRedirect(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await auth();
-  if (session?.user) redirect("/dashboard");
+  const sp = await props.searchParams;
 
-  const { error, callbackUrl = "/dashboard", reason } = await props.searchParams;
-
-  async function handleLogin(formData: FormData) {
-    "use server";
-    try {
-      await signIn("credentials", {
-        email: formData.get("email"),
-        password: formData.get("password"),
-        redirectTo: "/dashboard",
-      });
-    } catch (e) {
-      if (e instanceof AuthError) {
-        redirect(`/login?error=${e.type}`);
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  let locale: Locale = routing.defaultLocale;
+  if (cookieLocale && (routing.locales as readonly string[]).includes(cookieLocale)) {
+    locale = cookieLocale as Locale;
+  } else {
+    const accept = (await headers()).get("accept-language") ?? "";
+    for (const part of accept.split(",")) {
+      const tag = part.split(";")[0]?.trim().split("-")[0]?.toLowerCase();
+      if (tag && (routing.locales as readonly string[]).includes(tag)) {
+        locale = tag as Locale;
+        break;
       }
-      throw e;
     }
   }
 
-  return (
-    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 gradient-mesh"
-      />
-
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <Link href="/">
-            <Logo />
-          </Link>
-        </div>
-
-        <form
-          action={handleLogin}
-          className="relative flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur"
-        >
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
-              Connexion
-            </h1>
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              Accède à la configuration de ta secrétaire vocale.
-            </p>
-          </div>
-
-          {error && (
-            <p
-              role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
-            >
-              Identifiants incorrects.
-            </p>
-          )}
-          {reason === "idle" && !error && (
-            <p
-              role="status"
-              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-            >
-              ⏰ Vous avez été déconnecté après 1 heure d&apos;inactivité.
-              Reconnectez-vous pour reprendre.
-            </p>
-          )}
-
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">Email</span>
-            <input
-              name="email"
-              type="email"
-              required
-              autoFocus
-              autoComplete="email"
-              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">Mot de passe</span>
-            <input
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            />
-          </label>
-
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
-
-          <button
-            type="submit"
-            className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            Se connecter
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-              <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-            Pas encore de compte ?{" "}
-            <Link
-              href="/signup"
-              className="text-[var(--color-primary)] hover:underline"
-            >
-              Créer un compte
-            </Link>
-          </p>
-        </form>
-
-        <p className="mt-6 text-center text-xs text-[var(--color-muted-foreground)]">
-          <Link href="/" className="hover:text-[var(--color-foreground)]">
-            ← Retour
-          </Link>
-        </p>
-      </div>
-    </main>
-  );
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (Array.isArray(v)) v.forEach((vv) => qs.append(k, vv));
+    else if (typeof v === "string") qs.set(k, v);
+  }
+  const queryString = qs.toString();
+  redirect(`/${locale}/login${queryString ? `?${queryString}` : ""}`);
 }

@@ -266,5 +266,17 @@
     "alreadyAccount": "Déjà un compte ?",
     "loginLink": "Connexion",
     "backHome": "← Retour"
+  },
+  "Login": {
+    "title": "Connexion",
+    "subtitle": "Accède à la configuration de ta secrétaire vocale.",
+    "errBadCredentials": "Identifiants incorrects.",
+    "idleNotice": "⏰ Vous avez été déconnecté après 1 heure d'inactivité. Reconnectez-vous pour reprendre.",
+    "emailLabel": "Email",
+    "passwordLabel": "Mot de passe",
+    "submitButton": "Se connecter",
+    "noAccount": "Pas encore de compte ?",
+    "signupLink": "Créer un compte",
+    "backHome": "← Retour"
   }
 }

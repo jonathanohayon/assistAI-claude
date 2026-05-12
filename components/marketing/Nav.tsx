@@ -2,21 +2,12 @@
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useTranslations } from "next-intl";
-import NextLink from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 
 import { LocaleSwitcher } from "./LocaleSwitcher";
-
-// Deux Link différents intentionnellement :
-//   - Link (next-intl)    → routes localisées (/, /signup) — auto-préfixe la
-//                           locale courante : Sur /he/, href="/" devient /he/.
-//   - NextLink (next/link) → routes non-localisées (/login, /dashboard, etc.)
-//                            qui vivent à la racine et ne sont pas dupliquées
-//                            sous [locale]. Si on les wrappe avec Link
-//                            locale-aware, on obtient /he/login → 404.
 
 const NAV_LINKS = [
   { href: "#industries", labelKey: "industries" },
@@ -91,12 +82,12 @@ export function Nav() {
 
         <div className="flex items-center gap-2">
           <LocaleSwitcher />
-          <NextLink
+          <Link
             href="/login"
             className="hidden rounded-full px-4 py-2 text-sm text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] sm:inline-flex"
           >
             {t("login")}
-          </NextLink>
+          </Link>
           <Link
             href="/signup"
             className="hidden items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-[0.97] md:inline-flex"
@@ -167,13 +158,13 @@ export function Nav() {
                 </a>
               ))}
               <div className="mt-2 flex flex-col gap-2 border-t border-[var(--color-border)]/60 pt-3">
-                <NextLink
+                <Link
                   href="/login"
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-3 py-3 text-base text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
                 >
                   {t("login")}
-                </NextLink>
+                </Link>
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}

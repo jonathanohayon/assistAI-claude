@@ -266,5 +266,17 @@
     "alreadyAccount": "Already have an account?",
     "loginLink": "Sign in",
     "backHome": "← Back"
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Access your voice receptionist configuration.",
+    "errBadCredentials": "Invalid credentials.",
+    "idleNotice": "⏰ You were signed out after 1 hour of inactivity. Sign back in to resume.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submitButton": "Sign in",
+    "noAccount": "Don't have an account yet?",
+    "signupLink": "Create an account",
+    "backHome": "← Back"
   }
 }
