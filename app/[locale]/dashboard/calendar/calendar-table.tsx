@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 interface CalendarEvent {
@@ -20,19 +21,6 @@ interface EditState {
   description: string;
 }
 
-const formatDate = (iso: string): string => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("fr-FR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
 // Split an ISO datetime into local date + time strings (YYYY-MM-DD, HH:MM).
 const splitIso = (iso: string): { date: string; time: string } => {
   if (!iso) return { date: "", time: "" };
@@ -49,6 +37,23 @@ export function CalendarTable({
 }: {
   initialEvents: CalendarEvent[];
 }) {
+  const t = useTranslations("DashboardCalendar");
+  const locale = useLocale();
+  const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
+
+  const formatDate = (iso: string): string => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(dateLocale, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const [events, setEvents] = useState(initialEvents);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
@@ -86,10 +91,9 @@ export function CalendarTable({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Erreur");
+        setError(data?.error ?? t("errSaveFallback"));
         return;
       }
-      // Update local state
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId
@@ -108,7 +112,7 @@ export function CalendarTable({
   };
 
   const cancelEvent = (eventId: string) => {
-    if (!confirm("Annuler ce rendez-vous ?")) return;
+    if (!confirm(t("confirmCancelAppointment"))) return;
     setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/dashboard/calendar?eventId=${eventId}`, {
@@ -116,7 +120,7 @@ export function CalendarTable({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Erreur");
+        setError(data?.error ?? t("errSaveFallback"));
         return;
       }
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
@@ -126,7 +130,7 @@ export function CalendarTable({
   if (events.length === 0) {
     return (
       <div className="rounded-2xl border border-[var(--color-border)] bg-white p-8 text-center text-sm text-[var(--color-muted-foreground)]">
-        Aucun rendez-vous dans les 30 prochains jours.
+        {t("noUpcomingAppointments")}
       </div>
     );
   }
@@ -153,12 +157,12 @@ export function CalendarTable({
                   onChange={(ev) =>
                     setEdit({ ...edit, summary: ev.target.value })
                   }
-                  placeholder="Titre"
+                  placeholder={t("titlePlaceholder")}
                   className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-xs text-[var(--color-muted-foreground)]">
-                    Début
+                    {t("startLabel")}
                     <div className="flex gap-1">
                       <input
                         type="date"
@@ -179,7 +183,7 @@ export function CalendarTable({
                     </div>
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-[var(--color-muted-foreground)]">
-                    Fin
+                    {t("endLabel")}
                     <div className="flex gap-1">
                       <input
                         type="date"
@@ -205,7 +209,7 @@ export function CalendarTable({
                   onChange={(ev) =>
                     setEdit({ ...edit, description: ev.target.value })
                   }
-                  placeholder="Notes / téléphone / email"
+                  placeholder={t("notesPlaceholder")}
                   rows={3}
                   className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs"
                 />
@@ -215,13 +219,13 @@ export function CalendarTable({
                     disabled={isPending}
                     className="rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-white shadow-sm disabled:opacity-50"
                   >
-                    {isPending ? "Sauvegarde…" : "Sauvegarder"}
+                    {isPending ? t("savingButton") : t("saveButton")}
                   </button>
                   <button
                     onClick={cancelEdit}
                     className="rounded-full border border-[var(--color-border)] bg-white px-4 py-1.5 text-xs font-medium text-[var(--color-foreground)]"
                   >
-                    Annuler
+                    {t("cancelEditButton")}
                   </button>
                 </div>
               </div>
@@ -245,14 +249,14 @@ export function CalendarTable({
                     onClick={() => startEdit(e)}
                     className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-xs font-medium text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
                   >
-                    Modifier
+                    {t("editButton")}
                   </button>
                   <button
                     onClick={() => cancelEvent(e.id)}
                     disabled={isPending}
                     className="rounded-full px-3 py-1 text-xs font-medium text-[var(--color-destructive)] hover:bg-red-50 disabled:opacity-50"
                   >
-                    Annuler
+                    {t("cancelAppointmentButton")}
                   </button>
                   {e.link && (
                     <a
@@ -261,7 +265,7 @@ export function CalendarTable({
                       rel="noreferrer"
                       className="rounded-full px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                     >
-                      Ouvrir ↗
+                      {t("openLink")}
                     </a>
                   )}
                 </div>

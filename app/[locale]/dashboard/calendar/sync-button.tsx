@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +10,7 @@ import { useRouter } from "next/navigation";
  * arrière-plan, ceci est juste un refresh manuel pour les impatients.
  */
 export function SyncNowButton() {
+  const t = useTranslations("DashboardCalendar");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{
@@ -34,8 +36,8 @@ export function SyncNowButton() {
           setFeedback({
             kind: "err",
             message: data.reason
-              ? `Sync échoué : ${data.reason}`
-              : `Sync échoué (HTTP ${res.status})`,
+              ? t("syncFailedReason", { reason: data.reason })
+              : t("syncFailedHttp", { status: res.status }),
           });
           return;
         }
@@ -46,8 +48,8 @@ export function SyncNowButton() {
           kind: "ok",
           message:
             ins + upd === 0
-              ? `Aucun changement (${total} events scannés en ${data.elapsedMs}ms)`
-              : `+${ins} ajoutés, ↻${upd} mis à jour sur ${total} events`,
+              ? t("syncSucceededNoChanges", { total, ms: data.elapsedMs ?? 0 })
+              : t("syncSucceededChanges", { inserted: ins, updated: upd, total }),
         });
         // Refresh la page pour réafficher les events Calendar éventuellement
         // nouveaux (cas où le sync a importé un RDV créé ailleurs).
@@ -55,7 +57,7 @@ export function SyncNowButton() {
       } catch (e) {
         setFeedback({
           kind: "err",
-          message: e instanceof Error ? e.message : "Erreur réseau",
+          message: e instanceof Error ? e.message : t("errNetwork"),
         });
       }
     });
@@ -75,7 +77,7 @@ export function SyncNowButton() {
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
               <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
-            Synchronisation…
+            {t("syncing")}
           </>
         ) : (
           <>
@@ -88,7 +90,7 @@ export function SyncNowButton() {
                 strokeLinejoin="round"
               />
             </svg>
-            Sync Calendar → Sheet
+            {t("syncButton")}
           </>
         )}
       </button>

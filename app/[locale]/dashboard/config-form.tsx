@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
 import { LiveTestPanel } from "@/components/LiveTestPanel";
@@ -20,12 +21,6 @@ type FormState = {
   primaryLanguage: string;
 };
 
-const PRIMARY_LANGUAGES = [
-  { value: "fr", label: "🇫🇷 Français" },
-  { value: "he", label: "🇮🇱 עברית (Hébreu)" },
-  { value: "en", label: "🇺🇸 English (US)" },
-] as const;
-
 export function ConfigForm({
   initial,
   isAdmin = false,
@@ -33,6 +28,8 @@ export function ConfigForm({
   initial: FormState;
   isAdmin?: boolean;
 }) {
+  const t = useTranslations("DashboardConfig");
+  const locale = useLocale();
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +41,14 @@ export function ConfigForm({
     () => voicesForCatalog(catalog, form.model),
     [catalog, form.model],
   );
+
+  // Reconstruit l'array PRIMARY_LANGUAGES à chaque render pour bénéficier
+  // des labels traduits. 3 entrées seulement → coût négligeable.
+  const primaryLanguages = [
+    { value: "fr", label: t("langFr") },
+    { value: "he", label: t("langHe") },
+    { value: "en", label: t("langEn") },
+  ];
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
@@ -70,10 +75,11 @@ export function ConfigForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Erreur de sauvegarde");
+        setError(data?.error ?? t("errSaveFailed"));
         return;
       }
-      setSavedAt(new Date().toLocaleTimeString("fr-FR"));
+      const timeLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
+      setSavedAt(new Date().toLocaleTimeString(timeLocale));
       setDirty(false);
     });
   };
@@ -81,20 +87,17 @@ export function ConfigForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
       {/* Persona */}
-      <Card
-        title="Persona"
-        subtitle="La grosse string système qui définit l'identité, le style et les workflows."
-      >
+      <Card title={t("personaTitle")} subtitle={t("personaSubtitle")}>
         <Field
-          label="Langue principale"
-          hint="Langue utilisée pour la phrase d'accueil. L'agent bascule automatiquement vers la langue de la cliente dès qu'elle parle."
+          label={t("primaryLanguageLabel")}
+          hint={t("primaryLanguageHint")}
         >
           <select
             value={form.primaryLanguage}
             onChange={(e) => update("primaryLanguage", e.target.value)}
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           >
-            {PRIMARY_LANGUAGES.map((l) => (
+            {primaryLanguages.map((l) => (
               <option key={l.value} value={l.value}>
                 {l.label}
               </option>
@@ -102,10 +105,7 @@ export function ConfigForm({
           </select>
         </Field>
 
-        <Field
-          label="Instructions"
-          hint="Markdown supporté. Décrivez prénom + nom du centre, horaires, prestations, ton, et les workflows à respecter."
-        >
+        <Field label={t("instructionsLabel")} hint={t("instructionsHint")}>
           <textarea
             value={form.instructions}
             onChange={(e) => update("instructions", e.target.value)}
@@ -114,28 +114,22 @@ export function ConfigForm({
           />
         </Field>
 
-        <Field
-          label="Phrase d'entrée"
-          hint="Première phrase prononcée à chaque appel — avant que la cliente parle. Garde-la courte et chaleureuse (1 à 2 phrases). Ex : « Bonjour, c'est Johana du centre Prestige, comment puis-je vous aider ? »"
-        >
+        <Field label={t("greetingLabel")} hint={t("greetingHint")}>
           <textarea
             value={form.greetingInstructions}
             onChange={(e) => update("greetingInstructions", e.target.value)}
             rows={3}
-            placeholder="Bonjour, c'est <prénom> de <centre>. Comment puis-je vous aider ?"
+            placeholder={t("greetingPlaceholder")}
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
       </Card>
 
       {/* Notifications */}
-      <Card
-        title="Notifications WhatsApp"
-        subtitle="Après chaque appel, un récap est envoyé par WhatsApp à la cliente et au propriétaire."
-      >
+      <Card title={t("whatsappTitle")} subtitle={t("whatsappSubtitle")}>
         <Field
-          label="Numéro WhatsApp du propriétaire"
-          hint="Format international, ex: +972585001007. Laisse vide pour désactiver."
+          label={t("ownerWhatsappLabel")}
+          hint={t("ownerWhatsappHint")}
         >
           <input
             type="tel"
@@ -147,28 +141,20 @@ export function ConfigForm({
           />
         </Field>
         <p className="rounded-xl bg-[var(--color-muted)]/60 px-4 py-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
-          La cliente reçoit aussi un récap si Twilio détecte qu&apos;elle accepte les
-          messages WhatsApp depuis son numéro d&apos;appel. Configure
-          <code className="mx-1 rounded bg-white/60 px-1.5 py-0.5 font-mono">TWILIO_WHATSAPP_FROM</code>
-          côté Railway pour activer l&apos;envoi.
+          {t("whatsappFooter")}
         </p>
       </Card>
 
       {/* Voice config */}
       <Card
-        title="Voix"
+        title={t("voiceTitle")}
         subtitle={
-          isAdmin
-            ? "Paramètres techniques du moteur vocal. Visible admin uniquement."
-            : "Choisis la voix de ton agent et sa vitesse de parole."
+          isAdmin ? t("voiceSubtitleAdmin") : t("voiceSubtitleUser")
         }
       >
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {isAdmin && (
-            <Field
-              label="Modèle"
-              hint="Visible uniquement pour l'admin · sert au testing cross-modèles."
-            >
+            <Field label={t("modelLabel")} hint={t("modelHint")}>
               <select
                 value={form.model}
                 onChange={(e) => update("model", e.target.value)}
@@ -184,7 +170,7 @@ export function ConfigForm({
             </Field>
           )}
 
-          <Field label="Voix">
+          <Field label={t("voiceLabel")}>
             <select
               value={form.voice}
               onChange={(e) => update("voice", e.target.value)}
@@ -199,32 +185,32 @@ export function ConfigForm({
           </Field>
 
           <Slider
-            label="Vitesse de parole"
+            label={t("speedLabel")}
             value={form.speed}
             min={0.5}
             max={1.5}
             step={0.05}
             onChange={(v) => update("speed", v)}
-            hint="1.0 = naturel · 1.2 = plus rapide"
+            hint={t("speedHint")}
             display={form.speed.toFixed(2) + "×"}
           />
 
           {isAdmin && (
             <>
               <Slider
-                label="Température"
+                label={t("temperatureLabel")}
                 value={form.temperature}
                 min={0}
                 max={1.2}
                 step={0.05}
                 onChange={(v) => update("temperature", v)}
-                hint="0 = déterministe · 1 = très créatif (admin)"
+                hint={t("temperatureHint")}
                 display={form.temperature.toFixed(2)}
               />
 
               <Field
-                label="Max tokens / réponse"
-                hint="Hint via prompt — 220 ≈ 1 ou 2 phrases courtes (admin)"
+                label={t("maxTokensLabel")}
+                hint={t("maxTokensHint")}
               >
                 <input
                   type="number"
@@ -264,15 +250,15 @@ export function ConfigForm({
               </span>
             ) : dirty ? (
               <span className="text-[var(--color-warning)]">
-                Modifications non sauvegardées
+                {t("unsavedChanges")}
               </span>
             ) : savedAt ? (
               <span className="text-[var(--color-success)]">
-                Sauvegardé à {savedAt}
+                {t("savedAt", { time: savedAt })}
               </span>
             ) : (
               <span className="text-[var(--color-muted-foreground)]">
-                À jour
+                {t("upToDate")}
               </span>
             )}
           </div>
@@ -281,7 +267,7 @@ export function ConfigForm({
             disabled={isPending || !dirty}
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isPending ? "Sauvegarde…" : "Sauvegarder"}
+            {isPending ? t("saving") : t("saveButton")}
           </button>
         </div>
       </div>

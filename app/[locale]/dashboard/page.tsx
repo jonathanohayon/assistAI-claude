@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -7,9 +8,12 @@ import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 
 import { ConfigForm } from "./config-form";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await props.params;
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect(`/${locale}/login`);
 
   const [config] = await db
     .select()
@@ -34,19 +38,24 @@ export default async function DashboardPage() {
     .where(eq(phoneNumbers.userId, session.user.id))
     .limit(1);
 
+  const t = await getTranslations({ locale, namespace: "DashboardConfig" });
+
   if (!config) {
     return (
       <main className="mx-auto w-full max-w-5xl px-6 py-12">
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6 text-sm text-[var(--color-muted-foreground)]">
-          Aucune config trouvée. Lance{" "}
+          {t("noConfigPre")}{" "}
           <code className="rounded bg-[var(--color-muted)] px-1.5 py-0.5 font-mono text-xs">
             npm run db:seed
           </code>{" "}
-          pour initialiser ta secrétaire.
+          {t("noConfigPost")}
         </div>
       </main>
     );
   }
+
+  // Locale-aware date format. Map nos locales i18n vers BCP47.
+  const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
 
   return (
     <main>
@@ -60,19 +69,17 @@ export default async function DashboardPage() {
 
       <section className="mx-auto w-full max-w-5xl px-6 pt-10">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          Configuration
+          {t("header")}
         </p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          Donnez sa voix à votre secrétaire.
+          {t("pageTitle")}
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          Modifiez la persona, le ton et les paramètres techniques de l&apos;agent.
-          Les changements s&apos;appliquent au prochain appel — l&apos;agent recharge la
-          configuration en début de chaque session.
+          {t("pageSubtitle")}
         </p>
         <p className="mt-3 text-xs text-[var(--color-muted-foreground)]">
-          Dernière mise à jour ·{" "}
-          {new Date(config.updatedAt).toLocaleString("fr-FR", {
+          {t("lastUpdated")}{" "}
+          {new Date(config.updatedAt).toLocaleString(dateLocale, {
             dateStyle: "long",
             timeStyle: "short",
           })}

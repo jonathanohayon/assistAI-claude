@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 
 interface Calendar {
@@ -21,6 +22,7 @@ type LoadState =
 //     refresh token est mort → "expired"/"invalid_grant" → dashboard semble
 //     connecté mais rien ne marche).
 export function CalendarSettings({ initialSelectedId }: { initialSelectedId: string }) {
+  const t = useTranslations("DashboardCalendar");
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [saving, startSaving] = useTransition();
   const [savedToast, setSavedToast] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
       if (data.ok) {
         setState({ ...state, selectedId: calendarId });
         const picked = state.calendars.find((c) => c.id === calendarId);
-        setSavedToast(`✓ Calendrier "${picked?.summary ?? calendarId}" sélectionné`);
+        setSavedToast(t("calendarSelected", { name: picked?.summary ?? calendarId }));
         setTimeout(() => setSavedToast(null), 3000);
       }
     });
@@ -74,17 +76,15 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-[var(--color-foreground)]">
-            Calendrier utilisé par l'agent
+            {t("settingsTitle")}
           </h2>
           <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            Quand l'agent prend un RDV, il l'écrit dans ce calendrier-là. Tu
-            peux en sélectionner un autre — par exemple un calendrier dédié
-            "Salon" séparé de ton calendrier perso.
+            {t("settingsDesc")}
           </p>
 
           {state.status === "loading" && (
             <p className="mt-3 text-xs italic text-[var(--color-muted-foreground)]">
-              Chargement des calendriers…
+              {t("loadingCalendars")}
             </p>
           )}
 
@@ -99,13 +99,13 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
                 {state.calendars.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.summary}
-                    {c.primary ? " (principal)" : ""}
+                    {c.primary ? t("primarySuffix") : ""}
                   </option>
                 ))}
               </select>
               {saving && (
                 <span className="text-xs text-[var(--color-muted-foreground)]">
-                  Enregistrement…
+                  {t("saving")}
                 </span>
               )}
               {savedToast && (
@@ -116,15 +116,13 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
 
           {state.status === "invalid_grant" && (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Ta connexion Google a expiré. Clique sur "Reconnecter Google" à
-              droite pour la rétablir — sans ça l'agent ne pourra plus prendre
-              de RDV.
+              {t("errInvalidGrant")}
             </p>
           )}
 
           {state.status === "error" && (
             <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-              Impossible de récupérer la liste : {state.message}
+              {t("errFetchList", { message: state.message })}
             </p>
           )}
         </div>
@@ -132,9 +130,9 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
         <a
           href="/api/onboarding/google/start"
           className="shrink-0 rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-sm transition hover:bg-[var(--color-muted)]"
-          title="Re-lancer le flow OAuth Google (utile si le token a expiré)"
+          title={t("reconnectTooltip")}
         >
-          Reconnecter Google
+          {t("reconnectButton")}
         </a>
       </div>
       {/* initialSelectedId est passé pour SSR-render correct avant le fetch ;
