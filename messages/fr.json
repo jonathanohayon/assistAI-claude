@@ -183,7 +183,7 @@
       "popular": "Recommandé",
       "perMonth": "HT / mois",
       "monthlyHint": "Facturation mensuelle, sans engagement.",
-      "annualHint": "{total} € HT / an",
+      "annualHint": "{total} HT / an",
       "bestForLabel": "Idéal pour :",
       "cta": "Choisir cette formule",
       "ctaAria": "Choisir la formule {name}",

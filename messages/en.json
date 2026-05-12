@@ -183,7 +183,7 @@
       "popular": "Recommended",
       "perMonth": "ex. VAT / month",
       "monthlyHint": "Monthly billing, no commitment.",
-      "annualHint": "{total} € ex. VAT / year",
+      "annualHint": "{total} ex. VAT / year",
       "bestForLabel": "Best for:",
       "cta": "Choose this plan",
       "ctaAria": "Choose the {name} plan",
