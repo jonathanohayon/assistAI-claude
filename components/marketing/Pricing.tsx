@@ -7,6 +7,27 @@ import { useState } from "react";
 
 import { type Plan, PLANS, formatEuro } from "@/lib/plans";
 
+// Helpers locaux : pioche les variantes localisées (Plans namespace) avec
+// fallback sur les valeurs FR hardcodées dans lib/plans.ts si la clé n'a
+// pas (encore) été ajoutée à la locale. Évite un trou visuel si un dev
+// oublie de mettre à jour un fichier de locale en ajoutant une feature.
+function useLocalizedPlan(plan: Plan) {
+  const t = useTranslations("Plans");
+  const name = (() => {
+    try { return t(`${plan.key}.name`); } catch { return plan.name; }
+  })();
+  const tagline = (() => {
+    try { return t(`${plan.key}.tagline`); } catch { return plan.tagline; }
+  })();
+  const features = (() => {
+    try {
+      const raw = t.raw(`${plan.key}.features`);
+      return Array.isArray(raw) ? (raw as string[]) : plan.features;
+    } catch { return plan.features; }
+  })();
+  return { name, tagline, features };
+}
+
 type Billing = "monthly" | "annual";
 
 function BillingToggle({
@@ -81,6 +102,7 @@ function CheckIcon({ className }: { className?: string }) {
 
 function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
   const t = useTranslations("Pricing.card");
+  const localized = useLocalizedPlan(plan);
   const price = billing === "monthly" ? plan.monthly : plan.annualMonthly;
   const annualHint =
     billing === "annual"
@@ -117,10 +139,10 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
 
       <header>
         <h3 className="font-display text-xl text-[var(--color-foreground)]">
-          {plan.name}
+          {localized.name}
         </h3>
         <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          {plan.tagline}
+          {localized.tagline}
         </p>
       </header>
 
@@ -151,7 +173,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
       </div>
 
       <ul className="mt-6 space-y-3 border-t border-[var(--color-border)]/70 pt-6">
-        {plan.features.map((f) => (
+        {localized.features.map((f) => (
           <li
             key={f}
             className="flex items-start gap-3 text-sm leading-relaxed text-[var(--color-foreground)]"
@@ -171,7 +193,7 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
       <div className="mt-auto pt-7">
         <Link
           href={`/signup?plan=${plan.key}&billing=${billing}`}
-          aria-label={t("ctaAria", { name: plan.name })}
+          aria-label={t("ctaAria", { name: localized.name })}
           className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
         >
           {t("cta")}

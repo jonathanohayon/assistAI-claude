@@ -1,4 +1,50 @@
 {
+  "Plans": {
+    "whatsapp": {
+      "name": "WhatsApp",
+      "tagline": "The choice of most clinics.",
+      "features": [
+        "500 minutes of conversation / month",
+        "Natural bilingual voice FR / Hebrew",
+        "Voice-based appointment booking",
+        "Automatic WhatsApp confirmation",
+        "WhatsApp conversation summary"
+      ],
+      "onboardingNotes": [
+        "WhatsApp confirmations enabled: your clients will receive an automatic message after every appointment.",
+        "Add your owner WhatsApp number to receive call recaps."
+      ]
+    },
+    "global": {
+      "name": "Global",
+      "tagline": "To manage multiple branches.",
+      "features": [
+        "Everything in WhatsApp plan",
+        "500 minutes / month",
+        "Full Google Calendar (3 branches)",
+        "Google Sheet CRM provided & synced"
+      ],
+      "onboardingNotes": [
+        "Connect up to 3 separate branches / calendars.",
+        "The Google Sheet CRM will be created and shared with you during Google connection."
+      ]
+    },
+    "premium": {
+      "name": "Premium Enterprise",
+      "tagline": "No limits, custom configuration.",
+      "features": [
+        "gpt-realtime model (ultra-natural)",
+        "500 minutes / month",
+        "Full Calendar + CRM",
+        "WhatsApp + Summary + history",
+        "Custom configuration & dedicated support"
+      ],
+      "onboardingNotes": [
+        "Our team will contact you within 24h for custom configuration (persona, voice, workflows).",
+        "gpt-realtime model activated automatically after onboarding."
+      ]
+    }
+  },
   "Nav": {
     "links": {
       "industries": "Who it's for",

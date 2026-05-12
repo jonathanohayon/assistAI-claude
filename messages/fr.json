@@ -1,4 +1,50 @@
 {
+  "Plans": {
+    "whatsapp": {
+      "name": "WhatsApp",
+      "tagline": "Le choix de la majorité des centres.",
+      "features": [
+        "500 minutes de conversation / mois",
+        "Voix naturelle bilingue FR / Hébreu",
+        "Prise de rendez-vous vocale",
+        "Confirmation WhatsApp automatique",
+        "Résumé de conversation par WhatsApp"
+      ],
+      "onboardingNotes": [
+        "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",
+        "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels."
+      ]
+    },
+    "global": {
+      "name": "Globale",
+      "tagline": "Pour gérer plusieurs centres.",
+      "features": [
+        "Tout de la formule WhatsApp",
+        "500 minutes / mois",
+        "Agenda Google complet (3 centres)",
+        "CRM Google Sheet fourni & synchronisé"
+      ],
+      "onboardingNotes": [
+        "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
+        "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google."
+      ]
+    },
+    "premium": {
+      "name": "Premium Entreprise",
+      "tagline": "Sans limite, configuration sur mesure.",
+      "features": [
+        "Modèle gpt-realtime (ultra naturel)",
+        "500 minutes / mois",
+        "Agenda + CRM complet",
+        "WhatsApp + Résumé + historique",
+        "Configuration sur mesure & support dédié"
+      ],
+      "onboardingNotes": [
+        "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
+        "Modèle gpt-realtime activé automatiquement après l'onboarding."
+      ]
+    }
+  },
   "Nav": {
     "links": {
       "industries": "Pour qui",
