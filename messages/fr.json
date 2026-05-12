@@ -240,5 +240,31 @@
   },
   "LocaleSwitcher": {
     "label": "Langue"
+  },
+  "CurrencySwitcher": {
+    "label": "Devise"
+  },
+  "Signup": {
+    "formuleChoisie": "Formule choisie",
+    "recommendBadge": "★ Recommandé",
+    "pricePerMonth": "TTC / mois",
+    "annualDiscount": "−20% annuel",
+    "freeTrialNoticeStart": "24 h d'essai gratuit. Sans engagement, changeable depuis le dashboard.",
+    "comparePlans": "Comparer les formules",
+    "freeBadge": "24 h gratuites — sans CB",
+    "title": "Créer un compte",
+    "subtitle": "Donnez une voix à votre cabinet en 5 minutes. Aucun engagement.",
+    "errInvalid": "Email invalide ou mot de passe trop court (8 caractères min).",
+    "errExists": "Un compte existe déjà avec cet email.",
+    "planLabel": "Formule",
+    "displayNameLabel": "Nom du salon / cabinet",
+    "displayNamePlaceholder": "Salon Prestige",
+    "emailLabel": "Email",
+    "passwordLabel": "Mot de passe",
+    "passwordHint": "8 caractères minimum.",
+    "submitButton": "Créer mon compte",
+    "alreadyAccount": "Déjà un compte ?",
+    "loginLink": "Connexion",
+    "backHome": "← Retour"
   }
 }

@@ -240,5 +240,31 @@
   },
   "LocaleSwitcher": {
     "label": "שפה"
+  },
+  "CurrencySwitcher": {
+    "label": "מטבע"
+  },
+  "Signup": {
+    "formuleChoisie": "תוכנית נבחרת",
+    "recommendBadge": "★ מומלץ",
+    "pricePerMonth": "כולל מע״מ / חודש",
+    "annualDiscount": "−20% שנתי",
+    "freeTrialNoticeStart": "24 שעות ניסיון בחינם. ללא התחייבות, ניתן לשנות מהדאשבורד.",
+    "comparePlans": "השוואת תוכניות",
+    "freeBadge": "24 שעות חינם — ללא כרטיס אשראי",
+    "title": "פתיחת חשבון",
+    "subtitle": "תנו קול לעסק שלכם תוך 5 דקות. ללא התחייבות.",
+    "errInvalid": "אימייל לא תקין או סיסמה קצרה מדי (לפחות 8 תווים).",
+    "errExists": "כבר קיים חשבון עם האימייל הזה.",
+    "planLabel": "תוכנית",
+    "displayNameLabel": "שם העסק / המכון",
+    "displayNamePlaceholder": "סלון פרסטיז'",
+    "emailLabel": "אימייל",
+    "passwordLabel": "סיסמה",
+    "passwordHint": "מינימום 8 תווים.",
+    "submitButton": "פתיחת חשבון",
+    "alreadyAccount": "כבר יש לך חשבון?",
+    "loginLink": "התחברות",
+    "backHome": "→ חזרה"
   }
 }

@@ -240,5 +240,31 @@
   },
   "LocaleSwitcher": {
     "label": "Language"
+  },
+  "CurrencySwitcher": {
+    "label": "Currency"
+  },
+  "Signup": {
+    "formuleChoisie": "Selected plan",
+    "recommendBadge": "★ Recommended",
+    "pricePerMonth": "VAT incl. / month",
+    "annualDiscount": "−20% annual",
+    "freeTrialNoticeStart": "24h free trial. No commitment, switchable from the dashboard.",
+    "comparePlans": "Compare plans",
+    "freeBadge": "24h free — no credit card",
+    "title": "Create an account",
+    "subtitle": "Give your business a voice in 5 minutes. No commitment.",
+    "errInvalid": "Invalid email or password too short (8 characters min).",
+    "errExists": "An account already exists with this email.",
+    "planLabel": "Plan",
+    "displayNameLabel": "Business name",
+    "displayNamePlaceholder": "Prestige Salon",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "passwordHint": "8 characters minimum.",
+    "submitButton": "Create my account",
+    "alreadyAccount": "Already have an account?",
+    "loginLink": "Sign in",
+    "backHome": "← Back"
   }
 }

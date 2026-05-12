@@ -2,9 +2,9 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { Link } from "@/i18n/navigation";
 import { type Plan, PLANS } from "@/lib/plans";
 
 type Currency = "EUR" | "USD" | "ILS";

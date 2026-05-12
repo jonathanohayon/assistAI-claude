@@ -2,10 +2,10 @@
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
+import { Link } from "@/i18n/navigation";
 
 import { LocaleSwitcher } from "./LocaleSwitcher";
 

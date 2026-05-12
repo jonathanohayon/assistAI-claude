@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
+import { Link } from "@/i18n/navigation";
 import {
   type Plan,
   type PlanKey,
@@ -18,11 +19,6 @@ interface SignupContentProps {
   handleSignup: (formData: FormData) => Promise<void>;
 }
 
-const ERROR_MSG: Record<string, string> = {
-  invalid: "Email invalide ou mot de passe trop court (8 caractères min).",
-  exists: "Un compte existe déjà avec cet email.",
-};
-
 /**
  * Page signup full-client : le state de la formule sélectionnée est partagé
  * entre la card recap (gauche) et le picker (droite). Quand l'user change
@@ -36,12 +32,44 @@ export function SignupContent({
   error,
   handleSignup,
 }: SignupContentProps) {
+  const t = useTranslations("Signup");
+  const tPlans = useTranslations("Plans");
   const [selectedKey, setSelectedKey] = useState<PlanKey>(initialPlanKey);
   const selectedPlan: Plan = planByKey(selectedKey);
   const monthlyPrice =
     billingMode === "annual"
       ? selectedPlan.annualMonthly
       : selectedPlan.monthly;
+
+  // Lit la copy localisée des plans depuis messages/Plans.* (déjà i18n par
+  // un précédent commit aa95b40). Fallback sur le hardcoded FR de
+  // lib/plans.ts si la clé manque pour éviter d'exploser au runtime.
+  const planName = (key: string, fallback: string) => {
+    try {
+      return tPlans(`${key}.name`);
+    } catch {
+      return fallback;
+    }
+  };
+  const planTagline = (key: string, fallback: string) => {
+    try {
+      return tPlans(`${key}.tagline`);
+    } catch {
+      return fallback;
+    }
+  };
+  const planFeatures = (plan: Plan): string[] => {
+    try {
+      return tPlans.raw(`${plan.key}.features`) as string[];
+    } catch {
+      return plan.features;
+    }
+  };
+
+  const errorMessages: Record<string, string> = {
+    invalid: t("errInvalid"),
+    exists: t("errExists"),
+  };
 
   return (
     <div className="grid w-full max-w-4xl gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-8">
@@ -55,7 +83,7 @@ export function SignupContent({
             {selectedPlan.key === "whatsapp" && (
               <span
                 aria-label="WhatsApp"
-                title="Notifications WhatsApp incluses"
+                title="WhatsApp"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm"
               >
                 <svg
@@ -71,18 +99,18 @@ export function SignupContent({
           </div>
 
           <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            Formule choisie
+            {t("formuleChoisie")}
           </p>
           <h2 className="mt-2 font-display text-2xl tracking-tight text-[var(--color-foreground)]">
-            {selectedPlan.name}
+            {planName(selectedPlan.key, selectedPlan.name)}
             {selectedPlan.popular && (
               <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#d4a574] to-[#b8864e] px-2 py-0.5 align-middle text-[10px] font-semibold tracking-wide text-white">
-                ★ Recommandé
+                {t("recommendBadge")}
               </span>
             )}
           </h2>
           <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-            {selectedPlan.tagline}
+            {planTagline(selectedPlan.key, selectedPlan.tagline)}
           </p>
 
           <div className="mt-5 flex items-baseline gap-1.5">
@@ -90,17 +118,17 @@ export function SignupContent({
               {monthlyPrice} €
             </span>
             <span className="text-sm text-[var(--color-muted-foreground)]">
-              TTC / mois
+              {t("pricePerMonth")}
             </span>
             {billingMode === "annual" && (
               <span className="ml-2 rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#b45309]">
-                −20% annuel
+                {t("annualDiscount")}
               </span>
             )}
           </div>
 
           <ul className="mt-6 space-y-2.5 border-t border-[var(--color-border)]/70 pt-5">
-            {selectedPlan.features.map((f) => (
+            {planFeatures(selectedPlan).map((f) => (
               <li
                 key={f}
                 className="flex items-start gap-2.5 text-sm text-[var(--color-foreground)]"
@@ -131,13 +159,12 @@ export function SignupContent({
           </ul>
 
           <p className="mt-5 rounded-xl bg-[var(--color-muted)] px-3 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-            24 h d&apos;essai gratuit. Sans engagement, changeable depuis le
-            dashboard.{" "}
+            {t("freeTrialNoticeStart")}{" "}
             <Link
               href="/#pricing"
               className="underline underline-offset-2 hover:text-[var(--color-foreground)]"
             >
-              Comparer les formules
+              {t("comparePlans")}
             </Link>
             .
           </p>
@@ -162,28 +189,28 @@ export function SignupContent({
                   strokeLinejoin="round"
                 />
               </svg>
-              24 h gratuites — sans CB
+              {t("freeBadge")}
             </span>
             <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
-              Créer un compte
+              {t("title")}
             </h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              Donnez une voix à votre cabinet en 5 minutes. Aucun engagement.
+              {t("subtitle")}
             </p>
           </div>
 
-          {error && ERROR_MSG[error] && (
+          {error && errorMessages[error] && (
             <p
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
             >
-              {ERROR_MSG[error]}
+              {errorMessages[error]}
             </p>
           )}
 
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="font-medium text-[var(--color-foreground)]">
-              Formule
+              {t("planLabel")}
             </legend>
             <div className="grid grid-cols-2 gap-2">
               {PLANS.map((p) => (
@@ -201,7 +228,7 @@ export function SignupContent({
                   />
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-[var(--color-foreground)]">
-                      {p.name}
+                      {planName(p.key, p.name)}
                     </span>
                     {p.popular && (
                       <span className="rounded-full bg-gradient-to-br from-[#d4a574] to-[#b8864e] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-white">
@@ -210,7 +237,7 @@ export function SignupContent({
                     )}
                   </div>
                   <div className="mt-0.5 text-[11px] text-[var(--color-muted-foreground)]">
-                    {p.monthly} € / mois
+                    {p.monthly} €
                   </div>
                 </label>
               ))}
@@ -219,20 +246,20 @@ export function SignupContent({
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-foreground)]">
-              Nom du salon / cabinet
+              {t("displayNameLabel")}
             </span>
             <input
               name="displayName"
               type="text"
               required
-              placeholder="Salon Prestige"
+              placeholder={t("displayNamePlaceholder")}
               className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
             />
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-foreground)]">
-              Email
+              {t("emailLabel")}
             </span>
             <input
               name="email"
@@ -245,7 +272,7 @@ export function SignupContent({
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-foreground)]">
-              Mot de passe
+              {t("passwordLabel")}
             </span>
             <input
               name="password"
@@ -256,7 +283,7 @@ export function SignupContent({
               className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
             />
             <span className="text-xs text-[var(--color-muted-foreground)]">
-              8 caractères minimum.
+              {t("passwordHint")}
             </span>
           </label>
 
@@ -264,7 +291,7 @@ export function SignupContent({
             type="submit"
             className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
           >
-            Créer mon compte
+            {t("submitButton")}
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
               <path
                 d="M5 12h14M13 5l7 7-7 7"
@@ -277,19 +304,19 @@ export function SignupContent({
           </button>
 
           <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-            Déjà un compte ?{" "}
+            {t("alreadyAccount")}{" "}
             <Link
               href="/login"
               className="text-[var(--color-primary)] hover:underline"
             >
-              Connexion
+              {t("loginLink")}
             </Link>
           </p>
         </form>
 
         <p className="mt-6 text-center text-xs text-[var(--color-muted-foreground)]">
           <Link href="/" className="hover:text-[var(--color-foreground)]">
-            ← Retour
+            {t("backHome")}
           </Link>
         </p>
       </div>
