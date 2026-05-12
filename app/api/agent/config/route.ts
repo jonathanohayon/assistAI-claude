@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/logger";
+import {
+  featuresForPlan,
+  getPlanFeatureMatrix,
+} from "@/lib/plan-features";
 import { getGlobalInstructions } from "@/lib/settings";
 import {
   resolveDefaultTenant,
@@ -42,6 +46,11 @@ export async function GET(req: NextRequest) {
 
   const { config } = tenant;
   const globalInstructions = await getGlobalInstructions();
+  // Features activées pour le plan de ce tenant (matrice admin). Le worker
+  // utilise cette map pour décider quels tools enregistrer (cf. recent
+  // session : règles métier déterministes côté tools, pas dans le prompt).
+  const planMatrix = await getPlanFeatureMatrix();
+  const features = featuresForPlan(planMatrix, tenant.user.subscriptionPlan);
 
   const langLabel: Record<string, string> = {
     fr: "français",
@@ -65,6 +74,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ...runtime,
     instructions: mergedInstructions,
+    features,
     updatedAt,
   });
 }

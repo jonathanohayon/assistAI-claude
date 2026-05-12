@@ -11,6 +11,8 @@ export const SETTING_KEYS = {
   // Default persona seeded into a new tenant's agent_config at signup time.
   // Empty → fall back to the hard-coded INITIAL_INSTRUCTIONS in lib/initial-config.
   ONBOARDING_TEMPLATE: "onboarding_persona_template",
+  // JSON map plan → feature flags (Calendar, CRM, etc.). Voir lib/plan-features.ts.
+  PLAN_FEATURES: "plan_features",
 } as const;
 
 export async function getSetting(key: string): Promise<string | null> {

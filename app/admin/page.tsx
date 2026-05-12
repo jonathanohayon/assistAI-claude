@@ -7,6 +7,7 @@ import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
+import { getPlanFeatureMatrix } from "@/lib/plan-features";
 import {
   getGlobalInstructions,
   getOnboardingTemplate,
@@ -14,6 +15,7 @@ import {
 
 import { AdminTable } from "./admin-table";
 import { GlobalInstructionsForm } from "./global-instructions-form";
+import { PlanFeaturesForm } from "./plan-features-form";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -34,6 +36,7 @@ export default async function AdminPage() {
   const allNumbers = await db.select().from(phoneNumbers);
   const globalInstructions = await getGlobalInstructions();
   const onboardingTemplate = await getOnboardingTemplate();
+  const planFeatures = await getPlanFeatureMatrix();
 
   // Group numbers per user.
   const byUser = new Map<string, typeof allNumbers>();
@@ -132,6 +135,9 @@ export default async function AdminPage() {
             initialGlobal={globalInstructions}
             initialTemplate={onboardingTemplate}
           />
+          <div className="mt-6">
+            <PlanFeaturesForm initialMatrix={planFeatures} />
+          </div>
         </div>
       </section>
 

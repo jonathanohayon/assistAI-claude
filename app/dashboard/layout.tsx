@@ -7,6 +7,10 @@ import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import {
+  featuresForPlan,
+  getPlanFeatureMatrix,
+} from "@/lib/plan-features";
 
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
@@ -67,6 +71,10 @@ export default async function DashboardLayout({
   })();
 
   const googleConnected = Boolean(me?.googleRefreshToken);
+  // Matrice plan × feature (éditable depuis /admin) → drive la visibilité
+  // des onglets. Admin = toutes features (cf. bypass dans DashboardTabs).
+  const planMatrix = await getPlanFeatureMatrix();
+  const features = featuresForPlan(planMatrix, me?.subscriptionPlan);
 
   async function handleLogout() {
     "use server";
@@ -191,15 +199,7 @@ export default async function DashboardLayout({
         </div>
       )}
 
-      <DashboardTabs
-        subscriptionPlan={
-          (me?.subscriptionPlan ?? "whatsapp") as
-            | "whatsapp"
-            | "global"
-            | "premium"
-        }
-        isAdmin={me?.role === "admin"}
-      />
+      <DashboardTabs features={features} isAdmin={me?.role === "admin"} />
 
       {children}
     </div>

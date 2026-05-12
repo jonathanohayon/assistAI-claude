@@ -6,6 +6,11 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import {
+  getPlanFeatureMatrix,
+  setPlanFeatureMatrix,
+  type PlanFeatureMatrix,
+} from "@/lib/plan-features";
+import {
   SETTING_KEYS,
   getSetting,
   setSetting,
@@ -31,7 +36,12 @@ export async function GET() {
     (await getSetting(SETTING_KEYS.GLOBAL_INSTRUCTIONS)) ?? "";
   const onboardingTemplate =
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
-  return NextResponse.json({ globalInstructions, onboardingTemplate });
+  const planFeatures = await getPlanFeatureMatrix();
+  return NextResponse.json({
+    globalInstructions,
+    onboardingTemplate,
+    planFeatures,
+  });
 }
 
 // PUT — update one or more settings.
@@ -42,6 +52,7 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     globalInstructions?: string;
     onboardingTemplate?: string;
+    planFeatures?: PlanFeatureMatrix;
   };
 
   const changed: string[] = [];
@@ -59,6 +70,11 @@ export async function PUT(req: NextRequest) {
       body.onboardingTemplate,
     );
     changed.push("onboarding_persona_template");
+  }
+  if (body.planFeatures && typeof body.planFeatures === "object") {
+    // Le helper normalise les clés inconnues + fillna les manquantes.
+    await setPlanFeatureMatrix(body.planFeatures);
+    changed.push("plan_features");
   }
 
   if (changed.length > 0) {

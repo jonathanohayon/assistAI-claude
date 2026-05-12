@@ -3,35 +3,38 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import type { FeatureKey, PlanFeatures } from "@/lib/plan-features";
+
 interface Tab {
   href: string;
   label: string;
-  /** Si défini, l'onglet n'apparaît que pour les plans listés. Onglets
-   *  Calendrier/Contacts dépendent du Google Calendar perso = Globale+ */
-  plansOnly?: ReadonlyArray<"whatsapp" | "global" | "premium">;
+  // Si défini, l'onglet n'apparaît que si la feature est activée pour le
+  // plan du tenant (matrice admin éditable). Sans gate = toujours visible.
+  feature?: FeatureKey;
 }
 
 const TABS: ReadonlyArray<Tab> = [
   { href: "/dashboard", label: "Configuration" },
-  { href: "/dashboard/calendar", label: "Calendrier", plansOnly: ["global", "premium"] },
-  { href: "/dashboard/contacts", label: "Contacts", plansOnly: ["global", "premium"] },
+  { href: "/dashboard/calendar", label: "Calendrier", feature: "calendar" },
+  { href: "/dashboard/contacts", label: "Contacts", feature: "crm" },
   { href: "/dashboard/billing", label: "Abonnement" },
   { href: "/dashboard/logs", label: "Logs" },
 ];
 
 export function DashboardTabs({
-  subscriptionPlan,
+  features,
   isAdmin = false,
 }: {
-  subscriptionPlan: "whatsapp" | "global" | "premium";
+  features: PlanFeatures;
   // Admins voient TOUS les onglets indépendamment de leur plan DB (ils
   // n'en ont pas de "vrai" — le seed pose "essential" par défaut qui ne
-  // matche aucun PlanKey). Sans ce bypass, le filtre cache Calendrier/CRM.
+  // matche aucun PlanKey). Sans ce bypass, certains onglets seraient
+  // masqués selon la matrice côté admin.
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const visibleTabs = TABS.filter(
-    (t) => isAdmin || !t.plansOnly || t.plansOnly.includes(subscriptionPlan),
+    (t) => isAdmin || !t.feature || features[t.feature],
   );
   return (
     <nav className="mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">
