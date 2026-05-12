@@ -72,8 +72,13 @@ export default async function DashboardLayout({
 
   async function handleLogout() {
     "use server";
+    // signOut({ redirectTo }) est ignoré en server action (bug NextAuth v5
+    // avec form action). On utilise redirect: false + redirect() Next pour
+    // forcer la destination. Sortie = la home page localisée (et pas /login
+    // qui forcerait le user à se reconnecter alors qu'il a explicitement
+    // demandé à se déconnecter — il vient de cliquer "Se déconnecter").
     await signOut({ redirect: false });
-    redirect("/login");
+    redirect(`/${locale}`);
   }
 
   return (

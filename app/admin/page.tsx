@@ -60,7 +60,7 @@ export default async function AdminPage() {
   async function handleLogout() {
     "use server";
     await signOut({ redirect: false });
-    redirect("/login");
+    redirect("/");
   }
 
   return (

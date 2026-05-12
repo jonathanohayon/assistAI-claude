@@ -63,7 +63,7 @@ export default async function AdminTenantPage({
   async function handleLogout() {
     "use server";
     await signOut({ redirect: false });
-    redirect("/login");
+    redirect("/");
   }
 
   const voices = cfg ? voicesFor(cfg.model) : [];
