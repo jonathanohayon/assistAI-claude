@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 
-const PLACEHOLDER_GLOBAL = `# Règles transverses appliquées à tous les tenants
+import { PLANS, type PlanKey } from "@/lib/plans";
+
+const PLACEHOLDER_GLOBAL = `# Règles transverses appliquées à chaque appel pour ce plan
 
 Ton :
 - Empathique et chaleureuse
@@ -22,13 +24,15 @@ Le tenant pourra personnaliser depuis son dashboard. Laisse vide pour
 utiliser le persona Johana de fallback.`;
 
 export function GlobalInstructionsForm({
-  initialGlobal,
+  initialGlobalByPlan,
   initialTemplate,
 }: {
-  initialGlobal: string;
+  initialGlobalByPlan: Record<PlanKey, string>;
   initialTemplate: string;
 }) {
-  const [globalText, setGlobalText] = useState(initialGlobal);
+  const [globalByPlan, setGlobalByPlan] =
+    useState<Record<PlanKey, string>>(initialGlobalByPlan);
+  const [activePlan, setActivePlan] = useState<PlanKey>(PLANS[0].key);
   const [templateText, setTemplateText] = useState(initialTemplate);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +47,7 @@ export function GlobalInstructionsForm({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          globalInstructions: globalText,
+          globalInstructionsByPlan: globalByPlan,
           onboardingTemplate: templateText,
         }),
       });
@@ -59,7 +63,7 @@ export function GlobalInstructionsForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Global system rules — applied at runtime to every tenant */}
+      {/* Global system rules — applied at runtime to every tenant, per plan */}
       <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -67,7 +71,7 @@ export function GlobalInstructionsForm({
               1 · Règles communes appliquées à chaque appel
             </p>
             <h3 className="mt-1 font-display text-base text-[var(--color-foreground)]">
-              Préfixe du système
+              Préfixe du système · par plan
             </h3>
           </div>
           <span className="whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
@@ -75,15 +79,48 @@ export function GlobalInstructionsForm({
           </span>
         </div>
         <p className="mb-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
-          Ce texte est <strong>collé devant la persona de chaque tenant</strong>{" "}
-          au début de chaque appel. Idéal pour : ton général, anti-silence,
-          format de réponse, règles légales. Modifié → s&apos;applique
-          immédiatement à tout le monde.
+          Ce texte est <strong>collé devant la persona du tenant</strong> au
+          début de chaque appel, selon son plan. Idéal pour : ton général,
+          anti-silence, format de réponse, règles légales spécifiques à un
+          niveau d&apos;abonnement. Sauvegarde → s&apos;applique immédiatement.
         </p>
+
+        {/* Plan tabs */}
+        <div className="mb-3 inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-1">
+          {PLANS.map((p) => {
+            const active = activePlan === p.key;
+            const planDirty =
+              globalByPlan[p.key] !== initialGlobalByPlan[p.key];
+            return (
+              <button
+                type="button"
+                key={p.key}
+                onClick={() => setActivePlan(p.key)}
+                className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-white text-[var(--color-foreground)] shadow-sm ring-1 ring-[var(--color-border)]"
+                    : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                }`}
+              >
+                {p.name}
+                {planDirty && (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <textarea
-          value={globalText}
+          value={globalByPlan[activePlan] ?? ""}
           onChange={(e) => {
-            setGlobalText(e.target.value);
+            setGlobalByPlan((prev) => ({
+              ...prev,
+              [activePlan]: e.target.value,
+            }));
             setDirty(true);
           }}
           rows={14}

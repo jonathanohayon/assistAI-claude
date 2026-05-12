@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { logEvent } from "@/lib/logger";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
-import { getGlobalInstructions } from "@/lib/settings";
+import { PLANS, type PlanKey } from "@/lib/plans";
+import { getGlobalInstructionsByPlan } from "@/lib/settings";
 import {
   resolveDefaultTenant,
   resolveTenantByPhone,
@@ -43,7 +44,17 @@ export async function GET(req: NextRequest) {
   });
 
   const { config } = tenant;
-  const globalInstructions = await getGlobalInstructions();
+  // Préfixe global per-plan : permet d'avoir des règles transverses
+  // différentes selon Basique / Globale / Premium (ex. ton commercial
+  // différent, mentions légales spécifiques). Fallback sur le préfixe du
+  // plan whatsapp/Basique si plan inconnu (ex. legacy admin "essential").
+  const globalByPlan = await getGlobalInstructionsByPlan();
+  const planKey: PlanKey =
+    tenant.user.subscriptionPlan &&
+    PLANS.some((p) => p.key === tenant.user.subscriptionPlan)
+      ? (tenant.user.subscriptionPlan as PlanKey)
+      : PLANS[0].key;
+  const globalInstructions = globalByPlan[planKey] ?? "";
   // Features activées pour le plan de ce tenant (matrice admin). Le worker
   // utilise cette map pour décider quels tools enregistrer (cf. recent
   // session : règles métier déterministes côté tools, pas dans le prompt).

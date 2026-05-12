@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
-  getGlobalInstructions,
+  getGlobalInstructionsByPlan,
   getOnboardingTemplate,
 } from "@/lib/settings";
 
@@ -34,7 +34,7 @@ export default async function AdminPage() {
     .from(users)
     .orderBy(users.createdAt);
   const allNumbers = await db.select().from(phoneNumbers);
-  const globalInstructions = await getGlobalInstructions();
+  const globalInstructionsByPlan = await getGlobalInstructionsByPlan();
   const onboardingTemplate = await getOnboardingTemplate();
   const planFeatures = await getPlanFeatureMatrix();
 
@@ -132,7 +132,7 @@ export default async function AdminPage() {
             </div>
           </div>
           <GlobalInstructionsForm
-            initialGlobal={globalInstructions}
+            initialGlobalByPlan={globalInstructionsByPlan}
             initialTemplate={onboardingTemplate}
           />
           <div className="mt-6">

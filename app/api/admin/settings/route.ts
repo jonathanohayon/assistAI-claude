@@ -12,8 +12,11 @@ import {
 } from "@/lib/plan-features-storage";
 import {
   SETTING_KEYS,
+  getGlobalInstructionsByPlan,
   getSetting,
+  setGlobalInstructionsByPlan,
   setSetting,
+  type GlobalInstructionsByPlan,
 } from "@/lib/settings";
 
 const requireAdmin = async () => {
@@ -34,11 +37,13 @@ export async function GET() {
 
   const globalInstructions =
     (await getSetting(SETTING_KEYS.GLOBAL_INSTRUCTIONS)) ?? "";
+  const globalInstructionsByPlan = await getGlobalInstructionsByPlan();
   const onboardingTemplate =
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
   const planFeatures = await getPlanFeatureMatrix();
   return NextResponse.json({
     globalInstructions,
+    globalInstructionsByPlan,
     onboardingTemplate,
     planFeatures,
   });
@@ -51,6 +56,7 @@ export async function PUT(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) as {
     globalInstructions?: string;
+    globalInstructionsByPlan?: Partial<GlobalInstructionsByPlan>;
     onboardingTemplate?: string;
     planFeatures?: PlanFeatureMatrix;
   };
@@ -63,6 +69,13 @@ export async function PUT(req: NextRequest) {
       body.globalInstructions,
     );
     changed.push("global_instructions");
+  }
+  if (
+    body.globalInstructionsByPlan &&
+    typeof body.globalInstructionsByPlan === "object"
+  ) {
+    await setGlobalInstructionsByPlan(body.globalInstructionsByPlan);
+    changed.push("global_instructions_by_plan");
   }
   if (typeof body.onboardingTemplate === "string") {
     await setSetting(
