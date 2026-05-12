@@ -14,6 +14,7 @@ import {
 import { logEvent } from "@/lib/logger";
 import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
 import { getOnboardingTemplate } from "@/lib/settings";
+import { computeTrialEndsAt } from "@/lib/trial";
 import { createEmailVerification } from "@/lib/verify-code";
 
 import { SignupContent } from "./signup-content";
@@ -63,9 +64,8 @@ export default async function SignupPage(props: {
     }
 
     const hash = await bcrypt.hash(password, 12);
-    // 7-day free trial starts at signup. Onboarding may bump trialEndsAt
-    // again if the user takes a few days to provision their number.
-    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Free trial démarre au signup, durée définie dans lib/trial.ts.
+    const trialEndsAt = computeTrialEndsAt();
 
     const [created] = await db
       .insert(users)

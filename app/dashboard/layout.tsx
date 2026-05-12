@@ -48,12 +48,22 @@ export default async function DashboardLayout({
   }
 
   // Trial countdown — shown as a banner above the tabs.
-  const trialDaysLeft = (() => {
+  // Trial dure 1 jour (cf. lib/trial.ts), donc on affiche heures+minutes
+  // au lieu de "X jours". Retourne { label, urgency } pour piloter à la
+  // fois le texte et la couleur du banner.
+  const trial = (() => {
     if (!me?.trialEndsAt) return null;
     if (me.subscriptionStatus !== "trialing") return null;
     const ms = new Date(me.trialEndsAt).getTime() - Date.now();
-    if (ms <= 0) return 0;
-    return Math.ceil(ms / (24 * 60 * 60 * 1000));
+    if (ms <= 0) return { label: "expired" as const, urgency: "critical" as const };
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const label = hours > 0 ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}` : `${minutes} min`;
+    // 2h restantes ou moins → critical (matche la fenêtre warning email)
+    const urgency =
+      ms <= 2 * 60 * 60 * 1000 ? ("critical" as const) : ("normal" as const);
+    return { label, urgency };
   })();
 
   const googleConnected = Boolean(me?.googleRefreshToken);
@@ -140,41 +150,43 @@ export default async function DashboardLayout({
         </div>
       )}
 
-      {trialDaysLeft != null && (
+      {trial != null && (
         <div
           className={`mx-auto w-full max-w-5xl px-6 pt-4 ${
-            trialDaysLeft <= 0
-              ? "text-red-700"
-              : trialDaysLeft <= 2
-              ? "text-amber-700"
+            trial.urgency === "critical"
+              ? trial.label === "expired"
+                ? "text-red-700"
+                : "text-amber-700"
               : "text-[var(--color-muted-foreground)]"
           }`}
         >
           <div
             className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2 text-xs sm:text-sm ${
-              trialDaysLeft <= 0
-                ? "border-red-200 bg-red-50"
-                : trialDaysLeft <= 2
-                ? "border-amber-200 bg-amber-50"
+              trial.urgency === "critical"
+                ? trial.label === "expired"
+                  ? "border-red-200 bg-red-50"
+                  : "border-amber-200 bg-amber-50"
                 : "border-[var(--color-border)] bg-white"
             }`}
           >
             <span>
-              {trialDaysLeft <= 0 ? (
-                <>Votre essai est terminé. Activez un plan pour continuer.</>
+              {trial.label === "expired" ? (
+                <>Votre essai est terminé. Votre compte va être supprimé sous peu.</>
               ) : (
                 <>
-                  Essai gratuit · <strong>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
+                  Essai gratuit · <strong>{trial.label} restant{trial.label.includes("h") ? "es" : ""}</strong>
+                  {trial.urgency === "critical" && (
+                    <> · compte supprimé à expiration</>
+                  )}
                 </>
               )}
             </span>
-            <button
-              disabled
-              className="rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white opacity-60"
-              title="Bientôt disponible"
+            <Link
+              href="/dashboard/billing"
+              className="rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white hover:bg-[var(--color-primary)]"
             >
               Souscrire
-            </button>
+            </Link>
           </div>
         </div>
       )}
@@ -186,6 +198,7 @@ export default async function DashboardLayout({
             | "global"
             | "premium"
         }
+        isAdmin={me?.role === "admin"}
       />
 
       {children}

@@ -21,12 +21,17 @@ const TABS: ReadonlyArray<Tab> = [
 
 export function DashboardTabs({
   subscriptionPlan,
+  isAdmin = false,
 }: {
   subscriptionPlan: "whatsapp" | "global" | "premium";
+  // Admins voient TOUS les onglets indépendamment de leur plan DB (ils
+  // n'en ont pas de "vrai" — le seed pose "essential" par défaut qui ne
+  // matche aucun PlanKey). Sans ce bypass, le filtre cache Calendrier/CRM.
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const visibleTabs = TABS.filter(
-    (t) => !t.plansOnly || t.plansOnly.includes(subscriptionPlan),
+    (t) => isAdmin || !t.plansOnly || t.plansOnly.includes(subscriptionPlan),
   );
   return (
     <nav className="mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">

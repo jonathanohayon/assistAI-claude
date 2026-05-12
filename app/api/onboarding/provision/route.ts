@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { addNumberToTrunk } from "@/lib/livekit-sip";
 import { logEvent } from "@/lib/logger";
+import { computeTrialEndsAt } from "@/lib/trial";
 import {
   purchaseNumber,
   releaseNumber,
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
       await db
         .update(users)
         .set({
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          trialEndsAt: computeTrialEndsAt(),
           subscriptionStatus: "trialing",
         })
         .where(eq(users.id, session.user.id));

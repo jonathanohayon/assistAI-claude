@@ -23,13 +23,18 @@ export const users = pgTable("users", {
   displayName: text("display_name").notNull().default(""),
 
   // Subscription state — drives trial gating & dashboard banners.
-  // 'trialing' (default for new signups, 7 days), 'active' (paid),
-  // 'expired' (trial ended without subscribing), 'cancelled' (was active).
+  // 'trialing' (default for new signups, durée définie par lib/trial.ts),
+  // 'active' (paid), 'expired' (trial ended without subscribing),
+  // 'cancelled' (was active).
   subscriptionStatus: text("subscription_status").notNull().default("trialing"),
   // Chosen plan key — see lib/plans.ts. Captured at signup (?plan=…) and
   // updatable from /dashboard/billing.
   subscriptionPlan: text("subscription_plan").notNull().default("essential"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // Stamp posé par le cron trial-cleanup quand l'email d'alerte 2h-avant
+  // a été envoyé, pour idempotence (un seul warning par trial). Reste null
+  // tant que pas envoyé OU si le user upgrade avant la fenêtre warning.
+  trialWarningSentAt: timestamp("trial_warning_sent_at", { withTimezone: true }),
 
   // Per-tenant Google integration. When refresh_token is null the agent
   // tools fall back to the global Google credentials in env. Calendar +
