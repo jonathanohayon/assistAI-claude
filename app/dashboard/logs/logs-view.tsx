@@ -225,32 +225,36 @@ export function LogsView() {
               const hasMetadata =
                 l.metadata && Object.keys(l.metadata).length > 0;
               return (
-                <li key={l.id} className="px-4 py-3 hover:bg-[var(--color-muted)]/30">
+                <li key={l.id} className="px-3 py-3 hover:bg-[var(--color-muted)]/30 sm:px-4">
                   <button
                     onClick={() => hasMetadata && toggleExpand(l.id)}
                     disabled={!hasMetadata}
-                    className="flex w-full items-start gap-3 text-left disabled:cursor-default"
+                    className="flex w-full flex-col gap-1.5 text-left disabled:cursor-default sm:flex-row sm:items-start sm:gap-3"
                   >
-                    <span className="whitespace-nowrap font-mono text-[10px] text-[var(--color-muted-foreground)]">
-                      {new Date(l.createdAt).toLocaleTimeString("fr-FR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </span>
+                    {/* Header row : timestamp + source + event sur 1 ligne sur
+                        mobile, fait partie du flex row sur sm+. */}
+                    <div className="flex items-center gap-2 sm:contents">
+                      <span className="whitespace-nowrap font-mono text-[10px] text-[var(--color-muted-foreground)]">
+                        {new Date(l.createdAt).toLocaleTimeString("fr-FR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })}
+                      </span>
+                      <span
+                        className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
+                          SOURCE_BADGE[l.source] ||
+                          "bg-zinc-100 text-zinc-800 ring-zinc-200"
+                        }`}
+                      >
+                        {l.source}
+                      </span>
+                      <span className="truncate font-mono text-[10px] text-[var(--color-muted-foreground)]">
+                        {l.event}
+                      </span>
+                    </div>
                     <span
-                      className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${
-                        SOURCE_BADGE[l.source] ||
-                        "bg-zinc-100 text-zinc-800 ring-zinc-200"
-                      }`}
-                    >
-                      {l.source}
-                    </span>
-                    <span className="whitespace-nowrap font-mono text-[10px] text-[var(--color-muted-foreground)]">
-                      {l.event}
-                    </span>
-                    <span
-                      className={`min-w-0 flex-1 text-sm ${LEVEL_BADGE[l.level]}`}
+                      className={`min-w-0 flex-1 break-words text-xs sm:text-sm ${LEVEL_BADGE[l.level]}`}
                     >
                       {l.message}
                       {hasMetadata && (
@@ -261,7 +265,7 @@ export function LogsView() {
                     </span>
                   </button>
                   {isExpanded && hasMetadata && (
-                    <pre className="mt-2 overflow-x-auto rounded-lg bg-[var(--color-muted)]/60 px-3 py-2 font-mono text-[11px] text-[var(--color-foreground)]">
+                    <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)]/60 px-3 py-2 font-mono text-[10px] text-[var(--color-foreground)] sm:text-[11px]">
                       {JSON.stringify(l.metadata, null, 2)}
                     </pre>
                   )}

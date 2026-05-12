@@ -52,7 +52,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen">
       <IdleWatcher />
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
             <Link href="/">
               <Logo />
@@ -62,11 +62,11 @@ export default async function DashboardLayout({
               Dashboard
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {me?.role === "admin" && (
               <Link
                 href="/admin"
-                className="hidden rounded-full bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 sm:inline-flex"
+                className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20"
               >
                 Admin
               </Link>
@@ -76,7 +76,8 @@ export default async function DashboardLayout({
             </span>
             <form action={handleLogout}>
               <button className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]">
-                Déconnexion
+                <span className="sm:hidden">Quitter</span>
+                <span className="hidden sm:inline">Déconnexion</span>
               </button>
             </form>
           </div>
