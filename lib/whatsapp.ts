@@ -228,14 +228,28 @@ async function sendViaTwilio(
 
     if (!res.ok) {
       const errBody = await res.text();
-      return {
-        ok: false,
-        error: `template ${res.status}: ${errBody.slice(0, 300)}`,
-      };
+      // Twilio code 21656 = "Content Variables parameter is invalid".
+      // Le template configuré attend des noms de variables différents
+      // de ce qu'on envoie OU le ContentSid n'existe plus. On essaie
+      // un fallback free-form text — marche dans la fenêtre 24h, et
+      // c'est mieux que rien (la cliente reçoit le récap de l'appel
+      // qu'elle vient de faire, donc la fenêtre est très probablement
+      // ouverte si elle nous a déjà WhatsAppé).
+      const isTemplateInvalid = /21656|ContentSid|Content Variables/i.test(errBody);
+      if (!isTemplateInvalid) {
+        return {
+          ok: false,
+          error: `template ${res.status}: ${errBody.slice(0, 300)}`,
+        };
+      }
+      console.warn(
+        '[whatsapp] template invalid (21656), falling back to free-form text',
+      );
+      // Fall through au path free-form ci-dessous
+    } else {
+      const data = (await res.json()) as { sid?: string };
+      return { ok: true, sid: data.sid };
     }
-
-    const data = (await res.json()) as { sid?: string };
-    return { ok: true, sid: data.sid };
   }
 
   // ── Path 2: free-form text (only works inside 24h window) ──────────────
