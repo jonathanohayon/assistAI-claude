@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+
+import { Link } from "@/i18n/navigation";
 
 interface UserMenuProps {
   email: string;
@@ -19,6 +21,7 @@ interface UserMenuProps {
  * Logout reste un form action server-side (NextAuth signOut + redirect).
  */
 export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
+  const t = useTranslations("Dashboard");
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -43,7 +46,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Menu utilisateur"
+        aria-label={t("userMenuAria")}
         aria-expanded={open}
         aria-haspopup="menu"
         className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-xs font-semibold text-white shadow-sm transition-transform hover:scale-105 ${
@@ -60,7 +63,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
         >
           <div className="px-3 py-2.5 border-b border-[var(--color-border)]/60">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-              Connecté en tant que
+              {t("loggedInAs")}
             </p>
             <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-foreground)]">
               {email}
@@ -84,7 +87,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
                   strokeLinejoin="round"
                 />
               </svg>
-              Paramètres
+              {t("settingsLink")}
             </Link>
           </div>
 
@@ -104,7 +107,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
                     strokeLinejoin="round"
                   />
                 </svg>
-                Se déconnecter
+                {t("logoutButton")}
               </button>
             </form>
           </div>

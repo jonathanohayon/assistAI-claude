@@ -356,5 +356,27 @@
     "languageFr": "🇫🇷 French",
     "languageHe": "🇮🇱 Hebrew",
     "languageEn": "🇺🇸 English (US)"
+  },
+  "Dashboard": {
+    "header": "Dashboard",
+    "admin": "Admin",
+    "googleNotConnected": "Google Calendar not connected. Without it, your agent can't book appointments in YOUR calendar.",
+    "connectButton": "Connect",
+    "whatsappPlanLabel": "WhatsApp plan.",
+    "whatsappPlanDesc": "Connecting your own Google Calendar/Sheets is locked.",
+    "upgradeLink": "Upgrade to Global or Premium →",
+    "trialExpired": "Your trial is over. Your account will be deleted shortly.",
+    "trialRemainingMessage": "Free trial — {label} remaining",
+    "trialAccountDeletion": "account deleted on expiration",
+    "trialSubscribeButton": "Subscribe",
+    "tabConfiguration": "Configuration",
+    "tabCalendar": "Calendar",
+    "tabContacts": "Contacts",
+    "tabBilling": "Billing",
+    "tabLogs": "Logs",
+    "userMenuAria": "User menu",
+    "loggedInAs": "Signed in as",
+    "settingsLink": "Settings",
+    "logoutButton": "Sign out"
   }
 }

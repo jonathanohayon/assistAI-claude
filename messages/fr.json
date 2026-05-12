@@ -356,5 +356,27 @@
     "languageFr": "🇫🇷 Français",
     "languageHe": "🇮🇱 עברית (Hébreu)",
     "languageEn": "🇺🇸 English (US)"
+  },
+  "Dashboard": {
+    "header": "Dashboard",
+    "admin": "Admin",
+    "googleNotConnected": "Google Calendar non connecté. Sans ça, votre agent ne peut pas prendre de rendez-vous dans VOTRE calendrier.",
+    "connectButton": "Connecter",
+    "whatsappPlanLabel": "Formule WhatsApp.",
+    "whatsappPlanDesc": "Connexion à ton propre Google Calendar/Sheets verrouillée.",
+    "upgradeLink": "Passer à Globale ou Premium →",
+    "trialExpired": "Votre essai est terminé. Votre compte va être supprimé sous peu.",
+    "trialRemainingMessage": "Essai gratuit — {label} restant",
+    "trialAccountDeletion": "compte supprimé à expiration",
+    "trialSubscribeButton": "Souscrire",
+    "tabConfiguration": "Configuration",
+    "tabCalendar": "Calendrier",
+    "tabContacts": "Contacts",
+    "tabBilling": "Abonnement",
+    "tabLogs": "Logs",
+    "userMenuAria": "Menu utilisateur",
+    "loggedInAs": "Connecté en tant que",
+    "settingsLink": "Paramètres",
+    "logoutButton": "Se déconnecter"
   }
 }

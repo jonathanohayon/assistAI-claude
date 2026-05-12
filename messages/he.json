@@ -356,5 +356,27 @@
     "languageFr": "🇫🇷 צרפתית",
     "languageHe": "🇮🇱 עברית",
     "languageEn": "🇺🇸 אנגלית"
+  },
+  "Dashboard": {
+    "header": "דאשבורד",
+    "admin": "ניהול",
+    "googleNotConnected": "Google Calendar לא מחובר. בלי זה, הסוכן לא יכול לקבוע פגישות ביומן שלך.",
+    "connectButton": "חיבור",
+    "whatsappPlanLabel": "תוכנית WhatsApp.",
+    "whatsappPlanDesc": "חיבור ל-Google Calendar/Sheets שלך נעול.",
+    "upgradeLink": "שדרוג ל-Globale או Premium →",
+    "trialExpired": "הניסיון שלך הסתיים. החשבון יימחק בקרוב.",
+    "trialRemainingMessage": "ניסיון חינם — נותרו {label}",
+    "trialAccountDeletion": "החשבון יימחק עם תום הניסיון",
+    "trialSubscribeButton": "הצטרפות",
+    "tabConfiguration": "הגדרות",
+    "tabCalendar": "יומן",
+    "tabContacts": "אנשי קשר",
+    "tabBilling": "מנוי",
+    "tabLogs": "יומן רישום",
+    "userMenuAria": "תפריט משתמש",
+    "loggedInAs": "מחובר בתור",
+    "settingsLink": "הגדרות",
+    "logoutButton": "התנתקות"
   }
 }
