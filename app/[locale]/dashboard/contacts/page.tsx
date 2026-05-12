@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -49,50 +50,56 @@ async function fetchContacts(userId: string): Promise<FetchResult> {
   return { status: "ok", contacts };
 }
 
-export default async function ContactsPage() {
+export default async function ContactsPage(props: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await props.params;
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect(`/${locale}/login`);
+
+  const t = await getTranslations({ locale, namespace: "DashboardContacts" });
 
   let result: FetchResult = { status: "ok", contacts: [] };
   let error: string | null = null;
   try {
     result = await fetchContacts(session.user.id);
   } catch (e) {
-    error = e instanceof Error ? e.message : "Erreur sheet";
+    error = e instanceof Error ? e.message : t("errFallback");
   }
 
   const contacts = result.status === "ok" ? result.contacts : [];
+  const nonEmptyCount = contacts.filter((c) => c.name || c.phone).length;
 
   return (
     <main>
       <section className="mx-auto w-full max-w-5xl px-6 pt-10">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          Contacts CRM
+          {t("header")}
         </p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          Vos clientes en un coup d&apos;œil.
+          {t("title")}
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
           {result.status === "ok"
-            ? `${contacts.filter((c) => c.name || c.phone).length} contact${contacts.length > 1 ? "s" : ""} enregistrés dans votre Google Sheet. Chaque appel ajoute une ligne automatiquement.`
-            : "Connectez Google et configurez votre Sheet pour suivre vos contacts ici."}
+            ? t("subtitleConnected", { count: nonEmptyCount })
+            : t("subtitleDisconnected")}
         </p>
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
         {result.status === "no_google" ? (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-            <p>Google n&apos;est pas connecté à votre compte.</p>
+            <p>{t("googleNotConnected")}</p>
             <a
               href="/api/onboarding/google/start"
               className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
             >
-              Connecter Google
+              {t("connectButton")}
             </a>
           </div>
         ) : result.status === "no_sheet" ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-            Aucun Google Sheet configuré. Renseignez l&apos;ID de votre Sheet dans les paramètres pour activer le CRM.
+            {t("noSheetConfigured")}
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

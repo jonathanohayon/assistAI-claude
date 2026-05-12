@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 interface Contact {
@@ -12,6 +13,7 @@ interface Contact {
 }
 
 export function ContactsTable({ initial }: { initial: Contact[] }) {
+  const t = useTranslations("DashboardContacts");
   const [contacts, setContacts] = useState(initial);
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Contact>>({});
@@ -44,7 +46,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Erreur");
+        setError(data?.error ?? t("errSave"));
         return;
       }
       setContacts((prev) =>
@@ -57,7 +59,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
   };
 
   const deleteContact = (rowIndex: number) => {
-    if (!confirm("Supprimer ce contact ?")) return;
+    if (!confirm(t("confirmDelete"))) return;
     setError(null);
     startTransition(async () => {
       const res = await fetch(
@@ -66,7 +68,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Erreur");
+        setError(data?.error ?? t("errSave"));
         return;
       }
       setContacts((prev) => prev.filter((c) => c.rowIndex !== rowIndex));
@@ -77,7 +79,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
   if (visible.length === 0) {
     return (
       <div className="rounded-2xl border border-[var(--color-border)] bg-white p-8 text-center text-sm text-[var(--color-muted-foreground)]">
-        Aucun contact enregistré pour le moment.
+        {t("noContacts")}
       </div>
     );
   }
@@ -94,12 +96,12 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-muted)]/50 text-left text-xs uppercase tracking-wider text-[var(--color-muted-foreground)]">
             <tr>
-              <th className="px-4 py-3 font-medium">Nom</th>
-              <th className="px-4 py-3 font-medium">Téléphone</th>
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Notes</th>
-              <th className="px-4 py-3 font-medium">Ajouté</th>
-              <th className="px-4 py-3 font-medium text-right">Actions</th>
+              <th className="px-4 py-3 font-medium">{t("colName")}</th>
+              <th className="px-4 py-3 font-medium">{t("colPhone")}</th>
+              <th className="px-4 py-3 font-medium">{t("colEmail")}</th>
+              <th className="px-4 py-3 font-medium">{t("colNotes")}</th>
+              <th className="px-4 py-3 font-medium">{t("colAdded")}</th>
+              <th className="px-4 py-3 font-medium text-right">{t("colActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]/60">
@@ -194,7 +196,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
                             onClick={() => startEdit(c)}
                             className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-xs font-medium hover:bg-[var(--color-muted)]"
                           >
-                            Éditer
+                            {t("editButton")}
                           </button>
                           <button
                             onClick={() => deleteContact(c.rowIndex)}

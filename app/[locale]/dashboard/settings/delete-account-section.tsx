@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 interface DeleteAccountSectionProps {
@@ -18,6 +19,7 @@ interface DeleteAccountSectionProps {
  * / Vercel font tous pareil avec retape de l'identifiant.
  */
 export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
+  const t = useTranslations("DashboardSettings");
   const [opened, setOpened] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
     e.preventDefault();
     setError(null);
     if (confirm.trim().toLowerCase() !== email.toLowerCase()) {
-      setError("L'email saisi ne correspond pas.");
+      setError(t("errEmailMismatch"));
       return;
     }
     startTransition(async () => {
@@ -42,13 +44,13 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
           error?: string;
         };
         if (!res.ok || !data.ok) {
-          setError(data.error ?? `Erreur ${res.status}`);
+          setError(data.error ?? t("errStatus", { status: res.status }));
           return;
         }
         // Compte supprimé → redirige hors-app
         window.location.href = "/?bye=1";
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erreur réseau");
+        setError(e instanceof Error ? e.message : t("errNetwork"));
       }
     });
   };
@@ -69,7 +71,7 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
             strokeLinejoin="round"
           />
         </svg>
-        Supprimer mon compte
+        {t("deleteButton")}
       </button>
     );
   }
@@ -80,7 +82,7 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
       className="mt-4 flex flex-col gap-3 rounded-xl bg-white p-4 ring-1 ring-inset ring-red-200"
     >
       <p className="text-sm text-red-900">
-        Pour confirmer, retape ton email{" "}
+        {t("confirmRetypeEmailPre")}{" "}
         <code className="rounded bg-red-100 px-1.5 py-0.5 font-mono text-xs">
           {email}
         </code>
@@ -104,7 +106,7 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
           disabled={isPending || confirm.trim() === ""}
           className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-destructive)] px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#a21717] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending ? "Suppression…" : "Confirmer la suppression"}
+          {isPending ? t("deletingButton") : t("confirmDeleteButton")}
         </button>
         <button
           type="button"
@@ -116,7 +118,7 @@ export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
           disabled={isPending}
           className="rounded-full px-3 py-2 text-xs font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
         >
-          Annuler
+          {t("cancelButton")}
         </button>
       </div>
     </form>
