@@ -16,9 +16,9 @@ interface AdminRow {
 }
 
 const PLAN_LABEL: Record<string, string> = {
-  whatsapp: "WhatsApp",
-  global: "Globale",
-  premium: "Premium",
+  whatsapp: "Permanence",
+  global: "Réceptionniste",
+  premium: "Call Center",
 };
 const PLAN_BADGE: Record<string, string> = {
   whatsapp: "bg-emerald-100 text-emerald-800 ring-emerald-200",

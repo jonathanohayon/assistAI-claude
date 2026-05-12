@@ -18,6 +18,8 @@ export interface Plan {
   model: string;
   popular?: boolean;
   features: string[];
+  /** "Best for: …" audience hint shown below the features list. */
+  bestFor: string;
   /**
    * Plan-specific copy shown on the onboarding recap card. Empty array =
    * use the default features list.
@@ -28,20 +30,22 @@ export interface Plan {
 export const PLANS: readonly Plan[] = [
   {
     key: "whatsapp",
-    name: "WhatsApp",
-    tagline: "Le choix de la majorité des centres.",
+    name: "Permanence téléphonique",
+    tagline: "Réponse aux appels par IA, 24/7.",
     monthly: 149,
     annualTotal: 1485,
     annualMonthly: 123,
     model: "gpt-realtime",
-    popular: true,
     features: [
-      "500 minutes de conversation / mois",
-      "Voix naturelle bilingue FR / Hébreu",
-      "Prise de rendez-vous vocale",
-      "Confirmation WhatsApp automatique",
-      "Résumé de conversation par WhatsApp",
+      "500 minutes incluses",
+      "Prise d'appels automatisée 24/7",
+      "Messages vocaux transcrits et résumés par l'IA, envoyés sur WhatsApp ou email",
+      "Message d'accueil personnalisé",
+      "Filtrage intelligent des appels spam",
+      "Rapports d'activité hebdomadaires",
+      "Intégration CRM & agenda",
     ],
+    bestFor: "freelances, indépendants et petites entreprises",
     onboardingNotes: [
       "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",
       "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels.",
@@ -49,18 +53,23 @@ export const PLANS: readonly Plan[] = [
   },
   {
     key: "global",
-    name: "Globale",
-    tagline: "Pour gérer plusieurs centres.",
+    name: "Réceptionniste",
+    tagline: "Votre réceptionniste virtuelle intelligente.",
     monthly: 269,
     annualTotal: 2685,
     annualMonthly: 224,
     model: "gpt-realtime",
+    popular: true,
     features: [
-      "Tout de la formule WhatsApp",
-      "500 minutes / mois",
-      "Agenda Google complet (3 centres)",
-      "CRM Google Sheet fourni & synchronisé",
+      "500 minutes incluses",
+      "Tout ce qui est inclus dans Permanence téléphonique",
+      "Qualification des appelants et prise de rendez-vous automatique",
+      "Réponses aux questions fréquentes",
+      "Transfert d'appel intelligent vers toi ou ton équipe",
+      "Voix naturelle et professionnelle",
+      "Intégration CRM & agenda",
     ],
+    bestFor: "consultants, agences, cliniques et services B2B",
     onboardingNotes: [
       "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
       "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google.",
@@ -68,19 +77,22 @@ export const PLANS: readonly Plan[] = [
   },
   {
     key: "premium",
-    name: "Premium Entreprise",
-    tagline: "Sans limite, configuration sur mesure.",
+    name: "Centre d'appels pro",
+    tagline: "Votre centre d'appels complet propulsé par l'IA.",
     monthly: 449,
     annualTotal: 4485,
     annualMonthly: 374,
     model: "gpt-realtime",
     features: [
-      "Modèle gpt-realtime (ultra naturel)",
-      "500 minutes / mois",
-      "Agenda + CRM complet",
-      "WhatsApp + Résumé + historique",
-      "Configuration sur mesure & support dédié",
+      "500 minutes incluses",
+      "Tout ce qui est inclus dans Réceptionniste",
+      "Gestion de plusieurs appels simultanés",
+      "Tableau de bord analytics en temps réel",
+      "Routage avancé et scénarios complexes",
+      "Intégrations CRM et outils approfondies",
+      "Support prioritaire",
     ],
+    bestFor: "entreprises en croissance et équipes qui montent en charge sur leur support téléphonique",
     onboardingNotes: [
       "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
       "Modèle gpt-realtime activé automatiquement après l'onboarding.",

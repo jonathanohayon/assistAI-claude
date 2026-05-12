@@ -19,6 +19,7 @@ interface PlanContent {
   name: string;
   tagline: string;
   features: string[];
+  bestFor: string;
   onboardingNotes: string[];
   // Pass-through pour les champs structurels — pas de traduction.
   key: Plan["key"];
@@ -49,6 +50,7 @@ export function getLocalizedPlan(
         name?: string;
         tagline?: string;
         features?: string[];
+        bestFor?: string;
         onboardingNotes?: string[];
       }
     >;
@@ -65,6 +67,7 @@ export function getLocalizedPlan(
     name: block?.name ?? plan.name,
     tagline: block?.tagline ?? plan.tagline,
     features: block?.features ?? Array.from(plan.features),
+    bestFor: block?.bestFor ?? plan.bestFor,
     onboardingNotes:
       block?.onboardingNotes ?? Array.from(plan.onboardingNotes),
   };

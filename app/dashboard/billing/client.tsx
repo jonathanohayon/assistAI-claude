@@ -22,6 +22,7 @@ function useLocalizedPlan(plan: Plan) {
       const raw = t.raw(`${plan.key}.features`);
       return Array.isArray(raw) ? (raw as string[]) : Array.from(plan.features);
     }, Array.from(plan.features)),
+    bestFor: safe(() => t(`${plan.key}.bestFor`), plan.bestFor),
   };
 }
 
@@ -209,6 +210,15 @@ function PlanCard({
           </li>
         ))}
       </ul>
+
+      {localized.bestFor && (
+        <p className="mt-4 border-t border-[var(--color-border)]/70 pt-3 text-[11px] leading-relaxed text-[var(--color-muted-foreground)]">
+          <span className="font-semibold text-[var(--color-foreground)]">
+            Idéal pour :
+          </span>{" "}
+          {localized.bestFor}
+        </p>
+      )}
 
       <div className="mt-auto pt-5">
         {isCurrent ? (

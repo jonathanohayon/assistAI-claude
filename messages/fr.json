@@ -1,44 +1,54 @@
 {
   "Plans": {
     "whatsapp": {
-      "name": "WhatsApp",
-      "tagline": "Le choix de la majorité des centres.",
+      "name": "Permanence téléphonique",
+      "tagline": "Réponse aux appels par IA, 24/7.",
       "features": [
-        "500 minutes de conversation / mois",
-        "Voix naturelle bilingue FR / Hébreu",
-        "Prise de rendez-vous vocale",
-        "Confirmation WhatsApp automatique",
-        "Résumé de conversation par WhatsApp"
+        "500 minutes incluses",
+        "Prise d'appels automatisée 24/7",
+        "Messages vocaux transcrits et résumés par l'IA, envoyés sur WhatsApp ou email",
+        "Message d'accueil personnalisé",
+        "Filtrage intelligent des appels spam",
+        "Rapports d'activité hebdomadaires",
+        "Intégration CRM & agenda"
       ],
+      "bestFor": "freelances, indépendants et petites entreprises",
       "onboardingNotes": [
         "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",
         "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels."
       ]
     },
     "global": {
-      "name": "Globale",
-      "tagline": "Pour gérer plusieurs centres.",
+      "name": "Réceptionniste",
+      "tagline": "Votre réceptionniste virtuelle intelligente.",
       "features": [
-        "Tout de la formule WhatsApp",
-        "500 minutes / mois",
-        "Agenda Google complet (3 centres)",
-        "CRM Google Sheet fourni & synchronisé"
+        "500 minutes incluses",
+        "Tout ce qui est inclus dans Permanence téléphonique",
+        "Qualification des appelants et prise de rendez-vous automatique",
+        "Réponses aux questions fréquentes",
+        "Transfert d'appel intelligent vers toi ou ton équipe",
+        "Voix naturelle et professionnelle",
+        "Intégration CRM & agenda"
       ],
+      "bestFor": "consultants, agences, cliniques et services B2B",
       "onboardingNotes": [
         "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
         "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google."
       ]
     },
     "premium": {
-      "name": "Premium Entreprise",
-      "tagline": "Sans limite, configuration sur mesure.",
+      "name": "Centre d'appels pro",
+      "tagline": "Votre centre d'appels complet propulsé par l'IA.",
       "features": [
-        "Modèle gpt-realtime (ultra naturel)",
-        "500 minutes / mois",
-        "Agenda + CRM complet",
-        "WhatsApp + Résumé + historique",
-        "Configuration sur mesure & support dédié"
+        "500 minutes incluses",
+        "Tout ce qui est inclus dans Réceptionniste",
+        "Gestion de plusieurs appels simultanés",
+        "Tableau de bord analytics en temps réel",
+        "Routage avancé et scénarios complexes",
+        "Intégrations CRM et outils approfondies",
+        "Support prioritaire"
       ],
+      "bestFor": "entreprises en croissance et équipes qui montent en charge sur leur support téléphonique",
       "onboardingNotes": [
         "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
         "Modèle gpt-realtime activé automatiquement après l'onboarding."
@@ -170,10 +180,11 @@
       "discount": "−20%"
     },
     "card": {
-      "popular": "Le plus populaire",
+      "popular": "Recommandé",
       "perMonth": "HT / mois",
       "monthlyHint": "Facturation mensuelle, sans engagement.",
       "annualHint": "{total} € HT / an",
+      "bestForLabel": "Idéal pour :",
       "cta": "Choisir cette formule",
       "ctaAria": "Choisir la formule {name}",
       "model": "Modèle"

@@ -77,7 +77,7 @@ export function SignupContent({
             {selectedPlan.name}
             {selectedPlan.popular && (
               <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#d4a574] to-[#b8864e] px-2 py-0.5 align-middle text-[10px] font-semibold tracking-wide text-white">
-                ★ Populaire
+                ★ Recommandé
               </span>
             )}
           </h2>

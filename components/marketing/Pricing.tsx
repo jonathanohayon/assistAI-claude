@@ -25,7 +25,10 @@ function useLocalizedPlan(plan: Plan) {
       return Array.isArray(raw) ? (raw as string[]) : plan.features;
     } catch { return plan.features; }
   })();
-  return { name, tagline, features };
+  const bestFor = (() => {
+    try { return t(`${plan.key}.bestFor`); } catch { return plan.bestFor; }
+  })();
+  return { name, tagline, features, bestFor };
 }
 
 type Billing = "monthly" | "annual";
@@ -189,6 +192,15 @@ function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
           </li>
         ))}
       </ul>
+
+      {localized.bestFor && (
+        <p className="mt-5 border-t border-[var(--color-border)]/70 pt-4 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+          <span className="font-semibold text-[var(--color-foreground)]">
+            {t("bestForLabel")}
+          </span>{" "}
+          {localized.bestFor}
+        </p>
+      )}
 
       <div className="mt-auto pt-7">
         <Link
