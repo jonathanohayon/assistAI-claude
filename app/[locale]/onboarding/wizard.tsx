@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+
+import { Link } from "@/i18n/navigation";
 
 interface AvailableNumber {
   phoneNumber: string;
@@ -10,28 +12,6 @@ interface AvailableNumber {
   locality: string;
   region: string;
 }
-
-const GOOGLE_STATUS_MESSAGES: Record<string, string> = {
-  connected: "✅ Google Calendar et Sheets connectés.",
-  denied: "Connexion refusée — réessaie ou continue sans pour l'instant.",
-  no_refresh:
-    "Google n'a pas renvoyé de refresh token. Va sur https://myaccount.google.com/permissions, retire l'accès à l'app, et reconnecte.",
-  bad_state: "État de session invalide — réessaie.",
-  user_mismatch: "Compte Google différent du tenant connecté.",
-  missing: "Code OAuth manquant — réessaie.",
-  error: "Erreur lors de la connexion Google.",
-};
-
-const COUNTRIES = [
-  { code: "FR", label: "🇫🇷 France" },
-  { code: "IL", label: "🇮🇱 Israël" },
-];
-
-const PRIMARY_LANGUAGES = [
-  { value: "fr", label: "🇫🇷 Français" },
-  { value: "he", label: "🇮🇱 עברית (Hébreu)" },
-  { value: "en", label: "🇺🇸 English (US)" },
-] as const;
 
 type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 
@@ -49,6 +29,36 @@ export function OnboardingWizard({
    *  uniquement pour Globale/Premium). */
   subscriptionPlan: "whatsapp" | "global" | "premium";
 }) {
+  const t = useTranslations("Onboarding");
+
+  // Mapping clés OAuth callback (?google=...) → clé de traduction. Le
+  // callback définit la valeur du query param (connected/denied/...), le
+  // wizard la traduit en message lisible. Switch préféré à une map FR
+  // hardcodée pour que ESLint flag toute clé inattendue.
+  const googleStatusKeyToLabel = (key: string | null): string | null => {
+    switch (key) {
+      case "connected": return t("googleStatusConnected");
+      case "denied": return t("googleStatusDenied");
+      case "no_refresh": return t("googleStatusNoRefresh");
+      case "bad_state": return t("googleStatusBadState");
+      case "user_mismatch": return t("googleStatusUserMismatch");
+      case "missing": return t("googleStatusMissing");
+      case "error": return t("googleStatusError");
+      default: return null;
+    }
+  };
+
+  const COUNTRIES = [
+    { code: "FR", label: t("countryFrance") },
+    { code: "IL", label: t("countryIsrael") },
+  ];
+
+  const PRIMARY_LANGUAGES = [
+    { value: "fr" as const, label: t("languageFr") },
+    { value: "he" as const, label: t("languageHe") },
+    { value: "en" as const, label: t("languageEn") },
+  ];
+
   // Plan WhatsApp : pas de Google Calendar perso. La feature "Agenda Google
   // complet (3 centres)" et "CRM Sheet" est réservée Globale/Premium.
   const googleStepDisabled = subscriptionPlan === "whatsapp";
@@ -67,9 +77,7 @@ export function OnboardingWizard({
   const [showGoogleSetup, setShowGoogleSetup] = useState(false);
 
   const googleStatusKey = searchParams.get("google");
-  const googleStatusMessage = googleStatusKey
-    ? GOOGLE_STATUS_MESSAGES[googleStatusKey] ?? null
-    : null;
+  const googleStatusMessage = googleStatusKeyToLabel(googleStatusKey);
   const googleConnected =
     googleConnectedInitial || googleStatusKey === "connected";
 
@@ -82,13 +90,13 @@ export function OnboardingWizard({
       const res = await fetch(`/api/onboarding/search?${params}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Recherche échouée");
+        setError(data?.error ?? t("errSearchFailed"));
         setStage("error");
         return;
       }
       const data = (await res.json()) as { numbers: AvailableNumber[] };
       if (data.numbers.length === 0) {
-        setError("Aucun numéro disponible pour ce pays pour le moment. Réessaie dans quelques minutes ou choisis un autre pays.");
+        setError(t("errNoNumbers"));
         setStage("error");
         return;
       }
@@ -114,7 +122,7 @@ export function OnboardingWizard({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Provisioning échoué");
+        setError(data?.error ?? t("errProvisionFailed"));
         setStage("error");
         return;
       }
@@ -134,20 +142,20 @@ export function OnboardingWizard({
         </div>
         <div className="space-y-2">
           <h2 className="font-display text-2xl text-[var(--color-foreground)]">
-            Numéro réservé !
+            {t("doneTitle")}
           </h2>
           <p className="font-mono text-lg text-[var(--color-foreground)]">
             {provisioned.phoneNumber}
           </p>
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            Branché à votre secrétaire. Appelez-le pour tester.
+            {t("doneDesc")}
           </p>
         </div>
         <button
           onClick={() => router.push("/dashboard")}
           className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02]"
         >
-          Aller au dashboard
+          {t("doneCta")}
           <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
             <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -167,39 +175,37 @@ export function OnboardingWizard({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-              Étape 1 {googleStepDisabled ? "· non disponible" : "· optionnel"}
+              {googleStepDisabled ? t("step1Unavailable") : t("step1Optional")}
             </p>
             <h3 className="mt-1 font-display text-lg text-[var(--color-foreground)]">
-              Connecter Google Calendar &amp; Sheets
+              {t("step1Title")}
             </h3>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              {googleStepDisabled
-                ? "Connexion à TON Google Calendar/Sheets réservée aux formules Globale et Premium. Sur la formule WhatsApp, ton agent utilise un calendrier mutualisé et envoie les confirmations par WhatsApp."
-                : "Pour que ton agent puisse réserver des RDV dans TON calendrier et enregistrer les contacts dans TON sheet. Tu peux aussi le faire plus tard depuis le dashboard."}
+              {googleStepDisabled ? t("step1DescDisabled") : t("step1DescAvailable")}
             </p>
             {googleStepDisabled && (
               <Link
                 href="/dashboard/billing"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:scale-[1.02]"
               >
-                Passer à Globale ou Premium →
+                {t("upgradeLink")}
               </Link>
             )}
           </div>
           {googleStepDisabled ? (
             <span className="whitespace-nowrap rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-200">
-              🔒 Verrouillé
+              {t("locked")}
             </span>
           ) : googleConnected ? (
             <span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
-              ✓ Connecté
+              {t("connected")}
             </span>
           ) : (
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowGoogleSetup((v) => !v)}
-                aria-label="Pré-requis Google Cloud Console"
+                aria-label={t("helpButtonAria")}
                 aria-expanded={showGoogleSetup}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
               >
@@ -213,19 +219,17 @@ export function OnboardingWizard({
                 href="/api/onboarding/google/start"
                 className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
               >
-                Connecter Google
+                {t("connectGoogle")}
               </a>
             </div>
           )}
         </div>
         {showGoogleSetup && !googleConnected && !googleStepDisabled && (
           <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-900">
-            <p className="font-medium">
-              Pré-requis : ajoute le redirect URI dans Google Cloud Console
-            </p>
+            <p className="font-medium">{t("redirectHintTitle")}</p>
             <ol className="mt-1.5 list-decimal space-y-1 pl-4">
               <li>
-                Va sur{" "}
+                {t("redirectHintStep1Pre")}{" "}
                 <a
                   href="https://console.cloud.google.com/apis/credentials"
                   target="_blank"
@@ -234,21 +238,18 @@ export function OnboardingWizard({
                 >
                   console.cloud.google.com
                 </a>{" "}
-                → API &amp; Services → Credentials → ton OAuth client.
+                {t("redirectHintStep1Post")}
               </li>
               <li>
-                Dans <strong>Authorized redirect URIs</strong>, ajoute :
+                {t("redirectHintStep2")}
                 <code className="mt-1 block break-all rounded bg-white px-2 py-1 font-mono text-[11px] text-sky-900 ring-1 ring-inset ring-sky-200">
                   {appOrigin}/api/onboarding/google/callback
                 </code>
               </li>
-              <li>Save.</li>
+              <li>{t("redirectHintStep3")}</li>
             </ol>
             <p className="mt-2 text-[11px] text-sky-800/80">
-              Sans ça, Google refuse l&apos;OAuth avec{" "}
-              <code className="font-mono">redirect_uri_mismatch</code>.
-              L&apos;ancienne URI <code className="font-mono">/api/auth/callback</code>{" "}
-              peut rester (utilisée par le legacy mutualisé).
+              {t("redirectHintFooter")}
             </p>
           </div>
         )}
@@ -262,14 +263,13 @@ export function OnboardingWizard({
       {/* Step 2: Primary language */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-white/70 p-5">
         <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-          Étape 2 · langue principale de l&apos;agent
+          {t("step2Header")}
         </p>
         <h3 className="mt-1 font-display text-lg text-[var(--color-foreground)]">
-          Dans quelle langue ton agent doit-il accueillir les appels ?
+          {t("step2Title")}
         </h3>
         <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Cette langue sera utilisée pour la phrase d&apos;accueil. L&apos;agent bascule
-          automatiquement vers la langue de la cliente dès qu&apos;elle parle.
+          {t("step2Desc")}
         </p>
         <select
           value={primaryLanguage}
@@ -289,14 +289,14 @@ export function OnboardingWizard({
       {/* Step 3: Pick number */}
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-          Étape 3 · numéro de téléphone
+          {t("step3Header")}
         </p>
       </div>
 
       {/* Country picker */}
       <form onSubmit={search} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-[var(--color-foreground)]">Pays</span>
+          <span className="font-medium text-[var(--color-foreground)]">{t("countryLabel")}</span>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
@@ -315,7 +315,7 @@ export function OnboardingWizard({
           disabled={isPending}
           className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50"
         >
-          {stage === "loading" ? "Recherche…" : "Chercher des numéros disponibles"}
+          {stage === "loading" ? t("searching") : t("searchButton")}
         </button>
       </form>
 
@@ -329,7 +329,7 @@ export function OnboardingWizard({
       {numbers.length > 0 && stage !== "purchasing" && (
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-muted-foreground)]">
-            Choisis un numéro
+            {t("pickNumber")}
           </p>
           <ul className="space-y-1.5">
             {numbers.map((n) => (
@@ -375,16 +375,14 @@ export function OnboardingWizard({
           disabled={!selected || isPending}
           className="w-full rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md disabled:opacity-50"
         >
-          {stage === "purchasing"
-            ? "Provisionnement en cours…"
-            : "Confirmer et activer ce numéro"}
+          {stage === "purchasing" ? t("purchasing") : t("confirmButton")}
         </button>
       )}
 
       <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-        Tu pourras changer plus tard depuis le dashboard.{" "}
+        {t("skipNote")}{" "}
         <Link href="/dashboard" className="underline">
-          Sauter pour l&apos;instant
+          {t("skipLink")}
         </Link>
       </p>
     </div>
