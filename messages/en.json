@@ -355,7 +355,8 @@
     "countryIsrael": "🇮🇱 Israel",
     "languageFr": "🇫🇷 French",
     "languageHe": "🇮🇱 Hebrew",
-    "languageEn": "🇺🇸 English (US)"
+    "languageEn": "🇺🇸 English (US)",
+    "subtitleWhatsapp": "we'll assign you a dedicated Twilio number — included in the free trial."
   },
   "Dashboard": {
     "header": "Dashboard",

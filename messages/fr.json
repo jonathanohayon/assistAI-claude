@@ -355,7 +355,8 @@
     "countryIsrael": "🇮🇱 Israël",
     "languageFr": "🇫🇷 Français",
     "languageHe": "🇮🇱 עברית (Hébreu)",
-    "languageEn": "🇺🇸 English (US)"
+    "languageEn": "🇺🇸 English (US)",
+    "subtitleWhatsapp": "on vous attribue un numéro Twilio dédié — inclus dans l'essai gratuit."
   },
   "Dashboard": {
     "header": "Dashboard",

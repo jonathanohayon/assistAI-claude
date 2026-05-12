@@ -110,7 +110,7 @@ export default async function OnboardingPage(props: {
             {t("title")}
           </h1>
           <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            {t("subtitle")}
+            {plan.key === "whatsapp" ? t("subtitleWhatsapp") : t("subtitle")}
           </p>
 
           {plan.onboardingNotes.length > 0 && (
