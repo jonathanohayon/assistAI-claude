@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 interface VerifyFormProps {
@@ -7,6 +8,7 @@ interface VerifyFormProps {
 }
 
 export function VerifyForm({ email }: VerifyFormProps) {
+  const t = useTranslations("VerifyEmail");
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -24,19 +26,17 @@ export function VerifyForm({ email }: VerifyFormProps) {
   // Décrémente le cooldown resend.
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
-    return () => clearTimeout(t);
+    const tick = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(tick);
   }, [resendCooldown]);
 
   const setDigitAt = (i: number, value: string) => {
-    // Accepte uniquement chiffres
     const clean = value.replace(/\D/g, "").slice(0, 1);
     setDigits((prev) => {
       const next = [...prev];
       next[i] = clean;
       return next;
     });
-    // Auto-focus suivant
     if (clean && i < 3) {
       inputsRef.current[i + 1]?.focus();
     }
@@ -60,7 +60,7 @@ export function VerifyForm({ email }: VerifyFormProps) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length !== 4) {
-      setError("Entrez les 4 chiffres.");
+      setError(t("errBadLength"));
       return;
     }
     setError(null);
@@ -76,16 +76,15 @@ export function VerifyForm({ email }: VerifyFormProps) {
         error?: string;
       };
       if (!res.ok || !data.ok) {
-        setError(data.error ?? "Code invalide.");
-        // Reset les inputs en cas d'erreur pour faciliter le retry.
+        // L'API renvoie un message d'erreur localisé/structuré côté serveur
+        // (ex: "Code expiré"). On l'affiche brut s'il est présent ; sinon
+        // fallback générique. Pas idéal i18n côté serveur — TODO plus tard.
+        setError(data.error ?? t("errFallback"));
         setDigits(["", "", "", ""]);
         inputsRef.current[0]?.focus();
         return;
       }
-      // Code OK. Le user est déjà loggué (signIn fait au signup), donc
-      // on redirige direct vers /onboarding. Le bounce-guard des layouts
-      // ne s'activera plus puisque emailVerified=true en DB.
-      setInfo("Email vérifié ! Redirection…");
+      setInfo(t("successRedirect"));
       window.location.href = "/onboarding";
     });
   };
@@ -105,10 +104,10 @@ export function VerifyForm({ email }: VerifyFormProps) {
     };
     if (!res.ok || !data.ok) {
       if (data.cooldownSeconds) setResendCooldown(data.cooldownSeconds);
-      setError(data.error ?? "Erreur lors de l'envoi.");
+      setError(data.error ?? t("errResendFallback"));
       return;
     }
-    setInfo("Nouveau code envoyé. Vérifiez votre boîte mail.");
+    setInfo(t("resendSuccess"));
     setResendCooldown(60);
   };
 
@@ -147,7 +146,7 @@ export function VerifyForm({ email }: VerifyFormProps) {
             onKeyDown={(e) => onKeyDown(e, i)}
             onPaste={onPaste}
             className="h-14 w-12 rounded-xl border border-[var(--color-border)] bg-white text-center font-display text-2xl tracking-tight shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            aria-label={`Chiffre ${i + 1}`}
+            aria-label={t("digitAriaLabel", { n: i + 1 })}
           />
         ))}
       </div>
@@ -157,11 +156,11 @@ export function VerifyForm({ email }: VerifyFormProps) {
         disabled={isPending || code.length !== 4}
         className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isPending ? "Vérification…" : "Valider"}
+        {isPending ? t("verifying") : t("submitButton")}
       </button>
 
       <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--color-muted-foreground)]">
-        <span>Pas reçu ?</span>
+        <span>{t("notReceived")}</span>
         <button
           type="button"
           onClick={resend}
@@ -169,8 +168,8 @@ export function VerifyForm({ email }: VerifyFormProps) {
           className="font-medium text-[var(--color-primary)] hover:underline disabled:cursor-not-allowed disabled:text-[var(--color-muted-foreground)] disabled:no-underline"
         >
           {resendCooldown > 0
-            ? `Renvoyer dans ${resendCooldown}s`
-            : "Renvoyer le code"}
+            ? t("resendIn", { seconds: resendCooldown })
+            : t("resendButton")}
         </button>
       </div>
     </form>

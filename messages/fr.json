@@ -278,5 +278,27 @@
     "noAccount": "Pas encore de compte ?",
     "signupLink": "Créer un compte",
     "backHome": "← Retour"
+  },
+  "VerifyEmail": {
+    "title": "Vérifiez votre email",
+    "subtitlePrefix": "Entrez le code à 4 chiffres envoyé à",
+    "yourEmail": "votre email",
+    "codeExpires": "Le code expire dans 15 minutes.",
+    "errBadLength": "Entrez les 4 chiffres.",
+    "errFallback": "Code invalide.",
+    "successRedirect": "Email vérifié ! Redirection…",
+    "errResendFallback": "Erreur lors de l'envoi.",
+    "resendSuccess": "Nouveau code envoyé. Vérifiez votre boîte mail.",
+    "digitAriaLabel": "Chiffre {n}",
+    "verifying": "Vérification…",
+    "submitButton": "Valider",
+    "notReceived": "Pas reçu ?",
+    "resendIn": "Renvoyer dans {seconds}s",
+    "resendButton": "Renvoyer le code",
+    "cancelTitle": "Annuler",
+    "cancelAriaLabel": "Annuler l'inscription et retourner à l'accueil",
+    "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Tu pourras te réinscrire avec le même ou un autre email.",
+    "restartButton": "Recommencer avec un autre email",
+    "errNetwork": "Erreur réseau"
   }
 }

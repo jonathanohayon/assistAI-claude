@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 /**
@@ -10,15 +11,13 @@ import { useState, useTransition } from "react";
  * friction : l'icône × signale clairement une annulation.
  */
 export function CancelButton() {
+  const t = useTranslations("VerifyEmail");
   const [isPending, startTransition] = useTransition();
   const onClick = () => {
     startTransition(async () => {
       try {
-        // cancel-signup delete le user unverified + signOut
         await fetch("/api/auth/cancel-signup", { method: "POST" });
       } catch {
-        // Fallback : si l'endpoint plante, au moins signOut pour pas
-        // laisser une session zombie
         try {
           await fetch("/api/admin/auth/signout", { method: "POST" });
         } catch {
@@ -33,8 +32,8 @@ export function CancelButton() {
       type="button"
       onClick={onClick}
       disabled={isPending}
-      aria-label="Annuler l'inscription et retourner à l'accueil"
-      title="Annuler"
+      aria-label={t("cancelAriaLabel")}
+      title={t("cancelTitle")}
       className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)] disabled:opacity-50"
     >
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -57,16 +56,12 @@ export function CancelButton() {
  * redirige vers /signup pour repartir clean.
  */
 export function RestartLink() {
+  const t = useTranslations("VerifyEmail");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const onClick = () => {
-    if (
-      !window.confirm(
-        "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Tu pourras te réinscrire avec le même ou un autre email.",
-      )
-    )
-      return;
+    if (!window.confirm(t("restartConfirm"))) return;
     setError(null);
     startTransition(async () => {
       try {
@@ -81,7 +76,7 @@ export function RestartLink() {
         }
         window.location.href = "/signup";
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erreur réseau");
+        setError(e instanceof Error ? e.message : t("errNetwork"));
       }
     });
   };
@@ -94,7 +89,7 @@ export function RestartLink() {
         disabled={isPending}
         className="text-xs text-[var(--color-muted-foreground)] underline underline-offset-2 transition-colors hover:text-[var(--color-foreground)] disabled:opacity-50"
       >
-        Recommencer avec un autre email
+        {t("restartButton")}
       </button>
       {error && (
         <p className="text-[11px] text-[var(--color-destructive)]">{error}</p>

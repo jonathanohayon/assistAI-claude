@@ -278,5 +278,27 @@
     "noAccount": "Don't have an account yet?",
     "signupLink": "Create an account",
     "backHome": "← Back"
+  },
+  "VerifyEmail": {
+    "title": "Verify your email",
+    "subtitlePrefix": "Enter the 4-digit code sent to",
+    "yourEmail": "your email",
+    "codeExpires": "The code expires in 15 minutes.",
+    "errBadLength": "Enter all 4 digits.",
+    "errFallback": "Invalid code.",
+    "successRedirect": "Email verified! Redirecting…",
+    "errResendFallback": "Error sending.",
+    "resendSuccess": "New code sent. Check your inbox.",
+    "digitAriaLabel": "Digit {n}",
+    "verifying": "Verifying…",
+    "submitButton": "Submit",
+    "notReceived": "Didn't receive it?",
+    "resendIn": "Resend in {seconds}s",
+    "resendButton": "Resend code",
+    "cancelTitle": "Cancel",
+    "cancelAriaLabel": "Cancel signup and return home",
+    "restartConfirm": "Delete this signup and start over?\n\nThe account will be permanently deleted. You can re-register with the same or another email.",
+    "restartButton": "Start over with another email",
+    "errNetwork": "Network error"
   }
 }

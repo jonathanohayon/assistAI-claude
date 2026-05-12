@@ -278,5 +278,27 @@
     "noAccount": "אין לך עדיין חשבון?",
     "signupLink": "פתיחת חשבון",
     "backHome": "→ חזרה"
+  },
+  "VerifyEmail": {
+    "title": "אימות האימייל",
+    "subtitlePrefix": "הזינו את הקוד בן 4 הספרות שנשלח אל",
+    "yourEmail": "האימייל שלך",
+    "codeExpires": "הקוד תקף ל-15 דקות.",
+    "errBadLength": "יש להזין את כל 4 הספרות.",
+    "errFallback": "קוד שגוי.",
+    "successRedirect": "האימייל אומת! מעביר אותך...",
+    "errResendFallback": "שגיאה בשליחה.",
+    "resendSuccess": "קוד חדש נשלח. בדקי בתיבת הדואר.",
+    "digitAriaLabel": "ספרה {n}",
+    "verifying": "מאמת...",
+    "submitButton": "אישור",
+    "notReceived": "לא קיבלת?",
+    "resendIn": "שליחה חוזרת בעוד {seconds} שניות",
+    "resendButton": "שלחו לי שוב",
+    "cancelTitle": "ביטול",
+    "cancelAriaLabel": "ביטול ההרשמה וחזרה לעמוד הבית",
+    "restartConfirm": "למחוק את ההרשמה הזו ולהתחיל מחדש?\n\nהחשבון שנוצר יימחק לצמיתות. תוכלי להירשם שוב עם אותו אימייל או אחר.",
+    "restartButton": "להתחיל מחדש עם אימייל אחר",
+    "errNetwork": "שגיאת רשת"
   }
 }
