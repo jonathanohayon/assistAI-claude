@@ -9,6 +9,21 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
 import { DashboardTabs } from "./_nav";
+import { UserMenu } from "./user-menu";
+
+/**
+ * "Sarah Cohen" → "SC" · "salon@prestige.com" → "S" · "" → "?"
+ * Affiché dans l'avatar du UserMenu en lieu et place d'une vraie photo.
+ */
+function getInitials(displayName: string | null | undefined, email: string | null | undefined): string {
+  const name = (displayName ?? "").trim();
+  if (name) {
+    const parts = name.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0] ?? "").join("").toUpperCase() || "?";
+  }
+  const e = (email ?? "").trim();
+  return (e[0] ?? "?").toUpperCase();
+}
 
 export default async function DashboardLayout({
   children,
@@ -75,15 +90,11 @@ export default async function DashboardLayout({
                 Admin
               </Link>
             )}
-            <span className="hidden text-xs text-[var(--color-muted-foreground)] sm:inline">
-              {session.user.email}
-            </span>
-            <form action={handleLogout}>
-              <button className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]">
-                <span className="sm:hidden">Quitter</span>
-                <span className="hidden sm:inline">Déconnexion</span>
-              </button>
-            </form>
+            <UserMenu
+              email={session.user.email ?? ""}
+              initials={getInitials(me?.displayName, session.user.email)}
+              logoutAction={handleLogout}
+            />
           </div>
         </div>
       </header>

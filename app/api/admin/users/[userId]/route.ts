@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { fullyDeleteUser } from "@/lib/release-user";
 
 const requireAdmin = async () => {
   const session = await auth();
@@ -44,24 +45,32 @@ export async function DELETE(
     );
   }
 
-  const [target] = await db
-    .select({ id: users.id, email: users.email })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!target) {
+  // fullyDeleteUser libère les numéros Twilio AVANT de delete la row DB
+  // (sinon la cascade phone_numbers efface les SID Twilio nécessaires).
+  // Best-effort sur le release : on log les échecs mais on supprime quand
+  // même côté DB pour pas laisser de tenant orphelin.
+  const { release, email } = await fullyDeleteUser(userId);
+  if (!email) {
     return NextResponse.json({ error: "user introuvable" }, { status: 404 });
   }
-
-  await db.delete(users).where(eq(users.id, userId));
 
   await logEvent({
     source: "web",
     event: "tenant_deleted",
-    message: `Admin ${me.email} a supprimé le tenant ${target.email}`,
+    message: `Admin ${me.email} a supprimé le tenant ${email} · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
     userId: me.id,
-    metadata: { deletedUserId: userId, deletedEmail: target.email },
+    metadata: {
+      deletedUserId: userId,
+      deletedEmail: email,
+      twilioReleased: release.releasedCount,
+      twilioFailed: release.failedCount,
+      twilioErrors: release.errors,
+    },
   });
 
-  return NextResponse.json({ ok: true, deleted: target });
+  return NextResponse.json({
+    ok: true,
+    deleted: { id: userId, email },
+    twilio: release,
+  });
 }
