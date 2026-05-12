@@ -276,3 +276,46 @@ async function sendViaTwilio(
   const data = (await res.json()) as { sid?: string };
   return { ok: true, sid: data.sid };
 }
+
+/**
+ * Vérifie le status d'un message Twilio quelques secondes après l'envoi.
+ * L'API initiale renvoie 201 OK ("accepté pour livraison") mais Twilio peut
+ * ensuite bloquer la livraison (window 24h, sender pas approuvé, etc.) en
+ * mettant le status à "undelivered" / "failed". Sans ce check, on log
+ * "envoyé" à tort.
+ *
+ * À utiliser en best-effort post-send : await new Promise(r => setTimeout(r, 5000))
+ * puis appeler cette fonction et re-logger si status problématique.
+ */
+export async function checkTwilioMessageStatus(sid: string): Promise<{
+  status: string;
+  errorCode: number | null;
+  errorMessage: string | null;
+} | null> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !authToken || !sid) return null;
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages/${sid}.json`,
+      {
+        headers: { Authorization: `Basic ${auth}` },
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      status?: string;
+      error_code?: number | null;
+      error_message?: string | null;
+    };
+    return {
+      status: data.status ?? "unknown",
+      errorCode: data.error_code ?? null,
+      errorMessage: data.error_message ?? null,
+    };
+  } catch {
+    return null;
+  }
+}

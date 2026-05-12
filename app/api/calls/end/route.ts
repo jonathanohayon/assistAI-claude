@@ -12,7 +12,7 @@ import {
 } from "@/lib/sheets-helpers";
 import { summarizeCall } from "@/lib/summarize";
 import { resolveTenant } from "@/lib/tenant";
-import { sendWhatsApp } from "@/lib/whatsapp";
+import { checkTwilioMessageStatus, sendWhatsApp } from "@/lib/whatsapp";
 
 const APPELS_SHEET_TITLE = "Appels";
 const APPELS_HEADERS = [
@@ -31,6 +31,40 @@ interface EndBody {
   transcript?: Array<{ role: "user" | "assistant"; text: string }>;
   /** Durée de l'appel en secondes (best-effort, peut être undefined). */
   durationSeconds?: number;
+}
+
+/**
+ * Vérifie le delivery status Twilio d'un message 8s après l'envoi. Si Twilio
+ * a bloqué silencieusement (status undelivered/failed, common reasons :
+ * 63016 hors window 24h, 63007 sandbox sans opt-in, etc.), log un event
+ * d'erreur queryable dans /dashboard/logs filtre WhatsApp. Async & best-
+ * effort, ne bloque pas la response du endpoint.
+ */
+async function verifyDelivery(
+  sid: string,
+  recipient: "owner" | "client",
+  to: string,
+  userId: string,
+  callId: string,
+): Promise<void> {
+  await new Promise((r) => setTimeout(r, 8000));
+  const status = await checkTwilioMessageStatus(sid);
+  if (!status) return;
+  const ok = ["queued", "sent", "delivered", "read", "accepted"].includes(
+    status.status,
+  );
+  if (!ok) {
+    await logEvent({
+      source: "whatsapp",
+      event: `whatsapp_undelivered_${recipient}`,
+      message: `WhatsApp ${recipient} non livré à ${to} (status=${status.status}${
+        status.errorCode ? ` code=${status.errorCode}` : ""
+      })${status.errorMessage ? ` : ${status.errorMessage.slice(0, 150)}` : ""}`,
+      level: "error",
+      userId,
+      metadata: { callId, sid, to, ...status },
+    });
+  }
 }
 
 /**
@@ -171,6 +205,7 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         metadata: { callId: callRow.id, sid: r.sid, to: fromNumber },
       });
+      void verifyDelivery(r.sid, "client", fromNumber, user.id, callRow.id);
     } else {
       waError = `client: ${r.error}`;
       await logEvent({
@@ -186,10 +221,18 @@ export async function POST(req: NextRequest) {
 
   if (cfg.ownerWhatsapp) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
+    // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
+    // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
+    // récente). Sinon free-form (qui silently undelivered si hors window).
+    const ownerTemplate = process.env.WHATSAPP_OWNER_TEMPLATE_SID;
     const r = await sendWhatsApp({
       to: cfg.ownerWhatsapp,
       body: ownerBody,
-      ownerTemplateFallback: true,
+      templateSid: ownerTemplate || undefined,
+      templateVariables: ownerTemplate
+        ? { "1": ownerBody.slice(0, 1000) }
+        : undefined,
+      ownerTemplateFallback: true, // Meta provider only
     });
     if (r.ok && r.sid) {
       ownerSid = r.sid;
@@ -200,6 +243,10 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         metadata: { callId: callRow.id, sid: r.sid, to: cfg.ownerWhatsapp },
       });
+      // Status check delayed : Twilio peut accepter (201 OK) puis bloquer
+      // la livraison silencieusement (status undelivered, error 63016 = hors
+      // window 24h). Async, ne bloque pas la response du endpoint.
+      void verifyDelivery(r.sid, "owner", cfg.ownerWhatsapp, user.id, callRow.id);
     } else {
       waError = (waError ? waError + " | " : "") + `owner: ${r.error}`;
       await logEvent({
