@@ -1,21 +1,26 @@
+import { getTranslations } from "next-intl/server";
+
 import { LogsView } from "./logs-view";
 
 export const dynamic = "force-dynamic";
 
-export default function LogsPage() {
+export default async function LogsPage(props: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: "DashboardLogs" });
+
   return (
     <main>
       <section className="mx-auto w-full max-w-5xl px-6 pt-10">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          Logs
+          {t("header")}
         </p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          Activité en temps réel.
+          {t("title")}
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          Tous les événements end-to-end : appels reçus, tools agent (RDV,
-          contacts), récaps WhatsApp, login, modifications de config. Auto-refresh
-          toutes les 3 secondes.
+          {t("subtitle")}
         </p>
       </section>
 

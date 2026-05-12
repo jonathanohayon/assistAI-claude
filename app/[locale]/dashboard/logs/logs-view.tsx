@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface EventRow {
@@ -11,19 +12,6 @@ interface EventRow {
   metadata: Record<string, unknown> | null;
   createdAt: string;
 }
-
-const SOURCE_FILTERS = [
-  { id: "agent", label: "Agent" },
-  { id: "latency", label: "⏱️ Latence" },
-  { id: "sync", label: "🔄 Sync" },
-  { id: "calendar", label: "Calendar" },
-  { id: "sheets", label: "Sheets" },
-  { id: "whatsapp", label: "WhatsApp" },
-  { id: "summary", label: "Résumé" },
-  { id: "auth", label: "Auth" },
-  { id: "tenant", label: "Tenant" },
-  { id: "web", label: "Web" },
-];
 
 const LEVEL_FILTERS = ["info", "warn", "error"] as const;
 
@@ -47,6 +35,25 @@ const LEVEL_BADGE: Record<string, string> = {
 };
 
 export function LogsView() {
+  const t = useTranslations("DashboardLogs");
+  const locale = useLocale();
+  const timeLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
+
+  // Reconstruit la liste à chaque render pour bénéficier des labels traduits.
+  // 10 entrées seulement → coût négligeable.
+  const sourceFilters = [
+    { id: "agent", label: t("sourceAgent") },
+    { id: "latency", label: t("sourceLatency") },
+    { id: "sync", label: t("sourceSync") },
+    { id: "calendar", label: t("sourceCalendar") },
+    { id: "sheets", label: t("sourceSheets") },
+    { id: "whatsapp", label: t("sourceWhatsapp") },
+    { id: "summary", label: t("sourceSummary") },
+    { id: "auth", label: t("sourceAuth") },
+    { id: "tenant", label: t("sourceTenant") },
+    { id: "web", label: t("sourceWeb") },
+  ];
+
   const [logs, setLogs] = useState<EventRow[]>([]);
   const [paused, setPaused] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<Set<string>>(new Set());
@@ -89,9 +96,9 @@ export function LogsView() {
         });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "fetch error");
+      setError(e instanceof Error ? e.message : t("fetchError"));
     }
-  }, []);
+  }, [t]);
 
   // Initial load
   useEffect(() => {
@@ -144,9 +151,9 @@ export function LogsView() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
-            Source:
+            {t("sourceFilterLabel")}
           </span>
-          {SOURCE_FILTERS.map((s) => (
+          {sourceFilters.map((s) => (
             <button
               key={s.id}
               onClick={() => toggleSource(s.id)}
@@ -160,7 +167,7 @@ export function LogsView() {
             </button>
           ))}
           <span className="ml-2 text-xs font-medium text-[var(--color-muted-foreground)]">
-            Niveau:
+            {t("levelFilterLabel")}
           </span>
           {LEVEL_FILTERS.map((l) => (
             <button
@@ -183,8 +190,7 @@ export function LogsView() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-[var(--color-muted-foreground)]">
-            {filtered.length} affiché{filtered.length > 1 ? "s" : ""} ·{" "}
-            {logs.length} total
+            {t("countDisplayed", { count: filtered.length, total: logs.length })}
           </span>
           <button
             onClick={() => setPaused((p) => !p)}
@@ -199,7 +205,7 @@ export function LogsView() {
                 paused ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
               }`}
             />
-            {paused ? "Pause" : "Live"}
+            {paused ? t("pauseButton") : t("liveButton")}
           </button>
         </div>
       </div>
@@ -215,8 +221,8 @@ export function LogsView() {
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-muted-foreground)]">
             {logs.length === 0
-              ? "En attente d'événements…"
-              : "Aucun événement avec ces filtres."}
+              ? t("waitingForEvents")
+              : t("noMatchingEvents")}
           </div>
         ) : (
           <ul className="divide-y divide-[var(--color-border)]/60">
@@ -235,7 +241,7 @@ export function LogsView() {
                         mobile, fait partie du flex row sur sm+. */}
                     <div className="flex items-center gap-2 sm:contents">
                       <span className="whitespace-nowrap font-mono text-[10px] text-[var(--color-muted-foreground)]">
-                        {new Date(l.createdAt).toLocaleTimeString("fr-FR", {
+                        {new Date(l.createdAt).toLocaleTimeString(timeLocale, {
                           hour: "2-digit",
                           minute: "2-digit",
                           second: "2-digit",

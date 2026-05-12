@@ -56,10 +56,11 @@ function BillingToggle({
   value: Billing;
   onChange: (v: Billing) => void;
 }) {
+  const t = useTranslations("DashboardBilling");
   return (
     <div
       role="tablist"
-      aria-label="Période de facturation"
+      aria-label={t("billingToggleAria")}
       className="relative inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-white p-1 shadow-xs"
     >
       {(["monthly", "annual"] as const).map((opt) => {
@@ -84,7 +85,7 @@ function BillingToggle({
                 className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] shadow-sm"
               />
             )}
-            {opt === "monthly" ? "Mensuel" : "Annuel"}
+            {opt === "monthly" ? t("monthly") : t("annual")}
             {opt === "annual" && (
               <span
                 className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${
@@ -118,6 +119,7 @@ function PlanCard({
   pending: boolean;
   onSubmit: (key: PlanKey) => void;
 }) {
+  const t = useTranslations("DashboardBilling");
   const isCurrent = plan.key === currentPlanKey;
   const isUpgrade = RANK[plan.key] > RANK[currentPlanKey];
   const isDowngrade = RANK[plan.key] < RANK[currentPlanKey];
@@ -145,7 +147,7 @@ function PlanCard({
           />
           <div className="absolute -top-3 left-1/2 -translate-x-1/2">
             <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#d4a574] via-[#e5c08a] to-[#b8864e] px-3 py-1 text-[10px] font-semibold tracking-wide text-white shadow-md">
-              ★ Populaire
+              {t("popularBadge")}
             </span>
           </div>
         </>
@@ -154,7 +156,7 @@ function PlanCard({
       {isCurrent && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-3 py-1 text-[10px] font-semibold tracking-wide text-white shadow-md">
-            ✓ Plan actuel
+            {t("currentBadge")}
           </span>
         </div>
       )}
@@ -183,12 +185,12 @@ function PlanCard({
             </motion.span>
           </AnimatePresence>
           <span className="text-xs text-[var(--color-muted-foreground)]">
-            HT / mois
+            {t("vatExclMonth")}
           </span>
         </div>
         {billing === "annual" && (
           <p className="mt-1 text-[11px] text-[var(--color-muted-foreground)]">
-            soit {formatEuro(plan.annualTotal)} € HT / an
+            {t("annualTotal", { total: formatEuro(plan.annualTotal) })}
           </p>
         )}
       </div>
@@ -214,7 +216,7 @@ function PlanCard({
       {localized.bestFor && (
         <p className="mt-4 border-t border-[var(--color-border)]/70 pt-3 text-[11px] leading-relaxed text-[var(--color-muted-foreground)]">
           <span className="font-semibold text-[var(--color-foreground)]">
-            Idéal pour :
+            {t("bestFor")}
           </span>{" "}
           {localized.bestFor}
         </p>
@@ -227,7 +229,7 @@ function PlanCard({
             disabled
             className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--color-primary)] bg-[var(--color-muted)] px-4 py-2 text-xs font-medium text-[var(--color-foreground)]"
           >
-            Plan actuel
+            {t("currentPlanButton")}
           </button>
         ) : (
           <button
@@ -237,12 +239,12 @@ function PlanCard({
             className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-xs font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending
-              ? "Mise à jour…"
+              ? t("updatingButton")
               : isUpgrade
-              ? "Passer à ce plan"
+              ? t("upgradeButton")
               : isDowngrade
-              ? "Repasser sur ce plan"
-              : "Choisir cette formule"}
+              ? t("downgradeButton")
+              : t("selectButton")}
             <svg
               viewBox="0 0 16 16"
               fill="none"
@@ -259,7 +261,7 @@ function PlanCard({
           </button>
         )}
         <p className="mt-2 text-center text-[10px] text-[var(--color-muted-foreground)]">
-          Modèle <span className="font-mono">{plan.model}</span>
+          {t("modelLabel")} <span className="font-mono">{plan.model}</span>
         </p>
       </div>
     </motion.article>
@@ -279,6 +281,7 @@ export function BillingClient({
   initialBilling: Billing;
   setPlanAction: (formData: FormData) => Promise<void>;
 }) {
+  const t = useTranslations("DashboardBilling");
   const [billing, setBilling] = useState<Billing>(initialBilling);
   const [isPending, startTransition] = useTransition();
   const search = useSearchParams();
@@ -287,9 +290,9 @@ export function BillingClient({
     const changed = search.get("changed");
     const same = search.get("same");
     const error = search.get("error");
-    if (changed) return { kind: "ok" as const, msg: `Plan mis à jour : ${changed}.` };
-    if (same) return { kind: "info" as const, msg: "Tu es déjà sur ce plan." };
-    if (error) return { kind: "err" as const, msg: "Plan invalide." };
+    if (changed) return { kind: "ok" as const, msg: t("flashChanged", { plan: changed }) };
+    if (same) return { kind: "info" as const, msg: t("flashSame") };
+    if (error) return { kind: "err" as const, msg: t("flashError") };
     return null;
   })();
 
@@ -319,9 +322,7 @@ export function BillingClient({
       <div className="flex flex-col items-center gap-2">
         <BillingToggle value={billing} onChange={setBilling} />
         <p className="text-[11px] text-[var(--color-muted-foreground)]">
-          Économisez{" "}
-          <span className="font-semibold text-[#b45309]">20%</span> avec
-          l&apos;abonnement annuel.
+          {t("annualSavings")}
         </p>
       </div>
 
