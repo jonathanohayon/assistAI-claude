@@ -1,10 +1,29 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { type Plan, type PlanKey, formatEuro } from "@/lib/plans";
+
+// Pioche les variantes localisées (Plans namespace) avec fallback FR sur
+// lib/plans.ts si la clé manque dans la locale active. Identique au
+// helper de components/marketing/Pricing.tsx pour cohérence.
+function useLocalizedPlan(plan: Plan) {
+  const t = useTranslations("Plans");
+  const safe = <T,>(getter: () => T, fallback: T): T => {
+    try { return getter(); } catch { return fallback; }
+  };
+  return {
+    name: safe(() => t(`${plan.key}.name`), plan.name),
+    tagline: safe(() => t(`${plan.key}.tagline`), plan.tagline),
+    features: safe(() => {
+      const raw = t.raw(`${plan.key}.features`);
+      return Array.isArray(raw) ? (raw as string[]) : Array.from(plan.features);
+    }, Array.from(plan.features)),
+  };
+}
 
 type Billing = "monthly" | "annual";
 
@@ -103,6 +122,7 @@ function PlanCard({
   const isDowngrade = RANK[plan.key] < RANK[currentPlanKey];
   const wasHinted = hintedPlanKey === plan.key;
   const price = billing === "monthly" ? plan.monthly : plan.annualMonthly;
+  const localized = useLocalizedPlan(plan);
 
   return (
     <motion.article
@@ -140,10 +160,10 @@ function PlanCard({
 
       <header>
         <h3 className="font-display text-lg text-[var(--color-foreground)]">
-          {plan.name}
+          {localized.name}
         </h3>
         <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-          {plan.tagline}
+          {localized.tagline}
         </p>
       </header>
 
@@ -173,7 +193,7 @@ function PlanCard({
       </div>
 
       <ul className="mt-5 space-y-2 border-t border-[var(--color-border)]/70 pt-4">
-        {plan.features.map((f) => (
+        {localized.features.map((f) => (
           <li
             key={f}
             className="flex items-start gap-2 text-xs leading-relaxed text-[var(--color-foreground)]"

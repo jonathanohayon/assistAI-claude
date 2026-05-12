@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
+import { getLocale } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-import { planByKey } from "@/lib/plans";
+import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 import { DeleteAccountSection } from "./delete-account-section";
 
@@ -31,7 +32,8 @@ export default async function SettingsPage() {
     .from(phoneNumbers)
     .where(eq(phoneNumbers.userId, me.id));
 
-  const plan = planByKey(me.subscriptionPlan);
+  const locale = await getLocale();
+  const plan = getLocalizedPlan(locale, me.subscriptionPlan);
   const isAdmin = me.role === "admin";
 
   return (

@@ -1,15 +1,16 @@
 import { eq } from "drizzle-orm";
+import { getLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { getLocalizedPlan } from "@/lib/plan-i18n";
 import {
   DEFAULT_PLAN_KEY,
   PLANS,
   isValidPlanKey,
-  planByKey,
 } from "@/lib/plans";
 
 import { BillingClient } from "./client";
@@ -77,7 +78,8 @@ export default async function BillingPage(props: {
     redirect(`/dashboard/billing?changed=${next}`);
   }
 
-  const currentPlan = planByKey(currentPlanKey);
+  const locale = await getLocale();
+  const currentPlan = getLocalizedPlan(locale, currentPlanKey);
   const hintedPlanKey = isValidPlanKey(hintedPlan) ? hintedPlan : null;
 
   return (

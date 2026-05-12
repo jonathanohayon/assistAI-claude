@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getLocale } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -7,7 +8,7 @@ import { Logo } from "@/components/ui/Logo";
 import { getAppOrigin } from "@/lib/app-origin";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-import { planByKey } from "@/lib/plans";
+import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 import { OnboardingWizard } from "./wizard";
 
@@ -48,7 +49,8 @@ export default async function OnboardingPage() {
     .where(eq(users.id, session.user.id))
     .limit(1);
   const googleConnected = Boolean(me?.googleRefreshToken);
-  const plan = planByKey(me?.subscriptionPlan);
+  const locale = await getLocale();
+  const plan = getLocalizedPlan(locale, me?.subscriptionPlan);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12">

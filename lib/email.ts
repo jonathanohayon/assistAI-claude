@@ -14,8 +14,8 @@
 
 import { Resend } from "resend";
 
-import { planByKey } from "@/lib/plans";
 import type { PlanFeatures } from "@/lib/plan-features";
+import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 
@@ -256,12 +256,14 @@ export async function sendWelcomeEmail(
     planKey: string;
     features: PlanFeatures;
     trialEndsAt?: Date | null;
+    /** Locale du destinataire — fallback fr si absent. */
+    locale?: string | null;
   },
 ): Promise<SendResult> {
   const client = getResend();
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
 
-  const plan = planByKey(opts.planKey);
+  const plan = getLocalizedPlan(opts.locale, opts.planKey);
   const planLabel = plan.name;
   const firstName =
     (opts.displayName ?? "").trim().split(/\s+/)[0] || null;

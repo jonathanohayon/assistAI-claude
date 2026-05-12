@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getLocale } from "next-intl/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
@@ -173,12 +174,14 @@ export async function POST(req: NextRequest) {
         const planMatrix = await getPlanFeatureMatrix();
         const features = featuresForPlan(planMatrix, me.subscriptionPlan);
         const trialEndsForEmail = me.trialEndsAt ?? computeTrialEndsAt();
+        const locale = await getLocale();
         const res = await sendWelcomeEmail(me.email, {
           displayName: me.displayName,
           phoneNumber: purchased.phoneNumber,
           planKey: me.subscriptionPlan,
           features,
           trialEndsAt: trialEndsForEmail,
+          locale,
         });
         if (!res.ok) {
           await logEvent({
