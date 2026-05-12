@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
       id: users.id,
       email: users.email,
       trialEndsAt: users.trialEndsAt,
+      locale: users.locale,
     })
     .from(users)
     .where(
@@ -76,6 +77,7 @@ export async function GET(req: NextRequest) {
     const res = await sendTrialWarningEmail(u.email, {
       phoneNumber: pn?.phoneNumber ?? null,
       minutesLeft,
+      locale: u.locale,
     });
 
     if (res.ok) {
@@ -115,6 +117,7 @@ export async function GET(req: NextRequest) {
       id: users.id,
       email: users.email,
       role: users.role,
+      locale: users.locale,
     })
     .from(users)
     .where(
@@ -178,6 +181,7 @@ export async function GET(req: NextRequest) {
       // Resend down (le compte est déjà supprimé de toute façon).
       const mailRes = await sendTrialDeletedEmail(u.email, {
         phoneNumber: pn?.phoneNumber ?? null,
+        locale: u.locale,
       });
       if (!mailRes.ok) {
         await logEvent({

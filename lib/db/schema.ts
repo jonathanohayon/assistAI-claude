@@ -48,6 +48,12 @@ export const users = pgTable("users", {
   // tant que pas true (le user reste sur /verify-email après signup).
   emailVerified: boolean("email_verified").notNull().default(false),
 
+  // Locale de l'utilisateur pour les emails transactionnels (verification,
+  // welcome, trial warning, deleted). Saved at signup depuis l'URL locale
+  // (/he/signup → 'he'). Default 'fr' = même que routing.defaultLocale.
+  // Lookup pour les emails envoyés hors-request (cron, API routes).
+  locale: text("locale").notNull().default("fr"),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

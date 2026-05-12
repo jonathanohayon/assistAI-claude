@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const sent = await sendVerificationEmail(email, verif.code!);
+  const sent = await sendVerificationEmail(email, verif.code!, user.locale);
   const isDevFallback = sent.fallback === "console_log";
   await logEvent({
     source: "auth",

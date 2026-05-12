@@ -80,6 +80,7 @@ export default async function SignupPage(props: {
         subscriptionStatus: "trialing",
         subscriptionPlan,
         trialEndsAt,
+        locale,
       })
       .returning();
 
@@ -108,7 +109,7 @@ export default async function SignupPage(props: {
       skipCooldown: true,
     });
     if (verif.ok && verif.code) {
-      const sent = await sendVerificationEmail(email, verif.code);
+      const sent = await sendVerificationEmail(email, verif.code, locale);
       // Dev escape-hatch : si RESEND_API_KEY n'est pas configuré, on log
       // le code en CLAIR dans le message pour le retrouver depuis
       // /dashboard/logs (filtre Auth). EN PROD avec RESEND_API_KEY set,

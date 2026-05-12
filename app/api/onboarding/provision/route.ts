@@ -1,5 +1,4 @@
 import { eq } from "drizzle-orm";
-import { getLocale } from "next-intl/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
@@ -174,14 +173,16 @@ export async function POST(req: NextRequest) {
         const planMatrix = await getPlanFeatureMatrix();
         const features = featuresForPlan(planMatrix, me.subscriptionPlan);
         const trialEndsForEmail = me.trialEndsAt ?? computeTrialEndsAt();
-        const locale = await getLocale();
+        // me.locale lit la valeur saved at signup (depuis URL /he/signup etc).
+        // Plus fiable que getLocale() ici car la requête vient du client en
+        // fetch sur /api/onboarding/provision (pas de locale prefix dans l'URL).
         const res = await sendWelcomeEmail(me.email, {
           displayName: me.displayName,
           phoneNumber: purchased.phoneNumber,
           planKey: me.subscriptionPlan,
           features,
           trialEndsAt: trialEndsForEmail,
-          locale,
+          locale: me.locale,
         });
         if (!res.ok) {
           await logEvent({
