@@ -131,7 +131,7 @@ export function SignupContent({
           </ul>
 
           <p className="mt-5 rounded-xl bg-[var(--color-muted)] px-3 py-2 text-[11px] text-[var(--color-muted-foreground)]">
-            7 jours d&apos;essai gratuit. Sans engagement, changeable depuis le
+            24 h d&apos;essai gratuit. Sans engagement, changeable depuis le
             dashboard.{" "}
             <Link
               href="/#pricing"
@@ -150,12 +150,25 @@ export function SignupContent({
           action={handleSignup}
           className="relative flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur"
         >
-          <div className="space-y-1">
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3 w-3">
+                <circle cx="8" cy="8" r="8" fill="currentColor" fillOpacity="0.15" />
+                <path
+                  d="m5 8.5 2 2 4-5"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              24 h gratuites — sans CB
+            </span>
             <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
               Créer un compte
             </h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              Donnez une voix à votre cabinet en 5 minutes.
+              Donnez une voix à votre cabinet en 5 minutes. Aucun engagement.
             </p>
           </div>
 
