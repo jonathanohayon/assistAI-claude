@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
+import { getAppOrigin } from "@/lib/app-origin";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { planByKey } from "@/lib/plans";
@@ -147,7 +148,10 @@ export default async function OnboardingPage() {
           )}
 
           <div className="mt-8">
-            <OnboardingWizard googleConnected={googleConnected} />
+            <OnboardingWizard
+              googleConnected={googleConnected}
+              appOrigin={await getAppOrigin()}
+            />
           </div>
         </div>
       </div>

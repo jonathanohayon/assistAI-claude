@@ -37,8 +37,12 @@ type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 
 export function OnboardingWizard({
   googleConnected: googleConnectedInitial,
+  appOrigin,
 }: {
   googleConnected: boolean;
+  /** Origin canonique de l'app (ex: https://aitamara.com), passé depuis le
+   *  server pour générer le redirect_uri Google sans hardcode. */
+  appOrigin: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -211,7 +215,7 @@ export function OnboardingWizard({
               <li>
                 Dans <strong>Authorized redirect URIs</strong>, ajoute :
                 <code className="mt-1 block break-all rounded bg-white px-2 py-1 font-mono text-[11px] text-sky-900 ring-1 ring-inset ring-sky-200">
-                  https://assistai-claude-production.up.railway.app/api/onboarding/google/callback
+                  {appOrigin}/api/onboarding/google/callback
                 </code>
               </li>
               <li>Save.</li>
