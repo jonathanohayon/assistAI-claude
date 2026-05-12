@@ -18,9 +18,15 @@ export const SETTING_KEYS = {
   // /admin. Le bloc est concaténé devant la persona tenant dans
   // /api/agent/config selon subscriptionPlan.
   GLOBAL_INSTRUCTIONS_BY_PLAN: "global_instructions_by_plan",
-  // Default persona seeded into a new tenant's agent_config at signup time.
-  // Empty → fall back to the hard-coded INITIAL_INSTRUCTIONS in lib/initial-config.
+  // Legacy : single onboarding template appliqué à tous les plans.
+  // Conservé pour la rétro-compat. Les nouveaux écrits vont sur la map
+  // ONBOARDING_TEMPLATE_BY_PLAN.
   ONBOARDING_TEMPLATE: "onboarding_persona_template",
+  // JSON map plan → persona seedée à l'inscription. Permet à l'admin
+  // d'avoir un texte par défaut différent par plan (basique = simple
+  // take_message, globale/premium = Johana multi-centres). Empty pour un
+  // plan donné → fallback INITIAL_INSTRUCTIONS_FOR_PLAN hardcodé.
+  ONBOARDING_TEMPLATE_BY_PLAN: "onboarding_template_by_plan",
   // JSON map plan → feature flags (Calendar, CRM, etc.). Voir lib/plan-features.ts.
   PLAN_FEATURES: "plan_features",
 } as const;
@@ -93,4 +99,47 @@ export async function setGlobalInstructionsByPlan(
 
 export async function getOnboardingTemplate(): Promise<string> {
   return (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
+}
+
+export type OnboardingTemplateByPlan = Record<PlanKey, string>;
+
+// Map plan → template d'inscription. Volontairement PAS de fallback sur
+// l'ancien single-key `ONBOARDING_TEMPLATE` : ce dernier était écrit
+// pour TOUS les plans (typiquement la persona globale Johana multi-
+// centres), donc l'hériter silencieusement reproduit le bug "le basique
+// reçoit la config d'un autre plan". Quand un plan n'a pas de texte
+// dédié, on renvoie "" — le signup tombe alors sur la persona hardcodée
+// per-plan de lib/initial-config.
+export async function getOnboardingTemplateByPlan(): Promise<OnboardingTemplateByPlan> {
+  const raw = await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE_BY_PLAN);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, ""]),
+  ) as OnboardingTemplateByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // JSON corrompu → on garde "" partout (= hardcoded per-plan).
+    }
+  }
+  return out;
+}
+
+export async function setOnboardingTemplateByPlan(
+  map: Partial<OnboardingTemplateByPlan>,
+): Promise<void> {
+  const current = await getOnboardingTemplateByPlan();
+  const merged: OnboardingTemplateByPlan = { ...current };
+  for (const p of PLANS) {
+    const v = map[p.key];
+    if (typeof v === "string") merged[p.key] = v;
+  }
+  await setSetting(
+    SETTING_KEYS.ONBOARDING_TEMPLATE_BY_PLAN,
+    JSON.stringify(merged),
+  );
 }

@@ -10,7 +10,7 @@ import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
   getGlobalInstructionsByPlan,
-  getOnboardingTemplate,
+  getOnboardingTemplateByPlan,
 } from "@/lib/settings";
 
 import { AdminTable } from "./admin-table";
@@ -35,7 +35,7 @@ export default async function AdminPage() {
     .orderBy(users.createdAt);
   const allNumbers = await db.select().from(phoneNumbers);
   const globalInstructionsByPlan = await getGlobalInstructionsByPlan();
-  const onboardingTemplate = await getOnboardingTemplate();
+  const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
 
   // Group numbers per user.
@@ -133,7 +133,7 @@ export default async function AdminPage() {
           </div>
           <GlobalInstructionsForm
             initialGlobalByPlan={globalInstructionsByPlan}
-            initialTemplate={onboardingTemplate}
+            initialTemplateByPlan={onboardingTemplateByPlan}
           />
           <div className="mt-6">
             <PlanFeaturesForm initialMatrix={planFeatures} />

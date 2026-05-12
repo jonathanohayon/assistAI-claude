@@ -25,15 +25,20 @@ utiliser le persona Johana de fallback.`;
 
 export function GlobalInstructionsForm({
   initialGlobalByPlan,
-  initialTemplate,
+  initialTemplateByPlan,
 }: {
   initialGlobalByPlan: Record<PlanKey, string>;
-  initialTemplate: string;
+  initialTemplateByPlan: Record<PlanKey, string>;
 }) {
   const [globalByPlan, setGlobalByPlan] =
     useState<Record<PlanKey, string>>(initialGlobalByPlan);
+  const [templateByPlan, setTemplateByPlan] =
+    useState<Record<PlanKey, string>>(initialTemplateByPlan);
+  // Onglet partagé entre les 2 sections (Règles communes + Template
+  // d'inscription) — si l'admin édite la persona globale d'un plan, il
+  // veut probablement éditer aussi le template du même plan dans la
+  // foulée. Un seul switch = friction minimale.
   const [activePlan, setActivePlan] = useState<PlanKey>(PLANS[0].key);
-  const [templateText, setTemplateText] = useState(initialTemplate);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -48,7 +53,7 @@ export function GlobalInstructionsForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           globalInstructionsByPlan: globalByPlan,
-          onboardingTemplate: templateText,
+          onboardingTemplateByPlan: templateByPlan,
         }),
       });
       if (!res.ok) {
@@ -129,7 +134,7 @@ export function GlobalInstructionsForm({
         />
       </div>
 
-      {/* Onboarding template — seed for new tenants */}
+      {/* Onboarding template — seed for new tenants, per plan */}
       <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -137,7 +142,7 @@ export function GlobalInstructionsForm({
               2 · Persona par défaut des nouveaux tenants
             </p>
             <h3 className="mt-1 font-display text-base text-[var(--color-foreground)]">
-              Template d&apos;inscription
+              Template d&apos;inscription · par plan
             </h3>
           </div>
           <span className="whitespace-nowrap rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
@@ -146,14 +151,48 @@ export function GlobalInstructionsForm({
         </div>
         <p className="mb-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
           Copié dans la config d&apos;un tenant <strong>au moment de son
-          inscription</strong>, puis personnalisable depuis son dashboard. Les
-          modifs ici n&apos;affectent <strong>pas</strong> les tenants déjà
-          existants. Laisse vide pour utiliser le persona Johana hard-codé.
+          inscription</strong>, selon le plan choisi. Personnalisable
+          ensuite depuis son dashboard. Modifs ici n&apos;affectent{" "}
+          <strong>pas</strong> les tenants déjà existants. Laisse vide pour
+          utiliser la persona hardcodée du plan.
         </p>
+
+        {/* Plan tabs (mirror du switcher Règles communes pour cohérence) */}
+        <div className="mb-3 inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-1">
+          {PLANS.map((p) => {
+            const active = activePlan === p.key;
+            const planDirty =
+              templateByPlan[p.key] !== initialTemplateByPlan[p.key];
+            return (
+              <button
+                type="button"
+                key={p.key}
+                onClick={() => setActivePlan(p.key)}
+                className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-white text-[var(--color-foreground)] shadow-sm ring-1 ring-[var(--color-border)]"
+                    : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                }`}
+              >
+                {p.name}
+                {planDirty && (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <textarea
-          value={templateText}
+          value={templateByPlan[activePlan] ?? ""}
           onChange={(e) => {
-            setTemplateText(e.target.value);
+            setTemplateByPlan((prev) => ({
+              ...prev,
+              [activePlan]: e.target.value,
+            }));
             setDirty(true);
           }}
           rows={14}

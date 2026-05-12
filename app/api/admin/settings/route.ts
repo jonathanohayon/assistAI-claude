@@ -13,10 +13,13 @@ import {
 import {
   SETTING_KEYS,
   getGlobalInstructionsByPlan,
+  getOnboardingTemplateByPlan,
   getSetting,
   setGlobalInstructionsByPlan,
+  setOnboardingTemplateByPlan,
   setSetting,
   type GlobalInstructionsByPlan,
+  type OnboardingTemplateByPlan,
 } from "@/lib/settings";
 
 const requireAdmin = async () => {
@@ -40,11 +43,13 @@ export async function GET() {
   const globalInstructionsByPlan = await getGlobalInstructionsByPlan();
   const onboardingTemplate =
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
+  const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
     onboardingTemplate,
+    onboardingTemplateByPlan,
     planFeatures,
   });
 }
@@ -58,6 +63,7 @@ export async function PUT(req: NextRequest) {
     globalInstructions?: string;
     globalInstructionsByPlan?: Partial<GlobalInstructionsByPlan>;
     onboardingTemplate?: string;
+    onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
     planFeatures?: PlanFeatureMatrix;
   };
 
@@ -83,6 +89,13 @@ export async function PUT(req: NextRequest) {
       body.onboardingTemplate,
     );
     changed.push("onboarding_persona_template");
+  }
+  if (
+    body.onboardingTemplateByPlan &&
+    typeof body.onboardingTemplateByPlan === "object"
+  ) {
+    await setOnboardingTemplateByPlan(body.onboardingTemplateByPlan);
+    changed.push("onboarding_template_by_plan");
   }
   if (body.planFeatures && typeof body.planFeatures === "object") {
     // Le helper normalise les clés inconnues + fillna les manquantes.

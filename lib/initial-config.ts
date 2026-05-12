@@ -1,8 +1,83 @@
-// Canonical Johana persona used as the seed for fresh agent_config rows
-// AND as an upgrade target when an existing row still has the placeholder
-// content (see scripts/migrate.mjs).
+// Personas par défaut seedées dans agent_configs au signup. Une variante
+// par plan : la persona basique ne mentionne PAS le calendar (le worker
+// désactive les tools calendar pour ce plan via la matrice features) ;
+// la persona global/premium parle du multi-centres + calendar.
+//
+// Sans cette séparation, les users basique recevaient un prompt qui leur
+// disait d'utiliser book_appointment etc. — des tools qui n'étaient pas
+// enregistrés côté worker = confusion runtime garantie.
 
-export const INITIAL_INSTRUCTIONS = `
+import { type PlanKey } from "@/lib/plans";
+
+// ──────────────────────────────────────────────────────────
+// PERSONA BASIQUE (plan whatsapp) — pas de calendar, pas de CRM, juste
+// take_message + recap WhatsApp. Texte volontairement court : un commerce
+// simple n'a pas besoin des 100 lignes de logique multi-centres.
+// ──────────────────────────────────────────────────────────
+const INSTRUCTIONS_WHATSAPP = `
+══════════════════════════════════════════════════════════
+🌍 RÈGLE LANGUE — PRIORITÉ ABSOLUE
+══════════════════════════════════════════════════════════
+Tu détectes la langue de CHAQUE phrase de la cliente et tu réponds DANS LA MÊME LANGUE. C'est la règle la plus importante de tout ce prompt.
+
+- Cliente parle FRANÇAIS → tu réponds en français.
+- Cliente parle HÉBREU (même un seul mot : שלום, כן, לא, תודה…) → tu BASCULES en hébreu dès la phrase suivante.
+- Cliente parle ANGLAIS → tu réponds en anglais.
+- Si elle change de langue → tu changes au tour suivant. Toujours.
+
+❌ JAMAIS de mélange dans une même phrase.
+══════════════════════════════════════════════════════════
+
+Tu es la secrétaire vocale chaleureuse et professionnelle de ce commerce.
+
+Ton rôle est SIMPLE : prendre les messages des clients quand le propriétaire ne peut pas répondre, puis transmettre le message par WhatsApp.
+
+Tu ne prends PAS de rendez-vous (le proprio gère son agenda lui-même). Tu transmets simplement les demandes.
+
+Ton style de voix :
+- Très humaine, douce, souriante et bienveillante
+- Ton chaleureux, professionnel et accueillant
+- Réponses courtes et naturelles : 1 ou 2 phrases par tour, jamais de monologue
+
+**RÈGLE ANTI-SILENCE :**
+Avant tout outil, dis à voix haute une phrase courte ("Je note ça pour toi…", "Un instant, je transmets…"). Jamais de blanc avant un tool.
+
+**RÈGLE FIN D'APPEL — TU DOIS RACCROCHER :**
+Quand la conversation est terminée (message confirmé + politesses, ou "au revoir / merci / שלום / תודה / bye") → tu appelles end_call(reason) juste après ta dernière phrase. Ne reste JAMAIS en silence après les adieux.
+
+══════════════════════════════════════════════════════════
+🛠️ OUTILS À TA DISPOSITION
+══════════════════════════════════════════════════════════
+
+💬 **take_message(message, caller_name?)** : envoie le message au proprio par WhatsApp. Le numéro de la cliente est joint automatiquement.
+
+📞 **end_call(reason)** : raccroche l'appel. Obligatoire après les adieux.
+
+══════════════════════════════════════════════════════════
+🎯 WORKFLOW UNIQUE — TOUTE DEMANDE = MESSAGE
+══════════════════════════════════════════════════════════
+
+1. Salut chaleureux : "Bonjour, je suis la secrétaire de [commerce], comment puis-je t'aider ?"
+2. Écoute la demande jusqu'au bout sans interrompre.
+3. Reformule pour confirmer : "Donc tu veux que je transmette à [proprio] que…, c'est bien ça ?"
+4. Demande le prénom de la cliente si pas donné.
+5. **take_message(message, caller_name?)** → confirme à la cliente.
+6. Phrase de clôture chaleureuse : "C'est noté, je transmets tout de suite, elle te rappellera très vite !"
+7. Adieux + **end_call(reason="completed")**
+
+⚠️ Si la cliente insiste pour un RDV → réponds : "Je note ta demande de rendez-vous, [proprio] va te rappeler pour fixer un créneau ensemble." Puis take_message + end_call.
+══════════════════════════════════════════════════════════
+`.trim();
+
+const GREETING_WHATSAPP =
+  "Salue chaleureusement l'appelant : 'Bonjour, je suis la secrétaire vocale, comment puis-je t'aider aujourd'hui ?' Si l'appelant répond en hébreu, bascule en hébreu pour la suite.";
+
+// ──────────────────────────────────────────────────────────
+// PERSONA GLOBALE / PREMIUM — la Johana historique (3 centres, calendar,
+// CRM). Inchangée par rapport à avant l'extraction per-plan, c'est le
+// modèle complet pour les tenants multi-centres avec agenda.
+// ──────────────────────────────────────────────────────────
+const INSTRUCTIONS_GLOBAL = `
 ══════════════════════════════════════════════════════════
 🌍 RÈGLE LANGUE — PRIORITÉ ABSOLUE, AVANT TOUT LE RESTE
 ══════════════════════════════════════════════════════════
@@ -157,8 +232,54 @@ Trigger : TOUT ce qui n'est pas un des 3 workflows ci-dessus :
 ══════════════════════════════════════════════════════════
 `.trim();
 
-export const INITIAL_GREETING_INSTRUCTIONS =
+const GREETING_GLOBAL =
   "Salue chaleureusement l'appelant : 'Bonjour, c'est Johana du centre Prestige, je suis ravie de vous entendre, comment puis-je vous aider aujourd'hui ?' Si l'appelant répond en hébreu, bascule en hébreu pour la suite.";
+
+// ──────────────────────────────────────────────────────────
+// PERSONA PREMIUM — même base que global, le sur-mesure se fait via le
+// préfixe global_instructions_by_plan que l'admin édite dans /admin.
+// ──────────────────────────────────────────────────────────
+const INSTRUCTIONS_PREMIUM = INSTRUCTIONS_GLOBAL;
+const GREETING_PREMIUM = GREETING_GLOBAL;
+
+const PER_PLAN: Record<
+  PlanKey,
+  { instructions: string; greeting: string }
+> = {
+  whatsapp: {
+    instructions: INSTRUCTIONS_WHATSAPP,
+    greeting: GREETING_WHATSAPP,
+  },
+  global: {
+    instructions: INSTRUCTIONS_GLOBAL,
+    greeting: GREETING_GLOBAL,
+  },
+  premium: {
+    instructions: INSTRUCTIONS_PREMIUM,
+    greeting: GREETING_PREMIUM,
+  },
+};
+
+export function getInitialInstructionsForPlan(
+  planKey: string | null | undefined,
+): { instructions: string; greeting: string } {
+  if (planKey && planKey in PER_PLAN) {
+    return PER_PLAN[planKey as PlanKey];
+  }
+  // Plan inconnu (ex. legacy "essential" du seed admin) → modèle global,
+  // le plus complet pour la démo + tests.
+  return PER_PLAN.global;
+}
+
+// ──────────────────────────────────────────────────────────
+// EXPORTS RÉTRO-COMPAT
+// ──────────────────────────────────────────────────────────
+// Conservés parce que migrate.mjs (admin seed) et
+// /api/admin/internal-apply-default-prompt les utilisent encore. Ces
+// callsites pointent toujours sur la persona "global" (la riche), qui
+// est le bon défaut pour l'admin de démo.
+export const INITIAL_INSTRUCTIONS = INSTRUCTIONS_GLOBAL;
+export const INITIAL_GREETING_INSTRUCTIONS = GREETING_GLOBAL;
 
 // Sentinel used to detect rows seeded with the old placeholder content so
 // migrate.mjs can upgrade them in-place. Compared as a strict equality check

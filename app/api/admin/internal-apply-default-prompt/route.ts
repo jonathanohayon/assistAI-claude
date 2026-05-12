@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
-import {
-  INITIAL_GREETING_INSTRUCTIONS,
-  INITIAL_INSTRUCTIONS,
-} from "@/lib/initial-config";
+import { getInitialInstructionsForPlan } from "@/lib/initial-config";
 import { SETTING_KEYS, setSetting } from "@/lib/settings";
 
 // Internal-only: overwrite a tenant's instructions + greeting with the
@@ -31,23 +28,26 @@ export async function POST(req: NextRequest) {
   };
 
   let userId = body.userId;
-  if (!userId && body.email) {
+  let resolvedUser: { id: string; subscriptionPlan: string } | null = null;
+  if (body.userId) {
     const [u] = await db
-      .select()
+      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan })
+      .from(users)
+      .where(eq(users.id, body.userId))
+      .limit(1);
+    if (u) resolvedUser = u;
+  } else if (body.email) {
+    const [u] = await db
+      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan })
       .from(users)
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);
-    if (!u) {
-      return NextResponse.json({ error: "user introuvable" }, { status: 404 });
-    }
-    userId = u.id;
+    if (u) resolvedUser = u;
   }
-  if (!userId) {
-    return NextResponse.json(
-      { error: "userId ou email requis" },
-      { status: 400 },
-    );
+  if (!resolvedUser) {
+    return NextResponse.json({ error: "user introuvable" }, { status: 404 });
   }
+  userId = resolvedUser.id;
 
   const [before] = await db
     .select({
@@ -64,11 +64,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Reset PLAN-AWARE : un user basique récupère la persona basique,
+  // pas la Johana multi-centres. Évite de re-injecter la config d'un
+  // autre plan via ce endpoint de "réparation".
+  const defaults = getInitialInstructionsForPlan(resolvedUser.subscriptionPlan);
   const [updated] = await db
     .update(agentConfigs)
     .set({
-      instructions: INITIAL_INSTRUCTIONS,
-      greetingInstructions: INITIAL_GREETING_INSTRUCTIONS,
+      instructions: defaults.instructions,
+      greetingInstructions: defaults.greeting,
       updatedAt: new Date(),
     })
     .where(eq(agentConfigs.userId, userId))

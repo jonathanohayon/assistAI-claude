@@ -7,13 +7,10 @@ import { auth, signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { sendVerificationEmail } from "@/lib/email";
-import {
-  INITIAL_GREETING_INSTRUCTIONS,
-  INITIAL_INSTRUCTIONS,
-} from "@/lib/initial-config";
+import { getInitialInstructionsForPlan } from "@/lib/initial-config";
 import { logEvent } from "@/lib/logger";
 import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
-import { getOnboardingTemplate } from "@/lib/settings";
+import { getOnboardingTemplateByPlan } from "@/lib/settings";
 import { computeTrialEndsAt } from "@/lib/trial";
 import { createEmailVerification } from "@/lib/verify-code";
 
@@ -80,18 +77,20 @@ export default async function SignupPage(props: {
       })
       .returning();
 
-    // Bootstrap an agent_config so the new tenant has something to edit
-    // immediately. Use the admin-defined onboarding template if present,
-    // otherwise fall back to the hard-coded canonical Johana persona.
-    const adminTemplate = await getOnboardingTemplate();
-    const seedInstructions = adminTemplate.trim()
-      ? adminTemplate
-      : INITIAL_INSTRUCTIONS;
+    // Bootstrap agent_config avec la persona du PLAN choisi par le user.
+    // Cascade : admin-defined template par plan → persona hardcodée par
+    // plan. Évite que le user basique reçoive le prompt multi-centres
+    // qui parle de tools (book_appointment) qu'il n'aura jamais —
+    // calendar est gated off pour ce plan via la matrice features.
+    const templatesByPlan = await getOnboardingTemplateByPlan();
+    const defaults = getInitialInstructionsForPlan(subscriptionPlan);
+    const adminTemplate = templatesByPlan[subscriptionPlan]?.trim() ?? "";
+    const seedInstructions = adminTemplate || defaults.instructions;
 
     await db.insert(agentConfigs).values({
       userId: created.id,
       instructions: seedInstructions,
-      greetingInstructions: INITIAL_GREETING_INSTRUCTIONS,
+      greetingInstructions: defaults.greeting,
     });
 
     // Email verification gate : crée un code 4 chiffres, l'envoie par mail.
