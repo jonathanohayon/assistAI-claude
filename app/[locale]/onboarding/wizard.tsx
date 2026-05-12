@@ -379,12 +379,6 @@ export function OnboardingWizard({
         </button>
       )}
 
-      <p className="text-center text-xs text-[var(--color-muted-foreground)]">
-        {t("skipNote")}{" "}
-        <Link href="/dashboard" className="underline">
-          {t("skipLink")}
-        </Link>
-      </p>
     </div>
   );
 }

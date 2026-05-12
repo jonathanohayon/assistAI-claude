@@ -343,8 +343,6 @@
     "pickNumber": "Pick a number",
     "purchasing": "Provisioning…",
     "confirmButton": "Confirm and activate this number",
-    "skipNote": "You can change it later from the dashboard.",
-    "skipLink": "Skip for now",
     "errSearchFailed": "Search failed",
     "errNoNumbers": "No numbers available for this country right now. Try again in a few minutes or pick another country.",
     "errProvisionFailed": "Provisioning failed",
