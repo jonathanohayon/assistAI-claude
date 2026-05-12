@@ -7,7 +7,7 @@ import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-import { getPlanFeatureMatrix } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
   getGlobalInstructions,
   getOnboardingTemplate,

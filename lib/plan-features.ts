@@ -1,17 +1,12 @@
 // Matrice "feature × plan" éditable par l'admin depuis Réglages partagés.
-// Stockée en JSON dans app_settings(key='plan_features') pour éviter une
-// migration DB juste pour 3 lignes × 4 colonnes.
-//
-// Source de vérité utilisée par :
-//   - app/dashboard/_nav.tsx       (affichage onglets Calendrier/Contacts)
-//   - app/api/agent/config         (worker reçoit `features` → expose tools)
-//   - app/admin/plan-features-form (UI d'édition)
+// CE FICHIER EST CLIENT-SAFE — aucune dépendance DB/server-only (cf. issue
+// build : plan-features-form.tsx est "use client" et bundle ses imports).
+// La persistance vit dans lib/plan-features-storage.ts (server-only).
 //
 // Ajouter une nouvelle feature ici (+ la default) suffit — la matrice
 // UI itère sur FEATURE_DEFS. Le worker ignore les clés inconnues.
 
 import { PLANS, type PlanKey } from "@/lib/plans";
-import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
 
 export const FEATURE_DEFS = [
   {
@@ -69,7 +64,7 @@ export const DEFAULT_MATRIX: PlanFeatureMatrix = {
   },
 };
 
-function normalize(input: unknown): PlanFeatureMatrix {
+export function normalizeMatrix(input: unknown): PlanFeatureMatrix {
   const out: PlanFeatureMatrix = JSON.parse(JSON.stringify(DEFAULT_MATRIX));
   if (!input || typeof input !== "object") return out;
   const parsed = input as Partial<Record<PlanKey, Partial<PlanFeatures>>>;
@@ -84,25 +79,6 @@ function normalize(input: unknown): PlanFeatureMatrix {
     }
   }
   return out;
-}
-
-export async function getPlanFeatureMatrix(): Promise<PlanFeatureMatrix> {
-  const raw = await getSetting(SETTING_KEYS.PLAN_FEATURES);
-  if (!raw) return JSON.parse(JSON.stringify(DEFAULT_MATRIX));
-  try {
-    return normalize(JSON.parse(raw));
-  } catch {
-    // JSON corrompu — log pas nécessaire ici, le getter est appelé à
-    // chaque appel API. On retombe sur le défaut.
-    return JSON.parse(JSON.stringify(DEFAULT_MATRIX));
-  }
-}
-
-export async function setPlanFeatureMatrix(
-  matrix: PlanFeatureMatrix,
-): Promise<void> {
-  const normalized = normalize(matrix);
-  await setSetting(SETTING_KEYS.PLAN_FEATURES, JSON.stringify(normalized));
 }
 
 // Helper côté consommateurs : récupère les features actives pour un plan

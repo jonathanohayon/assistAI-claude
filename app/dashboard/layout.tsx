@@ -7,10 +7,8 @@ import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import {
-  featuresForPlan,
-  getPlanFeatureMatrix,
-} from "@/lib/plan-features";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";

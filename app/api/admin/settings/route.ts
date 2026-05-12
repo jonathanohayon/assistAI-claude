@@ -5,11 +5,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { type PlanFeatureMatrix } from "@/lib/plan-features";
 import {
   getPlanFeatureMatrix,
   setPlanFeatureMatrix,
-  type PlanFeatureMatrix,
-} from "@/lib/plan-features";
+} from "@/lib/plan-features-storage";
 import {
   SETTING_KEYS,
   getSetting,

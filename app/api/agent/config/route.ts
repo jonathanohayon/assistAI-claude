@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { logEvent } from "@/lib/logger";
-import {
-  featuresForPlan,
-  getPlanFeatureMatrix,
-} from "@/lib/plan-features";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { getGlobalInstructions } from "@/lib/settings";
 import {
   resolveDefaultTenant,

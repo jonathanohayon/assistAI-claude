@@ -5,10 +5,8 @@ import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
-import {
-  featuresForPlan,
-  getPlanFeatureMatrix,
-} from "@/lib/plan-features";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
   ensureSheet,
   forceTextPhone,
