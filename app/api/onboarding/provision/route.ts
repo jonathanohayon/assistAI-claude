@@ -4,8 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { sendWelcomeEmail } from "@/lib/email";
 import { addNumberToTrunk } from "@/lib/livekit-sip";
 import { logEvent } from "@/lib/logger";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { computeTrialEndsAt } from "@/lib/trial";
 import {
   purchaseNumber,
@@ -160,6 +163,53 @@ export async function POST(req: NextRequest) {
         countryCode,
       },
     });
+
+    // Welcome email best-effort : si Resend échoue ou si l'utilisateur n'a
+    // plus de row (cas limite : compte supprimé entre la query au-dessus et
+    // ici), on log et on continue. Le success de l'onboarding ne dépend
+    // PAS de l'email — il a son numéro, c'est l'essentiel.
+    if (me?.email) {
+      try {
+        const planMatrix = await getPlanFeatureMatrix();
+        const features = featuresForPlan(planMatrix, me.subscriptionPlan);
+        const trialEndsForEmail = me.trialEndsAt ?? computeTrialEndsAt();
+        const res = await sendWelcomeEmail(me.email, {
+          displayName: me.displayName,
+          phoneNumber: purchased.phoneNumber,
+          planKey: me.subscriptionPlan,
+          features,
+          trialEndsAt: trialEndsForEmail,
+        });
+        if (!res.ok) {
+          await logEvent({
+            source: "web",
+            event: "welcome_email_failed",
+            message: `Envoi welcome email à ${me.email} échoué : ${res.error?.slice(0, 200) ?? "?"}`,
+            level: "warn",
+            userId: session.user.id,
+            metadata: { error: res.error },
+          });
+        } else {
+          await logEvent({
+            source: "web",
+            event: "welcome_email_sent",
+            message: `Welcome email envoyé à ${me.email}`,
+            userId: session.user.id,
+            metadata: { emailId: res.id, fallback: res.fallback },
+          });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "unknown";
+        await logEvent({
+          source: "web",
+          event: "welcome_email_crashed",
+          message: `Welcome email crashed : ${msg.slice(0, 200)}`,
+          level: "error",
+          userId: session.user.id,
+          metadata: { error: msg },
+        });
+      }
+    }
 
     return NextResponse.json({
       ok: true,
