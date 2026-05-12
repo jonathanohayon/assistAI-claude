@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
   // Inline resolution so we can log WHICH path was taken — silent fallback
   // to default tenant has burned us before (calendar tools used the wrong
   // user's Google credentials → "Google not connected" symptom).
+  // resolveTenantByPhone + resolveDefaultTenant restent en cascade : le
+  // 2e n'est appelé que si le 1er rate.
   let tenant = phone ? await resolveTenantByPhone(phone) : null;
   const resolution: "phone_match" | "default_fallback" | "no_phone" =
     tenant ? "phone_match" : phone ? "default_fallback" : "no_phone";
@@ -29,26 +31,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No tenant" }, { status: 404 });
   }
 
-  await logEvent({
-    source: "tenant",
-    event: "agent_config_loaded",
-    message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
-    level: resolution === "phone_match" ? "info" : "warn",
-    userId: tenant.user.id,
-    metadata: {
-      resolution,
-      calledPhone: phone,
-      hasGoogle: Boolean(tenant.user.googleRefreshToken),
-      hasCalendarId: Boolean(tenant.user.googleCalendarId),
-    },
-  });
+  // ── Parallel DB roundtrips ─────────────────────────────────────────────
+  // Les 3 queries suivantes sont indépendantes et touchent toutes la même
+  // DB Postgres. Promise.all les groupe en parallèle → on économise ~2/3
+  // des round-trips (3 séquentiels ≈ 60-150ms → 1 batch ≈ 25-60ms).
+  // logEvent reste awaited pour ne pas perdre l'insert si Railway tue
+  // la fonction avant le flush (cas warm-cold transitions).
+  const [, globalByPlan, planMatrix] = await Promise.all([
+    logEvent({
+      source: "tenant",
+      event: "agent_config_loaded",
+      message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
+      level: resolution === "phone_match" ? "info" : "warn",
+      userId: tenant.user.id,
+      metadata: {
+        resolution,
+        calledPhone: phone,
+        hasGoogle: Boolean(tenant.user.googleRefreshToken),
+        hasCalendarId: Boolean(tenant.user.googleCalendarId),
+      },
+    }),
+    getGlobalInstructionsByPlan(),
+    getPlanFeatureMatrix(),
+  ]);
 
   const { config } = tenant;
   // Préfixe global per-plan : permet d'avoir des règles transverses
   // différentes selon Basique / Globale / Premium (ex. ton commercial
   // différent, mentions légales spécifiques). Fallback sur le préfixe du
   // plan whatsapp/Basique si plan inconnu (ex. legacy admin "essential").
-  const globalByPlan = await getGlobalInstructionsByPlan();
   const planKey: PlanKey =
     tenant.user.subscriptionPlan &&
     PLANS.some((p) => p.key === tenant.user.subscriptionPlan)
@@ -58,7 +69,6 @@ export async function GET(req: NextRequest) {
   // Features activées pour le plan de ce tenant (matrice admin). Le worker
   // utilise cette map pour décider quels tools enregistrer (cf. recent
   // session : règles métier déterministes côté tools, pas dans le prompt).
-  const planMatrix = await getPlanFeatureMatrix();
   const features = featuresForPlan(planMatrix, tenant.user.subscriptionPlan);
 
   const langLabel: Record<string, string> = {
