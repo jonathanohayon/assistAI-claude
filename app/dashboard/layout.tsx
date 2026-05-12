@@ -84,7 +84,10 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      {!googleConnected && (
+      {/* Bannière "Google non connecté" uniquement pour les plans qui ont
+          accès à cette feature (Globale + Premium). Sur WhatsApp, c'est
+          intentionnel — afficher serait confus. */}
+      {!googleConnected && me?.subscriptionPlan !== "whatsapp" && (
         <div className="mx-auto w-full max-w-5xl px-6 pt-4">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 sm:text-sm">
             <span>
@@ -97,6 +100,27 @@ export default async function DashboardLayout({
             >
               Connecter
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Bannière info pour les WhatsApp users : ils n'ont pas Google
+          Calendar perso, mais peuvent upgrader à tout moment. */}
+      {me?.subscriptionPlan === "whatsapp" && (
+        <div className="mx-auto w-full max-w-5xl px-6 pt-4">
+          <div className="flex flex-col items-start gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/50 px-4 py-2.5 text-xs text-[var(--color-muted-foreground)] sm:flex-row sm:items-center sm:justify-between sm:text-sm">
+            <span>
+              <strong className="text-[var(--color-foreground)]">
+                Formule WhatsApp.
+              </strong>{" "}
+              Connexion à ton propre Google Calendar/Sheets verrouillée.
+            </span>
+            <Link
+              href="/dashboard/billing"
+              className="whitespace-nowrap rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-3 py-1 text-[11px] font-medium text-white"
+            >
+              Passer à Globale ou Premium →
+            </Link>
           </div>
         </div>
       )}
@@ -140,7 +164,14 @@ export default async function DashboardLayout({
         </div>
       )}
 
-      <DashboardTabs />
+      <DashboardTabs
+        subscriptionPlan={
+          (me?.subscriptionPlan ?? "whatsapp") as
+            | "whatsapp"
+            | "global"
+            | "premium"
+        }
+      />
 
       {children}
     </div>

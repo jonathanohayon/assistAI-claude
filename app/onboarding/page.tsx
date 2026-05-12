@@ -151,6 +151,7 @@ export default async function OnboardingPage() {
             <OnboardingWizard
               googleConnected={googleConnected}
               appOrigin={await getAppOrigin()}
+              subscriptionPlan={plan.key}
             />
           </div>
         </div>

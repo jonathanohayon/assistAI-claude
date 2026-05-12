@@ -9,9 +9,28 @@ interface AdminRow {
   email: string;
   displayName: string;
   role: string;
+  subscriptionPlan: string;
+  subscriptionStatus: string;
   createdAt: Date | string;
   numbers: Array<{ id: string; phoneNumber: string; label: string }>;
 }
+
+const PLAN_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  global: "Globale",
+  premium: "Premium",
+};
+const PLAN_BADGE: Record<string, string> = {
+  whatsapp: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  global: "bg-violet-100 text-violet-800 ring-violet-200",
+  premium: "bg-gradient-to-br from-[#d4a574] to-[#b8864e] text-white ring-amber-300",
+};
+const STATUS_LABEL: Record<string, string> = {
+  trialing: "Essai",
+  active: "Actif",
+  expired: "Expiré",
+  cancelled: "Annulé",
+};
 
 export function AdminTable({
   rows,
@@ -27,6 +46,7 @@ export function AdminTable({
           <tr>
             <th className="px-6 py-3 font-medium">Tenant</th>
             <th className="px-6 py-3 font-medium">Rôle</th>
+            <th className="px-6 py-3 font-medium">Formule</th>
             <th className="px-6 py-3 font-medium">Numéros assignés</th>
             <th className="px-6 py-3 font-medium">Inscription</th>
             <th className="px-6 py-3 font-medium text-right">Config</th>
@@ -36,7 +56,7 @@ export function AdminTable({
           {rows.length === 0 && (
             <tr>
               <td
-                colSpan={5}
+                colSpan={6}
                 className="px-6 py-10 text-center text-sm text-[var(--color-muted-foreground)]"
               >
                 Aucun tenant.
@@ -68,6 +88,22 @@ export function AdminTable({
                 >
                   {r.role}
                 </span>
+              </td>
+              <td className="px-6 py-4 align-top">
+                <div className="flex flex-col items-start gap-1">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                      PLAN_BADGE[r.subscriptionPlan] ||
+                      "bg-zinc-100 text-zinc-800 ring-zinc-200"
+                    }`}
+                  >
+                    {PLAN_LABEL[r.subscriptionPlan] || r.subscriptionPlan}
+                  </span>
+                  <span className="text-[10px] text-[var(--color-muted-foreground)]">
+                    {STATUS_LABEL[r.subscriptionStatus] ||
+                      r.subscriptionStatus}
+                  </span>
+                </div>
               </td>
               <td className="px-6 py-4 align-top">
                 <NumbersCell userId={r.id} numbers={r.numbers} />

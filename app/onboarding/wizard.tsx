@@ -38,12 +38,20 @@ type Stage = "pick" | "loading" | "review" | "purchasing" | "done" | "error";
 export function OnboardingWizard({
   googleConnected: googleConnectedInitial,
   appOrigin,
+  subscriptionPlan,
 }: {
   googleConnected: boolean;
   /** Origin canonique de l'app (ex: https://aitamara.com), passé depuis le
    *  server pour générer le redirect_uri Google sans hardcode. */
   appOrigin: string;
+  /** Plan tenant : 'whatsapp' (basique) | 'global' | 'premium'. Drive
+   *  l'activation des features (Google Calendar persisté côté tenant
+   *  uniquement pour Globale/Premium). */
+  subscriptionPlan: "whatsapp" | "global" | "premium";
 }) {
+  // Plan WhatsApp : pas de Google Calendar perso. La feature "Agenda Google
+  // complet (3 centres)" et "CRM Sheet" est réservée Globale/Premium.
+  const googleStepDisabled = subscriptionPlan === "whatsapp";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>("pick");
@@ -150,23 +158,39 @@ export function OnboardingWizard({
 
   return (
     <div className="space-y-6">
-      {/* Step 1: Connect Google (skippable) */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-white/70 p-5">
+      {/* Step 1: Connect Google (skippable, disabled si plan WhatsApp) */}
+      <div
+        className={`rounded-2xl border border-[var(--color-border)] p-5 transition-colors ${
+          googleStepDisabled ? "bg-[var(--color-muted)]/40 opacity-70" : "bg-white/70"
+        }`}
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
-              Étape 1 · optionnel
+              Étape 1 {googleStepDisabled ? "· non disponible" : "· optionnel"}
             </p>
             <h3 className="mt-1 font-display text-lg text-[var(--color-foreground)]">
-              Connecter Google Calendar & Sheets
+              Connecter Google Calendar &amp; Sheets
             </h3>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              Pour que ton agent puisse réserver des RDV dans TON calendrier
-              et enregistrer les contacts dans TON sheet. Tu peux aussi le
-              faire plus tard depuis le dashboard.
+              {googleStepDisabled
+                ? "Connexion à TON Google Calendar/Sheets réservée aux formules Globale et Premium. Sur la formule WhatsApp, ton agent utilise un calendrier mutualisé et envoie les confirmations par WhatsApp."
+                : "Pour que ton agent puisse réserver des RDV dans TON calendrier et enregistrer les contacts dans TON sheet. Tu peux aussi le faire plus tard depuis le dashboard."}
             </p>
+            {googleStepDisabled && (
+              <Link
+                href="/dashboard/billing"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:scale-[1.02]"
+              >
+                Passer à Globale ou Premium →
+              </Link>
+            )}
           </div>
-          {googleConnected ? (
+          {googleStepDisabled ? (
+            <span className="whitespace-nowrap rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-200">
+              🔒 Verrouillé
+            </span>
+          ) : googleConnected ? (
             <span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200">
               ✓ Connecté
             </span>
@@ -194,7 +218,7 @@ export function OnboardingWizard({
             </div>
           )}
         </div>
-        {showGoogleSetup && !googleConnected && (
+        {showGoogleSetup && !googleConnected && !googleStepDisabled && (
           <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs text-sky-900">
             <p className="font-medium">
               Pré-requis : ajoute le redirect URI dans Google Cloud Console

@@ -48,6 +48,8 @@ export default async function AdminPage() {
     email: u.email,
     displayName: u.displayName,
     role: u.role,
+    subscriptionPlan: u.subscriptionPlan,
+    subscriptionStatus: u.subscriptionStatus,
     createdAt: u.createdAt,
     numbers: byUser.get(u.id) ?? [],
   }));
