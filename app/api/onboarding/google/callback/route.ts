@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { getAppOrigin } from "@/lib/app-origin";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getOAuthClient } from "@/lib/google";
@@ -10,10 +11,17 @@ import { logEvent } from "@/lib/logger";
 // Google OAuth callback. Verifies the state matches the logged-in user,
 // exchanges the code for a refresh token, and persists it on the user row.
 // On success, redirect back to /onboarding (or /dashboard if already there).
+//
+// Important : derrière le reverse-proxy Railway, `req.url` rend l'URL interne
+// (localhost:8080), donc on dérive l'origine publique via getAppOrigin()
+// (x-forwarded-host / AUTH_URL) avant de construire les redirects.
 export async function GET(req: NextRequest) {
+  const origin = await getAppOrigin();
+  const redirectTo = (path: string) => NextResponse.redirect(new URL(path, origin));
+
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return redirectTo("/login");
   }
 
   const code = req.nextUrl.searchParams.get("code");
@@ -29,11 +37,11 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
       metadata: { error },
     });
-    return NextResponse.redirect(new URL("/onboarding?google=denied", req.url));
+    return redirectTo("/onboarding?google=denied");
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/onboarding?google=missing", req.url));
+    return redirectTo("/onboarding?google=missing");
   }
 
   // Verify state binds to this user — defends against the OAuth flow being
@@ -44,14 +52,10 @@ export async function GET(req: NextRequest) {
       uid?: string;
     };
   } catch {
-    return NextResponse.redirect(
-      new URL("/onboarding?google=bad_state", req.url),
-    );
+    return redirectTo("/onboarding?google=bad_state");
   }
   if (parsed.uid !== session.user.id) {
-    return NextResponse.redirect(
-      new URL("/onboarding?google=user_mismatch", req.url),
-    );
+    return redirectTo("/onboarding?google=user_mismatch");
   }
 
   try {
@@ -67,9 +71,7 @@ export async function GET(req: NextRequest) {
         level: "warn",
         userId: session.user.id,
       });
-      return NextResponse.redirect(
-        new URL("/onboarding?google=no_refresh", req.url),
-      );
+      return redirectTo("/onboarding?google=no_refresh");
     }
 
     await db
@@ -84,9 +86,7 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
     });
 
-    return NextResponse.redirect(
-      new URL("/onboarding?google=connected", req.url),
-    );
+    return redirectTo("/onboarding?google=connected");
   } catch (e) {
     const msg = e instanceof Error ? e.message : "oauth failed";
     await logEvent({
@@ -97,8 +97,6 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
       metadata: { error: msg },
     });
-    return NextResponse.redirect(
-      new URL(`/onboarding?google=error&msg=${encodeURIComponent(msg)}`, req.url),
-    );
+    return redirectTo(`/onboarding?google=error&msg=${encodeURIComponent(msg)}`);
   }
 }
