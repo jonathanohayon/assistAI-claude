@@ -27,6 +27,14 @@ export function SystemDirectivesForm({
   const [hangup, setHangup] = useState(initial.hangupDirective);
   const [perCallCtx, setPerCallCtx] = useState(initial.perCallContextTemplate);
   const [configBlocks, setConfigBlocks] = useState(initial.configBlocksDirective);
+  // Baseline du "à jour" — mis à jour après save. `initial.XXX` est un
+  // prop figé au mount donc le dot warning par-tab resterait true à vie
+  // si on s'y comparait.
+  const [savedSpokenTime, setSavedSpokenTime] = useState(initial.spokenTimeDirective);
+  const [savedSpokenPhone, setSavedSpokenPhone] = useState(initial.spokenPhoneDirective);
+  const [savedHangup, setSavedHangup] = useState(initial.hangupDirective);
+  const [savedPerCallCtx, setSavedPerCallCtx] = useState(initial.perCallContextTemplate);
+  const [savedConfigBlocks, setSavedConfigBlocks] = useState(initial.configBlocksDirective);
   const [active, setActive] = useState<
     "spokenTime" | "spokenPhone" | "hangup" | "perCallCtx" | "configBlocks"
   >("spokenTime");
@@ -55,6 +63,12 @@ export function SystemDirectivesForm({
         setError(data?.error ?? "Erreur");
         return;
       }
+      // Met à jour la baseline pour que le dot per-tab redevienne propre.
+      setSavedSpokenTime(spokenTime);
+      setSavedSpokenPhone(spokenPhone);
+      setSavedHangup(hangup);
+      setSavedPerCallCtx(perCallCtx);
+      setSavedConfigBlocks(configBlocks);
       setSavedAt(new Date().toLocaleTimeString("fr-FR"));
       setDirty(false);
     });
@@ -75,7 +89,7 @@ export function SystemDirectivesForm({
         "Comment l'agent prononce les heures à voix haute (\"neuf heures\" vs \"zéro neuf zéro zéro\"). FR + HE.",
       value: spokenTime,
       setter: setSpokenTime,
-      initialValue: initial.spokenTimeDirective,
+      initialValue: savedSpokenTime,
     },
     {
       key: "spokenPhone",
@@ -84,7 +98,7 @@ export function SystemDirectivesForm({
         "Comment l'agent prononce les numéros (chiffre par chiffre, format local sans +972).",
       value: spokenPhone,
       setter: setSpokenPhone,
-      initialValue: initial.spokenPhoneDirective,
+      initialValue: savedSpokenPhone,
     },
     {
       key: "hangup",
@@ -93,7 +107,7 @@ export function SystemDirectivesForm({
         "Règle pour appeler end_call après le goodbye. Évite que l'agent dise \"au revoir\" 2-3 fois.",
       value: hangup,
       setter: setHangup,
-      initialValue: initial.hangupDirective,
+      initialValue: savedHangup,
     },
     {
       key: "perCallCtx",
@@ -102,7 +116,7 @@ export function SystemDirectivesForm({
         "Template injecté en chatCtx au début de chaque appel. Placeholders runtime : {date_fr}, {iso_date}, {time}, {caller_hint_block}.",
       value: perCallCtx,
       setter: setPerCallCtx,
-      initialValue: initial.perCallContextTemplate,
+      initialValue: savedPerCallCtx,
     },
     {
       key: "configBlocks",
@@ -111,7 +125,7 @@ export function SystemDirectivesForm({
         "Directive meta qui prime le LLM à respecter strictement les étapes du persona (ne pas sauter en avant). Injecté comme un bloc système — son ordre dans le prompt est paramétrable via 'Ordre des blocs'.",
       value: configBlocks,
       setter: setConfigBlocks,
-      initialValue: initial.configBlocksDirective,
+      initialValue: savedConfigBlocks,
     },
   ];
 

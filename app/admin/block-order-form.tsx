@@ -22,10 +22,14 @@ export function BlockOrderForm({
   initialOrder: BlockId[];
 }) {
   const [order, setOrder] = useState<BlockId[]>(initialOrder);
+  // savedOrder = baseline du "à jour" — mis à jour après chaque save
+  // réussi, sinon dirty resterait true pour toujours (initialOrder ne
+  // bouge jamais, c'est un prop figé au mount).
+  const [savedOrder, setSavedOrder] = useState<BlockId[]>(initialOrder);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const dirty = JSON.stringify(order) !== JSON.stringify(initialOrder);
+  const dirty = JSON.stringify(order) !== JSON.stringify(savedOrder);
 
   const move = (index: number, delta: -1 | 1) => {
     const target = index + delta;
@@ -35,7 +39,7 @@ export function BlockOrderForm({
     setOrder(next);
   };
 
-  const reset = () => setOrder(initialOrder);
+  const reset = () => setOrder(savedOrder);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +55,8 @@ export function BlockOrderForm({
         setError(data?.error ?? "Erreur");
         return;
       }
+      // Met à jour la baseline → dirty redevient false sans refetch.
+      setSavedOrder(order);
       setSavedAt(new Date().toLocaleTimeString("fr-FR"));
     });
   };
