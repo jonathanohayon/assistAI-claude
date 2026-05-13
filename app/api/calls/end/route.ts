@@ -206,9 +206,20 @@ export async function POST(req: NextRequest) {
 
   if (fromNumber && tenantFeatures.whatsapp_confirm !== false) {
     // Client-facing recap: use Twilio Content Template if configured, so
-    // the message ships even if the customer never WhatsApped us first.
+    // the message ships même si la cliente n'a jamais WhatsAppé first.
     // Free-form falls back to the 24h-window rule.
-    const clientTemplate = process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
+    //
+    // Per-language template routing : si WHATSAPP_CLIENT_TEMPLATE_SID_HE
+    // (ou _EN, _FR) est défini sur Railway, on l'utilise pour les tenants
+    // dont primaryLanguage matche. Sinon fallback sur le SID legacy
+    // (WHATSAPP_CLIENT_TEMPLATE_SID = FR par défaut historique). Les
+    // templates Meta-approved ne permettent pas de wrapper dynamique —
+    // créer un template par langue dans Twilio est le seul moyen d'avoir
+    // un "Bonjour..." en FR vs "שלום..." en HE.
+    const tenantLang = (cfg.primaryLanguage ?? "fr").toUpperCase();
+    const langKey = `WHATSAPP_CLIENT_TEMPLATE_SID_${tenantLang}`;
+    const clientTemplate =
+      process.env[langKey] || process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
     const r = await sendWhatsApp({
       to: fromNumber,
       body: summary.forClient,
@@ -286,7 +297,11 @@ export async function POST(req: NextRequest) {
     // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
     // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
     // récente). Sinon free-form (qui silently undelivered si hors window).
-    const ownerTemplate = process.env.WHATSAPP_OWNER_TEMPLATE_SID;
+    // Routing per-langue identique au client : prefer _HE/_EN/_FR sur le
+    // legacy SID. Le proprio reçoit donc le wrapper dans sa langue active.
+    const ownerLangKey = `WHATSAPP_OWNER_TEMPLATE_SID_${(cfg.primaryLanguage ?? "fr").toUpperCase()}`;
+    const ownerTemplate =
+      process.env[ownerLangKey] || process.env.WHATSAPP_OWNER_TEMPLATE_SID;
     const r = await sendWhatsApp({
       to: cfg.ownerWhatsapp,
       body: ownerBody,
