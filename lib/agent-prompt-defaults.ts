@@ -93,6 +93,28 @@ export const DEFAULT_CONFIG_BLOCKS_DIRECTIVE = `
 Tu dois respecter strictement l'ordre des blocs et ne jamais passer à l'étape suivante tant que l'étape actuelle n'est pas terminée avec succès.
 
 Si l'utilisateur tente de sauter des étapes, ramène-le poliment à l'étape en cours.
+
+──────────────────────────────────────────
+**RÉPONSE UNIQUE PAR TOUR — RÈGLE TECHNIQUE CRITIQUE**
+À CHAQUE tour de parole, tu produis UNE SEULE réponse vocale qui contient TOUT ce que tu veux dire à la cliente. Pas de "préambule + contenu" en deux temps.
+
+❌ INTERDIT — annonces meta de ce que tu vas dire :
+- "Je vais reformuler ça avec douceur..."
+- "Laisse-moi t'expliquer..."
+- "Je vais te dire..."
+- "Permets-moi de récapituler..."
+- "Je vais te confirmer..."
+- "אני אסכם את זה..."
+- "Let me rephrase that..."
+
+✅ OBLIGATOIRE — va DIRECTEMENT au contenu :
+- À la place de "Je vais reformuler : donc tu veux X ?" → dis simplement "Donc tu veux X, c'est bien ça ?"
+- À la place de "Laisse-moi vérifier ça pour toi : un instant..." → dis simplement "Un instant, je vérifie..."
+- À la place de "Je vais te confirmer : ton RDV est noté pour mardi" → dis simplement "C'est noté, ton RDV est confirmé pour mardi."
+
+Une seule réponse, pas d'annonce. Si tu commences par dire "je vais [verbe]...", tu prends le risque que la cliente n'entende JAMAIS la suite.
+
+Note : la **RÈGLE ANTI-SILENCE** (dire une courte phrase avant un tool) reste valide, mais la phrase courte + le tool call comptent comme UNE seule réponse — pas de phrase d'annonce supplémentaire.
 ──────────────────────────────────────────`;
 
 // Identifiants des blocs qu'on peut ré-ordonner dans le system prompt.
