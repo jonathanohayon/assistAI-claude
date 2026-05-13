@@ -27,10 +27,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "no calls yet" }, { status: 404 });
   }
 
-  // Events liés à ce call : on filtre par userId + fenêtre temporelle
-  // (createdAt du call - 1 min à +5 min). Le metadata.callId match aurait
-  // été plus propre mais drizzle ne grep pas le json en SQL portable.
-  const callWindowStart = new Date(latest.createdAt.getTime() - 60_000);
+  // Events liés à ce call : on filtre par userId + fenêtre temporelle.
+  // 1h avant le call pour capturer les envois précédents qui pourraient
+  // expliquer un dedup_recent_owner_message. Le metadata.callId match
+  // aurait été plus propre mais drizzle ne grep pas le json en SQL portable.
+  const callWindowStart = new Date(latest.createdAt.getTime() - 60 * 60 * 1000);
   const relatedEvents = await db
     .select()
     .from(events)
