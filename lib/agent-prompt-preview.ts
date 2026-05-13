@@ -9,6 +9,7 @@
 // pas de drift code-vs-affichage à craindre — on lit les MÊMES strings
 // que celles injectées dans /api/agent/config.
 
+import type { BlockId } from "@/lib/agent-prompt-defaults";
 import type { AgentConfig } from "@/lib/db/schema";
 
 const LANG_LABEL: Record<string, string> = {
@@ -53,6 +54,8 @@ export function buildAgentPromptPreview(opts: {
   spokenPhone: string;
   hangup: string;
   perCallContextTemplate: string;
+  configBlocks: string;
+  blockOrder: BlockId[];
 }): PromptBlock[] {
   const {
     config,
@@ -62,6 +65,8 @@ export function buildAgentPromptPreview(opts: {
     spokenPhone,
     hangup,
     perCallContextTemplate,
+    configBlocks,
+    blockOrder,
   } = opts;
   const primary = config.primaryLanguage ?? "fr";
 
@@ -77,6 +82,70 @@ ${config.greetingInstructions}
 """`
     : `(fallback) Salue chaleureusement la cliente en te présentant : utilise ton prénom et le nom du centre tels que définis dans tes instructions système. Enchaîne immédiatement avec la première question/étape de ton persona.`;
 
+  // Map ID → bloc. L'ordre d'apparition dans la preview suit blockOrder
+  // (= ce qui est réellement injecté dans le system prompt). Greeting +
+  // per_call_context sont hors de cet ordre (le greeting est per-turn,
+  // le per_call_context est un message chatCtx). On les épingle aux
+  // extrémités pour la lisibilité.
+  const byId: Record<BlockId, PromptBlock> = {
+    spoken_time: {
+      id: "spoken_time",
+      label: "Prononciation des heures",
+      source: "app_settings.spoken_time_directive",
+      editHref: `/admin#directives`,
+      content: spokenTime,
+    },
+    spoken_phone: {
+      id: "spoken_phone",
+      label: "Prononciation des numéros",
+      source: "app_settings.spoken_phone_directive",
+      editHref: `/admin#directives`,
+      content: spokenPhone,
+    },
+    hangup: {
+      id: "hangup",
+      label: "Directive fin d'appel (end_call)",
+      source: "app_settings.hangup_directive",
+      editHref: `/admin#directives`,
+      content: hangup,
+    },
+    config_blocks: {
+      id: "config_blocks",
+      label: "Respect des étapes (config blocs)",
+      source: "app_settings.config_blocks_directive",
+      editHref: `/admin#directives`,
+      content: configBlocks,
+    },
+    persona: {
+      id: "persona",
+      label: "Persona tenant",
+      source: "agent_configs.instructions",
+      editHref: `#instructions-field`,
+      content: config.instructions || "(vide)",
+    },
+    language: {
+      id: "language",
+      label: "Directive langue",
+      source: `Calculé depuis agent_configs.primary_language = "${primary}"`,
+      editHref: `#language-field`,
+      content: buildLanguageDirective(primary),
+    },
+    admin_global: {
+      id: "admin_global",
+      label: `Règles transverses admin (plan: ${planKey})`,
+      source: `app_settings.global_instructions_by_plan["${planKey}"]`,
+      editHref: `/admin#global-instructions`,
+      content: buildAdminBlock(globalForPlan) || "(vide pour ce plan)",
+    },
+  };
+
+  const orderedBlocks = blockOrder
+    .map((id, i) => {
+      const b = byId[id];
+      return b ? { ...b, label: `${i + 2}. ${b.label}` } : null;
+    })
+    .filter((b): b is PromptBlock => b !== null);
+
   return [
     {
       id: "greeting",
@@ -85,51 +154,10 @@ ${config.greetingInstructions}
       editHref: `#greeting-field`,
       content: wrappedGreeting,
     },
+    ...orderedBlocks,
     {
-      id: "spoken-time",
-      label: "2. Directive prononciation des heures",
-      source: "app_settings.spoken_time_directive",
-      editHref: `/admin#directives`,
-      content: spokenTime,
-    },
-    {
-      id: "spoken-phone",
-      label: "3. Directive prononciation des numéros",
-      source: "app_settings.spoken_phone_directive",
-      editHref: `/admin#directives`,
-      content: spokenPhone,
-    },
-    {
-      id: "hangup",
-      label: "4. Directive fin d'appel (end_call)",
-      source: "app_settings.hangup_directive",
-      editHref: `/admin#directives`,
-      content: hangup,
-    },
-    {
-      id: "persona",
-      label: "5. Persona tenant",
-      source: "agent_configs.instructions",
-      editHref: `#instructions-field`,
-      content: config.instructions || "(vide)",
-    },
-    {
-      id: "language",
-      label: "6. Directive langue",
-      source: `Calculé depuis agent_configs.primary_language = "${primary}"`,
-      editHref: `#language-field`,
-      content: buildLanguageDirective(primary),
-    },
-    {
-      id: "admin-global",
-      label: `7. Règles transverses admin (plan: ${planKey})`,
-      source: `app_settings.global_instructions_by_plan["${planKey}"]`,
-      editHref: `/admin#global-instructions`,
-      content: buildAdminBlock(globalForPlan) || "(vide pour ce plan)",
-    },
-    {
-      id: "per-call-ctx",
-      label: "8. Template contexte par appel",
+      id: "per_call_ctx",
+      label: `${orderedBlocks.length + 2}. Template contexte par appel`,
       source: "app_settings.per_call_context_template",
       editHref: `/admin#directives`,
       content: perCallContextTemplate,

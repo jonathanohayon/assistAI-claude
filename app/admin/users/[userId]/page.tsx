@@ -11,12 +11,15 @@ import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { voicesFor } from "@/lib/realtime";
 import {
+  getConfigBlocksDirective,
   getGlobalInstructionsByPlan,
   getHangupDirective,
   getPerCallContextTemplate,
+  getPromptBlockOrder,
   getSpokenPhoneDirective,
   getSpokenTimeDirective,
 } from "@/lib/settings";
+import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 
 import { PromptPreview } from "./prompt-preview";
 import { AdminTenantConfigForm } from "./tenant-config-form";
@@ -84,18 +87,28 @@ export default async function AdminTenantPage({
     target.subscriptionPlan && PLANS.some((p) => p.key === target.subscriptionPlan)
       ? (target.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  // Lit les 4 directives système (singletons) + l'admin block par plan en
-  // parallèle pour la preview. Empty default = constants hardcoded.
-  const [globalByPlan, spokenTime, spokenPhone, hangup, perCallContextTemplate] =
-    cfg
-      ? await Promise.all([
-          getGlobalInstructionsByPlan(),
-          getSpokenTimeDirective(),
-          getSpokenPhoneDirective(),
-          getHangupDirective(),
-          getPerCallContextTemplate(),
-        ])
-      : [null, "", "", "", ""];
+  // Lit les directives système (singletons) + l'admin block par plan + le
+  // bloc config_blocks + l'ordre des blocs en parallèle pour la preview.
+  // Empty default = constants hardcoded.
+  const [
+    globalByPlan,
+    spokenTime,
+    spokenPhone,
+    hangup,
+    perCallContextTemplate,
+    configBlocks,
+    blockOrder,
+  ] = cfg
+    ? await Promise.all([
+        getGlobalInstructionsByPlan(),
+        getSpokenTimeDirective(),
+        getSpokenPhoneDirective(),
+        getHangupDirective(),
+        getPerCallContextTemplate(),
+        getConfigBlocksDirective(),
+        getPromptBlockOrder(),
+      ])
+    : [null, "", "", "", "", "", [...DEFAULT_PROMPT_BLOCK_ORDER]];
   const promptBlocks =
     cfg && globalByPlan
       ? buildAgentPromptPreview({
@@ -106,6 +119,8 @@ export default async function AdminTenantPage({
           spokenPhone,
           hangup,
           perCallContextTemplate,
+          configBlocks,
+          blockOrder,
         })
       : [];
   const fullPromptConcat = promptBlocks

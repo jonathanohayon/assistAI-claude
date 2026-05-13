@@ -10,20 +10,25 @@ import {
   getPlanFeatureMatrix,
   setPlanFeatureMatrix,
 } from "@/lib/plan-features-storage";
+import { type BlockId } from "@/lib/agent-prompt-defaults";
 import {
   SETTING_KEYS,
+  getConfigBlocksDirective,
   getGlobalInstructionsByPlan,
   getHangupDirective,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplate,
+  getPromptBlockOrder,
   getSetting,
   getSpokenPhoneDirective,
   getSpokenTimeDirective,
   getSummaryPromptByPlan,
+  setConfigBlocksDirective,
   setGlobalInstructionsByPlan,
   setHangupDirective,
   setOnboardingTemplateByPlan,
   setPerCallContextTemplate,
+  setPromptBlockOrder,
   setSetting,
   setSpokenPhoneDirective,
   setSpokenTimeDirective,
@@ -61,6 +66,8 @@ export async function GET() {
   const spokenPhoneDirective = await getSpokenPhoneDirective();
   const hangupDirective = await getHangupDirective();
   const perCallContextTemplate = await getPerCallContextTemplate();
+  const configBlocksDirective = await getConfigBlocksDirective();
+  const promptBlockOrder = await getPromptBlockOrder();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
@@ -72,6 +79,8 @@ export async function GET() {
     spokenPhoneDirective,
     hangupDirective,
     perCallContextTemplate,
+    configBlocksDirective,
+    promptBlockOrder,
   });
 }
 
@@ -91,6 +100,8 @@ export async function PUT(req: NextRequest) {
     spokenPhoneDirective?: string;
     hangupDirective?: string;
     perCallContextTemplate?: string;
+    configBlocksDirective?: string;
+    promptBlockOrder?: BlockId[];
   };
 
   const changed: string[] = [];
@@ -150,6 +161,14 @@ export async function PUT(req: NextRequest) {
   if (typeof body.perCallContextTemplate === "string") {
     await setPerCallContextTemplate(body.perCallContextTemplate);
     changed.push("per_call_context_template");
+  }
+  if (typeof body.configBlocksDirective === "string") {
+    await setConfigBlocksDirective(body.configBlocksDirective);
+    changed.push("config_blocks_directive");
+  }
+  if (Array.isArray(body.promptBlockOrder)) {
+    await setPromptBlockOrder(body.promptBlockOrder);
+    changed.push("prompt_block_order");
   }
 
   if (changed.length > 0) {

@@ -5,9 +5,11 @@ import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
+  getConfigBlocksDirective,
   getGlobalInstructionsByPlan,
   getHangupDirective,
   getPerCallContextTemplate,
+  getPromptBlockOrder,
   getSpokenPhoneDirective,
   getSpokenTimeDirective,
 } from "@/lib/settings";
@@ -50,6 +52,8 @@ export async function GET(req: NextRequest) {
     spokenPhone,
     hangup,
     perCallContextTemplate,
+    configBlocks,
+    blockOrder,
   ] = await Promise.all([
     logEvent({
       source: "tenant",
@@ -70,6 +74,8 @@ export async function GET(req: NextRequest) {
     getSpokenPhoneDirective(),
     getHangupDirective(),
     getPerCallContextTemplate(),
+    getConfigBlocksDirective(),
+    getPromptBlockOrder(),
   ]);
 
   const { config } = tenant;
@@ -99,32 +105,25 @@ export async function GET(req: NextRequest) {
 - Dès que la cliente parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
 - Si elle bascule à une autre langue, suis-la immédiatement.`;
 
-  // Ordre des blocs (= ordre dans le system prompt envoyé à OpenAI) :
-  //   1. Directives système (spoken time/phone, hangup) — anciennement
-  //      hardcodées dans agent.ts du worker, maintenant éditables depuis
-  //      /admin. Au tout début car comportementales (comment lire heures
-  //      et numéros, quand raccrocher) — doivent rester actives quel que
-  //      soit le persona tenant.
-  //   2. Persona tenant en TÊTE des règles métier (identité primaire,
-  //      dominant par effet d'ancrage LLM).
-  //   3. Directive langue (cross-cutting).
-  //   4. Règles globales admin par plan en queue (additionnelles, pas
-  //      constitutives de l'identité).
-  //
-  // Précédemment 1. était hardcodé worker-side (STATIC_INSTRUCTIONS prefix)
-  // — sortir d'agent.ts vers /admin permet de tout maîtriser sans toucher
-  // au code du worker.
+  // L'ordre des blocs est piloté depuis /admin (app_settings.prompt_block_order).
+  // Default order = directives système d'abord, puis config_blocks (meta
+  // "respecte les étapes"), puis persona, langue, admin global. L'admin
+  // peut tout réordonner — y compris déplacer la persona avant les
+  // directives, ou bouger admin_global en tête, etc.
   const adminBlock = globalInstructions
-    ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona ci-dessus, jamais à sa place) :\n\n${globalInstructions}`
+    ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
     : "";
-  const mergedInstructions = [
-    spokenTime,
-    spokenPhone,
+  const blockContent: Record<string, string> = {
+    spoken_time: spokenTime,
+    spoken_phone: spokenPhone,
     hangup,
-    config.instructions,
-    languageDirective,
-    adminBlock,
-  ]
+    config_blocks: configBlocks,
+    persona: config.instructions,
+    language: languageDirective,
+    admin_global: adminBlock,
+  };
+  const mergedInstructions = blockOrder
+    .map((id) => blockContent[id] ?? "")
     .filter(Boolean)
     .join("\n\n──────────────────────────────────────────\n\n");
 

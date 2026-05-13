@@ -81,3 +81,51 @@ Quand la cliente dit "demain", "lundi prochain", "dans 2 semaines", etc. → cal
 **NUMÉRO DU CLIENT (détecté via l'appel)**
 {caller_hint_block}
 ──────────────────────────────────────────`;
+
+// Directive meta sur le respect des étapes du persona. Priming explicite
+// pour que le LLM suive séquentiellement les workflow définis dans la
+// persona tenant (ex. "demande le nom, puis le motif, puis le RDV").
+// Sans ce bloc, le modèle a tendance à mélanger les étapes ou sauter
+// à la conclusion trop vite. Éditable depuis /admin.
+export const DEFAULT_CONFIG_BLOCKS_DIRECTIVE = `
+──────────────────────────────────────────
+**RESPECT DES ÉTAPES DU WORKFLOW**
+Tu dois respecter strictement l'ordre des blocs et ne jamais passer à l'étape suivante tant que l'étape actuelle n'est pas terminée avec succès.
+
+Si l'utilisateur tente de sauter des étapes, ramène-le poliment à l'étape en cours.
+──────────────────────────────────────────`;
+
+// Identifiants des blocs qu'on peut ré-ordonner dans le system prompt.
+// L'ordre par défaut place les directives système d'abord, puis le bloc
+// meta "config_blocks", puis l'identité (persona), puis langue/admin
+// transverses. L'admin peut tout déplacer depuis /admin.
+export const BLOCK_IDS = [
+  "spoken_time",
+  "spoken_phone",
+  "hangup",
+  "config_blocks",
+  "persona",
+  "language",
+  "admin_global",
+] as const;
+export type BlockId = (typeof BLOCK_IDS)[number];
+
+export const DEFAULT_PROMPT_BLOCK_ORDER: readonly BlockId[] = [
+  "spoken_time",
+  "spoken_phone",
+  "hangup",
+  "config_blocks",
+  "persona",
+  "language",
+  "admin_global",
+];
+
+export const BLOCK_LABELS: Record<BlockId, string> = {
+  spoken_time: "Prononciation des heures",
+  spoken_phone: "Prononciation des numéros",
+  hangup: "Règle fin d'appel (end_call)",
+  config_blocks: "Respect des étapes (config blocs)",
+  persona: "Persona tenant",
+  language: "Directive langue",
+  admin_global: "Règles transverses admin (par plan)",
+};

@@ -9,16 +9,19 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
+  getConfigBlocksDirective,
   getGlobalInstructionsByPlan,
   getHangupDirective,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplate,
+  getPromptBlockOrder,
   getSpokenPhoneDirective,
   getSpokenTimeDirective,
   getSummaryPromptByPlan,
 } from "@/lib/settings";
 
 import { AdminTable } from "./admin-table";
+import { BlockOrderForm } from "./block-order-form";
 import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
 import { SystemDirectivesForm } from "./system-directives-form";
@@ -49,6 +52,8 @@ export default async function AdminPage() {
     spokenPhoneDirective,
     hangupDirective,
     perCallContextTemplate,
+    configBlocksDirective,
+    promptBlockOrder,
   ] = await Promise.all([
     getGlobalInstructionsByPlan(),
     getOnboardingTemplateByPlan(),
@@ -58,6 +63,8 @@ export default async function AdminPage() {
     getSpokenPhoneDirective(),
     getHangupDirective(),
     getPerCallContextTemplate(),
+    getConfigBlocksDirective(),
+    getPromptBlockOrder(),
   ]);
 
   // Group numbers per user.
@@ -165,8 +172,12 @@ export default async function AdminPage() {
                 spokenPhoneDirective,
                 hangupDirective,
                 perCallContextTemplate,
+                configBlocksDirective,
               }}
             />
+          </div>
+          <div className="mt-6">
+            <BlockOrderForm initialOrder={promptBlockOrder} />
           </div>
           <div className="mt-6">
             <PlanFeaturesForm initialMatrix={planFeatures} />

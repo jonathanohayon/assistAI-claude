@@ -19,14 +19,16 @@ export function SystemDirectivesForm({
     spokenPhoneDirective: string;
     hangupDirective: string;
     perCallContextTemplate: string;
+    configBlocksDirective: string;
   };
 }) {
   const [spokenTime, setSpokenTime] = useState(initial.spokenTimeDirective);
   const [spokenPhone, setSpokenPhone] = useState(initial.spokenPhoneDirective);
   const [hangup, setHangup] = useState(initial.hangupDirective);
   const [perCallCtx, setPerCallCtx] = useState(initial.perCallContextTemplate);
+  const [configBlocks, setConfigBlocks] = useState(initial.configBlocksDirective);
   const [active, setActive] = useState<
-    "spokenTime" | "spokenPhone" | "hangup" | "perCallCtx"
+    "spokenTime" | "spokenPhone" | "hangup" | "perCallCtx" | "configBlocks"
   >("spokenTime");
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function SystemDirectivesForm({
           spokenPhoneDirective: spokenPhone,
           hangupDirective: hangup,
           perCallContextTemplate: perCallCtx,
+          configBlocksDirective: configBlocks,
         }),
       });
       if (!res.ok) {
@@ -100,6 +103,15 @@ export function SystemDirectivesForm({
       value: perCallCtx,
       setter: setPerCallCtx,
       initialValue: initial.perCallContextTemplate,
+    },
+    {
+      key: "configBlocks",
+      label: "Config blocs",
+      description:
+        "Directive meta qui prime le LLM à respecter strictement les étapes du persona (ne pas sauter en avant). Injecté comme un bloc système — son ordre dans le prompt est paramétrable via 'Ordre des blocs'.",
+      value: configBlocks,
+      setter: setConfigBlocks,
+      initialValue: initial.configBlocksDirective,
     },
   ];
 

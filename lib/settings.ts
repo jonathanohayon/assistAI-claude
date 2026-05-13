@@ -4,10 +4,14 @@
 import { eq } from "drizzle-orm";
 
 import {
+  BLOCK_IDS,
+  DEFAULT_CONFIG_BLOCKS_DIRECTIVE,
   DEFAULT_HANGUP_DIRECTIVE,
   DEFAULT_PER_CALL_CONTEXT_TEMPLATE,
+  DEFAULT_PROMPT_BLOCK_ORDER,
   DEFAULT_SPOKEN_PHONE_DIRECTIVE,
   DEFAULT_SPOKEN_TIME_DIRECTIVE,
+  type BlockId,
 } from "@/lib/agent-prompt-defaults";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
@@ -56,6 +60,13 @@ export const SETTING_KEYS = {
   // lib/agent-prompt-defaults.ts pour la liste (date_fr, iso_date, time,
   // caller_hint_block). Le worker substitue.
   PER_CALL_CONTEXT_TEMPLATE: "per_call_context_template",
+  // Bloc meta qui prime le LLM à respecter strictement les étapes du
+  // persona (ne pas sauter en avant). Singleton, partagé tous tenants.
+  CONFIG_BLOCKS_DIRECTIVE: "config_blocks_directive",
+  // JSON array des IDs de blocs dans l'ordre où ils sont injectés dans
+  // le system prompt. L'admin peut ré-ordonner depuis /admin. Si un ID
+  // manque dans le tableau saved, on tombe sur DEFAULT_PROMPT_BLOCK_ORDER.
+  PROMPT_BLOCK_ORDER: "prompt_block_order",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -254,4 +265,62 @@ export async function getPerCallContextTemplate(): Promise<string> {
 }
 export async function setPerCallContextTemplate(value: string): Promise<void> {
   await setSetting(SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE, value);
+}
+
+export async function getConfigBlocksDirective(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE)) ??
+    DEFAULT_CONFIG_BLOCKS_DIRECTIVE
+  );
+}
+export async function setConfigBlocksDirective(value: string): Promise<void> {
+  await setSetting(SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE, value);
+}
+
+// L'ordre des blocs est un array d'IDs. On valide à la lecture : on garde
+// uniquement les IDs connus et on append en queue ceux manquants (au cas
+// où on ajoute un nouveau bloc plus tard et que la setting saved
+// précède). Fallback total sur DEFAULT_PROMPT_BLOCK_ORDER si parse fail.
+export async function getPromptBlockOrder(): Promise<BlockId[]> {
+  const raw = await getSetting(SETTING_KEYS.PROMPT_BLOCK_ORDER);
+  if (!raw) return [...DEFAULT_PROMPT_BLOCK_ORDER];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [...DEFAULT_PROMPT_BLOCK_ORDER];
+    const validSet = new Set<BlockId>(BLOCK_IDS);
+    const seen = new Set<BlockId>();
+    const result: BlockId[] = [];
+    for (const x of parsed) {
+      if (typeof x === "string" && validSet.has(x as BlockId) && !seen.has(x as BlockId)) {
+        result.push(x as BlockId);
+        seen.add(x as BlockId);
+      }
+    }
+    // Append manquants (par défaut on garde toujours tous les blocs).
+    for (const id of BLOCK_IDS) {
+      if (!seen.has(id)) result.push(id);
+    }
+    return result;
+  } catch {
+    return [...DEFAULT_PROMPT_BLOCK_ORDER];
+  }
+}
+
+export async function setPromptBlockOrder(order: BlockId[]): Promise<void> {
+  // Same validation que getter : on garde seulement les IDs valides,
+  // dédupe, append manquants. Garantit qu'on ne sauvegarde jamais un
+  // état dégénéré.
+  const validSet = new Set<BlockId>(BLOCK_IDS);
+  const seen = new Set<BlockId>();
+  const clean: BlockId[] = [];
+  for (const x of order) {
+    if (validSet.has(x) && !seen.has(x)) {
+      clean.push(x);
+      seen.add(x);
+    }
+  }
+  for (const id of BLOCK_IDS) {
+    if (!seen.has(id)) clean.push(id);
+  }
+  await setSetting(SETTING_KEYS.PROMPT_BLOCK_ORDER, JSON.stringify(clean));
 }
