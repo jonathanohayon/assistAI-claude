@@ -208,8 +208,25 @@ async function sendViaTwilio(
   // a WhatsApp conversation yet. Twilio Content templates are pre-approved
   // by Meta so they ship anywhere.
   if (opts.templateSid) {
-    const variables =
+    // Meta WhatsApp interdit newlines/tabs DANS les variables (le template
+    // body en a, pas de souci, mais les substitutions {{1}} ne doivent pas
+    // contenir de saut de ligne). Sans cette sanitization on tombe sur
+    // 21656 "ContentVariables invalid" pour tout summary multi-paragraphe.
+    // On normalise aussi les espaces multiples consécutifs pour éviter
+    // des artefacts visuels après collapse.
+    const sanitize = (v: string): string =>
+      v
+        .replace(/\r\n?/g, "\n")
+        .replace(/\n+/g, " · ")
+        .replace(/\t/g, " ")
+        .replace(/ {2,}/g, " ")
+        .trim()
+        .slice(0, 1024);
+    const rawVariables =
       opts.templateVariables ?? { "1": opts.body.slice(0, 1024) };
+    const variables = Object.fromEntries(
+      Object.entries(rawVariables).map(([k, v]) => [k, sanitize(String(v))]),
+    );
     const params = new URLSearchParams({
       To: twilioNumber(e164),
       From: fromNormalized,
