@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Calistoga, Inter } from "next/font/google";
+import { Calistoga, Heebo, Inter } from "next/font/google";
 import { getLocale } from "next-intl/server";
 
 import { isRTL, type Locale } from "@/i18n/routing";
@@ -17,6 +17,15 @@ const calistoga = Calistoga({
   variable: "--font-calistoga",
   subsets: ["latin"],
   weight: "400",
+  display: "swap",
+});
+
+// Heebo : sans-serif hébreu moderne, compatible Inter (mêmes proportions).
+// Utilisé en surcharge pour :lang(he) — voir globals.css.
+const heebo = Heebo({
+  variable: "--font-heebo",
+  subsets: ["hebrew", "latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -44,7 +53,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={dir}
-      className={`${inter.variable} ${calistoga.variable} h-full antialiased`}
+      className={`${inter.variable} ${calistoga.variable} ${heebo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

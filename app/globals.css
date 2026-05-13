@@ -57,9 +57,13 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
 
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-inter), var(--font-heebo), "Heebo", "Assistant", system-ui, sans-serif;
   --font-display: var(--font-calistoga);
-  --font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+  /* Inclut Heebo en fallback : les fontes mono n'ont pas l'hébreu, le navigateur
+   * tombait sur Arial Hebrew (moche). Avec Heebo dans la stack, les glyphes
+   * hébreux d'un bloc <pre class="font-mono"> rendent en Heebo, les latins
+   * restent en JetBrains Mono. */
+  --font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, var(--font-heebo), "Heebo", monospace;
 
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
@@ -82,6 +86,55 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* ── Hébreu : police Heebo + tailles legèrement augmentées ─────────────────
+ * Inter (notre --font-sans) ne supporte pas l'hébreu → le navigateur
+ * tombait sur une police système souvent disgracieuse (Arial Hebrew /
+ * David). Heebo est un sans-serif moderne conçu pour matcher les
+ * proportions d'Inter. On surclasse aussi `.font-mono` côté HE car
+ * l'hébreu en JetBrains Mono est illisible.
+ *
+ * Le ciblage `:lang(he)` s'applique à tout l'arbre quand <html lang="he">,
+ * et la classe utilitaire `.he-text` permet de forcer le rendu hébreu
+ * sur un fragment spécifique dans une page FR/EN (ex: persona HE affichée
+ * dans /admin sur une page en français). */
+:lang(he),
+.he-text,
+[lang="he"] {
+  font-family: var(--font-heebo), "Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", "Arial Hebrew", system-ui, sans-serif;
+  font-weight: 500;
+}
+
+:lang(he) .font-mono,
+.he-text.font-mono,
+.he-text .font-mono,
+[lang="he"] .font-mono {
+  font-family: var(--font-heebo), "Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", "Arial Hebrew", system-ui, sans-serif;
+}
+
+/* Hébreu rend plus petit que le latin à taille égale (x-height différente).
+ * On bump les très petites tailles pour rester lisible. */
+:lang(he) .text-\[10px\],
+.he-text.text-\[10px\],
+.he-text .text-\[10px\],
+[lang="he"] .text-\[10px\] {
+  font-size: 12px;
+}
+
+:lang(he) .text-\[11px\],
+.he-text.text-\[11px\],
+.he-text .text-\[11px\],
+[lang="he"] .text-\[11px\] {
+  font-size: 13px;
+}
+
+:lang(he) .text-xs,
+.he-text.text-xs,
+.he-text .text-xs,
+[lang="he"] .text-xs {
+  font-size: 0.875rem; /* 14px, équivaut à text-sm latin */
+  font-weight: 500;
 }
 
 ::selection {
