@@ -252,14 +252,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Dedup proprio : on évite de spammer le proprio si :
-  //   (a) take_message (notify_sent) tool a été utilisé pendant l'appel
-  //       → le contenu actionnable a déjà été délivré, recap redondant.
-  //   (b) un whatsapp_sent_owner récent existe (5 min) → cas où
+  //   (a) un whatsapp_sent_owner récent existe (5 min) → cas où
   //       l'appelant·e a appelé plusieurs fois (reconnect, retry, ou
   //       call glitché qui s'est terminé prématurément). 2 recaps quasi
   //       identiques sont du noise.
-  //   (c) transcript trop court (≤ 1 entry = juste le greeting agent,
+  //   (b) transcript trop court (≤ 1 entry = juste le greeting agent,
   //       souvent un crash/instant-hangup) — rien d'utile à recap.
+  // Note 2026-05-13 : on garde "notify_sent" dans la liste pour les events
+  // historiques de l'ancien tool take_message (retiré) ; aucun nouveau
+  // event de ce type n'est plus émis.
   const dedupCutoff = new Date(Date.now() - 5 * 60 * 1000);
   const recentOwnerEvents = await db
     .select({ id: events.id, event: events.event })
@@ -273,10 +274,10 @@ export async function POST(req: NextRequest) {
       ),
     )
     .limit(1);
-  const takeMessageUsed = recentOwnerEvents.length > 0;
+  const recentOwnerMessageExists = recentOwnerEvents.length > 0;
   const tooShortToRecap = transcript.length <= 1;
 
-  const skipOwnerReason = takeMessageUsed
+  const skipOwnerReason = recentOwnerMessageExists
     ? "dedup_recent_owner_message"
     : tooShortToRecap
       ? "transcript_too_short"
