@@ -87,7 +87,7 @@ export const agentConfigs = pgTable("agent_configs", {
   // Persona + voice config — exposed in dashboard.
   instructions: text("instructions").notNull(),
   greetingInstructions: text("greeting_instructions").notNull(),
-  model: text("model").notNull().default("gpt-realtime-mini"),
+  model: text("model").notNull().default("gpt-realtime-2"),
   voice: text("voice").notNull().default("marin"),
   temperature: real("temperature").notNull().default(0.8),
   speed: real("speed").notNull().default(1.0),
