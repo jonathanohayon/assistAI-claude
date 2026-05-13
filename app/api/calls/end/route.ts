@@ -1,4 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -251,47 +251,62 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Si l'agent a déjà notifié le proprio via take_message tool PENDANT
-  // l'appel, le recap post-appel serait redondant (les 2 messages
-  // contiennent essentiellement le même contenu). On query les events
-  // récents pour ce user — si un whatsapp:notify_sent existe dans les
-  // 5 dernières minutes, on skip le owner recap. Le client recap reste
-  // (= confirmation envoyée à l'appelant·e, indépendante du take_message).
-  const recentTakeMessageCutoff = new Date(Date.now() - 5 * 60 * 1000);
-  const recentNotifies = await db
-    .select({ id: events.id })
+  // Dedup proprio : on évite de spammer le proprio si :
+  //   (a) take_message (notify_sent) tool a été utilisé pendant l'appel
+  //       → le contenu actionnable a déjà été délivré, recap redondant.
+  //   (b) un whatsapp_sent_owner récent existe (5 min) → cas où
+  //       l'appelant·e a appelé plusieurs fois (reconnect, retry, ou
+  //       call glitché qui s'est terminé prématurément). 2 recaps quasi
+  //       identiques sont du noise.
+  //   (c) transcript trop court (≤ 1 entry = juste le greeting agent,
+  //       souvent un crash/instant-hangup) — rien d'utile à recap.
+  const dedupCutoff = new Date(Date.now() - 5 * 60 * 1000);
+  const recentOwnerEvents = await db
+    .select({ id: events.id, event: events.event })
     .from(events)
     .where(
       and(
         eq(events.userId, user.id),
         eq(events.source, "whatsapp"),
-        eq(events.event, "notify_sent"),
-        gt(events.createdAt, recentTakeMessageCutoff),
+        inArray(events.event, ["notify_sent", "whatsapp_sent_owner"]),
+        gt(events.createdAt, dedupCutoff),
       ),
     )
     .limit(1);
-  const takeMessageUsed = recentNotifies.length > 0;
+  const takeMessageUsed = recentOwnerEvents.length > 0;
+  const tooShortToRecap = transcript.length <= 1;
+
+  const skipOwnerReason = takeMessageUsed
+    ? "dedup_recent_owner_message"
+    : tooShortToRecap
+      ? "transcript_too_short"
+      : null;
 
   if (
     cfg.ownerWhatsapp &&
     tenantFeatures.whatsapp_recap !== false &&
-    takeMessageUsed
+    skipOwnerReason !== null
   ) {
     // Trace explicite pour qu'on sache pourquoi le proprio n'a pas reçu
     // de recap post-appel — sinon ça ressemble à un bug silencieux.
     await logEvent({
       source: "whatsapp",
       event: "whatsapp_skipped_owner_dedup",
-      message: `Recap proprio sauté : take_message déjà envoyé pendant l'appel à ${cfg.ownerWhatsapp}`,
+      message: `Recap proprio sauté (${skipOwnerReason}) — to=${cfg.ownerWhatsapp}, transcript=${transcript.length} entries`,
       userId: user.id,
-      metadata: { callId: callRow.id, to: cfg.ownerWhatsapp },
+      metadata: {
+        callId: callRow.id,
+        to: cfg.ownerWhatsapp,
+        reason: skipOwnerReason,
+        transcriptEntries: transcript.length,
+      },
     });
   }
 
   if (
     cfg.ownerWhatsapp &&
     tenantFeatures.whatsapp_recap !== false &&
-    !takeMessageUsed
+    skipOwnerReason === null
   ) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
     // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
