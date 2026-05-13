@@ -15,11 +15,14 @@ import {
   getGlobalInstructionsByPlan,
   getOnboardingTemplateByPlan,
   getSetting,
+  getSummaryPromptByPlan,
   setGlobalInstructionsByPlan,
   setOnboardingTemplateByPlan,
   setSetting,
+  setSummaryPromptByPlan,
   type GlobalInstructionsByPlan,
   type OnboardingTemplateByPlan,
+  type SummaryPromptByPlan,
 } from "@/lib/settings";
 
 const requireAdmin = async () => {
@@ -45,12 +48,14 @@ export async function GET() {
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
   const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
+  const summaryPromptByPlan = await getSummaryPromptByPlan();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
     onboardingTemplate,
     onboardingTemplateByPlan,
     planFeatures,
+    summaryPromptByPlan,
   });
 }
 
@@ -65,6 +70,7 @@ export async function PUT(req: NextRequest) {
     onboardingTemplate?: string;
     onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
     planFeatures?: PlanFeatureMatrix;
+    summaryPromptByPlan?: Partial<SummaryPromptByPlan>;
   };
 
   const changed: string[] = [];
@@ -101,6 +107,13 @@ export async function PUT(req: NextRequest) {
     // Le helper normalise les clés inconnues + fillna les manquantes.
     await setPlanFeatureMatrix(body.planFeatures);
     changed.push("plan_features");
+  }
+  if (
+    body.summaryPromptByPlan &&
+    typeof body.summaryPromptByPlan === "object"
+  ) {
+    await setSummaryPromptByPlan(body.summaryPromptByPlan);
+    changed.push("summary_prompt_by_plan");
   }
 
   if (changed.length > 0) {

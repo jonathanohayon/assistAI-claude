@@ -11,7 +11,9 @@ export interface CallSummary {
   forOwner: string;
 }
 
-const SYSTEM_PROMPT = `Tu reçois la transcription d'un appel téléphonique entre une cliente et la secrétaire vocale d'un salon (médical, beauté ou coiffure).
+// Default — exporté pour que /admin puisse l'afficher en placeholder et que
+// le helper /api/calls/end l'utilise en fallback si pas d'override per-plan.
+export const DEFAULT_SUMMARY_PROMPT = `Tu reçois la transcription d'un appel téléphonique entre une cliente et la secrétaire vocale d'un salon (médical, beauté ou coiffure).
 
 Génère un objet JSON strictement de la forme :
 {
@@ -29,6 +31,9 @@ Règles :
 
 export async function summarizeCall(
   transcript: Array<{ role: "user" | "assistant"; text: string }>,
+  /** Optional override of the system prompt (per-plan customization).
+   *  Falsy / empty → fallback sur DEFAULT_SUMMARY_PROMPT. */
+  customSystemPrompt?: string | null,
 ): Promise<CallSummary> {
   const apiKey =
     process.env.REALTIME_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
@@ -53,7 +58,10 @@ export async function summarizeCall(
       response_format: { type: "json_object" },
       temperature: 0.4,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "system",
+          content: (customSystemPrompt && customSystemPrompt.trim()) || DEFAULT_SUMMARY_PROMPT,
+        },
         {
           role: "user",
           content: `Transcription de l'appel :\n\n${dialog || "(transcription vide — appel court ou raté)"}`,

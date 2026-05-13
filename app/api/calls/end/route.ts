@@ -7,6 +7,8 @@ import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
+import { getSummaryPromptByPlan } from "@/lib/settings";
 import {
   ensureSheet,
   forceTextPhone,
@@ -151,7 +153,14 @@ export async function POST(req: NextRequest) {
 
   let summary;
   try {
-    summary = await summarizeCall(transcript);
+    // Optional per-plan custom system prompt from /admin. Fallback sur le
+    // DEFAULT_SUMMARY_PROMPT hardcodé si l'admin n'a rien défini pour ce plan.
+    const summaryByPlan = await getSummaryPromptByPlan();
+    const planKey: PlanKey = isValidPlanKey(user.subscriptionPlan)
+      ? user.subscriptionPlan
+      : DEFAULT_PLAN_KEY;
+    const customPrompt = summaryByPlan[planKey] || null;
+    summary = await summarizeCall(transcript, customPrompt);
     await logEvent({
       source: "summary",
       event: "summary_generated",

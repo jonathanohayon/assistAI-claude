@@ -29,6 +29,12 @@ export const SETTING_KEYS = {
   ONBOARDING_TEMPLATE_BY_PLAN: "onboarding_template_by_plan",
   // JSON map plan → feature flags (Calendar, CRM, etc.). Voir lib/plan-features.ts.
   PLAN_FEATURES: "plan_features",
+  // JSON map plan → system prompt utilisé pour générer le résumé WhatsApp
+  // post-appel (lib/summarize.ts). Permet d'avoir un ton/contenu/format
+  // différents par plan (ex. basique = simple confirm message · global =
+  // recap RDV pro · premium = ton VIP avec détails enrichis). Vide pour
+  // un plan → fallback DEFAULT_SUMMARY_PROMPT hardcodé dans summarize.ts.
+  SUMMARY_PROMPT_BY_PLAN: "summary_prompt_by_plan",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -140,6 +146,46 @@ export async function setOnboardingTemplateByPlan(
   }
   await setSetting(
     SETTING_KEYS.ONBOARDING_TEMPLATE_BY_PLAN,
+    JSON.stringify(merged),
+  );
+}
+
+export type SummaryPromptByPlan = Record<PlanKey, string>;
+
+// Map plan → system prompt OpenAI utilisé pour générer le résumé
+// WhatsApp post-appel. Vide pour un plan = fallback sur le hardcoded
+// DEFAULT_SUMMARY_PROMPT (lib/summarize.ts). PAS de fallback sur
+// l'ancien single-key (jamais existé), donc lecture "" par défaut.
+export async function getSummaryPromptByPlan(): Promise<SummaryPromptByPlan> {
+  const raw = await getSetting(SETTING_KEYS.SUMMARY_PROMPT_BY_PLAN);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, ""]),
+  ) as SummaryPromptByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // JSON corrompu → "" partout (= fallback hardcoded).
+    }
+  }
+  return out;
+}
+
+export async function setSummaryPromptByPlan(
+  map: Partial<SummaryPromptByPlan>,
+): Promise<void> {
+  const current = await getSummaryPromptByPlan();
+  const merged: SummaryPromptByPlan = { ...current };
+  for (const p of PLANS) {
+    const v = map[p.key];
+    if (typeof v === "string") merged[p.key] = v;
+  }
+  await setSetting(
+    SETTING_KEYS.SUMMARY_PROMPT_BY_PLAN,
     JSON.stringify(merged),
   );
 }

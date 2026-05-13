@@ -23,17 +23,38 @@ Tu es **<Nom>**, secrétaire chaleureuse du centre **<Nom du centre>**.
 Le tenant pourra personnaliser depuis son dashboard. Laisse vide pour
 utiliser le persona Johana de fallback.`;
 
+const PLACEHOLDER_SUMMARY = `# System prompt OpenAI pour générer le résumé WhatsApp post-appel
+
+Génère un objet JSON :
+{
+  "summary": "résumé factuel en 3-6 lignes",
+  "for_client": "message WhatsApp client. Ton chaleureux, courte signature.",
+  "for_owner": "message WhatsApp owner. Factuel : prénom, motif, action, RDV, tel."
+}
+
+Règles :
+- Si l'appel n'a abouti à rien → for_client peut être un remerciement.
+- Si la cliente parle hébreu → for_client en hébreu.
+- Sois sobre, pas d'emojis (sauf 1 en fin de for_client).
+- UNIQUEMENT le JSON, rien d'autre.
+
+Laisse vide pour utiliser le prompt par défaut.`;
+
 export function GlobalInstructionsForm({
   initialGlobalByPlan,
   initialTemplateByPlan,
+  initialSummaryPromptByPlan,
 }: {
   initialGlobalByPlan: Record<PlanKey, string>;
   initialTemplateByPlan: Record<PlanKey, string>;
+  initialSummaryPromptByPlan: Record<PlanKey, string>;
 }) {
   const [globalByPlan, setGlobalByPlan] =
     useState<Record<PlanKey, string>>(initialGlobalByPlan);
   const [templateByPlan, setTemplateByPlan] =
     useState<Record<PlanKey, string>>(initialTemplateByPlan);
+  const [summaryByPlan, setSummaryByPlan] =
+    useState<Record<PlanKey, string>>(initialSummaryPromptByPlan);
   // Onglet partagé entre les 2 sections (Règles communes + Template
   // d'inscription) — si l'admin édite la persona globale d'un plan, il
   // veut probablement éditer aussi le template du même plan dans la
@@ -54,6 +75,7 @@ export function GlobalInstructionsForm({
         body: JSON.stringify({
           globalInstructionsByPlan: globalByPlan,
           onboardingTemplateByPlan: templateByPlan,
+          summaryPromptByPlan: summaryByPlan,
         }),
       });
       if (!res.ok) {
@@ -197,6 +219,80 @@ export function GlobalInstructionsForm({
           }}
           rows={14}
           placeholder={PLACEHOLDER_TEMPLATE}
+          className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+        />
+      </div>
+
+      {/* WhatsApp summary system prompt — per plan, applied at runtime when
+          generating the post-call recap that becomes {{1}} in the Twilio
+          template. Vide = fallback DEFAULT_SUMMARY_PROMPT côté serveur. */}
+      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+              3 · Template du résumé WhatsApp post-appel
+            </p>
+            <h3 className="mt-1 font-display text-base text-[var(--color-foreground)]">
+              System prompt résumé · par plan
+            </h3>
+          </div>
+          <span className="whitespace-nowrap rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            Live · prochain appel
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+          Pilote le ton et le format du résumé OpenAI envoyé en WhatsApp
+          après chaque appel. Le résumé devient la variable{" "}
+          <code className="rounded bg-[var(--color-muted)] px-1 py-0.5 font-mono text-[10px]">
+            {"{{1}}"}
+          </code>{" "}
+          dans le template Meta-approved. Doit demander un JSON
+          {" "}<code className="rounded bg-[var(--color-muted)] px-1 py-0.5 font-mono text-[10px]">
+            {`{summary, for_client, for_owner}`}
+          </code>{" "}— sinon l&apos;envoi échoue. Sauvegarde → s&apos;applique
+          immédiatement. Laisse vide → prompt par défaut hardcodé.
+        </p>
+
+        {/* Plan tabs (mirror du switcher pour cohérence) */}
+        <div className="mb-3 inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-1">
+          {PLANS.map((p) => {
+            const active = activePlan === p.key;
+            const planDirty =
+              summaryByPlan[p.key] !== initialSummaryPromptByPlan[p.key];
+            return (
+              <button
+                type="button"
+                key={p.key}
+                onClick={() => setActivePlan(p.key)}
+                className={`relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-white text-[var(--color-foreground)] shadow-sm ring-1 ring-[var(--color-border)]"
+                    : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                }`}
+              >
+                {p.name}
+                {planDirty && (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <textarea
+          value={summaryByPlan[activePlan] ?? ""}
+          onChange={(e) => {
+            setSummaryByPlan((prev) => ({
+              ...prev,
+              [activePlan]: e.target.value,
+            }));
+            setDirty(true);
+          }}
+          rows={14}
+          placeholder={PLACEHOLDER_SUMMARY}
           className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
         />
       </div>
