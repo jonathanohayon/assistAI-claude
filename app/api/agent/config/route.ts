@@ -82,7 +82,17 @@ export async function GET(req: NextRequest) {
 - Dès que la cliente parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
 - Si elle bascule à une autre langue, suis-la immédiatement.`;
 
-  const mergedInstructions = [globalInstructions, languageDirective, config.instructions]
+  // Ordre des blocs : le persona tenant en TÊTE (identité primaire, dominant
+  // par effet d'ancrage LLM), puis la directive langue (cross-cutting), puis
+  // les règles globales admin en queue (additionnelles, pas constitutives de
+  // l'identité). Précédemment l'admin global ouvrait le prompt et écrasait
+  // le persona tenant — sur plan basique notamment, l'agent ignorait la
+  // persona "Robert prend des messages" et reprenait le comportement
+  // générique défini globalement.
+  const adminBlock = globalInstructions
+    ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona ci-dessus, jamais à sa place) :\n\n${globalInstructions}`
+    : "";
+  const mergedInstructions = [config.instructions, languageDirective, adminBlock]
     .filter(Boolean)
     .join("\n\n──────────────────────────────────────────\n\n");
 
