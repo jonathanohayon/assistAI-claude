@@ -252,29 +252,56 @@ export async function POST(req: NextRequest) {
   }
 
   // Dedup proprio : on évite de spammer le proprio si :
-  //   (a) un whatsapp_sent_owner récent existe (5 min) → cas où
+  //   (a) un message LIVRÉ AVEC SUCCÈS récent existe (5 min) → cas où
   //       l'appelant·e a appelé plusieurs fois (reconnect, retry, ou
   //       call glitché qui s'est terminé prématurément). 2 recaps quasi
   //       identiques sont du noise.
   //   (b) transcript trop court (≤ 1 entry = juste le greeting agent,
   //       souvent un crash/instant-hangup) — rien d'utile à recap.
-  // Note 2026-05-13 : on garde "notify_sent" dans la liste pour les events
-  // historiques de l'ancien tool take_message (retiré) ; aucun nouveau
-  // event de ce type n'est plus émis.
+  //
+  // ⚠️ Important 2026-05-14 : on doit EXCLURE les `whatsapp_sent_owner`
+  // qui ont un `whatsapp_undelivered_owner` postérieur (Twilio accepte 201
+  // puis Meta refuse hors fenêtre 24h, code 63016). Sinon le 1er appel
+  // log un "sent" jamais livré, et tous les appels suivants sont skip
+  // alors que le proprio n'a JAMAIS rien reçu.
+  //
+  // notify_sent reste dans la liste pour les events historiques de
+  // l'ancien tool take_message (retiré 2026-05-13) ; aucun nouveau event
+  // de ce type n'est plus émis.
   const dedupCutoff = new Date(Date.now() - 5 * 60 * 1000);
   const recentOwnerEvents = await db
-    .select({ id: events.id, event: events.event })
+    .select({
+      event: events.event,
+      metadata: events.metadata,
+    })
     .from(events)
     .where(
       and(
         eq(events.userId, user.id),
         eq(events.source, "whatsapp"),
-        inArray(events.event, ["notify_sent", "whatsapp_sent_owner"]),
+        inArray(events.event, [
+          "notify_sent",
+          "whatsapp_sent_owner",
+          "whatsapp_undelivered_owner",
+        ]),
         gt(events.createdAt, dedupCutoff),
       ),
-    )
-    .limit(1);
-  const recentOwnerMessageExists = recentOwnerEvents.length > 0;
+    );
+  // Compte les SIDs marqués undelivered : ces envois n'ont jamais atteint
+  // le proprio, donc ne doivent pas déclencher le dedup.
+  const undeliveredSids = new Set<string>();
+  for (const e of recentOwnerEvents) {
+    if (e.event !== "whatsapp_undelivered_owner") continue;
+    const sid = (e.metadata as { sid?: string } | null)?.sid;
+    if (sid) undeliveredSids.add(sid);
+  }
+  const recentOwnerMessageExists = recentOwnerEvents.some((e) => {
+    if (e.event === "whatsapp_undelivered_owner") return false;
+    if (e.event === "notify_sent") return true; // legacy, pas de verifyDelivery
+    // whatsapp_sent_owner : ignore si SID dans undeliveredSids
+    const sid = (e.metadata as { sid?: string } | null)?.sid;
+    return !sid || !undeliveredSids.has(sid);
+  });
   const tooShortToRecap = transcript.length <= 1;
 
   const skipOwnerReason = recentOwnerMessageExists
