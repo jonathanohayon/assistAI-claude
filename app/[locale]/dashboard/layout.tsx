@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import NextLink from "next/link";
+
 import { auth, signOut } from "@/auth";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
@@ -97,12 +99,15 @@ export default async function DashboardLayout({
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             {me?.role === "admin" && (
-              <Link
+              // NextLink raw (pas locale-aware) — /admin n'a pas de version
+              // sous [locale] (interface admin volontairement non-i18n).
+              // Le Link de @/i18n/navigation préfixerait → /en/admin → 404.
+              <NextLink
                 href="/admin"
                 className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20"
               >
                 {t("admin")}
-              </Link>
+              </NextLink>
             )}
             <UserMenu
               email={session.user.email ?? ""}
