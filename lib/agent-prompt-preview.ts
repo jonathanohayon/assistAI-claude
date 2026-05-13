@@ -22,8 +22,8 @@ const buildLanguageDirective = (primary: string): string => {
   const label = LANG_LABEL[primary] ?? "français";
   return `LANGUE PAR DÉFAUT DU TENANT : ${label} (code: ${primary}).
 - Utilise cette langue UNIQUEMENT pour le tout premier message d'accueil.
-- Dès que la cliente parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
-- Si elle bascule à une autre langue, suis-la immédiatement.`;
+- Dès que ton interlocuteur parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
+- S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
 };
 
 const buildAdminBlock = (globalForPlan: string): string => {

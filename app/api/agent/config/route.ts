@@ -102,8 +102,8 @@ export async function GET(req: NextRequest) {
   const primary = config.primaryLanguage ?? "fr";
   const languageDirective = `LANGUE PAR DÉFAUT DU TENANT : ${langLabel[primary] ?? "français"} (code: ${primary}).
 - Utilise cette langue UNIQUEMENT pour le tout premier message d'accueil.
-- Dès que la cliente parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
-- Si elle bascule à une autre langue, suis-la immédiatement.`;
+- Dès que ton interlocuteur parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
+- S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
 
   // L'ordre des blocs est piloté depuis /admin (app_settings.prompt_block_order).
   // Default order = directives système d'abord, puis config_blocks (meta
