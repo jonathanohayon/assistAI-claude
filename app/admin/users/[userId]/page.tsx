@@ -5,10 +5,14 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
+import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { PLANS, type PlanKey } from "@/lib/plans";
 import { voicesFor } from "@/lib/realtime";
+import { getGlobalInstructionsByPlan } from "@/lib/settings";
 
+import { PromptPreview } from "./prompt-preview";
 import { AdminTenantConfigForm } from "./tenant-config-form";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +71,25 @@ export default async function AdminTenantPage({
   }
 
   const voices = cfg ? voicesFor(cfg.model) : [];
+
+  // Compose la même séquence de blocs de prompt que celle envoyée à
+  // l'agent au prochain appel — pratique pour debug / éditer.
+  const planKey: PlanKey =
+    target.subscriptionPlan && PLANS.some((p) => p.key === target.subscriptionPlan)
+      ? (target.subscriptionPlan as PlanKey)
+      : PLANS[0].key;
+  const globalByPlan = cfg ? await getGlobalInstructionsByPlan() : null;
+  const promptBlocks =
+    cfg && globalByPlan
+      ? buildAgentPromptPreview({
+          config: cfg,
+          globalForPlan: globalByPlan[planKey] ?? "",
+          planKey,
+        })
+      : [];
+  const fullPromptConcat = promptBlocks
+    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+    .join("\n\n");
 
   return (
     <main className="min-h-screen">
@@ -129,23 +152,26 @@ export default async function AdminTenantPage({
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
+      <section className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8 pb-20">
         {cfg ? (
-          <AdminTenantConfigForm
-            userId={target.id}
-            initial={{
-              instructions: cfg.instructions,
-              greetingInstructions: cfg.greetingInstructions,
-              model: cfg.model,
-              voice: cfg.voice,
-              temperature: cfg.temperature,
-              speed: cfg.speed,
-              maxResponseTokens: cfg.maxResponseTokens,
-              ownerWhatsapp: cfg.ownerWhatsapp,
-              primaryLanguage: cfg.primaryLanguage ?? "fr",
-            }}
-            initialVoices={voices}
-          />
+          <>
+            <PromptPreview blocks={promptBlocks} fullPrompt={fullPromptConcat} />
+            <AdminTenantConfigForm
+              userId={target.id}
+              initial={{
+                instructions: cfg.instructions,
+                greetingInstructions: cfg.greetingInstructions,
+                model: cfg.model,
+                voice: cfg.voice,
+                temperature: cfg.temperature,
+                speed: cfg.speed,
+                maxResponseTokens: cfg.maxResponseTokens,
+                ownerWhatsapp: cfg.ownerWhatsapp,
+                primaryLanguage: cfg.primaryLanguage ?? "fr",
+              }}
+              initialVoices={voices}
+            />
+          </>
         ) : (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
             Ce tenant n&apos;a pas encore de config agent.
