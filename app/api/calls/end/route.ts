@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { calls } from "@/lib/db/schema";
+import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { featuresForPlan } from "@/lib/plan-features";
@@ -160,7 +160,11 @@ export async function POST(req: NextRequest) {
       ? user.subscriptionPlan
       : DEFAULT_PLAN_KEY;
     const customPrompt = summaryByPlan[planKey] || null;
-    summary = await summarizeCall(transcript, customPrompt);
+    // Génère le summary dans la langue principale du tenant
+    // (cfg.primaryLanguage) pour que for_client / for_owner soient en
+    // FR/HE/EN selon le choix du tenant. Fallback fr si non set.
+    const targetLang = cfg.primaryLanguage ?? "fr";
+    summary = await summarizeCall(transcript, customPrompt, targetLang);
     await logEvent({
       source: "summary",
       event: "summary_generated",
@@ -236,7 +240,48 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (cfg.ownerWhatsapp && tenantFeatures.whatsapp_recap !== false) {
+  // Si l'agent a déjà notifié le proprio via take_message tool PENDANT
+  // l'appel, le recap post-appel serait redondant (les 2 messages
+  // contiennent essentiellement le même contenu). On query les events
+  // récents pour ce user — si un whatsapp:notify_sent existe dans les
+  // 5 dernières minutes, on skip le owner recap. Le client recap reste
+  // (= confirmation envoyée à l'appelant·e, indépendante du take_message).
+  const recentTakeMessageCutoff = new Date(Date.now() - 5 * 60 * 1000);
+  const recentNotifies = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(
+      and(
+        eq(events.userId, user.id),
+        eq(events.source, "whatsapp"),
+        eq(events.event, "notify_sent"),
+        gt(events.createdAt, recentTakeMessageCutoff),
+      ),
+    )
+    .limit(1);
+  const takeMessageUsed = recentNotifies.length > 0;
+
+  if (
+    cfg.ownerWhatsapp &&
+    tenantFeatures.whatsapp_recap !== false &&
+    takeMessageUsed
+  ) {
+    // Trace explicite pour qu'on sache pourquoi le proprio n'a pas reçu
+    // de recap post-appel — sinon ça ressemble à un bug silencieux.
+    await logEvent({
+      source: "whatsapp",
+      event: "whatsapp_skipped_owner_dedup",
+      message: `Recap proprio sauté : take_message déjà envoyé pendant l'appel à ${cfg.ownerWhatsapp}`,
+      userId: user.id,
+      metadata: { callId: callRow.id, to: cfg.ownerWhatsapp },
+    });
+  }
+
+  if (
+    cfg.ownerWhatsapp &&
+    tenantFeatures.whatsapp_recap !== false &&
+    !takeMessageUsed
+  ) {
     const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${fromNumber || "numéro inconnu"}`;
     // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
     // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
