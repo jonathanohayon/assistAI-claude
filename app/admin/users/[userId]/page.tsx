@@ -10,7 +10,13 @@ import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { voicesFor } from "@/lib/realtime";
-import { getGlobalInstructionsByPlan } from "@/lib/settings";
+import {
+  getGlobalInstructionsByPlan,
+  getHangupDirective,
+  getPerCallContextTemplate,
+  getSpokenPhoneDirective,
+  getSpokenTimeDirective,
+} from "@/lib/settings";
 
 import { PromptPreview } from "./prompt-preview";
 import { AdminTenantConfigForm } from "./tenant-config-form";
@@ -78,13 +84,28 @@ export default async function AdminTenantPage({
     target.subscriptionPlan && PLANS.some((p) => p.key === target.subscriptionPlan)
       ? (target.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  const globalByPlan = cfg ? await getGlobalInstructionsByPlan() : null;
+  // Lit les 4 directives système (singletons) + l'admin block par plan en
+  // parallèle pour la preview. Empty default = constants hardcoded.
+  const [globalByPlan, spokenTime, spokenPhone, hangup, perCallContextTemplate] =
+    cfg
+      ? await Promise.all([
+          getGlobalInstructionsByPlan(),
+          getSpokenTimeDirective(),
+          getSpokenPhoneDirective(),
+          getHangupDirective(),
+          getPerCallContextTemplate(),
+        ])
+      : [null, "", "", "", ""];
   const promptBlocks =
     cfg && globalByPlan
       ? buildAgentPromptPreview({
           config: cfg,
           globalForPlan: globalByPlan[planKey] ?? "",
           planKey,
+          spokenTime,
+          spokenPhone,
+          hangup,
+          perCallContextTemplate,
         })
       : [];
   const fullPromptConcat = promptBlocks

@@ -101,18 +101,13 @@ export function PromptPreview({
                     <span className="font-medium text-sm text-[var(--color-foreground)]">
                       {b.label}
                     </span>
-                    {b.workerHardcoded && (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200">
-                        🔒 worker hardcoded
-                      </span>
-                    )}
                     <span className="ml-auto text-[10px] text-[var(--color-muted-foreground)]">
                       {b.content.length} chars
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
                     Source : <code className="font-mono">{b.source}</code>
-                    {b.editHref && !b.workerHardcoded && (
+                    {b.editHref && (
                       <>
                         {" · "}
                         {b.editHref.startsWith("/") ? (

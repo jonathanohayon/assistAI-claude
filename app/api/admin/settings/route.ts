@@ -13,12 +13,20 @@ import {
 import {
   SETTING_KEYS,
   getGlobalInstructionsByPlan,
+  getHangupDirective,
   getOnboardingTemplateByPlan,
+  getPerCallContextTemplate,
   getSetting,
+  getSpokenPhoneDirective,
+  getSpokenTimeDirective,
   getSummaryPromptByPlan,
   setGlobalInstructionsByPlan,
+  setHangupDirective,
   setOnboardingTemplateByPlan,
+  setPerCallContextTemplate,
   setSetting,
+  setSpokenPhoneDirective,
+  setSpokenTimeDirective,
   setSummaryPromptByPlan,
   type GlobalInstructionsByPlan,
   type OnboardingTemplateByPlan,
@@ -49,6 +57,10 @@ export async function GET() {
   const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
   const summaryPromptByPlan = await getSummaryPromptByPlan();
+  const spokenTimeDirective = await getSpokenTimeDirective();
+  const spokenPhoneDirective = await getSpokenPhoneDirective();
+  const hangupDirective = await getHangupDirective();
+  const perCallContextTemplate = await getPerCallContextTemplate();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
@@ -56,6 +68,10 @@ export async function GET() {
     onboardingTemplateByPlan,
     planFeatures,
     summaryPromptByPlan,
+    spokenTimeDirective,
+    spokenPhoneDirective,
+    hangupDirective,
+    perCallContextTemplate,
   });
 }
 
@@ -71,6 +87,10 @@ export async function PUT(req: NextRequest) {
     onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
     planFeatures?: PlanFeatureMatrix;
     summaryPromptByPlan?: Partial<SummaryPromptByPlan>;
+    spokenTimeDirective?: string;
+    spokenPhoneDirective?: string;
+    hangupDirective?: string;
+    perCallContextTemplate?: string;
   };
 
   const changed: string[] = [];
@@ -114,6 +134,22 @@ export async function PUT(req: NextRequest) {
   ) {
     await setSummaryPromptByPlan(body.summaryPromptByPlan);
     changed.push("summary_prompt_by_plan");
+  }
+  if (typeof body.spokenTimeDirective === "string") {
+    await setSpokenTimeDirective(body.spokenTimeDirective);
+    changed.push("spoken_time_directive");
+  }
+  if (typeof body.spokenPhoneDirective === "string") {
+    await setSpokenPhoneDirective(body.spokenPhoneDirective);
+    changed.push("spoken_phone_directive");
+  }
+  if (typeof body.hangupDirective === "string") {
+    await setHangupDirective(body.hangupDirective);
+    changed.push("hangup_directive");
+  }
+  if (typeof body.perCallContextTemplate === "string") {
+    await setPerCallContextTemplate(body.perCallContextTemplate);
+    changed.push("per_call_context_template");
   }
 
   if (changed.length > 0) {

@@ -3,6 +3,12 @@
 
 import { eq } from "drizzle-orm";
 
+import {
+  DEFAULT_HANGUP_DIRECTIVE,
+  DEFAULT_PER_CALL_CONTEXT_TEMPLATE,
+  DEFAULT_SPOKEN_PHONE_DIRECTIVE,
+  DEFAULT_SPOKEN_TIME_DIRECTIVE,
+} from "@/lib/agent-prompt-defaults";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -35,6 +41,21 @@ export const SETTING_KEYS = {
   // recap RDV pro · premium = ton VIP avec détails enrichis). Vide pour
   // un plan → fallback DEFAULT_SUMMARY_PROMPT hardcodé dans summarize.ts.
   SUMMARY_PROMPT_BY_PLAN: "summary_prompt_by_plan",
+  // Directives système éditables — historiquement hardcodées dans agent.ts
+  // du worker, maintenant pilotables depuis /admin pour qu'on maîtrise
+  // tout le flow. Vide = fallback constants de lib/agent-prompt-defaults.ts.
+  //
+  // Singleton (pas per-plan) parce que ce sont des comportements universels
+  // qui s'appliquent à tous les tenants : comment prononcer les heures,
+  // les numéros, quand raccrocher. Per-plan n'a pas de sens ici.
+  SPOKEN_TIME_DIRECTIVE: "spoken_time_directive",
+  SPOKEN_PHONE_DIRECTIVE: "spoken_phone_directive",
+  HANGUP_DIRECTIVE: "hangup_directive",
+  // Template pour le contexte per-call injecté en chatCtx au début de
+  // chaque appel. Contient des placeholders runtime — voir
+  // lib/agent-prompt-defaults.ts pour la liste (date_fr, iso_date, time,
+  // caller_hint_block). Le worker substitue.
+  PER_CALL_CONTEXT_TEMPLATE: "per_call_context_template",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -188,4 +209,49 @@ export async function setSummaryPromptByPlan(
     SETTING_KEYS.SUMMARY_PROMPT_BY_PLAN,
     JSON.stringify(merged),
   );
+}
+
+// ── Directives système (singleton, partagées tous tenants) ──────────────
+// 4 fonctions get/set similaires pour les 4 textes éditables. Empty
+// retournée = use the hardcoded default. Setter empty → DB vide (revient
+// au default automatiquement).
+
+export async function getSpokenTimeDirective(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.SPOKEN_TIME_DIRECTIVE)) ??
+    DEFAULT_SPOKEN_TIME_DIRECTIVE
+  );
+}
+export async function setSpokenTimeDirective(value: string): Promise<void> {
+  await setSetting(SETTING_KEYS.SPOKEN_TIME_DIRECTIVE, value);
+}
+
+export async function getSpokenPhoneDirective(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.SPOKEN_PHONE_DIRECTIVE)) ??
+    DEFAULT_SPOKEN_PHONE_DIRECTIVE
+  );
+}
+export async function setSpokenPhoneDirective(value: string): Promise<void> {
+  await setSetting(SETTING_KEYS.SPOKEN_PHONE_DIRECTIVE, value);
+}
+
+export async function getHangupDirective(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.HANGUP_DIRECTIVE)) ??
+    DEFAULT_HANGUP_DIRECTIVE
+  );
+}
+export async function setHangupDirective(value: string): Promise<void> {
+  await setSetting(SETTING_KEYS.HANGUP_DIRECTIVE, value);
+}
+
+export async function getPerCallContextTemplate(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE)) ??
+    DEFAULT_PER_CALL_CONTEXT_TEMPLATE
+  );
+}
+export async function setPerCallContextTemplate(value: string): Promise<void> {
+  await setSetting(SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE, value);
 }

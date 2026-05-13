@@ -4,7 +4,13 @@ import { logEvent } from "@/lib/logger";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
-import { getGlobalInstructionsByPlan } from "@/lib/settings";
+import {
+  getGlobalInstructionsByPlan,
+  getHangupDirective,
+  getPerCallContextTemplate,
+  getSpokenPhoneDirective,
+  getSpokenTimeDirective,
+} from "@/lib/settings";
 import {
   resolveDefaultTenant,
   resolveTenantByPhone,
@@ -32,12 +38,19 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Parallel DB roundtrips ─────────────────────────────────────────────
-  // Les 3 queries suivantes sont indépendantes et touchent toutes la même
-  // DB Postgres. Promise.all les groupe en parallèle → on économise ~2/3
-  // des round-trips (3 séquentiels ≈ 60-150ms → 1 batch ≈ 25-60ms).
+  // Toutes les lectures suivantes sont indépendantes. Promise.all les
+  // groupe en parallèle → on économise ~6x le coût round-trip vs sériel.
   // logEvent reste awaited pour ne pas perdre l'insert si Railway tue
-  // la fonction avant le flush (cas warm-cold transitions).
-  const [, globalByPlan, planMatrix] = await Promise.all([
+  // la fonction avant le flush.
+  const [
+    ,
+    globalByPlan,
+    planMatrix,
+    spokenTime,
+    spokenPhone,
+    hangup,
+    perCallContextTemplate,
+  ] = await Promise.all([
     logEvent({
       source: "tenant",
       event: "agent_config_loaded",
@@ -53,6 +66,10 @@ export async function GET(req: NextRequest) {
     }),
     getGlobalInstructionsByPlan(),
     getPlanFeatureMatrix(),
+    getSpokenTimeDirective(),
+    getSpokenPhoneDirective(),
+    getHangupDirective(),
+    getPerCallContextTemplate(),
   ]);
 
   const { config } = tenant;
@@ -82,17 +99,32 @@ export async function GET(req: NextRequest) {
 - Dès que la cliente parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
 - Si elle bascule à une autre langue, suis-la immédiatement.`;
 
-  // Ordre des blocs : le persona tenant en TÊTE (identité primaire, dominant
-  // par effet d'ancrage LLM), puis la directive langue (cross-cutting), puis
-  // les règles globales admin en queue (additionnelles, pas constitutives de
-  // l'identité). Précédemment l'admin global ouvrait le prompt et écrasait
-  // le persona tenant — sur plan basique notamment, l'agent ignorait la
-  // persona "Robert prend des messages" et reprenait le comportement
-  // générique défini globalement.
+  // Ordre des blocs (= ordre dans le system prompt envoyé à OpenAI) :
+  //   1. Directives système (spoken time/phone, hangup) — anciennement
+  //      hardcodées dans agent.ts du worker, maintenant éditables depuis
+  //      /admin. Au tout début car comportementales (comment lire heures
+  //      et numéros, quand raccrocher) — doivent rester actives quel que
+  //      soit le persona tenant.
+  //   2. Persona tenant en TÊTE des règles métier (identité primaire,
+  //      dominant par effet d'ancrage LLM).
+  //   3. Directive langue (cross-cutting).
+  //   4. Règles globales admin par plan en queue (additionnelles, pas
+  //      constitutives de l'identité).
+  //
+  // Précédemment 1. était hardcodé worker-side (STATIC_INSTRUCTIONS prefix)
+  // — sortir d'agent.ts vers /admin permet de tout maîtriser sans toucher
+  // au code du worker.
   const adminBlock = globalInstructions
     ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona ci-dessus, jamais à sa place) :\n\n${globalInstructions}`
     : "";
-  const mergedInstructions = [config.instructions, languageDirective, adminBlock]
+  const mergedInstructions = [
+    spokenTime,
+    spokenPhone,
+    hangup,
+    config.instructions,
+    languageDirective,
+    adminBlock,
+  ]
     .filter(Boolean)
     .join("\n\n──────────────────────────────────────────\n\n");
 
@@ -105,5 +137,8 @@ export async function GET(req: NextRequest) {
     instructions: mergedInstructions,
     features,
     updatedAt,
+    // Template per-call avec placeholders {date_fr}, {iso_date}, {time},
+    // {caller_hint_block} substitués côté worker à chaque appel.
+    perCallContextTemplate,
   });
 }

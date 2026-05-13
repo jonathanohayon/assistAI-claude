@@ -10,13 +10,18 @@ import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
   getGlobalInstructionsByPlan,
+  getHangupDirective,
   getOnboardingTemplateByPlan,
+  getPerCallContextTemplate,
+  getSpokenPhoneDirective,
+  getSpokenTimeDirective,
   getSummaryPromptByPlan,
 } from "@/lib/settings";
 
 import { AdminTable } from "./admin-table";
 import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
+import { SystemDirectivesForm } from "./system-directives-form";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -35,10 +40,25 @@ export default async function AdminPage() {
     .from(users)
     .orderBy(users.createdAt);
   const allNumbers = await db.select().from(phoneNumbers);
-  const globalInstructionsByPlan = await getGlobalInstructionsByPlan();
-  const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
-  const summaryPromptByPlan = await getSummaryPromptByPlan();
-  const planFeatures = await getPlanFeatureMatrix();
+  const [
+    globalInstructionsByPlan,
+    onboardingTemplateByPlan,
+    summaryPromptByPlan,
+    planFeatures,
+    spokenTimeDirective,
+    spokenPhoneDirective,
+    hangupDirective,
+    perCallContextTemplate,
+  ] = await Promise.all([
+    getGlobalInstructionsByPlan(),
+    getOnboardingTemplateByPlan(),
+    getSummaryPromptByPlan(),
+    getPlanFeatureMatrix(),
+    getSpokenTimeDirective(),
+    getSpokenPhoneDirective(),
+    getHangupDirective(),
+    getPerCallContextTemplate(),
+  ]);
 
   // Group numbers per user.
   const byUser = new Map<string, typeof allNumbers>();
@@ -138,6 +158,16 @@ export default async function AdminPage() {
             initialTemplateByPlan={onboardingTemplateByPlan}
             initialSummaryPromptByPlan={summaryPromptByPlan}
           />
+          <div className="mt-6">
+            <SystemDirectivesForm
+              initial={{
+                spokenTimeDirective,
+                spokenPhoneDirective,
+                hangupDirective,
+                perCallContextTemplate,
+              }}
+            />
+          </div>
           <div className="mt-6">
             <PlanFeaturesForm initialMatrix={planFeatures} />
           </div>
