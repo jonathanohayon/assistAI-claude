@@ -5,13 +5,13 @@ import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
-  getConfigBlocksDirective,
+  getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
-  getHangupDirective,
-  getPerCallContextTemplate,
-  getPromptBlockOrder,
-  getSpokenPhoneDirective,
-  getSpokenTimeDirective,
+  getHangupDirectiveByPlan,
+  getPerCallContextTemplateByPlan,
+  getPromptBlockOrderByPlan,
+  getSpokenPhoneDirectiveByPlan,
+  getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 import {
   resolveDefaultTenant,
@@ -48,12 +48,12 @@ export async function GET(req: NextRequest) {
     ,
     globalByPlan,
     planMatrix,
-    spokenTime,
-    spokenPhone,
-    hangup,
-    perCallContextTemplate,
-    configBlocks,
-    blockOrder,
+    spokenTimeByPlan,
+    spokenPhoneByPlan,
+    hangupByPlan,
+    perCallContextByPlan,
+    configBlocksByPlan,
+    blockOrderByPlan,
   ] = await Promise.all([
     logEvent({
       source: "tenant",
@@ -70,12 +70,12 @@ export async function GET(req: NextRequest) {
     }),
     getGlobalInstructionsByPlan(),
     getPlanFeatureMatrix(),
-    getSpokenTimeDirective(),
-    getSpokenPhoneDirective(),
-    getHangupDirective(),
-    getPerCallContextTemplate(),
-    getConfigBlocksDirective(),
-    getPromptBlockOrder(),
+    getSpokenTimeDirectiveByPlan(),
+    getSpokenPhoneDirectiveByPlan(),
+    getHangupDirectiveByPlan(),
+    getPerCallContextTemplateByPlan(),
+    getConfigBlocksDirectiveByPlan(),
+    getPromptBlockOrderByPlan(),
   ]);
 
   const { config } = tenant;
@@ -88,7 +88,20 @@ export async function GET(req: NextRequest) {
     PLANS.some((p) => p.key === tenant.user.subscriptionPlan)
       ? (tenant.user.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  const globalInstructions = globalByPlan[planKey] ?? "";
+  // Toutes les directives sont per-plan : on extrait la version du plan
+  // du tenant. Si le tenant a `inheritAdminGlobals=false`, on remplace par
+  // "" pour ne PAS injecter les blocs admin → le prompt assemblé contient
+  // alors uniquement persona + language directive.
+  const inherits = config.inheritAdminGlobals !== false;
+  const spokenTime = inherits ? spokenTimeByPlan[planKey] ?? "" : "";
+  const spokenPhone = inherits ? spokenPhoneByPlan[planKey] ?? "" : "";
+  const hangup = inherits ? hangupByPlan[planKey] ?? "" : "";
+  const perCallContextTemplate = inherits
+    ? perCallContextByPlan[planKey] ?? ""
+    : "";
+  const configBlocks = inherits ? configBlocksByPlan[planKey] ?? "" : "";
+  const blockOrder = blockOrderByPlan[planKey] ?? [];
+  const globalInstructions = inherits ? globalByPlan[planKey] ?? "" : "";
   // Features activées pour le plan de ce tenant (matrice admin). Le worker
   // utilise cette map pour décider quels tools enregistrer (cf. recent
   // session : règles métier déterministes côté tools, pas dans le prompt).

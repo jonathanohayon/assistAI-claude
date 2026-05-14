@@ -42,6 +42,7 @@ export async function PUT(req: NextRequest) {
     maxResponseTokens: number;
     ownerWhatsapp: string;
     primaryLanguage: string;
+    inheritAdminGlobals: boolean;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -118,6 +119,9 @@ export async function PUT(req: NextRequest) {
       );
     }
     updates.primaryLanguage = body.primaryLanguage;
+  }
+  if (body.inheritAdminGlobals != null) {
+    updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
   }
 
   const [updated] = await db

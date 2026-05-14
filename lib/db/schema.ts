@@ -102,6 +102,13 @@ export const agentConfigs = pgTable("agent_configs", {
   // 'fr' | 'he' | 'en'.
   primaryLanguage: text("primary_language").notNull().default("fr"),
 
+  // Si false, le tenant n'hérite pas des blocs admin (spoken_time,
+  // spoken_phone, hangup, per_call_context, config_blocks, admin_global)
+  // dans son system prompt assemblé. Seuls persona + language directive
+  // sont conservés. Activé par défaut pour préserver le comportement
+  // historique. UI : checkbox + popup dans /dashboard/config et /admin.
+  inheritAdminGlobals: boolean("inherit_admin_globals").notNull().default(true),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

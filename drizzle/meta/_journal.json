@@ -92,6 +92,13 @@
       "when": 1778720000000,
       "tag": "0012_default_model_realtime_2",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1778780000000,
+      "tag": "0013_inherit_admin_globals",
+      "breakpoints": true
     }
   ]
 }

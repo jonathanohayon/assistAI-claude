@@ -58,6 +58,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     maxResponseTokens: number;
     ownerWhatsapp: string;
     primaryLanguage: string;
+    inheritAdminGlobals: boolean;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -110,6 +111,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       );
     }
     updates.primaryLanguage = body.primaryLanguage;
+  }
+  if (body.inheritAdminGlobals != null) {
+    updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
   }
 
   const [updated] = await db

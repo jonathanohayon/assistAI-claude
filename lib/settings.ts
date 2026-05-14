@@ -49,24 +49,30 @@ export const SETTING_KEYS = {
   // du worker, maintenant pilotables depuis /admin pour qu'on maîtrise
   // tout le flow. Vide = fallback constants de lib/agent-prompt-defaults.ts.
   //
-  // Singleton (pas per-plan) parce que ce sont des comportements universels
-  // qui s'appliquent à tous les tenants : comment prononcer les heures,
-  // les numéros, quand raccrocher. Per-plan n'a pas de sens ici.
+  // Singleton legacy (lecture seule désormais) : conservé pour rétro-
+  // compat — toutes les nouvelles écritures passent par les maps per-plan
+  // (_BY_PLAN). Les getters singleton sont utilisés en fallback dans les
+  // getters per-plan si un plan donné n'a rien stocké.
   SPOKEN_TIME_DIRECTIVE: "spoken_time_directive",
   SPOKEN_PHONE_DIRECTIVE: "spoken_phone_directive",
   HANGUP_DIRECTIVE: "hangup_directive",
-  // Template pour le contexte per-call injecté en chatCtx au début de
-  // chaque appel. Contient des placeholders runtime — voir
-  // lib/agent-prompt-defaults.ts pour la liste (date_fr, iso_date, time,
-  // caller_hint_block). Le worker substitue.
   PER_CALL_CONTEXT_TEMPLATE: "per_call_context_template",
-  // Bloc meta qui prime le LLM à respecter strictement les étapes du
-  // persona (ne pas sauter en avant). Singleton, partagé tous tenants.
   CONFIG_BLOCKS_DIRECTIVE: "config_blocks_directive",
+  // Per-plan : chaque plan a sa propre version de chaque directive.
+  // JSON map plan → string. Vide pour un plan donné → fallback singleton
+  // legacy → fallback DEFAULT hardcoded. Permet à l'admin de différencier
+  // le ton/style/règles entre Basique / Globale / Premium.
+  SPOKEN_TIME_DIRECTIVE_BY_PLAN: "spoken_time_directive_by_plan",
+  SPOKEN_PHONE_DIRECTIVE_BY_PLAN: "spoken_phone_directive_by_plan",
+  HANGUP_DIRECTIVE_BY_PLAN: "hangup_directive_by_plan",
+  PER_CALL_CONTEXT_TEMPLATE_BY_PLAN: "per_call_context_template_by_plan",
+  CONFIG_BLOCKS_DIRECTIVE_BY_PLAN: "config_blocks_directive_by_plan",
   // JSON array des IDs de blocs dans l'ordre où ils sont injectés dans
-  // le system prompt. L'admin peut ré-ordonner depuis /admin. Si un ID
-  // manque dans le tableau saved, on tombe sur DEFAULT_PROMPT_BLOCK_ORDER.
+  // le system prompt. Legacy singleton, conservé en fallback.
   PROMPT_BLOCK_ORDER: "prompt_block_order",
+  // JSON map plan → array d'IDs. Chaque plan peut avoir son propre ordre
+  // de blocs. Fallback sur singleton legacy si plan absent.
+  PROMPT_BLOCK_ORDER_BY_PLAN: "prompt_block_order_by_plan",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -323,4 +329,209 @@ export async function setPromptBlockOrder(order: BlockId[]): Promise<void> {
     if (!seen.has(id)) clean.push(id);
   }
   await setSetting(SETTING_KEYS.PROMPT_BLOCK_ORDER, JSON.stringify(clean));
+}
+
+// ── Per-plan getters/setters pour les directives système ────────────────
+// Chaque plan a son propre texte. Lecture en cascade pour un plan donné :
+//   1. JSON map per-plan en DB
+//   2. fallback sur le singleton legacy si plan absent dans la map
+//   3. fallback final sur DEFAULT_* hardcoded
+// Une chaîne vide saved dans la map per-plan est intentionnelle (admin a
+// explicitement vidé pour ce plan) → on retourne "" (= bloc supprimé).
+//
+// Helper générique pour ne pas dupliquer le pattern 5 fois.
+type PlanStringMap = Record<PlanKey, string>;
+
+async function readByPlanMap(
+  key: string,
+  legacyKey: string,
+  fallback: string,
+): Promise<PlanStringMap> {
+  const [raw, legacy] = await Promise.all([
+    getSetting(key),
+    getSetting(legacyKey),
+  ]);
+  const legacyResolved = legacy ?? fallback;
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, legacyResolved]),
+  ) as PlanStringMap;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // JSON corrompu → on garde le fallback legacy partout.
+    }
+  }
+  return out;
+}
+
+async function writeByPlanMap(
+  key: string,
+  current: PlanStringMap,
+  patch: Partial<PlanStringMap>,
+): Promise<void> {
+  const merged: PlanStringMap = { ...current };
+  for (const p of PLANS) {
+    const v = patch[p.key];
+    if (typeof v === "string") merged[p.key] = v;
+  }
+  await setSetting(key, JSON.stringify(merged));
+}
+
+export type SpokenTimeDirectiveByPlan = PlanStringMap;
+export async function getSpokenTimeDirectiveByPlan(): Promise<SpokenTimeDirectiveByPlan> {
+  return readByPlanMap(
+    SETTING_KEYS.SPOKEN_TIME_DIRECTIVE_BY_PLAN,
+    SETTING_KEYS.SPOKEN_TIME_DIRECTIVE,
+    DEFAULT_SPOKEN_TIME_DIRECTIVE,
+  );
+}
+export async function setSpokenTimeDirectiveByPlan(
+  patch: Partial<SpokenTimeDirectiveByPlan>,
+): Promise<void> {
+  const current = await getSpokenTimeDirectiveByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.SPOKEN_TIME_DIRECTIVE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+export type SpokenPhoneDirectiveByPlan = PlanStringMap;
+export async function getSpokenPhoneDirectiveByPlan(): Promise<SpokenPhoneDirectiveByPlan> {
+  return readByPlanMap(
+    SETTING_KEYS.SPOKEN_PHONE_DIRECTIVE_BY_PLAN,
+    SETTING_KEYS.SPOKEN_PHONE_DIRECTIVE,
+    DEFAULT_SPOKEN_PHONE_DIRECTIVE,
+  );
+}
+export async function setSpokenPhoneDirectiveByPlan(
+  patch: Partial<SpokenPhoneDirectiveByPlan>,
+): Promise<void> {
+  const current = await getSpokenPhoneDirectiveByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.SPOKEN_PHONE_DIRECTIVE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+export type HangupDirectiveByPlan = PlanStringMap;
+export async function getHangupDirectiveByPlan(): Promise<HangupDirectiveByPlan> {
+  return readByPlanMap(
+    SETTING_KEYS.HANGUP_DIRECTIVE_BY_PLAN,
+    SETTING_KEYS.HANGUP_DIRECTIVE,
+    DEFAULT_HANGUP_DIRECTIVE,
+  );
+}
+export async function setHangupDirectiveByPlan(
+  patch: Partial<HangupDirectiveByPlan>,
+): Promise<void> {
+  const current = await getHangupDirectiveByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.HANGUP_DIRECTIVE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+export type PerCallContextTemplateByPlan = PlanStringMap;
+export async function getPerCallContextTemplateByPlan(): Promise<PerCallContextTemplateByPlan> {
+  return readByPlanMap(
+    SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE_BY_PLAN,
+    SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE,
+    DEFAULT_PER_CALL_CONTEXT_TEMPLATE,
+  );
+}
+export async function setPerCallContextTemplateByPlan(
+  patch: Partial<PerCallContextTemplateByPlan>,
+): Promise<void> {
+  const current = await getPerCallContextTemplateByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.PER_CALL_CONTEXT_TEMPLATE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+export type ConfigBlocksDirectiveByPlan = PlanStringMap;
+export async function getConfigBlocksDirectiveByPlan(): Promise<ConfigBlocksDirectiveByPlan> {
+  return readByPlanMap(
+    SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE_BY_PLAN,
+    SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE,
+    DEFAULT_CONFIG_BLOCKS_DIRECTIVE,
+  );
+}
+export async function setConfigBlocksDirectiveByPlan(
+  patch: Partial<ConfigBlocksDirectiveByPlan>,
+): Promise<void> {
+  const current = await getConfigBlocksDirectiveByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+// Per-plan version du PROMPT_BLOCK_ORDER. Stocke un JSON map
+// plan → BlockId[]. Lecture en cascade : map per-plan → singleton legacy
+// → DEFAULT_PROMPT_BLOCK_ORDER. Toujours dédupliqué + tous IDs présents.
+export type PromptBlockOrderByPlan = Record<PlanKey, BlockId[]>;
+
+const sanitizeOrder = (order: unknown): BlockId[] => {
+  if (!Array.isArray(order)) return [...DEFAULT_PROMPT_BLOCK_ORDER];
+  const validSet = new Set<BlockId>(BLOCK_IDS);
+  const seen = new Set<BlockId>();
+  const result: BlockId[] = [];
+  for (const x of order) {
+    if (typeof x === "string" && validSet.has(x as BlockId) && !seen.has(x as BlockId)) {
+      result.push(x as BlockId);
+      seen.add(x as BlockId);
+    }
+  }
+  for (const id of BLOCK_IDS) {
+    if (!seen.has(id)) result.push(id);
+  }
+  return result;
+};
+
+export async function getPromptBlockOrderByPlan(): Promise<PromptBlockOrderByPlan> {
+  const [raw, legacyOrder] = await Promise.all([
+    getSetting(SETTING_KEYS.PROMPT_BLOCK_ORDER_BY_PLAN),
+    getPromptBlockOrder(),
+  ]);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, [...legacyOrder]]),
+  ) as PromptBlockOrderByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, unknown>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (Array.isArray(v)) out[p.key] = sanitizeOrder(v);
+      }
+    } catch {
+      // JSON corrompu → fallback legacy partout.
+    }
+  }
+  return out;
+}
+
+export async function setPromptBlockOrderByPlan(
+  patch: Partial<PromptBlockOrderByPlan>,
+): Promise<void> {
+  const current = await getPromptBlockOrderByPlan();
+  const merged: PromptBlockOrderByPlan = { ...current };
+  for (const p of PLANS) {
+    const v = patch[p.key];
+    if (Array.isArray(v)) merged[p.key] = sanitizeOrder(v);
+  }
+  await setSetting(
+    SETTING_KEYS.PROMPT_BLOCK_ORDER_BY_PLAN,
+    JSON.stringify(merged),
+  );
 }

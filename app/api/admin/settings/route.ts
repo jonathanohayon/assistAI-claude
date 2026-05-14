@@ -10,31 +10,36 @@ import {
   getPlanFeatureMatrix,
   setPlanFeatureMatrix,
 } from "@/lib/plan-features-storage";
-import { type BlockId } from "@/lib/agent-prompt-defaults";
 import {
   SETTING_KEYS,
-  getConfigBlocksDirective,
+  getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
-  getHangupDirective,
+  getHangupDirectiveByPlan,
   getOnboardingTemplateByPlan,
-  getPerCallContextTemplate,
-  getPromptBlockOrder,
+  getPerCallContextTemplateByPlan,
+  getPromptBlockOrderByPlan,
   getSetting,
-  getSpokenPhoneDirective,
-  getSpokenTimeDirective,
+  getSpokenPhoneDirectiveByPlan,
+  getSpokenTimeDirectiveByPlan,
   getSummaryPromptByPlan,
-  setConfigBlocksDirective,
+  setConfigBlocksDirectiveByPlan,
   setGlobalInstructionsByPlan,
-  setHangupDirective,
+  setHangupDirectiveByPlan,
   setOnboardingTemplateByPlan,
-  setPerCallContextTemplate,
-  setPromptBlockOrder,
+  setPerCallContextTemplateByPlan,
+  setPromptBlockOrderByPlan,
   setSetting,
-  setSpokenPhoneDirective,
-  setSpokenTimeDirective,
+  setSpokenPhoneDirectiveByPlan,
+  setSpokenTimeDirectiveByPlan,
   setSummaryPromptByPlan,
+  type ConfigBlocksDirectiveByPlan,
   type GlobalInstructionsByPlan,
+  type HangupDirectiveByPlan,
   type OnboardingTemplateByPlan,
+  type PerCallContextTemplateByPlan,
+  type PromptBlockOrderByPlan,
+  type SpokenPhoneDirectiveByPlan,
+  type SpokenTimeDirectiveByPlan,
   type SummaryPromptByPlan,
 } from "@/lib/settings";
 
@@ -62,12 +67,14 @@ export async function GET() {
   const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
   const summaryPromptByPlan = await getSummaryPromptByPlan();
-  const spokenTimeDirective = await getSpokenTimeDirective();
-  const spokenPhoneDirective = await getSpokenPhoneDirective();
-  const hangupDirective = await getHangupDirective();
-  const perCallContextTemplate = await getPerCallContextTemplate();
-  const configBlocksDirective = await getConfigBlocksDirective();
-  const promptBlockOrder = await getPromptBlockOrder();
+  const spokenTimeDirectiveByPlan = await getSpokenTimeDirectiveByPlan();
+  const spokenPhoneDirectiveByPlan = await getSpokenPhoneDirectiveByPlan();
+  const hangupDirectiveByPlan = await getHangupDirectiveByPlan();
+  const perCallContextTemplateByPlan =
+    await getPerCallContextTemplateByPlan();
+  const configBlocksDirectiveByPlan =
+    await getConfigBlocksDirectiveByPlan();
+  const promptBlockOrderByPlan = await getPromptBlockOrderByPlan();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
@@ -75,12 +82,12 @@ export async function GET() {
     onboardingTemplateByPlan,
     planFeatures,
     summaryPromptByPlan,
-    spokenTimeDirective,
-    spokenPhoneDirective,
-    hangupDirective,
-    perCallContextTemplate,
-    configBlocksDirective,
-    promptBlockOrder,
+    spokenTimeDirectiveByPlan,
+    spokenPhoneDirectiveByPlan,
+    hangupDirectiveByPlan,
+    perCallContextTemplateByPlan,
+    configBlocksDirectiveByPlan,
+    promptBlockOrderByPlan,
   });
 }
 
@@ -96,12 +103,12 @@ export async function PUT(req: NextRequest) {
     onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
     planFeatures?: PlanFeatureMatrix;
     summaryPromptByPlan?: Partial<SummaryPromptByPlan>;
-    spokenTimeDirective?: string;
-    spokenPhoneDirective?: string;
-    hangupDirective?: string;
-    perCallContextTemplate?: string;
-    configBlocksDirective?: string;
-    promptBlockOrder?: BlockId[];
+    spokenTimeDirectiveByPlan?: Partial<SpokenTimeDirectiveByPlan>;
+    spokenPhoneDirectiveByPlan?: Partial<SpokenPhoneDirectiveByPlan>;
+    hangupDirectiveByPlan?: Partial<HangupDirectiveByPlan>;
+    perCallContextTemplateByPlan?: Partial<PerCallContextTemplateByPlan>;
+    configBlocksDirectiveByPlan?: Partial<ConfigBlocksDirectiveByPlan>;
+    promptBlockOrderByPlan?: Partial<PromptBlockOrderByPlan>;
   };
 
   const changed: string[] = [];
@@ -146,29 +153,47 @@ export async function PUT(req: NextRequest) {
     await setSummaryPromptByPlan(body.summaryPromptByPlan);
     changed.push("summary_prompt_by_plan");
   }
-  if (typeof body.spokenTimeDirective === "string") {
-    await setSpokenTimeDirective(body.spokenTimeDirective);
-    changed.push("spoken_time_directive");
+  if (
+    body.spokenTimeDirectiveByPlan &&
+    typeof body.spokenTimeDirectiveByPlan === "object"
+  ) {
+    await setSpokenTimeDirectiveByPlan(body.spokenTimeDirectiveByPlan);
+    changed.push("spoken_time_directive_by_plan");
   }
-  if (typeof body.spokenPhoneDirective === "string") {
-    await setSpokenPhoneDirective(body.spokenPhoneDirective);
-    changed.push("spoken_phone_directive");
+  if (
+    body.spokenPhoneDirectiveByPlan &&
+    typeof body.spokenPhoneDirectiveByPlan === "object"
+  ) {
+    await setSpokenPhoneDirectiveByPlan(body.spokenPhoneDirectiveByPlan);
+    changed.push("spoken_phone_directive_by_plan");
   }
-  if (typeof body.hangupDirective === "string") {
-    await setHangupDirective(body.hangupDirective);
-    changed.push("hangup_directive");
+  if (
+    body.hangupDirectiveByPlan &&
+    typeof body.hangupDirectiveByPlan === "object"
+  ) {
+    await setHangupDirectiveByPlan(body.hangupDirectiveByPlan);
+    changed.push("hangup_directive_by_plan");
   }
-  if (typeof body.perCallContextTemplate === "string") {
-    await setPerCallContextTemplate(body.perCallContextTemplate);
-    changed.push("per_call_context_template");
+  if (
+    body.perCallContextTemplateByPlan &&
+    typeof body.perCallContextTemplateByPlan === "object"
+  ) {
+    await setPerCallContextTemplateByPlan(body.perCallContextTemplateByPlan);
+    changed.push("per_call_context_template_by_plan");
   }
-  if (typeof body.configBlocksDirective === "string") {
-    await setConfigBlocksDirective(body.configBlocksDirective);
-    changed.push("config_blocks_directive");
+  if (
+    body.configBlocksDirectiveByPlan &&
+    typeof body.configBlocksDirectiveByPlan === "object"
+  ) {
+    await setConfigBlocksDirectiveByPlan(body.configBlocksDirectiveByPlan);
+    changed.push("config_blocks_directive_by_plan");
   }
-  if (Array.isArray(body.promptBlockOrder)) {
-    await setPromptBlockOrder(body.promptBlockOrder);
-    changed.push("prompt_block_order");
+  if (
+    body.promptBlockOrderByPlan &&
+    typeof body.promptBlockOrderByPlan === "object"
+  ) {
+    await setPromptBlockOrderByPlan(body.promptBlockOrderByPlan);
+    changed.push("prompt_block_order_by_plan");
   }
 
   if (changed.length > 0) {

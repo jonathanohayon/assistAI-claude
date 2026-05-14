@@ -11,13 +11,13 @@ import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { voicesFor } from "@/lib/realtime";
 import {
-  getConfigBlocksDirective,
+  getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
-  getHangupDirective,
-  getPerCallContextTemplate,
-  getPromptBlockOrder,
-  getSpokenPhoneDirective,
-  getSpokenTimeDirective,
+  getHangupDirectiveByPlan,
+  getPerCallContextTemplateByPlan,
+  getPromptBlockOrderByPlan,
+  getSpokenPhoneDirectiveByPlan,
+  getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 
@@ -87,45 +87,72 @@ export default async function AdminTenantPage({
     target.subscriptionPlan && PLANS.some((p) => p.key === target.subscriptionPlan)
       ? (target.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  // Lit les directives système (singletons) + l'admin block par plan + le
-  // bloc config_blocks + l'ordre des blocs en parallèle pour la preview.
-  // Empty default = constants hardcoded.
+  // Lit les directives système per-plan + admin block par plan + l'ordre
+  // des blocs per-plan en parallèle pour la preview. Empty default =
+  // constants hardcoded.
   const [
     globalByPlan,
-    spokenTime,
-    spokenPhone,
-    hangup,
-    perCallContextTemplate,
-    configBlocks,
-    blockOrder,
+    spokenTimeByPlan,
+    spokenPhoneByPlan,
+    hangupByPlan,
+    perCallContextByPlan,
+    configBlocksByPlan,
+    blockOrderByPlan,
   ] = cfg
     ? await Promise.all([
         getGlobalInstructionsByPlan(),
-        getSpokenTimeDirective(),
-        getSpokenPhoneDirective(),
-        getHangupDirective(),
-        getPerCallContextTemplate(),
-        getConfigBlocksDirective(),
-        getPromptBlockOrder(),
+        getSpokenTimeDirectiveByPlan(),
+        getSpokenPhoneDirectiveByPlan(),
+        getHangupDirectiveByPlan(),
+        getPerCallContextTemplateByPlan(),
+        getConfigBlocksDirectiveByPlan(),
+        getPromptBlockOrderByPlan(),
       ])
-    : [null, "", "", "", "", "", [...DEFAULT_PROMPT_BLOCK_ORDER]];
+    : [null, null, null, null, null, null, null];
+  const planSpokenTime = spokenTimeByPlan?.[planKey] ?? "";
+  const planSpokenPhone = spokenPhoneByPlan?.[planKey] ?? "";
+  const planHangup = hangupByPlan?.[planKey] ?? "";
+  const planPerCallCtx = perCallContextByPlan?.[planKey] ?? "";
+  const planConfigBlocks = configBlocksByPlan?.[planKey] ?? "";
+  const planBlockOrder = blockOrderByPlan?.[planKey] ?? [
+    ...DEFAULT_PROMPT_BLOCK_ORDER,
+  ];
   const promptBlocks =
     cfg && globalByPlan
       ? buildAgentPromptPreview({
           config: cfg,
           globalForPlan: globalByPlan[planKey] ?? "",
           planKey,
-          spokenTime,
-          spokenPhone,
-          hangup,
-          perCallContextTemplate,
-          configBlocks,
-          blockOrder,
+          spokenTime: planSpokenTime,
+          spokenPhone: planSpokenPhone,
+          hangup: planHangup,
+          perCallContextTemplate: planPerCallCtx,
+          configBlocks: planConfigBlocks,
+          blockOrder: planBlockOrder,
         })
       : [];
   const fullPromptConcat = promptBlocks
     .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
     .join("\n\n");
+
+  // Preview des blocs admin hérités (pour le popup du checkbox).
+  // On garde uniquement les blocs admin-managed : spoken_time, spoken_phone,
+  // hangup, per_call_context, config_blocks, admin_global. On exclut
+  // persona + language qui ne sont jamais hérités (toujours injectés).
+  const ADMIN_INHERIT_BLOCKS = new Set([
+    "spoken_time",
+    "spoken_phone",
+    "hangup",
+    "per_call_context",
+    "config_blocks",
+    "admin_global",
+  ]);
+  const adminInheritablePreview = promptBlocks
+    .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
+    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+    .join("\n\n");
+  const planLabel =
+    PLANS.find((p) => p.key === planKey)?.name ?? planKey;
 
   return (
     <main className="min-h-screen">
@@ -204,8 +231,11 @@ export default async function AdminTenantPage({
                 maxResponseTokens: cfg.maxResponseTokens,
                 ownerWhatsapp: cfg.ownerWhatsapp,
                 primaryLanguage: cfg.primaryLanguage ?? "fr",
+                inheritAdminGlobals: cfg.inheritAdminGlobals ?? true,
               }}
               initialVoices={voices}
+              adminInheritablePreview={adminInheritablePreview}
+              planLabel={planLabel}
             />
           </>
         ) : (

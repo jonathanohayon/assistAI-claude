@@ -17,6 +17,7 @@ type FormState = {
   maxResponseTokens: number;
   ownerWhatsapp: string;
   primaryLanguage: string;
+  inheritAdminGlobals: boolean;
 };
 
 const PRIMARY_LANGUAGES = [
@@ -28,10 +29,18 @@ const PRIMARY_LANGUAGES = [
 export function AdminTenantConfigForm({
   userId,
   initial,
+  adminInheritablePreview,
+  planLabel,
 }: {
   userId: string;
   initial: FormState;
   initialVoices: readonly string[];
+  /** Texte assemblé des blocs admin que le tenant hérite pour son plan
+   *  (spoken_time + spoken_phone + hangup + per_call_context +
+   *  config_blocks + admin_global). Sert juste pour le popup info — on
+   *  ne le ré-envoie pas avec le save. */
+  adminInheritablePreview: string;
+  planLabel: string;
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -118,6 +127,15 @@ export function AdminTenantConfigForm({
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
+      </Card>
+
+      <Card title="Héritage du prompt admin" subtitle="Décide si ce tenant utilise les directives globales définies par l'admin pour son plan.">
+        <InheritToggle
+          checked={form.inheritAdminGlobals}
+          onChange={(v) => update("inheritAdminGlobals", v)}
+          planLabel={planLabel}
+          preview={adminInheritablePreview}
+        />
       </Card>
 
       <Card title="Notifications WhatsApp" subtitle="Le proprio reçoit un récap après chaque appel.">
@@ -290,5 +308,71 @@ function Slider({
         className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--color-muted)] accent-[var(--color-primary)]"
       />
     </label>
+  );
+}
+
+/**
+ * Toggle d'héritage des blocs admin + icône (?) avec popup hover
+ * affichant le contenu effectif que le tenant hérite pour son plan.
+ */
+function InheritToggle({
+  checked,
+  onChange,
+  planLabel,
+  preview,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  planLabel: string;
+  preview: string;
+}) {
+  const [showPopup, setShowPopup] = useState(false);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-3">
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 cursor-pointer rounded border-[var(--color-border)] accent-[var(--color-primary)]"
+          />
+          <span className="font-medium text-[var(--color-foreground)]">
+            Hériter du prompt global admin (plan{" "}
+            <strong>{planLabel}</strong>)
+          </span>
+        </label>
+        <div className="relative">
+          <button
+            type="button"
+            onMouseEnter={() => setShowPopup(true)}
+            onMouseLeave={() => setShowPopup(false)}
+            onFocus={() => setShowPopup(true)}
+            onBlur={() => setShowPopup(false)}
+            onClick={() => setShowPopup((v) => !v)}
+            aria-label="Voir le contenu hérité"
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-muted)] text-[10px] font-bold text-[var(--color-muted-foreground)] hover:bg-[var(--color-primary)] hover:text-white"
+          >
+            ?
+          </button>
+          {showPopup && (
+            <div className="absolute right-0 top-7 z-50 w-[min(90vw,560px)] rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-xl">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                Blocs admin hérités · plan {planLabel}
+              </p>
+              <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
+                {preview || "(aucun bloc admin configuré pour ce plan)"}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-[var(--color-muted-foreground)]">
+        Coché : le tenant reçoit les directives système définies par
+        l&apos;admin pour son plan (heures, numéros, fin d&apos;appel,
+        config blocs, règles transverses, contexte per-call). Décoché :
+        seuls la persona et la directive de langue sont injectées.
+      </p>
+    </div>
   );
 }

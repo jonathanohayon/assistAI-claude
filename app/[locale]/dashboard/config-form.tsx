@@ -19,14 +19,21 @@ type FormState = {
   maxResponseTokens: number;
   ownerWhatsapp: string;
   primaryLanguage: string;
+  inheritAdminGlobals: boolean;
 };
 
 export function ConfigForm({
   initial,
   isAdmin = false,
+  adminInheritablePreview = "",
+  planLabel = "",
 }: {
   initial: FormState;
   isAdmin?: boolean;
+  /** Texte assemblé des blocs admin que le tenant hérite pour son plan.
+   *  Sert juste à montrer le popup info à côté de la case. */
+  adminInheritablePreview?: string;
+  planLabel?: string;
 }) {
   const t = useTranslations("DashboardConfig");
   const locale = useLocale();
@@ -123,6 +130,23 @@ export function ConfigForm({
             className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
           />
         </Field>
+      </Card>
+
+      {/* Inherit admin globals — checkbox + popup */}
+      <Card
+        title={t("inheritAdminTitle")}
+        subtitle={t("inheritAdminSubtitle")}
+      >
+        <InheritToggle
+          checked={form.inheritAdminGlobals}
+          onChange={(v) => update("inheritAdminGlobals", v)}
+          planLabel={planLabel}
+          preview={adminInheritablePreview}
+          checkboxLabel={t("inheritAdminLabel")}
+          helpText={t("inheritAdminHelp")}
+          popupTitle={t("inheritAdminPopupTitle")}
+          popupEmpty={t("inheritAdminPopupEmpty")}
+        />
       </Card>
 
       {/* Notifications */}
@@ -318,6 +342,81 @@ function Field({
         <span className="text-xs text-[var(--color-muted-foreground)]">{hint}</span>
       )}
     </label>
+  );
+}
+
+/**
+ * Toggle d'héritage des blocs admin + icône (?) avec popup hover
+ * affichant le contenu effectif que le tenant hérite pour son plan.
+ */
+function InheritToggle({
+  checked,
+  onChange,
+  planLabel,
+  preview,
+  checkboxLabel,
+  helpText,
+  popupTitle,
+  popupEmpty,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  planLabel: string;
+  preview: string;
+  checkboxLabel: string;
+  helpText: string;
+  popupTitle: string;
+  popupEmpty: string;
+}) {
+  const [showPopup, setShowPopup] = useState(false);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-3">
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="h-4 w-4 cursor-pointer rounded border-[var(--color-border)] accent-[var(--color-primary)]"
+          />
+          <span className="font-medium text-[var(--color-foreground)]">
+            {checkboxLabel}
+            {planLabel && (
+              <>
+                {" "}
+                (<strong>{planLabel}</strong>)
+              </>
+            )}
+          </span>
+        </label>
+        <div className="relative">
+          <button
+            type="button"
+            onMouseEnter={() => setShowPopup(true)}
+            onMouseLeave={() => setShowPopup(false)}
+            onFocus={() => setShowPopup(true)}
+            onBlur={() => setShowPopup(false)}
+            onClick={() => setShowPopup((v) => !v)}
+            aria-label={popupTitle}
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-muted)] text-[10px] font-bold text-[var(--color-muted-foreground)] hover:bg-[var(--color-primary)] hover:text-white"
+          >
+            ?
+          </button>
+          {showPopup && (
+            <div className="absolute right-0 top-7 z-50 w-[min(90vw,560px)] rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-xl">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                {popupTitle}
+                {planLabel && ` — ${planLabel}`}
+              </p>
+              <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
+                {preview || popupEmpty}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-[var(--color-muted-foreground)]">{helpText}</p>
+    </div>
   );
 }
 

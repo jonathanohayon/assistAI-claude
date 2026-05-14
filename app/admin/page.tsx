@@ -9,14 +9,14 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
-  getConfigBlocksDirective,
+  getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
-  getHangupDirective,
+  getHangupDirectiveByPlan,
   getOnboardingTemplateByPlan,
-  getPerCallContextTemplate,
-  getPromptBlockOrder,
-  getSpokenPhoneDirective,
-  getSpokenTimeDirective,
+  getPerCallContextTemplateByPlan,
+  getPromptBlockOrderByPlan,
+  getSpokenPhoneDirectiveByPlan,
+  getSpokenTimeDirectiveByPlan,
   getSummaryPromptByPlan,
 } from "@/lib/settings";
 
@@ -48,23 +48,23 @@ export default async function AdminPage() {
     onboardingTemplateByPlan,
     summaryPromptByPlan,
     planFeatures,
-    spokenTimeDirective,
-    spokenPhoneDirective,
-    hangupDirective,
-    perCallContextTemplate,
-    configBlocksDirective,
-    promptBlockOrder,
+    spokenTimeByPlan,
+    spokenPhoneByPlan,
+    hangupByPlan,
+    perCallContextByPlan,
+    configBlocksByPlan,
+    promptBlockOrderByPlan,
   ] = await Promise.all([
     getGlobalInstructionsByPlan(),
     getOnboardingTemplateByPlan(),
     getSummaryPromptByPlan(),
     getPlanFeatureMatrix(),
-    getSpokenTimeDirective(),
-    getSpokenPhoneDirective(),
-    getHangupDirective(),
-    getPerCallContextTemplate(),
-    getConfigBlocksDirective(),
-    getPromptBlockOrder(),
+    getSpokenTimeDirectiveByPlan(),
+    getSpokenPhoneDirectiveByPlan(),
+    getHangupDirectiveByPlan(),
+    getPerCallContextTemplateByPlan(),
+    getConfigBlocksDirectiveByPlan(),
+    getPromptBlockOrderByPlan(),
   ]);
 
   // Group numbers per user.
@@ -167,17 +167,17 @@ export default async function AdminPage() {
           />
           <div className="mt-6">
             <SystemDirectivesForm
-              initial={{
-                spokenTimeDirective,
-                spokenPhoneDirective,
-                hangupDirective,
-                perCallContextTemplate,
-                configBlocksDirective,
+              initialByPlan={{
+                spokenTime: spokenTimeByPlan,
+                spokenPhone: spokenPhoneByPlan,
+                hangup: hangupByPlan,
+                perCallCtx: perCallContextByPlan,
+                configBlocks: configBlocksByPlan,
               }}
             />
           </div>
           <div className="mt-6">
-            <BlockOrderForm initialOrder={promptBlockOrder} />
+            <BlockOrderForm initialOrderByPlan={promptBlockOrderByPlan} />
           </div>
           <div className="mt-6">
             <PlanFeaturesForm initialMatrix={planFeatures} />

@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     greetingInstructions?: string;
     voice?: string;
     primaryLanguage?: string;
+    inheritAdminGlobals?: boolean;
   };
 
   let userId = body.userId;
@@ -74,6 +75,9 @@ export async function POST(req: NextRequest) {
       );
     }
     updates.primaryLanguage = body.primaryLanguage;
+  }
+  if (body.inheritAdminGlobals != null) {
+    updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
   }
 
   const [updated] = await db
