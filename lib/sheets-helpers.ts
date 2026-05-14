@@ -12,7 +12,7 @@
 //   valeurs → la nouvelle row est en haut sans avoir à re-trier toute
 //   la sheet.
 
-import type { sheets_v4 } from "googleapis";
+import type { sheets_v4 } from "@googleapis/sheets";
 
 /**
  * Préfixe avec une apostrophe pour forcer Sheets à traiter comme texte.

@@ -1,10 +1,17 @@
+import { calendar as calendarApi } from "@googleapis/calendar";
+import { sheets as sheetsApi } from "@googleapis/sheets";
 import { eq } from "drizzle-orm";
-import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { resolveTenantByPhone } from "@/lib/tenant";
+
+// On utilise les packages éclatés `@googleapis/calendar` + `@googleapis/
+// sheets` + `google-auth-library` au lieu du monolithe `googleapis` qui
+// tire 200+ APIs Google. Gain : ~200 packages en moins + bundle plus
+// léger côté build.
 
 const ONBOARDING_REDIRECT_PATH = "/api/onboarding/google/callback";
 
@@ -21,11 +28,11 @@ const inferAppOrigin = (): string => {
 export function getOAuthClient(redirectUri?: string) {
   const fallback = process.env.GOOGLE_REDIRECT_URI;
   const explicit = redirectUri ?? `${inferAppOrigin()}${ONBOARDING_REDIRECT_PATH}`;
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    redirectUri ? explicit : (fallback ?? explicit),
-  );
+  return new OAuth2Client({
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri: redirectUri ? explicit : (fallback ?? explicit),
+  });
 }
 
 /**
@@ -50,22 +57,22 @@ export function getAuthenticatedClientFor(refreshToken: string) {
 }
 
 export function getCalendar() {
-  return google.calendar({ version: "v3", auth: getAuthenticatedClient() });
+  return calendarApi({ version: "v3", auth: getAuthenticatedClient() });
 }
 
 export function getSheets() {
-  return google.sheets({ version: "v4", auth: getAuthenticatedClient() });
+  return sheetsApi({ version: "v4", auth: getAuthenticatedClient() });
 }
 
 export function getCalendarFor(refreshToken: string) {
-  return google.calendar({
+  return calendarApi({
     version: "v3",
     auth: getAuthenticatedClientFor(refreshToken),
   });
 }
 
 export function getSheetsFor(refreshToken: string) {
-  return google.sheets({
+  return sheetsApi({
     version: "v4",
     auth: getAuthenticatedClientFor(refreshToken),
   });
