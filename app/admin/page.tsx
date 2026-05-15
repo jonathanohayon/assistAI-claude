@@ -11,6 +11,7 @@ import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
+  getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplateByPlan,
@@ -54,6 +55,7 @@ export default async function AdminPage() {
     perCallContextByPlan,
     configBlocksByPlan,
     promptBlockOrderByPlan,
+    greetingFallbackByPlan,
   ] = await Promise.all([
     getGlobalInstructionsByPlan(),
     getOnboardingTemplateByPlan(),
@@ -65,6 +67,7 @@ export default async function AdminPage() {
     getPerCallContextTemplateByPlan(),
     getConfigBlocksDirectiveByPlan(),
     getPromptBlockOrderByPlan(),
+    getGreetingFallbackTemplateByPlan(),
   ]);
 
   // Group numbers per user.
@@ -173,6 +176,7 @@ export default async function AdminPage() {
                 hangup: hangupByPlan,
                 perCallCtx: perCallContextByPlan,
                 configBlocks: configBlocksByPlan,
+                greetingFallback: greetingFallbackByPlan,
               }}
             />
           </div>

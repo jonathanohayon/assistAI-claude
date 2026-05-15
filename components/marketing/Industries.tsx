@@ -31,8 +31,8 @@ const INDUSTRIES = [
     accent: "from-[#f472b6]/15 to-[#22d3ee]/10",
     iconBg: "from-[#ec4899] to-[#be185d]",
     image:
-      "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80",
-    imageAlt: "Salon de coiffure / beauté",
+      "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80",
+    imageAlt: "Institut de beauté",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
         <path d="M12 2c0 5-4 7-4 11a4 4 0 0 0 8 0c0-4-4-6-4-11Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />

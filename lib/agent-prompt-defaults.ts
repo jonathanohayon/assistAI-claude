@@ -132,6 +132,18 @@ export const BLOCK_IDS = [
 ] as const;
 export type BlockId = (typeof BLOCK_IDS)[number];
 
+// Directive de salutation injectée AU MOMENT du `session.generateReply`
+// du worker quand l'agent_config.greeting_instructions du tenant est vide.
+// Sert à éviter que le LLM hallucine un nom féminin + un faux centre fictif
+// quand le persona n'en mentionne aucun (ex. assistant perso d'un individu,
+// médecin solo). N'est utilisé que comme FALLBACK : si le tenant a renseigné
+// son greeting_instructions, c'est celui-là qui est utilisé textuellement.
+//
+// ⚠️ Placeholders supportés (substitués par le worker au runtime) :
+//   {agent_name}  — agent_configs.agent_name si non vide, sinon "défini
+//                   dans tes instructions système"
+export const DEFAULT_GREETING_FALLBACK_TEMPLATE = `Salue chaleureusement l'interlocuteur en te présentant par ton prénom {agent_name}. N'INVENTE PAS de nom de structure, d'entreprise, de centre ou de cabinet : si ton persona en mentionne un (ex. "centre Prestige", "salon X"), reprends EXACTEMENT ce nom ; sinon, présente-toi simplement par ton prénom sans rien y rattacher. Enchaîne immédiatement avec la première étape de ton persona/workflow (cf. tes instructions système) — pas de "comment puis-je vous aider" générique. Respecte le genre de ton persona. Adapte-toi à la langue de l'interlocuteur dès qu'il/elle parle.`;
+
 export const DEFAULT_PROMPT_BLOCK_ORDER: readonly BlockId[] = [
   "spoken_time",
   "spoken_phone",

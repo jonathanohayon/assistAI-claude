@@ -7,6 +7,7 @@ import { PLANS, type PlanKey } from "@/lib/plans";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
+  getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
   getPerCallContextTemplateByPlan,
   getPromptBlockOrderByPlan,
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
     perCallContextByPlan,
     configBlocksByPlan,
     blockOrderByPlan,
+    greetingFallbackByPlan,
   ] = await Promise.all([
     logEvent({
       source: "tenant",
@@ -96,6 +98,7 @@ export async function GET(req: NextRequest) {
     getPerCallContextTemplateByPlan(),
     getConfigBlocksDirectiveByPlan(),
     getPromptBlockOrderByPlan(),
+    getGreetingFallbackTemplateByPlan(),
   ]);
 
   const { config } = tenant;
@@ -164,6 +167,11 @@ export async function GET(req: NextRequest) {
   const { id: _id, userId: _userId, updatedAt, ...runtime } = config;
   void _id;
   void _userId;
+  // Greeting fallback per-plan : utilisé par le worker quand
+  // agent_configs.greeting_instructions est vide. Placeholder
+  // `{agent_name}` substitué côté worker (cf. agent.ts).
+  const greetingFallbackTemplate = greetingFallbackByPlan[planKey] ?? "";
+
   return NextResponse.json({
     ...runtime,
     instructions: mergedInstructions,
@@ -172,5 +180,6 @@ export async function GET(req: NextRequest) {
     // Template per-call avec placeholders {date_fr}, {iso_date}, {time},
     // {caller_hint_block} substitués côté worker à chaque appel.
     perCallContextTemplate,
+    greetingFallbackTemplate,
   });
 }

@@ -14,6 +14,7 @@ import {
   SETTING_KEYS,
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
+  getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplateByPlan,
@@ -24,6 +25,7 @@ import {
   getSummaryPromptByPlan,
   setConfigBlocksDirectiveByPlan,
   setGlobalInstructionsByPlan,
+  setGreetingFallbackTemplateByPlan,
   setHangupDirectiveByPlan,
   setOnboardingTemplateByPlan,
   setPerCallContextTemplateByPlan,
@@ -34,6 +36,7 @@ import {
   setSummaryPromptByPlan,
   type ConfigBlocksDirectiveByPlan,
   type GlobalInstructionsByPlan,
+  type GreetingFallbackTemplateByPlan,
   type HangupDirectiveByPlan,
   type OnboardingTemplateByPlan,
   type PerCallContextTemplateByPlan,
@@ -75,6 +78,8 @@ export async function GET() {
   const configBlocksDirectiveByPlan =
     await getConfigBlocksDirectiveByPlan();
   const promptBlockOrderByPlan = await getPromptBlockOrderByPlan();
+  const greetingFallbackTemplateByPlan =
+    await getGreetingFallbackTemplateByPlan();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
@@ -88,6 +93,7 @@ export async function GET() {
     perCallContextTemplateByPlan,
     configBlocksDirectiveByPlan,
     promptBlockOrderByPlan,
+    greetingFallbackTemplateByPlan,
   });
 }
 
@@ -109,6 +115,7 @@ export async function PUT(req: NextRequest) {
     perCallContextTemplateByPlan?: Partial<PerCallContextTemplateByPlan>;
     configBlocksDirectiveByPlan?: Partial<ConfigBlocksDirectiveByPlan>;
     promptBlockOrderByPlan?: Partial<PromptBlockOrderByPlan>;
+    greetingFallbackTemplateByPlan?: Partial<GreetingFallbackTemplateByPlan>;
   };
 
   const changed: string[] = [];
@@ -194,6 +201,15 @@ export async function PUT(req: NextRequest) {
   ) {
     await setPromptBlockOrderByPlan(body.promptBlockOrderByPlan);
     changed.push("prompt_block_order_by_plan");
+  }
+  if (
+    body.greetingFallbackTemplateByPlan &&
+    typeof body.greetingFallbackTemplateByPlan === "object"
+  ) {
+    await setGreetingFallbackTemplateByPlan(
+      body.greetingFallbackTemplateByPlan,
+    );
+    changed.push("greeting_fallback_template_by_plan");
   }
 
   if (changed.length > 0) {

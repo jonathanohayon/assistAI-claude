@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import {
   BLOCK_IDS,
   DEFAULT_CONFIG_BLOCKS_DIRECTIVE,
+  DEFAULT_GREETING_FALLBACK_TEMPLATE,
   DEFAULT_HANGUP_DIRECTIVE,
   DEFAULT_PER_CALL_CONTEXT_TEMPLATE,
   DEFAULT_PROMPT_BLOCK_ORDER,
@@ -67,6 +68,13 @@ export const SETTING_KEYS = {
   HANGUP_DIRECTIVE_BY_PLAN: "hangup_directive_by_plan",
   PER_CALL_CONTEXT_TEMPLATE_BY_PLAN: "per_call_context_template_by_plan",
   CONFIG_BLOCKS_DIRECTIVE_BY_PLAN: "config_blocks_directive_by_plan",
+  // Directive injectée au moment du session.generateReply du worker QUAND
+  // agent_configs.greeting_instructions du tenant est vide. Avant ce
+  // déplacement, le texte était hardcoded dans le worker — du coup les
+  // règles ("ne pas inventer de centre", "respect du genre", etc.)
+  // n'étaient pas pilotables sans patch code. Maintenant éditable depuis
+  // /admin par plan, comme les autres blocs.
+  GREETING_FALLBACK_TEMPLATE_BY_PLAN: "greeting_fallback_template_by_plan",
   // JSON array des IDs de blocs dans l'ordre où ils sont injectés dans
   // le system prompt. Legacy singleton, conservé en fallback.
   PROMPT_BLOCK_ORDER: "prompt_block_order",
@@ -472,6 +480,38 @@ export async function setConfigBlocksDirectiveByPlan(
   const current = await getConfigBlocksDirectiveByPlan();
   await writeByPlanMap(
     SETTING_KEYS.CONFIG_BLOCKS_DIRECTIVE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+// Per-plan greeting fallback — pas de legacy singleton, c'est un nouveau
+// bloc introduit le 2026-05-15 quand on a sorti le fallback du hardcode worker.
+export type GreetingFallbackTemplateByPlan = PlanStringMap;
+export async function getGreetingFallbackTemplateByPlan(): Promise<GreetingFallbackTemplateByPlan> {
+  const raw = await getSetting(SETTING_KEYS.GREETING_FALLBACK_TEMPLATE_BY_PLAN);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, DEFAULT_GREETING_FALLBACK_TEMPLATE]),
+  ) as GreetingFallbackTemplateByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // garbage en DB → on retourne les defaults pour les 3 plans
+    }
+  }
+  return out;
+}
+export async function setGreetingFallbackTemplateByPlan(
+  patch: Partial<GreetingFallbackTemplateByPlan>,
+): Promise<void> {
+  const current = await getGreetingFallbackTemplateByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.GREETING_FALLBACK_TEMPLATE_BY_PLAN,
     current,
     patch,
   );

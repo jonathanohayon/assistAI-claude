@@ -9,7 +9,8 @@ type DirectiveKey =
   | "spokenPhone"
   | "hangup"
   | "perCallCtx"
-  | "configBlocks";
+  | "configBlocks"
+  | "greetingFallback";
 type PlanMap = Record<PlanKey, string>;
 type Initial = Record<DirectiveKey, PlanMap>;
 
@@ -77,6 +78,12 @@ export function SystemDirectivesForm({ initialByPlan }: { initialByPlan: Initial
       description:
         "Directive meta qui prime le LLM à respecter strictement les étapes du persona (ne pas sauter en avant) et à produire une seule réponse par tour.",
     },
+    {
+      key: "greetingFallback",
+      label: "Salutation fallback",
+      description:
+        "Texte injecté au moment du greeting QUAND le tenant n'a pas renseigné son greetingInstructions. Évite que le LLM hallucine un faux centre / faux prénom. Placeholder : {agent_name}.",
+    },
   ];
 
   const dirty = directives.some((d) =>
@@ -119,6 +126,7 @@ export function SystemDirectivesForm({ initialByPlan }: { initialByPlan: Initial
         hangup: "hangupDirectiveByPlan",
         perCallCtx: "perCallContextTemplateByPlan",
         configBlocks: "configBlocksDirectiveByPlan",
+        greetingFallback: "greetingFallbackTemplateByPlan",
       };
       for (const d of directives) {
         const patch: Partial<PlanMap> = {};

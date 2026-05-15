@@ -202,7 +202,13 @@ export function Hero() {
                     className="me-[0.22em] inline-block"
                   >
                     {trimmed === emphasis ? (
-                      <span className="bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] bg-clip-text text-transparent">
+                      <span
+                        className="bg-gradient-to-r from-[#ff006e] via-[#ff4d8d] to-[#00e5ff] bg-clip-text text-transparent"
+                        style={{
+                          filter:
+                            "drop-shadow(0 2px 18px rgba(255,0,110,0.55)) drop-shadow(0 0 8px rgba(0,229,255,0.35))",
+                        }}
+                      >
                         {trimmed}
                       </span>
                     ) : (
@@ -300,6 +306,43 @@ export function Hero() {
           >
             {t("ctaConfigure")}
           </Link>
+
+          {/* CTA Live Demo : scroll vers la section #demo (TryDemo). Bordure
+           *  cyan animée + onde sonore (3 barres pulsantes) à gauche du label
+           *  pour signaler "parle live maintenant". */}
+          <Link
+            href="#demo"
+            aria-label={t("ctaLiveDemo")}
+            className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full border-2 border-[#22d3ee]/70 bg-[#22d3ee]/15 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_28px_-8px_rgba(34,211,238,0.55)] backdrop-blur-md transition-all hover:scale-[1.03] hover:border-[#22d3ee] hover:bg-[#22d3ee]/25"
+          >
+            {/* Pulse halo cyan derrière */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full bg-[#22d3ee]/0 motion-safe:animate-pulse"
+              style={{
+                boxShadow: "0 0 0 0 rgba(34,211,238,0.5)",
+                animation: "live-demo-halo 2.4s ease-in-out infinite",
+              }}
+            />
+            {/* Onde sonore : 3 barres qui battent en cadence */}
+            <span
+              aria-hidden
+              className="relative flex items-center gap-[3px]"
+            >
+              {[0, 0.15, 0.3].map((delay, i) => (
+                <span
+                  key={i}
+                  className="block w-[3px] rounded-full bg-white"
+                  style={{
+                    height: 16,
+                    animation: `live-demo-wave 1s ease-in-out ${delay}s infinite`,
+                    transformOrigin: "center",
+                  }}
+                />
+              ))}
+            </span>
+            <span className="relative">{t("ctaLiveDemo")}</span>
+          </Link>
         </motion.div>
       </div>
 
@@ -333,6 +376,18 @@ export function Hero() {
           }
           66% {
             transform: scale(0.98) translate(-1%, 2%);
+          }
+        }
+        @keyframes live-demo-wave {
+          0%, 100% { transform: scaleY(0.4); }
+          50% { transform: scaleY(1); }
+        }
+        @keyframes live-demo-halo {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(34,211,238,0);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(34,211,238,0.18);
           }
         }
         @media (prefers-reduced-motion: reduce) {

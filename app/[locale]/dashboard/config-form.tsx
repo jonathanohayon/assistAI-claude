@@ -1158,7 +1158,7 @@ function PersonaPanel({
         <textarea
           value={form.instructions}
           onChange={(e) => update("instructions", e.target.value)}
-          rows={12}
+          rows={24}
           className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 font-mono text-xs leading-relaxed text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
         />
         <p className="mt-1.5 text-[11px] text-[#475569]">{t("instructionsHint")}</p>
