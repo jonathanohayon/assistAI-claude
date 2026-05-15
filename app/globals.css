@@ -2,32 +2,53 @@
 
 /* ── Design tokens — Soft UI Evolution, warm wellness palette ────────────── */
 :root {
-  /* Brand */
-  --color-primary: #ec4899;
+  /* Brand — palette officielle Tamara
+   * Source : charte de marque (rose magenta + cyan voice-tech).
+   * Le cyan est le différenciateur "AI voice", à utiliser sur tout ce qui
+   * touche le live/voix/mic. Le rose reste la chaleur de marque (CTA, titres). */
+  --color-primary: #db2777;
   --color-on-primary: #ffffff;
   --color-secondary: #f9a8d4;
-  --color-accent: #8b5cf6;
+  /* Accent = cyan voice tech (anciennement violet #8b5cf6, non-officiel).
+   * Propage à tous les gradients from-primary to-accent → pink→cyan. */
+  --color-accent: #22d3ee;
 
-  /* Surfaces & text */
-  --color-background: #fdf2f8;
+  /* Brand extras — exposés comme tokens pour usage ponctuel
+   * (badges admin, hints techniques, accents tonal). */
+  --color-magenta: #be185d;        /* Primary magenta : boutons accent fort */
+  --color-bright-pink: #db2777;    /* Bright pink : titres, CTA secondaire */
+  --color-cyan: #22d3ee;           /* Alias de --color-accent — clarté sémantique côté composant */
+  --color-teal: #0e7490;           /* Détails techniques : model id, hints admin */
+  --color-coral: #f472b6;          /* Highlights doux */
+  --color-light-bg-warm: #fff1f2;  /* Fond clair alternatif (rose-50) */
+  --color-dark-bg: #1e2937;        /* Réservé header/dark mode (slate-800) */
+
+  /* Surfaces & text — alignés sur la palette officielle Tamara */
+  --color-background: #fff1f2;        /* Light Background marque (pink-50 warm) */
   --color-surface: #ffffff;
-  --color-foreground: #831843;
+  --color-foreground: #1e2937;        /* Text Dark marque (slate-800 = --color-dark-bg) */
   --color-muted: #f1eef5;
-  --color-muted-foreground: #7a4a63;
-  --color-border: #fbcfe8;
-  --color-ring: #ec4899;
+  --color-muted-foreground: #64748b;  /* slate-500 neutre (au lieu d'un rose-brun off-palette) */
+  --color-border: #fbcfe8;            /* pink-200 — variante claire de Soft Pink, OK pour borders subtiles */
+  --color-ring: #db2777;
 
-  /* Semantic */
-  --color-destructive: #dc2626;
-  --color-success: #059669;
-  --color-warning: #d97706;
+  /* Semantic — hybride palette marque + rouge erreur standard.
+   * Décision validée : success/warning remappées sur la palette Tamara,
+   * destructive garde un rouge conventionnel (reconnaissance critique
+   * universelle pour les actions dangereuses). */
+  --color-destructive: #dc2626;                  /* Hors palette — convention rouge */
+  --color-success: #22d3ee;                      /* Voice/Tech Cyan (live, ok, connected) */
+  --color-warning: #f472b6;                      /* Warm Coral (attention douce) */
+  --color-warning-strong: #be185d;               /* Primary Magenta pour texte warning lisible */
 
-  /* Elevation — soft, layered */
-  --shadow-xs: 0 1px 2px 0 rgb(131 24 67 / 0.04);
-  --shadow-sm: 0 2px 4px -1px rgb(131 24 67 / 0.06), 0 1px 2px -1px rgb(131 24 67 / 0.04);
-  --shadow-md: 0 8px 16px -4px rgb(131 24 67 / 0.08), 0 2px 6px -2px rgb(131 24 67 / 0.04);
-  --shadow-lg: 0 20px 40px -12px rgb(131 24 67 / 0.12), 0 8px 16px -8px rgb(131 24 67 / 0.06);
-  --shadow-glow: 0 0 0 4px rgb(236 72 153 / 0.12);
+  /* Elevation — teintées Primary Magenta #BE185D (palette officielle) pour
+   * conserver la signature rose dans les ombres, tout en restant on-brand.
+   * Les valeurs précédentes utilisaient #831843 (hors palette). */
+  --shadow-xs: 0 1px 2px 0 rgb(190 24 93 / 0.04);
+  --shadow-sm: 0 2px 4px -1px rgb(190 24 93 / 0.06), 0 1px 2px -1px rgb(190 24 93 / 0.04);
+  --shadow-md: 0 8px 16px -4px rgb(190 24 93 / 0.08), 0 2px 6px -2px rgb(190 24 93 / 0.04);
+  --shadow-lg: 0 20px 40px -12px rgb(190 24 93 / 0.12), 0 8px 16px -8px rgb(190 24 93 / 0.06);
+  --shadow-glow: 0 0 0 4px rgb(219 39 119 / 0.12);  /* Bright Pink officiel */
 
   /* Radii */
   --radius-sm: 0.5rem;
@@ -56,6 +77,16 @@
   --color-destructive: var(--color-destructive);
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
+  --color-warning-strong: var(--color-warning-strong);
+
+  /* Brand extras exposés en utilities (text-cyan, bg-teal, etc.) */
+  --color-magenta: var(--color-magenta);
+  --color-bright-pink: var(--color-bright-pink);
+  --color-cyan: var(--color-cyan);
+  --color-teal: var(--color-teal);
+  --color-coral: var(--color-coral);
+  --color-light-bg-warm: var(--color-light-bg-warm);
+  --color-dark-bg: var(--color-dark-bg);
 
   --font-sans: var(--font-inter), var(--font-heebo), "Heebo", "Assistant", system-ui, sans-serif;
   --font-display: var(--font-calistoga);
@@ -78,6 +109,15 @@
   --radius-2xl: var(--radius-2xl);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 html,
 body {
   background: var(--color-background);
@@ -86,6 +126,24 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Noise grain overlay utility — texture premium subtle.
+ * Apply via `.noise-grain` sur un wrapper. SVG inline base64 → pas de
+ * round-trip réseau. Opacité 4% pour rester quasi-invisible mais ajouter
+ * de la profondeur tactile à l'œil (pattern récurrent sur sites premium). */
+.noise-grain {
+  position: relative;
+}
+.noise-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.04;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Hébreu : police Heebo + tailles legèrement augmentées ─────────────────
@@ -161,12 +219,14 @@ body {
   }
 }
 
-/* Soft gradient utility used in hero */
+/* Soft gradient utility used in hero — mesh marque Tamara (rose + cyan
+ * voice tech). Trois radials qui se croisent pour un fond vivant sans
+ * être agressif. Le cyan en haut-droite porte la signature "AI voice". */
 .gradient-mesh {
   background:
-    radial-gradient(at 20% 10%, rgb(249 168 212 / 0.55) 0px, transparent 45%),
-    radial-gradient(at 80% 0%, rgb(139 92 246 / 0.35) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgb(236 72 153 / 0.25) 0px, transparent 55%);
+    radial-gradient(at 18% 12%, rgb(249 168 212 / 0.7) 0px, transparent 48%),
+    radial-gradient(at 82% 8%, rgb(34 211 238 / 0.55) 0px, transparent 52%),
+    radial-gradient(at 50% 100%, rgb(219 39 119 / 0.35) 0px, transparent 55%);
 }
 
 /*

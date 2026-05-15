@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 
 export async function GET() {
@@ -43,6 +44,8 @@ export async function PUT(req: NextRequest) {
     ownerWhatsapp: string;
     primaryLanguage: string;
     inheritAdminGlobals: boolean;
+    personality: Record<string, number>;
+    agentName: string;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -122,6 +125,15 @@ export async function PUT(req: NextRequest) {
   }
   if (body.inheritAdminGlobals != null) {
     updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
+  }
+  if ("personality" in body) {
+    const cleaned = sanitizePersonality(body.personality);
+    if (cleaned !== undefined) updates.personality = cleaned;
+  }
+  if (body.agentName != null) {
+    // Trim + clamp 80 chars. Vide accepté (facultatif). Pas de regex stricte
+    // pour permettre les noms internationalisés (Sarah, יוהנה, محمد, etc.).
+    updates.agentName = String(body.agentName).trim().slice(0, 80);
   }
 
   const [updated] = await db

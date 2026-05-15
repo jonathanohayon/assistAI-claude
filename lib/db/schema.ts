@@ -87,6 +87,9 @@ export const agentConfigs = pgTable("agent_configs", {
   // Persona + voice config — exposed in dashboard.
   instructions: text("instructions").notNull(),
   greetingInstructions: text("greeting_instructions").notNull(),
+  // Nom prononcé par l'agent dans la phrase d'accueil ("Bonjour, c'est Sarah").
+  // Facultatif — peut rester vide si déjà encodé dans `instructions`.
+  agentName: text("agent_name").notNull().default(""),
   model: text("model").notNull().default("gpt-realtime-2"),
   voice: text("voice").notNull().default("marin"),
   temperature: real("temperature").notNull().default(0.8),
@@ -108,6 +111,21 @@ export const agentConfigs = pgTable("agent_configs", {
   // sont conservés. Activé par défaut pour préserver le comportement
   // historique. UI : checkbox + popup dans /dashboard/config et /admin.
   inheritAdminGlobals: boolean("inherit_admin_globals").notNull().default(true),
+
+  personality: jsonb("personality")
+    .$type<{
+      joie?: number;
+      empathie?: number;
+      dynamisme?: number;
+      vitesse?: number;
+      creativite?: number;
+      humour?: number;
+      professionnel?: number;
+      reactivite?: number;
+      accent?: number;
+    }>()
+    .notNull()
+    .default({}),
 
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

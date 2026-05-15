@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { transportFor } from "@/lib/realtime";
 import {
@@ -51,6 +52,9 @@ export default function VoiceAgent() {
   // null = pas de timer en cours, sinon secondes restantes (décrémente à 1Hz).
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [demoEnded, setDemoEnded] = useState(false);
+  // Awaiting assistant response : true entre la fin transcription user et
+  // l'arrivée du transcript assistant. Drive l'indicateur typing 3-dots.
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
 
   // Liste filtrée pour le dropdown public : uniquement les modèles de la
   // allowlist, dans l'ordre défini. On garde l'ID OpenAI réel mais on
@@ -186,6 +190,7 @@ export default function VoiceAgent() {
       if (type === "error") {
         console.error("[realtime] error event", event);
         setError(`Realtime: ${JSON.stringify(event.error ?? event)}`);
+        setAwaitingResponse(false);
         return;
       }
 
@@ -213,6 +218,7 @@ export default function VoiceAgent() {
         if (text) {
           setTranscript((prev) => [...prev, { role: "assistant", text }]);
         }
+        setAwaitingResponse(false);
       }
 
       // Transcript: user speech
@@ -221,6 +227,7 @@ export default function VoiceAgent() {
         if (text) {
           setTranscript((prev) => [...prev, { role: "user", text }]);
         }
+        setAwaitingResponse(true);
       }
     },
     [executeTool]
@@ -270,8 +277,15 @@ export default function VoiceAgent() {
       audioRef.current = audio;
       pc.ontrack = (e) => { audio.srcObject = e.streams[0]; };
 
-      // 4. Microphone
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 4. Microphone — noise reduction layered (browser + OpenAI near_field
+      //    via /api/session). Active aussi sur la démo landing publique.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       streamRef.current = stream;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
@@ -344,7 +358,9 @@ export default function VoiceAgent() {
     pcRef.current  = null;
     streamRef.current = null;
     setStatus("idle");
+    setIsMuted(false);
     setSecondsLeft(null);
+    setAwaitingResponse(false);
   }, []);
 
   // Countdown : décrémente secondsLeft à 1Hz, déclenche stopSession à 0.
@@ -378,19 +394,35 @@ export default function VoiceAgent() {
 
   const statusLabel: Record<Status, string> = {
     idle: "Prêt",
-    connecting: "Connexion en cours…",
+    connecting: "Connexion…",
     connected: "En ligne — parlez",
     error: "Erreur",
   };
 
   const statusDotClass: Record<Status, string> = {
-    idle: "bg-[var(--color-muted-foreground)]/40",
-    connecting: "bg-[var(--color-warning)] animate-pulse",
-    connected: "bg-[var(--color-success)] animate-pulse",
-    error: "bg-[var(--color-destructive)]",
+    idle: "bg-[#22d3ee]",
+    connecting: "bg-[#f59e0b] motion-safe:animate-pulse",
+    connected: "bg-[#22d3ee] motion-safe:animate-pulse",
+    error: "bg-[#dc2626]",
+  };
+
+  // Pill du header — couleur dépend du status pour pas mentir au user.
+  const pillTone: Record<Status, { bg: string; text: string; ring: string }> = {
+    idle: { bg: "bg-[#ecfeff]", text: "text-[#0e7490]", ring: "ring-[#22d3ee]/40" },
+    connecting: { bg: "bg-[#fef3c7]", text: "text-[#92400e]", ring: "ring-[#f59e0b]/40" },
+    connected: { bg: "bg-[#ecfeff]", text: "text-[#0e7490]", ring: "ring-[#22d3ee]/40" },
+    error: { bg: "bg-[#fee2e2]", text: "text-[#991b1b]", ring: "ring-[#dc2626]/40" },
   };
 
   const isLive = status === "connecting" || status === "connected";
+
+  // Renvoie l'heure courante (HH:MM) pour les bulles transcript. On la
+  // calcule au render — pas critique d'être figée par message ici, vu que
+  // c'est un live test 40s et le user voit la convo se construire.
+  const nowHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
 
   const onModelChange = (m: string) => {
     setModel(m);
@@ -409,16 +441,94 @@ export default function VoiceAgent() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-5">
-      {/* Model / voice picker */}
-      <div className="grid grid-cols-2 gap-3">
+    <section
+      className="relative overflow-hidden rounded-[2rem] border border-white/50 p-7 shadow-[0_8px_40px_-12px_rgba(14,116,144,0.25)] backdrop-blur-xl sm:p-10"
+      style={{
+        backgroundColor: "#ffffff",
+        backgroundImage: `
+          radial-gradient(at 12% 100%, rgba(34, 211, 238, 0.18) 0px, transparent 50%),
+          radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.15) 0px, transparent 55%),
+          radial-gradient(at 50% 50%, rgba(255, 255, 255, 0.6) 0px, transparent 60%)
+        `,
+      }}
+    >
+      {/* Keyframes scopés `va-` pour éviter toute collision avec
+          .ltp-ripple-ring (LiveTestPanel) si les deux composants se
+          retrouvent montés sur la même page un jour. */}
+      <style>{`
+        @keyframes va-ripple-ring {
+          0%   { transform: scale(0.85); opacity: 0.55; }
+          70%  { opacity: 0; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        .va-ripple-ring {
+          position: absolute;
+          inset: 0;
+          border-radius: 9999px;
+          border: 2px solid #22d3ee;
+          pointer-events: none;
+          animation: va-ripple-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+        }
+        .va-ripple-ring--2 { animation-delay: 0.8s; }
+        .va-ripple-ring--3 { animation-delay: 1.6s; }
+        @media (prefers-reduced-motion: reduce) {
+          .va-ripple-ring { animation: none; }
+        }
+      `}</style>
+
+      {/* Blob décoratif coin opposé — pour ne pas avoir un coin trop nu */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-gradient-to-br from-[#22d3ee]/20 to-transparent blur-3xl"
+      />
+
+      {/* Header : barre gradient + titre/subtitle + pill statut */}
+      <div className="relative mb-6 flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-1 h-8 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#22d3ee] to-[#0e7490]" />
+          <div className="min-w-0">
+            <h2 className="text-2xl font-extrabold tracking-tight text-[#18181b] sm:text-3xl">
+              Tester en direct
+            </h2>
+            <p className="mt-1 text-sm text-[#475569]">
+              Parlez à Tamara depuis votre navigateur — démo gratuite 40s.
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span
+            role="status"
+            aria-live="polite"
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ring-inset ${pillTone[status].bg} ${pillTone[status].text} ${pillTone[status].ring}`}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              {status !== "error" && (
+                <span
+                  aria-hidden
+                  className={`absolute inline-flex h-full w-full rounded-full opacity-70 motion-safe:animate-ping ${statusDotClass[status]}`}
+                />
+              )}
+              <span
+                aria-hidden
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${statusDotClass[status]}`}
+              />
+            </span>
+            {statusLabel[status]}
+          </span>
+        </div>
+      </div>
+
+      {/* Model / voice picker — gardés mais relookés pour s'intégrer */}
+      <div className="relative mb-6 grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1.5 text-xs">
-          <span className="font-medium text-[var(--color-muted-foreground)]">Modèle</span>
+          <span className="font-semibold uppercase tracking-wider text-[#0e7490]/80 text-[10px]">
+            Modèle
+          </span>
           <select
             value={model}
             disabled={isLive}
             onChange={(e) => onModelChange(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 text-sm text-[#18181b] shadow-xs backdrop-blur transition-colors hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {demoModels.map((m) => (
               <option key={m.id} value={m.id}>
@@ -428,12 +538,14 @@ export default function VoiceAgent() {
           </select>
         </label>
         <label className="flex flex-col gap-1.5 text-xs">
-          <span className="font-medium text-[var(--color-muted-foreground)]">Voix</span>
+          <span className="font-semibold uppercase tracking-wider text-[#0e7490]/80 text-[10px]">
+            Voix
+          </span>
           <select
             value={voice}
             disabled={isLive}
             onChange={(e) => onVoiceChange(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 text-sm text-[#18181b] shadow-xs backdrop-blur transition-colors hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {availableVoices.map((v) => (
               <option key={v} value={v}>
@@ -446,131 +558,352 @@ export default function VoiceAgent() {
 
       {isUnsupported && (
         <p
-          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"
+          className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"
           role="alert"
         >
           Transport {transport.toUpperCase()} non implémenté côté client. La connexion échouera.
         </p>
       )}
 
-      {error && (
-        <p
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[auto_1fr]">
+        {/* ─── COLONNE MIC ────────────────────────────────────────────── */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative flex h-44 w-44 items-center justify-center">
+            {/* Ripple rings cyan concentriques stagger 0/0.8/1.6s */}
+            <span aria-hidden className="va-ripple-ring" />
+            <span aria-hidden className="va-ripple-ring va-ripple-ring--2" />
+            <span aria-hidden className="va-ripple-ring va-ripple-ring--3" />
 
-      {demoEnded && (
-        <p
-          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800"
-          role="status"
-        >
-          ⏰ Session de démo terminée ({DEMO_SESSION_SECONDS}s).{" "}
-          <a href="/signup" className="font-semibold underline hover:no-underline">
-            Crée un compte
-          </a>{" "}
-          pour passer/recevoir des appels sans limite.
-        </p>
-      )}
+            <button
+              type="button"
+              onClick={status === "idle" || status === "error" ? startSession : stopSession}
+              disabled={status === "connecting"}
+              aria-label={isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
+              className={`group relative inline-flex h-36 w-36 items-center justify-center rounded-full text-white shadow-[0_12px_48px_-8px_rgba(14,116,144,0.65)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
+                status === "connecting"
+                  ? "bg-gradient-to-br from-[#f59e0b] to-[#b45309]"
+                  : status === "connected"
+                    ? "bg-gradient-to-br from-[#dc2626] to-[#991b1b] hover:scale-[1.06] active:scale-95"
+                    : "bg-gradient-to-br from-[#06b6d4] to-[#0e7490] hover:scale-[1.06] active:scale-95"
+              }`}
+            >
+              <span className="sr-only">
+                {isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
+              </span>
+              {/* Halo cyan/rouge selon état — toujours présent */}
+              <span
+                aria-hidden
+                className={`absolute inset-0 -z-10 rounded-full blur-2xl motion-safe:animate-pulse ${
+                  status === "connected"
+                    ? "bg-[#dc2626] opacity-40"
+                    : "bg-[#22d3ee] opacity-45"
+                }`}
+              />
+              {/* Halo rose en décalé — double respiration */}
+              <span
+                aria-hidden
+                className="absolute inset-0 -z-10 rounded-full bg-[#ec4899] opacity-25 blur-3xl motion-safe:animate-pulse"
+                style={{ animationDelay: "700ms" }}
+              />
+              {/* Inner subtle glow on hover */}
+              <span
+                aria-hidden
+                className="absolute inset-2 rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              />
 
-      {/* Countdown banner (active uniquement pendant la session démo) */}
-      {secondsLeft != null && secondsLeft > 0 && (
-        <div
-          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium tabular-nums transition-colors ${
-            secondsLeft <= 10
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-[var(--color-border)] bg-white/60 text-[var(--color-muted-foreground)]"
-          }`}
-          role="timer"
-          aria-live="polite"
+              {status === "connecting" ? (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="h-12 w-12 motion-safe:animate-spin"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                  <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              ) : isLive ? (
+                <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-12 w-12">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-14 w-14">
+                  <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor" />
+                  <path
+                    d="M5 11a7 7 0 0 0 14 0M12 18v3"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          <p className="max-w-[180px] text-center text-xs font-medium leading-relaxed text-[#475569]">
+            {isLive
+              ? "Parlez, ou cliquez pour arrêter"
+              : "Clique et parle pour tester Tamara"}
+          </p>
+
+          {/* Badge bas — switche entre "40s gratuit" et le timer live */}
+          {secondsLeft != null && secondsLeft > 0 ? (
+            <span
+              role="timer"
+              aria-live="polite"
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums ring-1 ring-inset transition-colors ${
+                secondsLeft <= 10
+                  ? "bg-[#fee2e2] text-[#991b1b] ring-[#dc2626]/40"
+                  : "bg-white/70 text-[#0e7490] ring-[#22d3ee]/40"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span className="font-mono">
+                00:{String(secondsLeft).padStart(2, "0")}
+              </span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-medium text-[#475569] ring-1 ring-inset ring-[#e2e8f0]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              Session de 40s · gratuit
+            </span>
+          )}
+
+          {/* Bouton mute — uniquement quand live */}
+          {status === "connected" && (
+            <button
+              type="button"
+              onClick={toggleMute}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                isMuted
+                  ? "bg-[#18181b] text-white"
+                  : "bg-white/80 text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-white"
+              }`}
+            >
+              {isMuted ? "Micro coupé" : "Couper le micro"}
+            </button>
+          )}
+        </div>
+
+        {/* ─── COLONNE TRANSCRIPT ────────────────────────────────────── */}
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
+            Aperçu de conversation
+          </p>
+          <div
+            ref={transcriptRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Transcript"
+            className="scroll-visible flex max-h-80 min-h-[200px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur"
+          >
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg border border-[#dc2626]/30 bg-[#fee2e2] px-3 py-2 text-xs text-[#991b1b]"
+              >
+                {error}
+              </p>
+            )}
+
+            {demoEnded && (
+              <p
+                role="status"
+                className="rounded-lg border border-[#f59e0b]/40 bg-[#fef3c7] px-3 py-2 text-[11px] leading-snug text-[#92400e]"
+              >
+                Session de démo terminée ({DEMO_SESSION_SECONDS}s).{" "}
+                <a href="/signup" className="font-semibold underline hover:no-underline">
+                  Crée un compte
+                </a>{" "}
+                pour passer/recevoir des appels sans limite.
+              </p>
+            )}
+
+            {transcript.length === 0 && !error && !demoEnded ? (
+              <p className="m-auto text-center text-xs leading-snug text-[#94a3b8]">
+                {isLive
+                  ? "En écoute… Parlez à Tamara."
+                  : "Cliquez sur le mic pour démarrer un appel de démo."}
+              </p>
+            ) : (
+              transcript.map((entry, i) => (
+                <BubbleV2
+                  key={i}
+                  who={entry.role}
+                  text={entry.text}
+                  time={nowHHMM()}
+                />
+              ))
+            )}
+
+            {/* Typing indicator — 3 dots qui bouncent en stagger */}
+            {(status === "connecting" || awaitingResponse) && (
+              <div className="flex items-center gap-2 pt-1">
+                <span
+                  aria-hidden
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0891b2] to-[#0e7490] text-[10px] font-bold text-white ring-2 ring-white"
+                >
+                  T
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfeff] px-3 py-1.5">
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * AmbientDemo — fake conversation qui se joue toute seule en boucle quand
+ * la session WebRTC est idle. Donne envie de cliquer "Démarrer". Reset
+ * toutes les ~12s. Désactivé en prefers-reduced-motion (affiche juste un
+ * snapshot statique du dernier état).
+ */
+const AMBIENT_SCRIPT = [
+  { who: "user" as const, text: "Bonjour, je voudrais prendre rendez-vous." },
+  { who: "assistant" as const, text: "Bien sûr ! Pour quel jour ?" },
+  { who: "user" as const, text: "Demain matin si possible." },
+  { who: "assistant" as const, text: "10h30 avec Sarah ? Ça vous convient ?" },
+];
+
+function AmbientDemo() {
+  const [shown, setShown] = useState<number>(0);
+
+  useEffect(() => {
+    let idx = 0;
+    const tick = () => {
+      idx += 1;
+      if (idx > AMBIENT_SCRIPT.length) {
+        idx = 0;
+      }
+      setShown(idx);
+    };
+    setShown(0);
+    const interval = setInterval(tick, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {/* Hint badge en haut — donne le contexte "demo" */}
+      <div className="mb-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]/70">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-[#22d3ee] opacity-70" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22d3ee]" />
+        </span>
+        Exemple de conversation
+      </div>
+      {AMBIENT_SCRIPT.slice(0, shown).map((entry, i) => (
+        <motion.div
+          key={`${shown}-${i}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span>⏱️ Démo</span>
-          <span className="font-mono">
-            00:{String(secondsLeft).padStart(2, "0")}
+          <BubbleV2 who={entry.who} text={entry.text} time={ambientTime(i)} />
+        </motion.div>
+      ))}
+      {shown < AMBIENT_SCRIPT.length && (
+        <div className="flex items-center gap-2 pt-1">
+          <span
+            aria-hidden
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-white ${
+              AMBIENT_SCRIPT[shown]?.who === "user"
+                ? "bg-gradient-to-br from-[#be185d] to-[#9d174d]"
+                : "bg-gradient-to-br from-[#0891b2] to-[#0e7490]"
+            }`}
+          >
+            {AMBIENT_SCRIPT[shown]?.who === "user" ? "M" : "T"}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfeff] px-3 py-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "300ms" }} />
           </span>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Mic button */}
-      <div className="flex flex-col items-center gap-3 py-2">
-        <button
-          onClick={status === "idle" || status === "error" ? startSession : stopSession}
-          disabled={status === "connecting"}
-          aria-label={isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
-          className={`relative inline-flex h-20 w-20 items-center justify-center rounded-full text-white shadow-md transition-all duration-200 disabled:cursor-not-allowed
-            ${
-              status === "idle" || status === "error"
-                ? "bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] hover:scale-[1.04] hover:shadow-lg active:scale-95"
-                : status === "connecting"
-                ? "bg-[var(--color-warning)]/80"
-                : "bg-gradient-to-br from-[var(--color-destructive)] to-[#a21717] hover:scale-[1.02] active:scale-95"
-            }`}
-        >
-          {status === "connecting" ? (
-            <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 animate-spin">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-              <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-          ) : isLive ? (
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
-              <rect x="6" y="6" width="12" height="12" rx="2" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7">
-              <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          )}
-          {status === "connected" && (
-            <span className="absolute inset-0 -z-10 rounded-full bg-[var(--color-primary)] opacity-30 motion-safe:animate-ping" />
-          )}
-        </button>
+// Génère un timestamp pseudo (incrément 1min) pour la fake demo.
+function ambientTime(i: number): string {
+  const base = new Date();
+  base.setMinutes(base.getMinutes() - (AMBIENT_SCRIPT.length - i));
+  return `${String(base.getHours()).padStart(2, "0")}:${String(base.getMinutes()).padStart(2, "0")}`;
+}
 
-        <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-muted)] px-3 py-1 text-xs font-medium text-[var(--color-foreground)]">
-          <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass[status]}`} />
-          {statusLabel[status]}
-        </div>
+/**
+ * Bubble v2 — avatar circulaire + timestamp + bulle gradient.
+ * Burgundy pour le user (M = Moi), cyan/teal pour l'assistante (T = Tamara).
+ * Hérité du visuel LiveTestPanel pour cohérence cross-app.
+ */
+function BubbleV2({
+  who,
+  text,
+  time,
+}: {
+  who: "user" | "assistant";
+  text: string;
+  time: string;
+}) {
+  const isUser = who === "user";
+  return (
+    <div
+      className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+    >
+      {/* Avatar */}
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ring-2 ring-white ${
+          isUser
+            ? "bg-gradient-to-br from-[#be185d] to-[#9d174d]"
+            : "bg-gradient-to-br from-[#0891b2] to-[#0e7490]"
+        }`}
+        aria-hidden
+      >
+        {isUser ? "M" : "T"}
+      </span>
 
-        {status === "connected" && (
-          <button
-            onClick={toggleMute}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              isMuted
-                ? "bg-[var(--color-foreground)] text-white"
-                : "bg-white text-[var(--color-foreground)] border border-[var(--color-border)] hover:bg-[var(--color-muted)]"
-            }`}
-          >
-            {isMuted ? "Micro coupé" : "Couper le micro"}
-          </button>
-        )}
-      </div>
-
-      {/* Transcript */}
-      {transcript.length > 0 && (
+      <div
+        className={`flex max-w-[78%] flex-col ${isUser ? "items-end" : "items-start"}`}
+      >
+        <span className="px-1 text-[9px] font-medium uppercase tracking-wider text-[#94a3b8]">
+          {isUser ? "Vous" : "Tamara"} · {time}
+        </span>
         <div
-          ref={transcriptRef}
-          className="scroll-visible flex max-h-60 flex-col gap-2 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-3"
+          className={`mt-0.5 rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-sm ${
+            isUser
+              ? "rounded-br-md bg-gradient-to-br from-[#be185d] to-[#9d174d] text-white"
+              : "rounded-bl-md bg-gradient-to-br from-[#ecfeff] to-white text-[#18181b] ring-1 ring-inset ring-[#22d3ee]/30"
+          }`}
         >
-          {transcript.map((entry, i) => (
-            <div
-              key={i}
-              className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                  entry.role === "user"
-                    ? "bg-[var(--color-primary)] text-white rounded-br-md"
-                    : "bg-white text-[var(--color-foreground)] border border-[var(--color-border)] rounded-bl-md"
-                }`}
-              >
-                {entry.text}
-              </div>
-            </div>
-          ))}
+          <span className="sr-only">{isUser ? "Vous : " : "Tamara : "}</span>
+          {text}
         </div>
-      )}
+      </div>
     </div>
   );
 }

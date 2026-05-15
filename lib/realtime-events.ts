@@ -64,9 +64,33 @@ export function buildResponseCreate(params: {
  */
 export function buildSessionUpdate(params: {
   instructions?: string;
+  /**
+   * Server VAD tuning. Quand fourni, ajoute
+   * `session.audio.input.turn_detection` au shape GA Q4 2025.
+   * `silenceMs` est calculé côté caller à partir du slider "Réactivité"
+   * (1-10 → 1200..200 ms). Si OpenAI bascule vers la shape pré-GA
+   * top-level pour ce modèle, le patch est à faire ici (un seul endroit).
+   *
+   * last-verified: 2026-05-14
+   */
+  turnDetection?: { silenceMs: number };
 }): RealtimeEvent {
   const session: Record<string, unknown> = { type: "realtime" };
   if (params.instructions != null) session.instructions = params.instructions;
+  if (params.turnDetection) {
+    session.audio = {
+      input: {
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: params.turnDetection.silenceMs,
+          create_response: true,
+          interrupt_response: true,
+        },
+      },
+    };
+  }
   return {
     type: "session.update",
     event_id: newEventId(),

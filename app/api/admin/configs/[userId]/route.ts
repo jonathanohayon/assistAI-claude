@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 
 const requireAdmin = async () => {
@@ -59,6 +60,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     ownerWhatsapp: string;
     primaryLanguage: string;
     inheritAdminGlobals: boolean;
+    personality: Record<string, number>;
+    agentName: string;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -114,6 +117,13 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   }
   if (body.inheritAdminGlobals != null) {
     updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
+  }
+  if ("personality" in body) {
+    const cleaned = sanitizePersonality(body.personality);
+    if (cleaned !== undefined) updates.personality = cleaned;
+  }
+  if (body.agentName != null) {
+    updates.agentName = String(body.agentName).trim().slice(0, 80);
   }
 
   const [updated] = await db

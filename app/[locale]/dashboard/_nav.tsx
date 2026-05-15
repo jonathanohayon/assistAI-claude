@@ -51,7 +51,7 @@ export function DashboardTabs({
   };
   const cleanPath = stripLocale(pathname);
   return (
-    <nav className="mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">
+    <nav className="relative z-10 mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">
       <div className="scroll-visible -mx-1 overflow-x-auto pb-1">
         <div className="inline-flex min-w-min rounded-full border border-[var(--color-border)] bg-white p-1 shadow-xs">
           {visibleTabs.map((tab) => {

@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import NextLink from "next/link";
 
 import { auth, signOut } from "@/auth";
+import { AuroraBackground } from "@/components/AuroraBackground";
 import { IdleWatcher } from "@/components/IdleWatcher";
+import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
@@ -84,7 +86,8 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen">
+      <AuroraBackground />
       <IdleWatcher />
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
@@ -98,6 +101,7 @@ export default async function DashboardLayout({
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <LocaleSwitcher />
             {me?.role === "admin" && (
               // NextLink raw (pas locale-aware) — /admin n'a pas de version
               // sous [locale] (interface admin volontairement non-i18n).
@@ -119,7 +123,7 @@ export default async function DashboardLayout({
       </header>
 
       {!googleConnected && me?.subscriptionPlan !== "whatsapp" && (
-        <div className="mx-auto w-full max-w-5xl px-6 pt-4">
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-4">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 sm:text-sm">
             <span>{t("googleNotConnected")}</span>
             <a
@@ -133,7 +137,7 @@ export default async function DashboardLayout({
       )}
 
       {me?.subscriptionPlan === "whatsapp" && (
-        <div className="mx-auto w-full max-w-5xl px-6 pt-4">
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-4">
           <div className="flex flex-col items-start gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/50 px-4 py-2.5 text-xs text-[var(--color-muted-foreground)] sm:flex-row sm:items-center sm:justify-between sm:text-sm">
             <span>
               <strong className="text-[var(--color-foreground)]">
@@ -153,7 +157,7 @@ export default async function DashboardLayout({
 
       {trial != null && (
         <div
-          className={`mx-auto w-full max-w-5xl px-6 pt-4 ${
+          className={`relative z-10 mx-auto w-full max-w-5xl px-6 pt-4 ${
             trial.urgency === "critical"
               ? trial.label === "expired"
                 ? "text-red-700"
@@ -194,7 +198,9 @@ export default async function DashboardLayout({
 
       <DashboardTabs features={features} isAdmin={me?.role === "admin"} />
 
-      {children}
+      {/* Wrapper relative z-10 → le contenu passe au-dessus du mesh aurora
+       *  (qui est en `fixed z-0`). Sans ça, le content static serait derrière. */}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }

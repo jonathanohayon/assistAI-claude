@@ -118,6 +118,7 @@ async function main() {
       temperature: 0.8,
       speed: 1.0,
       maxResponseTokens: 220,
+      personality: {},
     });
     console.log("Created initial agent config.");
   }

@@ -1,11 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
-import { type Plan, PLANS } from "@/lib/plans";
+import { OVERAGE_RATE_ILS_PER_MIN, type Plan, PLANS } from "@/lib/plans";
 
 type Currency = "EUR" | "USD" | "ILS";
 
@@ -93,6 +93,34 @@ function formatPrice(
   }).format(converted);
 }
 
+/**
+ * Formate un petit montant (overage à la minute) avec 2 décimales.
+ * Source = shekel ; conversion via rates EUR-base : `amountIls / rates.ILS`
+ * donne le montant équivalent en EUR, puis on multiplie par `rates[target]`.
+ */
+function formatPricePerMinute(
+  amountIls: number,
+  currency: Currency,
+  rates: Record<Currency, number>,
+): string {
+  const amountEur = amountIls / rates.ILS;
+  const converted = amountEur * rates[currency];
+  const { locale } = CURRENCY_META[currency];
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(converted);
+}
+
+/** Mapping locale → devise par défaut. FR→EUR, HE→ILS, EN→USD. */
+const LOCALE_TO_CURRENCY: Record<string, Currency> = {
+  fr: "EUR",
+  he: "ILS",
+  en: "USD",
+};
+
 // Helpers locaux : pioche les variantes localisées (Plans namespace) avec
 // fallback sur les valeurs FR hardcodées dans lib/plans.ts si la clé n'a
 // pas (encore) été ajoutée à la locale. Évite un trou visuel si un dev
@@ -111,10 +139,16 @@ function useLocalizedPlan(plan: Plan) {
       return Array.isArray(raw) ? (raw as string[]) : plan.features;
     } catch { return plan.features; }
   })();
+  const excludedFeatures = (() => {
+    try {
+      const raw = t.raw(`${plan.key}.excludedFeatures`);
+      return Array.isArray(raw) ? (raw as string[]) : plan.excludedFeatures;
+    } catch { return plan.excludedFeatures; }
+  })();
   const bestFor = (() => {
     try { return t(`${plan.key}.bestFor`); } catch { return plan.bestFor; }
   })();
-  return { name, tagline, features, bestFor };
+  return { name, tagline, features, excludedFeatures, bestFor };
 }
 
 type Billing = "monthly" | "annual";
@@ -266,20 +300,210 @@ function CurrencyDropdown({
   );
 }
 
-function CheckIcon({ className }: { className?: string }) {
+function CheckIcon({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <svg viewBox="0 0 20 20" fill="none" className={className}>
-      <circle cx="10" cy="10" r="10" fill="currentColor" fillOpacity="0.12" />
+    <svg viewBox="0 0 20 20" fill="none" className={className} style={style}>
+      <circle cx="10" cy="10" r="10" fill="currentColor" fillOpacity="0.14" />
       <path
         d="m6 10.5 2.5 2.5L14 7.5"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
   );
 }
+
+function XMarkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <circle cx="10" cy="10" r="10" fill="currentColor" fillOpacity="0.10" />
+      <path
+        d="m7 7 6 6m0-6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Animated tier icons — one per plan, with subtle loop animation     */
+/* ------------------------------------------------------------------ */
+
+/** Phone icon with concentric pulse rings (incoming call vibe). */
+function PhoneIcon() {
+  return (
+    <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#22d3ee] to-[#0e7490] text-white shadow-lg shadow-[#22d3ee]/35">
+      <motion.span
+        aria-hidden
+        className="absolute inset-0 rounded-2xl ring-2 ring-[#22d3ee]"
+        initial={{ scale: 1, opacity: 0.6 }}
+        animate={{ scale: 1.4, opacity: 0 }}
+        transition={{
+          duration: 1.8,
+          repeat: Infinity,
+          ease: "easeOut",
+        }}
+      />
+      <motion.span
+        aria-hidden
+        className="absolute inset-0 rounded-2xl ring-2 ring-[#22d3ee]"
+        initial={{ scale: 1, opacity: 0.5 }}
+        animate={{ scale: 1.7, opacity: 0 }}
+        transition={{
+          duration: 1.8,
+          delay: 0.6,
+          repeat: Infinity,
+          ease: "easeOut",
+        }}
+      />
+      <svg viewBox="0 0 24 24" fill="none" className="relative h-6 w-6">
+        <path
+          d="M5.5 3.5h3.2l1.8 4.5-2.2 1.1a12 12 0 0 0 6.6 6.6l1.1-2.2 4.5 1.8v3.2a2 2 0 0 1-2 2A15 15 0 0 1 3.5 5.5a2 2 0 0 1 2-2Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/** Headset icon with rotating conic gradient ring (premium receptionist). */
+function HeadsetIcon() {
+  return (
+    <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#be185d] via-[#ec4899] to-[#f472b6] text-white shadow-lg shadow-[#be185d]/40">
+      {/* Rotating gradient ring */}
+      <motion.span
+        aria-hidden
+        className="absolute -inset-[3px] rounded-[20px] opacity-70"
+        style={{
+          background:
+            "conic-gradient(from 0deg, #22d3ee, #ec4899, #be185d, #f472b6, #22d3ee)",
+          maskImage:
+            "radial-gradient(circle at center, transparent 56%, black 60%)",
+          WebkitMaskImage:
+            "radial-gradient(circle at center, transparent 56%, black 60%)",
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+      />
+      <svg viewBox="0 0 24 24" fill="none" className="relative h-6 w-6">
+        <path
+          d="M4 14a8 8 0 1 1 16 0v3.5a2 2 0 0 1-2 2h-2v-6h4M4 14v3.5a2 2 0 0 0 2 2h2v-6H4"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <circle cx="10.5" cy="10.5" r="0.8" fill="currentColor" />
+        <circle cx="13.5" cy="10.5" r="0.8" fill="currentColor" />
+      </svg>
+    </div>
+  );
+}
+
+/** Tower / building icon with 3 blinking activity dots (multi-call call center). */
+function TowerIcon() {
+  const reduce = useReducedMotion();
+  return (
+    <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#be185d] via-[#fb7185] to-[#f59e0b] text-white shadow-lg shadow-[#fb7185]/40">
+      {[0, 0.3, 0.6].map((delay, i) => {
+        const positions: Array<{ top?: string; bottom?: string; left?: string; right?: string }> = [
+          { top: "6px", right: "6px" },
+          { top: "6px", left: "6px" },
+          { bottom: "6px", right: "6px" },
+        ];
+        return (
+          <motion.span
+            key={i}
+            aria-hidden
+            className="absolute h-1.5 w-1.5 rounded-full bg-white"
+            style={positions[i]}
+            animate={reduce ? undefined : { opacity: [0.2, 1, 0.2] }}
+            transition={{ duration: 1.4, delay, repeat: Infinity }}
+          />
+        );
+      })}
+      <svg viewBox="0 0 24 24" fill="none" className="relative h-6 w-6">
+        <path
+          d="M3 21V8l9-5 9 5v13M3 21h18M9.5 21v-6h5v6"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Per-tier theme — accents, gradients, shadows, icon                 */
+/* ------------------------------------------------------------------ */
+
+type TierTheme = {
+  accent: string;
+  accentSoft: string;
+  gradient: string;
+  ctaGradient: string;
+  haloFrom: string;
+  haloVia: string;
+  haloTo: string;
+  ringShadow: string;
+  borderColor: string;
+  icon: () => React.ReactElement;
+};
+
+const TIER_THEME: Record<Plan["key"], TierTheme> = {
+  whatsapp: {
+    accent: "#0E7490",
+    accentSoft: "#22D3EE",
+    gradient: "from-[#22d3ee] to-[#0e7490]",
+    ctaGradient: "from-[#0e7490] via-[#22d3ee] to-[#67e8f9]",
+    haloFrom: "rgba(34,211,238,0.18)",
+    haloVia: "rgba(103,232,249,0.08)",
+    haloTo: "rgba(255,255,255,0)",
+    ringShadow:
+      "0 24px 60px -20px rgba(14,116,144,0.30), 0 8px 24px -8px rgba(34,211,238,0.18)",
+    borderColor: "rgba(34,211,238,0.40)",
+    icon: PhoneIcon,
+  },
+  global: {
+    accent: "#BE185D",
+    accentSoft: "#EC4899",
+    gradient: "from-[#be185d] via-[#ec4899] to-[#f472b6]",
+    ctaGradient: "from-[#be185d] via-[#ec4899] to-[#f472b6]",
+    haloFrom: "rgba(236,72,153,0.20)",
+    haloVia: "rgba(251,113,133,0.14)",
+    haloTo: "rgba(34,211,238,0.10)",
+    ringShadow:
+      "0 24px 60px -20px rgba(190,24,93,0.40), 0 8px 24px -8px rgba(236,72,153,0.25)",
+    borderColor: "rgba(236,72,153,0.55)",
+    icon: HeadsetIcon,
+  },
+  premium: {
+    accent: "#BE185D",
+    accentSoft: "#FB7185",
+    gradient: "from-[#be185d] via-[#fb7185] to-[#f59e0b]",
+    ctaGradient: "from-[#be185d] via-[#fb7185] to-[#f59e0b]",
+    haloFrom: "rgba(251,113,133,0.20)",
+    haloVia: "rgba(245,158,11,0.12)",
+    haloTo: "rgba(190,24,93,0.10)",
+    ringShadow:
+      "0 24px 60px -20px rgba(251,113,133,0.35), 0 8px 24px -8px rgba(245,158,11,0.20)",
+    borderColor: "rgba(251,113,133,0.45)",
+    icon: TowerIcon,
+  },
+};
 
 function PlanCard({
   plan,
@@ -296,6 +520,11 @@ function PlanCard({
   const localized = useLocalizedPlan(plan);
   const priceEur = billing === "monthly" ? plan.monthly : plan.annualMonthly;
   const formattedPrice = formatPrice(priceEur, currency, rates);
+  const overagePrice = formatPricePerMinute(
+    OVERAGE_RATE_ILS_PER_MIN,
+    currency,
+    rates,
+  );
   const annualHint =
     billing === "annual"
       ? t("annualHint", {
@@ -303,69 +532,151 @@ function PlanCard({
         })
       : null;
 
+  const theme = TIER_THEME[plan.key];
+  const TierIcon = theme.icon;
+
   return (
     <motion.article
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -8 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className={`relative flex h-full flex-col rounded-3xl border bg-white/90 p-7 backdrop-blur transition-shadow ${
-        plan.popular
-          ? "border-transparent shadow-[0_24px_60px_-20px_rgba(212,165,116,0.45),0_8px_24px_-8px_rgba(236,72,153,0.18)] ring-1 ring-[#e5c08a]/60"
-          : "border-[var(--color-border)] shadow-sm hover:shadow-md"
-      }`}
+      className="group relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white/95 p-7 backdrop-blur"
+      style={{
+        borderColor: plan.popular ? theme.borderColor : "rgba(226,232,240,0.9)",
+        boxShadow: plan.popular ? theme.ringShadow : "0 1px 2px rgba(15,23,42,0.04)",
+      }}
     >
+      {/* Top gradient accent strip — vivid tier color */}
+      <span
+        aria-hidden
+        className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${theme.gradient}`}
+      />
+
+      {/* Soft tier-colored halo behind the card content */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 rounded-3xl"
+        style={{
+          background: `radial-gradient(120% 70% at 50% 0%, ${theme.haloFrom} 0%, ${theme.haloVia} 35%, ${theme.haloTo} 70%)`,
+        }}
+      />
+
+      {/* Decorative corner sparkle (subtle, only popular) */}
       {plan.popular && (
-        <>
-          {/* Soft champagne-gold gradient halo to lift the popular card */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-[#fff7ec] via-white to-[#fdf2f8]"
-          />
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[#d4a574] via-[#e5c08a] to-[#b8864e] px-3.5 py-1 text-[11px] font-semibold tracking-wide text-white shadow-md">
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
-                <path d="m10 1.5 2.4 5.5 6 .6-4.5 4 1.3 5.9L10 14.6l-5.2 2.9 1.3-5.9-4.5-4 6-.6L10 1.5Z" />
-              </svg>
-              {t("popular")}
-            </span>
-          </div>
-        </>
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(236,72,153,0.30) 0%, transparent 70%)",
+          }}
+          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+        />
       )}
 
-      <header>
-        <h3 className="font-display text-xl text-[var(--color-foreground)]">
-          {localized.name}
-        </h3>
-        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          {localized.tagline}
-        </p>
+      <header className="flex items-start gap-4">
+        <TierIcon />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-display text-xl text-[var(--color-foreground)]">
+              {localized.name}
+            </h3>
+            {plan.popular && (
+              <motion.span
+                className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm"
+                animate={{
+                  boxShadow: [
+                    "0 4px 12px -4px rgba(236,72,153,0.45)",
+                    "0 4px 16px -2px rgba(34,211,238,0.45)",
+                    "0 4px 12px -4px rgba(236,72,153,0.45)",
+                  ],
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <motion.svg
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-2.5 w-2.5"
+                  animate={{ rotate: [0, 12, -8, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <path d="m10 1.5 2.4 5.5 6 .6-4.5 4 1.3 5.9L10 14.6l-5.2 2.9 1.3-5.9-4.5-4 6-.6L10 1.5Z" />
+                </motion.svg>
+                {t("popular")}
+              </motion.span>
+            )}
+          </div>
+          <p className="mt-1 text-sm leading-snug text-[var(--color-muted-foreground)]">
+            {localized.tagline}
+          </p>
+        </div>
       </header>
 
       <div className="mt-6">
-        <div className="flex items-baseline gap-1">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={`${plan.key}-${billing}-${currency}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-5xl tracking-tight text-[var(--color-foreground)]"
+        {plan.key === "premium" ? (
+          // Plan custom : pas de prix figé, devis sur mesure
+          <>
+            <div className="flex items-baseline gap-2">
+              <motion.span
+                key={`${plan.key}-custom`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-gradient-to-r from-[#be185d] via-[#fb7185] to-[#f59e0b] bg-clip-text font-display text-5xl tracking-tight text-transparent"
+              >
+                {t("custom")}
+              </motion.span>
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
+              {t("customHint")}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-1">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={`${plan.key}-${billing}-${currency}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="font-display text-5xl tracking-tight text-[var(--color-foreground)]"
+                >
+                  {formattedPrice}
+                </motion.span>
+              </AnimatePresence>
+              <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
+                {t("perMonth")}
+              </span>
+              {currency === "EUR" && (
+                <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
+                  TTC
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
+              {annualHint ?? t("monthlyHint")}
+            </p>
+            <p
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{
+                backgroundColor: `${theme.accent}12`,
+                color: theme.accent,
+              }}
             >
-              {formattedPrice}
-            </motion.span>
-          </AnimatePresence>
-          <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
-            {t("perMonth")}
-          </span>
-          {currency === "EUR" && (
-            <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
-              TTC
-            </span>
-          )}
-        </div>
-        <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
-          {annualHint ?? t("monthlyHint")}
-        </p>
+              <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3">
+                <path
+                  d="M7 1v12M1 7h12"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {t("overage", { price: overagePrice })}
+            </p>
+          </>
+        )}
       </div>
 
       <ul className="mt-6 space-y-3 border-t border-[var(--color-border)]/70 pt-6">
@@ -375,13 +686,19 @@ function PlanCard({
             className="flex items-start gap-3 text-sm leading-relaxed text-[var(--color-foreground)]"
           >
             <CheckIcon
-              className={`mt-0.5 h-5 w-5 shrink-0 ${
-                plan.popular
-                  ? "text-[#b8864e]"
-                  : "text-[var(--color-primary)]"
-              }`}
+              className="mt-0.5 h-5 w-5 shrink-0"
+              style={{ color: theme.accent } as React.CSSProperties}
             />
             <span>{f}</span>
+          </li>
+        ))}
+        {localized.excludedFeatures.map((f) => (
+          <li
+            key={`excluded-${f}`}
+            className="flex items-start gap-3 text-sm leading-relaxed text-[var(--color-muted-foreground)]"
+          >
+            <XMarkIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
+            <span className="line-through decoration-slate-300/80">{f}</span>
           </li>
         ))}
       </ul>
@@ -399,18 +716,24 @@ function PlanCard({
         <Link
           href={`/signup?plan=${plan.key}&billing=${billing}`}
           aria-label={t("ctaAria", { name: localized.name })}
-          className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+          className={`cta-shine group/cta relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-r ${theme.ctaGradient} px-5 py-3 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-xl active:scale-[0.97]`}
+          style={{ boxShadow: `0 10px 24px -10px ${theme.accent}80` }}
         >
-          {t("cta")}
+          {/* Shine sweep on hover */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover/cta:translate-x-full"
+          />
+          <span className="relative">{t("cta")}</span>
           <svg
             viewBox="0 0 16 16"
             fill="none"
-            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+            className="relative h-3.5 w-3.5 transition-transform group-hover/cta:translate-x-0.5"
           >
             <path
               d="M3 8h10M9 4l4 4-4 4"
               stroke="currentColor"
-              strokeWidth="1.6"
+              strokeWidth="1.8"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -426,8 +749,13 @@ function PlanCard({
 
 export function Pricing() {
   const t = useTranslations("Pricing");
+  const locale = useLocale();
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [currency, setCurrency] = useState<Currency>("EUR");
+  // Devise par défaut selon la locale active (FR→EUR, HE→ILS, EN→USD).
+  // L'utilisateur peut toujours changer via le dropdown.
+  const [currency, setCurrency] = useState<Currency>(
+    LOCALE_TO_CURRENCY[locale] ?? "EUR",
+  );
   const rates = useExchangeRates();
 
   return (

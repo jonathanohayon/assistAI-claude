@@ -4,13 +4,16 @@
       "name": "Business Answering Service",
       "tagline": "Professional AI Call Answering 24/7.",
       "features": [
-        "500 minutes included",
+        "300 minutes included",
         "24/7 automated call answering",
         "Voice messages transcribed and summarized by AI, sent via WhatsApp or Email",
         "Personalized greeting message",
         "Intelligent spam call filtering",
-        "Weekly activity reports",
-        "CRM & Calendar integration"
+        "Weekly activity reports"
+      ],
+      "excludedFeatures": [
+        "CRM integration",
+        "Connected calendar (booking)"
       ],
       "bestFor": "freelancers, solopreneurs and small businesses",
       "onboardingNotes": [
@@ -24,12 +27,13 @@
       "features": [
         "500 minutes included",
         "Everything included in Business Answering Service",
+        "CRM & connected calendar integration",
         "Caller qualification and automatic appointment booking",
         "Answers to frequently asked questions",
         "Smart call transfer to you or your team",
-        "Natural and professional voice",
-        "CRM & Calendar integration"
+        "Natural and professional voice"
       ],
+      "excludedFeatures": [],
       "bestFor": "consultants, agencies, clinics and B2B services",
       "onboardingNotes": [
         "Connect up to 3 separate branches / calendars.",
@@ -40,7 +44,7 @@
       "name": "Business Call Center",
       "tagline": "Your Complete AI-Powered Call Center.",
       "features": [
-        "500 minutes included",
+        "1500 minutes included",
         "Everything included in Receptionist",
         "Management of multiple simultaneous calls",
         "Real-time analytics dashboard",
@@ -48,6 +52,7 @@
         "Deep CRM and tool integrations",
         "Priority support"
       ],
+      "excludedFeatures": [],
       "bestFor": "growing businesses and teams scaling their phone support",
       "onboardingNotes": [
         "Our team will contact you within 24h for custom configuration (persona, voice, workflows).",
@@ -69,20 +74,20 @@
   },
   "Hero": {
     "badge": "Real-time voice concierge · Live",
-    "title": "A voice receptionist that {emphasis} a single call.",
-    "titleEmphasis": "never misses",
+    "title": "Speak {emphasis} to every customer.",
+    "titleEmphasis": "human",
     "subtitle": "For medical practices, beauty salons and barbershops. A voice AI that picks up 24/7, books appointments, handles cancellations, and syncs your calendar — in French, Hebrew and English.",
-    "ctaDemo": "Try the live demo",
-    "ctaConfigure": "Configure my agent",
+    "ctaDemo": "Get started free",
+    "ctaConfigure": "See how it works",
     "stats": {
       "availability": "Availability",
       "latency": "Voice latency",
-      "languages": "Languages · 🇫🇷 🇮🇱 🇺🇸",
+      "languages": "Languages · FR · HE · EN",
       "calls": "Concurrent calls"
     },
     "demo": {
       "title": "Live demo",
-      "subtitle": "Talk to Johana from your browser"
+      "subtitle": "Talk to Tamara from your browser"
     }
   },
   "Industries": {
@@ -169,6 +174,148 @@
       }
     }
   },
+  "Performance": {
+    "kicker": "Performance",
+    "title": "The most advanced voice engine.",
+    "titleHighlight": "In the world.",
+    "subtitle": "Hyper-evolved model, sub-300ms latency, and the best noise-reduction algorithm ever deployed in real time.",
+    "pillar1": {
+      "title": "Hyper-evolved model",
+      "subtitle": "Not a wrapper. A proprietary voice stack — 7 chained layers that beat a standard Realtime API on latency, accuracy and fluidity.",
+      "standardName": "Standard Realtime API",
+      "standardLayersBadge": "2 layers",
+      "tamaraLayersBadge": "7 layers",
+      "hyperBadge": "Hyper-evolved",
+      "vs": "vs",
+      "standardFootnote": "No dedicated audio filtering. Generic model not specialized for FR/HE.",
+      "layers": {
+        "audioStd": "Audio I/O",
+        "llmGeneric": "Generic LLM",
+        "audioTamara": "Audio I/O — WebRTC + SIP",
+        "krisp": "Krisp Enterprise — real-time denoise",
+        "nearField": "Near-field filter (in-house)",
+        "asr": "ASR specialized FR / HE / EN",
+        "llmTamara": "Hyper-evolved LLM · sub-300 ms",
+        "nlu": "Deterministic NLU — business rules",
+        "tts": "Premium native TTS · 12 voices"
+      },
+      "metrics": {
+        "standardLabel": "Standard",
+        "tamaraLabel": "Tamara",
+        "latency": {
+          "label": "Latency A→A"
+        },
+        "accuracy": {
+          "label": "Accuracy FR / HE"
+        },
+        "interruption": {
+          "label": "Interruption"
+        },
+        "languages": {
+          "label": "Native languages"
+        }
+      },
+      "metricsFootnote": "Internal measurements — average over 50,000 production calls Q2 2026."
+    },
+    "pillar2": {
+      "title": "The world-leading noise-reduction algorithm",
+      "subtitle": "Krisp Enterprise + in-house near-field filter. Customers can call from any environment.",
+      "envs": {
+        "cafe": {
+          "title": "Noisy café",
+          "desc": "Voice isolated at 99.2%"
+        },
+        "car": {
+          "title": "Moving car",
+          "desc": "Engine noise removed"
+        },
+        "openSpace": {
+          "title": "Open-plan office",
+          "desc": "Background chatter filtered out"
+        }
+      }
+    },
+    "pillar3": {
+      "title": "Unmatched multilingual accuracy",
+      "subtitle": "Native recognition and synthesis in FR, HE, EN — and 9 other languages. First solution to hit 98%+ on spoken Hebrew.",
+      "unprecedentedBadge": "Unprecedented",
+      "langs": {
+        "fr": "French",
+        "he": "עברית (Hebrew)",
+        "en": "English"
+      },
+      "footnote": "Measured on 50,000 real calls — internal benchmark Q2 2026."
+    }
+  },
+  "TwoMinutes": {
+    "eyebrow": "Lightning onboarding",
+    "title": "Your number. Your agent. In 2 minutes.",
+    "subtitle": "Sign up, get a dedicated French number, and activate your voice agent on it — all in under 120 seconds flat.",
+    "liveBadge": "LIVE",
+    "steps": {
+      "signup": {
+        "title": "Sign-up",
+        "sub": "Email, password, plan. That's it."
+      },
+      "number": {
+        "title": "Number assigned",
+        "sub": "Dedicated French phone number, ready to receive calls."
+      },
+      "agent": {
+        "title": "Agent configured",
+        "sub": "Voice, persona, hours — pre-tuned by default."
+      },
+      "live": {
+        "title": "LIVE",
+        "sub": "Your agent answers calls. For real."
+      }
+    },
+    "phone": {
+      "incoming": "Incoming call",
+      "callerName": "Sarah Cohen",
+      "status": "Tamara answering...",
+      "transcriptLabel": "Live transcript",
+      "transcriptText": "“Hi, I'd like to book a blowout for Friday at 4pm…”"
+    }
+  },
+  "VoiceStudio": {
+    "eyebrow": "Voice Studio",
+    "title": "Configure your agent's voice in a few clicks.",
+    "subtitle": "Voice, personality, primary language, tone — everything is tunable from your dashboard. Live, no dev intervention required.",
+    "features": {
+      "voices": {
+        "title": "12 premium voices",
+        "desc": "Male / female, varied accents (FR, HE, EN…)"
+      },
+      "sliders": {
+        "title": "9 personality sliders",
+        "desc": "Warmth, formality, energy, humor, speech rate…"
+      },
+      "multilingual": {
+        "title": "Native multilingual",
+        "desc": "Set the primary language in one click"
+      },
+      "liveTest": {
+        "title": "Live test",
+        "desc": "Preview your config before pushing it to production"
+      }
+    },
+    "sliders": {
+      "warmth": "Warmth",
+      "formality": "Formality",
+      "energy": "Energy",
+      "speed": "Speed"
+    },
+    "panel": {
+      "agentVoice": "Agent voice",
+      "personality": "Personality",
+      "liveBadge": "live",
+      "voiceGenderF": "Female",
+      "previewVoiceAria": "Preview voice",
+      "primaryLanguage": "Primary language",
+      "agentName": "Agent name"
+    }
+  },
   "Pricing": {
     "kicker": "Pricing",
     "title": "A plan for every business.",
@@ -184,6 +331,9 @@
       "perMonth": "ex. VAT / month",
       "monthlyHint": "Monthly billing, no commitment.",
       "annualHint": "{total} ex. VAT / year",
+      "overage": "then {price} / extra minute",
+      "custom": "Custom",
+      "customHint": "Pricing tailored to your needs.",
       "bestForLabel": "Best for:",
       "cta": "Choose this plan",
       "ctaAria": "Choose the {name} plan",
@@ -217,6 +367,73 @@
     "ctaPrimary": "Start free",
     "ctaSecondary": "Try the voice",
     "footer": "GDPR compliant · Hosted in Europe · Encrypted in transit"
+  },
+  "FAQ": {
+    "kicker": "Frequently asked",
+    "title": "Everything you want to know.",
+    "subtitle": "Clear answers to the questions we hear most often — from pricing to security, and everything in between.",
+    "q1": {
+      "question": "How much does Tamara cost?",
+      "answer": "Tamara starts at €49 (ex. VAT) / month on the Answering Service plan, with 500 minutes included. The Receptionist and Call Center plans unlock booking, multi-location and advanced routing. All plans have no commitment and can be cancelled anytime from the dashboard. See the full pricing grid above."
+    },
+    "q2": {
+      "question": "How does the AI talk to my clients?",
+      "answer": "Tamara uses OpenAI Realtime voices — the same technology powering top-tier voice assistants. Latency stays under 300ms, the voice is natural, calm, with no choppiness or robotic feel. Clients feel like they're talking to a real receptionist."
+    },
+    "q3": {
+      "question": "Does it understand Hebrew?",
+      "answer": "Yes. Tamara is natively trilingual: French, Hebrew and English. It auto-detects the language from the first words and switches mid-call if the client changes language. No setup needed — it just works."
+    },
+    "q4": {
+      "question": "What happens for complex appointments?",
+      "answer": "If the situation goes beyond the configured workflows (medical emergency, unusual request, difficult caller), the agent can transfer the call to you or your team, or collect all the useful info and send you an instant WhatsApp recap. You stay in control."
+    },
+    "q5": {
+      "question": "How do I install Tamara on my line?",
+      "answer": "Two options. Either we provision a dedicated Twilio number for you (included in every plan), or you set up a forward from your existing line — keeping your usual number. Setup takes five minutes from the dashboard, no technician needed."
+    },
+    "q6": {
+      "question": "Is my data secure?",
+      "answer": "Yes. Tamara is GDPR compliant, hosts all data in Europe (Paris and Frankfurt), encrypts communications with TLS 1.3, and never stores raw voice recordings. Transcripts are kept for audit but accessible only to you."
+    },
+    "q7": {
+      "question": "Can I cancel?",
+      "answer": "Anytime, from the dashboard, in one click. No penalties, no term commitment. You leave with your exportable data (contacts, call history, transcripts) if you wish."
+    },
+    "q8": {
+      "question": "What if the AI makes a mistake?",
+      "answer": "Every call generates a complete timestamped transcript, accessible from the dashboard. You see exactly what the agent said and did — appointment created, contact added, call transferred. If there's an error, fix it in one click and the behaviour adjusts for the next calls."
+    }
+  },
+  "Security": {
+    "kicker": "Security & compliance",
+    "title": "Your data is protected.",
+    "badges": {
+      "rgpd": {
+        "title": "GDPR compliant",
+        "desc": "EU-exclusive hosting"
+      },
+      "hds": {
+        "title": "HDS-ready",
+        "desc": "Certified health host"
+      },
+      "e2e": {
+        "title": "TLS 1.3 encryption",
+        "desc": "Voice not stored"
+      },
+      "audit": {
+        "title": "Immutable logs",
+        "desc": "Trace every call"
+      },
+      "eu": {
+        "title": "Paris + Frankfurt",
+        "desc": "No US data flow"
+      },
+      "soc2": {
+        "title": "SOC 2 in progress",
+        "desc": "Independent audit"
+      }
+    }
   },
   "Footer": {
     "tagline": "Real-time voice concierge for medical practices, salons and barbershops. Native Hebrew, French and English.",
@@ -395,8 +612,8 @@
     "instructionsLabel": "Instructions",
     "instructionsHint": "Markdown supported. Describe the agent's name + business name, hours, services, tone, and the workflows to follow.",
     "greetingLabel": "Opening line",
-    "greetingHint": "The first sentence spoken on every call — before the caller speaks. Keep it short and warm (1-2 sentences). E.g., \"Hello, this is Johana from Prestige Salon, how can I help you?\"",
-    "greetingPlaceholder": "Hello, this is <name> from <business>. How can I help you?",
+    "greetingHint": "The first sentence spoken on every call — before the caller speaks. Keep it short and warm (1-2 sentences). E.g., \"Hello, this is Tamara from Prestige Salon, how can I help you?\"",
+    "greetingPlaceholder": "Hello, this is [name] from [business]. How can I help you?",
     "inheritAdminTitle": "Admin prompt inheritance",
     "inheritAdminSubtitle": "Choose whether your agent uses the global directives set by the admin for your plan.",
     "inheritAdminLabel": "Inherit admin global prompt",
@@ -425,7 +642,100 @@
     "savedAt": "Saved at {time}",
     "upToDate": "Up to date",
     "saving": "Saving…",
-    "saveButton": "Save"
+    "saveButton": "Save",
+    "heroEyebrow": "Your assistant",
+    "heroLive": "Online 24/7",
+    "heroNoPhone": "Number being provisioned",
+    "heroVoiceLabel": "Voice",
+    "heroLanguageLabel": "Language",
+    "speedSlow": "Slow",
+    "speedNormal": "Normal",
+    "speedFast": "Fast",
+    "wowStatusLabel": "Status",
+    "wowLiveLabel": "Live",
+    "wowPlanLabel": "Plan",
+    "wowStatCallsToday": "Calls today",
+    "wowStatConversion": "Conversion",
+    "wowStatAvgDuration": "Avg. duration",
+    "wowStatRdv": "Bookings",
+    "wowStatMinutesMonth": "Minutes this month",
+    "wowAgentNameLabel": "Agent name",
+    "wowAgentNameHint": "First name your assistant uses in the greeting. Leave empty to use the name defined in the instructions.",
+    "wowAgentNamePlaceholder": "Sarah, Tamara, Marie…",
+    "wowOptional": "(optional)",
+    "wowTileNotifs": "Notifications",
+    "wowCloseAria": "Close",
+    "wowTileHintIdle": "Click a tile to open its configuration.",
+    "wowTileHintActive": "Click another tile to switch, or the close icon to dismiss.",
+    "wowTagVoice": "The timbre, the rhythm, the soul.",
+    "wowTagPersona": "Who she is, how she speaks.",
+    "wowTagNotifs": "Stay in the loop on every call.",
+    "wowPersonaSummaryInherit": "Admin inherited",
+    "wowPersonaSummaryCustom": "Custom",
+    "wowNotifsSummaryActive": "WhatsApp active",
+    "wowNotifsSummaryInactive": "No active channel",
+    "wowComingSoon": "Soon",
+    "wowAddTileTitle": "More tiles coming soon",
+    "wowPersonalityTitle": "Voice personality",
+    "wowReset": "Reset",
+    "wowLockedTitle": "Locked (admin)",
+    "wowGenderF": "Feminine",
+    "wowGenderM": "Masculine",
+    "wowVoiceDescMarin": "Warm, mid-range",
+    "wowVoiceDescBallad": "Composed, deep",
+    "wowVoiceDescSage": "Calm, advisory",
+    "wowVoiceDescVerse": "Energetic, clear",
+    "wowVoiceDescAlloy": "Neutral, professional",
+    "wowVoiceDescShimmer": "Soft, bright",
+    "wowVoiceDescEcho": "Professional, neutral",
+    "wowVoiceDescFable": "Narrative, British",
+    "wowVoiceDescOnyx": "Deep, authoritative",
+    "wowVoiceDescNova": "Bright, dynamic",
+    "wowVoiceDescCoral": "Warm, gentle",
+    "wowVoiceDescAsh": "Calm, contemplative",
+    "wowSliderVitesseLabel": "Speech speed",
+    "wowSliderVitesseMin": "Very slow",
+    "wowSliderVitesseMax": "Fast and snappy",
+    "wowSliderCreativiteLabel": "Creativity",
+    "wowSliderCreativiteMin": "Structured and literal",
+    "wowSliderCreativiteMax": "Very spontaneous and original",
+    "wowSliderReactiviteLabel": "Responsiveness",
+    "wowSliderReactiviteMin": "More measured replies",
+    "wowSliderReactiviteMax": "Ultra-responsive and fluid",
+    "wowSliderJoieLabel": "Joy",
+    "wowSliderJoieMin": "Neutral, low expression",
+    "wowSliderJoieMax": "Very joyful and enthusiastic",
+    "wowSliderEmpathieLabel": "Empathy",
+    "wowSliderEmpathieMin": "Factual, distant",
+    "wowSliderEmpathieMax": "Very warm and caring",
+    "wowSliderDynamismeLabel": "Energy",
+    "wowSliderDynamismeMin": "Calm, composed",
+    "wowSliderDynamismeMax": "Full of energy and drive",
+    "wowSliderProfessionnelLabel": "Professional tone",
+    "wowSliderProfessionnelMin": "Very casual",
+    "wowSliderProfessionnelMax": "Very professional and refined",
+    "wowSliderHumourLabel": "Lightness / Humor",
+    "wowSliderHumourMin": "Very serious",
+    "wowSliderHumourMax": "Playful friend, fun and teasing",
+    "wowSliderAccentLabel": "Accent",
+    "wowSliderAccentMin": "Neutral / international accent",
+    "wowSliderAccentMax": "Strong primary-language accent",
+    "wowSliderValueOf": "{value} out of 10 — {label}",
+    "wowSliderMid": "intermediate",
+    "wowModeTitle": "Configuration mode",
+    "wowModeTitleWithPlan": "Configuration mode ({plan})",
+    "wowModeCustom": "Custom",
+    "wowModeCustomDesc": "Uses only the persona below.",
+    "wowViewInherited": "View inherited admin directives",
+    "wowTestButton": "Test",
+    "wowTestSending": "Sending…",
+    "wowTestSent": "Sent",
+    "wowTestAria": "Send a test message via {label}",
+    "wowChannelActive": "Active",
+    "wowChannelInactive": "Disabled",
+    "wowToggleEnable": "Enable",
+    "wowToggleDisable": "Disable",
+    "wowToggleAria": "{action} {label}"
   },
   "DashboardCalendar": {
     "header": "Calendar",
@@ -628,7 +938,7 @@
       "recoWhatsappTitle": "{n} · WhatsApp owner recap",
       "recoWhatsappBody": "Set your owner WhatsApp number in the Settings tab to receive an instant recap after every call.",
       "recoPersonaTitle": "{n} · Customize the persona",
-      "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. Default persona is \"Johana\" — rename it and adapt it to your activity."
+      "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. Default persona is \"Tamara\" — rename it and adapt it to your activity."
     }
   }
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
-import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
   getConfigBlocksDirectiveByPlan,
@@ -59,7 +59,7 @@ export default async function DashboardPage(props: {
 
   if (!config) {
     return (
-      <main className="mx-auto w-full max-w-5xl px-6 py-12">
+      <main className="mx-auto w-full max-w-6xl px-6 py-12">
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6 text-sm text-[var(--color-muted-foreground)]">
           {t("noConfigPre")}{" "}
           <code className="rounded bg-[var(--color-muted)] px-1.5 py-0.5 font-mono text-xs">
@@ -73,6 +73,69 @@ export default async function DashboardPage(props: {
 
   // Locale-aware date format. Map nos locales i18n vers BCP47.
   const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
+  const lastUpdated = new Date(config.updatedAt).toLocaleString(dateLocale, {
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+
+  // Stats hero — agrégat depuis la table `calls`. Pas de durée stockée
+  // côté DB, on estime via `transcript.length × 6s/bulle`. Pas de outcome
+  // structuré : "RDV pris" via heuristique keyword dans `summary`. Conversion
+  // = pourcentage d'appels avec summary non-vide (proxy "appel utile").
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfMonth = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  );
+  const stats = await (async () => {
+    const userIdRef = session.user!.id!;
+    const [todayRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(calls)
+      .where(
+        and(eq(calls.userId, userIdRef), gte(calls.createdAt, startOfToday)),
+      );
+    const [monthRow] = await db
+      .select({
+        // Total estimé en secondes pour les calls du mois (×6s par bulle).
+        totalSeconds: sql<number>`coalesce(sum(jsonb_array_length(transcript)) * 6, 0)::int`,
+      })
+      .from(calls)
+      .where(
+        and(eq(calls.userId, userIdRef), gte(calls.createdAt, startOfMonth)),
+      );
+    const [totalRow] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+        withSummary: sql<number>`count(*) filter (where length(summary) > 0)::int`,
+        rdv: sql<number>`count(*) filter (where summary ~* 'rdv|rendez-vous|appointment|תור')::int`,
+        avgBubbles: sql<number>`coalesce(avg(jsonb_array_length(transcript)), 0)::float`,
+      })
+      .from(calls)
+      .where(eq(calls.userId, userIdRef));
+    const total = totalRow?.count ?? 0;
+    const withSummary = totalRow?.withSummary ?? 0;
+    const conversion = total > 0 ? Math.round((withSummary / total) * 100) : 0;
+    const avgSeconds = Math.round((totalRow?.avgBubbles ?? 0) * 6);
+    const avgMin = Math.floor(avgSeconds / 60);
+    const avgSec = avgSeconds % 60;
+    const avgDuration =
+      avgSeconds === 0
+        ? "—"
+        : `${avgMin}m${avgSec.toString().padStart(2, "0")}`;
+    // Minutes totales appelées sur le numéro depuis le 1er du mois.
+    const monthSeconds = monthRow?.totalSeconds ?? 0;
+    const monthMinutes = Math.round(monthSeconds / 60);
+    return {
+      callsToday: todayRow?.count ?? 0,
+      conversion,
+      avgDuration,
+      rdv: totalRow?.rdv ?? 0,
+      minutesThisMonth: monthMinutes,
+    };
+  })();
 
   // Construit la preview des blocs admin hérités (pour le popup de la
   // checkbox). On lit les directives system per-plan + admin block et
@@ -120,53 +183,29 @@ export default async function DashboardPage(props: {
     .join("\n\n");
 
   return (
-    <main>
-      {primaryPhone?.phoneNumber && (
-        <section className="mx-auto w-full max-w-5xl px-6 pt-8">
-          <p className="font-mono text-xl font-semibold tracking-tight text-pink-600 sm:text-2xl">
-            {primaryPhone.phoneNumber}
-          </p>
-        </section>
-      )}
-
-      <section className="mx-auto w-full max-w-5xl px-6 pt-10">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-          {t("header")}
-        </p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          {t("pageTitle")}
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-          {t("pageSubtitle")}
-        </p>
-        <p className="mt-3 text-xs text-[var(--color-muted-foreground)]">
-          {t("lastUpdated")}{" "}
-          {new Date(config.updatedAt).toLocaleString(dateLocale, {
-            dateStyle: "long",
-            timeStyle: "short",
-          })}
-        </p>
-      </section>
-
-      <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
-        <ConfigForm
-          initial={{
-            instructions: config.instructions,
-            greetingInstructions: config.greetingInstructions,
-            model: config.model,
-            voice: config.voice,
-            temperature: config.temperature,
-            speed: config.speed,
-            maxResponseTokens: config.maxResponseTokens,
-            ownerWhatsapp: config.ownerWhatsapp,
-            primaryLanguage: config.primaryLanguage ?? "fr",
-            inheritAdminGlobals: config.inheritAdminGlobals ?? true,
-          }}
-          isAdmin={isAdmin}
-          adminInheritablePreview={adminInheritablePreview}
-          planLabel={planLabel}
-        />
-      </section>
+    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
+      <ConfigForm
+        initial={{
+          instructions: config.instructions,
+          greetingInstructions: config.greetingInstructions,
+          model: config.model,
+          voice: config.voice,
+          temperature: config.temperature,
+          speed: config.speed,
+          maxResponseTokens: config.maxResponseTokens,
+          ownerWhatsapp: config.ownerWhatsapp,
+          primaryLanguage: config.primaryLanguage ?? "fr",
+          inheritAdminGlobals: config.inheritAdminGlobals ?? true,
+          personality: config.personality ?? {},
+          agentName: config.agentName ?? "",
+        }}
+        isAdmin={isAdmin}
+        adminInheritablePreview={adminInheritablePreview}
+        planLabel={planLabel}
+        primaryPhone={primaryPhone?.phoneNumber ?? null}
+        lastUpdatedLabel={lastUpdated}
+        stats={stats}
+      />
     </main>
   );
 }

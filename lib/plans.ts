@@ -17,7 +17,14 @@ export interface Plan {
   annualMonthly: number;
   model: string;
   popular?: boolean;
+  /** Minutes vocales incluses par mois. Utilisé pour le calcul d'overage. */
+  minutesIncluded: number;
   features: string[];
+  /**
+   * Features volontairement exclues du plan, affichées avec ✗ pour rendre
+   * lisible la différence vs les plans supérieurs (ex: basic n'a pas de CRM).
+   */
+  excludedFeatures: string[];
   /** "Best for: …" audience hint shown below the features list. */
   bestFor: string;
   /**
@@ -26,6 +33,12 @@ export interface Plan {
    */
   onboardingNotes: string[];
 }
+
+/**
+ * Tarif d'overage (minutes hors forfait) en shekel — source de vérité.
+ * Converti dans la devise affichée côté pricing card via le fx rate ILS.
+ */
+export const OVERAGE_RATE_ILS_PER_MIN = 0.6;
 
 export const PLANS: readonly Plan[] = [
   {
@@ -36,14 +49,18 @@ export const PLANS: readonly Plan[] = [
     annualTotal: 588,
     annualMonthly: 49,
     model: "gpt-realtime",
+    minutesIncluded: 300,
     features: [
-      "500 minutes incluses",
+      "300 minutes incluses",
       "Prise d'appels automatisée 24/7",
       "Messages vocaux transcrits et résumés par l'IA, envoyés sur WhatsApp ou email",
       "Message d'accueil personnalisé",
       "Filtrage intelligent des appels spam",
       "Rapports d'activité hebdomadaires",
-      "Intégration CRM & agenda",
+    ],
+    excludedFeatures: [
+      "Intégration CRM",
+      "Calendrier connecté (prise de RDV)",
     ],
     bestFor: "freelances, indépendants et petites entreprises",
     onboardingNotes: [
@@ -60,15 +77,17 @@ export const PLANS: readonly Plan[] = [
     annualMonthly: 107,
     model: "gpt-realtime",
     popular: true,
+    minutesIncluded: 500,
     features: [
       "500 minutes incluses",
       "Tout ce qui est inclus dans Permanence téléphonique",
+      "Intégration CRM & calendrier connecté",
       "Qualification des appelants et prise de rendez-vous automatique",
       "Réponses aux questions fréquentes",
       "Transfert d'appel intelligent vers toi ou ton équipe",
       "Voix naturelle et professionnelle",
-      "Intégration CRM & agenda",
     ],
+    excludedFeatures: [],
     bestFor: "consultants, agences, cliniques et services B2B",
     onboardingNotes: [
       "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
@@ -83,8 +102,9 @@ export const PLANS: readonly Plan[] = [
     annualTotal: 2988,
     annualMonthly: 249,
     model: "gpt-realtime",
+    minutesIncluded: 1500,
     features: [
-      "500 minutes incluses",
+      "1500 minutes incluses",
       "Tout ce qui est inclus dans Réceptionniste",
       "Gestion de plusieurs appels simultanés",
       "Tableau de bord analytics en temps réel",
@@ -92,6 +112,7 @@ export const PLANS: readonly Plan[] = [
       "Intégrations CRM et outils approfondies",
       "Support prioritaire",
     ],
+    excludedFeatures: [],
     bestFor: "entreprises en croissance et équipes qui montent en charge sur leur support téléphonique",
     onboardingNotes: [
       "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",

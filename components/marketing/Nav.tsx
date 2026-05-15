@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
@@ -21,8 +21,10 @@ export function Nav() {
   const t = useTranslations("Nav");
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const { scrollY } = useScroll();
+  const { scrollY, scrollYProgress } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
+  // Scroll-progress bar width — 0% top → 100% bottom of page.
+  const progressScaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
 
   const drawerRef = useRef<HTMLElement | null>(null);
   const burgerRef = useRef<HTMLButtonElement | null>(null);
@@ -62,18 +64,24 @@ export function Nav() {
           : "border-b border-transparent bg-transparent"
       }`}
     >
+      {/* Scroll progress bar — gradient cyan → magenta → cyan en bas de la nav */}
+      <motion.div
+        aria-hidden
+        style={{ scaleX: progressScaleX, transformOrigin: "0% 50%" }}
+        className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#22d3ee] via-[#ec4899] to-[#22d3ee]"
+      />
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
           <Logo />
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — texte noir, hover magenta */}
         <nav className="hidden items-center gap-8 text-sm md:flex">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
+              className="font-medium text-[#18181b] transition-colors hover:text-[#be185d]"
             >
               {t(`links.${l.labelKey}`)}
             </a>
@@ -84,15 +92,36 @@ export function Nav() {
           <LocaleSwitcher />
           <Link
             href="/login"
-            className="hidden rounded-full px-4 py-2 text-sm text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] sm:inline-flex"
+            className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#18181b] transition-colors hover:text-[#be185d] sm:inline-flex"
           >
             {t("login")}
           </Link>
           <Link
             href="/signup"
-            className="hidden items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-[0.97] md:inline-flex"
+            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] md:inline-flex"
+            style={{
+              boxShadow:
+                "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
+            }}
           >
-            {t("ctaSignup")}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover/cta:translate-x-full"
+            />
+            <span className="relative">{t("ctaSignup")}</span>
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              className="relative h-3.5 w-3.5 transition-transform group-hover/cta:translate-x-0.5"
+            >
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </Link>
 
           {/* Burger button — mobile only */}
@@ -168,7 +197,11 @@ export function Nav() {
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-3 text-base font-medium text-white shadow-md"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] px-4 py-3 text-base font-bold text-white"
+                  style={{
+                    boxShadow:
+                      "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
+                  }}
                 >
                   {t("ctaSignup")}
                 </Link>

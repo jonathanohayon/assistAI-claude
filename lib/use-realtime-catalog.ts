@@ -61,22 +61,29 @@ function fallbackCatalog(): Catalog {
 }
 
 export function useRealtimeCatalog(): Catalog {
-  const [catalog, setCatalog] = useState<Catalog>(() => {
-    if (typeof window === "undefined") return fallbackCatalog();
+  // SSR-safe : on commence TOUJOURS par le fallback (server == client first
+  // render), puis on hydrate depuis sessionStorage / réseau dans un useEffect.
+  // Lire sessionStorage dans l'initializer de useState provoquait un mismatch
+  // d'hydratation quand le cache contenait des voices différentes du fallback.
+  const [catalog, setCatalog] = useState<Catalog>(fallbackCatalog);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // 1. Tente d'hydrater depuis sessionStorage (instantané, sans flash réseau).
     try {
       const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached) as Catalog;
-        if (parsed?.models?.length > 0) return parsed;
+        if (parsed?.models?.length > 0 && !cancelled) {
+          setCatalog(parsed);
+        }
       }
     } catch {
       /* ignore broken cache */
     }
-    return fallbackCatalog();
-  });
 
-  useEffect(() => {
-    let cancelled = false;
+    // 2. Fetch frais en arrière-plan pour rafraîchir le cache.
     fetch("/api/realtime/catalog")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
