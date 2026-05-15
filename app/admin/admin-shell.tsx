@@ -23,7 +23,9 @@ import { PlanFeaturesForm } from "./plan-features-form";
 import { SystemDirectivesForm } from "./system-directives-form";
 
 type TileId =
-  | "persona-admin"
+  | "global-rules"
+  | "persona-template"
+  | "summary-prompt"
   | "directives"
   | "block-order"
   | "features"
@@ -74,15 +76,39 @@ export function AdminShell(props: AdminShellProps) {
 
   const tiles: ReadonlyArray<TileDef> = [
     {
-      id: "persona-admin",
-      label: "Persona admin",
-      tagline: "Règles communes, template d'onboarding, résumé WhatsApp.",
-      summary: "3 sous-sections per-plan",
+      id: "global-rules",
+      label: "Règles communes",
+      tagline: "Préfixe système collé devant chaque persona tenant.",
+      summary: "Per-plan, live · prochain appel",
       accent: "from-[#be185d] to-[#ec4899]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4Z" />
+        </svg>
+      ),
+    },
+    {
+      id: "persona-template",
+      label: "Persona template",
+      tagline: "Squelette de persona copié à l'inscription de chaque tenant.",
+      summary: "Per-plan, seed nouveaux comptes",
+      accent: "from-[#ec4899] to-[#f472b6]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <circle cx="12" cy="8" r="4" />
           <path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" />
+        </svg>
+      ),
+    },
+    {
+      id: "summary-prompt",
+      label: "Résumé WhatsApp",
+      tagline: "System prompt OpenAI qui génère le récap post-appel.",
+      summary: "Per-plan, applied at runtime",
+      accent: "from-[#f472b6] to-[#fb7185]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
       ),
     },
@@ -228,11 +254,20 @@ export function AdminShell(props: AdminShellProps) {
           </header>
 
           <div className="px-6 py-6 sm:px-8 sm:py-7">
-            {active === "persona-admin" && (
+            {(active === "global-rules" ||
+              active === "persona-template" ||
+              active === "summary-prompt") && (
               <GlobalInstructionsForm
                 initialGlobalByPlan={props.globalInstructionsByPlan}
                 initialTemplateByPlan={props.onboardingTemplateByPlan}
                 initialSummaryPromptByPlan={props.summaryPromptByPlan}
+                section={
+                  active === "global-rules"
+                    ? "global"
+                    : active === "persona-template"
+                      ? "template"
+                      : "summary"
+                }
               />
             )}
             {active === "directives" && (

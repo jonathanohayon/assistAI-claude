@@ -40,15 +40,26 @@ Règles :
 
 Laisse vide pour utiliser le prompt par défaut.`;
 
+export type GlobalInstructionsSection = "global" | "template" | "summary";
+
 export function GlobalInstructionsForm({
   initialGlobalByPlan,
   initialTemplateByPlan,
   initialSummaryPromptByPlan,
+  /** Si fourni, n'affiche QUE cette sous-section (les 2 autres sont
+   *  masquées via display:none mais conservent leur state pour pouvoir
+   *  être sauvegardées sans avoir à les rouvrir). Utilisé par AdminShell
+   *  qui split les 3 sous-sections en 3 tiles séparées. */
+  section,
 }: {
   initialGlobalByPlan: Record<PlanKey, string>;
   initialTemplateByPlan: Record<PlanKey, string>;
   initialSummaryPromptByPlan: Record<PlanKey, string>;
+  section?: GlobalInstructionsSection;
 }) {
+  const showGlobal = !section || section === "global";
+  const showTemplate = !section || section === "template";
+  const showSummary = !section || section === "summary";
   const [globalByPlan, setGlobalByPlan] =
     useState<Record<PlanKey, string>>(initialGlobalByPlan);
   const [templateByPlan, setTemplateByPlan] =
@@ -91,7 +102,10 @@ export function GlobalInstructionsForm({
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Global system rules — applied at runtime to every tenant, per plan */}
-      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
+      <div
+        className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8"
+        hidden={!showGlobal}
+      >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
@@ -157,7 +171,10 @@ export function GlobalInstructionsForm({
       </div>
 
       {/* Onboarding template — seed for new tenants, per plan */}
-      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
+      <div
+        className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8"
+        hidden={!showTemplate}
+      >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
@@ -226,7 +243,10 @@ export function GlobalInstructionsForm({
       {/* WhatsApp summary system prompt — per plan, applied at runtime when
           generating the post-call recap that becomes {{1}} in the Twilio
           template. Vide = fallback DEFAULT_SUMMARY_PROMPT côté serveur. */}
-      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8">
+      <div
+        className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm sm:p-8"
+        hidden={!showSummary}
+      >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
