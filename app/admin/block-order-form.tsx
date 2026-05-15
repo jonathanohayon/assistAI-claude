@@ -42,6 +42,55 @@ export function BlockOrderForm({
     setOrderByPlan((prev) => ({ ...prev, [activePlan]: next }));
   };
 
+  // ── Drag and drop natif HTML5 ────────────────────────────────────────
+  // Pas de lib externe pour rester light. Le pattern :
+  //   - draggable={true} sur chaque <li>
+  //   - onDragStart capture l'index source
+  //   - onDragOver preventDefault pour autoriser le drop
+  //   - onDragEnter → setDragOverIndex pour afficher l'indicateur ligne
+  //   - onDrop → splice array et réécrit l'état
+  //   - onDragEnd → reset
+  // L'item en cours de drag passe en opacity-40 ; un trait magenta indique
+  // l'insertion juste au-dessus de l'item survolé.
+  const [dragSrcIndex, setDragSrcIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const onDragStart = (i: number) => (e: React.DragEvent<HTMLLIElement>) => {
+    setDragSrcIndex(i);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i));
+  };
+  const onDragEnter = (i: number) => () => {
+    if (dragSrcIndex == null || dragSrcIndex === i) {
+      setDragOverIndex(null);
+      return;
+    }
+    setDragOverIndex(i);
+  };
+  const onDragOver = (e: React.DragEvent<HTMLLIElement>) => {
+    // preventDefault est OBLIGATOIRE pour que onDrop déclenche
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const onDrop = (target: number) => (e: React.DragEvent<HTMLLIElement>) => {
+    e.preventDefault();
+    if (dragSrcIndex == null || dragSrcIndex === target) {
+      setDragSrcIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const next = [...order];
+    const [moved] = next.splice(dragSrcIndex, 1);
+    if (moved) next.splice(target, 0, moved);
+    setOrderByPlan((prev) => ({ ...prev, [activePlan]: next }));
+    setDragSrcIndex(null);
+    setDragOverIndex(null);
+  };
+  const onDragEnd = () => {
+    setDragSrcIndex(null);
+    setDragOverIndex(null);
+  };
+
   const reset = () =>
     setOrderByPlan((prev) => ({ ...prev, [activePlan]: savedByPlan[activePlan] }));
 
@@ -90,8 +139,8 @@ export function BlockOrderForm({
       </div>
       <p className="mb-4 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
         Chaque plan a son propre ordre — un tenant en plan Premium peut voir
-        ses blocs assemblés différemment qu&apos;un Basique. Glisse-les avec
-        ↑↓ pour changer la priorité.
+        ses blocs assemblés différemment qu&apos;un Basique. <strong>Drag &amp;
+        drop</strong> les lignes pour réordonner (ou utilise ↑↓ pour le clavier).
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -127,42 +176,82 @@ export function BlockOrderForm({
       </div>
 
       <ol className="space-y-2">
-        {order.map((id, i) => (
-          <li
-            key={id}
-            className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 shadow-xs"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)] font-mono text-xs font-semibold text-[var(--color-foreground)]">
-              {i + 1}
-            </span>
-            <span className="flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
-              {BLOCK_LABELS[id]}
-            </span>
-            <code className="hidden text-[10px] text-[var(--color-muted-foreground)] sm:inline">
-              {id}
-            </code>
-            <div className="flex shrink-0 gap-1">
-              <button
-                type="button"
-                onClick={() => move(i, -1)}
-                disabled={i === 0}
-                aria-label="Monter"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-40"
+        {order.map((id, i) => {
+          const isDragging = dragSrcIndex === i;
+          const isDropTarget = dragOverIndex === i;
+          return (
+            <li
+              key={id}
+              draggable
+              onDragStart={onDragStart(i)}
+              onDragEnter={onDragEnter(i)}
+              onDragOver={onDragOver}
+              onDrop={onDrop(i)}
+              onDragEnd={onDragEnd}
+              className={`relative flex select-none items-center gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-xs transition-all ${
+                isDragging
+                  ? "border-[#ec4899] opacity-50 ring-2 ring-[#ec4899]/30"
+                  : isDropTarget
+                    ? "border-[#ec4899] shadow-[0_0_0_3px_rgba(236,72,153,0.18)]"
+                    : "border-[var(--color-border)] hover:border-[#ec4899]/40 hover:shadow-sm"
+              }`}
+            >
+              {/* Drop indicator : trait magenta au-dessus de l'item ciblé */}
+              {isDropTarget && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee]"
+                />
+              )}
+
+              {/* Drag handle — curseur grab/grabbing pour signaler l'interaction */}
+              <span
+                aria-hidden
+                className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center text-[#94a3b8] active:cursor-grabbing"
+                title="Maintiens et glisse pour réordonner"
               >
-                ↑
-              </button>
-              <button
-                type="button"
-                onClick={() => move(i, 1)}
-                disabled={i === order.length - 1}
-                aria-label="Descendre"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ↓
-              </button>
-            </div>
-          </li>
-        ))}
+                <svg viewBox="0 0 10 16" fill="currentColor" className="h-4 w-3">
+                  <circle cx="2" cy="3" r="1.3" />
+                  <circle cx="8" cy="3" r="1.3" />
+                  <circle cx="2" cy="8" r="1.3" />
+                  <circle cx="8" cy="8" r="1.3" />
+                  <circle cx="2" cy="13" r="1.3" />
+                  <circle cx="8" cy="13" r="1.3" />
+                </svg>
+              </span>
+
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)] font-mono text-xs font-semibold text-[var(--color-foreground)]">
+                {i + 1}
+              </span>
+              <span className="flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
+                {BLOCK_LABELS[id]}
+              </span>
+              <code className="hidden text-[10px] text-[var(--color-muted-foreground)] sm:inline">
+                {id}
+              </code>
+              <div className="flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  onClick={() => move(i, -1)}
+                  disabled={i === 0}
+                  aria-label="Monter"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(i, 1)}
+                  disabled={i === order.length - 1}
+                  aria-label="Descendre"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↓
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ol>
 
       <div className="mt-4 flex items-center justify-between gap-4">
