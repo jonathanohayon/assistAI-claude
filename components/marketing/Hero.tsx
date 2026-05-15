@@ -4,7 +4,9 @@ import {
   motion,
   useMotionValue,
   useReducedMotion,
+  useScroll,
   useSpring,
+  useTransform,
 } from "motion/react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -63,6 +65,19 @@ export function Hero() {
           animate: { opacity: 1, y: 0 },
           transition: { delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
         };
+
+  // ── Scroll-driven underline pour le mot "humainement" ─────────────
+  // useScroll global avec offset relative au scrollY — l'underline scaleX
+  // passe de 0 (top of page) à 1 (au moment où la première section
+  // dessous est en vue). Donne un effet "le mot s'ancre quand on scroll".
+  const emphasisRef = useRef<HTMLSpanElement | null>(null);
+  const { scrollY } = useScroll();
+  const underlineProgress = useTransform(scrollY, [0, 400], [0, 1]);
+  const underlineScaleX = useSpring(underlineProgress, {
+    stiffness: 120,
+    damping: 24,
+    restDelta: 0.001,
+  });
 
   // ── Magnetic CTA ─────────────────────────────────────────────────
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
@@ -203,13 +218,29 @@ export function Hero() {
                   >
                     {trimmed === emphasis ? (
                       <span
-                        className="bg-gradient-to-r from-[#ff006e] via-[#ff4d8d] to-[#00e5ff] bg-clip-text text-transparent"
+                        ref={emphasisRef}
+                        className="relative inline-block text-[#ff4d8d]"
                         style={{
-                          filter:
-                            "drop-shadow(0 2px 18px rgba(255,0,110,0.55)) drop-shadow(0 0 8px rgba(0,229,255,0.35))",
+                          textShadow:
+                            "0 2px 18px rgba(255,77,141,0.45), 0 1px 4px rgba(0,0,0,0.35)",
                         }}
                       >
                         {trimmed}
+                        {/* Underline scroll-driven : scaleX 0 → 1 quand l'user
+                         *  commence à scroller en bas du hero. Brush stroke
+                         *  brand-gradient ancré à gauche. */}
+                        <motion.span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-x-0 -bottom-1 h-[6px] rounded-full"
+                          style={{
+                            scaleX: reduce ? 1 : underlineScaleX,
+                            transformOrigin: "left center",
+                            background:
+                              "linear-gradient(90deg, #ec4899 0%, #fb7185 50%, #22d3ee 100%)",
+                            boxShadow:
+                              "0 4px 16px -2px rgba(236,72,153,0.5)",
+                          }}
+                        />
                       </span>
                     ) : (
                       trimmed

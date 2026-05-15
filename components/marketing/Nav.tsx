@@ -75,13 +75,24 @@ export function Nav() {
           <Logo />
         </Link>
 
-        {/* Desktop nav — bleu palette (deep teal), hover magenta */}
+        {/* Desktop nav — couleur ADAPTATIVE :
+         *  - top of page (over Hero video) : blanc avec text-shadow pour
+         *    être lisible sur la vidéo sombre.
+         *  - scrolled (background nav blanc) : deep teal palette.
+         *  Hover magenta dans les 2 cas. */}
         <nav className="hidden items-center gap-9 text-base md:flex">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="font-semibold text-[#0e7490] transition-colors hover:text-[#be185d]"
+              className={`font-semibold transition-colors hover:text-[#ec4899] ${
+                scrolled ? "text-[#0e7490]" : "text-white"
+              }`}
+              style={
+                scrolled
+                  ? undefined
+                  : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
+              }
             >
               {t(`links.${l.labelKey}`)}
             </a>
@@ -92,7 +103,14 @@ export function Nav() {
           <LocaleSwitcher />
           <Link
             href="/login"
-            className="hidden rounded-full px-4 py-2 text-base font-semibold text-[#0e7490] transition-colors hover:text-[#be185d] sm:inline-flex"
+            className={`hidden rounded-full px-4 py-2 text-base font-semibold transition-colors hover:text-[#ec4899] sm:inline-flex ${
+              scrolled ? "text-[#0e7490]" : "text-white"
+            }`}
+            style={
+              scrolled
+                ? undefined
+                : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
+            }
           >
             {t("login")}
           </Link>
