@@ -394,7 +394,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
             role="log"
             aria-live="polite"
             aria-label="Transcript"
-            className="flex max-h-80 min-h-[200px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur"
+            className="flex max-h-[480px] min-h-[360px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur"
           >
             {error && (
               <p
