@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
@@ -120,6 +120,88 @@ export function TenantEditShell(props: TenantEditShellProps) {
     },
   ] as const;
 
+  // ── Ordre custom des tiles (drag-and-drop persistant en localStorage) ──
+  const TILE_ORDER_KEY = "tamara.tenant-edit.tileOrder.v1";
+  const defaultOrder = tiles.map((t) => t.id);
+  const [tileOrder, setTileOrder] = useState<TileId[]>(defaultOrder);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TILE_ORDER_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as unknown;
+      if (!Array.isArray(saved)) return;
+      const known = new Set(defaultOrder);
+      const out: TileId[] = [];
+      const seen = new Set<TileId>();
+      for (const x of saved) {
+        if (typeof x === "string" && known.has(x as TileId) && !seen.has(x as TileId)) {
+          out.push(x as TileId);
+          seen.add(x as TileId);
+        }
+      }
+      for (const id of defaultOrder) if (!seen.has(id)) out.push(id);
+      setTileOrder(out);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const persistOrder = useCallback((next: TileId[]) => {
+    setTileOrder(next);
+    try {
+      localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // DnD handlers — pattern identique à AdminShell, inliné ici.
+  const [dragSrc, setDragSrc] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const dndDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragSrc(i);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i));
+  };
+  const dndDragEnter = (i: number) => () => {
+    if (dragSrc == null || dragSrc === i) {
+      setDragOver(null);
+      return;
+    }
+    setDragOver(i);
+  };
+  const dndDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const dndDrop = (target: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragSrc == null || dragSrc === target) {
+      setDragSrc(null);
+      setDragOver(null);
+      return;
+    }
+    const next = [...tileOrder];
+    const [moved] = next.splice(dragSrc, 1);
+    if (moved) next.splice(target, 0, moved);
+    persistOrder(next);
+    setDragSrc(null);
+    setDragOver(null);
+  };
+  const dndDragEnd = () => {
+    setDragSrc(null);
+    setDragOver(null);
+  };
+
+  // Map id → TileDef pour render dans l'ordre custom user.
+  const tileById = Object.fromEntries(tiles.map((t) => [t.id, t])) as Record<
+    TileId,
+    TileDef
+  >;
+  const orderedTiles = tileOrder
+    .map((id) => tileById[id])
+    .filter((t): t is TileDef => Boolean(t));
+
   const activeTile = active ? tiles.find((t) => t.id === active) : null;
 
   // Section à passer au form pour conditionner l'affichage des Cards.
@@ -152,9 +234,9 @@ export function TenantEditShell(props: TenantEditShellProps) {
         </p>
       </div>
 
-      {/* Tile grid */}
+      {/* Tile grid — drag-and-drop pour réordonner. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {tiles.map((tile, i) => (
+        {orderedTiles.map((tile, i) => (
           <Tile
             key={tile.id}
             tile={tile}
@@ -163,10 +245,18 @@ export function TenantEditShell(props: TenantEditShellProps) {
               setActive((curr) => (curr === tile.id ? null : tile.id))
             }
             delay={i * 60}
+            draggable
+            isDragging={dragSrc === i}
+            isDropTarget={dragOver === i}
+            onDragStart={dndDragStart(i)}
+            onDragEnter={dndDragEnter(i)}
+            onDragOver={dndDragOver}
+            onDrop={dndDrop(i)}
+            onDragEnd={dndDragEnd}
           />
         ))}
-        <AddTile delay={tiles.length * 60} />
-        <AddTile delay={(tiles.length + 1) * 60} />
+        <AddTile delay={orderedTiles.length * 60} />
+        <AddTile delay={(orderedTiles.length + 1) * 60} />
       </div>
 
       {/* Expanded panel for the active tile */}
@@ -231,24 +321,72 @@ function Tile({
   active,
   onClick,
   delay = 0,
+  draggable = false,
+  isDragging = false,
+  isDropTarget = false,
+  onDragStart,
+  onDragEnter,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   tile: TileDef;
   active: boolean;
   onClick: () => void;
   delay?: number;
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnter?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={`tenant-tile-anim group relative flex aspect-square flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
-        active
-          ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
-          : "border-white/50 bg-white/75 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
+        isDragging
+          ? "border-[#ec4899] bg-white opacity-50 ring-2 ring-[#ec4899]/40"
+          : isDropTarget
+            ? "border-[#ec4899] shadow-[0_0_0_3px_rgba(236,72,153,0.2)]"
+            : active
+              ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
+              : "border-white/50 bg-white/75 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
+      {isDropTarget && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee]"
+        />
+      )}
+      {draggable && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-2.5 top-2.5 text-[#94a3b8] opacity-0 transition-opacity group-hover:opacity-70"
+          title="Glisse pour réordonner"
+        >
+          <svg viewBox="0 0 10 16" fill="currentColor" className="h-3.5 w-2.5">
+            <circle cx="2" cy="3" r="1.3" />
+            <circle cx="8" cy="3" r="1.3" />
+            <circle cx="2" cy="8" r="1.3" />
+            <circle cx="8" cy="8" r="1.3" />
+            <circle cx="2" cy="13" r="1.3" />
+            <circle cx="8" cy="13" r="1.3" />
+          </svg>
+        </span>
+      )}
       {active && (
         <span
           aria-hidden

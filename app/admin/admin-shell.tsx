@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type {
   ConfigBlocksDirectiveByPlan,
@@ -70,6 +70,63 @@ export interface AdminShellProps {
   rows: AdminTableRow[];
   currentUserId: string;
 }
+
+/**
+ * Drag & drop helper — réutilisable pour réordonner une liste d'IDs via
+ * native HTML5 DnD. Renvoie les handlers à coller sur chaque item + un
+ * setter pour mettre à jour la liste après un drop réussi.
+ *
+ * Pourquoi pas une lib (dnd-kit, react-dnd) ? On a déjà le même pattern
+ * dans block-order-form.tsx et la complexité n'est pas justifiée pour
+ * un simple list reorder.
+ */
+function useDnDReorder<T extends string>(
+  order: ReadonlyArray<T>,
+  setOrder: (next: T[]) => void,
+) {
+  const [dragSrc, setDragSrc] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+
+  const onDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragSrc(i);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i));
+  };
+  const onDragEnter = (i: number) => () => {
+    if (dragSrc == null || dragSrc === i) {
+      setDragOver(null);
+      return;
+    }
+    setDragOver(i);
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const onDrop = (target: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragSrc == null || dragSrc === target) {
+      setDragSrc(null);
+      setDragOver(null);
+      return;
+    }
+    const next = [...order];
+    const [moved] = next.splice(dragSrc, 1);
+    if (moved) next.splice(target, 0, moved);
+    setOrder(next);
+    setDragSrc(null);
+    setDragOver(null);
+  };
+  const onDragEnd = () => {
+    setDragSrc(null);
+    setDragOver(null);
+  };
+
+  return { dragSrc, dragOver, onDragStart, onDragEnter, onDragOver, onDrop, onDragEnd };
+}
+
+/** Persiste un ordre custom dans localStorage. Default → ordre canonique. */
+const ADMIN_TILE_ORDER_KEY = "tamara.admin.tileOrder.v1";
 
 export function AdminShell(props: AdminShellProps) {
   const [active, setActive] = useState<TileId | null>(null);
@@ -178,6 +235,52 @@ export function AdminShell(props: AdminShellProps) {
     },
   ] as const;
 
+  // Ordre custom des tiles (drag & drop persistant en localStorage).
+  // Défaut = ordre déclaré ci-dessus. Si le user a déjà rearrangé, on
+  // applique son ordre + on append en queue les tiles ajoutées depuis.
+  const defaultOrder = tiles.map((t) => t.id);
+  const [tileOrder, setTileOrder] = useState<TileId[]>(defaultOrder);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_TILE_ORDER_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as unknown;
+      if (!Array.isArray(saved)) return;
+      const known = new Set(defaultOrder);
+      const out: TileId[] = [];
+      const seen = new Set<TileId>();
+      for (const x of saved) {
+        if (typeof x === "string" && known.has(x as TileId) && !seen.has(x as TileId)) {
+          out.push(x as TileId);
+          seen.add(x as TileId);
+        }
+      }
+      // Append toute tile ajoutée depuis le dernier save (forward-compat)
+      for (const id of defaultOrder) if (!seen.has(id)) out.push(id);
+      setTileOrder(out);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const persistOrder = useCallback((next: TileId[]) => {
+    setTileOrder(next);
+    try {
+      localStorage.setItem(ADMIN_TILE_ORDER_KEY, JSON.stringify(next));
+    } catch {
+      // ignore (mode privé, storage plein, etc.)
+    }
+  }, []);
+
+  const dnd = useDnDReorder(tileOrder, persistOrder);
+
+  // Map id → tile pour rendre dans l'ordre custom du user.
+  const tileById = Object.fromEntries(tiles.map((t) => [t.id, t])) as Record<
+    TileId,
+    TileDef
+  >;
+  const orderedTiles = tileOrder.map((id) => tileById[id]).filter(Boolean);
+
   return (
     <>
       <style>{`
@@ -201,9 +304,9 @@ export function AdminShell(props: AdminShellProps) {
         </p>
       </div>
 
-      {/* Tile grid */}
+      {/* Tile grid — drag-and-drop pour réordonner. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {tiles.map((tile, i) => (
+        {orderedTiles.map((tile, i) => (
           <Tile
             key={tile.id}
             tile={tile}
@@ -212,11 +315,19 @@ export function AdminShell(props: AdminShellProps) {
               setActive((curr) => (curr === tile.id ? null : tile.id))
             }
             delay={i * 60}
+            draggable
+            isDragging={dnd.dragSrc === i}
+            isDropTarget={dnd.dragOver === i}
+            onDragStart={dnd.onDragStart(i)}
+            onDragEnter={dnd.onDragEnter(i)}
+            onDragOver={dnd.onDragOver}
+            onDrop={dnd.onDrop(i)}
+            onDragEnd={dnd.onDragEnd}
           />
         ))}
         {/* 2 placeholders : "rajoute des boxes ensuite" */}
-        <AddTile delay={tiles.length * 60} />
-        <AddTile delay={(tiles.length + 1) * 60} />
+        <AddTile delay={orderedTiles.length * 60} />
+        <AddTile delay={(orderedTiles.length + 1) * 60} />
       </div>
 
       {/* Expanded panel for the active tile */}
@@ -303,24 +414,75 @@ function Tile({
   active,
   onClick,
   delay = 0,
+  draggable = false,
+  isDragging = false,
+  isDropTarget = false,
+  onDragStart,
+  onDragEnter,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   tile: TileDef;
   active: boolean;
   onClick: () => void;
   delay?: number;
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnter?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={`admin-tile-anim group relative flex aspect-square flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
-        active
-          ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
-          : "border-white/50 bg-white/75 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
+        isDragging
+          ? "border-[#ec4899] bg-white opacity-50 ring-2 ring-[#ec4899]/40"
+          : isDropTarget
+            ? "border-[#ec4899] shadow-[0_0_0_3px_rgba(236,72,153,0.2)]"
+            : active
+              ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
+              : "border-white/50 bg-white/75 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
+      {/* Drop indicator gradient au-dessus de la tile ciblée */}
+      {isDropTarget && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee]"
+        />
+      )}
+      {/* Drag handle (visible au hover, top-right) — 6 dots SVG. Indique
+       *  que la tile est réorganisable, sans encombrer l'UI au repos. */}
+      {draggable && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-2.5 top-2.5 text-[#94a3b8] opacity-0 transition-opacity group-hover:opacity-70"
+          title="Glisse pour réordonner"
+        >
+          <svg viewBox="0 0 10 16" fill="currentColor" className="h-3.5 w-2.5">
+            <circle cx="2" cy="3" r="1.3" />
+            <circle cx="8" cy="3" r="1.3" />
+            <circle cx="2" cy="8" r="1.3" />
+            <circle cx="8" cy="8" r="1.3" />
+            <circle cx="2" cy="13" r="1.3" />
+            <circle cx="8" cy="13" r="1.3" />
+          </svg>
+        </span>
+      )}
       {active && (
         <span
           aria-hidden
