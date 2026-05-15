@@ -427,3 +427,74 @@ export async function sendWelcomeEmail(
     return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────
+//   Notification test email — déclenché depuis /dashboard quand le user
+//   clique "Tester" sur le canal Email. Permet de valider la délivrance
+//   et le rendu HTML/branding avant que les vrais recap d'appels partent.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendNotificationTestEmail(
+  to: string,
+  opts: { recipientName?: string | null; locale?: string | null } = {},
+): Promise<SendResult> {
+  const locale = normalizeLocale(opts.locale);
+  const t = await getTranslations({ locale, namespace: "Email.notificationTest" });
+  const client = getResend();
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const name = opts.recipientName?.trim() || t("defaultGreeting");
+  const subject = t("subject");
+
+  if (!client) {
+    console.warn(
+      `\n=================== NOTIF TEST EMAIL FALLBACK (no RESEND_API_KEY) ===================` +
+        `\nTo:      ${to}` +
+        `\nFrom:    ${from}` +
+        `\nSubject: ${subject}` +
+        `\nName:    ${name}` +
+        `\n==========================================================================\n`,
+    );
+    return { ok: true, fallback: "console_log" };
+  }
+
+  const text =
+    `${t("hello", { name })}\n\n` +
+    `${t("intro")}\n\n` +
+    `${t("confirm")}\n\n` +
+    t("signature");
+
+  const html = `
+    <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;">
+      <div style="background:linear-gradient(135deg,#be185d 0%,#ec4899 50%,#22d3ee 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.85);font-weight:600;">${t("eyebrow")}</p>
+        <h1 style="margin:0;font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Tamara</h1>
+      </div>
+      <div style="padding:32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">
+        <h2 style="font-size:20px;margin:0 0 12px;color:#0e7490;font-weight:700;">${t("heading")}</h2>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 20px;color:#1f2937;">
+          ${t("hello", { name })}
+        </p>
+        <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#475569;">
+          ${t("intro")}
+        </p>
+        <div style="background:linear-gradient(135deg,#ecfeff,#fdf2f8);border:1px solid #22d3ee33;border-radius:12px;padding:18px 20px;margin:24px 0;">
+          <p style="margin:0;font-size:14px;color:#0e7490;font-weight:600;">
+            ✓ ${t("confirm")}
+          </p>
+        </div>
+        <p style="font-size:12px;line-height:1.6;margin:0;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:20px;">
+          ${t("footer")}
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}

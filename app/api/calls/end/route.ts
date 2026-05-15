@@ -15,7 +15,7 @@ import {
   prependRow,
 } from "@/lib/sheets-helpers";
 import { summarizeCall } from "@/lib/summarize";
-import { resolveTenant } from "@/lib/tenant";
+import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
 import { checkTwilioMessageStatus, sendWhatsApp } from "@/lib/whatsapp";
 
 const APPELS_SHEET_TITLE = "Appels";
@@ -35,6 +35,11 @@ interface EndBody {
   transcript?: Array<{ role: "user" | "assistant"; text: string }>;
   /** Durée de l'appel en secondes (best-effort, peut être undefined). */
   durationSeconds?: number;
+  /** Phase 2 web LiveTest : userId du tenant qui a initié la session,
+   *  prioritaire sur toNumber pour la résolution du tenant. Sans ça,
+   *  les sessions web (pas de toNumber SIP) tombaient sur resolveDefaultTenant
+   *  → le call était attribué au premier tenant de la DB (cross-tenant leak). */
+  userId?: string;
 }
 
 /**
@@ -102,16 +107,23 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as EndBody;
   const fromNumber = (body.fromNumber ?? "").trim();
   const toNumber = (body.toNumber ?? "").trim();
+  const userId = (body.userId ?? "").trim();
   const transcript = Array.isArray(body.transcript) ? body.transcript : [];
 
-  const tenant = await resolveTenant(toNumber || null);
+  // userId prioritaire (chemin web LiveTest Phase 2) → exact match par PK.
+  // Sinon, toNumber (chemin SIP Twilio) → phone_numbers → tenant.
+  // Sinon, default tenant — uniquement pour la rétro-compat des très vieux
+  // appels où ni userId ni toNumber n'arrivent (devrait plus arriver).
+  const tenant = userId
+    ? await resolveTenantByUserId(userId)
+    : await resolveTenant(toNumber || null);
   if (!tenant) {
     await logEvent({
       source: "tenant",
       event: "tenant_not_found",
-      message: `Aucun tenant pour le numéro ${toNumber}`,
+      message: `Aucun tenant pour userId=${userId || "(none)"} toNumber=${toNumber || "(none)"}`,
       level: "error",
-      metadata: { toNumber },
+      metadata: { userId, toNumber },
     });
     return NextResponse.json({ error: "no tenant" }, { status: 500 });
   }

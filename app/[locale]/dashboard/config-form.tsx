@@ -1222,7 +1222,6 @@ function NotifsPanel({
       <NotifChannelCard
         label="Email"
         color="#0e7490"
-        comingSoon
         icon={
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
             <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -1235,6 +1234,7 @@ function NotifsPanel({
         onChangeValue={setEmailValue}
         placeholder="contact@..."
         inputType="email"
+        testEndpoint="/api/dashboard/notifications/email-test"
       />
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}

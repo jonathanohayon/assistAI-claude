@@ -889,6 +889,17 @@
       "textIntro": "Bonjour,",
       "textCodeBlock": "Voici votre code à 4 chiffres pour valider votre adresse email sur Tamara :"
     },
+    "notificationTest": {
+      "subject": "🔔 Test notification Tamara",
+      "eyebrow": "Notification test",
+      "heading": "Tes notifications email sont OK ✓",
+      "defaultGreeting": "à toi",
+      "hello": "Bonjour {name},",
+      "intro": "Ceci est un email de test envoyé depuis ton dashboard Tamara. Si tu lis ce message, ça veut dire que les notifications email sont correctement configurées sur ton compte.",
+      "confirm": "Tu recevras désormais un récap email après chaque appel.",
+      "signature": "— L'équipe Tamara",
+      "footer": "Tu peux changer l'adresse ou désactiver les notifications email à tout moment depuis ton dashboard. Cet email est purement transactionnel."
+    },
     "trialWarning": {
       "subjectMinutes": "⏰ Votre essai Tamara expire dans {minutes} minutes",
       "subjectHours": "⏰ Votre essai Tamara expire dans 2 heures",

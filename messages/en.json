@@ -879,6 +879,17 @@
     "fetchError": "fetch error"
   },
   "Email": {
+    "notificationTest": {
+      "subject": "🔔 Tamara — notification test",
+      "eyebrow": "Notification test",
+      "heading": "Your email notifications work ✓",
+      "defaultGreeting": "there",
+      "hello": "Hi {name},",
+      "intro": "This is a test email sent from your Tamara dashboard. If you're reading this, email notifications are correctly configured on your account.",
+      "confirm": "You'll now receive an email recap after every call.",
+      "signature": "— The Tamara team",
+      "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a purely transactional email."
+    },
     "verification": {
       "subject": "Your verification code: {code}",
       "heading": "Your Tamara code",
