@@ -26,11 +26,18 @@ const PRIMARY_LANGUAGES = [
   { value: "en", label: "🇺🇸 English" },
 ] as const;
 
+export type TenantConfigSection =
+  | "persona"
+  | "inherit"
+  | "whatsapp"
+  | "voice";
+
 export function AdminTenantConfigForm({
   userId,
   initial,
   adminInheritablePreview,
   planLabel,
+  section,
 }: {
   userId: string;
   initial: FormState;
@@ -41,6 +48,11 @@ export function AdminTenantConfigForm({
    *  ne le ré-envoie pas avec le save. */
   adminInheritablePreview: string;
   planLabel: string;
+  /** Si fourni, n'affiche que la Card correspondante (les autres sont
+   *  conservées dans le DOM via `hidden` pour préserver le state form
+   *  + permettre une save bar globale partagée). Si omis : toutes
+   *  les Cards visibles (compatibilité ascendante). */
+  section?: TenantConfigSection;
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -87,8 +99,15 @@ export function AdminTenantConfigForm({
     });
   };
 
+  const showAll = section === undefined;
+  const showPersona = showAll || section === "persona";
+  const showInherit = showAll || section === "inherit";
+  const showWhatsapp = showAll || section === "whatsapp";
+  const showVoice = showAll || section === "voice";
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
+      <div hidden={!showPersona}>
       <Card title="Persona" subtitle="Instructions système qui définissent l'identité, les workflows et les règles.">
         <Field
           label="Langue principale"
@@ -128,7 +147,9 @@ export function AdminTenantConfigForm({
           />
         </Field>
       </Card>
+      </div>
 
+      <div hidden={!showInherit}>
       <Card title="Héritage du prompt admin" subtitle="Décide si ce tenant utilise les directives globales définies par l'admin pour son plan.">
         <InheritToggle
           checked={form.inheritAdminGlobals}
@@ -137,7 +158,9 @@ export function AdminTenantConfigForm({
           preview={adminInheritablePreview}
         />
       </Card>
+      </div>
 
+      <div hidden={!showWhatsapp}>
       <Card title="Notifications WhatsApp" subtitle="Le proprio reçoit un récap après chaque appel.">
         <Field label="Numéro WhatsApp du proprio" hint="Format E.164, ex: +972585001007. Vide = désactivé.">
           <input
@@ -149,7 +172,9 @@ export function AdminTenantConfigForm({
           />
         </Field>
       </Card>
+      </div>
 
+      <div hidden={!showVoice}>
       <Card title="Voix & modèle" subtitle="Paramètres techniques du moteur vocal.">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Field label="Modèle">
@@ -208,6 +233,7 @@ export function AdminTenantConfigForm({
           </Field>
         </div>
       </Card>
+      </div>
 
       <div className="sticky bottom-4 z-30 mt-2">
         <div className="flex items-center justify-between gap-4 rounded-full border border-[var(--color-border)] bg-white/95 px-4 py-2 shadow-lg backdrop-blur">

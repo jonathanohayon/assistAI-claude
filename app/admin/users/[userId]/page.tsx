@@ -21,8 +21,7 @@ import {
 } from "@/lib/settings";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 
-import { PromptPreview } from "./prompt-preview";
-import { AdminTenantConfigForm } from "./tenant-config-form";
+import { TenantEditShell } from "./tenant-edit-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -217,27 +216,26 @@ export default async function AdminTenantPage({
 
       <section className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8 pb-20">
         {cfg ? (
-          <>
-            <PromptPreview blocks={promptBlocks} fullPrompt={fullPromptConcat} />
-            <AdminTenantConfigForm
-              userId={target.id}
-              initial={{
-                instructions: cfg.instructions,
-                greetingInstructions: cfg.greetingInstructions,
-                model: cfg.model,
-                voice: cfg.voice,
-                temperature: cfg.temperature,
-                speed: cfg.speed,
-                maxResponseTokens: cfg.maxResponseTokens,
-                ownerWhatsapp: cfg.ownerWhatsapp,
-                primaryLanguage: cfg.primaryLanguage ?? "fr",
-                inheritAdminGlobals: cfg.inheritAdminGlobals ?? true,
-              }}
-              initialVoices={voices}
-              adminInheritablePreview={adminInheritablePreview}
-              planLabel={planLabel}
-            />
-          </>
+          <TenantEditShell
+            userId={target.id}
+            initial={{
+              instructions: cfg.instructions,
+              greetingInstructions: cfg.greetingInstructions,
+              model: cfg.model,
+              voice: cfg.voice,
+              temperature: cfg.temperature,
+              speed: cfg.speed,
+              maxResponseTokens: cfg.maxResponseTokens,
+              ownerWhatsapp: cfg.ownerWhatsapp,
+              primaryLanguage: cfg.primaryLanguage ?? "fr",
+              inheritAdminGlobals: cfg.inheritAdminGlobals ?? true,
+            }}
+            initialVoices={voices}
+            adminInheritablePreview={adminInheritablePreview}
+            planLabel={planLabel}
+            promptBlocks={promptBlocks}
+            fullPromptConcat={fullPromptConcat}
+          />
         ) : (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
             Ce tenant n&apos;a pas encore de config agent.
