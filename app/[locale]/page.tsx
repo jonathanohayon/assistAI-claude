@@ -12,6 +12,7 @@ import { PerformanceShowcase } from "@/components/marketing/PerformanceShowcase"
 import { Pricing } from "@/components/marketing/Pricing";
 import { Security } from "@/components/marketing/Security";
 import { SocialProof } from "@/components/marketing/SocialProof";
+import { SupportFab } from "@/components/marketing/SupportFab";
 import { TryDemo } from "@/components/marketing/TryDemo";
 import { TwoMinutesToLive } from "@/components/marketing/TwoMinutesToLive";
 import { VoiceConfigShowcase } from "@/components/marketing/VoiceConfigShowcase";
@@ -40,6 +41,7 @@ export default async function Home({
       <FAQ />
       <CTA />
       <Footer />
+      <SupportFab />
     </main>
   );
 }

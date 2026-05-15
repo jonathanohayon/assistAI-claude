@@ -435,6 +435,10 @@
       }
     }
   },
+  "Support": {
+    "waLabel": "Contact support on WhatsApp",
+    "waGreeting": "Hi, I have a question about Tamara."
+  },
   "Footer": {
     "tagline": "Real-time voice concierge for medical practices, salons and barbershops. Native Hebrew, French and English.",
     "categories": {

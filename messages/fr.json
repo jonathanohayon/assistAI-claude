@@ -435,6 +435,10 @@
       }
     }
   },
+  "Support": {
+    "waLabel": "Contacter le support sur WhatsApp",
+    "waGreeting": "Bonjour, j'ai une question concernant Tamara."
+  },
   "Footer": {
     "tagline": "Conciergerie vocale temps réel pour cabinets médicaux, salons et coiffeurs. Hébreu, français et anglais natifs.",
     "categories": {
