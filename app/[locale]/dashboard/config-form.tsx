@@ -1201,6 +1201,7 @@ function NotifsPanel({
         placeholder="+972..."
         inputType="tel"
         hint={t("ownerWhatsappHint")}
+        testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
       <NotifChannelCard
         label="SMS"
@@ -1394,6 +1395,7 @@ function NotifChannelCard({
   inputType,
   hint,
   comingSoon = false,
+  testEndpoint,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -1406,15 +1408,55 @@ function NotifChannelCard({
   inputType: string;
   hint?: string;
   comingSoon?: boolean;
+  /** Si fourni, POST {to: value} sur cet endpoint quand l'utilisateur
+   *  clique sur Tester. Sans endpoint, le bouton reste désactivé (les
+   *  canaux "coming soon" SMS/Email tombent sur cette branche). */
+  testEndpoint?: string;
 }) {
   const t = useTranslations("DashboardConfig");
-  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [testStatus, setTestStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+  const [testError, setTestError] = useState<string | null>(null);
   const handleTest = async () => {
-    if (!on || testStatus !== "idle" || comingSoon) return;
+    if (
+      !on ||
+      testStatus !== "idle" ||
+      comingSoon ||
+      !testEndpoint ||
+      !value.trim()
+    )
+      return;
     setTestStatus("sending");
-    await new Promise((r) => setTimeout(r, 800));
-    setTestStatus("sent");
-    setTimeout(() => setTestStatus("idle"), 2200);
+    setTestError(null);
+    try {
+      const res = await fetch(testEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: value }),
+      });
+      const data = (await res
+        .json()
+        .catch(() => ({}))) as { ok?: boolean; error?: string; hint?: string };
+      if (!res.ok || !data.ok) {
+        setTestStatus("error");
+        setTestError(data.error ?? `HTTP ${res.status}`);
+        setTimeout(() => {
+          setTestStatus("idle");
+          setTestError(null);
+        }, 6000);
+        return;
+      }
+      setTestStatus("sent");
+      setTimeout(() => setTestStatus("idle"), 3500);
+    } catch (e) {
+      setTestStatus("error");
+      setTestError((e as Error).message);
+      setTimeout(() => {
+        setTestStatus("idle");
+        setTestError(null);
+      }, 6000);
+    }
   };
 
   return (
@@ -1497,12 +1539,20 @@ function NotifChannelCard({
         <button
           type="button"
           onClick={handleTest}
-          disabled={!on || testStatus !== "idle" || comingSoon}
+          disabled={
+            !on ||
+            testStatus !== "idle" ||
+            comingSoon ||
+            !testEndpoint ||
+            !value.trim()
+          }
           aria-label={t("wowTestAria", { label })}
           className={`group inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${
             testStatus === "sent"
               ? "border-[#22d3ee]/40 bg-[#ecfeff] text-[#0e7490]"
-              : "border-[#0e7490]/30 bg-white text-[#0e7490] hover:-translate-y-0.5 hover:border-[#0e7490] hover:bg-[#ecfeff] hover:shadow-sm"
+              : testStatus === "error"
+                ? "border-[#dc2626]/40 bg-[#fee2e2] text-[#991b1b]"
+                : "border-[#0e7490]/30 bg-white text-[#0e7490] hover:-translate-y-0.5 hover:border-[#0e7490] hover:bg-[#ecfeff] hover:shadow-sm"
           }`}
         >
           {testStatus === "sending" ? (
@@ -1520,6 +1570,14 @@ function NotifChannelCard({
               </svg>
               {t("wowTestSent")}
             </>
+          ) : testStatus === "error" ? (
+            <>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v5M12 16h.01" />
+              </svg>
+              Échec
+            </>
           ) : (
             <>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5">
@@ -1532,7 +1590,12 @@ function NotifChannelCard({
         </button>
       </div>
 
-      {hint && <p className="text-[11px] text-[#475569]">{hint}</p>}
+      {testError && (
+        <p className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5 text-[11px] leading-snug text-[#991b1b]">
+          {testError}
+        </p>
+      )}
+      {hint && !testError && <p className="text-[11px] text-[#475569]">{hint}</p>}
     </div>
   );
 }

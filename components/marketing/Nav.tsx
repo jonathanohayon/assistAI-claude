@@ -75,13 +75,13 @@ export function Nav() {
           <Logo />
         </Link>
 
-        {/* Desktop nav — texte noir, hover magenta, base size pour lisibilité */}
+        {/* Desktop nav — bleu palette (deep teal), hover magenta */}
         <nav className="hidden items-center gap-9 text-base md:flex">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="font-semibold text-[#18181b] transition-colors hover:text-[#be185d]"
+              className="font-semibold text-[#0e7490] transition-colors hover:text-[#be185d]"
             >
               {t(`links.${l.labelKey}`)}
             </a>
@@ -92,7 +92,7 @@ export function Nav() {
           <LocaleSwitcher />
           <Link
             href="/login"
-            className="hidden rounded-full px-4 py-2 text-base font-semibold text-[#18181b] transition-colors hover:text-[#be185d] sm:inline-flex"
+            className="hidden rounded-full px-4 py-2 text-base font-semibold text-[#0e7490] transition-colors hover:text-[#be185d] sm:inline-flex"
           >
             {t("login")}
           </Link>
