@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
-import { LiveTestPanel } from "@/components/LiveTestPanel";
+import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { PERSONALITY_KEYS } from "@/lib/personality";
 import {
   useRealtimeCatalog,
@@ -571,17 +571,11 @@ export function ConfigForm({
           className="card-hover anim-fade-up mb-8"
           style={{ animationDelay: "220ms" }}
         >
-          <LiveTestPanel
-            model={form.model}
-            voice={form.voice}
-            instructions={form.instructions}
-            greetingInstructions={form.greetingInstructions}
-            temperature={form.temperature}
-            speed={form.speed}
-            reactivity={getPersonalityValue("reactivite")}
-            primaryLanguage={form.primaryLanguage}
-            dirty={dirty}
-          />
+          {/* Phase 2 : LiveTestPanelLK route via LiveKit (worker QVF 2.1 L)
+           *  au lieu du peer connection direct vers OpenAI. La config est
+           *  désormais lue depuis la DB par le worker — d'où le warning
+           *  "save before testing" si le form est dirty. */}
+          <LiveTestPanelLK dirty={dirty} />
         </section>
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}

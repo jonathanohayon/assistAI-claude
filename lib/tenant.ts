@@ -35,6 +35,24 @@ export async function resolveTenantByPhone(
 }
 
 /**
+ * Resolve a tenant directly by user id — used par le chemin web LiveTest
+ * (Phase 2 LK routing) où on connaît l'auth.user.id mais on a pas de
+ * numéro de téléphone : la room metadata transporte `{ source: "web",
+ * userId }`, le worker fetch ici plutôt que via resolveTenantByPhone.
+ */
+export async function resolveTenantByUserId(
+  userId: string,
+): Promise<ResolvedTenant | null> {
+  const [row] = await db
+    .select({ user: users, config: agentConfigs })
+    .from(users)
+    .innerJoin(agentConfigs, eq(agentConfigs.userId, users.id))
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
  * Phase-1 fallback: pick the first user/config in the DB. Used by the live
  * test panel and any agent dispatch where the called number couldn't be
  * extracted from LiveKit metadata.

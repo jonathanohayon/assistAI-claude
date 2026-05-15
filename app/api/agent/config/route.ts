@@ -16,6 +16,7 @@ import {
 import {
   resolveDefaultTenant,
   resolveTenantByPhone,
+  resolveTenantByUserId,
 } from "@/lib/tenant";
 
 // Read-only endpoint consumed by the LiveKit agent worker at session start.
@@ -26,14 +27,29 @@ import {
 // description, response length, etc.) without each having to re-paste them.
 export async function GET(req: NextRequest) {
   const phone = req.nextUrl.searchParams.get("phone");
+  // Phase 2 (web LiveTest via LiveKit) : le worker passe `userId` extrait
+  // du `participant.metadata` JSON pour cibler directement le bon tenant
+  // sans chercher un phone_number row. Prioritaire sur `phone` si présent.
+  const userId = req.nextUrl.searchParams.get("userId");
   // Inline resolution so we can log WHICH path was taken — silent fallback
   // to default tenant has burned us before (calendar tools used the wrong
   // user's Google credentials → "Google not connected" symptom).
-  // resolveTenantByPhone + resolveDefaultTenant restent en cascade : le
-  // 2e n'est appelé que si le 1er rate.
-  let tenant = phone ? await resolveTenantByPhone(phone) : null;
-  const resolution: "phone_match" | "default_fallback" | "no_phone" =
-    tenant ? "phone_match" : phone ? "default_fallback" : "no_phone";
+  let tenant = userId
+    ? await resolveTenantByUserId(userId)
+    : phone
+      ? await resolveTenantByPhone(phone)
+      : null;
+  const resolution:
+    | "user_match"
+    | "phone_match"
+    | "default_fallback"
+    | "no_id" = tenant
+    ? userId
+      ? "user_match"
+      : "phone_match"
+    : phone || userId
+      ? "default_fallback"
+      : "no_id";
   if (!tenant) tenant = await resolveDefaultTenant();
   if (!tenant) {
     return NextResponse.json({ error: "No tenant" }, { status: 404 });
@@ -58,12 +74,16 @@ export async function GET(req: NextRequest) {
     logEvent({
       source: "tenant",
       event: "agent_config_loaded",
-      message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
-      level: resolution === "phone_match" ? "info" : "warn",
+      message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, userId=${userId ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
+      level:
+        resolution === "phone_match" || resolution === "user_match"
+          ? "info"
+          : "warn",
       userId: tenant.user.id,
       metadata: {
         resolution,
         calledPhone: phone,
+        requestUserId: userId,
         hasGoogle: Boolean(tenant.user.googleRefreshToken),
         hasCalendarId: Boolean(tenant.user.googleCalendarId),
       },
