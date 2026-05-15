@@ -1,7 +1,21 @@
-import { AccessToken } from "livekit-server-sdk";
+import {
+  AccessToken,
+  RoomAgentDispatch,
+  RoomConfiguration,
+} from "livekit-server-sdk";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+
+/**
+ * Nom de l'agent enregistré côté worker (`config.ts:AGENT_NAME` dans le
+ * repo `~/Desktop/assistAI-claude-agent`). C'est celui qui doit être
+ * dispatché quand le navigateur joint une room livetest. Sans ça,
+ * LiveKit Cloud ne déclenche pas le worker (les SIP rooms ont une
+ * dispatch rule, les rooms web n'en ont pas → on le force ici via le
+ * JWT roomConfig.agents).
+ */
+const WORKER_AGENT_NAME = "appointment-agent";
 
 // Génère un JWT LiveKit pour qu'un user web joigne une room côté worker.
 // Le worker (qui tourne déjà pour les appels SIP) sera auto-dispatché sur
@@ -51,6 +65,22 @@ export async function POST(_req: NextRequest) {
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
+  });
+
+  // Force LiveKit Cloud à dispatcher le worker `appointment-agent` quand
+  // l'utilisateur joint cette room. Sans ça, le worker ne reçoit aucun
+  // job (les rooms web n'ont pas de SIP dispatch rule comme les
+  // appels Twilio). Cf. lk sip dispatch-rule list pour le pendant SIP.
+  at.roomConfig = new RoomConfiguration({
+    agents: [
+      new RoomAgentDispatch({
+        agentName: WORKER_AGENT_NAME,
+        // Metadata passée au worker via ctx.job — pas utilisée pour le
+        // moment côté agent.ts (on lit participant.metadata), mais utile
+        // pour le debug et au cas où le worker veuille filtrer.
+        metadata: JSON.stringify({ source: "web", userId }),
+      }),
+    ],
   });
 
   const token = await at.toJwt();
