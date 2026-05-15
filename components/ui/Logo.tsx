@@ -23,7 +23,7 @@ export function Logo({ className }: { className?: string }) {
           />
         </svg>
       </span>
-      <span className="font-display text-lg leading-none tracking-tight text-[var(--color-foreground)]">
+      <span className="font-display text-xl leading-none tracking-tight text-[#8b5cf6]">
         Tamara
       </span>
     </span>

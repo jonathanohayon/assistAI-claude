@@ -202,7 +202,13 @@ export function Hero() {
                     className="me-[0.22em] inline-block"
                   >
                     {trimmed === emphasis ? (
-                      <span className="bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] bg-clip-text text-transparent">
+                      <span
+                        className="bg-gradient-to-r from-[#fbcfe8] via-[#f0abfc] to-[#67e8f9] bg-clip-text text-transparent"
+                        style={{
+                          filter:
+                            "drop-shadow(0 2px 14px rgba(244,114,182,0.45))",
+                        }}
+                      >
                         {trimmed}
                       </span>
                     ) : (
