@@ -192,7 +192,7 @@
         "audioStd": "Audio I/O",
         "llmGeneric": "Generic LLM",
         "audioTamara": "Audio I/O — WebRTC + SIP",
-        "krisp": "Krisp Enterprise — real-time denoise",
+        "aicoustics": "ai-coustics QVF 2.1 L — primary speaker isolation",
         "nearField": "Near-field filter (in-house)",
         "asr": "ASR specialized FR / HE / EN",
         "llmTamara": "Hyper-evolved LLM · sub-300 ms",
@@ -219,7 +219,7 @@
     },
     "pillar2": {
       "title": "The world-leading noise-reduction algorithm",
-      "subtitle": "Krisp Enterprise + in-house near-field filter. Customers can call from any environment.",
+      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + in-house near-field filter. Customers can call from any environment.",
       "envs": {
         "cafe": {
           "title": "Noisy café",
@@ -250,7 +250,7 @@
   "TwoMinutes": {
     "eyebrow": "Lightning onboarding",
     "title": "Your number. Your agent. In 2 minutes.",
-    "subtitle": "Sign up, get a dedicated French number, and activate your voice agent on it — all in under 120 seconds flat.",
+    "subtitle": "Sign up, get a dedicated local number, and activate your voice agent on it — all in under 120 seconds flat.",
     "liveBadge": "LIVE",
     "steps": {
       "signup": {
@@ -259,7 +259,7 @@
       },
       "number": {
         "title": "Number assigned",
-        "sub": "Dedicated French phone number, ready to receive calls."
+        "sub": "Dedicated local phone number, ready to receive calls."
       },
       "agent": {
         "title": "Agent configured",
@@ -677,6 +677,10 @@
     "wowComingSoon": "Soon",
     "wowAddTileTitle": "More tiles coming soon",
     "wowPersonalityTitle": "Voice personality",
+    "wowNoiseTitle": "Noise reduction",
+    "wowNoiseSubtitle": "Real-time primary-speaker isolation via ai-coustics Quail Voice Focus 2.1 L. Filters background chatter, engine noise, open-plan offices. Crank it up if your clients call from noisy environments.",
+    "wowNoiseMin": "Light",
+    "wowNoiseMax": "Aggressive",
     "wowReset": "Reset",
     "wowLockedTitle": "Locked (admin)",
     "wowGenderF": "Feminine",

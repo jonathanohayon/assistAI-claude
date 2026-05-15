@@ -65,6 +65,7 @@ export default async function DashboardPreviewPage(props: {
           inheritAdminGlobals: true,
           personality: {},
           agentName: "Sarah",
+          noiseReductionLevel: 8,
         }}
         isAdmin={true}
         adminInheritablePreview="═══ Directive admin pour le plan Pro ═══\n\nL'agent doit toujours confirmer le créneau exact avant de raccrocher.\nNe jamais promettre une plage horaire sans avoir vérifié la dispo réelle.\n\n═══ Heure parlée ═══\n\nQuand tu prononces une heure, dis « quatorze heures trente » et pas « 14h30 »."

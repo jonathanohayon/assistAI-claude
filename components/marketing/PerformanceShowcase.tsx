@@ -603,7 +603,7 @@ export function PerformanceShowcase() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Layer name={t("pillar1.layers.audioTamara")} tone="primary" delay={0.0} fromRight />
-                  <Layer name={t("pillar1.layers.krisp")} tone="primary" delay={0.06} fromRight />
+                  <Layer name={t("pillar1.layers.aicoustics")} tone="primary" delay={0.06} fromRight />
                   <Layer name={t("pillar1.layers.nearField")} tone="primary" delay={0.12} fromRight />
                   <Layer name={t("pillar1.layers.asr")} tone="primary" delay={0.18} fromRight />
                   <Layer name={t("pillar1.layers.llmTamara")} tone="primary" delay={0.24} fromRight highlight />

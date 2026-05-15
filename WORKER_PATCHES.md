@@ -35,8 +35,9 @@ npm install @livekit/plugins-ai-coustics
 > **Note licence** : ai-coustics nécessite une licence/credentials côté
 > serveur LiveKit Cloud. Si LiveKit Cloud n'a pas la licence configurée, le
 > plugin renvoie le frame inchangé (pas de crash). Vérifier dans la console
-> LiveKit Cloud → Project Settings → Plugins. Sinon, fallback : utiliser
-> `@livekit/plugins-krisp` ou la suppression de bruit native LiveKit.
+> LiveKit Cloud → Project Settings → Plugins. Sinon, fallback : downgrade
+> au model `quailVfS` (5.3 MB, same window 15ms) puis suppression de bruit
+> native LiveKit côté `@livekit/agents` (sans plugin tiers).
 
 ## ✅ Bug #1 — endCall raccroche maintenant pour de vrai
 

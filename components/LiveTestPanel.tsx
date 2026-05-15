@@ -293,7 +293,7 @@ export function LiveTestPanel({
         audio: {
           // Couche browser : echo cancellation + noise suppression + AGC.
           // Couche OpenAI : `noise_reduction: near_field` côté /api/session.
-          // (Côté worker Twilio : Krisp, pas concerné par ce chemin web.)
+          // (Côté worker Twilio : ai-coustics QVF 2.1 L, pas concerné ici.)
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,

@@ -128,7 +128,7 @@ const LOGOS = [
   "WHATSAPP BUSINESS",
   "VERCEL",
   "SUPABASE",
-  "KRISP",
+  "AI-COUSTICS",
 ];
 
 function LogosMarquee({ label }: { label: string }) {

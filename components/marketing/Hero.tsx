@@ -126,30 +126,12 @@ export function Hero() {
         className="absolute inset-0 -z-30 h-full w-full object-cover"
       />
 
-      {/* Overlay aurora subtle — opacité réduite (15% cream + radials soft)
-       *  pour que la vidéo respire au lieu d'être noyée. */}
+      {/* Voile sombre vertical pour lisibilité du texte clair par-dessus la
+       *  vidéo. ZÉRO blanc — on garde la vidéo nette, on assombrit juste
+       *  légèrement haut + bas pour faire ressortir badge et CTAs. */}
       <div
         aria-hidden
-        className="aurora-mesh pointer-events-none absolute inset-0 -z-20"
-        style={{
-          backgroundColor: "rgba(250, 247, 242, 0.15)",
-          backgroundImage: `
-            radial-gradient(at 15% 20%, rgba(236, 72, 153, 0.18) 0px, transparent 55%),
-            radial-gradient(at 85% 12%, rgba(34, 211, 238, 0.16) 0px, transparent 60%),
-            radial-gradient(at 50% 90%, rgba(190, 24, 93, 0.14) 0px, transparent 65%)
-          `,
-        }}
-      />
-
-      {/* Halo radial uniquement derrière le H1 — radius réduit pour lisibilité
-       *  sans cacher la vidéo sur les côtés. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 55% 40% at 50% 45%, rgba(250, 247, 242, 0.55), transparent 70%)",
-        }}
+        className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-b from-black/35 via-black/10 to-black/45"
       />
 
       {/* Content centré */}
@@ -200,7 +182,10 @@ export function Hero() {
             ))}
           </div>
 
-          <h1 className="relative z-10 font-display text-5xl leading-[0.95] tracking-tight text-[#18181b] sm:text-7xl lg:text-[88px]">
+          <h1
+            className="relative z-10 font-display text-5xl leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-[88px]"
+            style={{ textShadow: "0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35)" }}
+          >
             <motion.span
               initial="hidden"
               animate="visible"
@@ -232,7 +217,8 @@ export function Hero() {
 
         <motion.p
           {...fadeUp(0.7)}
-          className="mt-7 max-w-2xl text-base leading-relaxed text-[#475569] sm:text-lg lg:text-xl"
+          className="mt-7 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl"
+          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.5)" }}
         >
           {t("subtitle")}
         </motion.p>
@@ -310,7 +296,7 @@ export function Hero() {
 
           <Link
             href="#how"
-            className="inline-flex items-center gap-2 rounded-full border-2 border-[#18181b]/20 bg-white/70 px-8 py-4 text-base font-semibold text-[#18181b] backdrop-blur transition-all hover:border-[#0e7490]/50 hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-full border-2 border-white/40 bg-white/15 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-all hover:border-white/70 hover:bg-white/25"
           >
             {t("ctaConfigure")}
           </Link>
@@ -411,10 +397,16 @@ function Stat({
       }}
       className="text-center"
     >
-      <p className="font-display text-3xl font-bold tracking-tight tabular-nums text-[#0e7490] sm:text-4xl">
+      <p
+        className="font-display text-3xl font-bold tracking-tight tabular-nums text-white sm:text-4xl"
+        style={{ textShadow: "0 2px 12px rgba(0,0,0,0.45)" }}
+      >
         {display}
       </p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#475569]">
+      <p
+        className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/75"
+        style={{ textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}
+      >
         {label}
       </p>
     </motion.div>

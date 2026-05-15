@@ -192,7 +192,7 @@
         "audioStd": "Audio I/O",
         "llmGeneric": "LLM générique",
         "audioTamara": "Audio I/O — WebRTC + SIP",
-        "krisp": "Krisp Enterprise — denoise temps réel",
+        "aicoustics": "ai-coustics QVF 2.1 L — isolation primary speaker",
         "nearField": "Near-field filter (maison)",
         "asr": "ASR spécialisé FR / HE / EN",
         "llmTamara": "LLM hyper-évolué · sub-300 ms",
@@ -219,7 +219,7 @@
     },
     "pillar2": {
       "title": "Le meilleur algorithme de réduction de bruit au monde",
-      "subtitle": "Krisp Enterprise + filtre near-field maison. Le client peut appeler depuis n'importe quel environnement.",
+      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + filtre near-field maison. Le client peut appeler depuis n'importe quel environnement.",
       "envs": {
         "cafe": {
           "title": "Café bruyant",
@@ -250,7 +250,7 @@
   "TwoMinutes": {
     "eyebrow": "Onboarding éclair",
     "title": "Votre numéro. Votre agent. En 2 minutes.",
-    "subtitle": "Inscription, attribution d'un numéro français dédié, et activation de votre agent vocal sur ce numéro — le tout en moins de 120 secondes chrono.",
+    "subtitle": "Inscription, attribution d'un numéro local dédié, et activation de votre agent vocal sur ce numéro — le tout en moins de 120 secondes chrono.",
     "liveBadge": "LIVE",
     "steps": {
       "signup": {
@@ -259,7 +259,7 @@
       },
       "number": {
         "title": "Numéro attribué",
-        "sub": "Numéro de téléphone français dédié, prêt à recevoir."
+        "sub": "Numéro de téléphone local dédié, prêt à recevoir."
       },
       "agent": {
         "title": "Agent configuré",
@@ -677,6 +677,10 @@
     "wowComingSoon": "Bientôt",
     "wowAddTileTitle": "Tuiles supplémentaires à venir",
     "wowPersonalityTitle": "Personnalité de la voix",
+    "wowNoiseTitle": "Réduction de bruit",
+    "wowNoiseSubtitle": "Isolation du locuteur principal en temps réel via ai-coustics Quail Voice Focus 2.1 L. Filtre les conversations parasites, bruit moteur, plateau ouvert. Augmente l'intensité si tes clients appellent depuis des environnements bruyants.",
+    "wowNoiseMin": "Léger",
+    "wowNoiseMax": "Agressif",
     "wowReset": "Réinitialiser",
     "wowLockedTitle": "Verrouillé (admin)",
     "wowGenderF": "Féminine",

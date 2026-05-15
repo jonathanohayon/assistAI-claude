@@ -127,6 +127,13 @@ export const agentConfigs = pgTable("agent_configs", {
     .notNull()
     .default({}),
 
+  // Niveau de réduction de bruit (ai-coustics Quail Voice Focus 2.1 L).
+  // Échelle 1-10 → mappée vers enhancementLevel 0.1-1.0 côté worker.
+  // 1 = quasi-désactivé (passthrough), 8 = équilibré (default), 10 = agressif.
+  // Appliqué SUR LE CHEMIN TÉLÉPHONE (Twilio worker) et SUR LE CHEMIN WEB
+  // (LiveTest via LiveKit, une fois Phase 2 shippée).
+  noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

@@ -192,7 +192,7 @@
         "audioStd": "Audio I/O",
         "llmGeneric": "LLM גנרי",
         "audioTamara": "Audio I/O — WebRTC + SIP",
-        "krisp": "Krisp Enterprise — הפחתת רעש בזמן אמת",
+        "aicoustics": "ai-coustics QVF 2.1 L — בידוד דובר עיקרי",
         "nearField": "סינון Near-field (פיתוח עצמי)",
         "asr": "ASR מותאם FR / HE / EN",
         "llmTamara": "LLM מתקדם במיוחד · מתחת ל-300ms",
@@ -219,7 +219,7 @@
     },
     "pillar2": {
       "title": "אלגוריתם הפחתת הרעש הטוב בעולם",
-      "subtitle": "Krisp Enterprise + סינון near-field בפיתוח עצמי. הלקוח יכול להתקשר מכל סביבה.",
+      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + סינון near-field בפיתוח עצמי. הלקוח יכול להתקשר מכל סביבה.",
       "envs": {
         "cafe": {
           "title": "בית קפה רועש",
@@ -250,7 +250,7 @@
   "TwoMinutes": {
     "eyebrow": "אונבורדינג בזק",
     "title": "המספר שלך. הסוכנת שלך. בשתי דקות.",
-    "subtitle": "הרשמה, הקצאת מספר טלפון צרפתי ייעודי, והפעלת סוכן קולי על המספר — הכל בפחות מ-120 שניות.",
+    "subtitle": "הרשמה, הקצאת מספר טלפון מקומי ייעודי, והפעלת סוכן קולי על המספר — הכל בפחות מ-120 שניות.",
     "liveBadge": "בשידור חי",
     "steps": {
       "signup": {
@@ -259,7 +259,7 @@
       },
       "number": {
         "title": "מספר הוקצה",
-        "sub": "מספר טלפון צרפתי ייעודי, מוכן לקבלת שיחות."
+        "sub": "מספר טלפון מקומי ייעודי, מוכן לקבלת שיחות."
       },
       "agent": {
         "title": "הסוכן מוגדר",
@@ -677,6 +677,10 @@
     "wowComingSoon": "בקרוב",
     "wowAddTileTitle": "אריחים נוספים בקרוב",
     "wowPersonalityTitle": "אישיות הקול",
+    "wowNoiseTitle": "הפחתת רעש",
+    "wowNoiseSubtitle": "בידוד הדובר העיקרי בזמן אמת באמצעות ai-coustics Quail Voice Focus 2.1 L. מסנן שיחות רקע, רעש מנוע, משרד פתוח. העלה את העוצמה אם הלקוחות שלך מתקשרים מסביבות רועשות.",
+    "wowNoiseMin": "קל",
+    "wowNoiseMax": "אגרסיבי",
     "wowReset": "איפוס",
     "wowLockedTitle": "נעול (אדמין)",
     "wowGenderF": "נשי",

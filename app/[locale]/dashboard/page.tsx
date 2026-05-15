@@ -198,6 +198,7 @@ export default async function DashboardPage(props: {
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
+          noiseReductionLevel: config.noiseReductionLevel ?? 8,
         }}
         isAdmin={isAdmin}
         adminInheritablePreview={adminInheritablePreview}

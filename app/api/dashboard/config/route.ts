@@ -46,6 +46,7 @@ export async function PUT(req: NextRequest) {
     inheritAdminGlobals: boolean;
     personality: Record<string, number>;
     agentName: string;
+    noiseReductionLevel: number;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -134,6 +135,13 @@ export async function PUT(req: NextRequest) {
     // Trim + clamp 80 chars. Vide accepté (facultatif). Pas de regex stricte
     // pour permettre les noms internationalisés (Sarah, יוהנה, محمد, etc.).
     updates.agentName = String(body.agentName).trim().slice(0, 80);
+  }
+  if (body.noiseReductionLevel != null) {
+    // Slider 1-10 → enhancementLevel 0.1-1.0 côté worker. On stocke 1-10
+    // pour rester user-friendly côté UI/admin lectures.
+    updates.noiseReductionLevel = Math.round(
+      clamp(body.noiseReductionLevel, 1, 10),
+    );
   }
 
   const [updated] = await db

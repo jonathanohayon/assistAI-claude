@@ -117,10 +117,9 @@ export async function POST(req: NextRequest) {
         // (user parle directement dedans, casque/headset). Réduit le bruit
         // de fond + auto-gain. Free, layered avec les défauts du navigateur
         // (echoCancellation, noiseSuppression côté Chrome/Safari).
-        // Pour Twilio (haut-parleur, plus lointain), le worker utilise
-        // Krisp — `far_field` côté OpenAI serait plus adapté là-bas si on
-        // l'activait, mais Krisp gère déjà la noise reduction sur l'audio
-        // entrant avant que ça atteigne OpenAI.
+        // Pour Twilio (haut-parleur), le worker tourne ai-coustics QVF 2.1 L
+        // (isolation primary speaker temps réel) AVANT que l'audio atteigne
+        // OpenAI Realtime — d'où `near_field` ici suffit aussi côté tel.
         noise_reduction: { type: "near_field" as const },
       },
       output: requestedSpeed != null

@@ -27,6 +27,10 @@ type FormState = {
   inheritAdminGlobals: boolean;
   personality: Personality;
   agentName: string;
+  /** Slider 1-10 piloté ici, envoyé tel quel au PUT puis exposé à
+   *  /api/agent/config pour le worker qui le mappe en enhancementLevel 0.1-1.0
+   *  du QVF 2.1 L (ai-coustics). 1 = passthrough, 8 = équilibré, 10 = agressif. */
+  noiseReductionLevel: number;
 };
 
 type Gender = "f" | "m";
@@ -946,6 +950,54 @@ function VoicePanel({
             <span className="h-2 w-2 rounded-full bg-gradient-to-br from-[#06b6d4] to-[#0e7490]" />
             {t("wowGenderM")}
           </span>
+        </div>
+      </div>
+
+      {/* Réduction de bruit — Quail Voice Focus 2.1 L (ai-coustics), 1-10 */}
+      <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#fdf2f8]/40 to-white/60 p-5 sm:p-6">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#be185d]">
+            {t("wowNoiseTitle")}
+          </p>
+          <span className="rounded-full bg-[#be185d]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#be185d]">
+            Quail VF 2.1 L
+          </span>
+        </div>
+        <p className="mb-4 text-[12px] leading-relaxed text-[#475569]">
+          {t("wowNoiseSubtitle")}
+        </p>
+        <div className="space-y-1.5">
+          <div className="flex items-baseline justify-between text-[11px] text-[#475569]">
+            <span>{t("wowNoiseMin")}</span>
+            <span className="font-mono text-sm font-semibold tabular-nums text-[#be185d]">
+              {form.noiseReductionLevel}
+              <span className="text-[10px] font-normal text-[#94a3b8]"> / 10</span>
+            </span>
+            <span>{t("wowNoiseMax")}</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={10}
+            step={1}
+            value={form.noiseReductionLevel}
+            onChange={(e) =>
+              update("noiseReductionLevel", Number(e.target.value))
+            }
+            aria-label={t("wowNoiseTitle")}
+            className="w-full accent-[#be185d]"
+            style={{
+              background: `linear-gradient(to right, #be185d 0%, #ec4899 ${
+                ((form.noiseReductionLevel - 1) / 9) * 100
+              }%, #e2e8f0 ${
+                ((form.noiseReductionLevel - 1) / 9) * 100
+              }%, #e2e8f0 100%)`,
+              height: 6,
+              borderRadius: 9999,
+              appearance: "none",
+              outline: "none",
+            }}
+          />
         </div>
       </div>
 
