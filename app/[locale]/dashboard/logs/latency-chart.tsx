@@ -38,6 +38,13 @@ interface LatencyPoint {
     endOfUtterance: number | null;
     firstAudio: number | null;
   };
+  // Arrays per tour pour le drill-down line chart. Index = numéro de tour.
+  perTurn?: {
+    ttft: number[];
+    eou: number[];
+    transcription: number[];
+    firstAudio: number[];
+  };
 }
 
 interface ChartData {
@@ -530,44 +537,62 @@ export function LatencyChart() {
   );
 }
 
-// ─── Panel détail (drill-down d'un appel) ────────────────────────────
+// ─── Panel détail (drill-down d'un appel — multi-line time-series) ────
 //
-// Affiche les 8 mesures de latence sous forme de barres horizontales
-// groupées en 2 phases :
-//   - SETUP (une seule fois, au session.start)
-//   - RUNTIME (par tour, en moyenne sur tous les tours de l'appel)
-// L'utilisateur voit la décomposition complète du round-trip et identifie
-// le maillon le plus lent (ex. transcription trop longue, OpenAI réponse
-// lente, etc.).
+// Affiche les latences runtime par tour de conversation sous forme de
+// line chart multi-séries.
+//   - X : tour de la conversation (1, 2, 3…) = ordre chronologique
+//   - Y : latence en ms
+//   - 4 lignes colorées : transcription / EOU LLM / first audio TTS / TTFA total
+//
+// Setup phases (one-shot init) affichées en chips au-dessus du chart,
+// car elles n'ont pas de dimension "par tour" — c'est de la latence
+// d'initialisation, pas de runtime.
 
-const DETAIL_GROUPS: Array<{
-  title: string;
-  hint: string;
+interface SeriesDef {
+  key: keyof NonNullable<LatencyPoint["perTurn"]>;
+  label: string;
   color: string;
-  hops: Array<{ key: keyof LatencyPoint["latencies"]; label: string }>;
-}> = [
+  hint: string;
+}
+
+const PERTURN_SERIES: ReadonlyArray<SeriesDef> = [
   {
-    title: "Setup (init session)",
-    hint: "Phases une-seule-fois au démarrage de l'appel",
+    key: "transcription",
+    label: "Transcription (STT)",
     color: "#22d3ee",
-    hops: [
-      { key: "twilioToWorker", label: "Twilio/Web → Worker" },
-      { key: "workerToLivekit", label: "Worker → LiveKit" },
-      { key: "workerToWebConfig", label: "Worker → Web (config)" },
-      { key: "workerToOpenai", label: "Worker → OpenAI" },
-      { key: "greeting", label: "Greeting full E2E" },
-    ],
+    hint: "Temps user-finit-de-parler → STT done",
   },
   {
-    title: "Runtime (par tour, moyenne)",
-    hint: "Latences mesurées à chaque tour de conversation",
+    key: "eou",
+    label: "End of utterance (LLM)",
     color: "#ec4899",
-    hops: [
-      { key: "transcription", label: "Transcription (STT)" },
-      { key: "endOfUtterance", label: "End of utterance (LLM)" },
-      { key: "firstAudio", label: "First audio (TTS)" },
-    ],
+    hint: "Temps user-finit-de-parler → LLM commence à répondre",
   },
+  {
+    key: "firstAudio",
+    label: "First audio (TTS)",
+    color: "#f59e0b",
+    hint: "Temps LLM-start → 1er son audible",
+  },
+  {
+    key: "ttft",
+    label: "TTFA total (par tour)",
+    color: "#be185d",
+    hint: "Total user → agent perçu par tour (sum approx)",
+  },
+];
+
+const SETUP_CHIPS: ReadonlyArray<{
+  key: keyof LatencyPoint["latencies"];
+  label: string;
+  color: string;
+}> = [
+  { key: "twilioToWorker", label: "Twilio/Web → Worker", color: "#22d3ee" },
+  { key: "workerToLivekit", label: "Worker → LiveKit", color: "#0e7490" },
+  { key: "workerToWebConfig", label: "Worker → Web (config)", color: "#ec4899" },
+  { key: "workerToOpenai", label: "Worker → OpenAI", color: "#be185d" },
+  { key: "greeting", label: "Greeting full E2E", color: "#f59e0b" },
 ];
 
 function CallDetailPanel({
@@ -577,6 +602,15 @@ function CallDetailPanel({
   point: LatencyPoint | null;
   onClose: () => void;
 }) {
+  // État du hover sur un point de la time-series (pour tooltip)
+  const [seriesHover, setSeriesHover] = useState<{
+    series: SeriesDef;
+    turnIndex: number;
+    value: number;
+    x: number;
+    y: number;
+  } | null>(null);
+
   if (!point) {
     return (
       <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#e2e8f0] bg-white/50 p-6 text-xs text-[#94a3b8]">
@@ -585,23 +619,57 @@ function CallDetailPanel({
     );
   }
 
-  // Max sur l'ensemble des barres pour échelle uniforme dans le panel.
-  const allValues = [
-    ...DETAIL_GROUPS.flatMap((g) =>
-      g.hops.map((h) => point.latencies[h.key]),
-    ),
-  ].filter((v): v is number => v != null && v > 0);
-  const maxMs = allValues.length > 0 ? Math.max(...allValues) : 1;
+  // Chart geometry — compact pour rentrer dans le 360px du panel
+  const CHART_W = 320;
+  const CHART_H = 180;
+  const PAD = { top: 12, right: 12, bottom: 28, left: 40 };
+  const plotW = CHART_W - PAD.left - PAD.right;
+  const plotH = CHART_H - PAD.top - PAD.bottom;
 
-  const totalRuntime =
-    (point.latencies.transcription ?? 0) +
-    (point.latencies.endOfUtterance ?? 0) +
-    (point.latencies.firstAudio ?? 0);
-  const totalSetup =
-    (point.latencies.twilioToWorker ?? 0) +
-    (point.latencies.workerToLivekit ?? 0) +
-    (point.latencies.workerToWebConfig ?? 0) +
-    (point.latencies.workerToOpenai ?? 0);
+  // Nombre max de tours toutes séries confondues
+  const turns = point.perTurn
+    ? Math.max(
+        point.perTurn.ttft.length,
+        point.perTurn.eou.length,
+        point.perTurn.transcription.length,
+        point.perTurn.firstAudio.length,
+      )
+    : 0;
+
+  // Max value pour échelle Y
+  const allValues = point.perTurn
+    ? [
+        ...point.perTurn.ttft,
+        ...point.perTurn.eou,
+        ...point.perTurn.transcription,
+        ...point.perTurn.firstAudio,
+      ].filter((v) => v != null && v > 0)
+    : [];
+  const yMax = allValues.length > 0 ? Math.max(...allValues) * 1.1 : 1000;
+
+  // Scales — turns 1-indexed sur l'axe X
+  const xTo = (turn: number) =>
+    PAD.left + (turns <= 1 ? plotW / 2 : ((turn - 1) / (turns - 1)) * plotW);
+  const yTo = (v: number) =>
+    PAD.top + plotH - (v / Math.max(1, yMax)) * plotH;
+
+  // Y ticks (4)
+  const yTicks = Array.from({ length: 5 }, (_, i) => {
+    const v = (yMax * (4 - i)) / 4;
+    return { y: yTo(v), label: `${Math.round(v)}` };
+  });
+
+  // Construit le path SVG pour une série
+  const buildPath = (arr: number[]): string => {
+    if (arr.length === 0) return "";
+    return arr
+      .map((v, i) => {
+        const x = xTo(i + 1);
+        const y = yTo(v > 0 ? v : 0);
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  };
 
   return (
     <aside className="relative rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
@@ -617,89 +685,223 @@ function CallDetailPanel({
       </button>
 
       <p className="text-[10px] font-semibold uppercase tracking-widest text-[#475569]">
-        Round-trip · {point.origin === "sip" ? "SIP (tel)" : "Web LiveTest"}
+        Détail · {point.origin === "sip" ? "SIP (tel)" : "Web LiveTest"}
       </p>
-      <h4 className="mt-1 font-display text-lg tracking-tight text-[#18181b]">
+      <h4 className="mt-1 font-display text-base tracking-tight text-[#18181b]">
         {new Date(point.timestamp).toLocaleString("fr-FR", {
           day: "2-digit",
           month: "short",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        })}
+        })}{" "}
+        · {turns > 0 ? `${turns} tour${turns > 1 ? "s" : ""}` : "0 tour"}
       </h4>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-gradient-to-br from-[#fdf2f8] to-[#ecfeff] p-2.5 text-center">
-        <div>
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Setup
-          </p>
-          <p className="font-mono text-sm font-bold text-[#0e7490]">
-            {Math.round(totalSetup)} ms
-          </p>
-        </div>
-        <div>
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#be185d]">
-            Runtime
-          </p>
-          <p className="font-mono text-sm font-bold text-[#be185d]">
-            {Math.round(totalRuntime)} ms
-          </p>
-        </div>
-        <div>
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#475569]">
-            E2E
-          </p>
-          <p className="font-mono text-sm font-bold text-[#18181b]">
-            {point.totalE2eMs != null
-              ? `${Math.round(point.totalE2eMs)} ms`
-              : "—"}
-          </p>
+      {/* Setup chips — phases one-shot d'init */}
+      <div className="mt-3">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+          Setup (init, une fois)
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SETUP_CHIPS.map((s) => {
+            const v = point.latencies[s.key];
+            return (
+              <span
+                key={s.key}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#f8fafc] px-2 py-0.5 text-[10px] ring-1 ring-inset ring-[#e2e8f0]"
+                title={s.label}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: s.color }}
+                />
+                <span className="text-[#475569]">{s.label}</span>
+                <span className="font-mono font-semibold text-[#18181b]">
+                  {v != null ? `${Math.round(v)}ms` : "—"}
+                </span>
+              </span>
+            );
+          })}
         </div>
       </div>
 
-      {DETAIL_GROUPS.map((group) => (
-        <div key={group.title} className="mt-4">
-          <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#18181b]">
-              {group.title}
-            </p>
-            <span className="text-[10px] text-[#94a3b8]">{group.hint}</span>
-          </div>
-          <ul className="space-y-2">
-            {group.hops.map((hop) => {
-              const v = point.latencies[hop.key];
-              const pct = v != null && v > 0 ? (v / maxMs) * 100 : 0;
-              return (
-                <li key={hop.key}>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[11px] text-[#475569]">
-                      {hop.label}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-[#18181b]">
-                      {v != null ? `${Math.round(v)} ms` : "—"}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 h-1.5 w-full rounded-full bg-[#f1f5f9]">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-500"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: v != null ? group.color : "transparent",
-                      }}
+      {/* Multi-line chart par tour */}
+      <div className="mt-4">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+          Runtime par tour (X = #tour, Y = ms)
+        </p>
+        {turns === 0 ? (
+          <p className="rounded-lg bg-[#f8fafc] py-6 text-center text-xs text-[#94a3b8]">
+            Aucun tour de conversation enregistré pour cet appel.
+          </p>
+        ) : (
+          <div className="relative">
+            <svg
+              viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+              width="100%"
+              preserveAspectRatio="xMidYMid meet"
+              className="block"
+            >
+              {/* Grid Y */}
+              {yTicks.map((t, i) => (
+                <line
+                  key={i}
+                  x1={PAD.left}
+                  x2={CHART_W - PAD.right}
+                  y1={t.y}
+                  y2={t.y}
+                  stroke="#e2e8f0"
+                  strokeWidth={1}
+                  strokeDasharray={i === yTicks.length - 1 ? "0" : "3 3"}
+                />
+              ))}
+              {yTicks.map((t, i) => (
+                <text
+                  key={i}
+                  x={PAD.left - 4}
+                  y={t.y + 3}
+                  textAnchor="end"
+                  fontSize={9}
+                  fill="#94a3b8"
+                  fontFamily="ui-monospace, monospace"
+                >
+                  {t.label}
+                </text>
+              ))}
+              {/* X labels (tour 1, ..., N — max 6 ticks pour rester lisible) */}
+              {(() => {
+                const stride = Math.max(1, Math.ceil(turns / 6));
+                const ticks: number[] = [];
+                for (let i = 1; i <= turns; i += stride) ticks.push(i);
+                if (ticks[ticks.length - 1] !== turns) ticks.push(turns);
+                return ticks.map((tn) => (
+                  <text
+                    key={tn}
+                    x={xTo(tn)}
+                    y={CHART_H - PAD.bottom + 14}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fill="#94a3b8"
+                    fontFamily="ui-monospace, monospace"
+                  >
+                    {tn}
+                  </text>
+                ));
+              })()}
+              {/* Axe X bottom */}
+              <line
+                x1={PAD.left}
+                x2={CHART_W - PAD.right}
+                y1={CHART_H - PAD.bottom}
+                y2={CHART_H - PAD.bottom}
+                stroke="#cbd5e1"
+                strokeWidth={1}
+              />
+              {/* Lignes par série + points hoverables */}
+              {PERTURN_SERIES.map((s) => {
+                const arr = point.perTurn?.[s.key] ?? [];
+                if (arr.length === 0) return null;
+                return (
+                  <g key={s.key}>
+                    <path
+                      d={buildPath(arr)}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
                     />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                    {arr.map((v, i) => (
+                      <circle
+                        key={i}
+                        cx={xTo(i + 1)}
+                        cy={yTo(v > 0 ? v : 0)}
+                        r={
+                          seriesHover &&
+                          seriesHover.series.key === s.key &&
+                          seriesHover.turnIndex === i
+                            ? 5
+                            : 3
+                        }
+                        fill="white"
+                        stroke={s.color}
+                        strokeWidth={2}
+                        style={{ cursor: "pointer" }}
+                        onMouseEnter={(e) => {
+                          const svg = e.currentTarget.ownerSVGElement;
+                          if (!svg) return;
+                          const rect = svg.getBoundingClientRect();
+                          const scale = rect.width / CHART_W;
+                          setSeriesHover({
+                            series: s,
+                            turnIndex: i,
+                            value: v,
+                            x: xTo(i + 1) * scale,
+                            y: yTo(v > 0 ? v : 0) * scale,
+                          });
+                        }}
+                        onMouseLeave={() => setSeriesHover(null)}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
+            </svg>
+            {/* Tooltip point hover */}
+            {seriesHover && (
+              <div
+                className="pointer-events-none absolute z-10 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1.5 text-[10px] shadow-md"
+                style={{
+                  left: Math.min(seriesHover.x + 8, 220),
+                  top: Math.max(seriesHover.y - 36, 0),
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: seriesHover.series.color }}
+                  />
+                  <span className="font-semibold text-[#18181b]">
+                    {seriesHover.series.label}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-[#475569]">
+                  Tour #{seriesHover.turnIndex + 1} ·{" "}
+                  <span className="font-mono font-bold text-[#18181b]">
+                    {Math.round(seriesHover.value)} ms
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-      <p className="mt-3 text-[10px] italic text-[#94a3b8]">
-        Barres à l'échelle relative (max = {Math.round(maxMs)} ms). Setup
-        compté une fois ; Runtime = moyenne sur tous les tours.
-      </p>
+        {/* Légende */}
+        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+          {PERTURN_SERIES.map((s) => {
+            const arr = point.perTurn?.[s.key] ?? [];
+            const empty = arr.length === 0;
+            return (
+              <div
+                key={s.key}
+                className="flex items-center gap-1.5"
+                title={s.hint}
+              >
+                <span
+                  className="h-2 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: empty ? "#cbd5e1" : s.color }}
+                />
+                <span
+                  className={`truncate text-[10px] ${empty ? "text-[#94a3b8] line-through" : "text-[#475569]"}`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </aside>
   );
 }

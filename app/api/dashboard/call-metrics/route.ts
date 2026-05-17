@@ -36,6 +36,11 @@ interface CallMetricsMetadata {
   serverEouDelayMs?: { mean?: number | null };
   serverFirstAudioDelayMs?: { mean?: number | null };
   transcriptionDelayMs?: { mean?: number | null };
+  // Arrays par tour de conversation — utilisés par le drill-down chart.
+  rawTtftMs?: number[];
+  rawServerEouMs?: number[];
+  rawServerTransMs?: number[];
+  rawServerFirstAudioMs?: number[];
   toNumber?: string;
   fromNumber?: string;
 }
@@ -132,6 +137,18 @@ export async function GET(req: NextRequest) {
         ttfa,
         p95: ttfaP95,
         greeting,
+      },
+      // Per-turn raw arrays — pour le drill-down line chart.
+      // Indice = numéro de tour, ordre chronologique.
+      perTurn: {
+        ttft: Array.isArray(m.rawTtftMs) ? m.rawTtftMs : [],
+        eou: Array.isArray(m.rawServerEouMs) ? m.rawServerEouMs : [],
+        transcription: Array.isArray(m.rawServerTransMs)
+          ? m.rawServerTransMs
+          : [],
+        firstAudio: Array.isArray(m.rawServerFirstAudioMs)
+          ? m.rawServerFirstAudioMs
+          : [],
       },
       // Défaut : TTFA mean = ce qu'on affiche actuellement
       totalE2eMs,
