@@ -124,6 +124,21 @@ export function LatencyChart() {
     y: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Appel sélectionné = on affiche le panel détail à droite (drill-down).
+  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+  // Timer pour différer la fermeture du tooltip (laisse le temps de cliquer
+  // sur le bouton "Détails" sans que le tooltip disparaisse).
+  const closeTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelTooltipClose = () => {
+    if (closeTooltipTimer.current) {
+      clearTimeout(closeTooltipTimer.current);
+      closeTooltipTimer.current = null;
+    }
+  };
+  const scheduleTooltipClose = () => {
+    cancelTooltipClose();
+    closeTooltipTimer.current = setTimeout(() => setHover(null), 180);
+  };
 
   // Fetch data
   useEffect(() => {
@@ -303,6 +318,13 @@ export function LatencyChart() {
       )}
 
       {data && plotPoints.length > 0 && scales && (
+      <div
+        className={`grid gap-4 ${
+          selectedCallId
+            ? "lg:grid-cols-[minmax(0,1fr)_360px]"
+            : "grid-cols-1"
+        }`}
+      >
         <div ref={containerRef} className="relative overflow-x-auto">
           <svg
             viewBox={`0 0 ${CHART.width} ${CHART.height}`}
@@ -381,33 +403,36 @@ export function LatencyChart() {
                     transition: "r 120ms ease, opacity 120ms ease",
                   }}
                   onMouseEnter={(e) => {
+                    cancelTooltipClose();
                     const rect = (
                       e.currentTarget.ownerSVGElement as SVGSVGElement
                     ).getBoundingClientRect();
-                    const containerRect =
-                      containerRef.current?.getBoundingClientRect();
                     const scale = rect.width / CHART.width;
                     setHover({
                       point: p,
                       x: p.cx * scale,
-                      y:
-                        p.cy * scale -
-                        (containerRect ? 0 : 0),
+                      y: p.cy * scale,
                     });
                   }}
-                  onMouseLeave={() => setHover(null)}
+                  onMouseLeave={scheduleTooltipClose}
+                  onClick={() => {
+                    setSelectedCallId(p.id);
+                    setHover(null);
+                  }}
                 />
               );
             })}
           </svg>
-          {/* Tooltip */}
+          {/* Tooltip (pointer-events:auto pour cliquer le bouton "Détails") */}
           {hover && (
             <div
-              className="pointer-events-none absolute z-10 min-w-[260px] rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-lg"
+              onMouseEnter={cancelTooltipClose}
+              onMouseLeave={scheduleTooltipClose}
+              className="absolute z-10 min-w-[280px] rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-lg"
               style={{
                 left: Math.min(
                   hover.x + 12,
-                  (containerRef.current?.clientWidth ?? 800) - 280,
+                  (containerRef.current?.clientWidth ?? 800) - 300,
                 ),
                 top: Math.max(hover.y - 8, 0),
               }}
@@ -455,9 +480,33 @@ export function LatencyChart() {
                   );
                 })}
               </ul>
+              {/* Bouton "Détails" → ouvre panel drill-down à droite */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCallId(hover.point.id);
+                  setHover(null);
+                }}
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3">
+                  <path d="M3 12h18M14 5l7 7-7 7" />
+                </svg>
+                Détails de l'appel
+              </button>
             </div>
           )}
         </div>
+        {/* Panel détail à droite quand un appel est sélectionné */}
+        {selectedCallId && (
+          <CallDetailPanel
+            point={
+              data?.points.find((p) => p.id === selectedCallId) ?? null
+            }
+            onClose={() => setSelectedCallId(null)}
+          />
+        )}
+      </div>
       )}
 
       {/* Légende */}
@@ -478,6 +527,180 @@ export function LatencyChart() {
         </span>
       </div>
     </section>
+  );
+}
+
+// ─── Panel détail (drill-down d'un appel) ────────────────────────────
+//
+// Affiche les 8 mesures de latence sous forme de barres horizontales
+// groupées en 2 phases :
+//   - SETUP (une seule fois, au session.start)
+//   - RUNTIME (par tour, en moyenne sur tous les tours de l'appel)
+// L'utilisateur voit la décomposition complète du round-trip et identifie
+// le maillon le plus lent (ex. transcription trop longue, OpenAI réponse
+// lente, etc.).
+
+const DETAIL_GROUPS: Array<{
+  title: string;
+  hint: string;
+  color: string;
+  hops: Array<{ key: keyof LatencyPoint["latencies"]; label: string }>;
+}> = [
+  {
+    title: "Setup (init session)",
+    hint: "Phases une-seule-fois au démarrage de l'appel",
+    color: "#22d3ee",
+    hops: [
+      { key: "twilioToWorker", label: "Twilio/Web → Worker" },
+      { key: "workerToLivekit", label: "Worker → LiveKit" },
+      { key: "workerToWebConfig", label: "Worker → Web (config)" },
+      { key: "workerToOpenai", label: "Worker → OpenAI" },
+      { key: "greeting", label: "Greeting full E2E" },
+    ],
+  },
+  {
+    title: "Runtime (par tour, moyenne)",
+    hint: "Latences mesurées à chaque tour de conversation",
+    color: "#ec4899",
+    hops: [
+      { key: "transcription", label: "Transcription (STT)" },
+      { key: "endOfUtterance", label: "End of utterance (LLM)" },
+      { key: "firstAudio", label: "First audio (TTS)" },
+    ],
+  },
+];
+
+function CallDetailPanel({
+  point,
+  onClose,
+}: {
+  point: LatencyPoint | null;
+  onClose: () => void;
+}) {
+  if (!point) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#e2e8f0] bg-white/50 p-6 text-xs text-[#94a3b8]">
+        Appel introuvable — fermez ce panel.
+      </div>
+    );
+  }
+
+  // Max sur l'ensemble des barres pour échelle uniforme dans le panel.
+  const allValues = [
+    ...DETAIL_GROUPS.flatMap((g) =>
+      g.hops.map((h) => point.latencies[h.key]),
+    ),
+  ].filter((v): v is number => v != null && v > 0);
+  const maxMs = allValues.length > 0 ? Math.max(...allValues) : 1;
+
+  const totalRuntime =
+    (point.latencies.transcription ?? 0) +
+    (point.latencies.endOfUtterance ?? 0) +
+    (point.latencies.firstAudio ?? 0);
+  const totalSetup =
+    (point.latencies.twilioToWorker ?? 0) +
+    (point.latencies.workerToLivekit ?? 0) +
+    (point.latencies.workerToWebConfig ?? 0) +
+    (point.latencies.workerToOpenai ?? 0);
+
+  return (
+    <aside className="relative rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Fermer le détail"
+        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-[#475569] transition-colors hover:bg-[#fee2e2] hover:text-[#dc2626]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-[#475569]">
+        Round-trip · {point.origin === "sip" ? "SIP (tel)" : "Web LiveTest"}
+      </p>
+      <h4 className="mt-1 font-display text-lg tracking-tight text-[#18181b]">
+        {new Date(point.timestamp).toLocaleString("fr-FR", {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })}
+      </h4>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-gradient-to-br from-[#fdf2f8] to-[#ecfeff] p-2.5 text-center">
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#0e7490]">
+            Setup
+          </p>
+          <p className="font-mono text-sm font-bold text-[#0e7490]">
+            {Math.round(totalSetup)} ms
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#be185d]">
+            Runtime
+          </p>
+          <p className="font-mono text-sm font-bold text-[#be185d]">
+            {Math.round(totalRuntime)} ms
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#475569]">
+            E2E
+          </p>
+          <p className="font-mono text-sm font-bold text-[#18181b]">
+            {point.totalE2eMs != null
+              ? `${Math.round(point.totalE2eMs)} ms`
+              : "—"}
+          </p>
+        </div>
+      </div>
+
+      {DETAIL_GROUPS.map((group) => (
+        <div key={group.title} className="mt-4">
+          <div className="mb-1.5 flex items-baseline justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#18181b]">
+              {group.title}
+            </p>
+            <span className="text-[10px] text-[#94a3b8]">{group.hint}</span>
+          </div>
+          <ul className="space-y-2">
+            {group.hops.map((hop) => {
+              const v = point.latencies[hop.key];
+              const pct = v != null && v > 0 ? (v / maxMs) * 100 : 0;
+              return (
+                <li key={hop.key}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[11px] text-[#475569]">
+                      {hop.label}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-[#18181b]">
+                      {v != null ? `${Math.round(v)} ms` : "—"}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 h-1.5 w-full rounded-full bg-[#f1f5f9]">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-500"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: v != null ? group.color : "transparent",
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+
+      <p className="mt-3 text-[10px] italic text-[#94a3b8]">
+        Barres à l'échelle relative (max = {Math.round(maxMs)} ms). Setup
+        compté une fois ; Runtime = moyenne sur tous les tours.
+      </p>
+    </aside>
   );
 }
 
