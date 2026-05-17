@@ -556,43 +556,44 @@ interface SeriesDef {
   hint: string;
 }
 
+/** 4 phases RETOUR (runtime, mesuré à chaque tour). */
 const PERTURN_SERIES: ReadonlyArray<SeriesDef> = [
   {
     key: "transcription",
-    label: "Transcription (STT)",
+    label: "STT → Worker (transcription)",
     color: "#22d3ee",
-    hint: "Temps user-finit-de-parler → STT done",
+    hint: "Temps user-finit-de-parler → STT done. Retour OpenAI→Worker.",
   },
   {
     key: "eou",
-    label: "End of utterance (LLM)",
-    color: "#ec4899",
-    hint: "Temps user-finit-de-parler → LLM commence à répondre",
+    label: "LLM → Worker (end of utterance)",
+    color: "#f472b6",
+    hint: "Temps user-finit → LLM commence à répondre. Retour OpenAI→Worker.",
   },
   {
     key: "firstAudio",
-    label: "First audio (TTS)",
+    label: "Audio → Worker (1er chunk)",
     color: "#f59e0b",
-    hint: "Temps LLM-start → 1er son audible",
+    hint: "Temps LLM-start → 1er son audible. Retour OpenAI→Worker.",
   },
   {
     key: "ttft",
-    label: "TTFA total (par tour)",
-    color: "#be185d",
-    hint: "Total user → agent perçu par tour (sum approx)",
+    label: "Worker → User (TTFA total)",
+    color: "#7c3aed",
+    hint: "Retour final user-perçu : user finit → agent émet 1er son.",
   },
 ];
 
-const SETUP_CHIPS: ReadonlyArray<{
+/** 4 phases ALLER (setup, mesuré une fois au session.start). */
+const SETUP_SERIES: ReadonlyArray<{
   key: keyof LatencyPoint["latencies"];
   label: string;
   color: string;
 }> = [
-  { key: "twilioToWorker", label: "Twilio/Web → Worker", color: "#22d3ee" },
+  { key: "twilioToWorker", label: "Twilio/Web → Worker", color: "#06b6d4" },
   { key: "workerToLivekit", label: "Worker → LiveKit", color: "#0e7490" },
   { key: "workerToWebConfig", label: "Worker → Web (config)", color: "#ec4899" },
   { key: "workerToOpenai", label: "Worker → OpenAI", color: "#be185d" },
-  { key: "greeting", label: "Greeting full E2E", color: "#f59e0b" },
 ];
 
 function CallDetailPanel({
@@ -610,6 +611,17 @@ function CallDetailPanel({
     x: number;
     y: number;
   } | null>(null);
+  // Toggles de visibilité par série. Toutes activées par défaut.
+  // Clés : "setup:<key>" pour les phases aller, "runtime:<key>" pour le retour.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const isVisible = (id: string) => !hidden.has(id);
+  const toggle = (id: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   if (!point) {
     return (
@@ -636,7 +648,17 @@ function CallDetailPanel({
       )
     : 0;
 
-  // Max value pour échelle Y
+  // Setup values pour les lignes de référence horizontales
+  const setupValues = SETUP_SERIES.map((s) => ({
+    ...s,
+    value: point.latencies[s.key],
+  })).filter(
+    (s): s is typeof s & { value: number } => s.value != null && s.value > 0,
+  );
+
+  // Max value pour échelle Y — runtime + setup (pour que les lignes
+  // setup soient visibles sur le chart, même si elles sont plus hautes
+  // que le max runtime).
   const allValues = point.perTurn
     ? [
         ...point.perTurn.ttft,
@@ -645,7 +667,14 @@ function CallDetailPanel({
         ...point.perTurn.firstAudio,
       ].filter((v) => v != null && v > 0)
     : [];
-  const yMax = allValues.length > 0 ? Math.max(...allValues) * 1.1 : 1000;
+  const allValuesIncludingSetup = [
+    ...allValues,
+    ...setupValues.map((s) => s.value),
+  ];
+  const yMax =
+    allValuesIncludingSetup.length > 0
+      ? Math.max(...allValuesIncludingSetup) * 1.1
+      : 1000;
 
   // Scales — turns 1-indexed sur l'axe X
   const xTo = (turn: number) =>
@@ -698,38 +727,10 @@ function CallDetailPanel({
         · {turns > 0 ? `${turns} tour${turns > 1 ? "s" : ""}` : "0 tour"}
       </h4>
 
-      {/* Setup chips — phases one-shot d'init */}
+      {/* Multi-line chart par tour */}
       <div className="mt-3">
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-          Setup (init, une fois)
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {SETUP_CHIPS.map((s) => {
-            const v = point.latencies[s.key];
-            return (
-              <span
-                key={s.key}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#f8fafc] px-2 py-0.5 text-[10px] ring-1 ring-inset ring-[#e2e8f0]"
-                title={s.label}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: s.color }}
-                />
-                <span className="text-[#475569]">{s.label}</span>
-                <span className="font-mono font-semibold text-[#18181b]">
-                  {v != null ? `${Math.round(v)}ms` : "—"}
-                </span>
-              </span>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Multi-line chart par tour */}
-      <div className="mt-4">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-          Runtime par tour (X = #tour, Y = ms)
+          Round-trip par tour (X = #tour, Y = ms)
         </p>
         {turns === 0 ? (
           <p className="rounded-lg bg-[#f8fafc] py-6 text-center text-xs text-[#94a3b8]">
@@ -798,8 +799,40 @@ function CallDetailPanel({
                 stroke="#cbd5e1"
                 strokeWidth={1}
               />
+              {/* Lignes horizontales pointillées pour les phases SETUP
+                  (constantes — mesurées une fois au session.start) */}
+              {setupValues
+                .filter((s) => isVisible(`setup:${s.key}`))
+                .map((s) => {
+                const y = yTo(s.value);
+                return (
+                  <g key={`setup-${s.key}`}>
+                    <line
+                      x1={PAD.left}
+                      x2={CHART_W - PAD.right}
+                      y1={y}
+                      y2={y}
+                      stroke={s.color}
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                      opacity={0.65}
+                    />
+                    {/* Petit label inline à droite */}
+                    <text
+                      x={CHART_W - PAD.right - 2}
+                      y={y - 3}
+                      textAnchor="end"
+                      fontSize={8}
+                      fill={s.color}
+                      fontFamily="ui-monospace, monospace"
+                    >
+                      {s.label.split(" → ")[1] ?? s.label} · {Math.round(s.value)}
+                    </text>
+                  </g>
+                );
+              })}
               {/* Lignes par série + points hoverables */}
-              {PERTURN_SERIES.map((s) => {
+              {PERTURN_SERIES.filter((s) => isVisible(`runtime:${s.key}`)).map((s) => {
                 const arr = point.perTurn?.[s.key] ?? [];
                 if (arr.length === 0) return null;
                 return (
@@ -877,29 +910,94 @@ function CallDetailPanel({
           </div>
         )}
 
-        {/* Légende */}
-        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-          {PERTURN_SERIES.map((s) => {
-            const arr = point.perTurn?.[s.key] ?? [];
-            const empty = arr.length === 0;
-            return (
-              <div
-                key={s.key}
-                className="flex items-center gap-1.5"
-                title={s.hint}
-              >
-                <span
-                  className="h-2 w-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: empty ? "#cbd5e1" : s.color }}
-                />
-                <span
-                  className={`truncate text-[10px] ${empty ? "text-[#94a3b8] line-through" : "text-[#475569]"}`}
-                >
-                  {s.label}
-                </span>
-              </div>
-            );
-          })}
+        {/* Légende unifiée — 8 lignes (4 aller setup pointillés + 4
+         *  retour runtime pleins), toggleables au click. */}
+        <div className="mt-3 space-y-2">
+          {/* Section ALLER (setup) */}
+          <div>
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-widest text-[#0e7490]">
+              ↗ Aller (setup, lignes pointillées)
+            </p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {SETUP_SERIES.map((s) => {
+                const v = point.latencies[s.key];
+                const empty = v == null || v <= 0;
+                const id = `setup:${s.key}`;
+                const visible = isVisible(id);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => toggle(id)}
+                    disabled={empty}
+                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
+                      !visible ? "opacity-40" : ""
+                    }`}
+                    title={`Click pour ${visible ? "masquer" : "afficher"} · ${s.label}`}
+                  >
+                    <span
+                      className="h-0.5 w-4 shrink-0"
+                      style={{
+                        background: empty
+                          ? "#cbd5e1"
+                          : `repeating-linear-gradient(to right, ${s.color} 0 3px, transparent 3px 5px)`,
+                      }}
+                    />
+                    <span
+                      className={`flex-1 truncate text-[10px] ${
+                        empty ? "text-[#94a3b8] line-through" : "text-[#475569]"
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                    {!empty && (
+                      <span className="font-mono text-[9px] font-semibold tabular-nums text-[#18181b]">
+                        {Math.round(v)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Section RETOUR (runtime) */}
+          <div>
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-widest text-[#be185d]">
+              ↘ Retour (runtime par tour, lignes pleines)
+            </p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {PERTURN_SERIES.map((s) => {
+                const arr = point.perTurn?.[s.key] ?? [];
+                const empty = arr.length === 0;
+                const id = `runtime:${s.key}`;
+                const visible = isVisible(id);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => toggle(id)}
+                    disabled={empty}
+                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
+                      !visible ? "opacity-40" : ""
+                    }`}
+                    title={`Click pour ${visible ? "masquer" : "afficher"} · ${s.hint}`}
+                  >
+                    <span
+                      className="h-0.5 w-4 shrink-0 rounded-full"
+                      style={{ backgroundColor: empty ? "#cbd5e1" : s.color }}
+                    />
+                    <span
+                      className={`flex-1 truncate text-[10px] ${
+                        empty ? "text-[#94a3b8] line-through" : "text-[#475569]"
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </aside>
