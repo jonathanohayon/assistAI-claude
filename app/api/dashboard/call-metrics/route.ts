@@ -32,7 +32,7 @@ interface CallMetricsMetadata {
     sessionStart?: number;
   };
   greetingMs?: number;
-  ttfaMs?: { mean?: number | null };
+  ttfaMs?: { mean?: number | null; p95?: number | null };
   serverEouDelayMs?: { mean?: number | null };
   serverFirstAudioDelayMs?: { mean?: number | null };
   transcriptionDelayMs?: { mean?: number | null };
@@ -92,16 +92,15 @@ export async function GET(req: NextRequest) {
     const m = (row.metadata ?? {}) as CallMetricsMetadata;
     const setup = m.setupMs ?? {};
     const ttfa = m.ttfaMs?.mean ?? null;
+    const ttfaP95 = m.ttfaMs?.p95 ?? null;
     const eou = m.serverEouDelayMs?.mean ?? null;
     const firstAudio = m.serverFirstAudioDelayMs?.mean ?? null;
     const trans = m.transcriptionDelayMs?.mean ?? null;
     const greeting = m.greetingMs ?? null;
 
-    // Total E2E = max user-perceived latency observée pendant l'appel.
-    // C'est ttfaMs.mean (= temps moyen entre "user finit de parler" et
-    // "agent commence à répondre") qui est le meilleur proxy d'une
-    // expérience temps-réel. Si pas mesuré (appel court sans turn user),
-    // on retombe sur greetingMs.
+    // Total E2E = TTFA mean (latence perçue par l'utilisateur, moyennée
+    // sur les tours de l'appel). Si pas mesuré (appel court sans turn
+    // user), on retombe sur greetingMs (latence init).
     const totalE2eMs = ttfa ?? greeting ?? null;
 
     return {
@@ -128,7 +127,13 @@ export async function GET(req: NextRequest) {
         // 8. First audio (response.created → 1st audio chunk OpenAI)
         firstAudio: firstAudio,
       },
-      // Y axis principal
+      // Métriques candidates pour l'axe Y (sélectionnable côté UI)
+      yMetrics: {
+        ttfa,
+        p95: ttfaP95,
+        greeting,
+      },
+      // Défaut : TTFA mean = ce qu'on affiche actuellement
       totalE2eMs,
     };
   });

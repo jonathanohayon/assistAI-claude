@@ -23,6 +23,11 @@ interface LatencyPoint {
   timestamp: string;
   origin: Origin;
   totalE2eMs: number | null;
+  yMetrics: {
+    ttfa: number | null;
+    p95: number | null;
+    greeting: number | null;
+  };
   latencies: {
     twilioToWorker: number | null;
     workerToLivekit: number | null;
@@ -49,6 +54,27 @@ const PERIOD_LABELS: Record<Period, string> = {
   "24h": "24 heures",
   "7d": "7 jours",
   "30d": "30 jours",
+};
+
+/** Choix de la métrique Y du graph. */
+type YMetric = "ttfa" | "p95" | "greeting";
+
+const Y_METRIC_LABELS: Record<YMetric, { short: string; long: string }> = {
+  ttfa: {
+    short: "TTFA moyen",
+    long:
+      "Time-To-First-Audio — temps moyen entre la fin de phrase user et le 1er son de réponse (= latence perçue par l'utilisateur, moyennée sur tous les tours de l'appel).",
+  },
+  p95: {
+    short: "TTFA p95",
+    long:
+      "Time-To-First-Audio p95 — pire latence parmi les tours de l'appel (95e percentile). Plus représentatif que la moyenne si on veut voir les outliers.",
+  },
+  greeting: {
+    short: "Greeting init",
+    long:
+      "Temps total entre le début de session et le 1er son du greeting de l'agent. Inclut les phases de setup (connect, config, OpenAI WS).",
+  },
 };
 
 const POLL_INTERVAL_MS = 10_000;
@@ -82,9 +108,16 @@ const HOP_LABELS: Array<{ key: keyof LatencyPoint["latencies"]; label: string }>
 
 export function LatencyChart() {
   const [period, setPeriod] = useState<Period>("24h");
+  const [yMetric, setYMetric] = useState<YMetric>("ttfa");
   const [data, setData] = useState<ChartData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  // Helper : extrait la valeur Y selon la métrique sélectionnée.
+  const getY = (p: LatencyPoint): number | null => {
+    if (yMetric === "ttfa") return p.yMetrics.ttfa ?? p.yMetrics.greeting;
+    if (yMetric === "p95") return p.yMetrics.p95 ?? p.yMetrics.ttfa;
+    return p.yMetrics.greeting;
+  };
   const [hover, setHover] = useState<{
     point: LatencyPoint;
     x: number;
@@ -134,7 +167,7 @@ export function LatencyChart() {
     const xMin = data.sinceMs;
     const xMax = data.untilMs;
     const validY = data.points
-      .map((p) => p.totalE2eMs)
+      .map(getY)
       .filter((v): v is number => v != null && v > 0);
     const yMax = validY.length > 0 ? Math.max(...validY) * 1.1 : 1000;
     const plotW = CHART.width - CHART.padLeft - CHART.padRight;
@@ -149,13 +182,16 @@ export function LatencyChart() {
   const plotPoints = useMemo(() => {
     if (!data || !scales) return [];
     return data.points
-      .filter((p) => p.totalE2eMs != null)
-      .map((p) => ({
+      .map((p) => ({ p, y: getY(p) }))
+      .filter((entry): entry is { p: LatencyPoint; y: number } => entry.y != null)
+      .map(({ p, y }) => ({
         ...p,
+        yValue: y,
         cx: scales.xTo(new Date(p.timestamp).getTime()),
-        cy: scales.yTo(p.totalE2eMs!),
+        cy: scales.yTo(y),
       }));
-  }, [data, scales]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, scales, yMetric]);
 
   // X axis ticks (4 evenly spaced)
   const xTicks = useMemo(() => {
@@ -181,42 +217,72 @@ export function LatencyChart() {
 
   return (
     <section className="mb-8 rounded-3xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#be185d]">
-            Monitoring
+            Monitoring · {Y_METRIC_LABELS[yMetric].short}
           </p>
           <h3 className="mt-1 font-display text-xl tracking-tight text-[#18181b] sm:text-2xl">
-            Latence end-to-end par appel
+            Latence par appel (ms)
           </h3>
-          <p className="mt-0.5 text-xs text-[#475569]">
-            {data && `${plotPoints.length} appels · `}
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#475569]">
+            {Y_METRIC_LABELS[yMetric].long}
+          </p>
+          <p className="mt-1 text-[11px] text-[#94a3b8]">
+            {data && `${plotPoints.length} appel${plotPoints.length > 1 ? "s" : ""} sur la période · `}
             Live refresh {paused ? "(en pause)" : `toutes les ${POLL_INTERVAL_MS / 1000}s`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+        <div className="flex flex-col items-end gap-2">
+          {/* Sélecteur de métrique Y */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+              Métrique
+            </span>
+            {(Object.keys(Y_METRIC_LABELS) as YMetric[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setYMetric(m)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  yMetric === m
+                    ? "bg-[#be185d] text-white shadow-sm"
+                    : "bg-white text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#fdf2f8]"
+                }`}
+                title={Y_METRIC_LABELS[m].long}
+              >
+                {Y_METRIC_LABELS[m].short}
+              </button>
+            ))}
+          </div>
+          {/* Sélecteur de période */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+              Période
+            </span>
+            {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  period === p
+                    ? "bg-[#0e7490] text-white shadow-sm"
+                    : "bg-white text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#ecfeff]"
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
             <button
-              key={p}
               type="button"
-              onClick={() => setPeriod(p)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                period === p
-                  ? "bg-[#0e7490] text-white shadow-sm"
-                  : "bg-white text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#ecfeff]"
-              }`}
+              onClick={() => setPaused((v) => !v)}
+              className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#fef3c7]"
+              title="Pause / reprendre auto-refresh"
             >
-              {PERIOD_LABELS[p]}
+              {paused ? "▶" : "⏸"}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setPaused((v) => !v)}
-            className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#fef3c7]"
-            title="Pause / reprendre auto-refresh"
-          >
-            {paused ? "▶ Reprendre" : "⏸ Pause"}
-          </button>
+          </div>
         </div>
       </header>
 
@@ -364,12 +430,13 @@ export function LatencyChart() {
               </p>
               <div className="flex items-baseline justify-between border-b border-[#e2e8f0] pb-2">
                 <span className="text-xs font-semibold text-[#18181b]">
-                  Total E2E
+                  {Y_METRIC_LABELS[yMetric].short}
                 </span>
                 <span className="font-mono text-base font-bold text-[#be185d]">
-                  {hover.point.totalE2eMs != null
-                    ? `${Math.round(hover.point.totalE2eMs)} ms`
-                    : "—"}
+                  {(() => {
+                    const v = getY(hover.point);
+                    return v != null ? `${Math.round(v)} ms` : "—";
+                  })()}
                 </span>
               </div>
               <ul className="mt-2 space-y-1 text-[11px]">
