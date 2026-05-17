@@ -180,12 +180,12 @@ export function LogsView() {
   /** Toggle grouping events par appel. Default ON = vue analyse,
    *  OFF = flat chronologique pour debug brut. */
   const [groupByCall, setGroupByCall] = useState(true);
-  /** Groupes collapsed/expanded — par key. Par défaut tous expandés. */
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+  /** Groupes expanded — par key. Par défaut TOUS COLLAPSED (Set vide). */
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(),
   );
   const toggleGroup = (key: string) =>
-    setCollapsedGroups((prev) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -339,6 +339,29 @@ export function LogsView() {
           >
             {groupByCall ? "☰ Groupé" : "≡ Flat"}
           </button>
+          {groupByCall && (
+            <div className="inline-flex overflow-hidden rounded-full ring-1 ring-inset ring-[var(--color-border)]">
+              <button
+                onClick={() =>
+                  setExpandedGroups(
+                    new Set(groupEventsByCall(filtered).map((g) => g.key)),
+                  )
+                }
+                className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+                title="Déplier tous les appels"
+              >
+                ⊕ Tout ouvrir
+              </button>
+              <span className="self-stretch w-px bg-[var(--color-border)]" />
+              <button
+                onClick={() => setExpandedGroups(new Set())}
+                className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+                title="Replier tous les appels"
+              >
+                ⊖ Tout fermer
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setPaused((p) => !p)}
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
@@ -371,7 +394,7 @@ export function LogsView() {
       ) : groupByCall ? (
         <div className="space-y-3">
           {groupEventsByCall(filtered).map((group) => {
-            const isCollapsed = collapsedGroups.has(group.key);
+            const isCollapsed = !expandedGroups.has(group.key);
             const accent =
               group.kind === "other"
                 ? "from-[#94a3b8] to-[#64748b]"
