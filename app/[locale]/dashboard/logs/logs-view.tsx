@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { LatencyChart } from "./latency-chart";
+
 interface EventRow {
   id: string;
   level: "info" | "warn" | "error";
@@ -147,6 +149,7 @@ export function LogsView() {
 
   return (
     <div className="space-y-4">
+      <LatencyChart />
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">

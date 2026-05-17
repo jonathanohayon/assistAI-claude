@@ -594,7 +594,7 @@
     "tabCalendar": "Calendrier",
     "tabContacts": "Contacts",
     "tabBilling": "Abonnement",
-    "tabLogs": "Logs",
+    "tabLogs": "Monitoring",
     "userMenuAria": "Menu utilisateur",
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
@@ -857,9 +857,9 @@
     "flashError": "Plan invalide."
   },
   "DashboardLogs": {
-    "header": "Logs",
-    "title": "Activité en temps réel.",
-    "subtitle": "Tous les événements end-to-end : appels reçus, tools agent (RDV, contacts), récaps WhatsApp, login, modifications de config. Auto-refresh toutes les 3 secondes.",
+    "header": "Monitoring",
+    "title": "Latence et activité en temps réel.",
+    "subtitle": "Graph de latence end-to-end par appel (hover sur un point pour le détail des 8 hops + total). En dessous, tous les events bruts : appels reçus, tools agent, récaps WhatsApp, modifications de config. Auto-refresh toutes les 3 secondes.",
     "sourceFilterLabel": "Source:",
     "levelFilterLabel": "Niveau:",
     "sourceAgent": "Agent",

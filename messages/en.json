@@ -594,7 +594,7 @@
     "tabCalendar": "Calendar",
     "tabContacts": "Contacts",
     "tabBilling": "Billing",
-    "tabLogs": "Logs",
+    "tabLogs": "Monitoring",
     "userMenuAria": "User menu",
     "loggedInAs": "Signed in as",
     "settingsLink": "Settings",
@@ -857,9 +857,9 @@
     "flashError": "Invalid plan."
   },
   "DashboardLogs": {
-    "header": "Logs",
-    "title": "Real-time activity.",
-    "subtitle": "All end-to-end events: incoming calls, agent tools (appointments, contacts), WhatsApp summaries, login, config changes. Auto-refresh every 3 seconds.",
+    "header": "Monitoring",
+    "title": "Latency and real-time activity.",
+    "subtitle": "End-to-end latency chart per call (hover a point for the 8-hop breakdown + total). Below, the raw event stream: incoming calls, agent tools, WhatsApp recaps, config changes. Auto-refresh every 3 seconds.",
     "sourceFilterLabel": "Source:",
     "levelFilterLabel": "Level:",
     "sourceAgent": "Agent",
