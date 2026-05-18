@@ -45,6 +45,14 @@ interface LatencyPoint {
     transcription: number[];
     firstAudio: number[];
   };
+  /** Topologie infra — où tourne chaque composant. Snapshot par appel. */
+  topology?: {
+    twilio?: string;
+    worker?: string;
+    web?: string;
+    livekit?: string;
+    openai?: string;
+  };
 }
 
 interface ChartData {
@@ -999,6 +1007,44 @@ function CallDetailPanel({
             </div>
           </div>
         </div>
+
+        {/* Topologie infra — où tourne chaque composant pour cet appel.
+            Aide à expliquer une latence (e.g. worker EU ↔ OpenAI US =
+            ~120ms RTT incompressible). */}
+        {point.topology && (
+          <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
+            <p className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-[#475569]">
+              🌍 Topologie infra
+            </p>
+            <dl className="grid grid-cols-1 gap-1 text-[11px]">
+              {(
+                [
+                  ["Twilio", point.topology.twilio, "#ec4899"],
+                  ["Worker", point.topology.worker, "#be185d"],
+                  ["Web", point.topology.web, "#22d3ee"],
+                  ["LiveKit", point.topology.livekit, "#0e7490"],
+                  ["OpenAI", point.topology.openai, "#7c3aed"],
+                ] as const
+              ).map(([label, value, color]) => (
+                <div
+                  key={label}
+                  className="flex items-baseline justify-between gap-2"
+                >
+                  <dt className="flex items-center gap-1.5 text-[#475569]">
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="font-medium">{label}</span>
+                  </dt>
+                  <dd className="truncate font-mono text-[10px] tabular-nums text-[#18181b]">
+                    {value || "—"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </div>
     </aside>
   );

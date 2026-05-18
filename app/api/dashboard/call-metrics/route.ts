@@ -43,6 +43,13 @@ interface CallMetricsMetadata {
   rawServerFirstAudioMs?: number[];
   toNumber?: string;
   fromNumber?: string;
+  topology?: {
+    twilio?: string;
+    worker?: string;
+    web?: string;
+    livekit?: string;
+    openai?: string;
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -152,6 +159,16 @@ export async function GET(req: NextRequest) {
       },
       // Défaut : TTFA mean = ce qu'on affiche actuellement
       totalE2eMs,
+      // Topologie infra — où tourne chaque composant. Fallback sur les
+      // env vars locales si l'event n'a pas été emis avec topology
+      // (anciens appels pré-2026-05-18).
+      topology: m.topology ?? {
+        twilio: process.env.INFRA_TWILIO_EDGE ?? "unknown",
+        worker: process.env.INFRA_WORKER_REGION ?? "unknown",
+        web: process.env.INFRA_WEB_REGION ?? "unknown",
+        livekit: process.env.INFRA_LIVEKIT_REGION ?? "unknown",
+        openai: process.env.INFRA_OPENAI_REGION ?? "unknown",
+      },
     };
   });
 
