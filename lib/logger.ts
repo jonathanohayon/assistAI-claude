@@ -54,20 +54,31 @@ export async function logEvent(ev: LogEvent): Promise<void> {
   if (!resolvedUserId && ev.metadata) {
     // Stratégie 1 : origin.userId pour les sessions web
     const origin = ev.metadata['origin'] as
-      | { userId?: string }
+      | { userId?: string; calledNumber?: string; kind?: string }
       | undefined;
     if (origin?.userId && typeof origin.userId === 'string') {
       resolvedUserId = origin.userId;
     }
-    // Stratégie 2 : toNumber → phone_numbers (chemin SIP)
+    // Stratégie 2 : toNumber top-level OU origin.calledNumber (SIP)
+    //   → phone_numbers lookup. Pour les events worker comme call_started,
+    //   auto_hangup, realtime_server_error, le metadata a `origin.calledNumber`
+    //   mais pas `toNumber` top-level. Sans cette branche, ces events
+    //   arrivent avec user_id=NULL → invisibles dans le dashboard.
     if (!resolvedUserId) {
-      const toNumber = ev.metadata['toNumber'];
-      if (typeof toNumber === 'string' && toNumber.length > 0) {
+      const lookupNumber =
+        (typeof ev.metadata['toNumber'] === 'string' &&
+          (ev.metadata['toNumber'] as string).length > 0 &&
+          (ev.metadata['toNumber'] as string)) ||
+        (typeof origin?.calledNumber === 'string' &&
+          origin.calledNumber.length > 0 &&
+          origin.calledNumber) ||
+        null;
+      if (lookupNumber) {
         try {
           const [row] = await db
             .select({ userId: phoneNumbers.userId })
             .from(phoneNumbers)
-            .where(eq(phoneNumbers.phoneNumber, toNumber))
+            .where(eq(phoneNumbers.phoneNumber, lookupNumber))
             .limit(1);
           if (row?.userId) resolvedUserId = row.userId;
         } catch {
