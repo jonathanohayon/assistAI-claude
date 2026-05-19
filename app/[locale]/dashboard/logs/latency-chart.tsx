@@ -121,7 +121,7 @@ const HOP_LABELS: Array<{ key: keyof LatencyPoint["latencies"]; label: string }>
     { key: "firstAudio", label: "First audio (TTS)" },
   ];
 
-export function LatencyChart() {
+export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
   const [period, setPeriod] = useState<Period>("24h");
   const [yMetric, setYMetric] = useState<YMetric>("ttfa");
   const [data, setData] = useState<ChartData | null>(null);
@@ -160,8 +160,10 @@ export function LatencyChart() {
     let aborted = false;
     const fetchData = async () => {
       try {
+        const qs = new URLSearchParams({ period });
+        if (asUserId) qs.set("asUserId", asUserId);
         const res = await fetch(
-          `/api/dashboard/call-metrics?period=${period}`,
+          `/api/dashboard/call-metrics?${qs}`,
           { cache: "no-store" },
         );
         if (!res.ok) {
@@ -189,7 +191,7 @@ export function LatencyChart() {
       aborted = true;
       clearInterval(id);
     };
-  }, [period, paused]);
+  }, [period, paused, asUserId]);
 
   // Compute scales
   const scales = useMemo(() => {

@@ -212,6 +212,14 @@ export default async function AdminTenantPage({
               ` jusqu'au ${new Date(target.trialEndsAt).toLocaleDateString("fr-FR")}`}
           </span>
         </div>
+        <div className="mt-5">
+          <Link
+            href={`/admin/users/${target.id}/logs`}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]"
+          >
+            📊 Monitoring & logs du tenant →
+          </Link>
+        </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8 pb-20">

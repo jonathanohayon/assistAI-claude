@@ -1,13 +1,18 @@
-import { and, desc, gt, SQL } from "drizzle-orm";
+import { and, desc, eq, gt, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
-// GET /api/dashboard/events?since=<iso>&source=<csv>&level=<csv>&limit=200
+// GET /api/dashboard/events?since=<iso>&source=<csv>&level=<csv>&limit=200&asUserId=<uuid>
 // Returns rows newer than `since` (exclusive) so the dashboard can poll
 // efficiently — only fetching new logs each tick.
+//
+// Scoping :
+//   - Par défaut : events.userId = session.user.id (tenant authentifié).
+//   - Si `?asUserId=<uuid>` ET caller est admin → events du tenant cible.
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -18,12 +23,21 @@ export async function GET(req: NextRequest) {
   const since = url.searchParams.get("since");
   const sourceCsv = url.searchParams.get("source") ?? "";
   const levelCsv = url.searchParams.get("level") ?? "";
+  const asUserId = url.searchParams.get("asUserId");
   const limit = Math.min(
     Math.max(Number(url.searchParams.get("limit") ?? "200"), 1),
     500,
   );
 
-  const conditions: SQL[] = [];
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId,
+  });
+  if ("forbidden" in scope) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const conditions: SQL[] = [eq(events.userId, scope.userId)];
   if (since) {
     const ts = new Date(since);
     if (!Number.isNaN(ts.getTime())) {
@@ -31,14 +45,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Drizzle's IN takes an array. Build the where clause dynamically.
-  // For simplicity use raw SQL fragments here.
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-
   const rows = await db
     .select()
     .from(events)
-    .where(where)
+    .where(and(...conditions))
     .orderBy(desc(events.createdAt))
     .limit(limit);
 

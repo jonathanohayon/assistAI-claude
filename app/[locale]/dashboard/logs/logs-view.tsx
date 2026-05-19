@@ -151,7 +151,7 @@ const LEVEL_BADGE: Record<string, string> = {
   error: "text-red-600 font-semibold",
 };
 
-export function LogsView() {
+export function LogsView({ asUserId }: { asUserId?: string } = {}) {
   const t = useTranslations("DashboardLogs");
   const locale = useLocale();
   const timeLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
@@ -200,6 +200,7 @@ export function LogsView() {
       params.set("since", lastFetchedAt.current);
     }
     params.set("limit", "200");
+    if (asUserId) params.set("asUserId", asUserId);
 
     try {
       const res = await fetch(`/api/dashboard/events?${params}`, {
@@ -229,7 +230,7 @@ export function LogsView() {
     } catch (e) {
       setError(e instanceof Error ? e.message : t("fetchError"));
     }
-  }, [t]);
+  }, [t, asUserId]);
 
   // Initial load
   useEffect(() => {
@@ -278,7 +279,7 @@ export function LogsView() {
 
   return (
     <div className="space-y-4">
-      <LatencyChart />
+      <LatencyChart asUserId={asUserId} />
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
