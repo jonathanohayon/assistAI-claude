@@ -471,12 +471,17 @@ export function ConfigForm({
         }
       `}</style>
 
-      {/* xl:pr-[400px] = laisse de la place pour le LiveTestPanelLK qui passe
-       *  en position fixed sur la droite à partir de xl (1280px). En dessous
-       *  de xl le panel reste inline et ce padding n'est pas appliqué. */}
-      <div className="relative xl:pr-[400px]">
+      {/* Layout 2 colonnes à partir de xl (1280px+) :
+       *  - Hero span 2 colonnes en haut (full width).
+       *  - LiveTest dans la colonne droite, row 2, position sticky :
+       *    démarre en bas du viewport sous le hero, puis ne monte pas plus
+       *    haut que le centre quand on scroll.
+       *  - Tile section dans la colonne gauche row 2.
+       *  En dessous de xl : ordre DOM (hero → LiveTest → tiles), comportement
+       *  inline classique sans sticky. */}
+      <div className="relative xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
         {/* ── HERO + LIVE STATUS ──────────────────────────────────────── */}
-        <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12 xl:col-span-2">
           <div
             className="card-hover anim-fade-up relative overflow-hidden rounded-[2rem] border border-white/40 bg-white/55 p-7 shadow-[0_8px_40px_-12px_rgba(190,24,93,0.25)] backdrop-blur-xl sm:p-10 lg:col-span-8"
             style={{ animationDelay: "60ms" }}
@@ -598,22 +603,27 @@ export function ConfigForm({
 
         {/* ── LIVE TEST ───────────────────────────────────────────────── */}
         {/* < xl : inline sous le hero (comportement historique).
-         *  xl+  : position fixed à droite de l'écran, centré verticalement,
-         *         visible en permanence pendant le scroll. Largeur 380px,
-         *         max-h calc(100vh - 3rem) avec overflow-y-auto en safety. */}
-        <section
-          className="card-hover anim-fade-up mb-8 xl:fixed xl:right-6 xl:top-1/2 xl:z-30 xl:mb-0 xl:w-[380px] xl:-translate-y-1/2 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto"
-          style={{ animationDelay: "220ms" }}
-        >
-          {/* Phase 2 : LiveTestPanelLK route via LiveKit (worker QVF 2.1 L)
-           *  au lieu du peer connection direct vers OpenAI. La config est
-           *  désormais lue depuis la DB par le worker — d'où le warning
-           *  "save before testing" si le form est dirty. */}
-          <LiveTestPanelLK dirty={dirty} />
-        </section>
+         *  xl+  : positionné dans la col droite, row 2. Le wrapper interne
+         *         est sticky avec top:50vh → le panel scroll naturellement
+         *         depuis sa position de départ (sous le hero), puis se fige
+         *         à mi-écran et reste visible pendant le scroll. */}
+        <aside className="card-hover anim-fade-up mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
+          {/* Trick centrage vertical sans overlap avec le hero :
+           *  - xl:mt-[280px] décale la position naturelle vers le bas de
+           *    ≈ moitié de la hauteur du panel.
+           *  - xl:-translate-y-1/2 décale ensuite visuellement vers le haut
+           *    de 50% de la hauteur du panel.
+           *  Au repos : ces deux décalages s'annulent → panel pile sous le
+           *  hero (jamais d'overlap avec la box statut).
+           *  Pendant le scroll : sticky top:50vh + translate = centre du
+           *  panel calé sur le centre du viewport. */}
+          <div className="xl:mt-[280px] xl:sticky xl:top-[50vh] xl:-translate-y-1/2">
+            <LiveTestPanelLK dirty={dirty} />
+          </div>
+        </aside>
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}
-        <section className="mb-6">
+        <section className="mb-6 xl:col-start-1 xl:row-start-2">
           <div className="mb-4">
             <h2 className="text-xl font-extrabold tracking-tight text-[#18181b] sm:text-2xl">
               {t("header")}
@@ -623,7 +633,10 @@ export function ConfigForm({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {/* À partir de xl, la grille des tuiles n'a plus toute la largeur
+           *  (la col droite contient le LiveTest sticky), donc on repasse
+           *  à 4 colonnes pour que les tuiles ne deviennent pas trop petites. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
             {TILES.map((tile, i) => (
               <Tile
                 key={tile.id}

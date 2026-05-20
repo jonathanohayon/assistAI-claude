@@ -187,7 +187,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
 
   return (
     <section
-      className="relative overflow-hidden rounded-[2rem] border border-white/50 p-7 shadow-[0_8px_40px_-12px_rgba(14,116,144,0.25)] backdrop-blur-xl sm:p-10"
+      className="relative overflow-hidden rounded-[2rem] border border-white/50 p-5 shadow-[0_8px_40px_-12px_rgba(14,116,144,0.25)] backdrop-blur-xl sm:p-6"
       style={{
         backgroundColor: "#ffffff",
         backgroundImage: `
@@ -219,22 +219,17 @@ export function LiveTestPanelLK({ dirty }: Props) {
       `}</style>
 
       {/* Header */}
-      <header className="mb-7 flex items-start justify-between gap-3">
+      <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#0e7490]">
-            Live Test · QVF 2.1 L
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#0e7490]">
+            Live Test
           </p>
-          <h3 className="mt-1 font-display text-2xl tracking-tight text-[#18181b] sm:text-3xl">
+          <h3 className="mt-1 font-display text-xl tracking-tight text-[#18181b]">
             Tester en direct
           </h3>
-          <p className="mt-1.5 max-w-md text-sm leading-relaxed text-[#475569]">
-            Parlez à votre agent depuis le navigateur. La réduction de bruit
-            ai-coustics tourne sur le worker — même pipeline que pour les
-            vrais appels.
-          </p>
         </div>
         <span
-          className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold ring-1 ring-inset ${pillTone[status].bg} ${pillTone[status].text} ${pillTone[status].ring}`}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset ${pillTone[status].bg} ${pillTone[status].text} ${pillTone[status].ring}`}
         >
           <span className={`h-2 w-2 rounded-full ${statusDotClass[status]}`} />
           {statusLabel[status]}
@@ -242,19 +237,18 @@ export function LiveTestPanelLK({ dirty }: Props) {
       </header>
 
       {dirty && (
-        <div className="mb-6 rounded-2xl border border-[#fde68a] bg-[#fef3c7]/60 px-3.5 py-2.5 text-xs text-[#92400e]">
-          <strong>Note :</strong> sauvegardez vos modifs avant de tester —
-          le worker lit la config depuis la base, pas le formulaire.
+        <div className="mb-4 rounded-2xl border border-[#fde68a] bg-[#fef3c7]/60 px-3 py-2 text-[11px] leading-snug text-[#92400e]">
+          Sauvegardez avant de tester — le worker lit la config en base.
         </div>
       )}
 
       {/* Layout vertical (mic au-dessus, transcript en dessous) — fonctionne
        *  aussi bien en pleine largeur que dans une sidebar étroite (cf.
        *  config-form.tsx qui passe le panel en fixed-right sur xl+). */}
-      <div className="relative flex flex-col gap-8">
+      <div className="relative flex flex-col gap-5">
         {/* ─── BLOC MIC ───────────────────────────────────────────────── */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-44 w-44 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative flex h-32 w-32 items-center justify-center">
             {/* Ripple rings cyan */}
             <span aria-hidden className="ltp-ripple-ring" />
             <span aria-hidden className="ltp-ripple-ring ltp-ripple-ring--2" />
@@ -267,7 +261,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
               aria-label={
                 isLive ? "Arrêter le test" : "Démarrer le test vocal"
               }
-              className={`group relative inline-flex h-36 w-36 items-center justify-center rounded-full text-white shadow-[0_12px_48px_-8px_rgba(14,116,144,0.65)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
+              className={`group relative inline-flex h-24 w-24 items-center justify-center rounded-full text-white shadow-[0_12px_48px_-8px_rgba(14,116,144,0.65)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
                 isConnecting || status === "ending"
                   ? "bg-gradient-to-br from-[#f59e0b] to-[#b45309]"
                   : isLive
@@ -301,7 +295,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
                   aria-hidden
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="h-12 w-12 motion-safe:animate-spin"
+                  className="h-9 w-9 motion-safe:animate-spin"
                 >
                   <circle
                     cx="12"
@@ -323,7 +317,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
                   aria-hidden
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="h-12 w-12"
+                  className="h-9 w-9"
                 >
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
@@ -332,7 +326,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
                   aria-hidden
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="h-14 w-14"
+                  className="h-10 w-10"
                 >
                   <rect
                     x="9"
@@ -359,19 +353,6 @@ export function LiveTestPanelLK({ dirty }: Props) {
               : "Cliquez et parlez pour tester"}
           </p>
 
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-medium text-[#475569] ring-1 ring-inset ring-[#e2e8f0]">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-3 w-3"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-            Quail Voice Focus 2.1 L · ~30 ms
-          </span>
-
           {isLive && (
             <button
               type="button"
@@ -389,15 +370,15 @@ export function LiveTestPanelLK({ dirty }: Props) {
 
         {/* ─── BLOC TRANSCRIPT ───────────────────────────────────────── */}
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Aperçu de conversation
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]">
+            Conversation
           </p>
           <div
             ref={transcriptRef}
             role="log"
             aria-live="polite"
             aria-label="Transcript"
-            className="flex max-h-[480px] min-h-[360px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur"
+            className="flex max-h-[280px] min-h-[180px] flex-col gap-2 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-3 backdrop-blur"
           >
             {error && (
               <p
