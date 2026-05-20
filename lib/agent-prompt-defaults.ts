@@ -127,6 +127,7 @@ export const BLOCK_IDS = [
   "hangup",
   "config_blocks",
   "persona",
+  "knowledge",
   "language",
   "admin_global",
 ] as const;
@@ -155,6 +156,7 @@ export const DEFAULT_PROMPT_BLOCK_ORDER: readonly BlockId[] = [
   "hangup",
   "config_blocks",
   "persona",
+  "knowledge",
   "language",
   "admin_global",
 ];
@@ -165,6 +167,7 @@ export const BLOCK_LABELS: Record<BlockId, string> = {
   hangup: "Règle fin d'appel (end_call)",
   config_blocks: "Respect des étapes (config blocs)",
   persona: "Persona tenant",
+  knowledge: "Base de connaissances tenant (business)",
   language: "Directive langue",
   admin_global: "Règles transverses admin (par plan)",
 };

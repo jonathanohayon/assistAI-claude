@@ -134,6 +134,25 @@ export const agentConfigs = pgTable("agent_configs", {
   // (LiveTest via LiveKit, une fois Phase 2 shippée).
   noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
 
+  // Base de connaissances tenant — array de "business" que l'agent peut
+  // référencer. Chaque entrée = un business avec horaires + description.
+  // Injecté dans le system prompt comme bloc `knowledge` (cf.
+  // /api/agent/config) pour que le LLM puisse répondre aux questions
+  // contextuelles ("vous êtes ouverts à quelle heure ?", "quels services
+  // chez le spa ?"). Géré depuis /dashboard/config → tile "Connaissances".
+  knowledge: jsonb("knowledge")
+    .$type<
+      Array<{
+        id: string;
+        toolName: string;
+        businessName: string;
+        openingHours: string;
+        description: string;
+      }>
+    >()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

@@ -149,12 +149,36 @@ export async function GET(req: NextRequest) {
   const adminBlock = globalInstructions
     ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
     : "";
+
+  // Bloc connaissances tenant — formatte la base de connaissances (array
+  // de business) en section référence dans le prompt. L'agent cite ces
+  // infos quand on lui pose des questions sur les services/horaires.
+  const knowledgeEntries = Array.isArray(config.knowledge)
+    ? config.knowledge.filter(
+        (e) => (e?.businessName?.length ?? 0) > 0 || (e?.description?.length ?? 0) > 0,
+      )
+    : [];
+  const knowledgeBlock = knowledgeEntries.length
+    ? `BASE DE CONNAISSANCES MÉTIER (référence pour répondre aux questions client) :\n\n${knowledgeEntries
+        .map((e, i) => {
+          const lines: string[] = [];
+          lines.push(
+            `### ${i + 1}. ${e.businessName || "(sans nom)"}${e.toolName ? ` [ref: ${e.toolName}]` : ""}`,
+          );
+          if (e.openingHours) lines.push(`Horaires : ${e.openingHours}`);
+          if (e.description) lines.push(`Détails : ${e.description}`);
+          return lines.join("\n");
+        })
+        .join("\n\n")}\n\nUtilise ces informations EN PRIORITÉ pour répondre aux questions factuelles sur les business ci-dessus. Si la question concerne autre chose, applique le persona normalement.`
+    : "";
+
   const blockContent: Record<string, string> = {
     spoken_time: spokenTime,
     spoken_phone: spokenPhone,
     hangup,
     config_blocks: configBlocks,
     persona: config.instructions,
+    knowledge: knowledgeBlock,
     language: languageDirective,
     admin_global: adminBlock,
   };

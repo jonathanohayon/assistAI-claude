@@ -1,0 +1,1 @@
+ALTER TABLE "agent_configs" ADD COLUMN "knowledge" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -31,6 +31,17 @@ type FormState = {
    *  /api/agent/config pour le worker qui le mappe en enhancementLevel 0.1-1.0
    *  du QVF 2.1 L (ai-coustics). 1 = passthrough, 8 = équilibré, 10 = agressif. */
   noiseReductionLevel: number;
+  /** Base de connaissances tenant — array de business avec horaires +
+   *  description. Injecté dans le system prompt côté /api/agent/config. */
+  knowledge: KnowledgeEntry[];
+};
+
+export type KnowledgeEntry = {
+  id: string;
+  toolName: string;
+  businessName: string;
+  openingHours: string;
+  description: string;
 };
 
 type Gender = "f" | "m";
@@ -312,6 +323,22 @@ export function ConfigForm({
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+      ),
+    },
+    {
+      id: "knowledge",
+      label: "Connaissances",
+      tagline: "Base de connaissances sur tes business",
+      summary:
+        form.knowledge.length === 0
+          ? "Aucun business défini"
+          : `${form.knowledge.length} business · références agent`,
+      accent: "from-[#f59e0b] to-[#b45309]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
         </svg>
       ),
     },
@@ -662,6 +689,9 @@ export function ConfigForm({
                 )}
                 {activeTile === "notifs" && (
                   <NotifsPanel form={form} update={update} t={t} />
+                )}
+                {activeTile === "knowledge" && (
+                  <KnowledgePanel form={form} update={update} />
                 )}
               </div>
             </div>
@@ -1239,6 +1269,235 @@ function NotifsPanel({
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}
       </p>
+    </div>
+  );
+}
+
+// ─── Knowledge panel — base de connaissances tenant ────────────────────
+
+function KnowledgePanel({
+  form,
+  update,
+}: {
+  form: FormState;
+  update: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const addBusiness = () => {
+    const id = `biz_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const next: KnowledgeEntry = {
+      id,
+      toolName: "",
+      businessName: "",
+      openingHours: "",
+      description: "",
+    };
+    update("knowledge", [...form.knowledge, next]);
+    setExpanded((prev) => new Set([...prev, id]));
+  };
+
+  const removeBusiness = (id: string) => {
+    update(
+      "knowledge",
+      form.knowledge.filter((e) => e.id !== id),
+    );
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const patchBusiness = (id: string, patch: Partial<KnowledgeEntry>) => {
+    update(
+      "knowledge",
+      form.knowledge.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-xl border border-[#fef3c7] bg-[#fffbeb]/60 px-4 py-3 text-[11px] leading-relaxed text-[#92400e]">
+        <p className="font-semibold text-[#78350f]">
+          📚 Base de connaissances métier
+        </p>
+        <p className="mt-1">
+          Chaque business ci-dessous est injecté dans le system prompt de
+          l&apos;agent. Quand un client demande des infos (horaires,
+          services, etc.), l&apos;agent répond à partir de ces données.
+        </p>
+      </div>
+
+      {form.knowledge.length === 0 && (
+        <div className="rounded-xl border border-dashed border-[#e2e8f0] bg-white/50 px-4 py-8 text-center">
+          <p className="text-sm text-[#64748b]">
+            Aucun business défini pour ce tenant.
+          </p>
+          <p className="mt-1 text-[11px] text-[#94a3b8]">
+            Clique sur &laquo; + Ajouter un business &raquo; pour commencer.
+          </p>
+        </div>
+      )}
+
+      {form.knowledge.map((entry, idx) => {
+        const isOpen = expanded.has(entry.id);
+        const summary =
+          entry.businessName ||
+          (entry.toolName ? `(${entry.toolName})` : `Business #${idx + 1}`);
+        return (
+          <div
+            key={entry.id}
+            className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm"
+          >
+            <button
+              type="button"
+              onClick={() => toggle(entry.id)}
+              className="flex w-full items-center justify-between gap-3 border-b border-[#f1f5f9] bg-gradient-to-br from-white to-[#fefce8] px-4 py-3 text-left transition-colors hover:bg-[#fefce8]"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-sm">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    className="h-4 w-4"
+                  >
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
+                  </svg>
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#18181b]">
+                    {summary}
+                  </p>
+                  <p className="text-[10px] text-[#94a3b8]">
+                    {entry.toolName ? `ref: ${entry.toolName} · ` : ""}
+                    {entry.openingHours ? `${entry.openingHours.slice(0, 40)}` : "pas d'horaires"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[#94a3b8]">{isOpen ? "▼" : "▶"}</span>
+            </button>
+
+            {isOpen && (
+              <div className="space-y-3 px-4 py-4">
+                <KnowledgeField
+                  label="Nom du tool (référence interne)"
+                  hint="Identifiant court utilisé par l'agent pour référencer ce business (ex: salon_jeru, spa_telaviv)"
+                  value={entry.toolName}
+                  onChange={(v) => patchBusiness(entry.id, { toolName: v })}
+                  placeholder="salon_main"
+                />
+                <KnowledgeField
+                  label="1. Nom du business"
+                  value={entry.businessName}
+                  onChange={(v) => patchBusiness(entry.id, { businessName: v })}
+                  placeholder="Salon Tamara — Jérusalem"
+                />
+                <KnowledgeField
+                  label="2. Horaires d'ouverture"
+                  hint="Format libre — l'agent reformule naturellement à l'oral"
+                  value={entry.openingHours}
+                  onChange={(v) => patchBusiness(entry.id, { openingHours: v })}
+                  placeholder="Lun-Ven 9h-19h, Sam 10h-15h, Dim fermé"
+                  multiline
+                />
+                <KnowledgeField
+                  label="3. Détails sur le business"
+                  hint="Description complète : services proposés, adresse, prix, particularités…"
+                  value={entry.description}
+                  onChange={(v) => patchBusiness(entry.id, { description: v })}
+                  placeholder="Centre situé au 14 rue de Jaffa. Services : coupe, coloration, massage. Parking client. Accessibilité PMR."
+                  multiline
+                  rows={5}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeBusiness(entry.id)}
+                  className="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50/50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                  Supprimer ce business
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={addBusiness}
+        className="group inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#f59e0b]/40 bg-[#fffbeb]/40 px-4 py-3 text-sm font-medium text-[#92400e] transition-all hover:border-[#f59e0b] hover:bg-[#fffbeb]"
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f59e0b] text-white shadow-sm transition-transform group-hover:scale-110">
+          +
+        </span>
+        Ajouter un business
+      </button>
+    </div>
+  );
+}
+
+function KnowledgeField({
+  label,
+  hint,
+  value,
+  onChange,
+  placeholder,
+  multiline,
+  rows = 3,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  rows?: number;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+        {label}
+      </label>
+      {multiline ? (
+        <textarea
+          value={value}
+          rows={rows}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full resize-y rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-sm transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30"
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-sm transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30"
+        />
+      )}
+      {hint && <p className="mt-1 text-[10px] text-[#92400e]/70">{hint}</p>}
     </div>
   );
 }

@@ -47,6 +47,13 @@ export async function PUT(req: NextRequest) {
     personality: Record<string, number>;
     agentName: string;
     noiseReductionLevel: number;
+    knowledge: Array<{
+      id?: string;
+      toolName?: string;
+      businessName?: string;
+      openingHours?: string;
+      description?: string;
+    }>;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -142,6 +149,25 @@ export async function PUT(req: NextRequest) {
     updates.noiseReductionLevel = Math.round(
       clamp(body.noiseReductionLevel, 1, 10),
     );
+  }
+  if (Array.isArray(body.knowledge)) {
+    // Sanitize : trim strings, cap lengths, drop empty entries, ensure id.
+    const cleaned = body.knowledge
+      .map((entry, idx) => ({
+        id: String(entry?.id ?? `${Date.now()}-${idx}`).slice(0, 64),
+        toolName: String(entry?.toolName ?? "").trim().slice(0, 60),
+        businessName: String(entry?.businessName ?? "").trim().slice(0, 120),
+        openingHours: String(entry?.openingHours ?? "").trim().slice(0, 500),
+        description: String(entry?.description ?? "").trim().slice(0, 4000),
+      }))
+      .filter(
+        (e) =>
+          e.businessName.length > 0 ||
+          e.toolName.length > 0 ||
+          e.description.length > 0,
+      )
+      .slice(0, 30); // garde-fou : max 30 entrées par tenant
+    updates.knowledge = cleaned;
   }
 
   const [updated] = await db

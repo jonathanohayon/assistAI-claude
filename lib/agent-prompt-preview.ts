@@ -123,6 +123,32 @@ ${config.greetingInstructions}
       editHref: `#instructions-field`,
       content: config.instructions || "(vide)",
     },
+    knowledge: {
+      id: "knowledge",
+      label: "Base de connaissances tenant",
+      source: "agent_configs.knowledge (array)",
+      editHref: `#knowledge-field`,
+      content: (() => {
+        const entries = Array.isArray(config.knowledge) ? config.knowledge : [];
+        const filtered = entries.filter(
+          (e) =>
+            (e?.businessName?.length ?? 0) > 0 ||
+            (e?.description?.length ?? 0) > 0,
+        );
+        if (filtered.length === 0) return "(vide — aucun business défini)";
+        return filtered
+          .map((e, i) => {
+            const lines: string[] = [];
+            lines.push(
+              `### ${i + 1}. ${e.businessName || "(sans nom)"}${e.toolName ? ` [ref: ${e.toolName}]` : ""}`,
+            );
+            if (e.openingHours) lines.push(`Horaires : ${e.openingHours}`);
+            if (e.description) lines.push(`Détails : ${e.description}`);
+            return lines.join("\n");
+          })
+          .join("\n\n");
+      })(),
+    },
     language: {
       id: "language",
       label: "Directive langue",
