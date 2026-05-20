@@ -1328,12 +1328,15 @@ function KnowledgePanel({
     <div className="flex flex-col gap-3">
       <div className="rounded-xl border border-[#fef3c7] bg-[#fffbeb]/60 px-4 py-3 text-[11px] leading-relaxed text-[#92400e]">
         <p className="font-semibold text-[#78350f]">
-          📚 Base de connaissances métier
+          📚 Base de connaissances métier — un tool par business
         </p>
         <p className="mt-1">
-          Chaque business ci-dessous est injecté dans le system prompt de
-          l&apos;agent. Quand un client demande des infos (horaires,
-          services, etc.), l&apos;agent répond à partir de ces données.
+          Chaque business génère <strong>un tool LLM dynamique</strong> que
+          l&apos;agent peut appeler (ex: <code className="rounded bg-white/70 px-1 font-mono">salon_main()</code>). Tu
+          peux référencer le tool name dans ton persona prompt : <em>«&nbsp;Pour
+          toute question sur le salon principal, appelle salon_main&nbsp;»</em>.
+          Tu peux aussi laisser le LLM décider quand appeler — il voit
+          automatiquement les tools dispos.
         </p>
       </div>
 
@@ -1392,10 +1395,20 @@ function KnowledgePanel({
             {isOpen && (
               <div className="space-y-3 px-4 py-4">
                 <KnowledgeField
-                  label="Nom du tool (référence interne)"
-                  hint="Identifiant court utilisé par l'agent pour référencer ce business (ex: salon_jeru, spa_telaviv)"
+                  label="Nom du tool LLM"
+                  hint="Devient un vrai tool callable par l'agent. Référençable dans le persona prompt (ex: « appelle salon_main pour les horaires »). Auto-sanitize : seuls a-z, 0-9, _ acceptés, doit commencer par une lettre. Espaces/accents → underscores."
                   value={entry.toolName}
-                  onChange={(v) => patchBusiness(entry.id, { toolName: v })}
+                  onChange={(v) =>
+                    patchBusiness(entry.id, {
+                      // Sanitize live pour donner feedback immédiat à l'user.
+                      toolName: v
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, "_")
+                        .replace(/_+/g, "_")
+                        .replace(/^_+/, "")
+                        .slice(0, 60),
+                    })
+                  }
                   placeholder="salon_main"
                 />
                 <KnowledgeField

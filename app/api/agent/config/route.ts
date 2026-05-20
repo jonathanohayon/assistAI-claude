@@ -159,17 +159,16 @@ export async function GET(req: NextRequest) {
       )
     : [];
   const knowledgeBlock = knowledgeEntries.length
-    ? `BASE DE CONNAISSANCES MÉTIER (référence pour répondre aux questions client) :\n\n${knowledgeEntries
+    ? `BASE DE CONNAISSANCES MÉTIER (chaque business expose un tool LLM dédié) :\n\n${knowledgeEntries
         .map((e, i) => {
           const lines: string[] = [];
-          lines.push(
-            `### ${i + 1}. ${e.businessName || "(sans nom)"}${e.toolName ? ` [ref: ${e.toolName}]` : ""}`,
-          );
+          const ref = e.toolName ? `\`${e.toolName}()\`` : "(pas de tool)";
+          lines.push(`### ${i + 1}. ${e.businessName || "(sans nom)"} — tool: ${ref}`);
           if (e.openingHours) lines.push(`Horaires : ${e.openingHours}`);
           if (e.description) lines.push(`Détails : ${e.description}`);
           return lines.join("\n");
         })
-        .join("\n\n")}\n\nUtilise ces informations EN PRIORITÉ pour répondre aux questions factuelles sur les business ci-dessus. Si la question concerne autre chose, applique le persona normalement.`
+        .join("\n\n")}\n\nUSAGE : quand un client te pose une question factuelle sur un de ces business (horaires, services, adresse, prix, particularités), **appelle le tool correspondant** pour t'assurer d'avoir l'info à jour, puis reformule la réponse pour l'oral. Tu peux aussi répondre directement avec les infos ci-dessus si tu les as déjà en tête.`
     : "";
 
   const blockContent: Record<string, string> = {

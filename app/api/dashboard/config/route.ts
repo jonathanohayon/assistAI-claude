@@ -152,14 +152,27 @@ export async function PUT(req: NextRequest) {
   }
   if (Array.isArray(body.knowledge)) {
     // Sanitize : trim strings, cap lengths, drop empty entries, ensure id.
+    // toolName est sanitize en identifiant valide (a-z, 0-9, _, lead letter)
+    // car il devient le NOM RÉEL d'un tool LLM côté worker.
+    const sanitizeTool = (raw: string): string =>
+      raw
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 60);
     const cleaned = body.knowledge
-      .map((entry, idx) => ({
-        id: String(entry?.id ?? `${Date.now()}-${idx}`).slice(0, 64),
-        toolName: String(entry?.toolName ?? "").trim().slice(0, 60),
-        businessName: String(entry?.businessName ?? "").trim().slice(0, 120),
-        openingHours: String(entry?.openingHours ?? "").trim().slice(0, 500),
-        description: String(entry?.description ?? "").trim().slice(0, 4000),
-      }))
+      .map((entry, idx) => {
+        const rawTool = String(entry?.toolName ?? "").trim().slice(0, 60);
+        const toolName = sanitizeTool(rawTool);
+        return {
+          id: String(entry?.id ?? `${Date.now()}-${idx}`).slice(0, 64),
+          toolName,
+          businessName: String(entry?.businessName ?? "").trim().slice(0, 120),
+          openingHours: String(entry?.openingHours ?? "").trim().slice(0, 500),
+          description: String(entry?.description ?? "").trim().slice(0, 4000),
+        };
+      })
       .filter(
         (e) =>
           e.businessName.length > 0 ||
