@@ -248,8 +248,11 @@ export function LiveTestPanelLK({ dirty }: Props) {
         </div>
       )}
 
-      <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[auto_1fr]">
-        {/* ─── COLONNE MIC ────────────────────────────────────────────── */}
+      {/* Layout vertical (mic au-dessus, transcript en dessous) — fonctionne
+       *  aussi bien en pleine largeur que dans une sidebar étroite (cf.
+       *  config-form.tsx qui passe le panel en fixed-right sur xl+). */}
+      <div className="relative flex flex-col gap-8">
+        {/* ─── BLOC MIC ───────────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
           <div className="relative flex h-44 w-44 items-center justify-center">
             {/* Ripple rings cyan */}
@@ -384,7 +387,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
           )}
         </div>
 
-        {/* ─── COLONNE TRANSCRIPT ────────────────────────────────────── */}
+        {/* ─── BLOC TRANSCRIPT ───────────────────────────────────────── */}
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
             Aperçu de conversation
