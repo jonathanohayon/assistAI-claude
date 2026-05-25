@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
 import { IdleWatcher } from "@/components/IdleWatcher";
+import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { Logo } from "@/components/ui/Logo";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
@@ -222,28 +223,47 @@ export default async function AdminTenantPage({
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8 pb-20">
+      <section className="mx-auto w-full max-w-7xl space-y-6 px-6 py-8 pb-20">
         {cfg ? (
-          <TenantEditShell
-            userId={target.id}
-            initial={{
-              instructions: cfg.instructions,
-              greetingInstructions: cfg.greetingInstructions,
-              model: cfg.model,
-              voice: cfg.voice,
-              temperature: cfg.temperature,
-              speed: cfg.speed,
-              maxResponseTokens: cfg.maxResponseTokens,
-              ownerWhatsapp: cfg.ownerWhatsapp,
-              primaryLanguage: cfg.primaryLanguage ?? "fr",
-              inheritAdminGlobals: cfg.inheritAdminGlobals ?? true,
-            }}
-            initialVoices={voices}
-            adminInheritablePreview={adminInheritablePreview}
-            planLabel={planLabel}
-            promptBlocks={promptBlocks}
-            fullPromptConcat={fullPromptConcat}
-          />
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
+            {/* Colonne principale : tile grid + panneaux édition */}
+            <div className="min-w-0">
+              <TenantEditShell
+                userId={target.id}
+                initial={{
+                  instructions: cfg.instructions,
+                  greetingInstructions: cfg.greetingInstructions,
+                  model: cfg.model,
+                  voice: cfg.voice,
+                  temperature: cfg.temperature,
+                  speed: cfg.speed,
+                  maxResponseTokens: cfg.maxResponseTokens,
+                  ownerWhatsapp: cfg.ownerWhatsapp,
+                  primaryLanguage: cfg.primaryLanguage ?? "fr",
+                  inheritAdminGlobals: cfg.inheritAdminGlobals ?? true,
+                }}
+                initialVoices={voices}
+                adminInheritablePreview={adminInheritablePreview}
+                planLabel={planLabel}
+                promptBlocks={promptBlocks}
+                fullPromptConcat={fullPromptConcat}
+              />
+            </div>
+
+            {/* LiveTest panel — sidebar sticky comme dans /dashboard.
+              * L'admin teste en se faisant passer pour ce tenant via
+              * `asUserId` → /api/livekit/web-token scope la room et la
+              * config sur ce tenant cible. */}
+            <aside className="xl:sticky xl:top-6 xl:self-start">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-900">
+                🧪 Test en tant que <strong>{target.email}</strong> — la
+                room est dispatched sur la config tenant de ce user.
+              </div>
+              <div className="mt-3">
+                <LiveTestPanelLK dirty={false} asUserId={target.id} />
+              </div>
+            </aside>
+          </div>
         ) : (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
             Ce tenant n&apos;a pas encore de config agent.

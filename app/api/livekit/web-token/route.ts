@@ -6,6 +6,7 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 
 /**
  * Nom de l'agent enregistré côté worker (`config.ts:AGENT_NAME` dans le
@@ -28,7 +29,7 @@ const WORKER_AGENT_NAME = "appointment-agent";
 // Le `participant.metadata` stocke `{ source: "web", userId }` — le
 // worker le lit pour résoudre la config du bon tenant (au lieu du chemin
 // SIP `sip.trunkPhoneNumber → resolveTenantByPhone`).
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +45,17 @@ export async function POST(_req: NextRequest) {
     );
   }
 
-  const userId = session.user.id;
+  // Optionnel : admin peut tester en tant qu'un autre tenant via `asUserId`.
+  // Bloqué (403) si le caller n'est pas admin. Sinon → userId = target.
+  const body = (await req.json().catch(() => ({}))) as { asUserId?: string };
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId: body.asUserId ?? null,
+  });
+  if ("forbidden" in scope) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const userId = scope.userId;
   // Unique-ish room name. Worker dispatch is per-room ; on a un room
   // dédié par session test, ce qui évite les collisions si l'user
   // ré-ouvre l'onglet ou teste depuis 2 appareils.

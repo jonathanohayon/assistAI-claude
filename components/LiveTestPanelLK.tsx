@@ -35,9 +35,13 @@ interface Props {
   /** True si le form a des modifs non sauvegardées — affiche un warning
    *  car le worker fetch la config depuis la DB (pas les valeurs UI). */
   dirty: boolean;
+  /** Si fourni : admin teste en tant que ce tenant cible. L'endpoint
+   *  /api/livekit/web-token vérifie le rôle admin et scope la room
+   *  + metadata participant sur le bon userId. */
+  asUserId?: string;
 }
 
-export function LiveTestPanelLK({ dirty }: Props) {
+export function LiveTestPanelLK({ dirty, asUserId }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +74,11 @@ export function LiveTestPanelLK({ dirty }: Props) {
     setTranscript([]);
     setStatus("connecting");
     try {
-      const res = await fetch("/api/livekit/web-token", { method: "POST" });
+      const res = await fetch("/api/livekit/web-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(asUserId ? { asUserId } : {}),
+      });
       if (!res.ok) {
         const t = await res.text().catch(() => "");
         throw new Error(`Token endpoint ${res.status}: ${t || "no body"}`);
@@ -142,7 +150,7 @@ export function LiveTestPanelLK({ dirty }: Props) {
       setStatus("error");
       void teardown();
     }
-  }, [teardown]);
+  }, [teardown, asUserId]);
 
   const stopSession = useCallback(async () => {
     setStatus("ending");
