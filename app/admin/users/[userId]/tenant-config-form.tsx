@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import {
@@ -59,6 +60,7 @@ export function AdminTenantConfigForm({
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const catalog = useRealtimeCatalog();
   const availableVoices = useMemo(
@@ -96,6 +98,10 @@ export function AdminTenantConfigForm({
       }
       setSavedAt(new Date().toLocaleTimeString("fr-FR"));
       setDirty(false);
+      // Refresh la page côté server pour re-build promptBlocks +
+      // fullPromptConcat avec les nouvelles instructions DB. Sans ça
+      // le panel Preview reste sur l'ancien prompt jusqu'au reload manuel.
+      router.refresh();
     });
   };
 
