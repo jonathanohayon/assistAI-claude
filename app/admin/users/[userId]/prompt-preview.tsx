@@ -27,6 +27,32 @@ export function PromptPreview({
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showFull, setShowFull] = useState(false);
+  const [copied, setCopied] = useState<"all" | string | null>(null);
+
+  const copyToClipboard = async (text: string, key: "all" | string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // fallback en cas de denied clipboard
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(key);
+        setTimeout(() => setCopied(null), 1500);
+      } catch {
+        // tant pis
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -51,7 +77,34 @@ export function PromptPreview({
             system prompt OpenAI Realtime à chaque appel. {totalChars} chars total.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => copyToClipboard(fullPrompt, "all")}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+              copied === "all"
+                ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                : "bg-[var(--color-primary)] text-white hover:opacity-90"
+            }`}
+            title="Copie le prompt complet (tous les blocs concaténés) au format final envoyé à l'agent"
+          >
+            {copied === "all" ? (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                Copié !
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3.5 w-3.5">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Copier prompt complet ({fullPrompt.length} chars)
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => setShowFull((v) => !v)}
@@ -74,9 +127,22 @@ export function PromptPreview({
 
       {showFull && (
         <div className="mt-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]/40 p-4">
-          <p className="mb-2 text-xs font-medium text-[var(--color-muted-foreground)]">
-            Concaténation finale ({fullPrompt.length} chars)
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-[var(--color-muted-foreground)]">
+              Concaténation finale ({fullPrompt.length} chars)
+            </p>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(fullPrompt, "all")}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                copied === "all"
+                  ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                  : "bg-white text-[var(--color-foreground)] ring-1 ring-[var(--color-border)] hover:bg-[var(--color-muted)]"
+              }`}
+            >
+              {copied === "all" ? "✓ Copié" : "📋 Copier"}
+            </button>
+          </div>
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
             {fullPrompt}
           </pre>
@@ -136,9 +202,24 @@ export function PromptPreview({
                 </span>
               </button>
               {isOpen && (
-                <pre className="max-h-[40vh] overflow-auto border-t border-[var(--color-border)] bg-[var(--color-muted)]/30 px-4 py-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-[var(--color-foreground)]">
-                  {b.content}
-                </pre>
+                <div className="border-t border-[var(--color-border)] bg-[var(--color-muted)]/30">
+                  <div className="flex items-center justify-end px-4 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(b.content, b.id)}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        copied === b.id
+                          ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                          : "bg-white text-[var(--color-foreground)] ring-1 ring-[var(--color-border)] hover:bg-[var(--color-muted)]"
+                      }`}
+                    >
+                      {copied === b.id ? "✓ Copié" : "📋 Copier ce bloc"}
+                    </button>
+                  </div>
+                  <pre className="max-h-[40vh] overflow-auto px-4 pb-3 pt-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-[var(--color-foreground)]">
+                    {b.content}
+                  </pre>
+                </div>
               )}
             </li>
           );
