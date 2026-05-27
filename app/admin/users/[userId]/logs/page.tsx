@@ -1,9 +1,5 @@
 import { eq } from "drizzle-orm";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { NextIntlClientProvider } from "next-intl";
-
-import frMessages from "@/messages/fr.json";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -13,6 +9,9 @@ import { LogsView } from "@/app/[locale]/dashboard/logs/logs-view";
 
 export const dynamic = "force-dynamic";
 
+// Admin monitoring du tenant — réutilise LogsView du dashboard avec
+// asUserId pour scoper events + call-metrics. Layout / header / nav
+// fournis par /admin/users/[userId]/layout.tsx.
 export default async function AdminTenantLogsPage({
   params,
 }: {
@@ -30,53 +29,15 @@ export default async function AdminTenantLogsPage({
 
   const { userId } = await params;
   const [target] = await db
-    .select({ id: users.id, email: users.email, displayName: users.displayName })
+    .select({ id: users.id })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-
-  if (!target) {
-    return (
-      <main className="mx-auto w-full max-w-5xl p-12">
-        <Link
-          href={`/admin/users/${userId}`}
-          className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-        >
-          ← Tenant
-        </Link>
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          Tenant introuvable.
-        </div>
-      </main>
-    );
-  }
+  if (!target) redirect("/admin");
 
   return (
-    <NextIntlClientProvider locale="fr" messages={frMessages}>
-      <main>
-        <section className="mx-auto w-full max-w-5xl px-6 pt-10">
-          <Link
-            href={`/admin/users/${userId}`}
-            className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-          >
-            ← {target.displayName || target.email}
-          </Link>
-          <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            Admin · monitoring tenant
-          </p>
-          <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-            {target.displayName || target.email}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
-            Logs et latence en temps réel — vue identique au monitoring du
-            tenant, scopée sur son user_id côté API.
-          </p>
-        </section>
-
-        <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
-          <LogsView asUserId={target.id} />
-        </section>
-      </main>
-    </NextIntlClientProvider>
+    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
+      <LogsView asUserId={target.id} />
+    </main>
   );
 }

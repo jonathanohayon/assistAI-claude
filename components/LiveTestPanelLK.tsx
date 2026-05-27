@@ -404,24 +404,38 @@ export function LiveTestPanelLK({ dirty, asUserId }: Props) {
                   : "Cliquez sur le mic pour démarrer un test."}
               </p>
             ) : (
-              transcript.map((t, i) => (
-                <div
-                  key={i}
-                  className={`flex ${
-                    t.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <span
-                    className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
-                      t.role === "user"
-                        ? "bg-gradient-to-br from-[#22d3ee] to-[#0e7490] text-white"
-                        : "border border-[#e2e8f0] bg-white text-[#18181b]"
+              transcript.map((t, i) => {
+                // Detect RTL script (Hebrew ֐-׿ + presentation
+                // forms יִ-ﭏ, Arabic ؀-ۿ) → set dir
+                // sur la bulle pour que ponctuation, chiffres et alignement
+                // soient corrects. `unicode-bidi: plaintext` laisse le
+                // navigateur décider par paragraph based on first strong
+                // character (couvre les mixes FR/HE dans un même message).
+                const hasRTL = /[֐-׿؀-ۿיִ-ﭏ]/.test(
+                  t.text,
+                );
+                return (
+                  <div
+                    key={i}
+                    className={`flex ${
+                      t.role === "user" ? "justify-end" : "justify-start"
                     }`}
                   >
-                    {t.text}
-                  </span>
-                </div>
-              ))
+                    <span
+                      dir={hasRTL ? "rtl" : "ltr"}
+                      lang={hasRTL ? "he" : undefined}
+                      style={{ unicodeBidi: "plaintext" }}
+                      className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[13px] leading-snug ${
+                        t.role === "user"
+                          ? "bg-gradient-to-br from-[#22d3ee] to-[#0e7490] text-white"
+                          : "border border-[#e2e8f0] bg-white text-[#18181b]"
+                      }`}
+                    >
+                      {t.text}
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

@@ -1,22 +1,12 @@
 import { and, eq, gte, sql } from "drizzle-orm";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { NextIntlClientProvider } from "next-intl";
 
-import frMessages from "@/messages/fr.json";
-
-import { auth, signOut } from "@/auth";
-import { IdleWatcher } from "@/components/IdleWatcher";
-import { Logo } from "@/components/ui/Logo";
+import { auth } from "@/auth";
+import { ConfigForm } from "@/app/[locale]/dashboard/config-form";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
-import {
-  agentConfigs,
-  calls,
-  phoneNumbers,
-  users,
-} from "@/lib/db/schema";
+import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
   getConfigBlocksDirectiveByPlan,
@@ -28,17 +18,11 @@ import {
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 
-import { ConfigForm } from "@/app/[locale]/dashboard/config-form";
-
 export const dynamic = "force-dynamic";
 
 // Admin tenant view = même ConfigForm que le dashboard utilisateur, mais
-// scopé sur le tenant cible. Toutes les saves passent par
-// /api/admin/configs/{userId} via la prop asUserId.
-//
-// L'admin voit donc *exactement* ce que le tenant voit (hero + stats +
-// tuiles Persona/Voice/Knowledge/Notifs + LiveTest sticky), avec en plus
-// les capacités admin (isAdmin=true) là où ConfigForm les expose.
+// scopé sur le tenant cible via asUserId. Header / nav / bandeau contexte
+// sont fournis par /admin/users/[userId]/layout.tsx.
 export default async function AdminTenantPage({
   params,
 }: {
@@ -60,21 +44,7 @@ export default async function AdminTenantPage({
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!target) {
-    return (
-      <main className="mx-auto w-full max-w-5xl p-12">
-        <Link
-          href="/admin"
-          className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-        >
-          ← Admin
-        </Link>
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          Tenant introuvable.
-        </div>
-      </main>
-    );
-  }
+  if (!target) redirect("/admin");
 
   const [config] = await db
     .select()
@@ -84,13 +54,7 @@ export default async function AdminTenantPage({
 
   if (!config) {
     return (
-      <main className="mx-auto w-full max-w-5xl p-12">
-        <Link
-          href="/admin"
-          className="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-        >
-          ← Admin
-        </Link>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
           Ce tenant n&apos;a pas encore de config agent.
         </div>
@@ -115,9 +79,8 @@ export default async function AdminTenantPage({
     timeStyle: "short",
   });
 
-  // Stats target tenant — mêmes calculs que le dashboard user, mais sur
-  // calls.userId = target.id (au lieu de session.user.id). Permet à
-  // l'admin de voir les vrais chiffres du tenant en bandeau hero.
+  // Stats du tenant cible — mêmes calculs que /dashboard/page.tsx mais
+  // scopés sur target.id.
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const startOfMonth = new Date(
@@ -165,7 +128,8 @@ export default async function AdminTenantPage({
     };
   })();
 
-  // Preview des blocs admin hérités pour le popup info "Héritage admin".
+  // Preview des blocs admin hérités + prompt complet (alimente la tuile
+  // admin-only "Prompt système").
   const [
     globalByPlan,
     spokenTimeByPlan,
@@ -206,101 +170,39 @@ export default async function AdminTenantPage({
     .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
     .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
     .join("\n\n");
-  // Prompt complet concaténé — passé à <ConfigForm> pour alimenter la
-  // tuile admin-only "Prompt système" (édition bloc par bloc).
   const fullPromptConcat = promptBlocksPreview
     .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
     .join("\n\n");
 
-  async function handleLogout() {
-    "use server";
-    await signOut({ redirect: false });
-    redirect("/");
-  }
-
   return (
-    <NextIntlClientProvider locale="fr" messages={frMessages}>
-      <main className="min-h-screen">
-        <IdleWatcher />
-        <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Logo />
-              </Link>
-              <span className="hidden h-4 w-px bg-[var(--color-border)] sm:block" />
-              <Link
-                href="/admin"
-                className="hidden text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] sm:block"
-              >
-                ← Admin
-              </Link>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="hidden text-xs text-[var(--color-muted-foreground)] sm:inline">
-                Vue admin · {target.email}
-              </span>
-              <Link
-                href={`/admin/users/${target.id}/logs`}
-                className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]"
-              >
-                📊 Logs
-              </Link>
-              <form action={handleLogout}>
-                <button className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:bg-[var(--color-muted)]">
-                  Déconnexion
-                </button>
-              </form>
-            </div>
-          </div>
-        </header>
-
-        {/* Bandeau de contexte : indique clairement que l'admin agit
-         *  au nom de ce tenant. Évite la confusion entre "ma vue admin"
-         *  et "vue admin du tenant X". */}
-        <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#fde68a] bg-[#fef3c7]/60 px-4 py-2.5 text-xs text-[#92400e]">
-            <span>
-              👁 Vue admin du tenant{" "}
-              <strong className="font-semibold">
-                {target.displayName || target.email}
-              </strong>{" "}
-              · plan {planLabel} · statut {target.subscriptionStatus}
-            </span>
-            <span className="font-mono">{target.id.slice(0, 8)}…</span>
-          </div>
-        </div>
-
-        <div className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
-          <ConfigForm
-            initial={{
-              instructions: config.instructions,
-              greetingInstructions: config.greetingInstructions,
-              model: config.model,
-              voice: config.voice,
-              temperature: config.temperature,
-              speed: config.speed,
-              maxResponseTokens: config.maxResponseTokens,
-              ownerWhatsapp: config.ownerWhatsapp,
-              primaryLanguage: config.primaryLanguage ?? "fr",
-              inheritAdminGlobals: config.inheritAdminGlobals ?? true,
-              personality: config.personality ?? {},
-              agentName: config.agentName ?? "",
-              noiseReductionLevel: config.noiseReductionLevel ?? 8,
-              knowledge: Array.isArray(config.knowledge) ? config.knowledge : [],
-            }}
-            isAdmin={true}
-            adminInheritablePreview={adminInheritablePreview}
-            planLabel={planLabel}
-            primaryPhone={primaryPhone?.phoneNumber ?? null}
-            lastUpdatedLabel={lastUpdated}
-            stats={stats}
-            asUserId={target.id}
-            promptBlocks={promptBlocksPreview}
-            fullPromptConcat={fullPromptConcat}
-          />
-        </div>
-      </main>
-    </NextIntlClientProvider>
+    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
+      <ConfigForm
+        initial={{
+          instructions: config.instructions,
+          greetingInstructions: config.greetingInstructions,
+          model: config.model,
+          voice: config.voice,
+          temperature: config.temperature,
+          speed: config.speed,
+          maxResponseTokens: config.maxResponseTokens,
+          ownerWhatsapp: config.ownerWhatsapp,
+          primaryLanguage: config.primaryLanguage ?? "fr",
+          inheritAdminGlobals: config.inheritAdminGlobals ?? true,
+          personality: config.personality ?? {},
+          agentName: config.agentName ?? "",
+          noiseReductionLevel: config.noiseReductionLevel ?? 8,
+          knowledge: Array.isArray(config.knowledge) ? config.knowledge : [],
+        }}
+        isAdmin={true}
+        adminInheritablePreview={adminInheritablePreview}
+        planLabel={planLabel}
+        primaryPhone={primaryPhone?.phoneNumber ?? null}
+        lastUpdatedLabel={lastUpdated}
+        stats={stats}
+        asUserId={target.id}
+        promptBlocks={promptBlocksPreview}
+        fullPromptConcat={fullPromptConcat}
+      />
+    </main>
   );
 }

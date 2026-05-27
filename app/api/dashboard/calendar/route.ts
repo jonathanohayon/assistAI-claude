@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { getTenantGoogleClients } from "@/lib/google";
 import { JERUSALEM_TZ } from "@/lib/tz";
 
@@ -16,13 +17,32 @@ interface CalendarEvent {
 // All routes here read/write the *connected user's own* Google Calendar via
 // their stored refresh_token. If the user hasn't connected Google, we refuse
 // (409) rather than silently falling back to the admin's calendar.
-export async function GET(req: NextRequest) {
+//
+// `?asUserId=<uuid>` autorisé pour admin uniquement → opère sur le
+// Google Calendar du tenant cible. Permet aux pages /admin/users/[id]/*
+// de réutiliser ces routes via les composants client partagés.
+async function resolveTargetUserId(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return { unauthorized: true as const };
   }
+  const asUserId = req.nextUrl.searchParams.get("asUserId");
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId,
+  });
+  if ("forbidden" in scope) {
+    return { forbidden: true as const };
+  }
+  return { userId: scope.userId };
+}
 
-  const clients = await getTenantGoogleClients(session.user.id);
+export async function GET(req: NextRequest) {
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const clients = await getTenantGoogleClients(r.userId);
   if (!clients) {
     return NextResponse.json({ events: [], notConnected: true });
   }
@@ -62,10 +82,9 @@ export async function GET(req: NextRequest) {
 // PUT /api/dashboard/calendar — body { eventId, summary?, description?,
 //   start?, end? } (start/end as YYYY-MM-DD HH:mm in Jerusalem)
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as {
     eventId?: string;
@@ -81,7 +100,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  const clients = await getTenantGoogleClients(session.user.id);
+  const clients = await getTenantGoogleClients(r.userId);
   if (!clients) {
     return NextResponse.json(
       { error: "Google Calendar non connecté" },
@@ -130,17 +149,16 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/dashboard/calendar?eventId=...
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const eventId = req.nextUrl.searchParams.get("eventId");
   if (!eventId) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });
   }
 
-  const clients = await getTenantGoogleClients(session.user.id);
+  const clients = await getTenantGoogleClients(r.userId);
   if (!clients) {
     return NextResponse.json(
       { error: "Google Calendar non connecté" },

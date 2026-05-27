@@ -9,10 +9,11 @@ import { useRouter } from "next/navigation";
  * Clients pour le user loggué. Le cron Railway 5min fait pareil en
  * arrière-plan, ceci est juste un refresh manuel pour les impatients.
  */
-export function SyncNowButton() {
+export function SyncNowButton({ asUserId }: { asUserId?: string } = {}) {
   const t = useTranslations("DashboardCalendar");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
   const [feedback, setFeedback] = useState<{
     kind: "ok" | "err";
     message: string;
@@ -22,7 +23,7 @@ export function SyncNowButton() {
     setFeedback(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/dashboard/sync-now", { method: "POST" });
+        const res = await fetch(`/api/dashboard/sync-now${qs}`, { method: "POST" });
         const data = (await res.json()) as {
           ok?: boolean;
           inserted?: number;

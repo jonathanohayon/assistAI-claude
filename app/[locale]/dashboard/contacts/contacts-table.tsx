@@ -12,9 +12,17 @@ interface Contact {
   notes: string;
 }
 
-export function ContactsTable({ initial }: { initial: Contact[] }) {
+export function ContactsTable({
+  initial,
+  asUserId,
+}: {
+  initial: Contact[];
+  /** Admin agissant sur un tenant — propagé aux APIs /api/dashboard/contacts. */
+  asUserId?: string;
+}) {
   const t = useTranslations("DashboardContacts");
   const [contacts, setContacts] = useState(initial);
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Contact>>({});
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +47,7 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
   const saveEdit = (rowIndex: number) => {
     setError(null);
     startTransition(async () => {
-      const res = await fetch("/api/dashboard/contacts", {
+      const res = await fetch(`/api/dashboard/contacts${qs}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rowIndex, ...draft }),
@@ -62,8 +70,11 @@ export function ContactsTable({ initial }: { initial: Contact[] }) {
     if (!confirm(t("confirmDelete"))) return;
     setError(null);
     startTransition(async () => {
+      const deleteQs = asUserId
+        ? `?rowIndex=${rowIndex}&asUserId=${encodeURIComponent(asUserId)}`
+        : `?rowIndex=${rowIndex}`;
       const res = await fetch(
-        `/api/dashboard/contacts?rowIndex=${rowIndex}`,
+        `/api/dashboard/contacts${deleteQs}`,
         { method: "DELETE" },
       );
       if (!res.ok) {

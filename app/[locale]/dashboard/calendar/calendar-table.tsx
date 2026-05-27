@@ -34,9 +34,13 @@ const splitIso = (iso: string): { date: string; time: string } => {
 
 export function CalendarTable({
   initialEvents,
+  asUserId,
 }: {
   initialEvents: CalendarEvent[];
+  /** Admin agissant sur un tenant cible — propagé aux APIs /api/dashboard/calendar. */
+  asUserId?: string;
 }) {
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
   const t = useTranslations("DashboardCalendar");
   const locale = useLocale();
   const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
@@ -84,7 +88,7 @@ export function CalendarTable({
     if (!edit) return;
     setError(null);
     startTransition(async () => {
-      const res = await fetch("/api/dashboard/calendar", {
+      const res = await fetch(`/api/dashboard/calendar${qs}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eventId, ...edit }),
@@ -115,7 +119,10 @@ export function CalendarTable({
     if (!confirm(t("confirmCancelAppointment"))) return;
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/dashboard/calendar?eventId=${eventId}`, {
+      const deleteQs = asUserId
+        ? `?eventId=${eventId}&asUserId=${encodeURIComponent(asUserId)}`
+        : `?eventId=${eventId}`;
+      const res = await fetch(`/api/dashboard/calendar${deleteQs}`, {
         method: "DELETE",
       });
       if (!res.ok) {

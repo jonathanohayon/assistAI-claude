@@ -21,17 +21,25 @@ type LoadState =
 //   - reconnecter Google même quand le flag connected=true (utile quand le
 //     refresh token est mort → "expired"/"invalid_grant" → dashboard semble
 //     connecté mais rien ne marche).
-export function CalendarSettings({ initialSelectedId }: { initialSelectedId: string }) {
+export function CalendarSettings({
+  initialSelectedId,
+  asUserId,
+}: {
+  initialSelectedId: string;
+  /** Admin agissant sur un tenant — propagé aux APIs google + select-calendar. */
+  asUserId?: string;
+}) {
   const t = useTranslations("DashboardCalendar");
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [saving, startSaving] = useTransition();
   const [savedToast, setSavedToast] = useState<string | null>(null);
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/google/calendars", { cache: "no-store" });
+        const res = await fetch(`/api/google/calendars${qs}`, { cache: "no-store" });
         const data = (await res.json()) as
           | { ok: true; calendars: Calendar[]; selectedId: string }
           | { ok: false; reason: string };
@@ -51,12 +59,12 @@ export function CalendarSettings({ initialSelectedId }: { initialSelectedId: str
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [qs]);
 
   const handleSelect = (calendarId: string) => {
     if (state.status !== "ready" || calendarId === state.selectedId) return;
     startSaving(async () => {
-      const res = await fetch("/api/google/select-calendar", {
+      const res = await fetch(`/api/google/select-calendar${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ calendarId }),

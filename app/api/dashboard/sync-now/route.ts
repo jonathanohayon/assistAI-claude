@@ -1,52 +1,59 @@
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { syncTenantCalendarToSheet } from "@/lib/sync-tenant";
 
-// POST /api/dashboard/sync-now
+// POST /api/dashboard/sync-now[?asUserId=<uuid>]
 // Déclenche immédiatement un sync Calendar → Sheet Clients pour le user
-// loggué (session auth, pas INTERNAL_SECRET — c'est le bouton "Sync now"
-// du dashboard). Rapide retour. Compagnon du cron Railway 5min.
-export async function POST() {
+// loggué (ou pour le tenant cible si admin avec asUserId). Compagnon du
+// cron Railway 5min.
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const [me] = await db
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId: req.nextUrl.searchParams.get("asUserId"),
+  });
+  if ("forbidden" in scope) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const [target] = await db
     .select({ id: users.id, email: users.email })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, scope.userId))
     .limit(1);
-  if (!me) {
+  if (!target) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
 
   const startedAt = Date.now();
-  const r = await syncTenantCalendarToSheet(me.id);
+  const r = await syncTenantCalendarToSheet(target.id);
   const elapsedMs = Date.now() - startedAt;
 
-  // logEvent metadata expects Record<string, unknown> — spread our typed
-  // result into a plain object.
-  const metadata = { ...r } as Record<string, unknown>;
+  const metadata = { ...r, triggeredBy: session.user.id } as Record<string, unknown>;
   if (r.ok) {
     await logEvent({
       source: "sync",
       event: "manual_sync",
-      message: `Sync manuel ${me.email} : +${r.inserted}, ↻${r.updated} sur ${r.scanned} (${elapsedMs}ms)`,
-      userId: me.id,
+      message: `Sync manuel ${target.email} : +${r.inserted}, ↻${r.updated} sur ${r.scanned} (${elapsedMs}ms)`,
+      userId: target.id,
       metadata,
     });
   } else {
     await logEvent({
       source: "sync",
       event: "manual_sync_failed",
-      message: `Sync manuel ${me.email} échoué : ${r.reason ?? "unknown"}`,
+      message: `Sync manuel ${target.email} échoué : ${r.reason ?? "unknown"}`,
       level: "warn",
-      userId: me.id,
+      userId: target.id,
       metadata,
     });
   }

@@ -2,18 +2,28 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 
-// POST /api/google/select-calendar { calendarId: string }
+// POST /api/google/select-calendar[?asUserId=<uuid>] { calendarId: string }
 // Updates the user's selected googleCalendarId. The agent's calendar tools and
 // the dashboard listing both read users.googleCalendarId, so this change
 // takes effect on the next call / page load.
+//
+// `asUserId` autorisé pour admin → update le tenant cible.
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
+  }
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId: req.nextUrl.searchParams.get("asUserId"),
+  });
+  if ("forbidden" in scope) {
+    return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 
   let body: { calendarId?: unknown } = {};
@@ -24,8 +34,6 @@ export async function POST(req: NextRequest) {
   }
 
   const calendarId = typeof body.calendarId === "string" ? body.calendarId.trim() : "";
-  // "primary" is the canonical Google alias; anything else is a calendar id
-  // (long opaque string). Reject empty.
   if (!calendarId) {
     return NextResponse.json({ ok: false, reason: "missing_calendar_id" }, { status: 400 });
   }
@@ -33,15 +41,15 @@ export async function POST(req: NextRequest) {
   await db
     .update(users)
     .set({ googleCalendarId: calendarId })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, scope.userId));
 
   await logEvent({
     source: "tenant",
     event: "calendar_selected",
-    message: `${session.user.email ?? session.user.id} a sélectionné le calendrier ${calendarId}`,
+    message: `${session.user.email ?? session.user.id} a sélectionné le calendrier ${calendarId} pour ${scope.userId}`,
     level: "info",
-    userId: session.user.id,
-    metadata: { calendarId },
+    userId: scope.userId,
+    metadata: { calendarId, selectedBy: session.user.id },
   });
 
   return NextResponse.json({ ok: true, calendarId });

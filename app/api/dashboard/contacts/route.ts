@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { getTenantGoogleClients, type TenantGoogleClients } from "@/lib/google";
 
 const SHEET_RANGE = "Contacts!A:E";
@@ -16,11 +17,19 @@ interface Contact {
   notes: string;
 }
 
-const requireAuth = async () => {
+// Résout l'userId effectif : session.user.id par défaut, OU asUserId
+// si caller admin (sinon 403). Retourne un discriminated result.
+async function resolveTargetUserId(req: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return null;
-  return session;
-};
+  if (!session?.user?.id) return { unauthorized: true as const };
+  const asUserId = req.nextUrl.searchParams.get("asUserId");
+  const scope = await resolveScopeUserId({
+    sessionUserId: session.user.id,
+    asUserId,
+  });
+  if ("forbidden" in scope) return { forbidden: true as const };
+  return { userId: scope.userId };
+}
 
 // Resolve the connected user's own Sheet. Returns null if Google isn't
 // connected or no sheet is configured — callers must short-circuit so we
@@ -34,13 +43,12 @@ const requireTenantSheet = async (
 };
 
 // GET — list all contacts (newest first)
-export async function GET() {
-  const session = await requireAuth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: NextRequest) {
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const tenant = await requireTenantSheet(session.user.id);
+  const tenant = await requireTenantSheet(r.userId);
   if (!tenant) {
     return NextResponse.json({
       contacts: [],
@@ -77,10 +85,9 @@ export async function GET() {
 
 // PUT — update a row by rowIndex
 export async function PUT(req: NextRequest) {
-  const session = await requireAuth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as {
     rowIndex?: number;
@@ -95,7 +102,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "rowIndex invalide" }, { status: 400 });
   }
 
-  const tenant = await requireTenantSheet(session.user.id);
+  const tenant = await requireTenantSheet(r.userId);
   if (!tenant) {
     return NextResponse.json(
       { error: "Google Sheet non connecté" },
@@ -128,17 +135,16 @@ export async function PUT(req: NextRequest) {
 
 // DELETE — clear a row's content (we don't shift rows to keep rowIndex stable)
 export async function DELETE(req: NextRequest) {
-  const session = await requireAuth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const rowIndex = Number(req.nextUrl.searchParams.get("rowIndex"));
   if (!rowIndex || rowIndex < 1) {
     return NextResponse.json({ error: "rowIndex invalide" }, { status: 400 });
   }
 
-  const tenant = await requireTenantSheet(session.user.id);
+  const tenant = await requireTenantSheet(r.userId);
   if (!tenant) {
     return NextResponse.json(
       { error: "Google Sheet non connecté" },
