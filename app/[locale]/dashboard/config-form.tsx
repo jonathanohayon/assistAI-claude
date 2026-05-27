@@ -373,6 +373,7 @@ export function ConfigForm({
             tagline: "Voir et éditer chaque bloc du prompt envoyé à l'agent",
             summary: `${promptBlocks.length} blocs · ${(fullPromptConcat ?? "").length} chars`,
             accent: "from-[#7c3aed] to-[#4c1d95]",
+            adminOnly: true,
             icon: (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -707,9 +708,14 @@ export function ConfigForm({
                     {TILES.find((t) => t.id === activeTile)?.icon}
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-lg font-extrabold tracking-tight text-[#18181b] sm:text-xl">
-                      {TILES.find((t) => t.id === activeTile)?.label}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-extrabold tracking-tight text-[#18181b] sm:text-xl">
+                        {TILES.find((t) => t.id === activeTile)?.label}
+                      </h3>
+                      {(TILES.find((t) => t.id === activeTile) as TileDef | undefined)?.adminOnly && (
+                        <AdminBadge size="sm" />
+                      )}
+                    </div>
                     <p className="truncate text-xs text-[#475569]">
                       {TILES.find((t) => t.id === activeTile)?.summary}
                     </p>
@@ -825,7 +831,50 @@ type TileDef = {
   summary: string;
   accent: string;
   icon: React.ReactNode;
+  /** Si true, la tuile est visible UNIQUEMENT pour l'admin agissant
+   *  sur un tenant — la tuile elle-même affiche un badge "ADMIN" pour
+   *  rappeler que le tenant ne voit pas cette section sur son /dashboard. */
+  adminOnly?: boolean;
 };
+
+/** Badge violet "ADMIN" — pour marquer les features/UI visibles
+ *  uniquement par l'admin agissant sur un tenant. Petit shield + texte.
+ *  Centralisé pour un look consistent partout (tuiles, sections, panels). */
+export function AdminBadge({
+  size = "sm",
+  label = "ADMIN",
+}: {
+  size?: "xs" | "sm" | "md";
+  label?: string;
+}) {
+  const padding =
+    size === "xs"
+      ? "px-1.5 py-0.5 text-[8px]"
+      : size === "md"
+        ? "px-2.5 py-1 text-[10px]"
+        : "px-2 py-0.5 text-[9px]";
+  const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
+  return (
+    <span
+      title="Visible uniquement par l'admin — le tenant ne voit pas cette section sur son dashboard"
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-[#7c3aed]/10 ${padding} font-bold uppercase tracking-wider text-[#6d28d9] ring-1 ring-inset ring-[#7c3aed]/30`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={iconSize}
+        aria-hidden
+      >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+      {label}
+    </span>
+  );
+}
 
 function Tile({
   tile,
@@ -856,11 +905,14 @@ function Tile({
           className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br ${tile.accent} opacity-15 blur-2xl`}
         />
       )}
-      <span
-        className={`relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${tile.accent} text-white shadow-md transition-transform group-hover:scale-110 group-hover:rotate-3`}
-      >
-        {tile.icon}
-      </span>
+      <div className="relative flex w-full items-start justify-between">
+        <span
+          className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${tile.accent} text-white shadow-md transition-transform group-hover:scale-110 group-hover:rotate-3`}
+        >
+          {tile.icon}
+        </span>
+        {tile.adminOnly && <AdminBadge size="xs" />}
+      </div>
       <div className="relative w-full min-w-0">
         <p className="text-base font-extrabold tracking-tight text-[#18181b]">
           {tile.label}
@@ -945,12 +997,17 @@ function VoicePanel({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Modèle */}
+      {/* Modèle — picker dropdown réservé admin. Le tenant voit un Tag
+       *  verrouillé (lock) à la place. Badge ADMIN pour signaler que
+       *  ce contrôle n'apparaît PAS sur /dashboard du tenant. */}
       {isAdmin ? (
         <div>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            {t("modelLabel")}
-          </p>
+          <div className="mb-1.5 flex items-baseline gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
+              {t("modelLabel")}
+            </p>
+            <AdminBadge size="xs" />
+          </div>
           <select
             value={form.model}
             onChange={(e) => update("model", e.target.value)}
