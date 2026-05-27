@@ -175,6 +175,7 @@ export function ConfigForm({
   primaryPhone = null,
   lastUpdatedLabel = "",
   stats,
+  asUserId,
 }: {
   initial: FormState;
   isAdmin?: boolean;
@@ -183,6 +184,11 @@ export function ConfigForm({
   primaryPhone?: string | null;
   lastUpdatedLabel?: string;
   stats?: DashboardStats;
+  /** Si fourni : mode "admin agissant sur un tenant cible".
+   *  - PUT /api/admin/configs/{asUserId} (au lieu de /api/dashboard/config)
+   *  - LiveTestPanelLK et autres sous-composants propagent ce userId
+   *    pour scoper leurs appels API sur ce tenant. */
+  asUserId?: string;
 }) {
   const t = useTranslations("DashboardConfig");
   const locale = useLocale();
@@ -268,7 +274,10 @@ export function ConfigForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await fetch("/api/dashboard/config", {
+      const endpoint = asUserId
+        ? `/api/admin/configs/${asUserId}`
+        : "/api/dashboard/config";
+      const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -618,7 +627,7 @@ export function ConfigForm({
            *  Pendant le scroll : sticky top:50vh + translate = centre du
            *  panel calé sur le centre du viewport. */}
           <div className="xl:mt-[280px] xl:sticky xl:top-[50vh] xl:-translate-y-1/2">
-            <LiveTestPanelLK dirty={dirty} />
+            <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
           </div>
         </aside>
 
