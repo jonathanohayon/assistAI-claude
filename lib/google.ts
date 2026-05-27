@@ -156,13 +156,24 @@ export async function resolveAgentCallerGoogle(
     const secret = req.headers.get("x-internal-secret");
     const expected = process.env.INTERNAL_SECRET;
     if (expected && secret === expected) {
+      // Routing : priorité x-tenant-phone (SIP). Sinon x-tenant-user-id
+      // (web LiveTest, où il n'y a pas de phone dialed). Sinon
+      // unknown_tenant → fallback demo.
       const dialed = (req.headers.get("x-tenant-phone") ?? "").trim();
-      if (!dialed) return { mode: "unknown_tenant", dialedPhone: "" };
-      const tenant = await resolveTenantByPhone(dialed);
-      if (!tenant) return { mode: "unknown_tenant", dialedPhone: dialed };
-      const clients = await getTenantGoogleClients(tenant.user.id);
-      if (!clients) return { mode: "user_no_google" };
-      return { mode: "tenant", ...clients };
+      const tenantUserId = (req.headers.get("x-tenant-user-id") ?? "").trim();
+      if (dialed) {
+        const tenant = await resolveTenantByPhone(dialed);
+        if (!tenant) return { mode: "unknown_tenant", dialedPhone: dialed };
+        const clients = await getTenantGoogleClients(tenant.user.id);
+        if (!clients) return { mode: "user_no_google" };
+        return { mode: "tenant", ...clients };
+      }
+      if (tenantUserId) {
+        const clients = await getTenantGoogleClients(tenantUserId);
+        if (!clients) return { mode: "user_no_google" };
+        return { mode: "tenant", ...clients };
+      }
+      return { mode: "unknown_tenant", dialedPhone: "" };
     }
   }
 
