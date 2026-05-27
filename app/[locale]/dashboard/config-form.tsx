@@ -4,6 +4,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
+import type { PromptBlock } from "@/lib/agent-prompt-preview";
+
+import { PromptPreview } from "./prompt-preview";
 import { PERSONALITY_KEYS } from "@/lib/personality";
 import {
   useRealtimeCatalog,
@@ -176,6 +179,8 @@ export function ConfigForm({
   lastUpdatedLabel = "",
   stats,
   asUserId,
+  promptBlocks,
+  fullPromptConcat,
 }: {
   initial: FormState;
   isAdmin?: boolean;
@@ -189,6 +194,11 @@ export function ConfigForm({
    *  - LiveTestPanelLK et autres sous-composants propagent ce userId
    *    pour scoper leurs appels API sur ce tenant. */
   asUserId?: string;
+  /** Blocs assemblés du system prompt (admin-only). Quand fournis ET
+   *  isAdmin && asUserId, la tuile "Prompt système" est affichée et
+   *  permet de voir/éditer chaque bloc per-tenant ou per-plan. */
+  promptBlocks?: PromptBlock[];
+  fullPromptConcat?: string;
 }) {
   const t = useTranslations("DashboardConfig");
   const locale = useLocale();
@@ -351,6 +361,30 @@ export function ConfigForm({
         </svg>
       ),
     },
+    // Tuile admin-only — apparaît dans /admin/users/[id] uniquement
+    // (gated par `isAdmin && asUserId && promptBlocks`). Voir
+    // dashboard_admin_shared_form.md : features admin-only restent
+    // dans ConfigForm gatées plutôt que dans un form parallèle.
+    ...(isAdmin && asUserId && promptBlocks && promptBlocks.length > 0
+      ? [
+          {
+            id: "prompt" as const,
+            label: "Prompt système",
+            tagline: "Voir et éditer chaque bloc du prompt envoyé à l'agent",
+            summary: `${promptBlocks.length} blocs · ${(fullPromptConcat ?? "").length} chars`,
+            accent: "from-[#7c3aed] to-[#4c1d95]",
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="9" y1="13" x2="15" y2="13" />
+                <line x1="9" y1="17" x2="15" y2="17" />
+                <line x1="9" y1="9" x2="11" y2="9" />
+              </svg>
+            ),
+          },
+        ]
+      : []),
   ] as const;
 
   return (
@@ -722,6 +756,16 @@ export function ConfigForm({
                 {activeTile === "knowledge" && (
                   <KnowledgePanel form={form} update={update} />
                 )}
+                {activeTile === "prompt" &&
+                  isAdmin &&
+                  asUserId &&
+                  promptBlocks && (
+                    <PromptPreview
+                      blocks={promptBlocks}
+                      fullPrompt={fullPromptConcat ?? ""}
+                      userId={asUserId}
+                    />
+                  )}
               </div>
             </div>
           )}

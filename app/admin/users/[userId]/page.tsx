@@ -206,6 +206,11 @@ export default async function AdminTenantPage({
     .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
     .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
     .join("\n\n");
+  // Prompt complet concaténé — passé à <ConfigForm> pour alimenter la
+  // tuile admin-only "Prompt système" (édition bloc par bloc).
+  const fullPromptConcat = promptBlocksPreview
+    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+    .join("\n\n");
 
   async function handleLogout() {
     "use server";
@@ -291,6 +296,8 @@ export default async function AdminTenantPage({
             lastUpdatedLabel={lastUpdated}
             stats={stats}
             asUserId={target.id}
+            promptBlocks={promptBlocksPreview}
+            fullPromptConcat={fullPromptConcat}
           />
         </div>
       </main>
