@@ -298,6 +298,7 @@ export function TenantEditShell(props: TenantEditShellProps) {
               <PromptPreview
                 blocks={props.promptBlocks}
                 fullPrompt={props.fullPromptConcat}
+                userId={props.userId}
               />
             ) : (
               <AdminTenantConfigForm

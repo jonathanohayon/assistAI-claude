@@ -1257,22 +1257,6 @@ function NotifsPanel({
         testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
       <NotifChannelCard
-        label="SMS"
-        color="#3B82F6"
-        comingSoon
-        icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        }
-        on={smsOn}
-        onToggle={setSmsOn}
-        value={smsValue}
-        onChangeValue={setSmsValue}
-        placeholder="+972..."
-        inputType="tel"
-      />
-      <NotifChannelCard
         label="Email"
         color="#0e7490"
         icon={
@@ -1288,6 +1272,22 @@ function NotifsPanel({
         placeholder="contact@..."
         inputType="email"
         testEndpoint="/api/dashboard/notifications/email-test"
+      />
+      <NotifChannelCard
+        label="SMS"
+        color="#3B82F6"
+        comingSoon
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        }
+        on={smsOn}
+        onToggle={setSmsOn}
+        value={smsValue}
+        onChangeValue={setSmsValue}
+        placeholder="+972..."
+        inputType="tel"
       />
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}
@@ -1988,8 +1988,10 @@ function NotifChannelCard({
       className={`flex flex-col gap-3 rounded-2xl border-2 p-4 transition-all duration-300 ${
         on && !comingSoon
           ? "border-[#22d3ee]/40 bg-white shadow-[0_4px_20px_-8px_rgba(34,211,238,0.35)]"
-          : "border-[#e2e8f0] bg-white/50"
-      } ${comingSoon ? "opacity-70" : ""}`}
+          : comingSoon
+            ? "border-[#e2e8f0] bg-white/50 opacity-70"
+            : "border-[#cbd5e1] bg-white hover:border-[#22d3ee]/30 hover:shadow-[0_2px_12px_-4px_rgba(34,211,238,0.2)]"
+      }`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -2038,7 +2040,9 @@ function NotifChannelCard({
           className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
             on && !comingSoon
               ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_16px_-2px_rgba(34,211,238,0.6)]"
-              : "bg-[#cbd5e1]"
+              : comingSoon
+                ? "bg-[#e2e8f0]"
+                : "bg-[#94a3b8] hover:bg-[#64748b]"
           }`}
         >
           <span

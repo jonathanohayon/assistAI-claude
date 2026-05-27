@@ -39,6 +39,16 @@ export interface PromptBlock {
   /** Si présent, lien admin/dashboard pour éditer ce bloc. */
   editHref?: string;
   content: string;
+  /**
+   * Si présent, le bloc est éditable inline depuis la preview. Le client
+   * envoie un PUT au bon endpoint avec le bon body field.
+   * - scope=tenant : PUT /api/admin/configs/<userId> body[field] = newValue
+   * - scope=plan   : PUT /api/admin/settings body[planField][planKey] = newValue
+   *                  (le client doit lire la map courante avant — voir UI)
+   */
+  editable?:
+    | { scope: "tenant"; field: string }
+    | { scope: "plan"; planField: string; planKey: string };
 }
 
 /**
@@ -94,6 +104,11 @@ ${config.greetingInstructions}
       source: "app_settings.spoken_time_directive",
       editHref: `/admin#directives`,
       content: spokenTime,
+      editable: {
+        scope: "plan",
+        planField: "spokenTimeDirectiveByPlan",
+        planKey,
+      },
     },
     spoken_phone: {
       id: "spoken_phone",
@@ -101,6 +116,11 @@ ${config.greetingInstructions}
       source: "app_settings.spoken_phone_directive",
       editHref: `/admin#directives`,
       content: spokenPhone,
+      editable: {
+        scope: "plan",
+        planField: "spokenPhoneDirectiveByPlan",
+        planKey,
+      },
     },
     hangup: {
       id: "hangup",
@@ -108,6 +128,11 @@ ${config.greetingInstructions}
       source: "app_settings.hangup_directive",
       editHref: `/admin#directives`,
       content: hangup,
+      editable: {
+        scope: "plan",
+        planField: "hangupDirectiveByPlan",
+        planKey,
+      },
     },
     config_blocks: {
       id: "config_blocks",
@@ -115,6 +140,11 @@ ${config.greetingInstructions}
       source: "app_settings.config_blocks_directive",
       editHref: `/admin#directives`,
       content: configBlocks,
+      editable: {
+        scope: "plan",
+        planField: "configBlocksDirectiveByPlan",
+        planKey,
+      },
     },
     persona: {
       id: "persona",
@@ -122,6 +152,7 @@ ${config.greetingInstructions}
       source: "agent_configs.instructions",
       editHref: `#instructions-field`,
       content: config.instructions || "(vide)",
+      editable: { scope: "tenant", field: "instructions" },
     },
     knowledge: {
       id: "knowledge",
@@ -159,9 +190,17 @@ ${config.greetingInstructions}
     admin_global: {
       id: "admin_global",
       label: `Règles transverses admin (plan: ${planKey})`,
-      source: `app_settings.global_instructions_by_plan["${planKey}"]`,
+      source: `app_settings.global_instructions_by_plan["${planKey}"] (wrapper "RÈGLES TRANSVERSES…" ajouté au runtime)`,
       editHref: `/admin#global-instructions`,
-      content: buildAdminBlock(globalForPlan) || "(vide pour ce plan)",
+      // Affiche le contenu RAW (sans le wrapper « RÈGLES TRANSVERSES… »)
+      // pour permettre l'édition inline directe — le wrapper est rajouté
+      // côté worker au moment de l'assemblage.
+      content: globalForPlan || "(vide pour ce plan)",
+      editable: {
+        scope: "plan",
+        planField: "globalInstructionsByPlan",
+        planKey,
+      },
     },
   };
 

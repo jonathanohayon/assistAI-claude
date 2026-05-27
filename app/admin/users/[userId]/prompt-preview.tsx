@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
@@ -21,13 +22,26 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 export function PromptPreview({
   blocks,
   fullPrompt,
+  userId,
 }: {
   blocks: PromptBlock[];
   fullPrompt: string;
+  /** Required pour les blocs scope=tenant : PUT /api/admin/configs/<userId>. */
+  userId: string;
 }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showFull, setShowFull] = useState(false);
   const [copied, setCopied] = useState<"all" | string | null>(null);
+  /** Bloc en cours d'édition + son draft text. Un seul à la fois pour
+   *  éviter les saves concurrents. */
+  const [editing, setEditing] = useState<{
+    id: string;
+    draft: string;
+  } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const copyToClipboard = async (text: string, key: "all" | string) => {
     try {
@@ -61,6 +75,71 @@ export function PromptPreview({
       else next.add(id);
       return next;
     });
+  };
+
+  const startEdit = (b: PromptBlock) => {
+    setSaveError(null);
+    // Filtre les contenus "vides" UI pour ne pas garder le placeholder
+    const draft =
+      b.content === "(vide)" || b.content === "(vide pour ce plan)"
+        ? ""
+        : b.content;
+    setEditing({ id: b.id, draft });
+    setExpanded((prev) => new Set([...prev, b.id]));
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setSaveError(null);
+  };
+
+  const saveBlock = async (b: PromptBlock) => {
+    if (!editing || editing.id !== b.id || !b.editable) return;
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const newValue = editing.draft;
+      if (b.editable.scope === "tenant") {
+        const res = await fetch(`/api/admin/configs/${userId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [b.editable.field]: newValue }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.error ?? `HTTP ${res.status}`);
+        }
+      } else {
+        // scope=plan : il faut lire la map courante, patcher la clé planKey,
+        // puis renvoyer toute la map. /api/admin/settings accepte
+        // partial body[planField] = { plan1: val1, plan2: val2, ... }.
+        const getRes = await fetch("/api/admin/settings");
+        if (!getRes.ok) throw new Error(`GET settings ${getRes.status}`);
+        const settings = await getRes.json();
+        const currentMap =
+          (settings?.[b.editable.planField] as Record<string, string>) ?? {};
+        const patched = { ...currentMap, [b.editable.planKey]: newValue };
+        const res = await fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [b.editable.planField]: patched }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.error ?? `HTTP ${res.status}`);
+        }
+      }
+      setEditing(null);
+      // Refresh server props pour re-rendre tous les blocs + forms
+      // de la page avec les valeurs DB fraîches.
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (e) {
+      setSaveError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalChars = blocks.reduce((sum, b) => sum + b.content.length, 0);
@@ -203,7 +282,16 @@ export function PromptPreview({
               </button>
               {isOpen && (
                 <div className="border-t border-[var(--color-border)] bg-[var(--color-muted)]/30">
-                  <div className="flex items-center justify-end px-4 pt-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-2">
+                    {b.editable && editing?.id !== b.id && (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(b)}
+                        className="inline-flex items-center gap-1 rounded-full bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        ✏️ Éditer ce bloc
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => copyToClipboard(b.content, b.id)}
@@ -216,9 +304,60 @@ export function PromptPreview({
                       {copied === b.id ? "✓ Copié" : "📋 Copier ce bloc"}
                     </button>
                   </div>
-                  <pre className="max-h-[40vh] overflow-auto px-4 pb-3 pt-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-[var(--color-foreground)]">
-                    {b.content}
-                  </pre>
+
+                  {editing?.id === b.id ? (
+                    <div className="px-4 pb-3 pt-2">
+                      <textarea
+                        value={editing.draft}
+                        onChange={(e) =>
+                          setEditing({ id: b.id, draft: e.target.value })
+                        }
+                        rows={Math.min(
+                          24,
+                          Math.max(6, editing.draft.split("\n").length + 1),
+                        )}
+                        className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 font-mono text-[11px] leading-relaxed text-[var(--color-foreground)] shadow-inner focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                        autoFocus
+                      />
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[10px] text-[var(--color-muted-foreground)]">
+                          {editing.draft.length} chars ·{" "}
+                          {b.editable?.scope === "tenant"
+                            ? "Save → agent_configs"
+                            : b.editable?.scope === "plan"
+                              ? `Save → app_settings[plan=${b.editable.planKey}]`
+                              : ""}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            disabled={saving}
+                            className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 text-[11px] font-medium text-[var(--color-foreground)] hover:bg-[var(--color-muted)] disabled:opacity-50"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveBlock(b)}
+                            disabled={saving}
+                            className="rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            {saving ? "Save…" : "💾 Save & sync"}
+                          </button>
+                        </div>
+                      </div>
+                      {saveError && (
+                        <p className="mt-2 rounded-md bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
+                          {saveError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <pre className="max-h-[40vh] overflow-auto px-4 pb-3 pt-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-[var(--color-foreground)]">
+                      {b.content}
+                    </pre>
+                  )}
                 </div>
               )}
             </li>
