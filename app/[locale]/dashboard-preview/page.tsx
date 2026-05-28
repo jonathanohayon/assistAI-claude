@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { ConfigForm } from "../dashboard/config-form";
+import { ConfigForm, DEFAULT_BUSINESS } from "../dashboard/config-form";
 import { PaletteSwitcher } from "./palette-switcher";
 
 /**
@@ -66,7 +66,7 @@ export default async function DashboardPreviewPage(props: {
           personality: {},
           agentName: "Sarah",
           noiseReductionLevel: 8,
-          knowledge: [],
+          business: DEFAULT_BUSINESS,
         }}
         isAdmin={true}
         adminInheritablePreview="═══ Directive admin pour le plan Pro ═══\n\nL'agent doit toujours confirmer le créneau exact avant de raccrocher.\nNe jamais promettre une plage horaire sans avoir vérifié la dispo réelle.\n\n═══ Heure parlée ═══\n\nQuand tu prononces une heure, dis « quatorze heures trente » et pas « 14h30 »."

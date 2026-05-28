@@ -1,7 +1,14 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
@@ -34,17 +41,69 @@ type FormState = {
    *  /api/agent/config pour le worker qui le mappe en enhancementLevel 0.1-1.0
    *  du QVF 2.1 L (ai-coustics). 1 = passthrough, 8 = équilibré, 10 = agressif. */
   noiseReductionLevel: number;
-  /** Base de connaissances tenant — array de business avec horaires +
-   *  description. Injecté dans le system prompt côté /api/agent/config. */
-  knowledge: KnowledgeEntry[];
+  /** Structure métier du tenant : identité + centres (avec horaires hebdo) +
+   *  soins/tarifs. Remplace l'ancienne `knowledge` libre — exposé tel quel
+   *  au worker via /api/agent/config qui en dérive les tools dynamiques. */
+  business: BusinessConfig;
 };
 
-export type KnowledgeEntry = {
+export type WeekDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export type DayHours = {
+  open: boolean;
+  openTime: string;
+  closeTime: string;
+};
+
+export type WeeklyHours = Record<WeekDay, DayHours>;
+
+export type BusinessCentre = {
   id: string;
-  toolName: string;
-  businessName: string;
-  openingHours: string;
+  name: string;
+  address: string;
+  hours: WeeklyHours;
+};
+
+export type BusinessService = {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  priceILS: number;
+  /** "all" sentinel = dispo dans tous les centres ; sinon liste d'IDs. */
+  centreIds: string[] | "all";
   description: string;
+};
+
+export type BusinessConfig = {
+  identity: { name: string; tagline: string; email: string };
+  centres: BusinessCentre[];
+  services: BusinessService[];
+};
+
+const WEEKDAY_ORDER: readonly WeekDay[] = [
+  "sun",
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+] as const;
+
+const DEFAULT_WEEKLY_HOURS: WeeklyHours = {
+  mon: { open: true, openTime: "09:00", closeTime: "18:00" },
+  tue: { open: true, openTime: "09:00", closeTime: "18:00" },
+  wed: { open: true, openTime: "09:00", closeTime: "18:00" },
+  thu: { open: true, openTime: "09:00", closeTime: "18:00" },
+  fri: { open: true, openTime: "09:00", closeTime: "14:00" },
+  sat: { open: false, openTime: "09:00", closeTime: "18:00" },
+  sun: { open: true, openTime: "09:00", closeTime: "18:00" },
+};
+
+export const DEFAULT_BUSINESS: BusinessConfig = {
+  identity: { name: "", tagline: "", email: "" },
+  centres: [],
+  services: [],
 };
 
 type Gender = "f" | "m";
@@ -346,18 +405,14 @@ export function ConfigForm({
       ),
     },
     {
-      id: "knowledge",
-      label: "Connaissances",
-      tagline: "Base de connaissances sur tes business",
-      summary:
-        form.knowledge.length === 0
-          ? "Aucun business défini"
-          : `${form.knowledge.length} business · références agent`,
+      id: "business",
+      label: "Business",
+      tagline: "Identité, centres, horaires, soins & tarifs",
+      summary: `${form.business.centres.length} centre${form.business.centres.length > 1 ? "s" : ""} · ${form.business.services.length} soin${form.business.services.length > 1 ? "s" : ""}`,
       accent: "from-[#f59e0b] to-[#b45309]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
         </svg>
       ),
     },
@@ -506,10 +561,26 @@ export function ConfigForm({
         }
         .fancy-slider:disabled { opacity: 0.5; cursor: not-allowed; }
         .fancy-slider:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+        @keyframes drawer-slide-in {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+        .drawer-anim { animation: drawer-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modal-pop {
+          from { opacity: 0; transform: scale(0.95); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        .modal-anim { animation: modal-pop 0.2s ease-out; }
+        @keyframes overlay-fade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .overlay-anim { animation: overlay-fade 0.2s ease-out; }
         @media (prefers-reduced-motion: reduce) {
           .anim-fade-up, .anim-bounce-in, .anim-bounce-soft, .anim-pulse-soft,
           .anim-flash, .anim-slide-x, .anim-tilt, .anim-sparkle, .anim-wiggle,
-          .anim-pulse-quick, .anim-spin-slow, .ripple-ring { animation: none; }
+          .anim-pulse-quick, .anim-spin-slow, .ripple-ring,
+          .drawer-anim, .modal-anim, .overlay-anim { animation: none; }
           .card-hover { transition: none; }
           .card-hover:hover { transform: none; }
         }
@@ -759,8 +830,8 @@ export function ConfigForm({
                 {activeTile === "notifs" && (
                   <NotifsPanel form={form} update={update} t={t} />
                 )}
-                {activeTile === "knowledge" && (
-                  <KnowledgePanel form={form} update={update} />
+                {activeTile === "business" && (
+                  <BusinessPanel form={form} update={update} />
                 )}
                 {activeTile === "prompt" &&
                   isAdmin &&
@@ -1406,247 +1477,1507 @@ function NotifsPanel({
   );
 }
 
-// ─── Knowledge panel — base de connaissances tenant ────────────────────
+// ─── Business panel — identité, centres, horaires, soins & tarifs ──────
 
-function KnowledgePanel({
+const WEEKDAY_LABEL_FR: Record<WeekDay, { short: string; long: string }> = {
+  sun: { short: "Dim", long: "Dimanche" },
+  mon: { short: "Lun", long: "Lundi" },
+  tue: { short: "Mar", long: "Mardi" },
+  wed: { short: "Mer", long: "Mercredi" },
+  thu: { short: "Jeu", long: "Jeudi" },
+  fri: { short: "Ven", long: "Vendredi" },
+  sat: { short: "Sam", long: "Samedi" },
+};
+
+const newId = (prefix: string) =>
+  `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isHoursValid = (h: DayHours) => !h.open || h.openTime < h.closeTime;
+
+const formatPriceILS = (n: number) =>
+  Number.isFinite(n) ? `${Math.round(n)} ₪` : "—";
+const formatDuration = (min: number) => {
+  if (!Number.isFinite(min) || min <= 0) return "—";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, "0")}`;
+};
+
+function BusinessPanel({
   form,
   update,
 }: {
   form: FormState;
   update: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const business = form.business;
+  const patch = (partial: Partial<BusinessConfig>) =>
+    update("business", { ...business, ...partial });
 
-  const toggle = (id: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  return (
+    <div className="flex flex-col gap-6">
+      <IdentitySection
+        identity={business.identity}
+        ownerWhatsapp={form.ownerWhatsapp}
+        primaryLanguage={form.primaryLanguage}
+        onChange={(identity) => patch({ identity })}
+      />
+      <CentresSection
+        centres={business.centres}
+        onChange={(centres) => patch({ centres })}
+      />
+      <ServicesSection
+        services={business.services}
+        centres={business.centres}
+        onChange={(services) => patch({ services })}
+      />
+    </div>
+  );
+}
 
-  const addBusiness = () => {
-    const id = `biz_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const next: KnowledgeEntry = {
+// ─── Identity ────────────────────────────────────────────────────────────
+
+function IdentitySection({
+  identity,
+  ownerWhatsapp,
+  primaryLanguage,
+  onChange,
+}: {
+  identity: BusinessConfig["identity"];
+  ownerWhatsapp: string;
+  primaryLanguage: string;
+  onChange: (identity: BusinessConfig["identity"]) => void;
+}) {
+  const [emailError, setEmailError] = useState(false);
+  const setField = <K extends keyof BusinessConfig["identity"]>(
+    key: K,
+    value: BusinessConfig["identity"][K],
+  ) => onChange({ ...identity, [key]: value });
+
+  return (
+    <section
+      className="anim-fade-up overflow-hidden rounded-2xl border border-[#fde68a]/60 bg-gradient-to-br from-[#fff7ed] to-white shadow-sm"
+      style={{ animationDelay: "60ms" }}
+    >
+      <header className="flex items-center gap-3 border-b border-[#fde68a]/40 px-5 py-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-md">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
+            Identité du business
+          </h3>
+          <p className="text-[11px] text-[#92400e]">
+            Le nom et l&apos;ambiance que l&apos;agent utilise pour se présenter.
+          </p>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4 px-5 py-5">
+        <IdentityField
+          label="Nom du business"
+          icon={
+            <>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
+            </>
+          }
+        >
+          <input
+            type="text"
+            value={identity.name}
+            onChange={(e) => setField("name", e.target.value)}
+            placeholder="Tamara Coiffure"
+            className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+          />
+        </IdentityField>
+
+        <IdentityField
+          label="Slogan / accroche"
+          icon={
+            <>
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z" />
+            </>
+          }
+        >
+          <textarea
+            value={identity.tagline}
+            rows={2}
+            onChange={(e) => setField("tagline", e.target.value)}
+            placeholder="Un salon, trois centres, une équipe à ton écoute."
+            className="w-full resize-y rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+          />
+        </IdentityField>
+
+        <IdentityField
+          label="Email de contact"
+          icon={
+            <>
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="22,6 12,13 2,6" />
+            </>
+          }
+        >
+          <input
+            type="email"
+            value={identity.email}
+            onChange={(e) => {
+              setField("email", e.target.value);
+              if (emailError) setEmailError(false);
+            }}
+            onBlur={() =>
+              setEmailError(
+                identity.email.length > 0 && !EMAIL_RE.test(identity.email),
+              )
+            }
+            placeholder="contact@tamara.co.il"
+            className={`w-full min-h-[44px] rounded-xl border bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:outline-none focus:ring-4 ${
+              emailError
+                ? "border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/15"
+                : "border-[#e2e8f0] focus:border-[#f59e0b] focus:ring-[#f59e0b]/15"
+            }`}
+            aria-invalid={emailError}
+          />
+          {emailError && (
+            <p className="mt-1 text-[11px] font-medium text-[#dc2626]">
+              Format d&apos;email invalide
+            </p>
+          )}
+        </IdentityField>
+
+        <div className="mt-1 grid grid-cols-1 gap-2 rounded-xl border border-[#e2e8f0] bg-white/60 px-3.5 py-3 sm:grid-cols-2">
+          <div className="flex items-center gap-2 text-[11px] text-[#475569]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-[#0e7490]" aria-hidden>
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.86 19.86 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <span className="font-mono">{ownerWhatsapp || "—"}</span>
+            <span className="ml-auto text-[10px] text-[#94a3b8]">
+              Modifier dans <span className="font-semibold text-[#0e7490]">Notifs →</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-[#475569]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-[#0e7490]" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            <span className="font-mono uppercase">{primaryLanguage}</span>
+            <span className="ml-auto text-[10px] text-[#94a3b8]">
+              Modifier dans <span className="font-semibold text-[#0e7490]">Persona →</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IdentityField({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-[#b45309]" aria-hidden>
+          {icon}
+        </svg>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+// ─── Centres ─────────────────────────────────────────────────────────────
+
+function CentresSection({
+  centres,
+  onChange,
+}: {
+  centres: BusinessCentre[];
+  onChange: (centres: BusinessCentre[]) => void;
+}) {
+  const [editingCentreId, setEditingCentreId] = useState<string | null>(null);
+  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const addCentre = () => {
+    const id = newId("ctr");
+    const next: BusinessCentre = {
       id,
-      toolName: "",
-      businessName: "",
-      openingHours: "",
-      description: "",
+      name: "",
+      address: "",
+      hours: structuredCloneCompat(DEFAULT_WEEKLY_HOURS),
     };
-    update("knowledge", [...form.knowledge, next]);
-    setExpanded((prev) => new Set([...prev, id]));
+    onChange([...centres, next]);
+    setEditingCentreId(id);
   };
 
-  const removeBusiness = (id: string) => {
-    update(
-      "knowledge",
-      form.knowledge.filter((e) => e.id !== id),
+  const patchCentre = (id: string, partial: Partial<BusinessCentre>) =>
+    onChange(centres.map((c) => (c.id === id ? { ...c, ...partial } : c)));
+
+  const removeCentre = (id: string) => {
+    onChange(centres.filter((c) => c.id !== id));
+    setEditingCentreId((curr) => (curr === id ? null : curr));
+  };
+
+  const editing = centres.find((c) => c.id === editingCentreId) ?? null;
+
+  return (
+    <section
+      className="anim-fade-up rounded-2xl border border-[#e2e8f0] bg-white/70 shadow-sm"
+      style={{ animationDelay: "120ms" }}
+    >
+      <header className="flex flex-wrap items-center gap-3 border-b border-[#e2e8f0] px-5 py-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-md">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
+            Centres / Lieux
+          </h3>
+          <p className="text-[11px] text-[#475569]">
+            {centres.length === 0
+              ? "Aucun centre défini"
+              : `${centres.length} centre${centres.length > 1 ? "s" : ""} actif${centres.length > 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={addCentre}
+          className="group inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 transition-transform group-hover:rotate-90">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          Ajouter un centre
+        </button>
+      </header>
+
+      <div className="px-5 py-5">
+        {centres.length === 0 ? (
+          <EmptyState
+            icon={
+              <>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </>
+            }
+            title="Aucun centre défini"
+            body="Ajoute ton premier centre pour que Tamara puisse aiguiller les clients vers le bon endroit."
+            cta={{ label: "Créer un centre", onClick: addCentre }}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {centres.map((centre, i) => (
+              <CentreCard
+                key={centre.id}
+                centre={centre}
+                delay={i * 30}
+                ref={(el) => {
+                  triggerRefs.current[centre.id] = el;
+                }}
+                onEdit={() => setEditingCentreId(centre.id)}
+                onDelete={() => removeCentre(centre.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {editing && (
+        <CentreEditDrawer
+          centre={editing}
+          onPatch={(partial) => patchCentre(editing.id, partial)}
+          onDelete={() => removeCentre(editing.id)}
+          onClose={() => {
+            const trigger = triggerRefs.current[editing.id];
+            setEditingCentreId(null);
+            // Restore focus to the originating card button.
+            setTimeout(() => trigger?.focus(), 0);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+const CentreCard = forwardRef<
+  HTMLButtonElement,
+  {
+    centre: BusinessCentre;
+    delay: number;
+    onEdit: () => void;
+    onDelete: () => void;
+  }
+>(function CentreCardInner({ centre, delay, onEdit, onDelete }, ref) {
+    return (
+      <div
+        className="anim-fade-up group flex flex-col rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#f59e0b]/40 hover:shadow-md"
+        style={{ animationDelay: `${delay}ms` }}
+      >
+        <button
+          type="button"
+          ref={ref}
+          onClick={onEdit}
+          className="-m-1 flex flex-col items-start gap-2 rounded-xl p-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+        >
+          <div className="flex w-full items-start justify-between gap-2">
+            <p className="line-clamp-1 text-base font-extrabold tracking-tight text-[#18181b]">
+              {centre.name || (
+                <span className="italic text-[#94a3b8]">Sans nom</span>
+              )}
+            </p>
+            <span
+              aria-hidden
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#fffbeb] text-[#b45309] opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </span>
+          </div>
+          <p className="line-clamp-1 text-[11px] text-[#475569]">
+            {centre.address || (
+              <span className="italic">Aucune adresse renseignée</span>
+            )}
+          </p>
+        </button>
+
+        <WeeklyHoursPills hours={centre.hours} />
+
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0e7490] transition-colors hover:border-[#0e7490] hover:bg-[#ecfeff]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Modifier
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Supprimer ${centre.name || "ce centre"}`}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-200 bg-red-50/50 text-red-600 transition-colors hover:bg-red-100"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
     );
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
+});
+
+function WeeklyHoursPills({ hours }: { hours: WeeklyHours }) {
+  return (
+    <div
+      className="mt-3 flex items-center gap-1.5"
+      aria-label="Aperçu hebdomadaire"
+    >
+      {WEEKDAY_ORDER.map((d) => {
+        const day = hours[d];
+        const valid = isHoursValid(day);
+        return (
+          <div
+            key={d}
+            title={`${WEEKDAY_LABEL_FR[d].long} — ${
+              !day.open
+                ? "fermé"
+                : valid
+                  ? `${day.openTime}–${day.closeTime}`
+                  : "horaires invalides"
+            }`}
+            className="flex flex-col items-center gap-1"
+          >
+            <span
+              aria-hidden
+              className={`h-2 w-2 rounded-full ${
+                !day.open
+                  ? "bg-[#e2e8f0]"
+                  : valid
+                    ? "bg-[#10b981]"
+                    : "bg-[#dc2626]"
+              }`}
+            />
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+              {WEEKDAY_LABEL_FR[d].short[0]}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── CentreEditDrawer ────────────────────────────────────────────────────
+
+function CentreEditDrawer({
+  centre,
+  onPatch,
+  onDelete,
+  onClose,
+}: {
+  centre: BusinessCentre;
+  onPatch: (partial: Partial<BusinessCentre>) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = `centre-drawer-title-${centre.id}`;
+
+  // Focus first input on mount.
+  useEffect(() => {
+    firstInputRef.current?.focus();
+    firstInputRef.current?.select();
+  }, []);
+
+  // ESC closes.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const patchHours = (day: WeekDay, partial: Partial<DayHours>) => {
+    onPatch({
+      hours: { ...centre.hours, [day]: { ...centre.hours[day], ...partial } },
     });
   };
 
-  const patchBusiness = (id: string, patch: Partial<KnowledgeEntry>) => {
-    update(
-      "knowledge",
-      form.knowledge.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-    );
+  const applyToOpenDays = (sourceDay: WeekDay) => {
+    const src = centre.hours[sourceDay];
+    if (!src.open) return;
+    const next: WeeklyHours = { ...centre.hours };
+    for (const d of WEEKDAY_ORDER) {
+      if (d === sourceDay) continue;
+      if (next[d].open) {
+        next[d] = { ...next[d], openTime: src.openTime, closeTime: src.closeTime };
+      }
+    }
+    onPatch({ hours: next });
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-xl border border-[#fef3c7] bg-[#fffbeb]/60 px-4 py-3 text-[11px] leading-relaxed text-[#92400e]">
-        <p className="font-semibold text-[#78350f]">
-          📚 Base de connaissances métier — un tool par business
-        </p>
-        <p className="mt-1">
-          Chaque business génère <strong>un tool LLM dynamique</strong> que
-          l&apos;agent peut appeler (ex: <code className="rounded bg-white/70 px-1 font-mono">salon_main()</code>). Tu
-          peux référencer le tool name dans ton persona prompt : <em>«&nbsp;Pour
-          toute question sur le salon principal, appelle salon_main&nbsp;»</em>.
-          Tu peux aussi laisser le LLM décider quand appeler — il voit
-          automatiquement les tools dispos.
-        </p>
-      </div>
-
-      {form.knowledge.length === 0 && (
-        <div className="rounded-xl border border-dashed border-[#e2e8f0] bg-white/50 px-4 py-8 text-center">
-          <p className="text-sm text-[#64748b]">
-            Aucun business défini pour ce tenant.
-          </p>
-          <p className="mt-1 text-[11px] text-[#94a3b8]">
-            Clique sur &laquo; + Ajouter un business &raquo; pour commencer.
-          </p>
-        </div>
-      )}
-
-      {form.knowledge.map((entry, idx) => {
-        const isOpen = expanded.has(entry.id);
-        const summary =
-          entry.businessName ||
-          (entry.toolName ? `(${entry.toolName})` : `Business #${idx + 1}`);
-        return (
-          <div
-            key={entry.id}
-            className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm"
+    <div
+      className="overlay-anim fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="presentation"
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="drawer-anim fixed right-0 top-0 flex h-full w-full max-w-[520px] flex-col overflow-y-auto bg-white shadow-2xl"
+      >
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e2e8f0] bg-white/95 px-5 py-4 backdrop-blur">
+          <div className="min-w-0">
+            <h3
+              id={titleId}
+              className="text-base font-extrabold tracking-tight text-[#18181b]"
+            >
+              {centre.name ? `Modifier — ${centre.name}` : "Nouveau centre"}
+            </h3>
+            <p className="text-[11px] text-[#94a3b8]">
+              Modifs auto-sauvegardées au save global du formulaire
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer le panneau"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#475569] transition-all hover:bg-[#fee2e2] hover:text-[#dc2626] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490]"
           >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div className="flex-1 space-y-6 px-5 py-5">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+                Nom du centre
+              </label>
+              <input
+                ref={firstInputRef}
+                type="text"
+                value={centre.name}
+                onChange={(e) => onPatch({ name: e.target.value })}
+                placeholder="Tamara — Ashdod"
+                className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+                Adresse complète
+              </label>
+              <input
+                type="text"
+                value={centre.address}
+                onChange={(e) => onPatch({ address: e.target.value })}
+                placeholder="14 rue Rogozin, Ashdod"
+                className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h4 className="text-sm font-extrabold tracking-tight text-[#18181b]">
+                Horaires hebdomadaires
+              </h4>
+              <p className="text-[10px] text-[#94a3b8]">
+                Toggle off = fermé toute la journée
+              </p>
+            </div>
+            <WeeklyHoursGrid
+              hours={centre.hours}
+              onPatch={patchHours}
+              onApplyToOthers={applyToOpenDays}
+            />
+          </div>
+        </div>
+
+        <footer className="sticky bottom-0 z-10 border-t border-[#e2e8f0] bg-white/95 px-5 py-4 backdrop-blur">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => toggle(entry.id)}
-              className="flex w-full items-center justify-between gap-3 border-b border-[#f1f5f9] bg-gradient-to-br from-white to-[#fefce8] px-4 py-3 text-left transition-colors hover:bg-[#fefce8]"
+              onClick={onClose}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-sm">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#18181b]">
-                    {summary}
-                  </p>
-                  <p className="text-[10px] text-[#94a3b8]">
-                    {entry.toolName ? `ref: ${entry.toolName} · ` : ""}
-                    {entry.openingHours ? `${entry.openingHours.slice(0, 40)}` : "pas d'horaires"}
-                  </p>
-                </div>
-              </div>
-              <span className="text-[#94a3b8]">{isOpen ? "▼" : "▶"}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Terminer
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  typeof window !== "undefined" &&
+                  !window.confirm(
+                    `Supprimer le centre « ${centre.name || "sans nom"} » ?`,
+                  )
+                ) {
+                  return;
+                }
+                onDelete();
+                onClose();
+              }}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              </svg>
+              Supprimer ce centre
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
 
-            {isOpen && (
-              <div className="space-y-3 px-4 py-4">
-                <KnowledgeField
-                  label="Nom du tool LLM"
-                  hint="Devient un vrai tool callable par l'agent. Référençable dans le persona prompt (ex: « appelle salon_main pour les horaires »). Auto-sanitize : seuls a-z, 0-9, _ acceptés, doit commencer par une lettre. Espaces/accents → underscores."
-                  value={entry.toolName}
-                  onChange={(v) =>
-                    patchBusiness(entry.id, {
-                      // Sanitize live pour donner feedback immédiat à l'user.
-                      toolName: v
-                        .toLowerCase()
-                        .replace(/[^a-z0-9_]/g, "_")
-                        .replace(/_+/g, "_")
-                        .replace(/^_+/, "")
-                        .slice(0, 60),
-                    })
-                  }
-                  placeholder="salon_main"
+// ─── WeeklyHoursGrid ─────────────────────────────────────────────────────
+
+function WeeklyHoursGrid({
+  hours,
+  onPatch,
+  onApplyToOthers,
+}: {
+  hours: WeeklyHours;
+  onPatch: (day: WeekDay, partial: Partial<DayHours>) => void;
+  onApplyToOthers: (sourceDay: WeekDay) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {WEEKDAY_ORDER.map((d) => {
+        const day = hours[d];
+        const valid = isHoursValid(day);
+        return (
+          <div
+            key={d}
+            className={`flex flex-col gap-2 rounded-xl border px-3 py-2.5 transition-colors ${
+              day.open
+                ? "border-[#e2e8f0] bg-white"
+                : "border-[#f1f5f9] bg-[#f8fafc]"
+            } ${!valid ? "border-[#dc2626] bg-[#fef2f2]" : ""}`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#475569]">
+                {WEEKDAY_LABEL_FR[d].short}
+              </span>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={day.open}
+                aria-label={`${WEEKDAY_LABEL_FR[d].long} ${day.open ? "ouvert" : "fermé"}`}
+                onClick={() => onPatch(d, { open: !day.open })}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f59e0b] focus-visible:ring-offset-2 ${
+                  day.open
+                    ? "bg-gradient-to-r from-[#10b981] to-[#059669] shadow-[0_0_12px_-2px_rgba(16,185,129,0.5)]"
+                    : "bg-[#cbd5e1] hover:bg-[#94a3b8]"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className="block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                  style={{
+                    transform: day.open ? "translateX(20px)" : "translateX(0)",
+                  }}
                 />
-                <KnowledgeField
-                  label="1. Nom du business"
-                  value={entry.businessName}
-                  onChange={(v) => patchBusiness(entry.id, { businessName: v })}
-                  placeholder="Salon Tamara — Jérusalem"
-                />
-                <KnowledgeField
-                  label="2. Horaires d'ouverture"
-                  hint="Format libre — l'agent reformule naturellement à l'oral"
-                  value={entry.openingHours}
-                  onChange={(v) => patchBusiness(entry.id, { openingHours: v })}
-                  placeholder="Lun-Ven 9h-19h, Sam 10h-15h, Dim fermé"
-                  multiline
-                />
-                <KnowledgeField
-                  label="3. Détails sur le business"
-                  hint="Description complète : services proposés, adresse, prix, particularités…"
-                  value={entry.description}
-                  onChange={(v) => patchBusiness(entry.id, { description: v })}
-                  placeholder="Centre situé au 14 rue de Jaffa. Services : coupe, coloration, massage. Parking client. Accessibilité PMR."
-                  multiline
-                  rows={5}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeBusiness(entry.id)}
-                  className="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50/50 px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    className="h-3.5 w-3.5"
-                  >
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  </svg>
-                  Supprimer ce business
-                </button>
-              </div>
+              </button>
+
+              <input
+                type="time"
+                value={day.openTime}
+                onChange={(e) => onPatch(d, { openTime: e.target.value })}
+                disabled={!day.open}
+                aria-label={`Heure d'ouverture ${WEEKDAY_LABEL_FR[d].long}`}
+                className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1.5 text-xs font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30 disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:opacity-50"
+              />
+              <span className="text-[11px] text-[#94a3b8]">→</span>
+              <input
+                type="time"
+                value={day.closeTime}
+                onChange={(e) => onPatch(d, { closeTime: e.target.value })}
+                disabled={!day.open}
+                aria-label={`Heure de fermeture ${WEEKDAY_LABEL_FR[d].long}`}
+                className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1.5 text-xs font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30 disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:opacity-50"
+              />
+
+              <button
+                type="button"
+                onClick={() => onApplyToOthers(d)}
+                disabled={!day.open}
+                title="Appliquer ces horaires aux autres jours ouverts"
+                aria-label={`Appliquer les horaires de ${WEEKDAY_LABEL_FR[d].long} aux autres jours ouverts`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#0e7490] transition-colors hover:border-[#0e7490] hover:bg-[#ecfeff] disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              </button>
+            </div>
+            {!valid && (
+              <p className="pl-11 text-[10px] font-medium text-[#dc2626]">
+                Horaire incohérent — la fermeture doit être après l&apos;ouverture
+              </p>
             )}
           </div>
         );
       })}
-
-      <button
-        type="button"
-        onClick={addBusiness}
-        className="group inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#f59e0b]/40 bg-[#fffbeb]/40 px-4 py-3 text-sm font-medium text-[#92400e] transition-all hover:border-[#f59e0b] hover:bg-[#fffbeb]"
-      >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f59e0b] text-white shadow-sm transition-transform group-hover:scale-110">
-          +
-        </span>
-        Ajouter un business
-      </button>
     </div>
   );
 }
 
-function KnowledgeField({
-  label,
-  hint,
-  value,
+// ─── Services ────────────────────────────────────────────────────────────
+
+function ServicesSection({
+  services,
+  centres,
   onChange,
-  placeholder,
-  multiline,
-  rows = 3,
 }: {
-  label: string;
-  hint?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  multiline?: boolean;
-  rows?: number;
+  services: BusinessService[];
+  centres: BusinessCentre[];
+  onChange: (services: BusinessService[]) => void;
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterCentre, setFilterCentre] = useState<string>("all");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return services.filter((s) => {
+      if (q && !s.name.toLowerCase().includes(q)) return false;
+      if (filterCentre !== "all") {
+        if (s.centreIds === "all") return true;
+        if (!s.centreIds.includes(filterCentre)) return false;
+      }
+      return true;
+    });
+  }, [services, search, filterCentre]);
+
+  const centreNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of centres) m[c.id] = c.name || "Centre sans nom";
+    return m;
+  }, [centres]);
+
+  const addService = () => {
+    const id = newId("svc");
+    const next: BusinessService = {
+      id,
+      name: "",
+      durationMinutes: 60,
+      priceILS: 200,
+      centreIds: "all",
+      description: "",
+    };
+    onChange([...services, next]);
+    setEditingId(id);
+  };
+
+  const patchService = (id: string, partial: Partial<BusinessService>) =>
+    onChange(services.map((s) => (s.id === id ? { ...s, ...partial } : s)));
+
+  const removeService = (id: string) => {
+    onChange(services.filter((s) => s.id !== id));
+    setEditingId((curr) => (curr === id ? null : curr));
+  };
+
+  const duplicateService = (id: string) => {
+    const src = services.find((s) => s.id === id);
+    if (!src) return;
+    const copy: BusinessService = {
+      ...src,
+      id: newId("svc"),
+      name: `${src.name} (copie)`.trim(),
+    };
+    const idx = services.findIndex((s) => s.id === id);
+    const next = [...services];
+    next.splice(idx + 1, 0, copy);
+    onChange(next);
+  };
+
+  const editing = services.find((s) => s.id === editingId) ?? null;
+
   return (
-    <div>
-      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-        {label}
-      </label>
-      {multiline ? (
-        <textarea
-          value={value}
-          rows={rows}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full resize-y rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-sm transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded-lg border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-sm transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30"
+    <section
+      className="anim-fade-up rounded-2xl border border-[#e2e8f0] bg-white/70 shadow-sm"
+      style={{ animationDelay: "180ms" }}
+    >
+      <header className="flex flex-wrap items-center gap-3 border-b border-[#e2e8f0] px-5 py-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-md">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+            <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
+          </svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
+            Soins & Tarifs
+          </h3>
+          <p className="text-[11px] text-[#475569]">
+            {services.length === 0
+              ? "Aucun soin défini"
+              : `${services.length} soin${services.length > 1 ? "s" : ""} au catalogue`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={addService}
+          className="group inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 transition-transform group-hover:rotate-90">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          Nouveau soin
+        </button>
+      </header>
+
+      {services.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#e2e8f0] px-5 py-3">
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un soin…"
+              aria-label="Rechercher un soin"
+              className="w-full min-h-[40px] rounded-xl border border-[#e2e8f0] bg-white pl-9 pr-3 py-2 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+            />
+          </div>
+          <select
+            value={filterCentre}
+            onChange={(e) => setFilterCentre(e.target.value)}
+            aria-label="Filtrer par centre"
+            className="min-h-[40px] rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+          >
+            <option value="all">Tous les centres</option>
+            {centres.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name || "Centre sans nom"}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="px-5 py-5">
+        {services.length === 0 ? (
+          <EmptyState
+            icon={
+              <>
+                <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
+              </>
+            }
+            title="Aucun soin défini"
+            body="Ajoute tes prestations pour que Tamara puisse les proposer aux clients et donner les tarifs."
+            cta={{ label: "Créer un soin", onClick: addService }}
+          />
+        ) : filtered.length === 0 ? (
+          <div className="py-10 text-center">
+            <p className="text-base font-semibold text-[#475569]">
+              Aucun soin correspondant
+            </p>
+            <p className="mt-1 text-[12px] text-[#94a3b8]">
+              Essaie un autre nom ou change le filtre centre.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden overflow-hidden rounded-2xl border border-[#e2e8f0] sm:block">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 bg-[#fffbeb] text-left text-[10px] font-bold uppercase tracking-wider text-[#92400e]">
+                  <tr>
+                    <th className="px-4 py-3">Soin</th>
+                    <th className="px-4 py-3">Durée</th>
+                    <th className="px-4 py-3">Prix</th>
+                    <th className="px-4 py-3">Disponible à</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s, i) => (
+                    <tr
+                      key={s.id}
+                      className="anim-fade-up border-t border-[#f1f5f9] bg-white transition-colors hover:bg-[#fff7ed]/50"
+                      style={{ animationDelay: `${i * 30}ms` }}
+                    >
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(s.id)}
+                          className="block max-w-full text-left text-sm font-semibold text-[#18181b] hover:text-[#b45309] focus:outline-none focus-visible:underline"
+                        >
+                          {s.name || (
+                            <span className="italic text-[#94a3b8]">Sans nom</span>
+                          )}
+                        </button>
+                        {s.description && (
+                          <p className="mt-0.5 line-clamp-1 text-[11px] text-[#94a3b8]">
+                            {s.description}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[12px] text-[#475569]">
+                        {formatDuration(s.durationMinutes)}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[12px] font-semibold text-[#b45309]">
+                        {formatPriceILS(s.priceILS)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <CentreBadges
+                          centreIds={s.centreIds}
+                          centreNameById={centreNameById}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <ServiceRowAction
+                            label="Modifier"
+                            onClick={() => setEditingId(s.id)}
+                            icon={
+                              <>
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </>
+                            }
+                          />
+                          <ServiceRowAction
+                            label="Dupliquer"
+                            onClick={() => duplicateService(s.id)}
+                            icon={
+                              <>
+                                <rect x="9" y="9" width="13" height="13" rx="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </>
+                            }
+                          />
+                          <ServiceRowAction
+                            label="Supprimer"
+                            danger
+                            onClick={() => removeService(s.id)}
+                            icon={
+                              <>
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              </>
+                            }
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+              {filtered.map((s, i) => (
+                <div
+                  key={s.id}
+                  className="anim-fade-up rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm"
+                  style={{ animationDelay: `${i * 30}ms` }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(s.id)}
+                    className="block w-full text-left"
+                  >
+                    <p className="text-sm font-semibold text-[#18181b]">
+                      {s.name || (
+                        <span className="italic text-[#94a3b8]">Sans nom</span>
+                      )}
+                    </p>
+                    {s.description && (
+                      <p className="mt-0.5 line-clamp-2 text-[11px] text-[#94a3b8]">
+                        {s.description}
+                      </p>
+                    )}
+                  </button>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfeff] px-2 py-0.5 font-mono font-semibold text-[#0e7490]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      {formatDuration(s.durationMinutes)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#fffbeb] px-2 py-0.5 font-mono font-semibold text-[#b45309]">
+                      {formatPriceILS(s.priceILS)}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <CentreBadges
+                      centreIds={s.centreIds}
+                      centreNameById={centreNameById}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <ServiceRowAction
+                      label="Modifier"
+                      block
+                      onClick={() => setEditingId(s.id)}
+                      icon={
+                        <>
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </>
+                      }
+                    />
+                    <ServiceRowAction
+                      label="Dupliquer"
+                      onClick={() => duplicateService(s.id)}
+                      icon={
+                        <>
+                          <rect x="9" y="9" width="13" height="13" rx="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </>
+                      }
+                    />
+                    <ServiceRowAction
+                      label="Supprimer"
+                      danger
+                      onClick={() => removeService(s.id)}
+                      icon={
+                        <>
+                          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        </>
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {editing && (
+        <ServiceEditModal
+          service={editing}
+          centres={centres}
+          onPatch={(partial) => patchService(editing.id, partial)}
+          onDelete={() => removeService(editing.id)}
+          onClose={() => setEditingId(null)}
         />
       )}
-      {hint && <p className="mt-1 text-[10px] text-[#92400e]/70">{hint}</p>}
+    </section>
+  );
+}
+
+function CentreBadges({
+  centreIds,
+  centreNameById,
+}: {
+  centreIds: BusinessService["centreIds"];
+  centreNameById: Record<string, string>;
+}) {
+  if (centreIds === "all") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#10b981]/15 to-[#059669]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#047857] ring-1 ring-inset ring-[#10b981]/30">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-2.5 w-2.5">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        Tous les centres
+      </span>
+    );
+  }
+  if (centreIds.length === 0) {
+    return (
+      <span className="text-[10px] italic text-[#94a3b8]">Aucun centre</span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {centreIds.slice(0, 3).map((id) => (
+        <span
+          key={id}
+          className="inline-flex items-center rounded-full bg-[#fffbeb] px-2 py-0.5 text-[10px] font-semibold text-[#92400e] ring-1 ring-inset ring-[#fde68a]"
+        >
+          {centreNameById[id] ?? "?"}
+        </span>
+      ))}
+      {centreIds.length > 3 && (
+        <span className="inline-flex items-center rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-semibold text-[#475569]">
+          +{centreIds.length - 3}
+        </span>
+      )}
     </div>
   );
 }
+
+function ServiceRowAction({
+  label,
+  onClick,
+  icon,
+  danger = false,
+  block = false,
+}: {
+  label: string;
+  onClick: () => void;
+  icon: React.ReactNode;
+  danger?: boolean;
+  block?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 ${block ? "flex-1 px-3 text-xs font-semibold" : "w-9 justify-center"} items-center gap-1.5 rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        danger
+          ? "border-red-200 bg-white text-red-600 hover:bg-red-50 focus-visible:ring-red-400"
+          : "border-[#e2e8f0] bg-white text-[#475569] hover:border-[#0e7490] hover:bg-[#ecfeff] hover:text-[#0e7490] focus-visible:ring-[#0e7490]"
+      }`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+        {icon}
+      </svg>
+      {block && <span>{label}</span>}
+    </button>
+  );
+}
+
+// ─── ServiceEditModal ────────────────────────────────────────────────────
+
+function ServiceEditModal({
+  service,
+  centres,
+  onPatch,
+  onDelete,
+  onClose,
+}: {
+  service: BusinessService;
+  centres: BusinessCentre[];
+  onPatch: (partial: Partial<BusinessService>) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  const titleId = `service-modal-title-${service.id}`;
+
+  useEffect(() => {
+    firstInputRef.current?.focus();
+    firstInputRef.current?.select();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const isAll = service.centreIds === "all";
+  const selectedIds = isAll ? [] : (service.centreIds as string[]);
+
+  const toggleCentre = (id: string) => {
+    if (isAll) {
+      // Coming from "all" → start with just this one selected
+      onPatch({ centreIds: [id] });
+      return;
+    }
+    const next = selectedIds.includes(id)
+      ? selectedIds.filter((c) => c !== id)
+      : [...selectedIds, id];
+    onPatch({ centreIds: next });
+  };
+
+  const toggleAll = () => {
+    if (isAll) {
+      onPatch({ centreIds: [] });
+    } else {
+      onPatch({ centreIds: "all" });
+    }
+  };
+
+  const canSave = service.name.trim().length > 0;
+
+  return (
+    <div
+      className="overlay-anim fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="modal-anim flex max-h-[92vh] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:w-full"
+      >
+        <header className="flex items-center justify-between gap-3 border-b border-[#e2e8f0] px-5 py-4">
+          <div className="min-w-0">
+            <h3
+              id={titleId}
+              className="text-base font-extrabold tracking-tight text-[#18181b]"
+            >
+              {service.name ? `Modifier — ${service.name}` : "Nouveau soin"}
+            </h3>
+            <p className="text-[11px] text-[#94a3b8]">
+              Modifs auto-sauvegardées au save global
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#475569] transition-all hover:bg-[#fee2e2] hover:text-[#dc2626] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+              Nom du soin
+            </label>
+            <input
+              ref={firstInputRef}
+              type="text"
+              value={service.name}
+              onChange={(e) => onPatch({ name: e.target.value })}
+              placeholder="Coupe femme"
+              className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+                Durée (min)
+              </label>
+              <input
+                type="number"
+                value={service.durationMinutes}
+                step={5}
+                min={5}
+                max={480}
+                onChange={(e) =>
+                  onPatch({ durationMinutes: Number(e.target.value) })
+                }
+                className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+              />
+              <p className="mt-1 text-[10px] text-[#94a3b8]">
+                {formatDuration(service.durationMinutes)}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+                Prix (₪)
+              </label>
+              <input
+                type="number"
+                value={service.priceILS}
+                step={10}
+                min={0}
+                max={100000}
+                onChange={(e) =>
+                  onPatch({ priceILS: Number(e.target.value) })
+                }
+                className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+              />
+              <p className="mt-1 text-[10px] text-[#94a3b8]">
+                {formatPriceILS(service.priceILS)}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+              Description (optionnel)
+            </label>
+            <textarea
+              value={service.description}
+              rows={3}
+              onChange={(e) => onPatch({ description: e.target.value })}
+              placeholder="Lavage + coupe + brushing. Idéal pour cheveux mi-longs."
+              className="w-full resize-y rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
+              Disponible dans
+            </label>
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={isAll}
+                onClick={toggleAll}
+                className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                  isAll
+                    ? "border-[#10b981] bg-gradient-to-br from-[#ecfdf5] to-white"
+                    : "border-[#e2e8f0] bg-white hover:border-[#10b981]/40"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                    isAll
+                      ? "border-[#10b981] bg-[#10b981]"
+                      : "border-[#cbd5e1] bg-white"
+                  }`}
+                >
+                  {isAll && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className="h-3 w-3 text-white">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </span>
+                <span className="text-sm font-semibold text-[#18181b]">
+                  Tous les centres
+                </span>
+                <span className="ml-auto text-[10px] text-[#94a3b8]">
+                  Sentinel &laquo;all&raquo;
+                </span>
+              </button>
+
+              {centres.length === 0 && (
+                <p className="rounded-lg bg-[#fffbeb]/60 px-3 py-2 text-[11px] text-[#92400e]">
+                  Ajoute d&apos;abord des centres pour pouvoir restreindre la dispo.
+                </p>
+              )}
+
+              {!isAll &&
+                centres.map((c) => {
+                  const checked = selectedIds.includes(c.id);
+                  return (
+                    <button
+                      type="button"
+                      key={c.id}
+                      role="checkbox"
+                      aria-checked={checked}
+                      onClick={() => toggleCentre(c.id)}
+                      className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                        checked
+                          ? "border-[#f59e0b] bg-[#fffbeb]"
+                          : "border-[#e2e8f0] bg-white hover:border-[#f59e0b]/40"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                          checked
+                            ? "border-[#f59e0b] bg-[#f59e0b]"
+                            : "border-[#cbd5e1] bg-white"
+                        }`}
+                      >
+                        {checked && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" className="h-3 w-3 text-white">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[#18181b]">
+                          {c.name || "Centre sans nom"}
+                        </span>
+                        {c.address && (
+                          <span className="block truncate text-[10px] text-[#94a3b8]">
+                            {c.address}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+
+        <footer className="flex items-center justify-between gap-2 border-t border-[#e2e8f0] bg-white px-5 py-4">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                typeof window !== "undefined" &&
+                !window.confirm(
+                  `Supprimer le soin « ${service.name || "sans nom"} » ?`,
+                )
+              )
+                return;
+              onDelete();
+              onClose();
+            }}
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+            Supprimer
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-semibold text-[#475569] transition-colors hover:bg-[#f8fafc]"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={!canSave}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Sauvegarder
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────
+
+function EmptyState({
+  icon,
+  title,
+  body,
+  cta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  cta?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#fde68a] bg-[#fffbeb]/40 px-6 py-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f59e0b]/15 to-[#b45309]/15 text-[#b45309]" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+          {icon}
+        </svg>
+      </span>
+      <p className="text-base font-extrabold tracking-tight text-[#18181b]">
+        {title}
+      </p>
+      <p className="max-w-xs text-[12px] leading-relaxed text-[#92400e]">
+        {body}
+      </p>
+      {cta && (
+        <button
+          type="button"
+          onClick={cta.onClick}
+          className="mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          {cta.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Utils ───────────────────────────────────────────────────────────────
+
+function structuredCloneCompat<T>(value: T): T {
+  if (typeof structuredClone === "function") return structuredClone(value);
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 
 // ─── Tools available hint — encart au-dessus de l'instructions textarea ─
 
@@ -1747,20 +3078,11 @@ function ToolsAvailableHint({
   const [expanded, setExpanded] = useState(false);
   const [copiedTool, setCopiedTool] = useState<string | null>(null);
 
-  // Tools dynamiques depuis les business knowledge configurés
-  const knowledgeTools: ToolSpec[] = form.knowledge
-    .filter((k) => k.toolName.length > 0)
-    .map((k) => ({
-      name: k.toolName,
-      description: k.businessName
-        ? `Infos sur "${k.businessName}" (horaires, services, détails)`
-        : `Infos sur le business ${k.toolName}`,
-      example: `« vous êtes ouverts à quelle heure ? » → ${k.toolName}(topic='hours')`,
-      category: "knowledge" as const,
-    }));
-
-  const allTools = [...knowledgeTools, ...BUILTIN_TOOLS];
-  const knowledgeCount = knowledgeTools.length;
+  // Les tools "knowledge" ne sont plus exposés ici : la nouvelle tile Business
+  // structure l'identité/centres/services en JSON, et c'est le worker qui en
+  // dérive les tools déterministes (5 tools fixes côté agent).
+  const allTools = BUILTIN_TOOLS;
+  const centresCount = form.business.centres.length;
 
   const copyName = async (name: string) => {
     try {
@@ -1790,11 +3112,11 @@ function ToolsAvailableHint({
           </p>
           <p className="mt-0.5 text-[11px] text-[#475569]">
             Cliquer le nom pour copier · &laquo; Insérer exemple &raquo; pour append au persona
-            {knowledgeCount > 0 && (
+            {centresCount > 0 && (
               <>
                 {" "}·{" "}
                 <span className="font-medium text-[#b45309]">
-                  {knowledgeCount} tool{knowledgeCount > 1 ? "s" : ""} knowledge
+                  {centresCount} centre{centresCount > 1 ? "s" : ""} configuré{centresCount > 1 ? "s" : ""}
                 </span>
               </>
             )}
@@ -1865,10 +3187,10 @@ function ToolsAvailableHint({
               </div>
             );
           })}
-          {knowledgeCount === 0 && (
+          {centresCount === 0 && (
             <p className="rounded-lg bg-[#fffbeb]/60 px-3 py-2 text-[11px] text-[#92400e]">
-              💡 Configure tes business dans la tile <strong>Connaissances</strong> pour
-              générer des tools sur-mesure (un par business).
+              💡 Configure tes centres et soins dans la tile <strong>Business</strong> pour
+              que l&apos;agent connaisse ton offre.
             </p>
           )}
         </div>

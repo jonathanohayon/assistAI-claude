@@ -156,10 +156,28 @@ ${config.greetingInstructions}
     },
     knowledge: {
       id: "knowledge",
-      label: "Base de connaissances tenant",
-      source: "agent_configs.knowledge (array)",
-      editHref: `#knowledge-field`,
+      label: "Business — Identité, centres, soins",
+      source: "agent_configs.business (jsonb structuré)",
+      editHref: `#business-field`,
       content: (() => {
+        // Préfère la nouvelle structure `business` si dispo + non-vide,
+        // sinon fallback sur le legacy `knowledge` array.
+        const b = (config as { business?: unknown }).business;
+        if (
+          b &&
+          typeof b === "object" &&
+          (((b as { identity?: { name?: string } }).identity?.name?.length ?? 0) > 0 ||
+            ((b as { centres?: unknown[] }).centres?.length ?? 0) > 0 ||
+            ((b as { services?: unknown[] }).services?.length ?? 0) > 0)
+        ) {
+          // Lazy require pour éviter cycle import — agent-prompt-preview est
+          // pulled par server pages.
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { renderBusinessPromptBlock, sanitizeBusinessConfig } = require(
+            "@/lib/business",
+          );
+          return renderBusinessPromptBlock(sanitizeBusinessConfig(b));
+        }
         const entries = Array.isArray(config.knowledge) ? config.knowledge : [];
         const filtered = entries.filter(
           (e) =>

@@ -150,26 +150,41 @@ export async function GET(req: NextRequest) {
     ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
     : "";
 
-  // Bloc connaissances tenant — formatte la base de connaissances (array
-  // de business) en section référence dans le prompt. L'agent cite ces
-  // infos quand on lui pose des questions sur les services/horaires.
-  const knowledgeEntries = Array.isArray(config.knowledge)
-    ? config.knowledge.filter(
-        (e) => (e?.businessName?.length ?? 0) > 0 || (e?.description?.length ?? 0) > 0,
-      )
-    : [];
-  const knowledgeBlock = knowledgeEntries.length
-    ? `BASE DE CONNAISSANCES MÉTIER (chaque business expose un tool LLM dédié) :\n\n${knowledgeEntries
+  // Bloc business tenant — formatte la structure { identity, centres,
+  // services } en section référence pour le prompt. Fallback sur le
+  // legacy `knowledge` array si business pas encore peuplé pour ce tenant.
+  let businessBlock = "";
+  if (
+    config.business &&
+    typeof config.business === "object" &&
+    ((config.business.identity?.name ?? "").length > 0 ||
+      (config.business.centres?.length ?? 0) > 0 ||
+      (config.business.services?.length ?? 0) > 0)
+  ) {
+    const { renderBusinessPromptBlock, sanitizeBusinessConfig } = await import(
+      "@/lib/business"
+    );
+    businessBlock = renderBusinessPromptBlock(
+      sanitizeBusinessConfig(config.business),
+    );
+  } else if (Array.isArray(config.knowledge) && config.knowledge.length > 0) {
+    // Fallback legacy : un tenant qui a juste l'ancien knowledge mais pas
+    // encore migré vers business. Affiche en bloc texte simple.
+    const knowledgeEntries = config.knowledge.filter(
+      (e) => (e?.businessName?.length ?? 0) > 0 || (e?.description?.length ?? 0) > 0,
+    );
+    if (knowledgeEntries.length > 0) {
+      businessBlock = `BUSINESS — INFOS LEGACY (sera migré vers structure complète au prochain save dashboard) :\n\n${knowledgeEntries
         .map((e, i) => {
           const lines: string[] = [];
-          const ref = e.toolName ? `\`${e.toolName}()\`` : "(pas de tool)";
-          lines.push(`### ${i + 1}. ${e.businessName || "(sans nom)"} — tool: ${ref}`);
+          lines.push(`### ${i + 1}. ${e.businessName || "(sans nom)"}`);
           if (e.openingHours) lines.push(`Horaires : ${e.openingHours}`);
           if (e.description) lines.push(`Détails : ${e.description}`);
           return lines.join("\n");
         })
-        .join("\n\n")}\n\nUSAGE : quand un client te pose une question factuelle sur un de ces business (horaires, services, adresse, prix, particularités), **appelle le tool correspondant** pour t'assurer d'avoir l'info à jour, puis reformule la réponse pour l'oral. Tu peux aussi répondre directement avec les infos ci-dessus si tu les as déjà en tête.`
-    : "";
+        .join("\n\n")}`;
+    }
+  }
 
   const blockContent: Record<string, string> = {
     spoken_time: spokenTime,
@@ -177,7 +192,7 @@ export async function GET(req: NextRequest) {
     hangup,
     config_blocks: configBlocks,
     persona: config.instructions,
-    knowledge: knowledgeBlock,
+    knowledge: businessBlock,
     language: languageDirective,
     admin_global: adminBlock,
   };

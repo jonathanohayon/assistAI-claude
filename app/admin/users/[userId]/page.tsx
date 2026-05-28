@@ -2,7 +2,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { ConfigForm } from "@/app/[locale]/dashboard/config-form";
+import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
@@ -191,7 +191,18 @@ export default async function AdminTenantPage({
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
           noiseReductionLevel: config.noiseReductionLevel ?? 8,
-          knowledge: Array.isArray(config.knowledge) ? config.knowledge : [],
+          business: (() => {
+            const maybe = (config as unknown as { business?: unknown })
+              .business;
+            if (
+              maybe &&
+              typeof maybe === "object" &&
+              Array.isArray((maybe as { centres?: unknown }).centres)
+            ) {
+              return maybe as typeof DEFAULT_BUSINESS;
+            }
+            return DEFAULT_BUSINESS;
+          })(),
         }}
         isAdmin={true}
         adminInheritablePreview={adminInheritablePreview}

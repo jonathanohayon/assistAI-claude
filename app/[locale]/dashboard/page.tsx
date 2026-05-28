@@ -18,7 +18,7 @@ import {
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 
-import { ConfigForm } from "./config-form";
+import { ConfigForm, DEFAULT_BUSINESS } from "./config-form";
 
 export default async function DashboardPage(props: {
   params: Promise<{ locale: string }>;
@@ -199,7 +199,22 @@ export default async function DashboardPage(props: {
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
           noiseReductionLevel: config.noiseReductionLevel ?? 8,
-          knowledge: Array.isArray(config.knowledge) ? config.knowledge : [],
+          // Champ `business` ajouté en parallèle par la migration schema
+          // (jsonb). Tant que la colonne n'est pas en place, on retombe sur
+          // DEFAULT_BUSINESS. `config` est typé Drizzle donc on lit le
+          // champ via cast unknown pour rester safe vis-à-vis du JIT type.
+          business: (() => {
+            const maybe = (config as unknown as { business?: unknown })
+              .business;
+            if (
+              maybe &&
+              typeof maybe === "object" &&
+              Array.isArray((maybe as { centres?: unknown }).centres)
+            ) {
+              return maybe as typeof DEFAULT_BUSINESS;
+            }
+            return DEFAULT_BUSINESS;
+          })(),
         }}
         isAdmin={isAdmin}
         adminInheritablePreview={adminInheritablePreview}

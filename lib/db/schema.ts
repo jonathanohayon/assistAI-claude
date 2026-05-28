@@ -135,11 +135,8 @@ export const agentConfigs = pgTable("agent_configs", {
   noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
 
   // Base de connaissances tenant — array de "business" que l'agent peut
-  // référencer. Chaque entrée = un business avec horaires + description.
-  // Injecté dans le system prompt comme bloc `knowledge` (cf.
-  // /api/agent/config) pour que le LLM puisse répondre aux questions
-  // contextuelles ("vous êtes ouverts à quelle heure ?", "quels services
-  // chez le spa ?"). Géré depuis /dashboard/config → tile "Connaissances".
+  // référencer. Legacy (deprecated 2026-05-28) : remplacé par `business`
+  // colonne structurée. Conservé une release pour fallback worker.
   knowledge: jsonb("knowledge")
     .$type<
       Array<{
@@ -152,6 +149,37 @@ export const agentConfigs = pgTable("agent_configs", {
     >()
     .notNull()
     .default(sql`'[]'::jsonb`),
+
+  // Données structurées du tenant : identité, centres (avec horaires hebdo)
+  // et soins/tarifs. Remplace `knowledge` (array plat) à terme. Le worker
+  // expose 5 tools fixes (list_centres, get_centre_info, get_opening_hours,
+  // list_services, find_service) qui lisent cette structure.
+  // Géré depuis /dashboard/config → tile "Business".
+  business: jsonb("business")
+    .$type<{
+      identity: { name: string; tagline: string; email: string };
+      centres: Array<{
+        id: string;
+        name: string;
+        address: string;
+        hours: Record<
+          "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun",
+          { open: boolean; openTime: string; closeTime: string }
+        >;
+      }>;
+      services: Array<{
+        id: string;
+        name: string;
+        durationMinutes: number;
+        priceILS: number;
+        centreIds: string[] | "all";
+        description: string;
+      }>;
+    }>()
+    .notNull()
+    .default(
+      sql`'{"identity":{"name":"","tagline":"","email":""},"centres":[],"services":[]}'::jsonb`,
+    ),
 
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

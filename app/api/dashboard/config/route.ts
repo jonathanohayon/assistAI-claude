@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -54,6 +55,7 @@ export async function PUT(req: NextRequest) {
       openingHours?: string;
       description?: string;
     }>;
+    business: unknown;
   }>;
 
   // Look up current config + user role. Tenants can only change persona,
@@ -187,6 +189,15 @@ export async function PUT(req: NextRequest) {
     // UPDATE silently no-op, colonne reste à `[]` même avec data envoyée.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (updates as any).knowledge = sql`${JSON.stringify(cleaned)}::jsonb`;
+  }
+  if ("business" in body) {
+    // Sanitization complète (cf. lib/business.ts) — toujours renvoie un
+    // objet valide (jamais throw). Cast ::jsonb explicite à cause du
+    // bug postgres-js sur les objets/arrays JS qui se serialisent en
+    // text[] par défaut (cf. fix knowledge column).
+    const cleaned = sanitizeBusinessConfig(body.business);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (updates as any).business = sql`${JSON.stringify(cleaned)}::jsonb`;
   }
 
   const [updated] = await db
