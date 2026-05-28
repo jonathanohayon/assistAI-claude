@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
@@ -180,7 +180,13 @@ export async function PUT(req: NextRequest) {
           e.description.length > 0,
       )
       .slice(0, 30); // garde-fou : max 30 entrées par tenant
-    updates.knowledge = cleaned;
+    // Cast SQL explicite ::jsonb car postgres-js sérialise les arrays JS en
+    // ARRAY Postgres natif (text[]) par défaut, ce qui ne matche pas la
+    // colonne jsonb. Le cast force le bon type d'entrée même si Drizzle
+    // ne le détecte pas via $type<Array<...>>. Symptôme sans le cast :
+    // UPDATE silently no-op, colonne reste à `[]` même avec data envoyée.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (updates as any).knowledge = sql`${JSON.stringify(cleaned)}::jsonb`;
   }
 
   const [updated] = await db
