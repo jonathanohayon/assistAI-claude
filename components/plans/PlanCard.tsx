@@ -69,13 +69,15 @@ export function useExchangeRates(): Record<Currency, number> {
     }
 
     const ctrl = new AbortController();
-    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,ILS", {
+    // Proxy interne (server-to-server vers frankfurter) — évite le CORS du
+    // fetch direct depuis le navigateur. Voir app/api/fx-rates/route.ts.
+    fetch("/api/fx-rates", {
       signal: ctrl.signal,
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fx http"))))
-      .then((data: { rates?: { USD?: number; ILS?: number } }) => {
-        const usd = data.rates?.USD;
-        const ils = data.rates?.ILS;
+      .then((data: { USD?: number; ILS?: number }) => {
+        const usd = data.USD;
+        const ils = data.ILS;
         if (typeof usd !== "number" || typeof ils !== "number") return;
         const next: Record<Currency, number> = { EUR: 1, USD: usd, ILS: ils };
         setRates(next);
