@@ -47,6 +47,14 @@ export interface BusinessConfig {
   identity: { name: string; tagline: string; email: string };
   centres: BusinessCentre[];
   services: BusinessService[];
+  /**
+   * Texte libre optionnel injecté dans le system prompt sous une section
+   * "Centers and Days Rules (STRICT — NON-NEGOTIABLE)". Le tenant l'utilise
+   * pour codifier les contraintes métier non capturables par le grid horaires
+   * (ex. "Natanya uniquement le mercredi", "Lundi → Ashdod en priorité",
+   * blackout dates, etc.). Vide → la section n'est pas injectée du tout.
+   */
+  centresRules?: string;
 }
 
 const WEEK_DAYS: readonly WeekDay[] = [
@@ -156,6 +164,7 @@ const DEFAULT_BUSINESS: BusinessConfig = {
   identity: { name: "", tagline: "", email: "" },
   centres: [],
   services: [],
+  centresRules: "",
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -200,7 +209,12 @@ export function sanitizeBusinessConfig(raw: unknown): BusinessConfig {
     seenServiceIds.add(s.id);
     services.push(s);
   }
-  return { identity, centres, services };
+  // Règles libres centres/jours — cap 4000 chars (équivalent persona block).
+  const centresRules = trim(
+    (r as { centresRules?: unknown }).centresRules,
+    4000,
+  );
+  return { identity, centres, services, centresRules };
 }
 
 /** Rendu markdown pour le prompt system block envoyé à OpenAI. */
@@ -209,7 +223,8 @@ export function renderBusinessPromptBlock(b: BusinessConfig): string {
     b.identity.name.length > 0 || b.identity.tagline.length > 0;
   const hasCentres = b.centres.length > 0;
   const hasServices = b.services.length > 0;
-  if (!hasIdentity && !hasCentres && !hasServices) return "";
+  const hasRules = (b.centresRules ?? "").trim().length > 0;
+  if (!hasIdentity && !hasCentres && !hasServices && !hasRules) return "";
 
   const dayLabels: Record<WeekDay, string> = {
     sun: "Dim",
@@ -261,6 +276,14 @@ export function renderBusinessPromptBlock(b: BusinessConfig): string {
       }
     });
     parts.push(centreSection.join("\n"));
+  }
+
+  if (hasRules) {
+    // Position : APRÈS centres (le LLM a vu les ids+horaires) mais AVANT
+    // services (les règles override la disponibilité catalog).
+    parts.push(
+      `\n## Centers and Days Rules (STRICT — NON-NEGOTIABLE)\n\n${(b.centresRules ?? "").trim()}\n\n⚠️ Ces règles métier overrident les horaires bruts ci-dessus quand il y a conflit. Tu DOIS les appliquer sans exception.`,
+    );
   }
 
   if (hasServices) {

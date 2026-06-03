@@ -78,6 +78,12 @@ export type BusinessConfig = {
   identity: { name: string; tagline: string; email: string };
   centres: BusinessCentre[];
   services: BusinessService[];
+  /** Texte libre optionnel injecté dans le system prompt sous une section
+   *  "Centers and Days Rules (STRICT — NON-NEGOTIABLE)". Permet au tenant
+   *  d'encoder ses contraintes métier non-représentables par le grid horaires
+   *  (ex. "Natanya uniquement le mercredi", blackout dates, etc.).
+   *  Vide → la section n'est pas injectée du tout. */
+  centresRules?: string;
 };
 
 const WEEKDAY_ORDER: readonly WeekDay[] = [
@@ -104,6 +110,7 @@ export const DEFAULT_BUSINESS: BusinessConfig = {
   identity: { name: "", tagline: "", email: "" },
   centres: [],
   services: [],
+  centresRules: "",
 };
 
 type Gender = "f" | "m";
@@ -1529,12 +1536,152 @@ function BusinessPanel({
         centres={business.centres}
         onChange={(centres) => patch({ centres })}
       />
+      <CentresRulesSection
+        value={business.centresRules ?? ""}
+        onChange={(centresRules) => patch({ centresRules })}
+      />
       <ServicesSection
         services={business.services}
         centres={business.centres}
         onChange={(services) => patch({ services })}
       />
     </div>
+  );
+}
+
+// ─── CentresRules ────────────────────────────────────────────────────────
+
+const CENTRES_RULES_MAX = 4000;
+
+const CENTRES_RULES_EXAMPLE = `### Ouverture par jour
+- Lundi → **uniquement Ashdod** (Jérusalem et Natanya fermés ce jour-là)
+- Mercredi → **uniquement Natanya** (les autres centres sont fermés)
+- Autres jours (mardi, jeudi, vendredi, samedi, dimanche) → **uniquement Jérusalem**
+
+### Centre par défaut
+Si la cliente ne précise pas le centre, propose celui qui correspond au jour qu'elle demande — NE PAS proposer un autre centre pour ce jour-là.
+
+### Vérification
+Avant CHAQUE appel à check_availability, calcule mentalement le jour de la semaine de la date demandée et vérifie qu'il correspond au bon centre. Si non, propose la prochaine date du bon jour.`;
+
+function CentresRulesSection({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const [showHelp, setShowHelp] = useState(false);
+  const hasContent = value.trim().length > 0;
+  const charCount = value.length;
+  const overBudget = charCount > CENTRES_RULES_MAX;
+
+  const insertExample = () => {
+    onChange(
+      hasContent ? `${value.trimEnd()}\n\n${CENTRES_RULES_EXAMPLE}` : CENTRES_RULES_EXAMPLE,
+    );
+  };
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#fef3c7]/40 to-white shadow-sm">
+      <header className="border-b border-[#e2e8f0]/70 bg-white/60 px-5 py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#dc2626] to-[#b45309] text-white shadow-sm">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path d="M12 9v4M12 17h.01" />
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+              </svg>
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-[#18181b]">
+                Règles strictes centres/jours
+              </h3>
+              <p className="text-[11px] text-[#64748b]">
+                Optionnel · injecté dans le prompt sous{" "}
+                <code className="rounded bg-[#fef3c7]/70 px-1 font-mono text-[10px]">
+                  Centers and Days Rules (STRICT)
+                </code>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#e2e8f0] bg-white px-3 text-[11px] font-medium text-[#475569] transition hover:bg-[#fef3c7]/40"
+          >
+            {showHelp ? "Masquer l'aide" : "💡 Aide"}
+          </button>
+        </div>
+      </header>
+
+      <div className="px-5 py-4">
+        {showHelp && (
+          <div className="mb-3 rounded-xl border border-[#fde68a] bg-[#fffbeb]/80 px-4 py-3 text-[12px] leading-relaxed text-[#92400e]">
+            <p className="font-semibold">Quand utiliser ce champ ?</p>
+            <p className="mt-1">
+              Pour les contraintes métier qui ne tiennent PAS dans le grid
+              horaires des centres — par exemple : un centre ouvert UNIQUEMENT
+              certains jours fixes (Lundi=Ashdod, Mercredi=Natanya), des
+              priorités quand le client ne précise pas le centre, des blackout
+              dates, ou des règles de fallback.
+            </p>
+            <p className="mt-2">
+              Le texte est injecté <strong>tel quel</strong> dans le system
+              prompt avec la mention <em>NON-NEGOTIABLE</em> — l'agent
+              l'applique sans dévier.
+            </p>
+            <button
+              type="button"
+              onClick={insertExample}
+              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-[#dc2626] px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#b91c1c]"
+            >
+              📋 Insérer un exemple
+            </button>
+          </div>
+        )}
+
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Ex: Natanya uniquement le mercredi. Ashdod uniquement le lundi. Autres jours = Jérusalem. Avant chaque check_availability, vérifier que le jour matche le centre."
+          rows={Math.max(6, Math.min(20, value.split("\n").length + 1))}
+          className={`w-full resize-y rounded-xl border bg-white px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-[#18181b] shadow-inner transition placeholder:text-[#cbd5e1] focus:outline-none focus:ring-2 ${
+            overBudget
+              ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+              : "border-[#e2e8f0] focus:border-[#dc2626]/60 focus:ring-[#dc2626]/20"
+          }`}
+          aria-describedby="centres-rules-help"
+        />
+
+        <div
+          id="centres-rules-help"
+          className="mt-2 flex items-center justify-between gap-3 text-[11px]"
+        >
+          <p className="text-[#64748b]">
+            {hasContent
+              ? "✓ Sera injecté dans le system prompt à chaque session."
+              : "Laisse vide pour ne pas injecter cette section."}
+          </p>
+          <p
+            className={`font-mono ${
+              overBudget ? "font-semibold text-red-600" : "text-[#94a3b8]"
+            }`}
+          >
+            {charCount.toLocaleString()} / {CENTRES_RULES_MAX.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 

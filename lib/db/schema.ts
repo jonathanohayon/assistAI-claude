@@ -175,6 +175,8 @@ export const agentConfigs = pgTable("agent_configs", {
         centreIds: string[] | "all";
         description: string;
       }>;
+      /** Free-text règles strictes injectées en system prompt. */
+      centresRules?: string;
     }>()
     .notNull()
     .default(
