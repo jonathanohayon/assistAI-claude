@@ -1037,6 +1037,25 @@
       "textIntro": "Bonjour,",
       "textCodeBlock": "Voici votre code à 4 chiffres pour valider votre adresse email sur Tamara :"
     },
+    "subscriptionConfirmation": {
+      "subject": "Paiement confirmé — {plan}",
+      "eyebrow": "Abonnement",
+      "heading": "Paiement réussi",
+      "helloWithName": "Bonjour {name},",
+      "helloNoName": "Bonjour,",
+      "intro": "Merci ! Ton paiement a bien été reçu et ton abonnement Tamara est désormais actif.",
+      "planLabel": "Formule",
+      "periodLabel": "Facturation",
+      "periodLabelText": "Facturation :",
+      "periodMonthly": "Mensuelle",
+      "periodAnnual": "Annuelle",
+      "amountLabel": "Montant",
+      "amountLabelText": "Montant :",
+      "includedHeading": "Ce qui est inclus",
+      "ctaButton": "Accéder à mon dashboard",
+      "footer": "Cet email est une confirmation de paiement. Tu peux gérer ton abonnement à tout moment depuis ton dashboard.",
+      "signature": "— L'équipe Tamara"
+    },
     "notificationTest": {
       "subject": "🔔 Test notification Tamara",
       "eyebrow": "Notification test",

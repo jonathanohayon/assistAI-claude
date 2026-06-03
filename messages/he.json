@@ -1027,6 +1027,25 @@
     "fetchError": "שגיאת טעינה"
   },
   "Email": {
+    "subscriptionConfirmation": {
+      "subject": "התשלום אושר — {plan}",
+      "eyebrow": "מנוי",
+      "heading": "התשלום בוצע בהצלחה",
+      "helloWithName": "שלום {name},",
+      "helloNoName": "שלום,",
+      "intro": "תודה! התשלום שלך התקבל והמנוי שלך ב-Tamara פעיל מעכשיו.",
+      "planLabel": "תוכנית",
+      "periodLabel": "חיוב",
+      "periodLabelText": "חיוב:",
+      "periodMonthly": "חודשי",
+      "periodAnnual": "שנתי",
+      "amountLabel": "סכום",
+      "amountLabelText": "סכום:",
+      "includedHeading": "מה כלול",
+      "ctaButton": "למעבר ללוח הבקרה",
+      "footer": "אימייל זה הוא אישור תשלום. ניתן לנהל את המנוי בכל עת מלוח הבקרה.",
+      "signature": "— צוות Tamara"
+    },
     "notificationTest": {
       "subject": "🔔 בדיקת התראות Tamara",
       "eyebrow": "בדיקת התראות",

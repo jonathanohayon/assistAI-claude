@@ -429,6 +429,136 @@ export async function sendWelcomeEmail(
 }
 
 // ──────────────────────────────────────────────────────────────────────
+//   Subscription confirmation (paiement HYP réussi)
+// ──────────────────────────────────────────────────────────────────────
+export async function sendSubscriptionConfirmationEmail(
+  to: string,
+  opts: {
+    planKey: string;
+    period: "monthly" | "annual";
+    amount: number;
+    /** "EUR" | "ILS" */
+    currency: string;
+    displayName?: string | null;
+    locale?: string | null;
+  },
+): Promise<SendResult> {
+  const locale = normalizeLocale(opts.locale);
+  const t = await getTranslations({
+    locale,
+    namespace: "Email.subscriptionConfirmation",
+  });
+  const client = getResend();
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+
+  const plan = getLocalizedPlan(locale, opts.planKey);
+  const planLabel = plan.name;
+  const description = plan.tagline;
+  const features = Array.isArray(plan.features) ? plan.features : [];
+  const symbol = opts.currency === "ILS" ? "₪" : "€";
+  const amountStr = `${opts.amount.toLocaleString(dateLocaleFor(locale), {
+    maximumFractionDigits: 0,
+  })} ${symbol}`;
+  const periodLabel =
+    opts.period === "annual" ? t("periodAnnual") : t("periodMonthly");
+  const firstName = (opts.displayName ?? "").trim().split(/\s+/)[0] || null;
+  const helloHtml = firstName
+    ? t("helloWithName", { name: firstName })
+    : t("helloNoName");
+
+  const subject = t("subject", { plan: planLabel });
+
+  if (!client) {
+    console.warn(
+      `\n=================== SUBSCRIPTION EMAIL FALLBACK (no RESEND_API_KEY) ===================` +
+        `\nTo:     ${to}` +
+        `\nFrom:   ${from}` +
+        `\nPlan:   ${planLabel} (${periodLabel})` +
+        `\nAmount: ${amountStr}` +
+        `\n======================================================================================\n`,
+    );
+    return { ok: true, fallback: "console_log" };
+  }
+
+  const text =
+    `${helloHtml}\n\n` +
+    `${t("intro")}\n\n` +
+    `${t("planLabel")} ${planLabel} — ${description}\n` +
+    `${t("periodLabelText")} ${periodLabel}\n` +
+    `${t("amountLabelText")} ${amountStr}\n\n` +
+    (features.length
+      ? `${t("includedHeading")}\n` +
+        features.map((f) => `  • ${f}`).join("\n") +
+        `\n\n`
+      : "") +
+    `https://aitamara.com/dashboard\n\n` +
+    `${t("footer")}\n\n` +
+    t("signature");
+
+  const featuresHtml = features.length
+    ? `<ul style="margin:0;padding-${dirFor(locale) === "rtl" ? "right" : "left"}:18px;font-size:13px;line-height:1.7;color:#374151;">` +
+      features.map((f) => `<li>${f}</li>`).join("") +
+      `</ul>`
+    : "";
+
+  const html = `
+    <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;">
+      <div style="background:linear-gradient(135deg,#be185d 0%,#ec4899 50%,#22d3ee 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.85);font-weight:600;">${t("eyebrow")}</p>
+        <h1 style="margin:0;font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Tamara</h1>
+      </div>
+      <div style="padding:32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">
+        <h2 style="font-size:20px;margin:0 0 12px;color:#0e7490;font-weight:700;">✓ ${t("heading")}</h2>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 18px;color:#1f2937;">
+          ${helloHtml}
+        </p>
+        <p style="font-size:14px;line-height:1.6;margin:0 0 18px;color:#475569;">
+          ${t("intro")}
+        </p>
+        <table cellspacing="0" cellpadding="0" style="width:100%;margin:0 0 8px;font-size:13px;border-collapse:collapse;">
+          <tr>
+            <td style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280;width:38%;">${t("planLabel")}</td>
+            <td style="padding:9px 12px;background:#fff;border:1px solid #e5e7eb;border-left:0;color:#111827;font-weight:600;">${planLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-top:0;color:#6b7280;">${t("periodLabel")}</td>
+            <td style="padding:9px 12px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-left:0;color:#111827;">${periodLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 0 8px;color:#6b7280;">${t("amountLabel")}</td>
+            <td style="padding:9px 12px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-left:0;border-radius:0 0 8px 0;color:#111827;font-weight:600;">${amountStr}</td>
+          </tr>
+        </table>
+        <p style="font-size:13px;line-height:1.6;margin:14px 0 18px;color:#6b7280;">${description}</p>
+        ${
+          featuresHtml
+            ? `<h3 style="font-size:14px;margin:0 0 8px;color:#111827;">${t("includedHeading")}</h3>${featuresHtml}`
+            : ""
+        }
+        <p style="margin:24px 0 0;">
+          <a href="https://aitamara.com/dashboard" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
+            ${t("ctaButton")}
+          </a>
+        </p>
+        <p style="font-size:12px;line-height:1.6;margin:24px 0 0;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px;">
+          ${t("footer")}
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
 //   Notification test email — déclenché depuis /dashboard quand le user
 //   clique "Tester" sur le canal Email. Permet de valider la délivrance
 //   et le rendu HTML/branding avant que les vrais recap d'appels partent.

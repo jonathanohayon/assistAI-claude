@@ -5,6 +5,7 @@ import { nextPaidUntil, validateHypReturn } from "@/lib/billing-activation";
 import type { Period } from "@/lib/billing-pricing";
 import { db } from "@/lib/db";
 import { paymentOrders, users } from "@/lib/db/schema";
+import { sendSubscriptionConfirmationEmail } from "@/lib/email";
 import { verifyPayment } from "@/lib/hyp";
 import { logEvent } from "@/lib/logger";
 
@@ -224,6 +225,45 @@ export async function GET(req: NextRequest) {
       txnId,
     },
   });
+
+  // Email de confirmation au client — best-effort : ne JAMAIS bloquer le
+  // retour (l'abonnement est déjà activé). Locale = langue de la page de paiement.
+  try {
+    const [u] = await db
+      .select({ email: users.email, displayName: users.displayName })
+      .from(users)
+      .where(eq(users.id, order.userId))
+      .limit(1);
+    if (u?.email) {
+      const mail = await sendSubscriptionConfirmationEmail(u.email, {
+        planKey: order.planKey,
+        period,
+        amount: order.expectedAmount,
+        currency: order.currency,
+        displayName: u.displayName,
+        locale,
+      });
+      if (!mail.ok) {
+        await logEvent({
+          source: "auth",
+          event: "subscription_email_failed",
+          message: `Échec envoi email de confirmation à ${u.email} : ${mail.error?.slice(0, 200) ?? "?"}`,
+          level: "warn",
+          userId: order.userId,
+          metadata: { error: mail.error },
+        });
+      }
+    }
+  } catch (e) {
+    await logEvent({
+      source: "auth",
+      event: "subscription_email_failed",
+      message: `Exception envoi email de confirmation (order ${orderId})`,
+      level: "warn",
+      userId: order.userId,
+      metadata: { error: e instanceof Error ? e.message : String(e) },
+    });
+  }
 
   return billing("?paid=1");
 }

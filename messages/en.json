@@ -1027,6 +1027,25 @@
     "fetchError": "fetch error"
   },
   "Email": {
+    "subscriptionConfirmation": {
+      "subject": "Payment confirmed — {plan}",
+      "eyebrow": "Subscription",
+      "heading": "Payment successful",
+      "helloWithName": "Hi {name},",
+      "helloNoName": "Hi,",
+      "intro": "Thank you! Your payment was received and your Tamara subscription is now active.",
+      "planLabel": "Plan",
+      "periodLabel": "Billing",
+      "periodLabelText": "Billing:",
+      "periodMonthly": "Monthly",
+      "periodAnnual": "Annual",
+      "amountLabel": "Amount",
+      "amountLabelText": "Amount:",
+      "includedHeading": "What's included",
+      "ctaButton": "Go to my dashboard",
+      "footer": "This email is a payment confirmation. You can manage your subscription anytime from your dashboard.",
+      "signature": "— The Tamara team"
+    },
     "notificationTest": {
       "subject": "🔔 Tamara — notification test",
       "eyebrow": "Notification test",
