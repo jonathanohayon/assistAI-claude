@@ -77,9 +77,11 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, session.user.id));
 
     const base = process.env.APP_URL;
+    // Succès ET annulation passent par le callback : il casse l'iframe vers le
+    // top-level (le paiement tourne dans une iframe popup).
     const successUrl = base + "/api/dashboard/hyp/callback?locale=" + user.locale;
     const cancelUrl =
-      base + "/" + user.locale + "/dashboard/billing?payment=cancelled";
+      base + "/api/dashboard/hyp/callback?locale=" + user.locale + "&cancelled=1";
     const info = planByKey(plan).name + " (" + period + ")";
 
     const url = await createPaymentUrl({

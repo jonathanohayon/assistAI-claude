@@ -13,6 +13,12 @@
 
 export const HYP_BASE_URL = process.env.HYP_API_URL || "https://icom.yaad.net/p/";
 
+// Template `tmp` HYP. Le "7" (forme courte) ne rend PAS le logo client lié au
+// masof — vérifié empiriquement : le template par défaut affiche
+// logoes/<masof>.png (= le logo shabespresso vu qu'on réutilise son masof),
+// tmp=7 ne l'affiche pas. C'est aussi le template utilisé par shabespresso.
+export const HYP_TEMPLATE_ID = "7";
+
 /** Code devise HYP (`Coin`). 1 = ILS, 3 = EUR dans le Pay-Protocol. */
 export const CURRENCY_COIN = { ILS: "1", EUR: "3" } as const;
 export type Currency = keyof typeof CURRENCY_COIN;
@@ -84,6 +90,7 @@ export async function createPaymentUrl(input: CreatePaymentInput): Promise<strin
     Sign: "True",
     MoreData: "True",
     PageLang: input.pageLang,
+    tmp: HYP_TEMPLATE_ID,
     Coin: input.coin,
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,

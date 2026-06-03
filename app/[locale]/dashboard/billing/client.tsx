@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   currencySymbol,
@@ -293,7 +293,13 @@ export function BillingClient({
   // Kept to preserve the setPlanAction prop contract without breaking callers.
   const [, startTransition] = useTransition();
   const search = useSearchParams();
-  const [processingPlan, setProcessingPlan] = useState<PlanKey | null>(null);
+  // Modal de paiement HYP (iframe). payPlan = plan dont le popup est ouvert ;
+  // payPeriod = mensuel/annuel choisi DANS le popup (init depuis le toggle de
+  // la page). Changer l'un ou l'autre re-crée une commande + recharge l'iframe.
+  const [payPlan, setPayPlan] = useState<PlanKey | null>(null);
+  const [payPeriod, setPayPeriod] = useState<Billing>(billing);
+  const [payUrl, setPayUrl] = useState<string | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
   const flash = (() => {
@@ -323,30 +329,52 @@ export function BillingClient({
   };
   void submit;
 
-  async function startPayment(planKey: PlanKey) {
+  // Ouvre le popup de paiement pour un plan (période = celle du toggle page).
+  function openPayment(planKey: PlanKey) {
     setPayError(null);
-    setProcessingPlan(planKey);
-    try {
-      const res = await fetch("/api/dashboard/hyp/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: planKey,
-          period: billing === "annual" ? "annual" : "monthly",
-        }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setPayError(data.error || "error");
-      setProcessingPlan(null);
-    } catch (e) {
-      setPayError(String(e));
-      setProcessingPlan(null);
-    }
+    setPayUrl(null);
+    setPayPeriod(billing);
+    setPayPlan(planKey);
   }
+  function closePayment() {
+    setPayPlan(null);
+    setPayUrl(null);
+    setPayError(null);
+    setPayLoading(false);
+  }
+
+  // (Re)crée une commande HYP + charge l'URL iframe quand le plan ou la période
+  // du popup change. Chaque appel crée une nouvelle ligne payment_orders
+  // (l'ancienne pending expire en 30 min — sans effet).
+  useEffect(() => {
+    if (!payPlan) return;
+    let cancelled = false;
+    (async () => {
+      setPayLoading(true);
+      setPayUrl(null);
+      setPayError(null);
+      try {
+        const res = await fetch("/api/dashboard/hyp/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: payPlan, period: payPeriod }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.url) setPayUrl(data.url);
+        else setPayError(data.error || "error");
+      } catch (e) {
+        if (!cancelled) setPayError(String(e));
+      } finally {
+        if (!cancelled) setPayLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [payPlan, payPeriod]);
+
+  const payPlanObj = plans.find((p) => p.key === payPlan) ?? null;
 
   return (
     <div className="mt-8">
@@ -362,15 +390,6 @@ export function BillingClient({
           }`}
         >
           {flash.msg}
-        </p>
-      )}
-
-      {payError && (
-        <p
-          role="alert"
-          className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700"
-        >
-          {t("paymentFailed")}
         </p>
       )}
 
@@ -391,10 +410,143 @@ export function BillingClient({
             pricing={pricing}
             currentPlanKey={currentPlanKey}
             hintedPlanKey={hintedPlanKey}
-            pending={processingPlan === plan.key}
-            onSubmit={startPayment}
+            pending={payPlan === plan.key}
+            onSubmit={openPayment}
           />
         ))}
+      </div>
+
+      {payPlan && payPlanObj && (
+        <PaymentModal
+          planName={payPlanObj.name}
+          period={payPeriod}
+          onPeriodChange={setPayPeriod}
+          priceLabel={`${formatEuro(
+            payPeriod === "annual"
+              ? resolvePrice(pricing, payPlan, "annual", currency)
+              : resolvePrice(pricing, payPlan, "monthly", currency),
+          )} ${currencySymbol(currency)}${payPeriod === "annual" ? t("perYearSuffix") : t("perMonthSuffix")}`}
+          url={payUrl}
+          loading={payLoading}
+          error={payError}
+          onClose={closePayment}
+        />
+      )}
+    </div>
+  );
+}
+
+// Popup de paiement : iframe HYP + toggle mensuel/annuel. Le retour HYP casse
+// l'iframe vers le top-level (cf. /api/dashboard/hyp/callback), donc un paiement
+// réussi recharge la page parente avec ?paid=1 — le modal disparaît de lui-même.
+function PaymentModal({
+  planName,
+  period,
+  onPeriodChange,
+  priceLabel,
+  url,
+  loading,
+  error,
+  onClose,
+}: {
+  planName: string;
+  period: Billing;
+  onPeriodChange: (p: Billing) => void;
+  priceLabel: string;
+  url: string | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const t = useTranslations("DashboardBilling");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="flex h-[88vh] max-h-[780px] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--color-border)] px-5 py-4">
+          <div>
+            <h3 className="font-display text-lg text-[var(--color-foreground)]">
+              {planName}
+            </h3>
+            <p className="mt-0.5 text-sm font-semibold text-[var(--color-primary)]">
+              {priceLabel}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("close")}
+            className="rounded-full p-1.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+              <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Toggle mensuel / annuel — recharge l'iframe avec le bon montant. */}
+        <div className="flex items-center justify-center gap-1 border-b border-[var(--color-border)] bg-[var(--color-muted)]/40 px-5 py-3">
+          {(["monthly", "annual"] as const).map((opt) => {
+            const active = period === opt;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onPeriodChange(opt)}
+                className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-[var(--color-primary)] text-white shadow-sm"
+                    : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                }`}
+              >
+                {opt === "monthly" ? t("monthly") : t("annual")}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative flex-1">
+          {url && !loading ? (
+            <iframe
+              key={url}
+              src={url}
+              title="Paiement HYP"
+              allow="payment"
+              className="h-full w-full border-0"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center px-6 text-center">
+              {error ? (
+                <p className="text-sm text-red-600">{t("paymentFailed")}</p>
+              ) : (
+                <p className="animate-pulse text-xs uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                  {t("processing")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

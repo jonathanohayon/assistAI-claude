@@ -23,9 +23,26 @@ export async function GET(req: NextRequest) {
   const rawLocale = params.locale || "fr";
   const locale = ["fr", "he", "en"].includes(rawLocale) ? rawLocale : "fr";
 
-  const base = process.env.APP_URL;
-  const billing = (q: string) =>
-    NextResponse.redirect(new URL("/" + locale + "/dashboard/billing" + q, base));
+  // Le paiement tourne dans une iframe (popup sur le dashboard). Au retour HYP
+  // on est donc DANS l'iframe : on renvoie une mini-page qui casse vers le
+  // top-level (window.top, même origine = autorisé) pour que la page parente
+  // navigue. Hors iframe window.top === window → fonctionne aussi en direct.
+  const billing = (q: string) => {
+    const target = "/" + locale + "/dashboard/billing" + q;
+    const html =
+      '<!doctype html><html><head><meta charset="utf-8"></head><body><script>' +
+      "var t=" +
+      JSON.stringify(target) +
+      ";try{(window.top||window).location.replace(t);}catch(e){window.location.replace(t);}" +
+      "</script></body></html>";
+    return new NextResponse(html, {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  };
+
+  // Annulation explicite (cancelUrl de HYP) — pas de paiement à vérifier.
+  if (params.cancelled === "1") return billing("?payment=cancelled");
 
   const orderId = params.Order;
   if (!orderId) return billing("?payment=failed");
