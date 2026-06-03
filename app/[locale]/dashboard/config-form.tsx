@@ -413,9 +413,12 @@ export function ConfigForm({
     },
     {
       id: "business",
-      label: "Business",
-      tagline: "Identité, centres, horaires, soins & tarifs",
-      summary: `${form.business.centres.length} centre${form.business.centres.length > 1 ? "s" : ""} · ${form.business.services.length} soin${form.business.services.length > 1 ? "s" : ""}`,
+      label: t("businessTileLabel"),
+      tagline: t("businessTileTagline"),
+      summary: t("businessTileSummary", {
+        centres: form.business.centres.length,
+        services: form.business.services.length,
+      }),
       accent: "from-[#f59e0b] to-[#b45309]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -838,7 +841,7 @@ export function ConfigForm({
                   <NotifsPanel form={form} update={update} t={t} />
                 )}
                 {activeTile === "business" && (
-                  <BusinessPanel form={form} update={update} />
+                  <BusinessPanel form={form} update={update} t={t} />
                 )}
                 {activeTile === "prompt" &&
                   isAdmin &&
@@ -1486,15 +1489,23 @@ function NotifsPanel({
 
 // ─── Business panel — identité, centres, horaires, soins & tarifs ──────
 
-const WEEKDAY_LABEL_FR: Record<WeekDay, { short: string; long: string }> = {
-  sun: { short: "Dim", long: "Dimanche" },
-  mon: { short: "Lun", long: "Lundi" },
-  tue: { short: "Mar", long: "Mardi" },
-  wed: { short: "Mer", long: "Mercredi" },
-  thu: { short: "Jeu", long: "Jeudi" },
-  fri: { short: "Ven", long: "Vendredi" },
-  sat: { short: "Sam", long: "Samedi" },
+const WEEKDAY_KEY: Record<WeekDay, { short: string; long: string }> = {
+  sun: { short: "businessDaySunShort", long: "businessDaySunLong" },
+  mon: { short: "businessDayMonShort", long: "businessDayMonLong" },
+  tue: { short: "businessDayTueShort", long: "businessDayTueLong" },
+  wed: { short: "businessDayWedShort", long: "businessDayWedLong" },
+  thu: { short: "businessDayThuShort", long: "businessDayThuLong" },
+  fri: { short: "businessDayFriShort", long: "businessDayFriLong" },
+  sat: { short: "businessDaySatShort", long: "businessDaySatLong" },
 };
+
+const weekdayLabel = (
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>,
+  d: WeekDay,
+) => ({
+  short: t(WEEKDAY_KEY[d].short as Parameters<typeof t>[0]),
+  long: t(WEEKDAY_KEY[d].long as Parameters<typeof t>[0]),
+});
 
 const newId = (prefix: string) =>
   `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -1516,9 +1527,11 @@ const formatDuration = (min: number) => {
 function BusinessPanel({
   form,
   update,
+  t,
 }: {
   form: FormState;
   update: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const business = form.business;
   const patch = (partial: Partial<BusinessConfig>) =>
@@ -1531,19 +1544,23 @@ function BusinessPanel({
         ownerWhatsapp={form.ownerWhatsapp}
         primaryLanguage={form.primaryLanguage}
         onChange={(identity) => patch({ identity })}
+        t={t}
       />
       <CentresSection
         centres={business.centres}
         onChange={(centres) => patch({ centres })}
+        t={t}
       />
       <CentresRulesSection
         value={business.centresRules ?? ""}
         onChange={(centresRules) => patch({ centresRules })}
+        t={t}
       />
       <ServicesSection
         services={business.services}
         centres={business.centres}
         onChange={(services) => patch({ services })}
+        t={t}
       />
     </div>
   );
@@ -1567,9 +1584,11 @@ Avant CHAQUE appel à check_availability, calcule mentalement le jour de la sema
 function CentresRulesSection({
   value,
   onChange,
+  t,
 }: {
   value: string;
   onChange: (next: string) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const [showHelp, setShowHelp] = useState(false);
   const hasContent = value.trim().length > 0;
@@ -1604,10 +1623,10 @@ function CentresRulesSection({
             </span>
             <div>
               <h3 className="text-sm font-semibold text-[#18181b]">
-                Règles strictes centres/jours
+                {t("businessRulesTitle")}
               </h3>
               <p className="text-[11px] text-[#64748b]">
-                Optionnel · injecté dans le prompt sous{" "}
+                {t("businessRulesSubtitlePre")}{" "}
                 <code className="rounded bg-[#fef3c7]/70 px-1 font-mono text-[10px]">
                   Centers and Days Rules (STRICT)
                 </code>
@@ -1619,7 +1638,7 @@ function CentresRulesSection({
             onClick={() => setShowHelp((v) => !v)}
             className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#e2e8f0] bg-white px-3 text-[11px] font-medium text-[#475569] transition hover:bg-[#fef3c7]/40"
           >
-            {showHelp ? "Masquer l'aide" : "💡 Aide"}
+            {showHelp ? t("businessRulesHelpHide") : t("businessRulesHelpToggle")}
           </button>
         </div>
       </header>
@@ -1627,25 +1646,20 @@ function CentresRulesSection({
       <div className="px-5 py-4">
         {showHelp && (
           <div className="mb-3 rounded-xl border border-[#fde68a] bg-[#fffbeb]/80 px-4 py-3 text-[12px] leading-relaxed text-[#92400e]">
-            <p className="font-semibold">Quand utiliser ce champ ?</p>
-            <p className="mt-1">
-              Pour les contraintes métier qui ne tiennent PAS dans le grid
-              horaires des centres — par exemple : un centre ouvert UNIQUEMENT
-              certains jours fixes (Lundi=Ashdod, Mercredi=Natanya), des
-              priorités quand le client ne précise pas le centre, des blackout
-              dates, ou des règles de fallback.
-            </p>
+            <p className="font-semibold">{t("businessRulesHelpUseCase")}</p>
+            <p className="mt-1">{t("businessRulesHelpBody")}</p>
             <p className="mt-2">
-              Le texte est injecté <strong>tel quel</strong> dans le system
-              prompt avec la mention <em>NON-NEGOTIABLE</em> — l'agent
-              l'applique sans dévier.
+              {t.rich("businessRulesHelpInjected", {
+                strong: (chunks) => <strong>{chunks}</strong>,
+                em: (chunks) => <em>{chunks}</em>,
+              })}
             </p>
             <button
               type="button"
               onClick={insertExample}
               className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-[#dc2626] px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-[#b91c1c]"
             >
-              📋 Insérer un exemple
+              {t("businessRulesInsertExample")}
             </button>
           </div>
         )}
@@ -1653,7 +1667,7 @@ function CentresRulesSection({
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Ex: Natanya uniquement le mercredi. Ashdod uniquement le lundi. Autres jours = Jérusalem. Avant chaque check_availability, vérifier que le jour matche le centre."
+          placeholder={t("businessRulesPlaceholder")}
           rows={Math.max(6, Math.min(20, value.split("\n").length + 1))}
           className={`w-full resize-y rounded-xl border bg-white px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-[#18181b] shadow-inner transition placeholder:text-[#cbd5e1] focus:outline-none focus:ring-2 ${
             overBudget
@@ -1669,8 +1683,8 @@ function CentresRulesSection({
         >
           <p className="text-[#64748b]">
             {hasContent
-              ? "✓ Sera injecté dans le system prompt à chaque session."
-              : "Laisse vide pour ne pas injecter cette section."}
+              ? t("businessRulesActiveNote")
+              : t("businessRulesEmptyNote")}
           </p>
           <p
             className={`font-mono ${
@@ -1692,11 +1706,13 @@ function IdentitySection({
   ownerWhatsapp,
   primaryLanguage,
   onChange,
+  t,
 }: {
   identity: BusinessConfig["identity"];
   ownerWhatsapp: string;
   primaryLanguage: string;
   onChange: (identity: BusinessConfig["identity"]) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const [emailError, setEmailError] = useState(false);
   const setField = <K extends keyof BusinessConfig["identity"]>(
@@ -1718,17 +1734,17 @@ function IdentitySection({
         </span>
         <div className="min-w-0">
           <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
-            Identité du business
+            {t("businessIdentityTitle")}
           </h3>
           <p className="text-[11px] text-[#92400e]">
-            Le nom et l&apos;ambiance que l&apos;agent utilise pour se présenter.
+            {t("businessIdentitySubtitle")}
           </p>
         </div>
       </header>
 
       <div className="grid grid-cols-1 gap-4 px-5 py-5">
         <IdentityField
-          label="Nom du business"
+          label={t("businessIdentityNameLabel")}
           icon={
             <>
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
@@ -1739,13 +1755,13 @@ function IdentitySection({
             type="text"
             value={identity.name}
             onChange={(e) => setField("name", e.target.value)}
-            placeholder="Tamara Coiffure"
+            placeholder={t("businessIdentityNamePlaceholder")}
             className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
           />
         </IdentityField>
 
         <IdentityField
-          label="Slogan / accroche"
+          label={t("businessIdentityTaglineLabel")}
           icon={
             <>
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z" />
@@ -1756,13 +1772,13 @@ function IdentitySection({
             value={identity.tagline}
             rows={2}
             onChange={(e) => setField("tagline", e.target.value)}
-            placeholder="Un salon, trois centres, une équipe à ton écoute."
+            placeholder={t("businessIdentityTaglinePlaceholder")}
             className="w-full resize-y rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
           />
         </IdentityField>
 
         <IdentityField
-          label="Email de contact"
+          label={t("businessIdentityEmailLabel")}
           icon={
             <>
               <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -1782,7 +1798,7 @@ function IdentitySection({
                 identity.email.length > 0 && !EMAIL_RE.test(identity.email),
               )
             }
-            placeholder="contact@tamara.co.il"
+            placeholder={t("businessIdentityEmailPlaceholder")}
             className={`w-full min-h-[44px] rounded-xl border bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:outline-none focus:ring-4 ${
               emailError
                 ? "border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/15"
@@ -1792,7 +1808,7 @@ function IdentitySection({
           />
           {emailError && (
             <p className="mt-1 text-[11px] font-medium text-[#dc2626]">
-              Format d&apos;email invalide
+              {t("businessIdentityEmailInvalid")}
             </p>
           )}
         </IdentityField>
@@ -1804,7 +1820,7 @@ function IdentitySection({
             </svg>
             <span className="font-mono">{ownerWhatsapp || "—"}</span>
             <span className="ml-auto text-[10px] text-[#94a3b8]">
-              Modifier dans <span className="font-semibold text-[#0e7490]">Notifs →</span>
+              {t("businessIdentityPhoneEditIn")} <span className="font-semibold text-[#0e7490]">{t("businessIdentityPhoneEditTarget")}</span>
             </span>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-[#475569]">
@@ -1815,7 +1831,7 @@ function IdentitySection({
             </svg>
             <span className="font-mono uppercase">{primaryLanguage}</span>
             <span className="ml-auto text-[10px] text-[#94a3b8]">
-              Modifier dans <span className="font-semibold text-[#0e7490]">Persona →</span>
+              {t("businessIdentityPhoneEditIn")} <span className="font-semibold text-[#0e7490]">{t("businessIdentityLangEditTarget")}</span>
             </span>
           </div>
         </div>
@@ -1851,9 +1867,11 @@ function IdentityField({
 function CentresSection({
   centres,
   onChange,
+  t,
 }: {
   centres: BusinessCentre[];
   onChange: (centres: BusinessCentre[]) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const [editingCentreId, setEditingCentreId] = useState<string | null>(null);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -1894,12 +1912,12 @@ function CentresSection({
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
-            Centres / Lieux
+            {t("businessCentresTitle")}
           </h3>
           <p className="text-[11px] text-[#475569]">
             {centres.length === 0
-              ? "Aucun centre défini"
-              : `${centres.length} centre${centres.length > 1 ? "s" : ""} actif${centres.length > 1 ? "s" : ""}`}
+              ? t("businessCentresEmptyLabel")
+              : t("businessCentresCountActive", { count: centres.length })}
           </p>
         </div>
         <button
@@ -1912,7 +1930,7 @@ function CentresSection({
               <path d="M12 5v14M5 12h14" />
             </svg>
           </span>
-          Ajouter un centre
+          {t("businessCentresAdd")}
         </button>
       </header>
 
@@ -1925,9 +1943,9 @@ function CentresSection({
                 <circle cx="12" cy="10" r="3" />
               </>
             }
-            title="Aucun centre défini"
-            body="Ajoute ton premier centre pour que Tamara puisse aiguiller les clients vers le bon endroit."
-            cta={{ label: "Créer un centre", onClick: addCentre }}
+            title={t("businessCentresEmptyLabel")}
+            body={t("businessCentresEmptyBody")}
+            cta={{ label: t("businessCentresEmptyCta"), onClick: addCentre }}
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1941,6 +1959,7 @@ function CentresSection({
                 }}
                 onEdit={() => setEditingCentreId(centre.id)}
                 onDelete={() => removeCentre(centre.id)}
+                t={t}
               />
             ))}
           </div>
@@ -1958,6 +1977,7 @@ function CentresSection({
             // Restore focus to the originating card button.
             setTimeout(() => trigger?.focus(), 0);
           }}
+          t={t}
         />
       )}
     </section>
@@ -1971,8 +1991,9 @@ const CentreCard = forwardRef<
     delay: number;
     onEdit: () => void;
     onDelete: () => void;
+    t: ReturnType<typeof useTranslations<"DashboardConfig">>;
   }
->(function CentreCardInner({ centre, delay, onEdit, onDelete }, ref) {
+>(function CentreCardInner({ centre, delay, onEdit, onDelete, t }, ref) {
     return (
       <div
         className="anim-fade-up group flex flex-col rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#f59e0b]/40 hover:shadow-md"
@@ -1987,7 +2008,7 @@ const CentreCard = forwardRef<
           <div className="flex w-full items-start justify-between gap-2">
             <p className="line-clamp-1 text-base font-extrabold tracking-tight text-[#18181b]">
               {centre.name || (
-                <span className="italic text-[#94a3b8]">Sans nom</span>
+                <span className="italic text-[#94a3b8]">{t("businessCentreCardNoName")}</span>
               )}
             </p>
             <span
@@ -2001,12 +2022,12 @@ const CentreCard = forwardRef<
           </div>
           <p className="line-clamp-1 text-[11px] text-[#475569]">
             {centre.address || (
-              <span className="italic">Aucune adresse renseignée</span>
+              <span className="italic">{t("businessCentreCardNoAddress")}</span>
             )}
           </p>
         </button>
 
-        <WeeklyHoursPills hours={centre.hours} />
+        <WeeklyHoursPills hours={centre.hours} t={t} />
 
         <div className="mt-4 flex items-center gap-2">
           <button
@@ -2018,12 +2039,14 @@ const CentreCard = forwardRef<
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
-            Modifier
+            {t("businessCentreCardEdit")}
           </button>
           <button
             type="button"
             onClick={onDelete}
-            aria-label={`Supprimer ${centre.name || "ce centre"}`}
+            aria-label={t("businessCentreCardDeleteAria", {
+              name: centre.name || t("businessCentreCardDeleteFallback"),
+            })}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-red-200 bg-red-50/50 text-red-600 transition-colors hover:bg-red-100"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -2035,24 +2058,31 @@ const CentreCard = forwardRef<
     );
 });
 
-function WeeklyHoursPills({ hours }: { hours: WeeklyHours }) {
+function WeeklyHoursPills({
+  hours,
+  t,
+}: {
+  hours: WeeklyHours;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
+}) {
   return (
     <div
       className="mt-3 flex items-center gap-1.5"
-      aria-label="Aperçu hebdomadaire"
+      aria-label={t("businessHoursWeeklyAria")}
     >
       {WEEKDAY_ORDER.map((d) => {
         const day = hours[d];
         const valid = isHoursValid(day);
+        const labels = weekdayLabel(t, d);
         return (
           <div
             key={d}
-            title={`${WEEKDAY_LABEL_FR[d].long} — ${
+            title={`${labels.long} — ${
               !day.open
-                ? "fermé"
+                ? t("businessHoursClosed")
                 : valid
                   ? `${day.openTime}–${day.closeTime}`
-                  : "horaires invalides"
+                  : t("businessHoursInvalid")
             }`}
             className="flex flex-col items-center gap-1"
           >
@@ -2067,7 +2097,7 @@ function WeeklyHoursPills({ hours }: { hours: WeeklyHours }) {
               }`}
             />
             <span className="text-[9px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-              {WEEKDAY_LABEL_FR[d].short[0]}
+              {labels.short[0]}
             </span>
           </div>
         );
@@ -2083,11 +2113,13 @@ function CentreEditDrawer({
   onPatch,
   onDelete,
   onClose,
+  t,
 }: {
   centre: BusinessCentre;
   onPatch: (partial: Partial<BusinessCentre>) => void;
   onDelete: () => void;
   onClose: () => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const firstInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -2151,16 +2183,18 @@ function CentreEditDrawer({
               id={titleId}
               className="text-base font-extrabold tracking-tight text-[#18181b]"
             >
-              {centre.name ? `Modifier — ${centre.name}` : "Nouveau centre"}
+              {centre.name
+                ? t("businessDrawerTitleEdit", { name: centre.name })
+                : t("businessDrawerTitleNew")}
             </h3>
             <p className="text-[11px] text-[#94a3b8]">
-              Modifs auto-sauvegardées au save global du formulaire
+              {t("businessDrawerSubtitle")}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer le panneau"
+            aria-label={t("businessDrawerCloseAria")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#475569] transition-all hover:bg-[#fee2e2] hover:text-[#dc2626] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
@@ -2173,27 +2207,27 @@ function CentreEditDrawer({
           <div className="space-y-4">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-                Nom du centre
+                {t("businessDrawerNameLabel")}
               </label>
               <input
                 ref={firstInputRef}
                 type="text"
                 value={centre.name}
                 onChange={(e) => onPatch({ name: e.target.value })}
-                placeholder="Tamara — Ashdod"
+                placeholder={t("businessDrawerNamePlaceholder")}
                 className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-                Adresse complète
+                {t("businessDrawerAddressLabel")}
               </label>
               <input
                 type="text"
                 value={centre.address}
                 onChange={(e) => onPatch({ address: e.target.value })}
-                placeholder="14 rue Rogozin, Ashdod"
+                placeholder={t("businessDrawerAddressPlaceholder")}
                 className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
               />
             </div>
@@ -2202,16 +2236,17 @@ function CentreEditDrawer({
           <div>
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h4 className="text-sm font-extrabold tracking-tight text-[#18181b]">
-                Horaires hebdomadaires
+                {t("businessDrawerHoursTitle")}
               </h4>
               <p className="text-[10px] text-[#94a3b8]">
-                Toggle off = fermé toute la journée
+                {t("businessDrawerHoursHint")}
               </p>
             </div>
             <WeeklyHoursGrid
               hours={centre.hours}
               onPatch={patchHours}
               onApplyToOthers={applyToOpenDays}
+              t={t}
             />
           </div>
         </div>
@@ -2226,7 +2261,7 @@ function CentreEditDrawer({
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              Terminer
+              {t("businessDrawerDone")}
             </button>
             <button
               type="button"
@@ -2234,7 +2269,9 @@ function CentreEditDrawer({
                 if (
                   typeof window !== "undefined" &&
                   !window.confirm(
-                    `Supprimer le centre « ${centre.name || "sans nom"} » ?`,
+                    t("businessDrawerDeleteConfirm", {
+                      name: centre.name || t("businessDrawerDeleteFallback"),
+                    }),
                   )
                 ) {
                   return;
@@ -2247,7 +2284,7 @@ function CentreEditDrawer({
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               </svg>
-              Supprimer ce centre
+              {t("businessDrawerDelete")}
             </button>
           </div>
         </footer>
@@ -2262,16 +2299,19 @@ function WeeklyHoursGrid({
   hours,
   onPatch,
   onApplyToOthers,
+  t,
 }: {
   hours: WeeklyHours;
   onPatch: (day: WeekDay, partial: Partial<DayHours>) => void;
   onApplyToOthers: (sourceDay: WeekDay) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       {WEEKDAY_ORDER.map((d) => {
         const day = hours[d];
         const valid = isHoursValid(day);
+        const labels = weekdayLabel(t, d);
         return (
           <div
             key={d}
@@ -2283,14 +2323,14 @@ function WeeklyHoursGrid({
           >
             <div className="flex items-center gap-2.5">
               <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#475569]">
-                {WEEKDAY_LABEL_FR[d].short}
+                {labels.short}
               </span>
 
               <button
                 type="button"
                 role="switch"
                 aria-checked={day.open}
-                aria-label={`${WEEKDAY_LABEL_FR[d].long} ${day.open ? "ouvert" : "fermé"}`}
+                aria-label={`${labels.long} ${day.open ? t("businessHoursOpen") : t("businessHoursClosed")}`}
                 onClick={() => onPatch(d, { open: !day.open })}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f59e0b] focus-visible:ring-offset-2 ${
                   day.open
@@ -2312,7 +2352,7 @@ function WeeklyHoursGrid({
                 value={day.openTime}
                 onChange={(e) => onPatch(d, { openTime: e.target.value })}
                 disabled={!day.open}
-                aria-label={`Heure d'ouverture ${WEEKDAY_LABEL_FR[d].long}`}
+                aria-label={t("businessHoursOpenTimeAria", { day: labels.long })}
                 className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1.5 text-xs font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30 disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:opacity-50"
               />
               <span className="text-[11px] text-[#94a3b8]">→</span>
@@ -2321,7 +2361,7 @@ function WeeklyHoursGrid({
                 value={day.closeTime}
                 onChange={(e) => onPatch(d, { closeTime: e.target.value })}
                 disabled={!day.open}
-                aria-label={`Heure de fermeture ${WEEKDAY_LABEL_FR[d].long}`}
+                aria-label={t("businessHoursCloseTimeAria", { day: labels.long })}
                 className="min-h-[40px] min-w-0 flex-1 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1.5 text-xs font-mono text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/30 disabled:cursor-not-allowed disabled:bg-[#f1f5f9] disabled:opacity-50"
               />
 
@@ -2329,8 +2369,8 @@ function WeeklyHoursGrid({
                 type="button"
                 onClick={() => onApplyToOthers(d)}
                 disabled={!day.open}
-                title="Appliquer ces horaires aux autres jours ouverts"
-                aria-label={`Appliquer les horaires de ${WEEKDAY_LABEL_FR[d].long} aux autres jours ouverts`}
+                title={t("businessHoursApplyToOthersTitle")}
+                aria-label={t("businessHoursApplyToOthersAria", { day: labels.long })}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e2e8f0] bg-white text-[#0e7490] transition-colors hover:border-[#0e7490] hover:bg-[#ecfeff] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
@@ -2341,7 +2381,7 @@ function WeeklyHoursGrid({
             </div>
             {!valid && (
               <p className="pl-11 text-[10px] font-medium text-[#dc2626]">
-                Horaire incohérent — la fermeture doit être après l&apos;ouverture
+                {t("businessHoursInconsistent")}
               </p>
             )}
           </div>
@@ -2357,10 +2397,12 @@ function ServicesSection({
   services,
   centres,
   onChange,
+  t,
 }: {
   services: BusinessService[];
   centres: BusinessCentre[];
   onChange: (services: BusinessService[]) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -2380,9 +2422,9 @@ function ServicesSection({
 
   const centreNameById = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const c of centres) m[c.id] = c.name || "Centre sans nom";
+    for (const c of centres) m[c.id] = c.name || t("businessServicesCentreNoName");
     return m;
-  }, [centres]);
+  }, [centres, t]);
 
   const addService = () => {
     const id = newId("svc");
@@ -2412,7 +2454,7 @@ function ServicesSection({
     const copy: BusinessService = {
       ...src,
       id: newId("svc"),
-      name: `${src.name} (copie)`.trim(),
+      name: `${src.name} ${t("businessActionDuplicateSuffix")}`.trim(),
     };
     const idx = services.findIndex((s) => s.id === id);
     const next = [...services];
@@ -2435,12 +2477,12 @@ function ServicesSection({
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-extrabold tracking-tight text-[#18181b]">
-            Soins & Tarifs
+            {t("businessServicesTitle")}
           </h3>
           <p className="text-[11px] text-[#475569]">
             {services.length === 0
-              ? "Aucun soin défini"
-              : `${services.length} soin${services.length > 1 ? "s" : ""} au catalogue`}
+              ? t("businessServicesEmptyLabel")
+              : t("businessServicesCountActive", { count: services.length })}
           </p>
         </div>
         <button
@@ -2453,7 +2495,7 @@ function ServicesSection({
               <path d="M12 5v14M5 12h14" />
             </svg>
           </span>
-          Nouveau soin
+          {t("businessServicesAdd")}
         </button>
       </header>
 
@@ -2470,21 +2512,21 @@ function ServicesSection({
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un soin…"
-              aria-label="Rechercher un soin"
+              placeholder={t("businessServicesSearchPlaceholder")}
+              aria-label={t("businessServicesSearchAria")}
               className="w-full min-h-[40px] rounded-xl border border-[#e2e8f0] bg-white pl-9 pr-3 py-2 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
             />
           </div>
           <select
             value={filterCentre}
             onChange={(e) => setFilterCentre(e.target.value)}
-            aria-label="Filtrer par centre"
+            aria-label={t("businessServicesFilterAria")}
             className="min-h-[40px] rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#18181b] shadow-xs transition-colors focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
           >
-            <option value="all">Tous les centres</option>
+            <option value="all">{t("businessServicesFilterAll")}</option>
             {centres.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name || "Centre sans nom"}
+                {c.name || t("businessServicesCentreNoName")}
               </option>
             ))}
           </select>
@@ -2499,17 +2541,17 @@ function ServicesSection({
                 <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
               </>
             }
-            title="Aucun soin défini"
-            body="Ajoute tes prestations pour que Tamara puisse les proposer aux clients et donner les tarifs."
-            cta={{ label: "Créer un soin", onClick: addService }}
+            title={t("businessServicesEmptyLabel")}
+            body={t("businessServicesEmptyBody")}
+            cta={{ label: t("businessServicesEmptyCta"), onClick: addService }}
           />
         ) : filtered.length === 0 ? (
           <div className="py-10 text-center">
             <p className="text-base font-semibold text-[#475569]">
-              Aucun soin correspondant
+              {t("businessServicesNoMatchTitle")}
             </p>
             <p className="mt-1 text-[12px] text-[#94a3b8]">
-              Essaie un autre nom ou change le filtre centre.
+              {t("businessServicesNoMatchHint")}
             </p>
           </div>
         ) : (
@@ -2519,11 +2561,11 @@ function ServicesSection({
               <table className="w-full border-collapse">
                 <thead className="sticky top-0 bg-[#fffbeb] text-left text-[10px] font-bold uppercase tracking-wider text-[#92400e]">
                   <tr>
-                    <th className="px-4 py-3">Soin</th>
-                    <th className="px-4 py-3">Durée</th>
-                    <th className="px-4 py-3">Prix</th>
-                    <th className="px-4 py-3">Disponible à</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
+                    <th className="px-4 py-3">{t("businessServicesColName")}</th>
+                    <th className="px-4 py-3">{t("businessServicesColDuration")}</th>
+                    <th className="px-4 py-3">{t("businessServicesColPrice")}</th>
+                    <th className="px-4 py-3">{t("businessServicesColCentres")}</th>
+                    <th className="px-4 py-3 text-right">{t("businessServicesColActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2540,7 +2582,7 @@ function ServicesSection({
                           className="block max-w-full text-left text-sm font-semibold text-[#18181b] hover:text-[#b45309] focus:outline-none focus-visible:underline"
                         >
                           {s.name || (
-                            <span className="italic text-[#94a3b8]">Sans nom</span>
+                            <span className="italic text-[#94a3b8]">{t("businessServicesNoName")}</span>
                           )}
                         </button>
                         {s.description && (
@@ -2559,12 +2601,13 @@ function ServicesSection({
                         <CentreBadges
                           centreIds={s.centreIds}
                           centreNameById={centreNameById}
+                          t={t}
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <ServiceRowAction
-                            label="Modifier"
+                            label={t("businessActionEdit")}
                             onClick={() => setEditingId(s.id)}
                             icon={
                               <>
@@ -2574,7 +2617,7 @@ function ServicesSection({
                             }
                           />
                           <ServiceRowAction
-                            label="Dupliquer"
+                            label={t("businessActionDuplicate")}
                             onClick={() => duplicateService(s.id)}
                             icon={
                               <>
@@ -2584,7 +2627,7 @@ function ServicesSection({
                             }
                           />
                           <ServiceRowAction
-                            label="Supprimer"
+                            label={t("businessActionDelete")}
                             danger
                             onClick={() => removeService(s.id)}
                             icon={
@@ -2616,7 +2659,7 @@ function ServicesSection({
                   >
                     <p className="text-sm font-semibold text-[#18181b]">
                       {s.name || (
-                        <span className="italic text-[#94a3b8]">Sans nom</span>
+                        <span className="italic text-[#94a3b8]">{t("businessServicesNoName")}</span>
                       )}
                     </p>
                     {s.description && (
@@ -2641,11 +2684,12 @@ function ServicesSection({
                     <CentreBadges
                       centreIds={s.centreIds}
                       centreNameById={centreNameById}
+                      t={t}
                     />
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <ServiceRowAction
-                      label="Modifier"
+                      label={t("businessActionEdit")}
                       block
                       onClick={() => setEditingId(s.id)}
                       icon={
@@ -2656,7 +2700,7 @@ function ServicesSection({
                       }
                     />
                     <ServiceRowAction
-                      label="Dupliquer"
+                      label={t("businessActionDuplicate")}
                       onClick={() => duplicateService(s.id)}
                       icon={
                         <>
@@ -2666,7 +2710,7 @@ function ServicesSection({
                       }
                     />
                     <ServiceRowAction
-                      label="Supprimer"
+                      label={t("businessActionDelete")}
                       danger
                       onClick={() => removeService(s.id)}
                       icon={
@@ -2690,6 +2734,7 @@ function ServicesSection({
           onPatch={(partial) => patchService(editing.id, partial)}
           onDelete={() => removeService(editing.id)}
           onClose={() => setEditingId(null)}
+          t={t}
         />
       )}
     </section>
@@ -2699,9 +2744,11 @@ function ServicesSection({
 function CentreBadges({
   centreIds,
   centreNameById,
+  t,
 }: {
   centreIds: BusinessService["centreIds"];
   centreNameById: Record<string, string>;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   if (centreIds === "all") {
     return (
@@ -2709,13 +2756,13 @@ function CentreBadges({
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-2.5 w-2.5">
           <polyline points="20 6 9 17 4 12" />
         </svg>
-        Tous les centres
+        {t("businessCentreBadgesAll")}
       </span>
     );
   }
   if (centreIds.length === 0) {
     return (
-      <span className="text-[10px] italic text-[#94a3b8]">Aucun centre</span>
+      <span className="text-[10px] italic text-[#94a3b8]">{t("businessCentreBadgesNone")}</span>
     );
   }
   return (
@@ -2725,7 +2772,7 @@ function CentreBadges({
           key={id}
           className="inline-flex items-center rounded-full bg-[#fffbeb] px-2 py-0.5 text-[10px] font-semibold text-[#92400e] ring-1 ring-inset ring-[#fde68a]"
         >
-          {centreNameById[id] ?? "?"}
+          {centreNameById[id] ?? t("businessCentreBadgesUnknown")}
         </span>
       ))}
       {centreIds.length > 3 && (
@@ -2778,12 +2825,14 @@ function ServiceEditModal({
   onPatch,
   onDelete,
   onClose,
+  t,
 }: {
   service: BusinessService;
   centres: BusinessCentre[];
   onPatch: (partial: Partial<BusinessService>) => void;
   onDelete: () => void;
   onClose: () => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
 }) {
   const firstInputRef = useRef<HTMLInputElement>(null);
   const titleId = `service-modal-title-${service.id}`;
@@ -2849,16 +2898,18 @@ function ServiceEditModal({
               id={titleId}
               className="text-base font-extrabold tracking-tight text-[#18181b]"
             >
-              {service.name ? `Modifier — ${service.name}` : "Nouveau soin"}
+              {service.name
+                ? t("businessModalServiceTitleEdit", { name: service.name })
+                : t("businessModalServiceTitleNew")}
             </h3>
             <p className="text-[11px] text-[#94a3b8]">
-              Modifs auto-sauvegardées au save global
+              {t("businessModalSubtitle")}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t("businessModalCloseAria")}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#475569] transition-all hover:bg-[#fee2e2] hover:text-[#dc2626] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
@@ -2870,14 +2921,14 @@ function ServiceEditModal({
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-              Nom du soin
+              {t("businessModalNameLabel")}
             </label>
             <input
               ref={firstInputRef}
               type="text"
               value={service.name}
               onChange={(e) => onPatch({ name: e.target.value })}
-              placeholder="Coupe femme"
+              placeholder={t("businessModalNamePlaceholder")}
               className="w-full min-h-[44px] rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
             />
           </div>
@@ -2885,7 +2936,7 @@ function ServiceEditModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-                Durée (min)
+                {t("businessModalDurationLabel")}
               </label>
               <input
                 type="number"
@@ -2904,7 +2955,7 @@ function ServiceEditModal({
             </div>
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-                Prix (₪)
+                {t("businessModalPriceLabel")}
               </label>
               <input
                 type="number"
@@ -2925,20 +2976,20 @@ function ServiceEditModal({
 
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-              Description (optionnel)
+              {t("businessModalDescriptionLabel")}
             </label>
             <textarea
               value={service.description}
               rows={3}
               onChange={(e) => onPatch({ description: e.target.value })}
-              placeholder="Lavage + coupe + brushing. Idéal pour cheveux mi-longs."
+              placeholder={t("businessModalDescriptionPlaceholder")}
               className="w-full resize-y rounded-xl border border-[#e2e8f0] bg-white px-3.5 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors placeholder:text-[#cbd5e1] focus:border-[#f59e0b] focus:outline-none focus:ring-4 focus:ring-[#f59e0b]/15"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#78350f]">
-              Disponible dans
+              {t("businessModalCentresLabel")}
             </label>
             <div className="space-y-1.5">
               <button
@@ -2967,16 +3018,16 @@ function ServiceEditModal({
                   )}
                 </span>
                 <span className="text-sm font-semibold text-[#18181b]">
-                  Tous les centres
+                  {t("businessModalCentresAll")}
                 </span>
                 <span className="ml-auto text-[10px] text-[#94a3b8]">
-                  Sentinel &laquo;all&raquo;
+                  {t("businessModalCentresSentinel")}
                 </span>
               </button>
 
               {centres.length === 0 && (
                 <p className="rounded-lg bg-[#fffbeb]/60 px-3 py-2 text-[11px] text-[#92400e]">
-                  Ajoute d&apos;abord des centres pour pouvoir restreindre la dispo.
+                  {t("businessModalCentresNoneHint")}
                 </p>
               )}
 
@@ -3012,7 +3063,7 @@ function ServiceEditModal({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-[#18181b]">
-                          {c.name || "Centre sans nom"}
+                          {c.name || t("businessServicesCentreNoName")}
                         </span>
                         {c.address && (
                           <span className="block truncate text-[10px] text-[#94a3b8]">
@@ -3034,7 +3085,9 @@ function ServiceEditModal({
               if (
                 typeof window !== "undefined" &&
                 !window.confirm(
-                  `Supprimer le soin « ${service.name || "sans nom"} » ?`,
+                  t("businessModalDeleteConfirm", {
+                    name: service.name || t("businessModalDeleteFallback"),
+                  }),
                 )
               )
                 return;
@@ -3046,7 +3099,7 @@ function ServiceEditModal({
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
             </svg>
-            Supprimer
+            {t("businessModalDelete")}
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -3054,7 +3107,7 @@ function ServiceEditModal({
               onClick={onClose}
               className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-semibold text-[#475569] transition-colors hover:bg-[#f8fafc]"
             >
-              Annuler
+              {t("businessModalCancel")}
             </button>
             <button
               type="button"
@@ -3065,7 +3118,7 @@ function ServiceEditModal({
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              Sauvegarder
+              {t("businessModalSave")}
             </button>
           </div>
         </footer>
