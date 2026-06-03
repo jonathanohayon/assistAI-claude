@@ -1,5 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 
+import { DEFAULT_PLAN_PRICING, type PlanPricingMap } from "@/lib/plan-pricing";
+import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { CTA } from "@/components/marketing/CTA";
 import { FAQ } from "@/components/marketing/FAQ";
 import { Features } from "@/components/marketing/Features";
@@ -17,6 +19,10 @@ import { TryDemo } from "@/components/marketing/TryDemo";
 import { TwoMinutesToLive } from "@/components/marketing/TwoMinutesToLive";
 import { VoiceConfigShowcase } from "@/components/marketing/VoiceConfigShowcase";
 
+// ISR : la landing reste cachée/statique mais se régénère toutes les 10 min
+// pour refléter les tarifs édités dans /admin sans redéploiement.
+export const revalidate = 600;
+
 export default async function Home({
   params,
 }: {
@@ -24,6 +30,14 @@ export default async function Home({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  // Build-safe : si la DB n'est pas joignable au build, on retombe sur les
+  // tarifs par défaut (la régénération ISR lira les vrais ensuite).
+  let pricing: PlanPricingMap;
+  try {
+    pricing = await getPlanPricingMap();
+  } catch {
+    pricing = DEFAULT_PLAN_PRICING;
+  }
   return (
     <main className="noise-grain relative flex flex-col overflow-x-hidden">
       <Nav />
@@ -35,7 +49,7 @@ export default async function Home({
       <VoiceConfigShowcase />
       <PerformanceShowcase />
       <Features />
-      <Pricing />
+      <Pricing pricing={pricing} />
       <SocialProof />
       <Security />
       <FAQ />
