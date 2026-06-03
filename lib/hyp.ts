@@ -66,6 +66,10 @@ export type CreatePaymentInput = {
   /** URL de retour annulation. */
   cancelUrl: string;
   email?: string;
+  /** Prénom client — HYP/la société de crédit exige un nom prénom OU nom. */
+  clientName?: string;
+  /** Nom de famille client. */
+  clientLName?: string;
 };
 
 /**
@@ -96,6 +100,11 @@ export async function createPaymentUrl(input: CreatePaymentInput): Promise<strin
     cancelUrl: input.cancelUrl,
   });
   if (input.email) params.set("email", input.email);
+  // ClientName/ClientLName : la société de crédit refuse sans prénom NI nom
+  // ("חובה להזין שם פרטי או משפחה"). Le template tmp court n'a pas de champ
+  // nom à saisir, donc on le passe en paramètre.
+  if (input.clientName) params.set("ClientName", input.clientName);
+  if (input.clientLName) params.set("ClientLName", input.clientLName);
 
   const res = await fetch(`${HYP_BASE_URL}?${params.toString()}`);
   const body = (await res.text()).trim();

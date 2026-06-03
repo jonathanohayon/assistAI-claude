@@ -40,13 +40,26 @@ export async function POST(req: NextRequest) {
     }
 
     const [user] = await db
-      .select({ locale: users.locale, email: users.email })
+      .select({
+        locale: users.locale,
+        email: users.email,
+        displayName: users.displayName,
+      })
       .from(users)
       .where(eq(users.id, session.user.id))
       .limit(1);
     if (!user) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
+
+    // Nom client envoyé à HYP — la société de crédit refuse sans prénom NI nom.
+    // displayName si présent, sinon la partie locale de l'email, jamais vide.
+    const fullName = (user.displayName ?? "").trim();
+    const emailLocal = user.email.split("@")[0] || "Client";
+    const nameParts = fullName ? fullName.split(/\s+/) : [];
+    const clientName = nameParts[0] || emailLocal;
+    const clientLName =
+      nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
 
     // Devise = langue de la PAGE où le tenant est (envoyée par le client),
     // pas la locale figée du compte — sinon le prix affiché (basé sur la
@@ -125,6 +138,8 @@ export async function POST(req: NextRequest) {
       successUrl,
       cancelUrl,
       email: user.email,
+      clientName,
+      clientLName,
     });
 
     return NextResponse.json({ url });
