@@ -1,10 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { priceFor, currencySymbol } from "@/lib/billing-pricing";
+import { currencyForLocale } from "@/lib/hyp";
 import { type Plan, type PlanKey, formatEuro } from "@/lib/plans";
 
 // Pioche les variantes localisées (Plans namespace) avec fallback FR sur
@@ -27,12 +29,6 @@ function useLocalizedPlan(plan: Plan) {
 }
 
 type Billing = "monthly" | "annual";
-
-const RANK: Record<PlanKey, number> = {
-  whatsapp: 0,
-  global: 1,
-  premium: 2,
-};
 
 function CheckIcon({ className }: { className?: string }) {
   return (
@@ -107,6 +103,7 @@ function BillingToggle({
 function PlanCard({
   plan,
   billing,
+  currency,
   currentPlanKey,
   hintedPlanKey,
   pending,
@@ -114,6 +111,7 @@ function PlanCard({
 }: {
   plan: Plan;
   billing: Billing;
+  currency: ReturnType<typeof currencyForLocale>;
   currentPlanKey: PlanKey;
   hintedPlanKey: PlanKey | null;
   pending: boolean;
@@ -121,10 +119,15 @@ function PlanCard({
 }) {
   const t = useTranslations("DashboardBilling");
   const isCurrent = plan.key === currentPlanKey;
-  const isUpgrade = RANK[plan.key] > RANK[currentPlanKey];
-  const isDowngrade = RANK[plan.key] < RANK[currentPlanKey];
   const wasHinted = hintedPlanKey === plan.key;
-  const price = billing === "monthly" ? plan.monthly : plan.annualMonthly;
+  const symbol = currencySymbol(currency);
+  // priceFor("annual") is the full yearly charge; the big card number stays a
+  // monthly-equivalent (annual ÷ 12) to preserve the original layout/meaning.
+  const annualTotal = priceFor(plan.key, "annual", currency);
+  const price =
+    billing === "monthly"
+      ? priceFor(plan.key, "monthly", currency)
+      : Math.round(annualTotal / 12);
   const localized = useLocalizedPlan(plan);
 
   return (
@@ -181,7 +184,7 @@ function PlanCard({
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               className="font-display text-3xl tracking-tight text-[var(--color-foreground)]"
             >
-              {formatEuro(price)} €
+              {formatEuro(price)} {symbol}
             </motion.span>
           </AnimatePresence>
           <span className="text-xs text-[var(--color-muted-foreground)]">
@@ -190,7 +193,7 @@ function PlanCard({
         </div>
         {billing === "annual" && (
           <p className="mt-1 text-[11px] text-[var(--color-muted-foreground)]">
-            {t("annualTotal", { total: formatEuro(plan.annualTotal) })}
+            {t("annualTotal", { total: `${formatEuro(annualTotal)} ${symbol}` })}
           </p>
         )}
       </div>
@@ -238,13 +241,7 @@ function PlanCard({
             onClick={() => onSubmit(plan.key)}
             className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-xs font-medium text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending
-              ? t("updatingButton")
-              : isUpgrade
-              ? t("upgradeButton")
-              : isDowngrade
-              ? t("downgradeButton")
-              : t("selectButton")}
+            {pending ? t("processing") : t("subscribeCta")}
             <svg
               viewBox="0 0 16 16"
               fill="none"
@@ -282,11 +279,25 @@ export function BillingClient({
   setPlanAction: (formData: FormData) => Promise<void>;
 }) {
   const t = useTranslations("DashboardBilling");
+  const locale = useLocale();
+  const currency = currencyForLocale(locale);
   const [billing, setBilling] = useState<Billing>(initialBilling);
-  const [isPending, startTransition] = useTransition();
+  // Kept to preserve the setPlanAction prop contract without breaking callers.
+  const [, startTransition] = useTransition();
   const search = useSearchParams();
+  const [processingPlan, setProcessingPlan] = useState<PlanKey | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
 
   const flash = (() => {
+    const paid = search.get("paid");
+    const payment = search.get("payment");
+    if (paid === "1")
+      return { kind: "ok" as const, msg: t("paymentSuccess") };
+    if (payment === "failed")
+      return { kind: "err" as const, msg: t("paymentFailed") };
+    if (payment === "cancelled")
+      return { kind: "info" as const, msg: t("paymentCancelled") };
+
     const changed = search.get("changed");
     const same = search.get("same");
     const error = search.get("error");
@@ -296,11 +307,38 @@ export function BillingClient({
     return null;
   })();
 
+  // Preserves the legacy server-action prop; no longer wired to the visible CTA.
   const submit = (key: PlanKey) => {
     const fd = new FormData();
     fd.set("plan", key);
     startTransition(() => setPlanAction(fd));
   };
+  void submit;
+
+  async function startPayment(planKey: PlanKey) {
+    setPayError(null);
+    setProcessingPlan(planKey);
+    try {
+      const res = await fetch("/api/dashboard/hyp/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: planKey,
+          period: billing === "annual" ? "annual" : "monthly",
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setPayError(data.error || "error");
+      setProcessingPlan(null);
+    } catch (e) {
+      setPayError(String(e));
+      setProcessingPlan(null);
+    }
+  }
 
   return (
     <div className="mt-8">
@@ -319,6 +357,15 @@ export function BillingClient({
         </p>
       )}
 
+      {payError && (
+        <p
+          role="alert"
+          className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700"
+        >
+          {t("paymentFailed")}
+        </p>
+      )}
+
       <div className="flex flex-col items-center gap-2">
         <BillingToggle value={billing} onChange={setBilling} />
         <p className="text-[11px] text-[var(--color-muted-foreground)]">
@@ -332,10 +379,11 @@ export function BillingClient({
             key={plan.key}
             plan={plan}
             billing={billing}
+            currency={currency}
             currentPlanKey={currentPlanKey}
             hintedPlanKey={hintedPlanKey}
-            pending={isPending}
-            onSubmit={submit}
+            pending={processingPlan === plan.key}
+            onSubmit={startPayment}
           />
         ))}
       </div>

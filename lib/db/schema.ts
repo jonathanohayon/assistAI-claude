@@ -35,6 +35,14 @@ export const users = pgTable("users", {
   // a été envoyé, pour idempotence (un seul warning par trial). Reste null
   // tant que pas envoyé OU si le user upgrade avant la fenêtre warning.
   trialWarningSentAt: timestamp("trial_warning_sent_at", { withTimezone: true }),
+  // Fin de la période payée en cours (posé après un paiement HYP réussi).
+  // Null tant que jamais payé. Le renouvellement (one-shot) repousse cette
+  // date ; à expiration le compte repasse 'expired'.
+  paidUntil: timestamp("paid_until", { withTimezone: true }),
+  // Verrou anti-suppression : posé à now+2h quand un paiement HYP est lancé,
+  // pour que le cron trial-cleanup ne supprime PAS un compte dont le
+  // paiement est en vol (user sur la page HYP au moment où le trial expire).
+  deletionLockedUntil: timestamp("deletion_locked_until", { withTimezone: true }),
 
   // Per-tenant Google integration. When refresh_token is null the agent
   // tools fall back to the global Google credentials in env. Calendar +
@@ -231,6 +239,42 @@ export const phoneNumbers = pgTable("phone_numbers", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+});
+
+// Une ligne par tentative de paiement HYP (abonnement one-shot). L'`id`
+// uuid sert d'Order opaque envoyé à HYP : le handler de retour s'y fie pour
+// connaître le plan/montant/devise ATTENDUS (jamais déduit du client). Voir
+// docs/superpowers/specs/2026-06-03-hyp-payment-design.md.
+//
+// Sécurité : au retour HYP, on VERIFY côté serveur (HYP re-signe → un retour
+// forgé ne peut pas falsifier CCode=0) PUIS on compare Order+Amount+Coin
+// retournés à cette ligne. hyp_transaction_id unique = anti-rejeu/idempotence.
+export const paymentOrders = pgTable("payment_orders", {
+  // Order opaque envoyé à HYP (param `Order`).
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Plan/période achetés — figés au moment de la création de l'ordre.
+  planKey: text("plan_key").notNull(),
+  period: text("period").notNull(), // 'monthly' | 'annual'
+  // Devise résolue côté serveur depuis users.locale (he→ILS, sinon EUR).
+  currency: text("currency").notNull(), // 'ILS' | 'EUR'
+  coin: text("coin").notNull(), // '1' (ILS) | '3' (EUR) — param HYP `Coin`
+  // Montant attendu, comparé au montant retourné par HYP au VERIFY.
+  expectedAmount: real("expected_amount").notNull(),
+  // 'pending' (créé) | 'paid' (vérifié + activé) | 'failed' (refusé/abandonné).
+  status: text("status").notNull().default("pending"),
+  // Référence transaction HYP (Id) posée à l'activation. Unique → idempotence.
+  hypTransactionId: text("hyp_transaction_id").unique(),
+  // Réponse VERIFY brute (debug / audit / litige).
+  rawResponse: jsonb("raw_response").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  // Au-delà de cette date l'ordre pending n'est plus activable (anti-rejeu).
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
 });
 
 // Append-only event log. Surfaced live in /dashboard/logs so the operator
