@@ -10,6 +10,7 @@ import {
   currencyForLocale,
   pageLangFor,
 } from "@/lib/hyp";
+import { logEvent } from "@/lib/logger";
 import { resolvePrice } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { isValidPlanKey, planByKey } from "@/lib/plans";
@@ -68,6 +69,24 @@ export async function POST(req: NextRequest) {
         expiresAt,
       })
       .returning({ id: paymentOrders.id });
+
+    // Audit + diagnostic : trace le montant/devise réellement résolus depuis
+    // la grille admin (visible dans /dashboard/logs).
+    await logEvent({
+      source: "web",
+      event: "subscription_checkout_started",
+      message: `Checkout HYP : ${plan} / ${period} → ${amount} ${currency} (locale ${user.locale})`,
+      userId: session.user.id,
+      metadata: {
+        plan,
+        period,
+        currency,
+        amount,
+        userLocale: user.locale,
+        ils: { monthly: pricing[plan].ilsMonthly, annual: pricing[plan].ilsAnnual },
+        eur: { monthly: pricing[plan].eurMonthly, annual: pricing[plan].eurAnnual },
+      },
+    });
 
     // Anti-race trial-cleanup : verrouille la suppression auto 2h le temps
     // que l'utilisateur finalise le paiement sur la page HYP.
