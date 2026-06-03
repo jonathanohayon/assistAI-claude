@@ -56,6 +56,10 @@ export function useExchangeRates(): Record<Currency, number> {
           rates: Record<Currency, number>;
         };
         if (Date.now() - parsed.ts < FX_CACHE_TTL_MS) {
+          // Applied post-mount on purpose: doing it during render would diverge
+          // from the SSR fallback rates and cause a hydration mismatch on the
+          // overage badge. This is a legit read from an external store.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setRates(parsed.rates);
           return;
         }
