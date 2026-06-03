@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "node scripts/migrate.mjs && next start",
     "lint": "eslint",
+    "test": "for f in scripts/tests/*.test.ts; do echo \"› $f\"; tsx \"$f\" || exit 1; done",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
