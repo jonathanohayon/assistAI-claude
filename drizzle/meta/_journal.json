@@ -134,6 +134,13 @@
       "when": 1780503074193,
       "tag": "0018_bright_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780522334513,
+      "tag": "0019_gray_titania",
+      "breakpoints": true
     }
   ]
 }

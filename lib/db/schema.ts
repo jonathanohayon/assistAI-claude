@@ -1,14 +1,23 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   integer,
   jsonb,
   pgTable,
   real,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
+
+// Colonne binaire Postgres (audio PCM brut). Drizzle n'a pas de `bytea` natif.
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // Users own one or more agent_configs. Phase 1 = single user, single config.
 // Schema is multi-tenant ready so phase 2 only adds rows, no migration.
@@ -276,6 +285,39 @@ export const paymentOrders = pgTable("payment_orders", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   paidAt: timestamp("paid_at", { withTimezone: true }),
 });
+
+// Cache de l'audio d'accueil pré-généré (PCM16 24kHz mono) joué instantanément
+// au décroché par le worker. Une ligne par (tenant, texte d'opener, voix,
+// langue, version de rendu). Régénéré quand le texte/voix change (text_hash ou
+// voice change) ou quand render_version est bumpé. Voir
+// docs/superpowers/specs/2026-06-04-instant-greeting-design.md.
+export const greetingAudio = pgTable(
+  "greeting_audio",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    textHash: text("text_hash").notNull(),
+    voice: text("voice").notNull(),
+    language: text("language").notNull(),
+    renderVersion: integer("render_version").notNull().default(1),
+    audioPcm: bytea("audio_pcm").notNull(),
+    sampleRate: integer("sample_rate").notNull().default(24000),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    uniq: unique("greeting_audio_key").on(
+      t.userId,
+      t.textHash,
+      t.voice,
+      t.language,
+      t.renderVersion,
+    ),
+  }),
+);
 
 // Append-only event log. Surfaced live in /dashboard/logs so the operator
 // can see end-to-end call/tool/whatsapp activity without grepping Railway logs.
