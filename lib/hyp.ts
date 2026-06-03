@@ -13,11 +13,14 @@
 
 export const HYP_BASE_URL = process.env.HYP_API_URL || "https://icom.yaad.net/p/";
 
-// Template `tmp` HYP. Le "7" (forme courte) ne rend PAS le logo client lié au
-// masof — vérifié empiriquement : le template par défaut affiche
-// logoes/<masof>.png (= le logo shabespresso vu qu'on réutilise son masof),
-// tmp=7 ne l'affiche pas. C'est aussi le template utilisé par shabespresso.
-export const HYP_TEMPLATE_ID = "7";
+// Template `tmp` HYP. Le "3" (vérifié empiriquement sur le masof) :
+//   - n'affiche PAS le logo client lié au masof (= logo shabespresso, qu'on
+//     ne veut pas vu qu'on réutilise son masof),
+//   - a un champ nom VISIBLE (ClientName + ClientLName, type=text) que la
+//     société de crédit exige — pré-rempli par nos params, éditable,
+//   - PAS de champs adresse (city/street/zip) → formulaire lean.
+// (tmp=7 n'avait pas de champ nom visible, d'où le rejet "חובה להזין שם".)
+export const HYP_TEMPLATE_ID = "3";
 
 /** Code devise HYP (`Coin`). 1 = ILS, 3 = EUR dans le Pay-Protocol. */
 export const CURRENCY_COIN = { ILS: "1", EUR: "3" } as const;
