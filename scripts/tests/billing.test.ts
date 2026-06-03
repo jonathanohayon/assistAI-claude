@@ -12,8 +12,18 @@
 import assert from "node:assert/strict";
 
 import { currencyForLocale, pageLangFor } from "../../lib/hyp";
-import { priceFor } from "../../lib/billing-pricing";
+import {
+  DEFAULT_PLAN_PRICING,
+  resolvePrice,
+  normalizePlanPricing,
+} from "../../lib/plan-pricing";
 import { addPeriod, nextPaidUntil, validateHypReturn } from "../../lib/billing-activation";
+
+const priceFor = (
+  plan: "whatsapp" | "global" | "premium",
+  period: "monthly" | "annual",
+  currency: "EUR" | "ILS",
+) => resolvePrice(DEFAULT_PLAN_PRICING, plan, period, currency);
 
 let passed = 0;
 const failures: string[] = [];
@@ -182,6 +192,43 @@ group("validateHypReturn", () => {
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.reason, "expired");
   }
+});
+
+// 8) normalizePlanPricing — coercition / bornage / fillna (chemin admin save)
+group("normalizePlanPricing", () => {
+  // partiel : un seul champ d'un seul plan → le reste vient des défauts
+  const partial = normalizePlanPricing({ whatsapp: { eurMonthly: 77 } });
+  assert.strictEqual(partial.whatsapp.eurMonthly, 77, "override champ fourni");
+  assert.strictEqual(
+    partial.whatsapp.eurAnnual,
+    DEFAULT_PLAN_PRICING.whatsapp.eurAnnual,
+    "champ manquant → défaut",
+  );
+  assert.strictEqual(
+    partial.premium.eurMonthly,
+    DEFAULT_PLAN_PRICING.premium.eurMonthly,
+    "plan absent → défaut",
+  );
+
+  // valeurs invalides (négatif, NaN, string) → ignorées, défaut conservé
+  const bad = normalizePlanPricing({
+    global: { eurMonthly: -5, ilsMonthly: "abc", eurAnnual: 200 },
+  });
+  assert.strictEqual(
+    bad.global.eurMonthly,
+    DEFAULT_PLAN_PRICING.global.eurMonthly,
+    "négatif ignoré",
+  );
+  assert.strictEqual(
+    bad.global.ilsMonthly,
+    DEFAULT_PLAN_PRICING.global.ilsMonthly,
+    "string ignorée",
+  );
+  assert.strictEqual(bad.global.eurAnnual, 200, "valeur valide acceptée");
+
+  // garbage total → défauts complets
+  const empty = normalizePlanPricing(null);
+  assert.deepStrictEqual(empty, DEFAULT_PLAN_PRICING);
 });
 
 // Summary

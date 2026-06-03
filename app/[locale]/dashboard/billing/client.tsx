@@ -5,7 +5,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { priceFor, currencySymbol } from "@/lib/billing-pricing";
+import {
+  currencySymbol,
+  resolvePrice,
+  type PlanPricingMap,
+} from "@/lib/plan-pricing";
 import { currencyForLocale } from "@/lib/hyp";
 import { type Plan, type PlanKey, formatEuro } from "@/lib/plans";
 
@@ -104,6 +108,7 @@ function PlanCard({
   plan,
   billing,
   currency,
+  pricing,
   currentPlanKey,
   hintedPlanKey,
   pending,
@@ -112,6 +117,7 @@ function PlanCard({
   plan: Plan;
   billing: Billing;
   currency: ReturnType<typeof currencyForLocale>;
+  pricing: PlanPricingMap;
   currentPlanKey: PlanKey;
   hintedPlanKey: PlanKey | null;
   pending: boolean;
@@ -121,12 +127,12 @@ function PlanCard({
   const isCurrent = plan.key === currentPlanKey;
   const wasHinted = hintedPlanKey === plan.key;
   const symbol = currencySymbol(currency);
-  // priceFor("annual") is the full yearly charge; the big card number stays a
-  // monthly-equivalent (annual ÷ 12) to preserve the original layout/meaning.
-  const annualTotal = priceFor(plan.key, "annual", currency);
+  // resolvePrice("annual") is the full yearly charge; the big card number stays
+  // a monthly-equivalent (annual ÷ 12) to preserve the original layout/meaning.
+  const annualTotal = resolvePrice(pricing, plan.key, "annual", currency);
   const price =
     billing === "monthly"
-      ? priceFor(plan.key, "monthly", currency)
+      ? resolvePrice(pricing, plan.key, "monthly", currency)
       : Math.round(annualTotal / 12);
   const localized = useLocalizedPlan(plan);
 
@@ -267,12 +273,14 @@ function PlanCard({
 
 export function BillingClient({
   plans,
+  pricing,
   currentPlanKey,
   hintedPlanKey,
   initialBilling,
   setPlanAction,
 }: {
   plans: Plan[];
+  pricing: PlanPricingMap;
   currentPlanKey: PlanKey;
   hintedPlanKey: PlanKey | null;
   initialBilling: Billing;
@@ -380,6 +388,7 @@ export function BillingClient({
             plan={plan}
             billing={billing}
             currency={currency}
+            pricing={pricing}
             currentPlanKey={currentPlanKey}
             hintedPlanKey={hintedPlanKey}
             pending={processingPlan === plan.key}

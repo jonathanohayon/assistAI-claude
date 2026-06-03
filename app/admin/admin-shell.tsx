@@ -15,11 +15,13 @@ import type {
   SummaryPromptByPlan,
 } from "@/lib/settings";
 import type { PlanFeatureMatrix } from "@/lib/plan-features";
+import type { PlanPricingMap } from "@/lib/plan-pricing";
 
 import { AdminTable } from "./admin-table";
 import { BlockOrderForm } from "./block-order-form";
 import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
+import { PlanPricingForm } from "./plan-pricing-form";
 import { SystemDirectivesForm } from "./system-directives-form";
 
 type TileId =
@@ -29,6 +31,7 @@ type TileId =
   | "directives"
   | "block-order"
   | "features"
+  | "pricing"
   | "users";
 
 interface TileDef {
@@ -67,6 +70,7 @@ export interface AdminShellProps {
   promptBlockOrderByPlan: PromptBlockOrderByPlan;
   greetingFallbackByPlan: GreetingFallbackTemplateByPlan;
   planFeatures: PlanFeatureMatrix;
+  planPricing: PlanPricingMap;
   rows: AdminTableRow[];
   currentUserId: string;
 }
@@ -215,6 +219,19 @@ export function AdminShell(props: AdminShellProps) {
           <rect x="14" y="3" width="7" height="7" rx="1" />
           <rect x="3" y="14" width="7" height="7" rx="1" />
           <path d="m14 17 3 3 4-5" />
+        </svg>
+      ),
+    },
+    {
+      id: "pricing",
+      label: "Tarifs",
+      tagline: "Grille tarifaire EUR + ILS par plan, facturée via HYP.",
+      summary: "EUR/ILS · mensuel + annuel",
+      accent: "from-[#f59e0b] to-[#d97706]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       ),
     },
@@ -398,6 +415,9 @@ export function AdminShell(props: AdminShellProps) {
             )}
             {active === "features" && (
               <PlanFeaturesForm initialMatrix={props.planFeatures} />
+            )}
+            {active === "pricing" && (
+              <PlanPricingForm initialPricing={props.planPricing} />
             )}
             {active === "users" && (
               <AdminTable rows={props.rows} currentUserId={props.currentUserId} />

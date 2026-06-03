@@ -10,7 +10,8 @@ import {
   currencyForLocale,
   pageLangFor,
 } from "@/lib/hyp";
-import { priceFor } from "@/lib/billing-pricing";
+import { resolvePrice } from "@/lib/plan-pricing";
+import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { isValidPlanKey, planByKey } from "@/lib/plans";
 
 // Crée une commande HYP pour le tenant courant et renvoie l'URL de paiement
@@ -47,7 +48,9 @@ export async function POST(req: NextRequest) {
 
     const currency = currencyForLocale(user.locale);
     const coin = CURRENCY_COIN[currency];
-    const amount = priceFor(plan, period, currency);
+    // Montant résolu côté serveur depuis la grille admin (jamais du client).
+    const pricing = await getPlanPricingMap();
+    const amount = resolvePrice(pricing, plan, period, currency);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
