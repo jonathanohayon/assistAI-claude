@@ -57,6 +57,10 @@ export async function GET(req: NextRequest) {
         "cache-control": "no-store",
         "x-voice": hit.voice,
         "x-sample-rate": String(hit.sampleRate),
+        // Texte de l'opener (base64 UTF-8 → safe pour l'hébreu) : le worker le
+        // passe à session.say({ addToChatCtx }) pour que le modèle sache qu'il
+        // a déjà accueilli et ne resalue pas.
+        "x-opener-text": Buffer.from(text, "utf8").toString("base64"),
       },
     });
   }
