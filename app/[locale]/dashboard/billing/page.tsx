@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
+import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import {
   DEFAULT_PLAN_KEY,
   PLANS,
@@ -82,6 +83,7 @@ export default async function BillingPage(props: {
 
   const currentPlan = getLocalizedPlan(locale, currentPlanKey);
   const hintedPlanKey = isValidPlanKey(hintedPlan) ? hintedPlan : null;
+  const pricing = await getPlanPricingMap();
 
   const t = await getTranslations({ locale, namespace: "DashboardBilling" });
 
@@ -108,6 +110,7 @@ export default async function BillingPage(props: {
 
       <BillingClient
         plans={[...PLANS]}
+        pricing={pricing}
         currentPlanKey={currentPlanKey}
         hintedPlanKey={hintedPlanKey}
         initialBilling={hintedBilling === "annual" ? "annual" : "monthly"}

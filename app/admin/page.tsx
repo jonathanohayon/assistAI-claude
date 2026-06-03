@@ -8,6 +8,7 @@ import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
@@ -45,6 +46,7 @@ export default async function AdminPage() {
     onboardingTemplateByPlan,
     summaryPromptByPlan,
     planFeatures,
+    planPricing,
     spokenTimeByPlan,
     spokenPhoneByPlan,
     hangupByPlan,
@@ -57,6 +59,7 @@ export default async function AdminPage() {
     getOnboardingTemplateByPlan(),
     getSummaryPromptByPlan(),
     getPlanFeatureMatrix(),
+    getPlanPricingMap(),
     getSpokenTimeDirectiveByPlan(),
     getSpokenPhoneDirectiveByPlan(),
     getHangupDirectiveByPlan(),
@@ -152,6 +155,7 @@ export default async function AdminPage() {
           promptBlockOrderByPlan={promptBlockOrderByPlan}
           greetingFallbackByPlan={greetingFallbackByPlan}
           planFeatures={planFeatures}
+          planPricing={planPricing}
           rows={rows}
           currentUserId={me.id}
         />

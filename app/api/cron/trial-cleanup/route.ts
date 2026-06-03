@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, lt, lte } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -125,6 +125,9 @@ export async function GET(req: NextRequest) {
         eq(users.subscriptionStatus, "trialing"),
         isNotNull(users.trialEndsAt),
         lte(users.trialEndsAt, now),
+        // On saute les comptes dont deletion_locked_until est dans le futur =
+        // paiement HYP en cours : ne jamais supprimer un tenant en train de payer.
+        or(isNull(users.deletionLockedUntil), lte(users.deletionLockedUntil, now)),
       ),
     );
 

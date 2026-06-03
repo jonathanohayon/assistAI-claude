@@ -10,6 +10,11 @@ import {
   getPlanFeatureMatrix,
   setPlanFeatureMatrix,
 } from "@/lib/plan-features-storage";
+import { type PlanPricingMap } from "@/lib/plan-pricing";
+import {
+  getPlanPricingMap,
+  setPlanPricingMap,
+} from "@/lib/plan-pricing-storage";
 import {
   SETTING_KEYS,
   getConfigBlocksDirectiveByPlan,
@@ -69,6 +74,7 @@ export async function GET() {
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
   const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
   const planFeatures = await getPlanFeatureMatrix();
+  const planPricing = await getPlanPricingMap();
   const summaryPromptByPlan = await getSummaryPromptByPlan();
   const spokenTimeDirectiveByPlan = await getSpokenTimeDirectiveByPlan();
   const spokenPhoneDirectiveByPlan = await getSpokenPhoneDirectiveByPlan();
@@ -86,6 +92,7 @@ export async function GET() {
     onboardingTemplate,
     onboardingTemplateByPlan,
     planFeatures,
+    planPricing,
     summaryPromptByPlan,
     spokenTimeDirectiveByPlan,
     spokenPhoneDirectiveByPlan,
@@ -108,6 +115,7 @@ export async function PUT(req: NextRequest) {
     onboardingTemplate?: string;
     onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
     planFeatures?: PlanFeatureMatrix;
+    planPricing?: Partial<PlanPricingMap>;
     summaryPromptByPlan?: Partial<SummaryPromptByPlan>;
     spokenTimeDirectiveByPlan?: Partial<SpokenTimeDirectiveByPlan>;
     spokenPhoneDirectiveByPlan?: Partial<SpokenPhoneDirectiveByPlan>;
@@ -152,6 +160,11 @@ export async function PUT(req: NextRequest) {
     // Le helper normalise les clés inconnues + fillna les manquantes.
     await setPlanFeatureMatrix(body.planFeatures);
     changed.push("plan_features");
+  }
+  if (body.planPricing && typeof body.planPricing === "object") {
+    // normalizePlanPricing coerce/borne les montants + complète les manquants.
+    await setPlanPricingMap(body.planPricing);
+    changed.push("plan_pricing");
   }
   if (
     body.summaryPromptByPlan &&

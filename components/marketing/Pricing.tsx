@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { OVERAGE_RATE_ILS_PER_MIN, type Plan, PLANS } from "@/lib/plans";
+import { resolvePrice, type PlanPricingMap } from "@/lib/plan-pricing";
 
 type Currency = "EUR" | "USD" | "ILS";
 
@@ -79,18 +80,26 @@ function useExchangeRates(): Record<Currency, number> {
   return rates;
 }
 
-function formatPrice(
-  amountEur: number,
+/**
+ * Formate un montant de plan en respectant les devises réellement facturées :
+ * EUR et ILS sont des prix admin EXACTS (mêmes que le checkout), USD est une
+ * estimation marketing convertie depuis l'EUR via le taux FX. `eur`/`ils` sont
+ * les montants admin pour la vue concernée (mensuel, annuel/12, ou total).
+ */
+function formatPlanMoney(
+  eur: number,
+  ils: number,
   currency: Currency,
   rates: Record<Currency, number>,
 ): string {
-  const converted = Math.round(amountEur * rates[currency]);
+  const amount =
+    currency === "EUR" ? eur : currency === "ILS" ? ils : eur * rates.USD;
   const { locale } = CURRENCY_META[currency];
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(converted);
+  }).format(Math.round(amount));
 }
 
 /**
@@ -510,16 +519,25 @@ function PlanCard({
   billing,
   currency,
   rates,
+  pricing,
 }: {
   plan: Plan;
   billing: Billing;
   currency: Currency;
   rates: Record<Currency, number>;
+  pricing: PlanPricingMap;
 }) {
   const t = useTranslations("Pricing.card");
   const localized = useLocalizedPlan(plan);
-  const priceEur = billing === "monthly" ? plan.monthly : plan.annualMonthly;
-  const formattedPrice = formatPrice(priceEur, currency, rates);
+  // Montants admin (EUR + ILS) pour la vue courante. Mensuel = prix mensuel ;
+  // annuel = total annuel ÷ 12 (la grosse valeur reste un équivalent /mois).
+  const eurMonthly = resolvePrice(pricing, plan.key, "monthly", "EUR");
+  const eurAnnual = resolvePrice(pricing, plan.key, "annual", "EUR");
+  const ilsMonthly = resolvePrice(pricing, plan.key, "monthly", "ILS");
+  const ilsAnnual = resolvePrice(pricing, plan.key, "annual", "ILS");
+  const bigEur = billing === "monthly" ? eurMonthly : eurAnnual / 12;
+  const bigIls = billing === "monthly" ? ilsMonthly : ilsAnnual / 12;
+  const formattedPrice = formatPlanMoney(bigEur, bigIls, currency, rates);
   const overagePrice = formatPricePerMinute(
     OVERAGE_RATE_ILS_PER_MIN,
     currency,
@@ -528,7 +546,7 @@ function PlanCard({
   const annualHint =
     billing === "annual"
       ? t("annualHint", {
-          total: formatPrice(plan.annualTotal, currency, rates),
+          total: formatPlanMoney(eurAnnual, ilsAnnual, currency, rates),
         })
       : null;
 
@@ -747,7 +765,7 @@ function PlanCard({
   );
 }
 
-export function Pricing() {
+export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
   const t = useTranslations("Pricing");
   const locale = useLocale();
   const [billing, setBilling] = useState<Billing>("monthly");
@@ -840,6 +858,7 @@ export function Pricing() {
                 billing={billing}
                 currency={currency}
                 rates={rates}
+                pricing={pricing}
               />
             </motion.div>
           ))}

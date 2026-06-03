@@ -80,18 +80,6 @@ export function buildAgentPromptPreview(opts: {
   } = opts;
   const primary = config.primaryLanguage ?? "fr";
 
-  // Le greeting est utilisé séparément en generateReply({instructions})
-  // dans onEnter, pas dans le system prompt. On le montre quand même en
-  // tête de liste comme c'est le 1er truc que la cliente entend.
-  const wrappedGreeting = config.greetingInstructions?.trim()
-    ? `Commence ta première réponse en prononçant TEXTUELLEMENT, mot pour mot et dans la même langue, la phrase d'accueil ci-dessous. Ne reformule pas, ne paraphrase pas. PUIS, dans la même réponse vocale, enchaîne directement avec la PREMIÈRE étape de ton persona/workflow — par exemple poser la question d'ouverture si ton persona l'exige.
-
-Phrase d'accueil littérale :
-"""
-${config.greetingInstructions}
-"""`
-    : `(fallback) Salue chaleureusement la cliente en te présentant : utilise ton prénom et le nom du centre tels que définis dans tes instructions système. Enchaîne immédiatement avec la première question/étape de ton persona.`;
-
   // Map ID → bloc. L'ordre d'apparition dans la preview suit blockOrder
   // (= ce qui est réellement injecté dans le system prompt). Greeting +
   // per_call_context sont hors de cet ordre (le greeting est per-turn,
@@ -233,9 +221,15 @@ ${config.greetingInstructions}
     {
       id: "greeting",
       label: "1. Phrase d'accueil (greeting)",
-      source: "agent_configs.greeting_instructions",
+      source:
+        "agent_configs.greeting_instructions (wrapper « Commence ta première réponse… » + fallback ajoutés au runtime côté worker, via generateReply en onEnter)",
       editHref: `#greeting-field`,
-      content: wrappedGreeting,
+      // Affiche le contenu RAW (sans le wrapper) pour permettre l'édition
+      // inline directe — sinon on sauvegarderait la version wrappée dans
+      // greeting_instructions et on la double-wrapperait au prochain appel.
+      // Même pattern que le bloc admin_global ci-dessus.
+      content: config.greetingInstructions?.trim() || "(vide)",
+      editable: { scope: "tenant", field: "greetingInstructions" },
     },
     ...orderedBlocks,
     {
