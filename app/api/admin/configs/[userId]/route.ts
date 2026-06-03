@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
+import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { logEvent } from "@/lib/logger";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
@@ -142,6 +143,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       changedFields: Object.keys(updates).filter((k) => k !== "updatedAt"),
     },
   });
+
+  // Pré-génère l'audio d'accueil du tenant édité (fire-and-forget).
+  void warmGreetingAudioForUser(userId);
 
   return NextResponse.json(updated);
 }

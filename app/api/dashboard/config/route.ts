@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
+import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { logEvent } from "@/lib/logger";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
@@ -215,6 +216,10 @@ export async function PUT(req: NextRequest) {
       changedFields: Object.keys(updates).filter((k) => k !== "updatedAt"),
     },
   });
+
+  // Pré-génère l'audio d'accueil en arrière-plan (greeting/voix/langue ont pu
+  // changer) → 1er appel instantané. Fire-and-forget, ne bloque pas la réponse.
+  void warmGreetingAudioForUser(session.user.id);
 
   return NextResponse.json(updated);
 }
