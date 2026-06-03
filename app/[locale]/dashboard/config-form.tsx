@@ -237,6 +237,25 @@ const uiFromTemp = (api: number) => Math.round((api / 1.5) * 9 + 1);
 
 const clamp10 = (n: number) => Math.min(10, Math.max(1, Math.round(n)));
 
+// ─── Ordre des tuiles (préférence de layout perso, par navigateur) ───────
+// L'ordre des tuiles est purement cosmétique → localStorage suffit (pas de
+// DB ni d'API). Chaque opérateur réorganise sa propre vue. Les tuiles dont
+// l'id n'est pas dans l'ordre mémorisé (ex. tuile admin "prompt" qui
+// apparaît conditionnellement) retombent à la fin dans l'ordre par défaut.
+const TILE_ORDER_KEY = "tamara.config.tileOrder";
+
+function applyTileOrder<T extends { id: string }>(
+  tiles: readonly T[],
+  order: string[] | null,
+): T[] {
+  if (!order) return [...tiles];
+  const rank = (id: string) => {
+    const i = order.indexOf(id);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...tiles].sort((a, b) => rank(a.id) - rank(b.id));
+}
+
 // ─── Component ──────────────────────────────────────────────────────────
 
 type DashboardStats = {
@@ -286,6 +305,34 @@ export function ConfigForm({
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTile, setActiveTile] = useState<string | null>(null);
+
+  // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
+  // un flash d'ordre par défaut → réordonné côté client au 1er paint).
+  const [tileOrder, setTileOrder] = useState<string[] | null>(null);
+  const [dragTileId, setDragTileId] = useState<string | null>(null);
+  const [dragOverTileId, setDragOverTileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TILE_ORDER_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string"))
+          setTileOrder(parsed);
+      }
+    } catch {
+      /* localStorage indispo / JSON corrompu → ordre par défaut */
+    }
+  }, []);
+
+  const persistTileOrder = (ids: string[]) => {
+    setTileOrder(ids);
+    try {
+      localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(ids));
+    } catch {
+      /* quota / mode privé → l'ordre reste valable pour la session */
+    }
+  };
 
   // Compteurs canaux (PSTN / WhatsApp) pour le résumé de la tuile "Canaux".
   // Chargés une fois au montage depuis /api/dashboard/channels (scope via
@@ -431,6 +478,21 @@ export function ConfigForm({
       ),
     },
     {
+      id: "business",
+      label: t("businessTileLabel"),
+      tagline: t("businessTileTagline"),
+      summary: t("businessTileSummary", {
+        centres: form.business.centres.length,
+        services: form.business.services.length,
+      }),
+      accent: "from-[#f59e0b] to-[#b45309]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
+        </svg>
+      ),
+    },
+    {
       id: "persona",
       label: t("personaTitle"),
       tagline: t("wowTagPersona"),
@@ -453,21 +515,6 @@ export function ConfigForm({
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-        </svg>
-      ),
-    },
-    {
-      id: "business",
-      label: t("businessTileLabel"),
-      tagline: t("businessTileTagline"),
-      summary: t("businessTileSummary", {
-        centres: form.business.centres.length,
-        services: form.business.services.length,
-      }),
-      accent: "from-[#f59e0b] to-[#b45309]",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
         </svg>
       ),
     },
@@ -515,6 +562,30 @@ export function ConfigForm({
         ]
       : []),
   ] as const;
+
+  // Tuiles dans l'ordre choisi par l'opérateur (cf. applyTileOrder).
+  const orderedTiles = applyTileOrder(TILES, tileOrder);
+
+  // Drag & drop natif HTML5 (même pattern que admin/block-order-form), mais
+  // sur une grille → on raisonne par id de tuile, pas par index. Le drop
+  // retire la tuile draggée et la réinsère devant la tuile cible.
+  const onTileDrop = (targetId: string) => {
+    if (!dragTileId || dragTileId === targetId) {
+      setDragTileId(null);
+      setDragOverTileId(null);
+      return;
+    }
+    const ids: string[] = orderedTiles.map((tile) => tile.id);
+    const from = ids.indexOf(dragTileId);
+    const to = ids.indexOf(targetId);
+    setDragTileId(null);
+    setDragOverTileId(null);
+    if (from === -1 || to === -1) return;
+    const next = [...ids];
+    const [moved] = next.splice(from, 1);
+    if (moved) next.splice(to, 0, moved);
+    persistTileOrder(next);
+  };
 
   return (
     <form onSubmit={onSubmit} className="relative pb-24">
@@ -819,13 +890,16 @@ export function ConfigForm({
             <p className="mt-1 text-sm text-[#475569]">
               {activeTile ? t("wowTileHintActive") : t("wowTileHintIdle")}
             </p>
+            <p className="mt-0.5 hidden text-xs text-[#94a3b8] sm:block">
+              {t("wowTileReorderHint")}
+            </p>
           </div>
 
           {/* À partir de xl, la grille des tuiles n'a plus toute la largeur
            *  (la col droite contient le LiveTest sticky), donc on repasse
            *  à 4 colonnes pour que les tuiles ne deviennent pas trop petites. */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
-            {TILES.map((tile, i) => (
+            {orderedTiles.map((tile, i) => (
               <Tile
                 key={tile.id}
                 tile={tile}
@@ -834,9 +908,21 @@ export function ConfigForm({
                   setActiveTile((curr) => (curr === tile.id ? null : tile.id))
                 }
                 delay={300 + i * 60}
+                dragging={dragTileId === tile.id}
+                dropTarget={dragOverTileId === tile.id && dragTileId !== tile.id}
+                onDragStart={() => setDragTileId(tile.id)}
+                onDragEnter={() => {
+                  if (dragTileId && dragTileId !== tile.id)
+                    setDragOverTileId(tile.id);
+                }}
+                onDrop={() => onTileDrop(tile.id)}
+                onDragEnd={() => {
+                  setDragTileId(null);
+                  setDragOverTileId(null);
+                }}
               />
             ))}
-            <AddTile delay={300 + TILES.length * 60} />
+            <AddTile delay={300 + orderedTiles.length * 60} />
           </div>
 
           {activeTile && (
@@ -1028,21 +1114,54 @@ function Tile({
   active,
   onClick,
   delay = 0,
+  dragging = false,
+  dropTarget = false,
+  onDragStart,
+  onDragEnter,
+  onDrop,
+  onDragEnd,
 }: {
   tile: TileDef;
   active: boolean;
   onClick: () => void;
   delay?: number;
+  dragging?: boolean;
+  dropTarget?: boolean;
+  onDragStart?: () => void;
+  onDragEnter?: () => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`anim-bounce-in group relative flex aspect-square flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
-        active
-          ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
-          : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", tile.id);
+        onDragStart?.();
+      }}
+      onDragEnter={() => onDragEnter?.()}
+      onDragOver={(e) => {
+        // preventDefault OBLIGATOIRE pour autoriser le drop
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop?.();
+      }}
+      onDragEnd={() => onDragEnd?.()}
+      className={`anim-bounce-in group relative flex aspect-square cursor-grab flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
+        dragging
+          ? "border-[#0e7490] opacity-50 ring-2 ring-[#0e7490]/30"
+          : dropTarget
+            ? "border-[#0e7490] shadow-[0_0_0_3px_rgba(14,116,144,0.18)]"
+            : active
+              ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
+              : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -1460,18 +1579,42 @@ function PersonaPanel({
       {/* Tools disponibles — built-in + knowledge */}
       <ToolsAvailableHint form={form} update={update} />
 
-      {/* Instructions */}
+      {/* Instructions (persona) — facultatif + contenu collapsable */}
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          {t("instructionsLabel")}
+        <div className="mb-1.5 flex items-baseline gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
+            {t("instructionsLabel")}
+          </p>
+          <span className="text-[10px] text-[#94a3b8]">{t("wowOptional")}</span>
+        </div>
+        <p className="mb-2 text-[11px] leading-relaxed text-[#475569]">
+          {t("instructionsDescription")}
         </p>
-        <textarea
-          value={form.instructions}
-          onChange={(e) => update("instructions", e.target.value)}
-          rows={24}
-          className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 font-mono text-xs leading-relaxed text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
-        />
-        <p className="mt-1.5 text-[11px] text-[#475569]">{t("instructionsHint")}</p>
+        <details className="group rounded-2xl border border-[#e2e8f0] bg-white/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-4 py-2.5 text-[12px] font-medium text-[#0e7490] transition-colors hover:bg-[#ecfeff]/50">
+            <span>{t("instructionsToggle")}</span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-180"
+            >
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <div className="px-3 pb-3">
+            <textarea
+              value={form.instructions}
+              onChange={(e) => update("instructions", e.target.value)}
+              rows={24}
+              className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 font-mono text-xs leading-relaxed text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
+            />
+            <p className="mt-1.5 text-[11px] text-[#475569]">
+              {t("instructionsHint")}
+            </p>
+          </div>
+        </details>
       </div>
     </div>
   );
