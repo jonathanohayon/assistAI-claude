@@ -40,6 +40,11 @@ interface EndBody {
    *  les sessions web (pas de toNumber SIP) tombaient sur resolveDefaultTenant
    *  → le call était attribué au premier tenant de la DB (cross-tenant leak). */
   userId?: string;
+  /** Canal de l'appel SIP. Pour 'whatsapp', le client vient de joindre via
+   *  WhatsApp → fenêtre de service 24h ouverte → on envoie le recap client en
+   *  free-form dans le même thread (UX chaude) au lieu d'un template froid.
+   *  Absent / 'pstn' → comportement template historique. */
+  channel?: "pstn" | "whatsapp";
 }
 
 /**
@@ -108,6 +113,7 @@ export async function POST(req: NextRequest) {
   const fromNumber = (body.fromNumber ?? "").trim();
   const toNumber = (body.toNumber ?? "").trim();
   const userId = (body.userId ?? "").trim();
+  const channel = body.channel === "whatsapp" ? "whatsapp" : "pstn";
   const transcript = Array.isArray(body.transcript) ? body.transcript : [];
 
   // userId prioritaire (chemin web LiveTest Phase 2) → exact match par PK.
@@ -228,10 +234,17 @@ export async function POST(req: NextRequest) {
     // templates Meta-approved ne permettent pas de wrapper dynamique —
     // créer un template par langue dans Twilio est le seul moyen d'avoir
     // un "Bonjour..." en FR vs "שלום..." en HE.
+    // Appel canal WhatsApp : la cliente vient de nous joindre via WhatsApp,
+    // donc la fenêtre de service 24h est ouverte → on envoie le recap en
+    // free-form (texte direct, multi-ligne, dans le même thread) au lieu du
+    // template Meta-approuvé froid. UX nettement meilleure. Pour les appels
+    // PSTN (canal par défaut), on garde le template qui ship hors fenêtre.
+    const isWhatsappChannel = channel === "whatsapp";
     const tenantLang = (cfg.primaryLanguage ?? "fr").toUpperCase();
     const langKey = `WHATSAPP_CLIENT_TEMPLATE_SID_${tenantLang}`;
-    const clientTemplate =
-      process.env[langKey] || process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
+    const clientTemplate = isWhatsappChannel
+      ? undefined
+      : process.env[langKey] || process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
     const r = await sendWhatsApp({
       to: fromNumber,
       body: summary.forClient,
@@ -245,9 +258,15 @@ export async function POST(req: NextRequest) {
       await logEvent({
         source: "whatsapp",
         event: "whatsapp_sent_client",
-        message: `WhatsApp envoyé à la cliente ${fromNumber}`,
+        message: `WhatsApp ${isWhatsappChannel ? "free-form (thread WhatsApp)" : "template"} envoyé à la cliente ${fromNumber}`,
         userId: user.id,
-        metadata: { callId: callRow.id, sid: r.sid, to: fromNumber },
+        metadata: {
+          callId: callRow.id,
+          sid: r.sid,
+          to: fromNumber,
+          channel,
+          mode: isWhatsappChannel ? "free_form" : "template",
+        },
       });
       void verifyDelivery(r.sid, "client", fromNumber, user.id, callRow.id);
     } else {

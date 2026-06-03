@@ -31,7 +31,22 @@ export async function resolveTenantByPhone(
     .innerJoin(agentConfigs, eq(agentConfigs.userId, phoneNumbers.userId))
     .where(eq(phoneNumbers.phoneNumber, normalized))
     .limit(1);
-  return row ?? null;
+  if (row) return row;
+
+  // Back-compat for WhatsApp channel rows: WhatsApp phone_numbers are stored
+  // with a literal `whatsapp:` prefix (e.g. `whatsapp:+972237647000`), but the
+  // worker always strips the prefix before calling us. The exact-match lookup
+  // above therefore misses those rows, so retry once against the prefixed
+  // stored value. PSTN rows (plain E.164) are unaffected — they already match
+  // on the first query. First-match-wins.
+  const [waRow] = await db
+    .select({ user: users, config: agentConfigs })
+    .from(phoneNumbers)
+    .innerJoin(users, eq(users.id, phoneNumbers.userId))
+    .innerJoin(agentConfigs, eq(agentConfigs.userId, phoneNumbers.userId))
+    .where(eq(phoneNumbers.phoneNumber, `whatsapp:${normalized}`))
+    .limit(1);
+  return waRow ?? null;
 }
 
 /**
