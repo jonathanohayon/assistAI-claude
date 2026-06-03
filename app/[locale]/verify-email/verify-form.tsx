@@ -130,7 +130,10 @@ export function VerifyForm({ email }: VerifyFormProps) {
         </p>
       )}
 
-      <div className="flex items-center justify-center gap-2">
+      {/* dir="ltr" : le code se saisit/affiche TOUJOURS de gauche à droite,
+          même en hébreu (RTL) — sinon les 4 cases s'inversent et le code
+          paraît à l'envers. */}
+      <div dir="ltr" className="flex items-center justify-center gap-2">
         {[0, 1, 2, 3].map((i) => (
           <input
             key={i}
