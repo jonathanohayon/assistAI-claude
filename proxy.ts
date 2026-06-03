@@ -46,7 +46,14 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on every route except Next internals and static assets, so the
+  // Run on every page route except Next internals and static assets, so the
   // security headers cover the whole app (not just marketing pages).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  //
+  // `api` is excluded on purpose: API routes own their responses (NextAuth
+  // handlers under /api/admin/auth/* set/rotate the session cookie, others
+  // stream). Wrapping them in the proxy's NextResponse.next() + injected CSP/
+  // HSTS headers breaks those framework responses → /api/livekit/web-token and
+  // the rest started returning 401. Browsers honor HSTS origin-wide from the
+  // HTML responses, so API routes don't need it anyway.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
