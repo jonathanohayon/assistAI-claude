@@ -357,7 +357,8 @@ export function BillingClient({
         const res = await fetch("/api/dashboard/hyp/create-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan: payPlan, period: payPeriod }),
+          // locale courante → devise du paiement = celle du prix affiché.
+          body: JSON.stringify({ plan: payPlan, period: payPeriod, locale }),
         });
         const data = await res.json();
         if (cancelled) return;
@@ -372,7 +373,7 @@ export function BillingClient({
     return () => {
       cancelled = true;
     };
-  }, [payPlan, payPeriod]);
+  }, [payPlan, payPeriod, locale]);
 
   const payPlanObj = plans.find((p) => p.key === payPlan) ?? null;
 

@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as {
       plan?: string;
       period?: string;
+      locale?: string;
     };
     const { plan, period } = body;
 
@@ -47,7 +48,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
     }
 
-    const currency = currencyForLocale(user.locale);
+    // Devise = langue de la PAGE où le tenant est (envoyée par le client),
+    // pas la locale figée du compte — sinon le prix affiché (basé sur la
+    // langue courante) et le montant facturé peuvent diverger. Fallback sur
+    // users.locale puis "fr". Whitelist stricte (locale interpolée + devise).
+    const locale =
+      body.locale && ["fr", "he", "en"].includes(body.locale)
+        ? body.locale
+        : ["fr", "he", "en"].includes(user.locale)
+          ? user.locale
+          : "fr";
+
+    const currency = currencyForLocale(locale);
     const coin = CURRENCY_COIN[currency];
     // Montant résolu côté serveur depuis la grille admin (jamais du client).
     const pricing = await getPlanPricingMap();
@@ -75,13 +87,14 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "web",
       event: "subscription_checkout_started",
-      message: `Checkout HYP : ${plan} / ${period} → ${amount} ${currency} (locale ${user.locale})`,
+      message: `Checkout HYP : ${plan} / ${period} → ${amount} ${currency} (locale ${locale})`,
       userId: session.user.id,
       metadata: {
         plan,
         period,
         currency,
         amount,
+        locale,
         userLocale: user.locale,
         ils: { monthly: pricing[plan].ilsMonthly, annual: pricing[plan].ilsAnnual },
         eur: { monthly: pricing[plan].eurMonthly, annual: pricing[plan].eurAnnual },
@@ -98,9 +111,9 @@ export async function POST(req: NextRequest) {
     const base = process.env.APP_URL;
     // Succès ET annulation passent par le callback : il casse l'iframe vers le
     // top-level (le paiement tourne dans une iframe popup).
-    const successUrl = base + "/api/dashboard/hyp/callback?locale=" + user.locale;
+    const successUrl = base + "/api/dashboard/hyp/callback?locale=" + locale;
     const cancelUrl =
-      base + "/api/dashboard/hyp/callback?locale=" + user.locale + "&cancelled=1";
+      base + "/api/dashboard/hyp/callback?locale=" + locale + "&cancelled=1";
     const info = planByKey(plan).name + " (" + period + ")";
 
     const url = await createPaymentUrl({
@@ -108,7 +121,7 @@ export async function POST(req: NextRequest) {
       amount,
       coin,
       info,
-      pageLang: pageLangFor(user.locale),
+      pageLang: pageLangFor(locale),
       successUrl,
       cancelUrl,
       email: user.email,
