@@ -34,6 +34,9 @@ interface CallGroup {
   events: EventRow[];
   errorCount: number;
   warnCount: number;
+  /** Tokens + coût USD de l'appel, extraits de l'event call_metrics. */
+  totalTokens?: number;
+  costUsd?: number;
 }
 
 /**
@@ -63,6 +66,14 @@ function groupEventsByCall(events: EventRow[]): CallGroup[] {
     if (e.level === "warn") group.warnCount++;
     group.endedAt = e.createdAt;
     group.events.push(e);
+    const usage = (e.metadata ?? {})["usage"] as
+      | { totalTokens?: number; costUsd?: number }
+      | undefined;
+    if (usage) {
+      if (typeof usage.totalTokens === "number")
+        group.totalTokens = usage.totalTokens;
+      if (typeof usage.costUsd === "number") group.costUsd = usage.costUsd;
+    }
   };
 
   for (const e of sortedAsc) {
@@ -450,6 +461,19 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                         {group.kind === "call" && durationS > 0 && (
                           <> · durée ~{durationS}s</>
                         )}
+                        {group.kind === "call" &&
+                          typeof group.totalTokens === "number" && (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <span className="font-medium text-[#0e7490]">
+                                {group.totalTokens.toLocaleString(timeLocale)} tokens
+                                {typeof group.costUsd === "number" && (
+                                  <> ~${group.costUsd.toFixed(4)}</>
+                                )}
+                              </span>
+                            </>
+                          )}
                       </p>
                     </div>
                   </div>
