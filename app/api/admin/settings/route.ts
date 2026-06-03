@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
@@ -165,6 +166,10 @@ export async function PUT(req: NextRequest) {
     // normalizePlanPricing coerce/borne les montants + complète les manquants.
     await setPlanPricingMap(body.planPricing);
     changed.push("plan_pricing");
+    // La landing publique (app/[locale]/page) est en ISR (revalidate 600) →
+    // on la revalide à la demande pour que les nouveaux tarifs apparaissent
+    // tout de suite au lieu d'attendre jusqu'à 10 min.
+    revalidatePath("/[locale]", "page");
   }
   if (
     body.summaryPromptByPlan &&
