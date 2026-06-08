@@ -33,6 +33,12 @@ export const FEATURE_DEFS = [
     description:
       "Recap d'appel envoyé au numéro WhatsApp owner après chaque conversation.",
   },
+  {
+    key: "outbound_campaigns",
+    label: "Centre d'appels sortant",
+    description:
+      "Tuile Campagnes : appels sortants IA en parallèle (cold/sales/lead-gen), import contacts (CSV/Excel/Sheets), monitoring live + analytics animées.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_DEFS)[number]["key"];
@@ -49,18 +55,21 @@ export const DEFAULT_MATRIX: PlanFeatureMatrix = {
     crm: false,
     whatsapp_confirm: true,
     whatsapp_recap: true,
+    outbound_campaigns: false,
   },
   global: {
     calendar: true,
     crm: true,
     whatsapp_confirm: true,
     whatsapp_recap: true,
+    outbound_campaigns: false,
   },
   premium: {
     calendar: true,
     crm: true,
     whatsapp_confirm: true,
     whatsapp_recap: true,
+    outbound_campaigns: true,
   },
 };
 

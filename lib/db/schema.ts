@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   customType,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -229,6 +230,163 @@ export const calls = pgTable("calls", {
     .default(sql`now()`),
 });
 
+// ─── Outbound call center (campagnes sortantes) ──────────────────────────
+// Une campagne = un objectif + une persona + une file de contacts à appeler
+// en parallèle par des agents IA. Le worker poll les contacts `queued`
+// (claim atomique), dial via trunk SIP sortant, puis POST le résultat.
+
+export const campaigns = pgTable("campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  // 'cold' | 'sales' | 'lead_gen' | 'marketing' | 'custom' — pilote le preset
+  // de script + critères de succès injectés dans le prompt.
+  goalPreset: text("goal_preset").notNull().default("custom"),
+  // Objectif libre injecté dans le system prompt de l'agent.
+  objective: text("objective").notNull().default(""),
+  // 'draft' | 'running' | 'paused' | 'completed' | 'archived'
+  status: text("status").notNull().default("draft"),
+  // Caller-id E.164 (numéro appartenant au tenant — validé à la création).
+  fromNumber: text("from_number").notNull().default(""),
+  // Persona découplée d'agentConfigs : une campagne a sa propre voix/script.
+  persona: jsonb("persona")
+    .$type<{
+      agentName?: string;
+      voice?: string;
+      language?: string;
+      instructions?: string;
+      greeting?: string;
+      successCriteria?: string;
+    }>()
+    .notNull()
+    .default({}),
+  // Schéma d'extraction défini par l'utilisateur → JSON typé par appel.
+  extractionSchema: jsonb("extraction_schema")
+    .$type<
+      Array<{
+        key: string;
+        label: string;
+        type: "string" | "number" | "boolean" | "enum";
+        options?: string[];
+        required?: boolean;
+      }>
+    >()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  // Nombre d'appels simultanés autorisés pour cette campagne.
+  concurrency: integer("concurrency").notNull().default(3),
+  retryRules: jsonb("retry_rules")
+    .$type<{
+      maxAttempts: number;
+      retryOn: Array<"no_answer" | "busy" | "voicemail" | "failed">;
+      backoffMinutes: number;
+    }>()
+    .notNull()
+    .default(
+      sql`'{"maxAttempts":1,"retryOn":[],"backoffMinutes":60}'::jsonb`,
+    ),
+  callWindow: jsonb("call_window")
+    .$type<{
+      timezone: string;
+      days: number[]; // 0-6 (dim..sam)
+      startHour: number;
+      endHour: number;
+      respectDnc: boolean;
+    }>()
+    .notNull()
+    .default(
+      sql`'{"timezone":"Asia/Jerusalem","days":[1,2,3,4,5],"startHour":9,"endHour":18,"respectDnc":true}'::jsonb`,
+    ),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+// File d'attente de la campagne — une ligne par contact à appeler.
+// `userId` dénormalisé pour le scoping worker sans jointure.
+export const campaignContacts = pgTable(
+  "campaign_contacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    phoneNumber: text("phone_number").notNull(),
+    contactName: text("contact_name").notNull().default(""),
+    // Colonnes CSV/Excel custom → variables {{...}} de personnalisation.
+    vars: jsonb("vars")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    // 'queued' | 'claimed' | 'calling' | 'completed' | 'failed'
+    //   | 'no_answer' | 'voicemail' | 'busy' | 'skipped'
+    status: text("status").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    // Gate de backoff retry : ne pas re-claim avant cette date.
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    // Lease anti-double-dial : posé au claim, reset par le reaper si périmé.
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    byCampaignStatus: index("campaign_contacts_campaign_status_idx").on(
+      t.campaignId,
+      t.status,
+    ),
+  }),
+);
+
+// Une ligne par tentative d'appel terminée (miroir de `calls`).
+export const campaignCalls = pgTable("campaign_calls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  campaignId: uuid("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  contactId: uuid("contact_id")
+    .notNull()
+    .references(() => campaignContacts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Lien optionnel vers la table `calls` (réutilisation pipeline existante).
+  callId: uuid("call_id").references(() => calls.id, { onDelete: "set null" }),
+  phoneNumber: text("phone_number").notNull().default(""),
+  // 'connected' | 'no_answer' | 'voicemail' | 'busy' | 'failed'
+  outcome: text("outcome").notNull().default("failed"),
+  // Disposition auto-classifiée par l'IA (interested|callback|qualified|...).
+  disposition: text("disposition").notNull().default(""),
+  // 'positive' | 'neutral' | 'negative'
+  sentiment: text("sentiment").notNull().default(""),
+  summary: text("summary").notNull().default(""),
+  transcript: jsonb("transcript")
+    .$type<Array<{ role: "user" | "assistant"; text: string }>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  // Champs extraits typés selon campaigns.extractionSchema.
+  extracted: jsonb("extracted")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  durationSeconds: integer("duration_seconds").notNull().default(0),
+  // Coût en centimes pour le KPI cost-per-connect (rempli plus tard).
+  costCents: integer("cost_cents").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
 // One row per tenant-owned phone number. The agent looks up the called
 // number on each inbound call to know which tenant's persona to load.
 export const phoneNumbers = pgTable("phone_numbers", {
@@ -363,3 +521,9 @@ export type AgentConfig = typeof agentConfigs.$inferSelect;
 export type NewAgentConfig = typeof agentConfigs.$inferInsert;
 export type Call = typeof calls.$inferSelect;
 export type NewCall = typeof calls.$inferInsert;
+export type Campaign = typeof campaigns.$inferSelect;
+export type NewCampaign = typeof campaigns.$inferInsert;
+export type CampaignContact = typeof campaignContacts.$inferSelect;
+export type NewCampaignContact = typeof campaignContacts.$inferInsert;
+export type CampaignCall = typeof campaignCalls.$inferSelect;
+export type NewCampaignCall = typeof campaignCalls.$inferInsert;

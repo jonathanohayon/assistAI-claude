@@ -7,6 +7,8 @@ import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
 import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
   getConfigBlocksDirectiveByPlan,
@@ -44,6 +46,11 @@ export default async function DashboardPage(props: {
       ? (me.subscriptionPlan as PlanKey)
       : PLANS[0].key;
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
+
+  // Matrice feature×plan → features actives pour ce tenant. Sert au gating
+  // de la tuile "Centre d'appels sortant" (visible partout, activée premium).
+  const planMatrix = await getPlanFeatureMatrix();
+  const features = featuresForPlan(planMatrix, me?.subscriptionPlan);
 
   // Numéro Twilio principal du tenant — mis en avant en bandeau rose
   // gradient en haut du dashboard. Premier truc que le user voit après
@@ -217,6 +224,7 @@ export default async function DashboardPage(props: {
           })(),
         }}
         isAdmin={isAdmin}
+        features={features}
         adminInheritablePreview={adminInheritablePreview}
         planLabel={planLabel}
         primaryPhone={primaryPhone?.phoneNumber ?? null}
