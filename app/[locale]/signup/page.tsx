@@ -148,7 +148,9 @@ export default async function SignupPage(props: {
     };
     cookieStore.set("signup_plan", plan, opts);
     cookieStore.set("signup_locale", locale, opts);
-    await signIn("google", { redirectTo: "/dashboard" });
+    // Nouveau tenant Google → wizard onboarding (choix pays + numéro + langue).
+    // Si le compte existe déjà, le callback signIn redirige vers /login (popup).
+    await signIn("google", { redirectTo: "/onboarding" });
   }
 
   return (

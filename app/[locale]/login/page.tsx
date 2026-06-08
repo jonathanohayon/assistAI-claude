@@ -6,6 +6,8 @@ import { auth, signIn } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 
+import { AlreadyRegisteredModal } from "./already-registered-modal";
+
 // Page localisée /<fr|he|en>/login — la version racine /login a été
 // déplacée ici pour bénéficier du NextIntlClientProvider de [locale]/layout
 // et exposer la copy via useTranslations/getTranslations. Une page racine
@@ -17,13 +19,19 @@ export default async function LoginPage(props: {
     error?: string;
     callbackUrl?: string;
     reason?: string;
+    notice?: string;
   }>;
 }) {
   const { locale } = await props.params;
   const session = await auth();
   if (session?.user) redirect("/dashboard");
 
-  const { error, callbackUrl = "/dashboard", reason } = await props.searchParams;
+  const {
+    error,
+    callbackUrl = "/dashboard",
+    reason,
+    notice,
+  } = await props.searchParams;
   const t = await getTranslations({ locale, namespace: "Login" });
 
   async function handleLogin(formData: FormData) {
@@ -56,6 +64,8 @@ export default async function LoginPage(props: {
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 gradient-mesh"
       />
+
+      {notice === "exists" && <AlreadyRegisteredModal />}
 
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">

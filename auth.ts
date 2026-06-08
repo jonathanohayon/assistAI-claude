@@ -111,6 +111,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
 
+      // Cookies poses par le bouton "Continuer avec Google" de la page signup
+      // (absents depuis la page login). On les consomme one-shot : leur seule
+      // presence signale une INTENTION d'inscription, ce qui permet de
+      // distinguer un signup-sur-compte-existant (→ popup) d'un simple login.
+      const cookieStore = await cookies();
+      const planCookie = cookieStore.get("signup_plan")?.value;
+      const localeCookie = cookieStore.get("signup_locale")?.value;
+      const isSignupIntent = planCookie !== undefined;
+      const locale =
+        localeCookie && SUPPORTED_LOCALES.includes(localeCookie)
+          ? localeCookie
+          : "fr";
+      cookieStore.delete("signup_plan");
+      cookieStore.delete("signup_locale");
+
       const [existing] = await db
         .select()
         .from(users)
@@ -118,7 +133,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         .limit(1);
 
       if (existing) {
-        // Compte deja present (email/mdp ou Google) → on relie par email.
+        if (isSignupIntent) {
+          // L'user a cliqué "S'inscrire avec Google" mais un compte existe
+          // déjà → on NE le connecte PAS, on le renvoie vers /login avec un
+          // popup "déjà inscrit". Retourner une string = redirect sans créer
+          // de session (cf. @auth/core handleAuthorized).
+          await logEvent({
+            source: "auth",
+            event: "signup_google_exists",
+            message: `Signup Google refusé — compte déjà existant : ${email}`,
+            userId: existing.id,
+          });
+          return `/${locale}/login?notice=exists`;
+        }
+        // Intention login → on relie par email vérifié et on connecte.
         if (!existing.emailVerified) {
           await db
             .update(users)
@@ -134,18 +162,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return true;
       }
 
-      // Nouveau tenant : plan + locale transmis via cookies courts poses par
-      // le bouton "Continuer avec Google" de la page signup (fallback defaut
-      // depuis la page login). Email deja verifie → pas de gate /verify-email.
-      const cookieStore = await cookies();
-      const planCookie = cookieStore.get("signup_plan")?.value;
+      // Nouveau tenant. Email déjà vérifié → pas de gate /verify-email ; il
+      // sera routé vers /onboarding (redirectTo) pour choisir son numéro.
       const plan = isValidPlanKey(planCookie) ? planCookie : DEFAULT_PLAN_KEY;
-      const localeCookie = cookieStore.get("signup_locale")?.value;
-      const locale =
-        localeCookie && SUPPORTED_LOCALES.includes(localeCookie)
-          ? localeCookie
-          : "fr";
-
       const created = await provisionTenant({
         email,
         displayName: String(profile?.name ?? "").trim(),

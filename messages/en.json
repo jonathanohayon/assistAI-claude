@@ -503,6 +503,9 @@
     "signupLink": "Create an account",
     "orDivider": "or",
     "continueWithGoogle": "Continue with Google",
+    "alreadyRegisteredTitle": "You already have an account",
+    "alreadyRegisteredBody": "An account already exists with this Google email. Sign in to continue.",
+    "alreadyRegisteredOk": "Got it",
     "backHome": "← Back"
   },
   "VerifyEmail": {
@@ -657,6 +660,7 @@
     "heroEyebrow": "Your assistant",
     "heroLive": "Online 24/7",
     "heroNoPhone": "Number being provisioned",
+    "heroGetNumber": "Get my number",
     "heroVoiceLabel": "Voice",
     "heroLanguageLabel": "Language",
     "speedSlow": "Slow",

@@ -503,6 +503,9 @@
     "signupLink": "פתיחת חשבון",
     "orDivider": "או",
     "continueWithGoogle": "המשך עם Google",
+    "alreadyRegisteredTitle": "כבר יש לך חשבון",
+    "alreadyRegisteredBody": "כבר קיים חשבון עם כתובת ה-Google הזו. התחבר/י כדי להמשיך.",
+    "alreadyRegisteredOk": "הבנתי",
     "backHome": "→ חזרה"
   },
   "VerifyEmail": {
@@ -657,6 +660,7 @@
     "heroEyebrow": "המזכירה שלך",
     "heroLive": "פעיל 24/7",
     "heroNoPhone": "מספר בהקצאה",
+    "heroGetNumber": "קבלת מספר",
     "heroVoiceLabel": "קול",
     "heroLanguageLabel": "שפה",
     "speedSlow": "איטי",
