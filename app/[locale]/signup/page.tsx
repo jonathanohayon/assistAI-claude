@@ -1,17 +1,16 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
+import { provisionTenant } from "@/lib/auth/provision-tenant";
 import { db } from "@/lib/db";
-import { agentConfigs, users } from "@/lib/db/schema";
+import { users } from "@/lib/db/schema";
 import { sendVerificationEmail } from "@/lib/email";
-import { getInitialInstructionsForPlan } from "@/lib/initial-config";
 import { logEvent } from "@/lib/logger";
 import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
-import { getOnboardingTemplateByPlan } from "@/lib/settings";
-import { computeTrialEndsAt } from "@/lib/trial";
 import { createEmailVerification } from "@/lib/verify-code";
 
 import { SignupContent } from "./signup-content";
@@ -67,37 +66,15 @@ export default async function SignupPage(props: {
     }
 
     const hash = await bcrypt.hash(password, 12);
-    // Free trial démarre au signup, durée définie dans lib/trial.ts.
-    const trialEndsAt = computeTrialEndsAt();
-
-    const [created] = await db
-      .insert(users)
-      .values({
-        email,
-        passwordHash: hash,
-        displayName,
-        role: "user",
-        subscriptionStatus: "trialing",
-        subscriptionPlan,
-        trialEndsAt,
-        locale,
-      })
-      .returning();
-
-    // Bootstrap agent_config avec la persona du PLAN choisi par le user.
-    // Cascade : admin-defined template par plan → persona hardcodée par
-    // plan. Évite que le user basique reçoive le prompt multi-centres
-    // qui parle de tools (book_appointment) qu'il n'aura jamais —
-    // calendar est gated off pour ce plan via la matrice features.
-    const templatesByPlan = await getOnboardingTemplateByPlan();
-    const defaults = getInitialInstructionsForPlan(subscriptionPlan);
-    const adminTemplate = templatesByPlan[subscriptionPlan]?.trim() ?? "";
-    const seedInstructions = adminTemplate || defaults.instructions;
-
-    await db.insert(agentConfigs).values({
-      userId: created.id,
-      instructions: seedInstructions,
-      greetingInstructions: defaults.greeting,
+    // Crée le tenant (users + agent_config). emailVerified=false → gate
+    // /verify-email actif pour le signup email/mdp (cf. logique ci-dessous).
+    const created = await provisionTenant({
+      email,
+      displayName,
+      plan: subscriptionPlan,
+      locale,
+      emailVerified: false,
+      passwordHash: hash,
     });
 
     // Email verification gate : crée un code 4 chiffres, l'envoie par mail.
@@ -156,6 +133,24 @@ export default async function SignupPage(props: {
     }
   }
 
+  async function startGoogleSignup(formData: FormData) {
+    "use server";
+    // Le plan coché et la locale sont transmis au callback signIn Google via
+    // des cookies courts (httpOnly, 10 min). Voir auth.ts → callbacks.signIn.
+    const planRaw = String(formData.get("plan") ?? "");
+    const plan = isValidPlanKey(planRaw) ? planRaw : DEFAULT_PLAN_KEY;
+    const cookieStore = await cookies();
+    const opts = {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      maxAge: 600,
+    };
+    cookieStore.set("signup_plan", plan, opts);
+    cookieStore.set("signup_locale", locale, opts);
+    await signIn("google", { redirectTo: "/dashboard" });
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
       <div
@@ -167,6 +162,7 @@ export default async function SignupPage(props: {
         billingMode={billingMode}
         error={error}
         handleSignup={handleSignup}
+        startGoogleSignup={startGoogleSignup}
       />
     </main>
   );

@@ -14,6 +14,10 @@ import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
+import { WebsiteScanWizard } from "./website-scan-wizard";
+import { CampaignsWorkspace } from "./campaigns/campaigns-workspace";
+import { UpsellModal } from "./campaigns/upsell-modal";
+import type { PlanFeatures } from "@/lib/plan-features";
 import { PERSONALITY_KEYS } from "@/lib/personality";
 import {
   useRealtimeCatalog,
@@ -269,6 +273,7 @@ type DashboardStats = {
 export function ConfigForm({
   initial,
   isAdmin = false,
+  features,
   adminInheritablePreview = "",
   planLabel = "",
   primaryPhone = null,
@@ -280,6 +285,9 @@ export function ConfigForm({
 }: {
   initial: FormState;
   isAdmin?: boolean;
+  /** Features actives pour le plan du tenant (gating tuile campagnes).
+   *  Absent en mode admin-sur-tenant : le gating retombe alors sur isAdmin. */
+  features?: PlanFeatures;
   adminInheritablePreview?: string;
   planLabel?: string;
   primaryPhone?: string | null;
@@ -305,6 +313,13 @@ export function ConfigForm({
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTile, setActiveTile] = useState<string | null>(null);
+
+  // Centre d'appels sortant : visible sur tous les plans, mais workspace
+  // ouvrable seulement si la feature est active (plan premium) OU admin.
+  // Sinon clic → modal d'upsell.
+  const campaignsEnabled = isAdmin || features?.outbound_campaigns === true;
+  const [campaignsOpen, setCampaignsOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
   // un flash d'ordre par défaut → réordonné côté client au 1er paint).
@@ -533,6 +548,25 @@ export function ConfigForm({
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      ),
+    },
+    // Tuile "Centre d'appels sortant" — TOUJOURS visible (tous les plans),
+    // mais verrouillée hors premium/admin (clic → upsell). Premier pattern
+    // "shown-but-locked" du dashboard. Workspace = modal plein écran.
+    {
+      id: "campaigns" as const,
+      label: t("campaignsTileLabel"),
+      tagline: t("campaignsTileTagline"),
+      summary: campaignsEnabled
+        ? t("campaignsTileSummary")
+        : t("campaignsTileLocked"),
+      accent: "from-[#f97316] to-[#db2777]",
+      locked: !campaignsEnabled,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M3 11l18-5v12L3 14v-3z" />
+          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
         </svg>
       ),
     },
@@ -904,9 +938,16 @@ export function ConfigForm({
                 key={tile.id}
                 tile={tile}
                 active={activeTile === tile.id}
-                onClick={() =>
-                  setActiveTile((curr) => (curr === tile.id ? null : tile.id))
-                }
+                onClick={() => {
+                  // La tuile campagnes ouvre un workspace modal (ou l'upsell
+                  // si verrouillée), pas le panneau inline classique.
+                  if (tile.id === "campaigns") {
+                    if (campaignsEnabled) setCampaignsOpen(true);
+                    else setUpsellOpen(true);
+                    return;
+                  }
+                  setActiveTile((curr) => (curr === tile.id ? null : tile.id));
+                }}
                 delay={300 + i * 60}
                 dragging={dragTileId === tile.id}
                 dropTarget={dragOverTileId === tile.id && dragTileId !== tile.id}
@@ -1051,6 +1092,18 @@ export function ConfigForm({
           </button>
         </div>
       </div>
+
+      {/* Centre d'appels sortant — workspace plein écran (premium/admin) ou
+       *  modal d'upsell (plans inférieurs). Montés au niveau racine du form
+       *  pour s'afficher en overlay au-dessus de toute la config. */}
+      {campaignsEnabled && (
+        <CampaignsWorkspace
+          open={campaignsOpen}
+          onClose={() => setCampaignsOpen(false)}
+          asUserId={asUserId}
+        />
+      )}
+      <UpsellModal open={upsellOpen} onClose={() => setUpsellOpen(false)} />
     </form>
   );
 }
@@ -1068,6 +1121,9 @@ type TileDef = {
    *  sur un tenant — la tuile elle-même affiche un badge "ADMIN" pour
    *  rappeler que le tenant ne voit pas cette section sur son /dashboard. */
   adminOnly?: boolean;
+  /** Si true, la tuile est visible mais verrouillée (feature premium non
+   *  active) — affiche un cadenas + ruban "PRO", clic → modal d'upsell. */
+  locked?: boolean;
 };
 
 /** Badge violet "ADMIN" — pour marquer les features/UI visibles
@@ -1178,6 +1234,18 @@ function Tile({
           {tile.icon}
         </span>
         {tile.adminOnly && <AdminBadge size="xs" />}
+        {tile.locked && (
+          <span
+            title="Disponible sur le plan Centre d'appels pro"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-br ${tile.accent} px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5" aria-hidden>
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            PRO
+          </span>
+        )}
       </div>
       <div className="relative w-full min-w-0">
         <p className="text-base font-extrabold tracking-tight text-[#18181b]">
@@ -1746,8 +1814,44 @@ function BusinessPanel({
   const patch = (partial: Partial<BusinessConfig>) =>
     update("business", { ...business, ...partial });
 
+  const [scanOpen, setScanOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Auto-remplissage depuis le site web du tenant (plusieurs sous-agents). */}
+      <button
+        type="button"
+        onClick={() => setScanOpen(true)}
+        className="group flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#c4b5fd] bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] px-4 py-3.5 text-left transition hover:border-[#a78bfa] hover:shadow-sm"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#6366f1] to-[#7c3aed] text-white shadow-sm">
+            ✨
+          </span>
+          <span>
+            <span className="block text-sm font-extrabold tracking-tight text-[#4c1d95]">
+              {t("scanWebsiteTitle")}
+            </span>
+            <span className="block text-[12px] text-[#7c3aed]/80">
+              {t("scanWebsiteSubtitle")}
+            </span>
+          </span>
+        </span>
+        <span className="shrink-0 rounded-lg bg-white/70 px-3 py-1.5 text-[12px] font-bold text-[#7c3aed] transition group-hover:bg-white">
+          {t("scanWebsiteCta")}
+        </span>
+      </button>
+
+      <WebsiteScanWizard
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        existingBusiness={business}
+        onApply={(nextBusiness, primaryLanguage) => {
+          update("business", nextBusiness);
+          if (primaryLanguage) update("primaryLanguage", primaryLanguage);
+        }}
+      />
+
       <IdentitySection
         identity={business.identity}
         ownerWhatsapp={form.ownerWhatsapp}
