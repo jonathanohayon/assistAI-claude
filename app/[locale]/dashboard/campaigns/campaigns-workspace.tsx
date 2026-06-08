@@ -10,8 +10,8 @@
  */
 
 import { motion } from "motion/react";
-import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DEFAULT_CALL_WINDOW,
@@ -35,13 +35,22 @@ import { StatusPill } from "./_ui";
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
 
-function emptyDraft(): CampaignDraft {
+// Les 3 étapes de l'editor, dans l'ordre, pour le stepper.
+const STEPS: { key: EditorTab; n: number }[] = [
+  { key: "setup", n: 1 },
+  { key: "contacts", n: 2 },
+  { key: "launch", n: 3 },
+];
+
+function emptyDraft(locale: string, defaultName: string): CampaignDraft {
   return {
-    name: "",
+    name: defaultName,
     goalPreset: "cold",
     objective: "",
     fromNumber: "",
-    persona: {},
+    // Valeurs par défaut de la persona : agent "Sarah", voix "marin",
+    // langue = celle de l'utilisateur. Éditables dans l'étape "Agent / voix".
+    persona: { agentName: "Sarah", voice: "marin", language: locale },
     extractionSchema: [],
     concurrency: DEFAULT_CONCURRENCY,
     retryRules: { ...DEFAULT_RETRY_RULES },
@@ -59,6 +68,7 @@ export function CampaignsWorkspace({
   asUserId?: string;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const locale = useLocale();
   const catalog = useRealtimeCatalog();
   const voices = useMemo(() => voicesForCatalog(catalog, ""), [catalog]);
 
@@ -70,10 +80,25 @@ export function CampaignsWorkspace({
   const [fromNumbers, setFromNumbers] = useState<string[]>([]);
 
   // Campagne en cours d'édition.
-  const [draft, setDraft] = useState<CampaignDraft>(emptyDraft());
+  const [draft, setDraft] = useState<CampaignDraft>(() =>
+    emptyDraft(locale, t("newCampaign")),
+  );
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Au montage (= à l'ouverture, le composant est remonté via key), on amène
+  // le panneau dans le viewport sous le header sticky du site (scroll-mt).
+  const rootRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const id = setTimeout(
+      () => el.scrollIntoView({ behavior: "smooth", block: "start" }),
+      80,
+    );
+    return () => clearTimeout(id);
+  }, []);
 
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -133,7 +158,7 @@ export function CampaignsWorkspace({
   }, [open, qs, t]);
 
   const openNew = () => {
-    setDraft(emptyDraft());
+    setDraft(emptyDraft(locale, t("newCampaign")));
     setActiveStatus("draft");
     setSaveError(null);
     setTab("setup");
@@ -202,13 +227,17 @@ export function CampaignsWorkspace({
 
   return (
     <motion.section
+      ref={rootRef}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="mt-5 flex w-full flex-col overflow-hidden rounded-[2rem] border border-[#e2e8f0] bg-[#f8fafc] shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)]"
+      className="mt-5 flex w-full scroll-mt-24 flex-col rounded-[2rem] border border-[#e2e8f0] bg-[#f8fafc] shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)] isolate"
     >
-          {/* Header dégradé chaud */}
-          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
+          {/* Header dégradé chaud — sticky SOUS le header du site (top-0 z-40)
+           *  pour rester visible pendant le scroll du panneau et ne jamais
+           *  entrer en collision avec lui. overflow-hidden conservé ici (clip
+           *  du halo + coins arrondis du haut). */}
+          <div className="sticky top-[56px] z-20 shrink-0 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white sm:top-[64px]">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -247,33 +276,80 @@ export function CampaignsWorkspace({
               </button>
             </div>
 
-            {/* Onglets de l'editor */}
+            {/* Stepper 1·2·3 — rend les 3 étapes explicites (numéro, libellé,
+             *  état fait/actif/verrouillé, ligne de progression). */}
             {view === "editor" && (
-              <div className="relative mt-3 flex gap-1">
-                {(["setup", "contacts", "launch"] as EditorTab[]).map((tb) => {
-                  const locked = tb !== "setup" && !savedCampaign;
-                  const active = tab === tb;
+              <div className="relative mt-4 flex items-center">
+                {STEPS.map((s, i) => {
+                  const locked = s.key !== "setup" && !savedCampaign;
+                  const active = tab === s.key;
+                  const done =
+                    !active &&
+                    (s.key === "setup"
+                      ? savedCampaign
+                      : s.key === "contacts"
+                        ? (currentStats?.total ?? 0) > 0
+                        : activeStatus === "running" ||
+                          activeStatus === "completed");
                   return (
-                    <button
-                      key={tb}
-                      onClick={() => !locked && setTab(tb)}
-                      disabled={locked}
-                      className={`rounded-t-lg px-3 py-1.5 text-[12px] font-bold transition ${
-                        active
-                          ? "bg-[#f8fafc] text-[#db2777]"
-                          : locked
-                            ? "cursor-not-allowed text-white/40"
-                            : "text-white/85 hover:bg-white/10"
-                      }`}
+                    <div
+                      key={s.key}
+                      className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}
                     >
-                      {t(
-                        tb === "setup"
-                          ? "stepSetup"
-                          : tb === "contacts"
-                            ? "stepContacts"
-                            : "stepLaunch",
+                      <button
+                        type="button"
+                        onClick={() => !locked && setTab(s.key)}
+                        disabled={locked}
+                        aria-current={active ? "step" : undefined}
+                        className={`group flex items-center gap-2 ${
+                          locked ? "cursor-not-allowed" : "cursor-pointer"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold transition ${
+                            active
+                              ? "bg-white text-[#db2777] shadow-sm ring-2 ring-white/60"
+                              : done
+                                ? "bg-white/25 text-white"
+                                : locked
+                                  ? "bg-white/10 text-white/40"
+                                  : "bg-white/15 text-white"
+                          }`}
+                        >
+                          {done ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            s.n
+                          )}
+                        </span>
+                        <span
+                          className={`whitespace-nowrap text-[12px] font-bold transition ${
+                            active
+                              ? "text-white"
+                              : locked
+                                ? "text-white/40"
+                                : "text-white/85"
+                          }`}
+                        >
+                          {t(
+                            s.key === "setup"
+                              ? "stepSetup"
+                              : s.key === "contacts"
+                                ? "stepContacts"
+                                : "stepLaunch",
+                          )}
+                        </span>
+                      </button>
+                      {i < STEPS.length - 1 && (
+                        <span
+                          className={`mx-2 h-px flex-1 rounded ${
+                            done ? "bg-white/60" : "bg-white/25"
+                          }`}
+                        />
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -281,8 +357,10 @@ export function CampaignsWorkspace({
           </div>
 
           {/* Body — hauteur naturelle (la page scrolle), pas de hauteur fixe
-           *  d'overlay : c'est ce qui rend le panneau pleinement responsive. */}
-          <div className="px-5 py-5 sm:px-6">
+           *  d'overlay : c'est ce qui rend le panneau pleinement responsive.
+           *  rounded-b : coins bas propres (section sans overflow-hidden pour
+           *  permettre le header sticky). */}
+          <div className="rounded-b-[2rem] px-5 py-5 sm:px-6">
             {view === "list" && (
               <CampaignList
                 campaigns={list}
@@ -334,7 +412,7 @@ export function CampaignsWorkspace({
 
           {/* Footer (editor / setup) — bouton créer/sauver */}
           {view === "editor" && tab === "setup" && (
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
+            <div className="flex shrink-0 items-center justify-between gap-3 rounded-b-[2rem] border-t border-[#e2e8f0] bg-white px-6 py-3.5">
               <span className="text-[12px] font-semibold text-[#dc2626]">
                 {saveError ?? ""}
               </span>
