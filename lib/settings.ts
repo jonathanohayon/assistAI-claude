@@ -85,6 +85,9 @@ export const SETTING_KEYS = {
   // JSON map plan → array d'IDs. Chaque plan peut avoir son propre ordre
   // de blocs. Fallback sur singleton legacy si plan absent.
   PROMPT_BLOCK_ORDER_BY_PLAN: "prompt_block_order_by_plan",
+  // JSON CostRates — rate card USD pour l'estimation des coûts (admin
+  // Finance). Vide → DEFAULT_COST_RATES. Voir lib/finance/rates.ts.
+  COST_RATES: "cost_rates",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
