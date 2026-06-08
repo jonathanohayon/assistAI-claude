@@ -99,6 +99,7 @@ export function ContactsImportStep({
   const [sheetUrl, setSheetUrl] = useState("");
   const [sheetRange, setSheetRange] = useState("A:Z");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [result, setResult] = useState<{
     inserted: number;
     duplicates: number;
@@ -271,10 +272,32 @@ export function ContactsImportStep({
               if (f) void handleFile(f);
             }}
           />
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#fdba74] bg-[#fff7ed] px-6 py-8 text-center transition hover:bg-[#ffedd5]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) void handleFile(f);
+            }}
+            className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition ${
+              dragOver
+                ? "border-[#ea580c] bg-[#ffedd5] ring-2 ring-[#fdba74]"
+                : "border-[#fdba74] bg-[#fff7ed] hover:bg-[#ffedd5]"
+            }`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-[#ea580c]">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
@@ -282,7 +305,7 @@ export function ContactsImportStep({
             <span className="text-[13px] font-semibold text-[#9a3412]">
               {parsing ? t("fileParsing") : t("fileDrop")}
             </span>
-          </button>
+          </div>
         </div>
       )}
 
