@@ -1083,17 +1083,6 @@ export function ConfigForm({
             </div>
           )}
 
-          {/* Centre d'appels sortant — rendu INLINE en dessous de la grille,
-           *  comme les autres panneaux (plus de modal plein écran : évite les
-           *  soucis de hauteur/responsive sur mobile et desktop). */}
-          {campaignsEnabled && (
-            <CampaignsWorkspace
-              key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
-              open={campaignsOpen}
-              onClose={() => setCampaignsOpen(false)}
-              asUserId={asUserId}
-            />
-          )}
         </section>
       </div>
 
@@ -1137,6 +1126,18 @@ export function ConfigForm({
           </button>
         </div>
       </div>
+
+      {/* Centre d'appels sortant — modal overlay (au-dessus du header du site,
+       *  responsive max-h + scroll interne). Monté au niveau racine du form
+       *  pour un positionnement `fixed` fiable (pas d'ancêtre transformé). */}
+      {campaignsEnabled && (
+        <CampaignsWorkspace
+          key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
+          open={campaignsOpen}
+          onClose={() => setCampaignsOpen(false)}
+          asUserId={asUserId}
+        />
+      )}
 
       {/* Upsell (plans sans le centre d'appels sortant) — reste un modal. */}
       <UpsellModal open={upsellOpen} onClose={() => setUpsellOpen(false)} />

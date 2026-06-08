@@ -11,7 +11,7 @@
 
 import { motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   DEFAULT_CALL_WINDOW,
@@ -87,18 +87,19 @@ export function CampaignsWorkspace({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Au montage (= à l'ouverture, le composant est remonté via key), on amène
-  // le panneau dans le viewport sous le header sticky du site (scroll-mt).
-  const rootRef = useRef<HTMLElement | null>(null);
+  // Modal ouvert : verrouille le scroll de l'arrière-plan + Échap pour fermer.
   useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const id = setTimeout(
-      () => el.scrollIntoView({ behavior: "smooth", block: "start" }),
-      80,
-    );
-    return () => clearTimeout(id);
-  }, []);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -226,18 +227,27 @@ export function CampaignsWorkspace({
   const currentStats = list.find((c) => c.id === draft.id)?.stats;
 
   return (
-    <motion.section
-      ref={rootRef}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="mt-5 flex w-full scroll-mt-24 flex-col rounded-[2rem] border border-[#e2e8f0] bg-[#f8fafc] shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)] isolate"
-    >
-          {/* Header dégradé chaud — sticky SOUS le header du site (top-0 z-40)
-           *  pour rester visible pendant le scroll du panneau et ne jamais
-           *  entrer en collision avec lui. overflow-hidden conservé ici (clip
-           *  du halo + coins arrondis du haut). */}
-          <div className="sticky top-[56px] z-20 shrink-0 overflow-hidden rounded-t-[2rem] bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white sm:top-[64px]">
+    // Overlay AU-DESSUS du header du site (z-40) → aucune collision possible.
+    // Bottom-sheet sur mobile (items-end), centré sur desktop. Hauteur max-h
+    // (pas figée) + scroll interne du body → pleinement responsive.
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
+      <motion.div
+        className="absolute inset-0 bg-[#0f172a]/55 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={onClose}
+      />
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:max-h-[88vh] sm:rounded-3xl"
+      >
+          {/* Header dégradé chaud (haut du modal, reste visible — le body scrolle
+           *  en interne). overflow-hidden : clip du halo + coins arrondis. */}
+          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -356,11 +366,9 @@ export function CampaignsWorkspace({
             )}
           </div>
 
-          {/* Body — hauteur naturelle (la page scrolle), pas de hauteur fixe
-           *  d'overlay : c'est ce qui rend le panneau pleinement responsive.
-           *  rounded-b : coins bas propres (section sans overflow-hidden pour
-           *  permettre le header sticky). */}
-          <div className="rounded-b-[2rem] px-5 py-5 sm:px-6">
+          {/* Body — scroll interne (le reste du modal reste fixe). min-h-0
+           *  indispensable pour que flex-1 + overflow fonctionnent. */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
             {view === "list" && (
               <CampaignList
                 campaigns={list}
@@ -412,7 +420,7 @@ export function CampaignsWorkspace({
 
           {/* Footer (editor / setup) — bouton créer/sauver */}
           {view === "editor" && tab === "setup" && (
-            <div className="flex shrink-0 items-center justify-between gap-3 rounded-b-[2rem] border-t border-[#e2e8f0] bg-white px-6 py-3.5">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
               <span className="text-[12px] font-semibold text-[#dc2626]">
                 {saveError ?? ""}
               </span>
@@ -429,6 +437,7 @@ export function CampaignsWorkspace({
               </button>
             </div>
           )}
-        </motion.section>
+      </motion.div>
+    </div>
   );
 }
