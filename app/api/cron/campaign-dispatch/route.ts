@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { logEvent } from "@/lib/logger";
-import { claimCampaignJobs, requeueContact } from "@/lib/campaigns/claim";
-import { dialCampaignContact } from "@/lib/livekit-sip-outbound";
+import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 
 export const dynamic = "force-dynamic";
 
@@ -27,41 +25,6 @@ export async function GET(req: NextRequest) {
     50,
   );
 
-  const jobs = await claimCampaignJobs(limit);
-  let dialed = 0;
-  let failed = 0;
-
-  for (const job of jobs) {
-    const roomName = `campaign-${job.contactId}-${job.attempts}`;
-    try {
-      await dialCampaignContact({
-        phoneNumber: job.phoneNumber,
-        fromNumber: job.fromNumber,
-        roomName,
-        campaignId: job.campaignId,
-        contactId: job.contactId,
-        userId: job.userId,
-      });
-      dialed++;
-    } catch (e) {
-      failed++;
-      // Échec d'origination AVANT toute conversation → on repose en file
-      // (le worker n'a pas pris la main, donc pas de campaign_calls inséré).
-      await requeueContact(job.contactId);
-      await logEvent({
-        source: "agent",
-        event: "campaign_dial_failed",
-        message: `Échec d'origination ${job.phoneNumber}`,
-        level: "warn",
-        userId: job.userId,
-        metadata: {
-          campaignId: job.campaignId,
-          contactId: job.contactId,
-          error: e instanceof Error ? e.message : String(e),
-        },
-      });
-    }
-  }
-
-  return NextResponse.json({ ok: true, claimed: jobs.length, dialed, failed });
+  const result = await dispatchDueJobs(limit);
+  return NextResponse.json({ ok: true, ...result });
 }

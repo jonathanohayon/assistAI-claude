@@ -20,6 +20,9 @@ export function CampaignLaunch({
 }) {
   const t = useTranslations("DashboardCampaigns");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<
+    { kind: "ok" | "warn" | "err"; msg: string } | null
+  >(null);
 
   const total = stats?.total ?? 0;
   const canStart = total > 0;
@@ -27,6 +30,7 @@ export function CampaignLaunch({
   const act = async (action: string) => {
     if (busy) return;
     setBusy(true);
+    setNotice(null);
     try {
       const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
       const res = await fetch(
@@ -38,8 +42,27 @@ export function CampaignLaunch({
         },
       );
       if (res.ok) {
-        const data = (await res.json()) as { campaign: { status: string } };
+        const data = (await res.json()) as {
+          campaign: { status: string };
+          dispatch?:
+            | { claimed: number; dialed: number; failed: number }
+            | { error: string };
+        };
         onChanged(data.campaign.status);
+        // Feedback explicite au démarrage : sinon "rien ne se passe" si rien
+        // n'est dialé (hors fenêtre d'appel, config sortante manquante…).
+        if (action === "start") {
+          const d = data.dispatch;
+          if (d && "error" in d) {
+            setNotice({ kind: "err", msg: t("launchDialFailed") });
+          } else if (d && d.dialed > 0) {
+            setNotice({ kind: "ok", msg: t("launchDialing", { count: d.dialed }) });
+          } else if (d && d.failed > 0) {
+            setNotice({ kind: "err", msg: t("launchDialFailed") });
+          } else {
+            setNotice({ kind: "warn", msg: t("launchNoneClaimed") });
+          }
+        }
       }
     } catch {
       /* noop */
@@ -94,6 +117,20 @@ export function CampaignLaunch({
           </button>
         )}
       </div>
+
+      {notice && (
+        <div
+          className={`rounded-xl border px-4 py-2.5 text-[12px] ${
+            notice.kind === "ok"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : notice.kind === "warn"
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {notice.msg}
+        </div>
+      )}
     </div>
   );
 }

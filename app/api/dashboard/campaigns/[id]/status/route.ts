@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
+import { dispatchDueJobs, type DispatchResult } from "@/lib/campaigns/dispatch";
+import { resolveTargetUserId } from "@/lib/campaigns/scope";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -69,5 +70,29 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     metadata: { campaignId: id, action, status: rule.to },
   });
 
-  return NextResponse.json({ campaign: updated });
+  // Démarrage : on lance immédiatement le dispatcher (claim + dial) au lieu de
+  // dépendre uniquement du cron externe. Borné à la concurrence de la campagne.
+  // Guardé : un échec de dispatch ne doit pas annuler le passage en "running"
+  // (le cron pourra reprendre). Le résultat est renvoyé au client pour feedback
+  // (claimed=0 → hors fenêtre d'appel / aucun contact dû ; failed>0 → config
+  // sortante manquante ou erreur d'origination LiveKit).
+  let dispatch: DispatchResult | { error: string } | undefined;
+  if (rule.to === "running") {
+    try {
+      const limit = Math.min(Math.max(campaign.concurrency || 3, 1), 50);
+      dispatch = await dispatchDueJobs(limit);
+    } catch (e) {
+      dispatch = { error: e instanceof Error ? e.message : "dispatch_failed" };
+      await logEvent({
+        source: "web",
+        event: "campaign_dispatch_kick_failed",
+        message: `Kick dispatch immédiat échoué pour ${campaign.name}`,
+        level: "warn",
+        userId: r.userId,
+        metadata: { campaignId: id, error: (dispatch as { error: string }).error },
+      });
+    }
+  }
+
+  return NextResponse.json({ campaign: updated, dispatch });
 }
