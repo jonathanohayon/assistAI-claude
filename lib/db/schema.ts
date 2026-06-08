@@ -54,6 +54,19 @@ export const users = pgTable("users", {
   // paiement est en vol (user sur la page HYP au moment où le trial expire).
   deletionLockedUntil: timestamp("deletion_locked_until", { withTimezone: true }),
 
+  // ─ Abonnement : gestion (cancel / renouvellement / changement de plan) ─
+  subscriptionPeriod: text("subscription_period"),
+  autoRenew: boolean("auto_renew").notNull().default(true),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  scheduledPlan: text("scheduled_plan"),
+  scheduledPlanPeriod: text("scheduled_plan_period"),
+  scheduledPlanAt: timestamp("scheduled_plan_at", { withTimezone: true }),
+  // Carte enregistrée via tokenisation HYP (HK/J5) — Phase D, gated.
+  hypToken: text("hyp_token"),
+  hypTokenExp: text("hyp_token_exp"),
+  cardLast4: text("card_last4"),
+  cardBrand: text("card_brand"),
+
   // Per-tenant Google integration. When refresh_token is null the agent
   // tools fall back to the global Google credentials in env. Calendar +
   // Sheets share the same OAuth scopes so one refresh_token covers both.
@@ -428,6 +441,8 @@ export const paymentOrders = pgTable("payment_orders", {
   // Plan/période achetés — figés au moment de la création de l'ordre.
   planKey: text("plan_key").notNull(),
   period: text("period").notNull(), // 'monthly' | 'annual'
+  // Nature de l'ordre pour les reçus/audit : 'subscription' | 'renewal' | 'plan_change'.
+  kind: text("kind").notNull().default("subscription"),
   // Devise résolue côté serveur depuis users.locale (he→ILS, sinon EUR).
   currency: text("currency").notNull(), // 'ILS' | 'EUR'
   coin: text("coin").notNull(), // '1' (ILS) | '3' (EUR) — param HYP `Coin`

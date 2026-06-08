@@ -148,6 +148,13 @@
       "when": 1780922904012,
       "tag": "0020_premium_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780952806024,
+      "tag": "0021_public_paper_doll",
+      "breakpoints": true
     }
   ]
 }

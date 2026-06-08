@@ -6,7 +6,7 @@ import type { Period } from "@/lib/billing-pricing";
 import { db } from "@/lib/db";
 import { paymentOrders, users } from "@/lib/db/schema";
 import { sendSubscriptionConfirmationEmail } from "@/lib/email";
-import { verifyPayment } from "@/lib/hyp";
+import { extractCardFromVerify, verifyPayment } from "@/lib/hyp";
 import { logEvent } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -162,15 +162,27 @@ export async function GET(req: NextRequest) {
 
       const newPaidUntil = nextPaidUntil(user?.paidUntil, now, period);
 
+      // Capture token récurrent + carte masquée si HYP les renvoie (HK=True).
+      // Stockage seul — la recharge auto par token reste gated (Phase D).
+      const card = extractCardFromVerify(verify.raw);
+
       await tx
         .update(users)
         .set({
           subscriptionStatus: "active",
           subscriptionPlan: order.planKey,
+          subscriptionPeriod: period,
           paidUntil: newPaidUntil,
+          // Un paiement réussi réactive le renouvellement (annule un cancel).
+          autoRenew: true,
+          cancelledAt: null,
           trialEndsAt: null,
           trialWarningSentAt: null,
           deletionLockedUntil: null,
+          ...(card.token ? { hypToken: card.token } : {}),
+          ...(card.tokenExp ? { hypTokenExp: card.tokenExp } : {}),
+          ...(card.last4 ? { cardLast4: card.last4 } : {}),
+          ...(card.brand ? { cardBrand: card.brand } : {}),
         })
         .where(eq(users.id, order.userId));
 
