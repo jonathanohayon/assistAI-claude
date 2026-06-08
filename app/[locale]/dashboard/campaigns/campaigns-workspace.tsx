@@ -12,6 +12,7 @@
 import { motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   DEFAULT_CALL_WINDOW,
@@ -86,6 +87,13 @@ export function CampaignsWorkspace({
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Portal monté côté client uniquement (évite tout souci SSR + garantit que
+  // le modal est rendu dans <body>, donc `fixed` = viewport, immunisé contre
+  // un éventuel ancêtre transformé qui le confinerait.
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
 
   // Modal ouvert : verrouille le scroll de l'arrière-plan + Échap pour fermer.
   useEffect(() => {
@@ -221,15 +229,16 @@ export function CampaignsWorkspace({
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const savedCampaign = !!draft.id;
   const currentStats = list.find((c) => c.id === draft.id)?.stats;
 
-  return (
+  return createPortal(
     // Overlay AU-DESSUS du header du site (z-40) → aucune collision possible.
     // Bottom-sheet sur mobile (items-end), centré sur desktop. Hauteur max-h
     // (pas figée) + scroll interne du body → pleinement responsive.
+    // Rendu dans <body> via portal → `fixed` = viewport garanti.
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
       <motion.div
         className="absolute inset-0 bg-[#0f172a]/55 backdrop-blur-sm"
@@ -438,6 +447,7 @@ export function CampaignsWorkspace({
             </div>
           )}
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   );
 }
