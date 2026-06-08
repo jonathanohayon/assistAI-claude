@@ -19,6 +19,7 @@ import type { PlanPricingMap } from "@/lib/plan-pricing";
 
 import { AdminTable } from "./admin-table";
 import { BlockOrderForm } from "./block-order-form";
+import FinanceDashboard from "./finance/FinanceDashboard";
 import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
 import { PlanPricingForm } from "./plan-pricing-form";
@@ -32,7 +33,8 @@ type TileId =
   | "block-order"
   | "features"
   | "pricing"
-  | "users";
+  | "users"
+  | "finance";
 
 interface TileDef {
   id: TileId;
@@ -250,6 +252,19 @@ export function AdminShell(props: AdminShellProps) {
         </svg>
       ),
     },
+    {
+      id: "finance",
+      label: "Finance",
+      tagline: "Coûts OpenAI, Twilio, WhatsApp · revenu, marge · par tenant.",
+      summary: "Coûts estimés · global & par tenant",
+      accent: "from-[#059669] to-[#10b981]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M3 3v18h18" />
+          <path d="M7 15l4-4 3 3 5-6" />
+        </svg>
+      ),
+    },
   ] as const;
 
   // Ordre custom des tiles (drag & drop persistant en localStorage).
@@ -422,6 +437,7 @@ export function AdminShell(props: AdminShellProps) {
             {active === "users" && (
               <AdminTable rows={props.rows} currentUserId={props.currentUserId} />
             )}
+            {active === "finance" && <FinanceDashboard />}
           </div>
         </div>
       )}
