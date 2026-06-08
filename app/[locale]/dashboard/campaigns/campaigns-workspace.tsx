@@ -75,14 +75,16 @@ export function CampaignsWorkspace({
 
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
+  // setState uniquement après await → pas de setState synchrone (lint
+  // react-hooks/set-state-in-effect). `loading` part à true (état initial,
+  // remonté à chaque ouverture via key) et retombe à false en fin de fetch.
   const loadList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const res = await fetch(`/api/dashboard/campaigns${qs}`);
       if (!res.ok) throw new Error("load");
       const data = (await res.json()) as { campaigns: CampaignListItem[] };
       setList(data.campaigns ?? []);
+      setError(null);
     } catch {
       setError(t("loadError"));
     } finally {
@@ -90,29 +92,43 @@ export function CampaignsWorkspace({
     }
   }, [qs, t]);
 
-  // Charge la liste + les numéros caller-id à l'ouverture. Le composant est
-  // remonté (key) à chaque ouverture → la vue démarre sur "list" par défaut,
-  // donc pas de setState synchrone ici.
+  // Charge la liste + les numéros caller-id à l'ouverture. Fetches inline en
+  // .then (setState seulement dans les callbacks async, gardés par `cancelled`)
+  // pour rester clean vis-à-vis de react-hooks/set-state-in-effect. Le
+  // composant est remonté (key) à chaque ouverture → vue "list" par défaut.
   useEffect(() => {
     if (!open) return;
-    void loadList();
-    void (async () => {
-      try {
-        const res = await fetch(`/api/dashboard/channels${qs}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          channels?: Array<{ phoneNumber: string; channel?: string }>;
-        };
+    let cancelled = false;
+    fetch(`/api/dashboard/campaigns${qs}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
+      .then((data: { campaigns?: CampaignListItem[] }) => {
+        if (cancelled) return;
+        setList(data.campaigns ?? []);
+        setError(null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(t("loadError"));
+        setLoading(false);
+      });
+    fetch(`/api/dashboard/channels${qs}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch"))))
+      .then((data: { numbers?: Array<{ phoneNumber: string; channel: string }> }) => {
+        if (cancelled) return;
         setFromNumbers(
-          (data.channels ?? [])
-            .filter((c) => c.channel !== "whatsapp")
-            .map((c) => c.phoneNumber),
+          (data.numbers ?? [])
+            .filter((n) => n.channel === "pstn")
+            .map((n) => n.phoneNumber),
         );
-      } catch {
-        /* noop */
-      }
-    })();
-  }, [open, qs, loadList]);
+      })
+      .catch(() => {
+        /* silencieux : pas de numéros caller-id proposés */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, qs, t]);
 
   const openNew = () => {
     setDraft(emptyDraft());
