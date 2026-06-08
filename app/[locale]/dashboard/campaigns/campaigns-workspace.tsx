@@ -12,6 +12,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   DEFAULT_CALL_WINDOW,
@@ -80,6 +81,13 @@ export function CampaignsWorkspace({
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Portal monté côté client → modal rendu dans <body>, donc `fixed` = viewport
+  // garanti (immunisé contre un ancêtre transformé qui le confinerait et le
+  // couperait en haut).
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
 
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -201,14 +209,14 @@ export function CampaignsWorkspace({
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const savedCampaign = !!draft.id;
   const currentStats = list.find((c) => c.id === draft.id)?.stats;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
         <motion.div
           className="absolute inset-0 bg-[#0f172a]/55 backdrop-blur-sm"
           initial={{ opacity: 0 }}
@@ -222,7 +230,7 @@ export function CampaignsWorkspace({
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="relative z-10 flex h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:h-[92vh] sm:rounded-3xl"
+          className="relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:max-h-[88vh] sm:rounded-3xl"
         >
           {/* Header dégradé chaud */}
           <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
@@ -371,6 +379,7 @@ export function CampaignsWorkspace({
           )}
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
