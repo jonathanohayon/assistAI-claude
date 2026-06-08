@@ -14,9 +14,13 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
+import { PLANS } from "@/lib/plans";
+import { currentPeriodWindow } from "@/lib/subscription";
 
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
+import { TrialExpiredGate } from "./billing/trial-expired-gate";
 
 /**
  * "Sarah Cohen" → "SC" · "salon@prestige.com" → "S" · "" → "?"
@@ -68,6 +72,23 @@ export default async function DashboardLayout({
     return { label, urgency };
   })();
 
+  // Essai terminé et compte non payé → gate bloquant (choix formule + CB).
+  // Les admins n'y sont jamais soumis. Réutilise currentPeriodWindow.
+  const trialOver =
+    !!me &&
+    me.role !== "admin" &&
+    currentPeriodWindow(
+      {
+        subscriptionStatus: me.subscriptionStatus,
+        subscriptionPlan: me.subscriptionPlan,
+        subscriptionPeriod: me.subscriptionPeriod as "monthly" | "annual" | null,
+        trialEndsAt: me.trialEndsAt,
+        paidUntil: me.paidUntil,
+      },
+      new Date(),
+    ).kind === "expired";
+  const gatePricing = trialOver ? await getPlanPricingMap() : null;
+
   const googleConnected = Boolean(me?.googleRefreshToken);
   const planMatrix = await getPlanFeatureMatrix();
   const features = featuresForPlan(planMatrix, me?.subscriptionPlan);
@@ -89,6 +110,13 @@ export default async function DashboardLayout({
     <div className="relative min-h-screen">
       <AuroraBackground />
       <IdleWatcher />
+      {trialOver && gatePricing && (
+        <TrialExpiredGate
+          plans={[...PLANS]}
+          pricing={gatePricing}
+          logoutAction={handleLogout}
+        />
+      )}
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
