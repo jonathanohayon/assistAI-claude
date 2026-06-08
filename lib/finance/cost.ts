@@ -246,7 +246,7 @@ export async function computeFinanceStats(args: {
     db
       .select({
         period: truncExpr(calls.createdAt),
-        seconds: sql<number>`coalesce(sum(${calls.durationSeconds}),0)::int`,
+        seconds: sql<number>`coalesce(sum(jsonb_array_length(${calls.transcript}) * 6),0)::int`,
       })
       .from(calls)
       .where(and(...callConds))
@@ -487,7 +487,7 @@ async function computeTenantBreakdown(args: {
     db
       .select({
         userId: calls.userId,
-        seconds: sql<number>`coalesce(sum(${calls.durationSeconds}),0)::int`,
+        seconds: sql<number>`coalesce(sum(jsonb_array_length(${calls.transcript}) * 6),0)::int`,
       })
       .from(calls)
       .where(and(gte(calls.createdAt, from), lt(calls.createdAt, to)))
