@@ -28,6 +28,8 @@ import { CampaignList } from "./campaign-list";
 import { CampaignSetupStep } from "./campaign-setup-step";
 import { ContactsImportStep } from "./contacts-import-step";
 import { CampaignLaunch } from "./campaign-launch";
+import { CampaignMonitor } from "./campaign-monitor-step";
+import { CampaignResults } from "./campaign-results-step";
 import { StatusPill } from "./_ui";
 
 type View = "list" | "editor";
@@ -319,16 +321,24 @@ export function CampaignsWorkspace({
             )}
 
             {view === "editor" && tab === "launch" && draft.id && (
-              <CampaignLaunch
-                campaignId={draft.id}
-                asUserId={asUserId}
-                status={activeStatus}
-                stats={currentStats}
-                onChanged={(status) => {
-                  setActiveStatus(status);
-                  void loadList();
-                }}
-              />
+              <div className="space-y-5">
+                <CampaignLaunch
+                  campaignId={draft.id}
+                  asUserId={asUserId}
+                  status={activeStatus}
+                  stats={currentStats}
+                  onChanged={(status) => {
+                    setActiveStatus(status);
+                    void loadList();
+                  }}
+                />
+                <CampaignMonitor
+                  campaignId={draft.id}
+                  asUserId={asUserId}
+                  status={activeStatus}
+                />
+                <CampaignResults campaignId={draft.id} asUserId={asUserId} />
+              </div>
             )}
           </div>
 

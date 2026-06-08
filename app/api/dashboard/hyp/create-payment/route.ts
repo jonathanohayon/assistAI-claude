@@ -140,6 +140,10 @@ export async function POST(req: NextRequest) {
       email: user.email,
       clientName,
       clientLName,
+      // Émet un token récurrent (carte enregistrée) quand la tokenisation HYP
+      // est activée sur le masof. Gated : le contrat token doit être vérifié
+      // sur le masof avant d'activer le renouvellement auto (cf. spec Phase D).
+      issueToken: process.env.HYP_TOKENS_ENABLED === "1",
     });
 
     return NextResponse.json({ url });

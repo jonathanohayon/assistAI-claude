@@ -5,25 +5,6 @@ import { useTranslations } from "next-intl";
 
 import type { CampaignStats } from "@/lib/campaigns/types";
 
-function CountTile({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-center">
-      <p className={`text-2xl font-extrabold ${tone}`}>{value}</p>
-      <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-        {label}
-      </p>
-    </div>
-  );
-}
-
 export function CampaignLaunch({
   campaignId,
   asUserId,
@@ -69,13 +50,6 @@ export function CampaignLaunch({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <CountTile label={t("detailQueued")} value={stats?.queued ?? 0} tone="text-[#64748b]" />
-        <CountTile label={t("detailInFlight")} value={stats?.inFlight ?? 0} tone="text-[#ea580c]" />
-        <CountTile label={t("detailDone")} value={stats?.done ?? 0} tone="text-[#3730a3]" />
-        <CountTile label={t("detailConnected")} value={stats?.connected ?? 0} tone="text-[#16a34a]" />
-      </div>
-
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#fed7aa] bg-gradient-to-br from-[#fff7ed] to-[#fdf2f8] px-5 py-4">
         <div className="flex-1">
           <p className="text-[14px] font-bold text-[#9a3412]">

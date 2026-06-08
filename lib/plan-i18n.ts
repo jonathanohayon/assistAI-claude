@@ -13,7 +13,12 @@ import fr from "@/messages/fr.json";
 import he from "@/messages/he.json";
 import en from "@/messages/en.json";
 
-const MESSAGES: Record<Locale, typeof fr> = { fr, he, en };
+// `satisfies` (au lieu d'une annotation `Record<Locale, typeof fr>`) garantit
+// que toutes les locales sont présentes SANS forcer TS à comparer
+// structurellement les types JSON par-locale — comparaison qui déclenche
+// TS2719 ("two different types ... unrelated") dès que les fichiers messages
+// grossissent. Les valeurs sont de toute façon castées en `unknown` ci-dessous.
+const MESSAGES = { fr, he, en } satisfies Record<Locale, unknown>;
 
 interface PlanContent {
   name: string;

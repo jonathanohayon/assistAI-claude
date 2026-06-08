@@ -73,7 +73,38 @@ export type CreatePaymentInput = {
   clientName?: string;
   /** Nom de famille client. */
   clientLName?: string;
+  /**
+   * Demande l'émission d'un token récurrent (Hok Keva, `HK=True`) pour pouvoir
+   * recharger la carte plus tard sans la ressaisir. Le token + l'expiration
+   * reviennent dans la réponse VERIFY (cf. extractCardFromVerify). Phase D —
+   * activé via HYP_TOKENS_ENABLED côté create-payment.
+   */
+  issueToken?: boolean;
 };
+
+/**
+ * Extrait les infos carte/token d'une réponse VERIFY HYP, de façon défensive
+ * (les noms de champs varient selon la config du masof). Utilisé pour stocker
+ * un token récurrent + l'affichage "•••• 1234". Renvoie des champs null si
+ * absents — JAMAIS throw.
+ */
+export function extractCardFromVerify(raw: Record<string, string>): {
+  token: string | null;
+  tokenExp: string | null;
+  last4: string | null;
+  brand: string | null;
+} {
+  const token = raw.Token || raw.token || null;
+  // Expiration carte au format Yaad (Tokef, MMYY).
+  const tokenExp = raw.Tokef || raw.TokenExp || raw.tokef || null;
+  // Numéro masqué : Yaad renvoie souvent L4digit, sinon les 4 derniers d'un
+  // champ carte masqué.
+  const masked = raw.L4digit || raw.CCard || raw.CardNum || raw.Hesh || "";
+  const digits = masked.replace(/\D/g, "");
+  const last4 = digits.length >= 4 ? digits.slice(-4) : null;
+  const brand = raw.Brand || raw.CardComp || raw.CardType || null;
+  return { token, tokenExp, last4, brand };
+}
 
 /**
  * Construit l'URL de paiement HYP (page hébergée). Passe par APISign&What=SIGN
@@ -102,6 +133,9 @@ export async function createPaymentUrl(input: CreatePaymentInput): Promise<strin
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,
   });
+  // Token récurrent (Hok Keva) : demande à HYP d'émettre un token réutilisable
+  // pour les renouvellements futurs. Le token revient dans le VERIFY.
+  if (input.issueToken) params.set("HK", "True");
   if (input.email) params.set("email", input.email);
   // ClientName/ClientLName : la société de crédit refuse sans prénom NI nom
   // ("חובה להזין שם פרטי או משפחה"). Le template tmp court n'a pas de champ

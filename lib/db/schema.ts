@@ -54,6 +54,28 @@ export const users = pgTable("users", {
   // paiement est en vol (user sur la page HYP au moment où le trial expire).
   deletionLockedUntil: timestamp("deletion_locked_until", { withTimezone: true }),
 
+  // ─ Abonnement : gestion (cancel / renouvellement / changement de plan) ─
+  // Période de l'abonnement actif ('monthly' | 'annual'), posée au paiement.
+  // Sert au calcul du montant de renouvellement + à l'affichage billing.
+  subscriptionPeriod: text("subscription_period"),
+  // Renouvellement auto via token HYP (Phase D). True par défaut ; passe false
+  // quand le tenant annule (l'accès reste jusqu'à paidUntil puis 'expired').
+  autoRenew: boolean("auto_renew").notNull().default(true),
+  // Date à laquelle le tenant a annulé (accès conservé jusqu'à paidUntil).
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  // Downgrade programmé : prend effet à scheduledPlanAt (= paidUntil au moment
+  // de la programmation). Les upgrades sont immédiats (paiement), les downgrades
+  // sont différés en fin de période payée (pas de remboursement HYP).
+  scheduledPlan: text("scheduled_plan"),
+  scheduledPlanPeriod: text("scheduled_plan_period"),
+  scheduledPlanAt: timestamp("scheduled_plan_at", { withTimezone: true }),
+  // Carte enregistrée via tokenisation HYP (HK/J5) — Phase D. hypToken = token
+  // récurrent Yaad, hypTokenExp = Tokef (MMYY), cardLast4/cardBrand = affichage.
+  hypToken: text("hyp_token"),
+  hypTokenExp: text("hyp_token_exp"),
+  cardLast4: text("card_last4"),
+  cardBrand: text("card_brand"),
+
   // Per-tenant Google integration. When refresh_token is null the agent
   // tools fall back to the global Google credentials in env. Calendar +
   // Sheets share the same OAuth scopes so one refresh_token covers both.
@@ -220,6 +242,11 @@ export const calls = pgTable("calls", {
     .notNull()
     .default(sql`'[]'::jsonb`),
   summary: text("summary").notNull().default(""),
+
+  // Durée de l'appel en secondes (posée au POST /api/calls/end). Source des
+  // graphes d'usage billing (minutes consommées vs incluses). 0 pour les lignes
+  // historiques d'avant la migration — l'usage est forward-looking.
+  durationSeconds: integer("duration_seconds").notNull().default(0),
 
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),
@@ -425,6 +452,9 @@ export const paymentOrders = pgTable("payment_orders", {
   // Plan/période achetés — figés au moment de la création de l'ordre.
   planKey: text("plan_key").notNull(),
   period: text("period").notNull(), // 'monthly' | 'annual'
+  // Nature de l'ordre pour les reçus/audit : 'subscription' (1er paiement),
+  // 'renewal' (renouvellement auto par token), 'plan_change' (upgrade immédiat).
+  kind: text("kind").notNull().default("subscription"),
   // Devise résolue côté serveur depuis users.locale (he→ILS, sinon EUR).
   currency: text("currency").notNull(), // 'ILS' | 'EUR'
   coin: text("coin").notNull(), // '1' (ILS) | '3' (EUR) — param HYP `Coin`
