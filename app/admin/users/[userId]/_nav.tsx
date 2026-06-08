@@ -13,6 +13,7 @@ const TABS: ReadonlyArray<Tab> = [
   { hrefSuffix: "/calendar", label: "Calendrier" },
   { hrefSuffix: "/contacts", label: "CRM" },
   { hrefSuffix: "/logs", label: "Monitoring" },
+  { hrefSuffix: "/finance", label: "Finance" },
 ];
 
 // Mirror visuel de /[locale]/dashboard/_nav.tsx mais sans i18n et avec
