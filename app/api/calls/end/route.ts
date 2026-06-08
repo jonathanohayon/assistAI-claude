@@ -135,9 +135,16 @@ export async function POST(req: NextRequest) {
   }
   const { user, config: cfg } = tenant;
 
+  // Durée persistée pour les graphes d'usage billing (minutes consommées).
+  // Best-effort : clamp à un entier >= 0 ; 0 si non fournie / invalide.
+  const durationSeconds = Math.max(
+    0,
+    Math.round(Number(body.durationSeconds)) || 0,
+  );
+
   const [callRow] = await db
     .insert(calls)
-    .values({ userId: user.id, fromNumber, transcript, summary: "" })
+    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds })
     .returning();
 
   await logEvent({
