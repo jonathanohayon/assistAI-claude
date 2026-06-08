@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
 
 interface Ctx {
@@ -89,5 +90,17 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     metadata: { campaignId: id, action, status: rule.to },
   });
 
-  return NextResponse.json({ campaign: updated });
+  // Au démarrage, on compose immédiatement les contacts dus (dans la fenêtre
+  // horaire). Le cron /api/cron/campaign-dispatch prend le relais ensuite.
+  let dispatch: { claimed: number; dialed: number; failed: number } | { error: string } | undefined;
+  if (rule.to === "running") {
+    try {
+      const limit = Math.min(Math.max(campaign.concurrency || 3, 1), 50);
+      dispatch = await dispatchDueJobs(limit);
+    } catch (e) {
+      dispatch = { error: e instanceof Error ? e.message : "dispatch_failed" };
+    }
+  }
+
+  return NextResponse.json({ campaign: updated, dispatch });
 }
