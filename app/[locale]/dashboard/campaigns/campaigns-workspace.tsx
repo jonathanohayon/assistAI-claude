@@ -9,7 +9,7 @@
  * Monitor live + analytics animées sont branchés dans les phases suivantes.
  */
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -201,23 +201,12 @@ export function CampaignsWorkspace({
   const currentStats = list.find((c) => c.id === draft.id)?.stats;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-        <motion.div
-          className="absolute inset-0 bg-[#0f172a]/55 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        />
-        <motion.div
-          role="dialog"
-          aria-modal="true"
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="relative z-10 flex h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:h-[92vh] sm:rounded-3xl"
-        >
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="mt-5 flex w-full flex-col overflow-hidden rounded-[2rem] border border-[#e2e8f0] bg-[#f8fafc] shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)]"
+    >
           {/* Header dégradé chaud */}
           <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
@@ -291,8 +280,9 @@ export function CampaignsWorkspace({
             )}
           </div>
 
-          {/* Body */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          {/* Body — hauteur naturelle (la page scrolle), pas de hauteur fixe
+           *  d'overlay : c'est ce qui rend le panneau pleinement responsive. */}
+          <div className="px-5 py-5 sm:px-6">
             {view === "list" && (
               <CampaignList
                 campaigns={list}
@@ -361,8 +351,6 @@ export function CampaignsWorkspace({
               </button>
             </div>
           )}
-        </motion.div>
-      </div>
-    </AnimatePresence>
+        </motion.section>
   );
 }

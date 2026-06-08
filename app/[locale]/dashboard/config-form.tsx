@@ -960,15 +960,25 @@ export function ConfigForm({
               <Tile
                 key={tile.id}
                 tile={tile}
-                active={activeTile === tile.id}
+                active={
+                  tile.id === "campaigns"
+                    ? campaignsOpen
+                    : activeTile === tile.id
+                }
                 onClick={() => {
-                  // La tuile campagnes ouvre un workspace modal (ou l'upsell
-                  // si verrouillée), pas le panneau inline classique.
+                  // La tuile campagnes ouvre son workspace INLINE (en dessous
+                  // de la grille, comme les autres panneaux) — ou l'upsell si
+                  // verrouillée. On garde un seul panneau ouvert à la fois.
                   if (tile.id === "campaigns") {
-                    if (campaignsEnabled) setCampaignsOpen(true);
-                    else setUpsellOpen(true);
+                    if (!campaignsEnabled) {
+                      setUpsellOpen(true);
+                      return;
+                    }
+                    setActiveTile(null);
+                    setCampaignsOpen((o) => !o);
                     return;
                   }
+                  setCampaignsOpen(false);
                   setActiveTile((curr) => (curr === tile.id ? null : tile.id));
                 }}
                 delay={300 + i * 60}
@@ -1072,6 +1082,18 @@ export function ConfigForm({
               </div>
             </div>
           )}
+
+          {/* Centre d'appels sortant — rendu INLINE en dessous de la grille,
+           *  comme les autres panneaux (plus de modal plein écran : évite les
+           *  soucis de hauteur/responsive sur mobile et desktop). */}
+          {campaignsEnabled && (
+            <CampaignsWorkspace
+              key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
+              open={campaignsOpen}
+              onClose={() => setCampaignsOpen(false)}
+              asUserId={asUserId}
+            />
+          )}
         </section>
       </div>
 
@@ -1116,17 +1138,7 @@ export function ConfigForm({
         </div>
       </div>
 
-      {/* Centre d'appels sortant — workspace plein écran (premium/admin) ou
-       *  modal d'upsell (plans inférieurs). Montés au niveau racine du form
-       *  pour s'afficher en overlay au-dessus de toute la config. */}
-      {campaignsEnabled && (
-        <CampaignsWorkspace
-          key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
-          open={campaignsOpen}
-          onClose={() => setCampaignsOpen(false)}
-          asUserId={asUserId}
-        />
-      )}
+      {/* Upsell (plans sans le centre d'appels sortant) — reste un modal. */}
       <UpsellModal open={upsellOpen} onClose={() => setUpsellOpen(false)} />
     </form>
   );
