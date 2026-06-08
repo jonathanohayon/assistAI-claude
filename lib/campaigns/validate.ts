@@ -132,7 +132,9 @@ export function normalizePersona(v: unknown): CampaignPersona {
   if (str(p.greeting)) out.greeting = str(p.greeting);
   if (str(p.successCriteria)) out.successCriteria = str(p.successCriteria);
   // Fiche de connaissance métier (apprise depuis un/des site(s) web) + sources.
-  if (str(p.knowledge)) out.knowledge = str(p.knowledge);
+  // Cap dédié plus large que `str` (4000) : on veut garder TOUS les prix/détails.
+  if (typeof p.knowledge === "string" && p.knowledge.trim())
+    out.knowledge = p.knowledge.slice(0, 12_000);
   if (Array.isArray(p.knowledgeSources)) {
     const srcs = p.knowledgeSources
       .filter((s): s is string => typeof s === "string" && !!s.trim())

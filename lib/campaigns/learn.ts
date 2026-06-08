@@ -12,9 +12,10 @@ const MODEL =
   "gpt-5.4-mini";
 
 // Borne le contexte total envoyé au distillateur (coût/latence).
-const MAX_CONTEXT_CHARS = 60_000;
-// Borne la fiche produite (le prompt realtime doit rester compact).
-const MAX_KNOWLEDGE_CHARS = 3000;
+const MAX_CONTEXT_CHARS = 140_000;
+// Borne la fiche produite. Volontairement généreux : on veut conserver TOUS
+// les prix et les détails de l'offre, pas un résumé vague.
+const MAX_KNOWLEDGE_CHARS = 8000;
 export const MAX_LEARN_URLS = 5;
 
 const LANG_LABEL: Record<string, string> = {
@@ -77,16 +78,18 @@ export async function learnFromSites(
     };
   }
 
-  const system = `Tu es analyste commercial. À partir du contenu de site(s) web ci-dessous, rédige une FICHE DE CONNAISSANCE destinée à un agent vocal qui va VENDRE ce business au téléphone.
+  const system = `Tu es analyste commercial. À partir du contenu de site(s) web ci-dessous, rédige une FICHE DE CONNAISSANCE EXHAUSTIVE destinée à un agent vocal qui va VENDRE ce business au téléphone.
 
-Structure (en ${lang}, concis, factuel, puces) :
+Sois COMPLET, pas synthétique — l'agent doit pouvoir répondre précisément sur n'importe quel produit/prix. En ${lang}, en puces :
 - Activité : ce que fait/vend l'entreprise.
-- Offre : produits/services principaux AVEC prix si présents.
-- Arguments de vente : différenciateurs, bénéfices clients, preuves (avis, garanties, références).
-- Cible : à qui ça s'adresse.
-- Ton de marque + infos utiles (zones desservies, horaires, contact).
+- OFFRE DÉTAILLÉE : liste EXHAUSTIVE de TOUS les produits/services/formules trouvés, AVEC LEUR PRIX EXACT, durée, options et caractéristiques. Recopie chaque tarif tel quel (ex. "Coupe femme — 45€", "Forfait Pro — 99€/mois"). N'OMETS AUCUN PRIX présent dans le contenu.
+- Arguments de vente : différenciateurs, bénéfices clients, preuves (avis, garanties, certifications, références).
+- Objections fréquentes + réponses si le site en suggère.
+- Cible / clientèle.
+- Infos pratiques : zones desservies, horaires, contact, modalités (paiement, livraison, RDV).
+- Ton de marque (citations marketing clés du site).
 
-Règles : N'INVENTE RIEN — n'écris que ce qui est dans le contenu. Pas de blabla. ${MAX_KNOWLEDGE_CHARS} caractères max.`;
+Règles STRICTES : N'INVENTE RIEN — recopie uniquement ce qui est dans le contenu, surtout les prix. Préfère trop d'infos à pas assez (jusqu'à ${MAX_KNOWLEDGE_CHARS} caractères).`;
 
   try {
     const res = await fetch(OPENAI_CHAT_URL, {
