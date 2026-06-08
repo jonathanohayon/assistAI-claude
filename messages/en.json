@@ -1130,7 +1130,17 @@
     "upsellBullet4": "Beautiful animated analytics — funnel, sentiment, KPIs",
     "upsellPriceSuffix": "/mo",
     "upsellCta": "Upgrade to {plan}",
-    "upsellLater": "Maybe later"
+    "upsellLater": "Maybe later",
+    "knowledgeTitle": "Business knowledge (website)",
+    "knowledgeHint": "Scan one or more websites — the agent learns the offer, prices and selling points to pitch like a specialist.",
+    "knowledgeUrlsLabel": "Reference website(s)",
+    "knowledgeUrlsPlaceholder": "https://example.com\nOne URL per line (up to 5)",
+    "knowledgeScanCta": "Learn from these sites",
+    "knowledgeScanning": "Learning…",
+    "knowledgeLabel": "Business knowledge sheet (editable)",
+    "knowledgePlaceholder": "What the business sells, prices, selling points…",
+    "knowledgeSourcesLabel": "{count, plural, one {# source scanned} other {# sources scanned}}",
+    "knowledgeError": "Couldn't scan the site(s). Check the URLs and try again."
   },
   "DashboardCalendar": {
     "header": "Calendar",

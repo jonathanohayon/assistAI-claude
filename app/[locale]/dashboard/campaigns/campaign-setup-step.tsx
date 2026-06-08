@@ -13,6 +13,7 @@ import {
 import type { CampaignDraft } from "@/lib/campaigns/types";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
+import { CampaignKnowledge } from "./campaign-knowledge";
 
 const GOAL_EMOJI: Record<GoalPreset, string> = {
   cold: "❄️",
@@ -217,6 +218,9 @@ export function CampaignSetupStep({
           </Field>
         </div>
       </Section>
+
+      {/* Connaissance métier depuis le(s) site(s) web */}
+      <CampaignKnowledge persona={draft.persona} setPersona={setPersona} />
 
       {/* Concurrence + retry */}
       <Section

@@ -1130,7 +1130,17 @@
     "upsellBullet4": "אנליטיקס מונפש — משפך, סנטימנט, KPI",
     "upsellPriceSuffix": "/חודש",
     "upsellCta": "שדרגו ל-{plan}",
-    "upsellLater": "אולי אחר כך"
+    "upsellLater": "אולי אחר כך",
+    "knowledgeTitle": "ידע עסקי (אתר אינטרנט)",
+    "knowledgeHint": "סרוק אתר אחד או יותר — הסוכן לומד את ההצעה, המחירים והטיעונים כדי למכור כמומחה.",
+    "knowledgeUrlsLabel": "אתר(ים) לעיון",
+    "knowledgeUrlsPlaceholder": "https://example.com\nכתובת אחת בכל שורה (עד 5)",
+    "knowledgeScanCta": "למד מהאתרים האלה",
+    "knowledgeScanning": "לומד…",
+    "knowledgeLabel": "דף ידע עסקי (ניתן לעריכה)",
+    "knowledgePlaceholder": "מה העסק מוכר, מחירים, טיעוני מכירה…",
+    "knowledgeSourcesLabel": "{count, plural, one {מקור אחד נסרק} other {# מקורות נסרקו}}",
+    "knowledgeError": "לא ניתן לסרוק את האתר(ים). בדוק את הכתובות ונסה שוב."
   },
   "DashboardCalendar": {
     "header": "יומן",
