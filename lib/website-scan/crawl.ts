@@ -19,36 +19,68 @@ export interface ScannedPage {
   text: string;
 }
 
-const MAX_PAGES = 6; // home + 5 pages découvertes
+const MAX_PAGES = 12; // home + 11 pages découvertes (couverture élargie)
 const PER_PAGE_TIMEOUT_MS = 8000;
-const MAX_BYTES = 150_000; // ~150 KB de HTML par page max
-const PER_PAGE_TEXT_CHARS = 6000; // texte tronqué par page (borne coût LLM)
+const MAX_BYTES = 250_000; // ~250 KB de HTML par page max
+const PER_PAGE_TEXT_CHARS = 10_000; // texte par page (borne coût LLM)
+const MAX_JSONLD_CHARS = 4000; // données structurées schema.org gardées par page
 const MAX_REDIRECTS = 4;
 const USER_AGENT =
   "Mozilla/5.0 (compatible; TamaraBot/1.0; +https://aitamara.com/bot)";
 
-// Mots-clés multilingues (fr/en/he-translittéré) pour repérer les pages utiles.
-const LINK_KEYWORDS = [
-  "contact",
-  "about",
-  "a-propos",
-  "apropos",
-  "à propos",
-  "qui-sommes",
-  "horaire",
-  "hours",
-  "opening",
-  "ouverture",
-  "service",
-  "prestation",
-  "tarif",
-  "price",
-  "prix",
-  "soin",
-  "menu",
-  "rdv",
-  "rendez-vous",
-  "booking",
+// Mots-clés multilingues (fr/en/he-translittéré + hébreu) pour repérer les
+// pages utiles. Chaque entrée porte un poids : les pages les plus riches en
+// infos requises (services, tarifs, horaires, contact) sont crawlées en
+// priorité dans le budget de pages.
+const LINK_KEYWORDS: { kw: string; weight: number }[] = [
+  // Services / prestations / tarifs — la source #1 des infos manquantes.
+  { kw: "service", weight: 5 },
+  { kw: "prestation", weight: 5 },
+  { kw: "tarif", weight: 5 },
+  { kw: "price", weight: 5 },
+  { kw: "prix", weight: 5 },
+  { kw: "pricing", weight: 5 },
+  { kw: "soin", weight: 5 },
+  { kw: "menu", weight: 5 },
+  { kw: "מחיר", weight: 5 }, // prix (he)
+  { kw: "שירות", weight: 5 }, // service (he)
+  // Horaires.
+  { kw: "horaire", weight: 4 },
+  { kw: "hours", weight: 4 },
+  { kw: "opening", weight: 4 },
+  { kw: "ouverture", weight: 4 },
+  { kw: "שעות", weight: 4 }, // heures (he)
+  // Contact / coordonnées / adresse.
+  { kw: "contact", weight: 4 },
+  { kw: "adresse", weight: 4 },
+  { kw: "address", weight: 4 },
+  { kw: "location", weight: 3 },
+  { kw: "acces", weight: 3 },
+  { kw: "accès", weight: 3 },
+  { kw: "כתובת", weight: 4 }, // adresse (he)
+  { kw: "צור-קשר", weight: 4 }, // contact (he)
+  // Identité / à-propos.
+  { kw: "about", weight: 3 },
+  { kw: "a-propos", weight: 3 },
+  { kw: "apropos", weight: 3 },
+  { kw: "à propos", weight: 3 },
+  { kw: "qui-sommes", weight: 3 },
+  { kw: "presentation", weight: 2 },
+  { kw: "אודות", weight: 3 }, // à propos (he)
+  // Prise de RDV / réservation.
+  { kw: "rdv", weight: 3 },
+  { kw: "rendez-vous", weight: 3 },
+  { kw: "booking", weight: 3 },
+  { kw: "reserver", weight: 3 },
+  { kw: "réserver", weight: 3 },
+  { kw: "appointment", weight: 3 },
+  // Établissements / agences (multi-centres).
+  { kw: "centre", weight: 3 },
+  { kw: "agence", weight: 3 },
+  { kw: "salon", weight: 2 },
+  { kw: "cabinet", weight: 2 },
+  { kw: "clinique", weight: 2 },
+  { kw: "boutique", weight: 2 },
 ];
 
 export class ScanError extends Error {}
@@ -232,6 +264,8 @@ function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
 interface ParsedPage {
   title: string;
   text: string;
+  /** Données structurées schema.org (JSON-LD) — horaires/adresse/services. */
+  structured: string;
   links: { href: string; label: string }[];
 }
 
@@ -239,28 +273,68 @@ async function parseHtml(html: string): Promise<ParsedPage> {
   const { load } = await import("cheerio");
   const $ = load(html);
   const title = $("title").first().text().trim().slice(0, 200);
-  // On récupère les liens AVANT de supprimer les balises non textuelles.
+
+  // Liens : AVANT de supprimer les balises non textuelles.
   const links: { href: string; label: string }[] = [];
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") ?? "";
     const label = $(el).text().replace(/\s+/g, " ").trim();
     if (href) links.push({ href, label });
   });
+
+  // JSON-LD schema.org (LocalBusiness, OpeningHoursSpecification, PostalAddress,
+  // Service, Offer…) AVANT le drop des scripts — souvent la seule source fiable
+  // des horaires/adresse/tarifs sur les sites pro. Compacté + capé.
+  const jsonLdParts: string[] = [];
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).contents().text().trim();
+    if (!raw) return;
+    try {
+      jsonLdParts.push(JSON.stringify(JSON.parse(raw)));
+    } catch {
+      jsonLdParts.push(raw.replace(/\s+/g, " "));
+    }
+  });
+  // Microdata schema.org (itemprop) en complément léger.
+  const micro: string[] = [];
+  $("[itemprop]").each((_, el) => {
+    if (micro.length >= 40) return;
+    const prop = $(el).attr("itemprop");
+    const val =
+      $(el).attr("content") || $(el).text().replace(/\s+/g, " ").trim();
+    if (prop && val) micro.push(`${prop}: ${val.slice(0, 120)}`);
+  });
+  const structured = [
+    jsonLdParts.join("\n"),
+    micro.length ? `microdata: ${micro.join(" | ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, MAX_JSONLD_CHARS);
+
   // Texte : on drop le bruit puis on extrait le body.
-  $(
-    "script, style, noscript, svg, iframe, head, link, meta",
-  ).remove();
-  const text = $("body").text().replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
-  return { title, text, links };
+  $("script, style, noscript, svg, iframe, head, link, meta").remove();
+  const text = $("body")
+    .text()
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s*\n\s*\n+/g, "\n\n")
+    .trim();
+  return { title, text, structured, links };
 }
 
-/** Sélectionne les URLs candidates (même origine, par mots-clés). */
+/**
+ * Sélectionne les URLs candidates (même origine), SCORÉES par pertinence :
+ * une page qui matche plusieurs mots-clés à fort poids (services, tarifs,
+ * horaires, contact) passe avant un lien générique. On garde le meilleur
+ * score par URL, puis on trie décroissant — le budget de pages est ainsi
+ * dépensé sur les pages les plus riches en infos requises.
+ */
 function pickCandidateUrls(
   root: URL,
   links: { href: string; label: string }[],
 ): URL[] {
-  const seen = new Set<string>();
-  const out: URL[] = [];
+  const byKey = new Map<string, { u: URL; score: number; order: number }>();
+  let order = 0;
   for (const { href, label } of links) {
     let u: URL;
     try {
@@ -272,14 +346,29 @@ function pickCandidateUrls(
     if (u.hostname !== root.hostname) continue; // même origine uniquement
     u.hash = "";
     const key = u.toString();
-    if (key === root.toString() || seen.has(key)) continue;
+    if (key === root.toString()) continue;
     const haystack = `${u.pathname} ${label}`.toLowerCase();
-    if (LINK_KEYWORDS.some((k) => haystack.includes(k))) {
-      seen.add(key);
-      out.push(u);
+    let score = 0;
+    for (const { kw, weight } of LINK_KEYWORDS) {
+      if (haystack.includes(kw)) score += weight;
+    }
+    if (score === 0) continue;
+    const prev = byKey.get(key);
+    if (!prev || score > prev.score) {
+      byKey.set(key, { u, score, order: prev?.order ?? order++ });
     }
   }
-  return out;
+  return [...byKey.values()]
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .map((e) => e.u);
+}
+
+/** Compose le texte d'une page : données structurées (schema.org) en tête —
+ *  pour qu'elles survivent à la troncature — puis le texte du body. */
+function composePageText(parsed: ParsedPage): string {
+  const body = parsed.text.slice(0, PER_PAGE_TEXT_CHARS);
+  if (!parsed.structured) return body;
+  return `[DONNÉES STRUCTURÉES schema.org]\n${parsed.structured}\n\n${body}`;
 }
 
 /**
@@ -298,7 +387,7 @@ export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
     {
       url: root.toString(),
       title: home.title || root.hostname,
-      text: home.text.slice(0, PER_PAGE_TEXT_CHARS),
+      text: composePageText(home),
     },
   ];
 
@@ -309,7 +398,7 @@ export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
         const html = await fetchHtml(u);
         if (html == null) return null;
         const parsed = await parseHtml(html);
-        const text = parsed.text.slice(0, PER_PAGE_TEXT_CHARS);
+        const text = composePageText(parsed);
         if (!text) return null;
         return {
           url: u.toString(),
