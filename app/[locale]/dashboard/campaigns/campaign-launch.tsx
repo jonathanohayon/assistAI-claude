@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { CampaignStats } from "@/lib/campaigns/types";
@@ -24,6 +24,14 @@ function CountTile({
   );
 }
 
+type Counts = {
+  total: number;
+  queued: number;
+  inFlight: number;
+  done: number;
+  connected: number;
+};
+
 export function CampaignLaunch({
   campaignId,
   asUserId,
@@ -39,9 +47,36 @@ export function CampaignLaunch({
 }) {
   const t = useTranslations("DashboardCampaigns");
   const [busy, setBusy] = useState(false);
+  // Compteurs frais récupérés directement (GET [id]) — la prop `stats` venant
+  // de la liste parente peut être périmée/absente, ce qui désactivait à tort
+  // le bouton de lancement. Re-fetch à chaque changement de statut.
+  const [counts, setCounts] = useState<Counts | null>(null);
 
-  const total = stats?.total ?? 0;
-  const canStart = total > 0;
+  useEffect(() => {
+    let cancelled = false;
+    const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+    fetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
+      .then((data: { counts?: Counts }) => {
+        if (!cancelled && data.counts) setCounts(data.counts);
+      })
+      .catch(() => {
+        /* on garde la prop stats en fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId, asUserId, status]);
+
+  // Compteurs effectifs : frais si dispo, sinon la prop parente.
+  const eff: Counts = counts ?? {
+    total: stats?.total ?? 0,
+    queued: stats?.queued ?? 0,
+    inFlight: stats?.inFlight ?? 0,
+    done: stats?.done ?? 0,
+    connected: stats?.connected ?? 0,
+  };
+  const canStart = eff.total > 0;
 
   const act = async (action: string) => {
     if (busy) return;
@@ -67,13 +102,18 @@ export function CampaignLaunch({
     }
   };
 
+  // Une campagne terminée/archivée peut être relancée (re-met en file les
+  // contacts non aboutis côté serveur via l'action "start").
+  const stopped = status === "completed" || status === "archived";
+  const showStart = status === "draft" || status === "paused" || stopped;
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <CountTile label={t("detailQueued")} value={stats?.queued ?? 0} tone="text-[#64748b]" />
-        <CountTile label={t("detailInFlight")} value={stats?.inFlight ?? 0} tone="text-[#ea580c]" />
-        <CountTile label={t("detailDone")} value={stats?.done ?? 0} tone="text-[#3730a3]" />
-        <CountTile label={t("detailConnected")} value={stats?.connected ?? 0} tone="text-[#16a34a]" />
+        <CountTile label={t("detailQueued")} value={eff.queued} tone="text-[#64748b]" />
+        <CountTile label={t("detailInFlight")} value={eff.inFlight} tone="text-[#ea580c]" />
+        <CountTile label={t("detailDone")} value={eff.done} tone="text-[#3730a3]" />
+        <CountTile label={t("detailConnected")} value={eff.connected} tone="text-[#16a34a]" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#fed7aa] bg-gradient-to-br from-[#fff7ed] to-[#fdf2f8] px-5 py-4">
@@ -86,7 +126,7 @@ export function CampaignLaunch({
           )}
         </div>
 
-        {(status === "draft" || status === "paused") && (
+        {showStart && (
           <button
             onClick={() => act("start")}
             disabled={busy || !canStart}

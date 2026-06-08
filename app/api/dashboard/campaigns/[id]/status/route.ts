@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaigns } from "@/lib/db/schema";
+import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
@@ -11,9 +11,10 @@ interface Ctx {
   params: Promise<{ id: string }>;
 }
 
-// Transitions autorisées par action.
+// Transitions autorisées par action. `start` accepte aussi une campagne
+// terminée/archivée → relance (les contacts non aboutis sont re-mis en file).
 const TRANSITIONS: Record<string, { from: CampaignStatus[]; to: CampaignStatus }> = {
-  start: { from: ["draft", "paused"], to: "running" },
+  start: { from: ["draft", "paused", "completed", "archived"], to: "running" },
   pause: { from: ["running"], to: "paused" },
   complete: { from: ["running", "paused", "draft"], to: "completed" },
   archive: { from: ["completed", "draft", "paused"], to: "archived" },
@@ -54,6 +55,25 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   };
   if (rule.to === "running" && !campaign.startedAt) patch.startedAt = sql`now()`;
   if (rule.to === "completed") patch.completedAt = sql`now()`;
+
+  // Relance d'une campagne terminée/archivée : on re-met en file les contacts
+  // non aboutis (échec / pas de réponse / messagerie / occupé / ignoré). Les
+  // contacts déjà connectés ('completed') restent terminés.
+  const isRelaunch =
+    action === "start" &&
+    (campaign.status === "completed" || campaign.status === "archived");
+  if (isRelaunch) {
+    patch.completedAt = null;
+    await db
+      .update(campaignContacts)
+      .set({ status: "queued", claimedAt: null, nextAttemptAt: null })
+      .where(
+        and(
+          eq(campaignContacts.campaignId, id),
+          sql`status in ('failed','no_answer','voicemail','busy','skipped')`,
+        ),
+      );
+  }
 
   const [updated] = await db
     .update(campaigns)
