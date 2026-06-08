@@ -27,6 +27,7 @@ import { useRealtimeCatalog, voicesForCatalog } from "@/lib/use-realtime-catalog
 import { CampaignList } from "./campaign-list";
 import { CampaignSetupStep } from "./campaign-setup-step";
 import { ContactsImportStep } from "./contacts-import-step";
+import { CampaignContactsList } from "./campaign-contacts-list";
 import { CampaignLaunch } from "./campaign-launch";
 import { StatusPill } from "./_ui";
 
@@ -69,6 +70,8 @@ export function CampaignsWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fromNumbers, setFromNumbers] = useState<string[]>([]);
+  // Incrémenté à chaque ajout de contacts → rafraîchit la liste affichée.
+  const [contactsVersion, setContactsVersion] = useState(0);
 
   // Campagne en cours d'édition.
   const [draft, setDraft] = useState<CampaignDraft>(() =>
@@ -316,11 +319,21 @@ export function CampaignsWorkspace({
             )}
 
             {view === "editor" && tab === "contacts" && draft.id && (
-              <ContactsImportStep
-                campaignId={draft.id}
-                asUserId={asUserId}
-                onAdded={() => void loadList()}
-              />
+              <>
+                <ContactsImportStep
+                  campaignId={draft.id}
+                  asUserId={asUserId}
+                  onAdded={() => {
+                    setContactsVersion((v) => v + 1);
+                    void loadList();
+                  }}
+                />
+                <CampaignContactsList
+                  campaignId={draft.id}
+                  asUserId={asUserId}
+                  refreshKey={contactsVersion}
+                />
+              </>
             )}
 
             {view === "editor" && tab === "launch" && draft.id && (
