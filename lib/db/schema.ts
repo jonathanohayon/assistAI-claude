@@ -220,6 +220,9 @@ export const calls = pgTable("calls", {
     .notNull()
     .default(sql`'[]'::jsonb`),
   summary: text("summary").notNull().default(""),
+  // Durée de l'appel en secondes (déjà présente en DB via migration 0021 ;
+  // ajoutée au schéma pour aligner le code — utilisée par le moteur Finance).
+  durationSeconds: integer("duration_seconds").notNull().default(0),
 
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),
