@@ -100,6 +100,10 @@ export type CampaignPersona = {
   instructions?: string;
   greeting?: string;
   successCriteria?: string;
+  /** Fiche de connaissance métier distillée depuis un/des site(s) web. */
+  knowledge?: string;
+  /** URLs sources scannées pour générer `knowledge`. */
+  knowledgeSources?: string[];
 };
 
 // Défauts utilisés par l'UI de création et la normalisation serveur.

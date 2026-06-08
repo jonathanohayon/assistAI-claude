@@ -11,6 +11,9 @@ interface CampaignPersona {
   instructions?: string;
   greeting?: string;
   successCriteria?: string;
+  /** Fiche métier distillée depuis un/des site(s) web. */
+  knowledge?: string;
+  knowledgeSources?: string[];
 }
 
 const GOAL_FRAMING: Record<GoalPreset, string> = {
@@ -48,6 +51,12 @@ export function buildCampaignInstructions(
   if (contact.contactName) parts.push(`Tu appelles ${contact.contactName}.`);
   if (campaign.objective?.trim())
     parts.push(`OBJECTIF DE L'APPEL :\n${campaign.objective.trim()}`);
+  // Connaissance métier apprise depuis le(s) site(s) web → l'agent devient
+  // un vendeur spécialisé qui maîtrise l'offre, les prix et les arguments.
+  if (p.knowledge?.trim())
+    parts.push(
+      `BASE DE CONNAISSANCE MÉTIER (apprise depuis le site web — utilise-la pour répondre précisément sur l'offre, les prix et les arguments de vente ; ne sors pas de ce périmètre) :\n${p.knowledge.trim()}`,
+    );
   if (p.instructions?.trim())
     parts.push(`CONSIGNES :\n${p.instructions.trim()}`);
   if (p.successCriteria?.trim())

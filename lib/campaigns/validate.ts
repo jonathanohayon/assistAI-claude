@@ -131,6 +131,15 @@ export function normalizePersona(v: unknown): CampaignPersona {
   if (str(p.instructions)) out.instructions = str(p.instructions);
   if (str(p.greeting)) out.greeting = str(p.greeting);
   if (str(p.successCriteria)) out.successCriteria = str(p.successCriteria);
+  // Fiche de connaissance métier (apprise depuis un/des site(s) web) + sources.
+  if (str(p.knowledge)) out.knowledge = str(p.knowledge);
+  if (Array.isArray(p.knowledgeSources)) {
+    const srcs = p.knowledgeSources
+      .filter((s): s is string => typeof s === "string" && !!s.trim())
+      .map((s) => s.trim().slice(0, 300))
+      .slice(0, 10);
+    if (srcs.length) out.knowledgeSources = srcs;
+  }
   return out;
 }
 

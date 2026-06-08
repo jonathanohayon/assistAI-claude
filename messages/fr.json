@@ -1130,7 +1130,17 @@
     "upsellBullet4": "Analytics animés — entonnoir, sentiment, KPIs",
     "upsellPriceSuffix": "/mois",
     "upsellCta": "Passer à {plan}",
-    "upsellLater": "Peut-être plus tard"
+    "upsellLater": "Peut-être plus tard",
+    "knowledgeTitle": "Connaissance métier (site web)",
+    "knowledgeHint": "Scanne un ou plusieurs sites web — l'agent apprend l'offre, les prix et les arguments pour vendre comme un spécialiste.",
+    "knowledgeUrlsLabel": "Site(s) web de référence",
+    "knowledgeUrlsPlaceholder": "https://exemple.com\nUne URL par ligne (jusqu'à 5)",
+    "knowledgeScanCta": "Apprendre depuis ces sites",
+    "knowledgeScanning": "Apprentissage…",
+    "knowledgeLabel": "Fiche de connaissance métier (modifiable)",
+    "knowledgePlaceholder": "Ce que vend l'entreprise, prix, arguments de vente…",
+    "knowledgeSourcesLabel": "{count, plural, one {# source scannée} other {# sources scannées}}",
+    "knowledgeError": "Impossible de scanner le(s) site(s). Vérifie les URLs et réessaie."
   },
   "DashboardCalendar": {
     "header": "Calendrier",

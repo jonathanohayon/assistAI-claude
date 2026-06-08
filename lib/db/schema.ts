@@ -275,6 +275,11 @@ export const campaigns = pgTable("campaigns", {
       instructions?: string;
       greeting?: string;
       successCriteria?: string;
+      /** Fiche de connaissance métier distillée depuis un/des site(s) web —
+       *  injectée dans le system prompt (l'agent "apprend" le business). */
+      knowledge?: string;
+      /** URLs sources scannées pour générer `knowledge` (affichage). */
+      knowledgeSources?: string[];
     }>()
     .notNull()
     .default({}),
