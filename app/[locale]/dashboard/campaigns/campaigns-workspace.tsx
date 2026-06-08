@@ -10,7 +10,7 @@
  */
 
 import { AnimatePresence, motion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -33,13 +33,15 @@ import { StatusPill } from "./_ui";
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
 
-function emptyDraft(): CampaignDraft {
+function emptyDraft(locale: string): CampaignDraft {
   return {
     name: "",
     goalPreset: "cold",
     objective: "",
     fromNumber: "",
-    persona: {},
+    // Valeurs par défaut de la persona : agent "Sarah", voix "marin",
+    // langue = celle de l'utilisateur. Éditables dans l'étape "Agent / voix".
+    persona: { agentName: "Sarah", voice: "marin", language: locale },
     extractionSchema: [],
     concurrency: DEFAULT_CONCURRENCY,
     retryRules: { ...DEFAULT_RETRY_RULES },
@@ -57,6 +59,7 @@ export function CampaignsWorkspace({
   asUserId?: string;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const locale = useLocale();
   const catalog = useRealtimeCatalog();
   const voices = useMemo(() => voicesForCatalog(catalog, ""), [catalog]);
 
@@ -68,7 +71,7 @@ export function CampaignsWorkspace({
   const [fromNumbers, setFromNumbers] = useState<string[]>([]);
 
   // Campagne en cours d'édition.
-  const [draft, setDraft] = useState<CampaignDraft>(emptyDraft());
+  const [draft, setDraft] = useState<CampaignDraft>(() => emptyDraft(locale));
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -131,7 +134,7 @@ export function CampaignsWorkspace({
   }, [open, qs, t]);
 
   const openNew = () => {
-    setDraft(emptyDraft());
+    setDraft(emptyDraft(locale));
     setActiveStatus("draft");
     setSaveError(null);
     setTab("setup");
