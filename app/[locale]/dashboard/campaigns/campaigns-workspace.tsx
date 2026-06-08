@@ -33,9 +33,9 @@ import { StatusPill } from "./_ui";
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
 
-function emptyDraft(locale: string): CampaignDraft {
+function emptyDraft(locale: string, defaultName: string): CampaignDraft {
   return {
-    name: "",
+    name: defaultName,
     goalPreset: "cold",
     objective: "",
     fromNumber: "",
@@ -71,7 +71,9 @@ export function CampaignsWorkspace({
   const [fromNumbers, setFromNumbers] = useState<string[]>([]);
 
   // Campagne en cours d'édition.
-  const [draft, setDraft] = useState<CampaignDraft>(() => emptyDraft(locale));
+  const [draft, setDraft] = useState<CampaignDraft>(() =>
+    emptyDraft(locale, t("newCampaign")),
+  );
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export function CampaignsWorkspace({
   }, [open, qs, t]);
 
   const openNew = () => {
-    setDraft(emptyDraft(locale));
+    setDraft(emptyDraft(locale, t("newCampaign")));
     setActiveStatus("draft");
     setSaveError(null);
     setTab("setup");
