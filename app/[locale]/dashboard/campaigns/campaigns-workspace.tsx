@@ -90,10 +90,11 @@ export function CampaignsWorkspace({
     }
   }, [qs, t]);
 
-  // Charge la liste + les numéros caller-id à l'ouverture.
+  // Charge la liste + les numéros caller-id à l'ouverture. Le composant est
+  // remonté (key) à chaque ouverture → la vue démarre sur "list" par défaut,
+  // donc pas de setState synchrone ici.
   useEffect(() => {
     if (!open) return;
-    setView("list");
     void loadList();
     void (async () => {
       try {

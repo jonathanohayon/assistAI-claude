@@ -1098,6 +1098,7 @@ export function ConfigForm({
        *  pour s'afficher en overlay au-dessus de toute la config. */}
       {campaignsEnabled && (
         <CampaignsWorkspace
+          key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
           open={campaignsOpen}
           onClose={() => setCampaignsOpen(false)}
           asUserId={asUserId}
