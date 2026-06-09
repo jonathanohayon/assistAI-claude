@@ -578,6 +578,8 @@
     "doneTitle": "Number reserved!",
     "doneDesc": "Connected to your receptionist. Call it to test.",
     "doneCta": "Go to dashboard",
+    "skipPhone": "Set up my number later",
+    "skipPhoneNote": "Optional — you can get a number anytime from the dashboard.",
     "countryFrance": "🇫🇷 France",
     "countryIsrael": "🇮🇱 Israel",
     "languageFr": "🇫🇷 French",
