@@ -136,10 +136,18 @@ export async function GET(req: NextRequest) {
     en: "anglais (US)",
   };
   const primary = config.primaryLanguage ?? "fr";
-  const languageDirective = `LANGUE PAR DÉFAUT DU TENANT : ${langLabel[primary] ?? "français"} (code: ${primary}).
-- Utilise cette langue UNIQUEMENT pour le tout premier message d'accueil.
-- Dès que ton interlocuteur parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
-- S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
+  const primaryLabel = langLabel[primary] ?? "français";
+  // Directive FORTE et "langue principale d'abord" : le modèle Realtime a une
+  // forte inertie de langue (s'il démarre en FR il continue en FR même si le
+  // client parle hébreu). On en fait donc la langue de travail PAR DÉFAUT
+  // (accueil + réponses), et on n'autorise le switch que si l'interlocuteur
+  // parle CLAIREMENT et de façon SOUTENUE une autre langue.
+  const languageDirective = `LANGUE PRINCIPALE : ${primaryLabel} (code: ${primary}). C'est ta langue de travail PAR DÉFAUT.
+- Accueille ET réponds en ${primaryLabel} par défaut, dès le premier mot.
+- Ne bascule vers une autre langue QUE si l'interlocuteur s'exprime CLAIREMENT et de façon SOUTENUE dans cette autre langue (≥ une phrase complète). Au moindre doute, RESTE en ${primaryLabel}.
+- Un mot isolé, un nom propre, un chiffre ou une hésitation ne sont PAS un changement de langue → continue en ${primaryLabel}.
+- Si l'interlocuteur revient à ${primaryLabel}, reviens immédiatement.
+${primary === "he" ? "- IMPORTANT : ne réponds JAMAIS en français quand l'interlocuteur parle hébreu. L'hébreu prime." : ""}`;
 
   // L'ordre des blocs est piloté depuis /admin (app_settings.prompt_block_order).
   // Default order = directives système d'abord, puis config_blocks (meta
