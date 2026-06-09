@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { isValidPlanKey } from "@/lib/plans";
 import { fullyDeleteUser } from "@/lib/release-user";
 
 const requireAdmin = async () => {
@@ -17,6 +18,90 @@ const requireAdmin = async () => {
     .limit(1);
   return me?.role === "admin" ? me : null;
 };
+
+// Date très lointaine = "accès illimité" : le compte reste 'active' et n'est
+// jamais expiré par le cron billing (qui ne flippe que les paidUntil < now).
+const UNLIMITED_PAID_UNTIL = new Date("2099-12-31T00:00:00.000Z");
+
+// PATCH /api/admin/users/[userId]
+// Body { plan?, freeUnlimited?: boolean }
+//   - plan : assigne un plan au tenant (whatsapp | global | premium).
+//   - freeUnlimited true  : accès illimité GRATUIT (active, paidUntil=2099,
+//       trial nettoyé, pas de renouvellement auto/facturation).
+//   - freeUnlimited false : révoque → repasse 'expired' (paidUntil=now).
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  const me = await requireAdmin();
+  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const { userId } = await params;
+  const [target] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!target)
+    return NextResponse.json({ error: "user introuvable" }, { status: 404 });
+
+  const body = (await req.json().catch(() => ({}))) as {
+    plan?: string;
+    freeUnlimited?: boolean;
+  };
+
+  const updates: Partial<typeof users.$inferInsert> = {};
+  const changed: string[] = [];
+
+  if (body.plan != null) {
+    if (!isValidPlanKey(body.plan))
+      return NextResponse.json({ error: "plan invalide" }, { status: 400 });
+    updates.subscriptionPlan = body.plan;
+    changed.push(`plan=${body.plan}`);
+  }
+
+  if (body.freeUnlimited === true) {
+    updates.subscriptionStatus = "active";
+    updates.paidUntil = UNLIMITED_PAID_UNTIL;
+    updates.subscriptionPeriod = "annual";
+    updates.autoRenew = false; // gratuit → aucune tentative de facturation
+    updates.cancelledAt = null;
+    updates.trialEndsAt = null;
+    updates.trialWarningSentAt = null;
+    updates.deletionLockedUntil = null;
+    updates.scheduledPlan = null;
+    updates.scheduledPlanAt = null;
+    changed.push("free_unlimited=on");
+  } else if (body.freeUnlimited === false) {
+    updates.subscriptionStatus = "expired";
+    updates.paidUntil = new Date();
+    changed.push("free_unlimited=off");
+  }
+
+  if (changed.length === 0) {
+    return NextResponse.json({ error: "rien à modifier" }, { status: 400 });
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set(updates)
+    .where(eq(users.id, userId))
+    .returning({
+      subscriptionPlan: users.subscriptionPlan,
+      subscriptionStatus: users.subscriptionStatus,
+      paidUntil: users.paidUntil,
+    });
+
+  await logEvent({
+    source: "web",
+    event: "admin_subscription_set",
+    message: `Admin ${me.email} → ${target.email} : ${changed.join(", ")}`,
+    userId: me.id,
+    metadata: { targetUserId: userId, changed },
+  });
+
+  return NextResponse.json({ ok: true, user: updated });
+}
 
 // DELETE /api/admin/users/[userId]
 // Wipes the tenant entirely. Schema cascades: agent_configs, calls,
