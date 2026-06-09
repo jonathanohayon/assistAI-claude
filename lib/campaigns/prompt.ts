@@ -78,6 +78,9 @@ export function buildCampaignInstructions(
   if (p.successCriteria?.trim())
     parts.push(`CRITÈRE DE SUCCÈS :\n${p.successCriteria.trim()}`);
   parts.push(
+    "INTERDICTION D'INVENTER : ne fabrique JAMAIS le nom de l'entreprise, le produit ou service vendu, ni les prix. Appuie-toi UNIQUEMENT sur l'objectif de l'appel et la base de connaissance ci-dessus. Si tu ne disposes pas de cette information, ne l'invente pas — reste général et propose de faire rappeler par un conseiller.",
+  );
+  parts.push(
     "Reste naturel·le et concis·e. Si la personne n'est pas intéressée, remercie et termine poliment. Ne raccroche pas avant d'avoir atteint l'objectif ou un refus clair.",
   );
 

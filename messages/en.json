@@ -1075,6 +1075,7 @@
     "sheetsLoad": "Load sheet",
     "sheetsNotConnected": "Connect Google in Settings to import from Sheets.",
     "launchTitle": "Ready to launch",
+    "launchNoContentWarning": "This campaign has no objective and no business knowledge — the agent won't know what to sell and may improvise. Add an objective or scan a website in Setup before launching.",
     "detailQueued": "Queued",
     "detailInFlight": "In progress",
     "detailDone": "Completed",

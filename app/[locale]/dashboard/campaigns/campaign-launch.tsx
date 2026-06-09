@@ -54,15 +54,27 @@ export function CampaignLaunch({
   // de la liste parente peut être périmée/absente, ce qui désactivait à tort
   // le bouton de lancement. Re-fetch à chaque changement de statut.
   const [counts, setCounts] = useState<Counts | null>(null);
+  // Vrai si la campagne n'a NI objectif NI base de connaissance → l'agent
+  // n'aurait rien de concret à vendre (risque d'invention). On avertit.
+  const [lacksContent, setLacksContent] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
     fetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
-      .then((data: { counts?: Counts }) => {
-        if (!cancelled && data.counts) setCounts(data.counts);
-      })
+      .then(
+        (data: {
+          counts?: Counts;
+          campaign?: { objective?: string; persona?: { knowledge?: string } };
+        }) => {
+          if (cancelled) return;
+          if (data.counts) setCounts(data.counts);
+          const obj = (data.campaign?.objective ?? "").trim();
+          const kn = (data.campaign?.persona?.knowledge ?? "").trim();
+          setLacksContent(!obj && !kn);
+        },
+      )
       .catch(() => {
         /* on garde la prop stats en fallback */
       });
@@ -143,6 +155,12 @@ export function CampaignLaunch({
 
   return (
     <div className="space-y-5">
+      {lacksContent && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-[12px] text-[#92400e]">
+          <span className="mt-0.5 text-base leading-none">⚠️</span>
+          <span>{t("launchNoContentWarning")}</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <CountTile label={t("detailQueued")} value={eff.queued} tone="text-[#64748b]" />
         <CountTile label={t("detailInFlight")} value={eff.inFlight} tone="text-[#ea580c]" />
