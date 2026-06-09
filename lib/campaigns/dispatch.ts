@@ -29,7 +29,10 @@ export async function dispatchDueJobs(limit: number): Promise<DispatchResult> {
   let failed = 0;
 
   for (const job of jobs) {
-    const roomName = `campaign-${job.contactId}-${job.attempts}`;
+    // Format parsé par le worker (detectOrigin) pour reconnaître l'appel
+    // comme campagne dès l'entrée, sans dépendre de la metadata SIP/job :
+    //   campaign__<campaignId>__<contactId>__<attempts>
+    const roomName = `campaign__${job.campaignId}__${job.contactId}__${job.attempts}`;
     try {
       await dialContact({
         phoneNumber: job.phoneNumber,
