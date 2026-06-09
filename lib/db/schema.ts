@@ -282,6 +282,13 @@ export const outboundAgents = pgTable("outbound_agents", {
     .$type<{ phone?: boolean; whatsappVoice?: boolean }>()
     .notNull()
     .default(sql`'{"phone":true}'::jsonb`),
+  // ─── Réglages voix (mêmes dimensions que l'agent entrant). Sliders UI 1-10
+  //     mappés en speed/temperature/VAD au runtime (lib/voice-tuning.ts). ───
+  personality: jsonb("personality")
+    .$type<{ vitesse?: number; creativite?: number; reactivite?: number }>()
+    .notNull()
+    .default({}),
+  noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

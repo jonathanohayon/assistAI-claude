@@ -3,6 +3,11 @@
 
 export type AgentNotifications = { whatsapp?: string; email?: string };
 export type AgentChannels = { phone?: boolean; whatsappVoice?: boolean };
+export type AgentPersonality = {
+  vitesse?: number;
+  creativite?: number;
+  reactivite?: number;
+};
 
 export type OutboundAgentDTO = {
   id: string;
@@ -17,6 +22,8 @@ export type OutboundAgentDTO = {
   knowledgeSources: string[];
   notifications: AgentNotifications;
   channels: AgentChannels;
+  personality: AgentPersonality;
+  noiseReductionLevel: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,6 +46,8 @@ export type OutboundAgentDraft = {
   knowledgeSources: string[];
   notifications: AgentNotifications;
   channels: AgentChannels;
+  personality: AgentPersonality;
+  noiseReductionLevel: number;
 };
 
 export function emptyAgentDraft(language: string, name = ""): OutboundAgentDraft {
@@ -53,5 +62,7 @@ export function emptyAgentDraft(language: string, name = ""): OutboundAgentDraft
     knowledgeSources: [],
     notifications: {},
     channels: { phone: true },
+    personality: { vitesse: 5, creativite: 5, reactivite: 5 },
+    noiseReductionLevel: 8,
   };
 }

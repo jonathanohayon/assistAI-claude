@@ -1,0 +1,2 @@
+ALTER TABLE "outbound_agents" ADD COLUMN "personality" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "outbound_agents" ADD COLUMN "noise_reduction_level" integer DEFAULT 8 NOT NULL;
