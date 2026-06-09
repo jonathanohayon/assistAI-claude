@@ -247,6 +247,52 @@ export const calls = pgTable("calls", {
 });
 
 // ─── Outbound call center (campagnes sortantes) ──────────────────────────
+// Un agent sortant réutilisable = une identité d'appel (voix + persona +
+// business/connaissance + notifs + canaux). Plusieurs campagnes peuvent
+// partager le même agent ; chaque campagne y associe son objectif + ses
+// contacts. Découplé de `campaigns` (qui embarquait jusqu'ici la persona).
+export const outboundAgents = pgTable("outbound_agents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Libellé affiché dans la liste des agents (ex: "Sarah — vente café").
+  name: text("name").notNull(),
+  // ─── Persona : voix + identité parlée ───
+  agentName: text("agent_name").notNull().default("Sarah"),
+  voice: text("voice").notNull().default("marin"),
+  language: text("language").notNull().default("fr"),
+  instructions: text("instructions").notNull().default(""),
+  greeting: text("greeting").notNull().default(""),
+  // ─── Business : ce que l'agent vend / représente (fiche distillée d'un
+  //     ou plusieurs sites web + URLs sources affichées). ───
+  knowledge: text("knowledge").notNull().default(""),
+  knowledgeSources: jsonb("knowledge_sources")
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  // ─── Notifications : destinataires des récaps post-appel. ───
+  notifications: jsonb("notifications")
+    .$type<{ whatsapp?: string; email?: string }>()
+    .notNull()
+    .default({}),
+  // ─── Canaux : sur quels canaux l'agent opère (défauts ; le n° appelant
+  //     précis est choisi par campagne). ───
+  channels: jsonb("channels")
+    .$type<{ phone?: boolean; whatsappVoice?: boolean }>()
+    .notNull()
+    .default(sql`'{"phone":true}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+});
+
+export type OutboundAgent = typeof outboundAgents.$inferSelect;
+export type NewOutboundAgent = typeof outboundAgents.$inferInsert;
+
 // Une campagne = un objectif + une persona + une file de contacts à appeler
 // en parallèle par des agents IA. Le worker poll les contacts `queued`
 // (claim atomique), dial via trunk SIP sortant, puis POST le résultat.
@@ -257,6 +303,13 @@ export const campaigns = pgTable("campaigns", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  // Agent sortant réutilisable associé. Nullable pendant la migration
+  // (Phase 1 additive) ; backfillé pour les lignes existantes. Tant que
+  // `campaign-config` ne JOIN pas encore l'agent (Phase 2), la persona
+  // embarquée ci-dessous reste la source de vérité au runtime.
+  agentId: uuid("agent_id").references(() => outboundAgents.id, {
+    onDelete: "set null",
+  }),
   // 'cold' | 'sales' | 'lead_gen' | 'marketing' | 'custom' — pilote le preset
   // de script + critères de succès injectés dans le prompt.
   goalPreset: text("goal_preset").notNull().default("custom"),
