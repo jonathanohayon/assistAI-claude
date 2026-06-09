@@ -24,6 +24,7 @@ import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
 import { PlanPricingForm } from "./plan-pricing-form";
 import { SystemDirectivesForm } from "./system-directives-form";
+import { CampaignFramingsForm } from "./campaign-framings-form";
 
 type TileId =
   | "global-rules"
@@ -32,6 +33,7 @@ type TileId =
   | "directives"
   | "block-order"
   | "features"
+  | "campaign-prompts"
   | "pricing"
   | "users"
   | "finance";
@@ -221,6 +223,19 @@ export function AdminShell(props: AdminShellProps) {
           <rect x="14" y="3" width="7" height="7" rx="1" />
           <rect x="3" y="14" width="7" height="7" rx="1" />
           <path d="m14 17 3 3 4-5" />
+        </svg>
+      ),
+    },
+    {
+      id: "campaign-prompts",
+      label: "Prompts campagnes",
+      tagline: "Texte de cadrage de l'agent sortant par objectif (sales, marketing…).",
+      summary: "sales · cold · lead_gen · marketing",
+      accent: "from-[#f97316] to-[#db2777]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M3 11l18-5v12L3 14v-3z" />
+          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
         </svg>
       ),
     },
@@ -431,6 +446,7 @@ export function AdminShell(props: AdminShellProps) {
             {active === "features" && (
               <PlanFeaturesForm initialMatrix={props.planFeatures} />
             )}
+            {active === "campaign-prompts" && <CampaignFramingsForm />}
             {active === "pricing" && (
               <PlanPricingForm initialPricing={props.planPricing} />
             )}
