@@ -76,7 +76,10 @@ export async function dialOneNow(opts: {
   contactId: string;
   userId: string;
 }): Promise<{ roomName: string }> {
-  const roomName = `campaign-${opts.contactId}-test-${Date.now()}`;
+  // MÊME format que dispatchDueJobs (campaign__<campaignId>__<contactId>__…)
+  // pour que le worker reconnaisse l'appel test comme une campagne (sinon il
+  // tombe sur un autre tenant). Le 4ᵉ segment marque le test.
+  const roomName = `campaign__${opts.campaignId}__${opts.contactId}__test${Date.now()}`;
   const res = await dialContact({ ...opts, roomName });
   return { roomName: res.roomName };
 }
