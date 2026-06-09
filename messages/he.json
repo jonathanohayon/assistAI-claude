@@ -1041,6 +1041,7 @@
     "agentTagChannels": "היכן הסוכן פועל",
     "agentNotifOn": "פעיל",
     "channelsNumbersLabel": "המספרים שלך",
+    "agentTestSaveFirst": "שמרו את הסוכן כדי לבדוק אותו בשידור חי.",
     "listEmptyTitle": "אין קמפיינים עדיין",
     "listEmptyBody": "צרו את הקמפיין הראשון שלכם כדי להתחיל לפנות ללידים עם סוכני AI.",
     "loadError": "לא ניתן לטעון את הקמפיינים.",

@@ -39,9 +39,12 @@ interface Props {
    *  /api/livekit/web-token vérifie le rôle admin et scope la room
    *  + metadata participant sur le bon userId. */
   asUserId?: string;
+  /** Si fourni : teste un AGENT SORTANT précis (sa voix/persona/connaissance)
+   *  au lieu de la config entrante. Passé à /api/livekit/web-token. */
+  agentId?: string;
 }
 
-export function LiveTestPanelLK({ dirty, asUserId }: Props) {
+export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +80,10 @@ export function LiveTestPanelLK({ dirty, asUserId }: Props) {
       const res = await fetch("/api/livekit/web-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(asUserId ? { asUserId } : {}),
+        body: JSON.stringify({
+          ...(asUserId ? { asUserId } : {}),
+          ...(agentId ? { agentId } : {}),
+        }),
       });
       if (!res.ok) {
         const t = await res.text().catch(() => "");
@@ -150,7 +156,7 @@ export function LiveTestPanelLK({ dirty, asUserId }: Props) {
       setStatus("error");
       void teardown();
     }
-  }, [teardown, asUserId]);
+  }, [teardown, asUserId, agentId]);
 
   const stopSession = useCallback(async () => {
     setStatus("ending");

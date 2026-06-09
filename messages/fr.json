@@ -1041,6 +1041,7 @@
     "agentTagChannels": "Où cet agent opère",
     "agentNotifOn": "Actif",
     "channelsNumbersLabel": "Tes numéros",
+    "agentTestSaveFirst": "Enregistre l'agent pour le tester en direct.",
     "listEmptyTitle": "Aucune campagne pour le moment",
     "listEmptyBody": "Créez votre première campagne sortante pour commencer à contacter des leads avec des agents IA.",
     "loadError": "Impossible de charger les campagnes.",
