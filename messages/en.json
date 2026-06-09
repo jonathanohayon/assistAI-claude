@@ -1087,6 +1087,8 @@
     "fromNumberNone": "Default number",
     "agentNameLabel": "Agent name",
     "agentNamePlaceholder": "Sarah",
+    "agentTitlePlaceholder": "Prospecting agent",
+    "spokenNameLabel": "First name spoken on the call",
     "greetingLabel": "Opening line (optional)",
     "greetingHint": "Leave empty → the agent opens naturally from the objective and knowledge. Fill in to force an exact opening sentence.",
     "greetingPlaceholder": "Hi, this is {{name}}… — leave empty to let the agent improvise the opener",

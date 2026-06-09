@@ -90,11 +90,11 @@ export function AgentEditor({
       <AgentEditorStyles />
 
       {/* Nom (libellé) de l'agent — au-dessus de la grille */}
-      <Field label={t("nameLabel")}>
+      <Field label={t("agentNameLabel")}>
         <input
           className={inputCls}
           value={draft.name}
-          placeholder={t("namePlaceholder")}
+          placeholder={t("agentTitlePlaceholder")}
           onChange={(e) => set({ name: e.target.value })}
         />
       </Field>
@@ -394,7 +394,7 @@ function PersonaPanel({
           })}
         </div>
       </div>
-      <Field label={t("agentNameLabel")}>
+      <Field label={t("spokenNameLabel")}>
         <input className={inputCls} value={draft.agentName} placeholder={t("agentNamePlaceholder")} onChange={(e) => set({ agentName: e.target.value })} />
       </Field>
       <Field label={t("greetingLabel")} hint={t("greetingHint")}>

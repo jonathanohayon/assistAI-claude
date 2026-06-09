@@ -1087,6 +1087,8 @@
     "fromNumberNone": "מספר ברירת מחדל",
     "agentNameLabel": "שם הסוכן",
     "agentNamePlaceholder": "שרה",
+    "agentTitlePlaceholder": "סוכן מכירות",
+    "spokenNameLabel": "השם הפרטי שנאמר בשיחה",
     "greetingLabel": "משפט פתיחה (אופציונלי)",
     "greetingHint": "השאירו ריק → הסוכן פותח באופן טבעי לפי המטרה והידע. מלאו כדי לכפות משפט פתיחה מדויק.",
     "greetingPlaceholder": "שלום, מדברת {{name}}… — השאירו ריק כדי לתת לסוכן לאלתר את הפתיחה",
