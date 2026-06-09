@@ -89,13 +89,15 @@ export function AgentEditor({
     <div className="space-y-4">
       <AgentEditorStyles />
 
-      {/* Nom (libellé) de l'agent — au-dessus de la grille */}
-      <Field label={t("nameLabel")}>
+      {/* Nom de l'agent — UNIQUE source : c'est à la fois le nom prononcé par
+       *  l'agent au téléphone ET l'étiquette affichée dans la liste/les
+       *  campagnes. (Le champ `name` en base est mis = agentName côté serveur.) */}
+      <Field label={t("agentNameLabel")} hint={t("agentNameHint")}>
         <input
           className={inputCls}
-          value={draft.name}
-          placeholder={t("namePlaceholder")}
-          onChange={(e) => set({ name: e.target.value })}
+          value={draft.agentName}
+          placeholder={t("agentNamePlaceholder")}
+          onChange={(e) => set({ agentName: e.target.value })}
         />
       </Field>
 
@@ -394,9 +396,6 @@ function PersonaPanel({
           })}
         </div>
       </div>
-      <Field label={t("agentNameLabel")}>
-        <input className={inputCls} value={draft.agentName} placeholder={t("agentNamePlaceholder")} onChange={(e) => set({ agentName: e.target.value })} />
-      </Field>
       <Field label={t("greetingLabel")} hint={t("greetingHint")}>
         <input className={inputCls} value={draft.greeting} placeholder={t("greetingPlaceholder")} onChange={(e) => set({ greeting: e.target.value })} />
       </Field>

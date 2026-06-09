@@ -62,7 +62,9 @@ export function normalizeAgentFields(
   body: Record<string, unknown>,
 ): Omit<NewOutboundAgent, "id" | "userId" | "createdAt" | "updatedAt"> {
   const agentName = str(body.agentName, 120).trim() || "Sarah";
-  const name = str(body.name, 160).trim() || agentName || "Agent";
+  // Nom UNIQUE : le libellé `name` (liste/campagnes) suit toujours le nom
+  // prononcé `agentName` — un seul champ côté UI, plus de divergence possible.
+  const name = agentName;
   return {
     name,
     agentName,
