@@ -3,7 +3,6 @@
 
 import type {
   CallWindow,
-  CampaignPersona,
   CampaignStatus,
   ContactStatus,
   ExtractionField,
@@ -28,11 +27,9 @@ export type CampaignDTO = {
   objective: string;
   status: CampaignStatus;
   fromNumber: string;
-  // Agent sortant réutilisable associé (Phase 2). La persona embarquée reste
-  // présente en base (drop en Phase 3) mais n'est plus éditée par l'UI.
+  // Agent sortant réutilisable associé (source de la persona au runtime).
   agentId: string | null;
   successCriteria: string;
-  persona: CampaignPersona;
   extractionSchema: ExtractionField[];
   concurrency: number;
   retryRules: RetryRules;

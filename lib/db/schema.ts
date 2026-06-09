@@ -323,23 +323,8 @@ export const campaigns = pgTable("campaigns", {
   status: text("status").notNull().default("draft"),
   // Caller-id E.164 (numéro appartenant au tenant — validé à la création).
   fromNumber: text("from_number").notNull().default(""),
-  // Persona découplée d'agentConfigs : une campagne a sa propre voix/script.
-  persona: jsonb("persona")
-    .$type<{
-      agentName?: string;
-      voice?: string;
-      language?: string;
-      instructions?: string;
-      greeting?: string;
-      successCriteria?: string;
-      /** Fiche de connaissance métier distillée depuis un/des site(s) web —
-       *  injectée dans le system prompt (l'agent "apprend" le business). */
-      knowledge?: string;
-      /** URLs sources scannées pour générer `knowledge` (affichage). */
-      knowledgeSources?: string[];
-    }>()
-    .notNull()
-    .default({}),
+  // Persona déplacée vers `outbound_agents` (Phase 2) ; colonne retirée en
+  // Phase 3. La campagne référence un agent via `agentId`.
   // Schéma d'extraction défini par l'utilisateur → JSON typé par appel.
   extractionSchema: jsonb("extraction_schema")
     .$type<
