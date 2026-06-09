@@ -641,6 +641,8 @@
     "whatsappSubtitle": "After every call, a summary is sent via WhatsApp to the caller and the owner.",
     "ownerWhatsappLabel": "Owner's WhatsApp number",
     "ownerWhatsappHint": "International format, e.g., +972585001007. Leave blank to disable.",
+    "reminderTitle": "Appointment reminder (day before)",
+    "reminderHint": "Automatically sends a WhatsApp reminder to the client the day before their appointment (around 6 PM). The number is taken from the appointment booked by the agent.",
     "whatsappFooter": "The caller also receives a summary if Twilio detects she accepts WhatsApp messages from her call number. Configure TWILIO_WHATSAPP_FROM on Railway to enable sending.",
     "voiceTitle": "Voice",
     "voiceSubtitleAdmin": "Technical parameters of the voice engine. Admin-only.",

@@ -38,6 +38,8 @@ type FormState = {
   maxResponseTokens: number;
   ownerWhatsapp: string;
   primaryLanguage: string;
+  /** Rappel WhatsApp automatique au client la veille de son RDV (cron J-1). */
+  reminderEnabled: boolean;
   inheritAdminGlobals: boolean;
   personality: Personality;
   agentName: string;
@@ -1778,6 +1780,82 @@ function NotifsPanel({
         placeholder="+972..."
         inputType="tel"
       />
+      {/* Rappel de RDV J-1 — WhatsApp au client la veille (cron). Pas de
+          champ contact : le numéro vient de l'événement Google Calendar. */}
+      <div
+        className={`flex flex-col gap-3 rounded-2xl border-2 p-4 transition-all duration-300 ${
+          form.reminderEnabled
+            ? "border-[#22d3ee]/40 bg-white shadow-[0_4px_20px_-8px_rgba(34,211,238,0.35)]"
+            : "border-[#cbd5e1] bg-white hover:border-[#22d3ee]/30"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all"
+              style={{
+                backgroundColor: form.reminderEnabled ? "#25D366" : "#f1f5f9",
+                color: form.reminderEnabled ? "white" : "#94a3b8",
+                boxShadow: form.reminderEnabled
+                  ? "0 4px 16px -4px #25D36666"
+                  : "none",
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#18181b]">
+                {t("reminderTitle")}
+              </p>
+              <p className="text-[11px] text-[#475569]">
+                {form.reminderEnabled ? (
+                  <span className="inline-flex items-center gap-1 font-medium text-[#0e7490]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#22d3ee] motion-safe:animate-pulse" />
+                    {t("wowChannelActive")}
+                  </span>
+                ) : (
+                  t("wowChannelInactive")
+                )}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.reminderEnabled}
+            aria-label={t("wowToggleAria", {
+              action: form.reminderEnabled
+                ? t("wowToggleDisable")
+                : t("wowToggleEnable"),
+              label: t("reminderTitle"),
+            })}
+            onClick={() => update("reminderEnabled", !form.reminderEnabled)}
+            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2 ${
+              form.reminderEnabled
+                ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_16px_-2px_rgba(34,211,238,0.6)]"
+                : "bg-[#94a3b8] hover:bg-[#64748b]"
+            }`}
+          >
+            <span
+              aria-hidden
+              className="block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{
+                transform: form.reminderEnabled
+                  ? "translateX(20px)"
+                  : "translateX(0)",
+              }}
+            />
+          </button>
+        </div>
+        <p className="text-[11px] leading-relaxed text-[#475569]">
+          {t("reminderHint")}
+        </p>
+      </div>
+
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}
       </p>

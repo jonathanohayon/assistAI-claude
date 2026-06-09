@@ -36,6 +36,24 @@ export function jerusalemToUTCISO(date: string, time: string): string {
   return new Date(asIfUTC - offsetMs).toISOString();
 }
 
+/**
+ * Date du jour (en Asia/Jerusalem) décalée de `dayOffset` jours, au format
+ * "YYYY-MM-DD". dayOffset=1 → demain à Jérusalem, indépendamment du TZ machine.
+ */
+export function jerusalemDateOffset(dayOffset: number): string {
+  const dtf = new Intl.DateTimeFormat("en-CA", {
+    timeZone: JERUSALEM_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  // en-CA → "YYYY-MM-DD". On part de la date du jour à Jérusalem.
+  const today = dtf.format(new Date());
+  const [Y, M, D] = today.split("-").map(Number);
+  const shifted = new Date(Date.UTC(Y, M - 1, D + dayOffset));
+  return shifted.toISOString().slice(0, 10);
+}
+
 /** Add `minutes` to a Jerusalem wall-clock date+time, returning new wall-clock parts. */
 export function addMinutesJerusalem(
   date: string,

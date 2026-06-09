@@ -62,6 +62,7 @@ export default async function DashboardPreviewPage(props: {
           maxResponseTokens: 220,
           ownerWhatsapp: "+972585001007",
           primaryLanguage: locale,
+          reminderEnabled: false,
           inheritAdminGlobals: true,
           personality: {},
           agentName: "Sarah",

@@ -183,6 +183,13 @@
       "when": 1781014431857,
       "tag": "0025_unknown_jasper_sitwell",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1781023002419,
+      "tag": "0026_low_colossus",
+      "breakpoints": true
     }
   ]
 }

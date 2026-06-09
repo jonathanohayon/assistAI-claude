@@ -136,6 +136,13 @@ export const agentConfigs = pgTable("agent_configs", {
   // 'fr' | 'he' | 'en'.
   primaryLanguage: text("primary_language").notNull().default("fr"),
 
+  // Rappel automatique J-1 envoyé au CLIENT la veille de son RDV (cron
+  // /api/cron/appointment-reminders). Désactivé par défaut. WhatsApp uniquement
+  // (on ne capture que le téléphone du client, pas son email) : template Twilio
+  // Content avec fallback sur le template client approuvé. Le téléphone est lu
+  // depuis l'event Google Calendar (ligne "Tel :" de la description).
+  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+
   // Si false, le tenant n'hérite pas des blocs admin (spoken_time,
   // spoken_phone, hangup, per_call_context, config_blocks, admin_global)
   // dans son system prompt assemblé. Seuls persona + language directive
@@ -546,6 +553,33 @@ export const greetingAudio = pgTable(
       t.language,
       t.renderVersion,
     ),
+  }),
+);
+
+// Idempotence des rappels de RDV J-1. Les RDV vivent uniquement dans Google
+// Calendar (pas de table dédiée), donc on trace ici chaque rappel envoyé pour
+// ne JAMAIS doubler si le cron repasse. Clé unique (user_id, event_id).
+export const appointmentReminders = pgTable(
+  "appointment_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // ID de l'événement Google Calendar du RDV.
+    eventId: text("event_id").notNull(),
+    channel: text("channel").notNull().default("whatsapp"),
+    status: text("status").notNull(), // "sent" | "failed"
+    clientPhone: text("client_phone").notNull().default(""),
+    error: text("error").notNull().default(""),
+    // Début du RDV (UTC) — utile pour l'audit / debug.
+    appointmentStart: timestamp("appointment_start", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    uniq: unique("appointment_reminders_user_event").on(t.userId, t.eventId),
   }),
 );
 

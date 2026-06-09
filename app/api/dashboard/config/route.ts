@@ -45,6 +45,7 @@ export async function PUT(req: NextRequest) {
     maxResponseTokens: number;
     ownerWhatsapp: string;
     primaryLanguage: string;
+    reminderEnabled: boolean;
     inheritAdminGlobals: boolean;
     personality: Record<string, number>;
     agentName: string;
@@ -133,6 +134,9 @@ export async function PUT(req: NextRequest) {
       );
     }
     updates.primaryLanguage = body.primaryLanguage;
+  }
+  if (body.reminderEnabled != null) {
+    updates.reminderEnabled = Boolean(body.reminderEnabled);
   }
   if (body.inheritAdminGlobals != null) {
     updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
