@@ -953,6 +953,8 @@
     "close": "Close",
     "back": "← Back",
     "listTitle": "Your campaigns",
+    "deleteCampaign": "Delete",
+    "deleteCampaignConfirm": "Delete the campaign “{name}”? This cannot be undone.",
     "newCampaign": "New campaign",
     "listEmptyTitle": "No campaigns yet",
     "listEmptyBody": "Create your first outbound campaign to start reaching leads with AI agents.",

@@ -953,6 +953,8 @@
     "close": "סגירה",
     "back": "→ חזרה",
     "listTitle": "הקמפיינים שלך",
+    "deleteCampaign": "מחיקה",
+    "deleteCampaignConfirm": "למחוק את הקמפיין \"{name}\"? פעולה זו אינה הפיכה.",
     "newCampaign": "קמפיין חדש",
     "listEmptyTitle": "אין קמפיינים עדיין",
     "listEmptyBody": "צרו את הקמפיין הראשון שלכם כדי להתחיל לפנות ללידים עם סוכני AI.",
