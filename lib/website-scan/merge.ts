@@ -18,6 +18,7 @@ import {
 import type {
   HoursResult,
   IdentityResult,
+  KnowledgeResult,
   LanguagesResult,
   LocationResult,
   ServicesResult,
@@ -29,6 +30,7 @@ export interface AgentOutputs {
   location?: LocationResult;
   services?: ServicesResult;
   languages?: LanguagesResult;
+  knowledge?: KnowledgeResult;
 }
 
 export interface ScanConfidence {
@@ -37,6 +39,7 @@ export interface ScanConfidence {
   location: number;
   services: number;
   languages: number;
+  knowledge: number;
 }
 
 export interface ScanDraft {
@@ -116,6 +119,7 @@ export function assembleDraft(
     centres,
     services,
     centresRules: "",
+    knowledgeBase: outputs.knowledge?.knowledgeBase ?? "",
   });
 
   return {
@@ -127,6 +131,7 @@ export function assembleDraft(
       location: outputs.location?.confidence ?? 0,
       services: outputs.services?.confidence ?? 0,
       languages: outputs.languages?.confidence ?? 0,
+      knowledge: outputs.knowledge?.confidence ?? 0,
     },
     pages,
   };

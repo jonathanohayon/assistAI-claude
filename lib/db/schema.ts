@@ -215,6 +215,10 @@ export const agentConfigs = pgTable("agent_configs", {
       }>;
       /** Free-text règles strictes injectées en system prompt. */
       centresRules?: string;
+      /** Base de connaissances vente/expertise (corps de métier, descriptions
+       *  détaillées, détails techniques). Alimentée par le scan, injectée en
+       *  system prompt. Cf. lib/business.ts. */
+      knowledgeBase?: string;
     }>()
     .notNull()
     .default(

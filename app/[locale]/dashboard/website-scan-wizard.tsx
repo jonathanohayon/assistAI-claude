@@ -22,7 +22,13 @@ import type {
   WeekDay,
 } from "./config-form";
 
-type AgentKey = "identity" | "hours" | "location" | "services" | "languages";
+type AgentKey =
+  | "identity"
+  | "hours"
+  | "location"
+  | "services"
+  | "languages"
+  | "knowledge";
 type AgentStatus = "idle" | "running" | "done" | "error";
 type Step = "input" | "scanning" | "review";
 
@@ -52,6 +58,7 @@ const AGENT_ORDER: AgentKey[] = [
   "location",
   "hours",
   "services",
+  "knowledge",
   "languages",
 ];
 
@@ -60,6 +67,7 @@ const AGENT_ICON: Record<AgentKey, string> = {
   location: "📍",
   hours: "🕒",
   services: "✨",
+  knowledge: "📚",
   languages: "🌐",
 };
 
@@ -112,6 +120,7 @@ export function WebsiteScanWizard({
       location: "idle",
       services: "idle",
       languages: "idle",
+      knowledge: "idle",
     },
   );
   const [agentConfidence, setAgentConfidence] = useState<
@@ -125,6 +134,7 @@ export function WebsiteScanWizard({
     identity: true,
     centres: true,
     services: true,
+    knowledge: true,
     language: false,
   });
   const [mergeMode, setMergeMode] = useState<"replace" | "add">("replace");
@@ -152,6 +162,7 @@ export function WebsiteScanWizard({
       location: "idle",
       services: "idle",
       languages: "idle",
+      knowledge: "idle",
     });
     setAgentConfidence({});
     setDraft(null);
@@ -160,6 +171,7 @@ export function WebsiteScanWizard({
       identity: true,
       centres: true,
       services: true,
+      knowledge: true,
       language: false,
     });
     setMergeMode("replace");
@@ -204,6 +216,7 @@ export function WebsiteScanWizard({
       location: "idle",
       services: "idle",
       languages: "idle",
+      knowledge: "idle",
     });
     const controller = new AbortController();
     abortRef.current = controller;
@@ -295,12 +308,23 @@ export function WebsiteScanWizard({
         : draft.services
       : existingBusiness.services;
 
+    // Base de connaissances : en "add" on concatène à l'existant, en "replace"
+    // on prend celle du scan. Si non incluse, on garde l'existante.
+    const existingKb = (existingBusiness.knowledgeBase ?? "").trim();
+    const draftKb = (draft.knowledgeBase ?? "").trim();
+    const knowledgeBase = include.knowledge
+      ? mergeMode === "add"
+        ? [existingKb, draftKb].filter(Boolean).join("\n\n")
+        : draftKb
+      : existingKb;
+
     const finalBusiness: BusinessConfig = {
       ...base,
       identity,
       centres,
       services,
       centresRules: existingBusiness.centresRules ?? "",
+      knowledgeBase,
     };
 
     onApply(
@@ -680,6 +704,7 @@ function ReviewStep({
     identity: boolean;
     centres: boolean;
     services: boolean;
+    knowledge: boolean;
     language: boolean;
   };
   setInclude: React.Dispatch<
@@ -687,6 +712,7 @@ function ReviewStep({
       identity: boolean;
       centres: boolean;
       services: boolean;
+      knowledge: boolean;
       language: boolean;
     }>
   >;
@@ -907,6 +933,32 @@ function ReviewStep({
               </div>
             ))}
           </div>
+        )}
+      </ReviewSection>
+
+      {/* Base de connaissances (corps de métier, descriptions, technique) */}
+      <ReviewSection
+        title={t("sectionKnowledge")}
+        icon={AGENT_ICON.knowledge}
+        confidence={confidence.knowledge}
+        included={include.knowledge}
+        onToggle={() => setInclude((s) => ({ ...s, knowledge: !s.knowledge }))}
+        t={t}
+      >
+        {(draft.knowledgeBase ?? "").trim().length === 0 ? (
+          <p className="text-[12px] italic text-[#94a3b8]">{t("noneFound")}</p>
+        ) : (
+          <>
+            <textarea
+              value={draft.knowledgeBase ?? ""}
+              onChange={(e) => patchDraft({ knowledgeBase: e.target.value })}
+              rows={10}
+              className="w-full resize-y rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-2 text-[12px] leading-relaxed text-[#0f172a] outline-none focus:border-[#22d3ee]"
+            />
+            <p className="mt-1.5 text-[10px] text-[#94a3b8]">
+              {t("knowledgeEditNote")}
+            </p>
+          </>
         )}
       </ReviewSection>
 

@@ -18,6 +18,7 @@ import { logEvent } from "@/lib/logger";
 import {
   hoursAgent,
   identityAgent,
+  knowledgeAgent,
   languagesAgent,
   locationAgent,
   servicesAgent,
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
           runAgent("location", () => locationAgent(ctx)),
           runAgent("services", () => servicesAgent(ctx)),
           runAgent("languages", () => languagesAgent(ctx)),
+          runAgent("knowledge", () => knowledgeAgent(ctx)),
         ]);
 
         // 3. Assemblage + sanitize

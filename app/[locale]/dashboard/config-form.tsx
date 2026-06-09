@@ -90,6 +90,10 @@ export type BusinessConfig = {
    *  (ex. "Natanya uniquement le mercredi", blackout dates, etc.).
    *  Vide → la section n'est pas injectée du tout. */
   centresRules?: string;
+  /** Base de connaissances vente/expertise (corps de métier, descriptions
+   *  détaillées, détails techniques, arguments de vente). Alimentée par le scan
+   *  du site, injectée dans le system prompt. Vide → non injectée. */
+  knowledgeBase?: string;
 };
 
 /** Un numéro tenant tel que renvoyé par /api/dashboard/channels — le canal
@@ -1974,6 +1978,11 @@ function BusinessPanel({
         onChange={(services) => patch({ services })}
         t={t}
       />
+      <KnowledgeBaseSection
+        value={business.knowledgeBase ?? ""}
+        onChange={(knowledgeBase) => patch({ knowledgeBase })}
+        t={t}
+      />
     </div>
   );
 }
@@ -2353,6 +2362,85 @@ function CentresRulesSection({
             }`}
           >
             {charCount.toLocaleString()} / {CENTRES_RULES_MAX.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const KNOWLEDGE_BASE_MAX = 6000;
+
+// Base de connaissances vente/expertise — texte libre (markdown) rempli par le
+// scan du site (corps de métier, descriptions détaillées, détails techniques,
+// arguments de vente) et éditable ici. Injecté dans le system prompt.
+function KnowledgeBaseSection({
+  value,
+  onChange,
+  t,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  t: ReturnType<typeof useTranslations<"DashboardConfig">>;
+}) {
+  const hasContent = value.trim().length > 0;
+  const charCount = value.length;
+  const overBudget = charCount > KNOWLEDGE_BASE_MAX;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/50 to-white shadow-sm">
+      <header className="border-b border-[#e2e8f0]/70 bg-white/60 px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0891b2] to-[#0e7490] text-white shadow-sm">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+              aria-hidden
+            >
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+            </svg>
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-[#18181b]">
+              {t("knowledgeBaseTitle")}
+            </h3>
+            <p className="text-[11px] text-[#64748b]">
+              {t("knowledgeBaseSubtitle")}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-5 py-4">
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={t("knowledgeBasePlaceholder")}
+          rows={Math.max(6, Math.min(24, value.split("\n").length + 1))}
+          className={`w-full resize-y rounded-xl border bg-white px-3.5 py-2.5 text-[12px] leading-relaxed text-[#18181b] shadow-inner transition placeholder:text-[#cbd5e1] focus:outline-none focus:ring-2 ${
+            overBudget
+              ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+              : "border-[#e2e8f0] focus:border-[#0e7490]/60 focus:ring-[#0e7490]/20"
+          }`}
+        />
+        <div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
+          <p className="text-[#64748b]">
+            {hasContent
+              ? t("knowledgeBaseActiveNote")
+              : t("knowledgeBaseEmptyNote")}
+          </p>
+          <p
+            className={`font-mono ${
+              overBudget ? "font-semibold text-red-600" : "text-[#94a3b8]"
+            }`}
+          >
+            {charCount.toLocaleString()} / {KNOWLEDGE_BASE_MAX.toLocaleString()}
           </p>
         </div>
       </div>
