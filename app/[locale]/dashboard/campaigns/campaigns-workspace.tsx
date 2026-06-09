@@ -368,6 +368,8 @@ export function CampaignsWorkspace({
                 error={error}
                 onOpen={openExisting}
                 onCreate={openNew}
+                onDeleted={() => void loadList()}
+                asUserId={asUserId}
               />
             )}
 

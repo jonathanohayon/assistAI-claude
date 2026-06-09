@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { GOAL_PRESETS } from "@/lib/campaigns/constants";
 import type { CampaignListItem } from "@/lib/campaigns/types";
@@ -22,14 +23,40 @@ export function CampaignList({
   error,
   onOpen,
   onCreate,
+  onDeleted,
+  asUserId,
 }: {
   campaigns: CampaignListItem[];
   loading: boolean;
   error: string | null;
   onOpen: (c: CampaignListItem) => void;
   onCreate: () => void;
+  onDeleted?: () => void;
+  asUserId?: string;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (
+    e: React.MouseEvent,
+    c: CampaignListItem,
+  ) => {
+    e.stopPropagation();
+    if (deletingId) return;
+    if (!window.confirm(t("deleteConfirm"))) return;
+    setDeletingId(c.id);
+    try {
+      const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+      const res = await fetch(`/api/dashboard/campaigns/${c.id}${qs}`, {
+        method: "DELETE",
+      });
+      if (res.ok) onDeleted?.();
+    } catch {
+      /* noop */
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div>
@@ -91,14 +118,26 @@ export function CampaignList({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {campaigns.map((c, i) => (
+            <div key={c.id} className="group relative">
+            <button
+              type="button"
+              onClick={(e) => handleDelete(e, c)}
+              disabled={deletingId === c.id}
+              aria-label={t("deleteCta")}
+              title={t("deleteCta")}
+              className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[#94a3b8] opacity-0 shadow-sm ring-1 ring-[#e2e8f0] transition hover:bg-[#fee2e2] hover:text-[#dc2626] group-hover:opacity-100 disabled:opacity-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" />
+              </svg>
+            </button>
             <motion.button
-              key={c.id}
               type="button"
               onClick={() => onOpen(c)}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
-              className="group flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#f97316]/40 hover:shadow-lg"
+              className="flex w-full flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#f97316]/40 hover:shadow-lg"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -145,6 +184,7 @@ export function CampaignList({
                 </div>
               )}
             </motion.button>
+            </div>
           ))}
         </div>
       )}
