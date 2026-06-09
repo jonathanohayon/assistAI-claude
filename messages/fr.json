@@ -1075,6 +1075,7 @@
     "sheetsLoad": "Charger le sheet",
     "sheetsNotConnected": "Connectez Google dans les Paramètres pour importer depuis Sheets.",
     "launchTitle": "Prêt à lancer",
+    "launchNoContentWarning": "Cette campagne n'a ni objectif ni connaissance métier — l'agent ne saura pas quoi vendre et risque d'improviser. Ajoute un objectif ou scanne un site dans la configuration avant de lancer.",
     "detailQueued": "En file d'attente",
     "detailInFlight": "En cours",
     "detailDone": "Terminé",
