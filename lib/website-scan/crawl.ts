@@ -19,10 +19,11 @@ export interface ScannedPage {
   text: string;
 }
 
-const MAX_PAGES = 12; // home + 11 pages découvertes (couverture élargie)
+const MAX_PAGES = 22; // home + 21 pages (2 niveaux de profondeur)
+const L1_BUDGET = 13; // pages crawlées au niveau 1 (liens de la home)
 const PER_PAGE_TIMEOUT_MS = 8000;
-const MAX_BYTES = 250_000; // ~250 KB de HTML par page max
-const PER_PAGE_TEXT_CHARS = 10_000; // texte par page (borne coût LLM)
+const MAX_BYTES = 500_000; // ~500 KB de HTML par page max
+const PER_PAGE_TEXT_CHARS = 18_000; // texte par page (listes de prix longues)
 const MAX_JSONLD_CHARS = 4000; // données structurées schema.org gardées par page
 const MAX_REDIRECTS = 4;
 const USER_AGENT =
@@ -329,10 +330,14 @@ async function parseHtml(html: string): Promise<ParsedPage> {
  * score par URL, puis on trie décroissant — le budget de pages est ainsi
  * dépensé sur les pages les plus riches en infos requises.
  */
-function pickCandidateUrls(
+// Liens à NE PAS crawler même en remplissage (bruit / non-business / binaires).
+const EXCLUDE_PATTERN =
+  /(\/(login|signin|sign-in|log-in|register|signup|sign-up|account|compte|mon-compte|panier|cart|checkout|commande|wishlist|favoris|cgv|cgu|mentions-?legales|privacy|confidentialite|cookies|terms|legal|wp-admin|wp-login|wp-json|feed|rss|sitemap|search|recherche|tag|category\/page|\?)|\.(pdf|docx?|xlsx?|zip|rar|jpe?g|png|gif|webp|svg|mp4|mp3|avi|css|js|xml|ico))/i;
+
+function scoredCandidates(
   root: URL,
   links: { href: string; label: string }[],
-): URL[] {
+): { u: URL; score: number; order: number }[] {
   const byKey = new Map<string, { u: URL; score: number; order: number }>();
   let order = 0;
   for (const { href, label } of links) {
@@ -352,15 +357,21 @@ function pickCandidateUrls(
     for (const { kw, weight } of LINK_KEYWORDS) {
       if (haystack.includes(kw)) score += weight;
     }
-    if (score === 0) continue;
+    // Pages sans mot-clé : on les garde quand même en priorité basse (0.5)
+    // pour couvrir les catalogues / fiches produit aux URLs non descriptives
+    // — SAUF le bruit évident (login, panier, légal, fichiers…).
+    if (score === 0) {
+      if (EXCLUDE_PATTERN.test(u.pathname)) continue;
+      score = 0.5;
+    }
     const prev = byKey.get(key);
     if (!prev || score > prev.score) {
       byKey.set(key, { u, score, order: prev?.order ?? order++ });
     }
   }
-  return [...byKey.values()]
-    .sort((a, b) => b.score - a.score || a.order - b.order)
-    .map((e) => e.u);
+  return [...byKey.values()].sort(
+    (a, b) => b.score - a.score || a.order - b.order,
+  );
 }
 
 /** Compose le texte d'une page : données structurées (schema.org) en tête —
@@ -371,10 +382,28 @@ function composePageText(parsed: ParsedPage): string {
   return `[DONNÉES STRUCTURÉES schema.org]\n${parsed.structured}\n\n${body}`;
 }
 
+/** Fetch + parse une URL en page scannée (null si injoignable/vide). */
+async function fetchPage(u: URL): Promise<{ page: ScannedPage; parsed: ParsedPage } | null> {
+  try {
+    const html = await fetchHtml(u);
+    if (html == null) return null;
+    const parsed = await parseHtml(html);
+    const text = composePageText(parsed);
+    if (!text) return null;
+    return {
+      page: { url: u.toString(), title: parsed.title || u.pathname, text },
+      parsed,
+    };
+  } catch {
+    return null; // page privée / erreur → skip, pas fatal
+  }
+}
+
 /**
- * Crawl la home + jusqu'à MAX_PAGES-1 pages clés. Lève ScanError sur erreur
- * fatale (URL invalide / privée / home injoignable), renvoie [] jamais —
- * au minimum la home si elle répond.
+ * Crawl sur 2 niveaux : home → pages clés (niveau 1) → sous-pages clés
+ * découvertes depuis le niveau 1 (niveau 2, ex. /services → /services/tarifs).
+ * Chaque niveau crawlé en parallèle. Priorisé par score, borné à MAX_PAGES.
+ * Lève ScanError si la home est injoignable ; sinon renvoie ≥ la home.
  */
 export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
   const root = normalizeRootUrl(rootRaw);
@@ -390,28 +419,39 @@ export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
       text: composePageText(home),
     },
   ];
+  const visited = new Set<string>([root.toString()]);
 
-  const candidates = pickCandidateUrls(root, home.links).slice(0, MAX_PAGES - 1);
-  const fetched = await Promise.all(
-    candidates.map(async (u) => {
-      try {
-        const html = await fetchHtml(u);
-        if (html == null) return null;
-        const parsed = await parseHtml(html);
-        const text = composePageText(parsed);
-        if (!text) return null;
-        return {
-          url: u.toString(),
-          title: parsed.title || u.pathname,
-          text,
-        } satisfies ScannedPage;
-      } catch (e) {
-        if (e instanceof ScanError) return null; // page privée → skip, pas fatal
-        return null;
+  // ── Niveau 1 : meilleures pages liées depuis la home ────────────────────
+  const l1 = scoredCandidates(root, home.links)
+    .map((c) => c.u)
+    .filter((u) => !visited.has(u.toString()))
+    .slice(0, L1_BUDGET);
+  l1.forEach((u) => visited.add(u.toString()));
+  const l1Results = await Promise.all(l1.map(fetchPage));
+  for (const r of l1Results) if (r) pages.push(r.page);
+
+  // ── Niveau 2 : sous-pages clés découvertes depuis les pages niveau 1 ─────
+  const remaining = MAX_PAGES - pages.length;
+  if (remaining > 0) {
+    const pool = new Map<string, { u: URL; score: number }>();
+    for (const r of l1Results) {
+      if (!r) continue;
+      for (const c of scoredCandidates(root, r.parsed.links)) {
+        const key = c.u.toString();
+        if (visited.has(key)) continue;
+        const prev = pool.get(key);
+        if (!prev || c.score > prev.score) pool.set(key, { u: c.u, score: c.score });
       }
-    }),
-  );
-  for (const p of fetched) if (p) pages.push(p);
+    }
+    const l2 = [...pool.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, remaining)
+      .map((e) => e.u);
+    l2.forEach((u) => visited.add(u.toString()));
+    const l2Results = await Promise.all(l2.map(fetchPage));
+    for (const r of l2Results) if (r) pages.push(r.page);
+  }
+
   return pages;
 }
 
