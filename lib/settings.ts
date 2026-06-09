@@ -94,6 +94,10 @@ export const SETTING_KEYS = {
   // system prompt des campagnes sortantes. Éditable depuis /admin. Vide pour
   // un preset → fallback DEFAULT_GOAL_FRAMINGS (lib/campaigns/prompt.ts).
   CAMPAIGN_GOAL_FRAMINGS: "campaign_goal_framings",
+  // userId du compte "démo" : l'agent de la page d'accueil reprend sa persona,
+  // voix, accueil et langue. Déclaré depuis /admin (vue tenant). Vide = démo
+  // anonyme par défaut (REALTIME_INSTRUCTIONS).
+  DEMO_USER_ID: "demo_user_id",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -115,6 +119,17 @@ export async function setSetting(key: string, value: string): Promise<void> {
       target: appSettings.key,
       set: { value, updatedAt: new Date() },
     });
+}
+
+/** userId du compte démo de la page d'accueil (vide → non configuré). */
+export async function getDemoUserId(): Promise<string | null> {
+  const v = (await getSetting(SETTING_KEYS.DEMO_USER_ID))?.trim();
+  return v ? v : null;
+}
+
+/** Déclare (ou retire si null) le compte démo de la page d'accueil. */
+export async function setDemoUserId(userId: string | null): Promise<void> {
+  await setSetting(SETTING_KEYS.DEMO_USER_ID, userId ?? "");
 }
 
 export async function getGlobalInstructions(): Promise<string> {

@@ -56,6 +56,32 @@ export default function VoiceAgent() {
   // l'arrivée du transcript assistant. Drive l'indicateur typing 3-dots.
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
+  // Config du compte "démo" déclaré dans /admin : si présent, l'agent de la
+  // home reprend sa persona / voix / accueil / langue (personnalisable via le
+  // dashboard de ce compte). Null = démo anonyme par défaut.
+  const demoConfigRef = useRef<{
+    instructions?: string;
+    voice?: string | null;
+    greeting?: string;
+    primaryLanguage?: string;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/demo-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.configured) return;
+        demoConfigRef.current = d;
+        if (d.voice) setVoice(d.voice);
+      })
+      .catch(() => {
+        /* pas de compte démo → on garde l'agent anonyme par défaut */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Liste filtrée pour le dropdown public : uniquement les modèles de la
   // allowlist, dans l'ordre défini. On garde l'ID OpenAI réel mais on
   // affiche le label "tamara-realtime-X" pour ne pas exposer la techno.
@@ -251,11 +277,20 @@ export default function VoiceAgent() {
     setStatus("connecting");
 
     try {
-      // 1. Get ephemeral token (model/voice picked client-side, validated server-side)
+      // 1. Get ephemeral token (model/voice picked client-side, validated server-side).
+      //    Si un compte démo est déclaré, on injecte sa persona + langue.
+      const demo = demoConfigRef.current;
       const tokenRes = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, voice }),
+        body: JSON.stringify({
+          model,
+          voice,
+          ...(demo?.instructions ? { instructions: demo.instructions } : {}),
+          ...(demo?.primaryLanguage
+            ? { primaryLanguage: demo.primaryLanguage }
+            : {}),
+        }),
       });
       if (!tokenRes.ok) throw new Error("Impossible d'obtenir le token de session");
       const tokenData = await tokenRes.json();
@@ -322,13 +357,16 @@ export default function VoiceAgent() {
         setStatus("connected");
         // Démarrer le countdown de session démo dès que le canal est ouvert.
         setSecondsLeft(DEMO_SESSION_SECONDS);
+        // Accueil : si le compte démo a un message d'accueil, on le fait dire
+        // tel quel ; sinon fallback générique Tamara.
+        const demoGreeting = demoConfigRef.current?.greeting?.trim();
+        const greetInstruction = demoGreeting
+          ? `Commence par dire, mot pour mot : « ${demoGreeting} » puis enchaîne naturellement. Si l'appelant répond dans une autre langue, bascule dans sa langue.`
+          : "Salue l'appelant en français : 'Bonjour, Tamara à votre écoute, comment puis-je vous aider ?' Si l'appelant répond en hébreu, bascule en hébreu.";
         dc.send(
           JSON.stringify({
             type: "response.create",
-            response: {
-              instructions:
-                "Salue l'appelant en français : 'Bonjour, Tamara à votre écoute, comment puis-je vous aider ?' Si l'appelant répond en hébreu, bascule en hébreu.",
-            },
+            response: { instructions: greetInstruction },
           })
         );
       };
