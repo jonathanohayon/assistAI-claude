@@ -217,6 +217,7 @@ function NumbersCell({
   const [adding, setAdding] = useState(false);
   const [phone, setPhone] = useState("");
   const [label, setLabel] = useState("");
+  const [channel, setChannel] = useState<"pstn" | "whatsapp">("pstn");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -227,7 +228,7 @@ function NumbersCell({
       const res = await fetch("/api/admin/numbers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, phoneNumber: phone, label }),
+        body: JSON.stringify({ userId, phoneNumber: phone, label, channel }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -242,6 +243,7 @@ function NumbersCell({
       setNumbers([...numbers, created]);
       setPhone("");
       setLabel("");
+      setChannel("pstn");
       setAdding(false);
     });
   };
@@ -302,6 +304,17 @@ function NumbersCell({
               placeholder="Label (optionnel)"
               className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs"
             />
+            <select
+              value={channel}
+              onChange={(e) =>
+                setChannel(e.target.value === "whatsapp" ? "whatsapp" : "pstn")
+              }
+              title="Canal du numéro"
+              className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-xs"
+            >
+              <option value="pstn">Téléphone</option>
+              <option value="whatsapp">WhatsApp</option>
+            </select>
             <button
               type="submit"
               disabled={isPending}
