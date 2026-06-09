@@ -985,6 +985,8 @@
     "stepProgress": "שלב {current}/{total}",
     "savedOk": "נשמר",
     "nextStepContacts": "הבא: אנשי קשר",
+    "nextStepLaunch": "הבא: השקה",
+    "prevStep": "הקודם",
     "stepResults": "תוצאות",
     "nameLabel": "שם הקמפיין",
     "namePlaceholder": "פנייה Q3 — מרפאות תל אביב",

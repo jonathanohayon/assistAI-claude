@@ -985,6 +985,8 @@
     "stepProgress": "Étape {current}/{total}",
     "savedOk": "Enregistré",
     "nextStepContacts": "Suivant : Contacts",
+    "nextStepLaunch": "Suivant : Lancement",
+    "prevStep": "Précédent",
     "stepResults": "Résultats",
     "nameLabel": "Nom de la campagne",
     "namePlaceholder": "Prospection Q3 — Cliniques Tel Aviv",

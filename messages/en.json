@@ -985,6 +985,8 @@
     "stepProgress": "Step {current}/{total}",
     "savedOk": "Saved",
     "nextStepContacts": "Next: Contacts",
+    "nextStepLaunch": "Next: Launch",
+    "prevStep": "Back",
     "stepResults": "Results",
     "nameLabel": "Campaign name",
     "namePlaceholder": "Q3 outreach — Tel Aviv clinics",

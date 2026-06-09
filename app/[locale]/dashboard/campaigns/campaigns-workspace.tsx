@@ -258,39 +258,44 @@ export function CampaignsWorkspace({
           {/* Header dégradé chaud */}
           <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                {view === "editor" && (
-                  <button
-                    onClick={() => setView("list")}
-                    className="rounded-full px-2 py-1 text-[13px] font-semibold text-white/85 transition hover:bg-white/15"
-                  >
-                    {t("back")}
-                  </button>
-                )}
-                <div>
-                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/80">
-                    <span>📣</span>
+            <div className="relative flex items-center gap-3">
+              {view === "editor" && (
+                <button
+                  onClick={() => setView("list")}
+                  aria-label={t("back")}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M11 18l-6-6 6-6" />
+                  </svg>
+                </button>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/75">
+                  <span>📣</span>
+                  <span className="truncate">
                     {view === "editor"
                       ? `${t("stepProgress", { current: stepIdx + 1, total: STEPS.length })} · ${stepLabel}`
                       : t("kicker")}
-                  </div>
-                  <h3 className="text-lg font-extrabold tracking-tight">
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="truncate text-lg font-extrabold tracking-tight">
                     {view === "editor"
                       ? draft.name.trim() || t("title")
                       : t("title")}
                   </h3>
+                  {view === "editor" && savedCampaign && (
+                    <StatusPill
+                      status={activeStatus}
+                      label={t(`status_${activeStatus}`)}
+                    />
+                  )}
                 </div>
-                {view === "editor" && savedCampaign && (
-                  <StatusPill
-                    status={activeStatus}
-                    label={t(`status_${activeStatus}`)}
-                  />
-                )}
               </div>
               <button
                 onClick={onClose}
-                className="rounded-full p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
                 aria-label={t("close")}
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -302,7 +307,7 @@ export function CampaignsWorkspace({
             {/* Stepper 1·2·3 — rend les 3 étapes explicites (numéro, libellé,
              *  état fait/actif/verrouillé, ligne de progression). */}
             {view === "editor" && (
-              <div className="relative mt-4 flex items-center">
+              <div className="relative mt-3 flex items-center border-t border-white/15 pt-3">
                 {STEPS.map((s, i) => {
                   const locked = s.key !== "setup" && !savedCampaign;
                   const active = tab === s.key;
@@ -475,6 +480,45 @@ export function CampaignsWorkspace({
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Footer (étape 2 — Contacts) : Précédent + Suivant → Lancement */}
+          {view === "editor" && tab === "contacts" && (
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
+              <button
+                onClick={() => setTab("setup")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold text-[#64748b] transition hover:bg-[#f8fafc]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M19 12H5M11 18l-6-6 6-6" />
+                </svg>
+                {t("prevStep")}
+              </button>
+              <button
+                onClick={() => setTab("launch")}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+              >
+                {t("nextStepLaunch")}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Footer (étape 3 — Lancement) : Précédent (dernière étape) */}
+          {view === "editor" && tab === "launch" && (
+            <div className="flex shrink-0 items-center justify-start gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
+              <button
+                onClick={() => setTab("contacts")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-semibold text-[#64748b] transition hover:bg-[#f8fafc]"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M19 12H5M11 18l-6-6 6-6" />
+                </svg>
+                {t("prevStep")}
+              </button>
             </div>
           )}
         </motion.div>
