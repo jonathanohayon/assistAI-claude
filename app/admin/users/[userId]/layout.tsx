@@ -12,8 +12,10 @@ import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { getDemoUserId } from "@/lib/settings";
 
 import { AdminTenantTabs } from "./_nav";
+import { DemoAccountToggle } from "./DemoAccountToggle";
 
 // Layout partagé pour /admin/users/[userId]/* — fournit header + nav 4
 // onglets (Config / Calendrier / CRM / Monitoring) pour que l'admin puisse
@@ -73,6 +75,7 @@ export default async function AdminTenantLayout({
       ? (target.subscriptionPlan as PlanKey)
       : PLANS[0].key;
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
+  const isDemo = (await getDemoUserId()) === target.id;
 
   async function handleLogout() {
     "use server";
@@ -123,7 +126,10 @@ export default async function AdminTenantLayout({
               </strong>{" "}
               · plan {planLabel} · statut {target.subscriptionStatus}
             </span>
-            <span className="font-mono">{target.id.slice(0, 8)}…</span>
+            <div className="flex items-center gap-3">
+              <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
+              <span className="font-mono">{target.id.slice(0, 8)}…</span>
+            </div>
           </div>
         </div>
 
