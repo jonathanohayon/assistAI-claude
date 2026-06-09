@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
+import { getCampaignGoalFramings } from "@/lib/settings";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
 // Config runtime servie au worker pour un appel sortant donné. Même forme
@@ -39,9 +40,12 @@ export async function GET(req: NextRequest) {
   }
 
   const persona = campaign.persona ?? {};
+  // Framings de prompt éditables par l'admin (override des défauts par preset).
+  const framings = await getCampaignGoalFramings();
   const instructions = buildCampaignInstructions(
     { goalPreset: campaign.goalPreset, objective: campaign.objective, persona },
     { contactName: contact.contactName, phoneNumber: contact.phoneNumber, vars: contact.vars },
+    framings,
   );
   const greetingInstructions = buildCampaignGreeting({ persona }, {
     contactName: contact.contactName,

@@ -17,6 +17,8 @@ import {
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { GOAL_PRESETS, type GoalPreset } from "@/lib/campaigns/constants";
+import { DEFAULT_GOAL_FRAMINGS } from "@/lib/campaigns/prompt";
 
 export const SETTING_KEYS = {
   // Legacy : prompt unique appliqué à tous les plans. Conservé pour la
@@ -88,6 +90,10 @@ export const SETTING_KEYS = {
   // JSON CostRates — rate card USD pour l'estimation des coûts (admin
   // Finance). Vide → DEFAULT_COST_RATES. Voir lib/finance/rates.ts.
   COST_RATES: "cost_rates",
+  // JSON map preset (cold/sales/lead_gen/marketing/custom) → framing du
+  // system prompt des campagnes sortantes. Éditable depuis /admin. Vide pour
+  // un preset → fallback DEFAULT_GOAL_FRAMINGS (lib/campaigns/prompt.ts).
+  CAMPAIGN_GOAL_FRAMINGS: "campaign_goal_framings",
 } as const;
 
 export type GlobalInstructionsByPlan = Record<PlanKey, string>;
@@ -239,6 +245,46 @@ export async function setSummaryPromptByPlan(
   }
   await setSetting(
     SETTING_KEYS.SUMMARY_PROMPT_BY_PLAN,
+    JSON.stringify(merged),
+  );
+}
+
+// ── Framings de prompt par preset de campagne (sales/marketing/…) ───────
+// Map preset → texte de framing injecté dans le system prompt de l'agent
+// sortant. Vide pour un preset = fallback DEFAULT_GOAL_FRAMINGS.
+
+export type CampaignGoalFramings = Record<GoalPreset, string>;
+
+export async function getCampaignGoalFramings(): Promise<CampaignGoalFramings> {
+  const raw = await getSetting(SETTING_KEYS.CAMPAIGN_GOAL_FRAMINGS);
+  // Défaut = valeurs hardcodées (pas "" : on veut servir le framing par défaut
+  // si l'admin n'a rien personnalisé).
+  const out = { ...DEFAULT_GOAL_FRAMINGS } as CampaignGoalFramings;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<GoalPreset, string>>;
+      for (const preset of GOAL_PRESETS) {
+        const v = parsed[preset];
+        if (typeof v === "string") out[preset] = v;
+      }
+    } catch {
+      // JSON corrompu → défauts.
+    }
+  }
+  return out;
+}
+
+export async function setCampaignGoalFramings(
+  map: Partial<CampaignGoalFramings>,
+): Promise<void> {
+  const current = await getCampaignGoalFramings();
+  const merged = { ...current } as CampaignGoalFramings;
+  for (const preset of GOAL_PRESETS) {
+    const v = map[preset];
+    if (typeof v === "string") merged[preset] = v;
+  }
+  await setSetting(
+    SETTING_KEYS.CAMPAIGN_GOAL_FRAMINGS,
     JSON.stringify(merged),
   );
 }

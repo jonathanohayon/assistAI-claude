@@ -16,7 +16,10 @@ interface CampaignPersona {
   knowledgeSources?: string[];
 }
 
-const GOAL_FRAMING: Record<GoalPreset, string> = {
+// Framings par preset — DÉFAUTS. Éditables depuis /admin (stockés dans
+// app_settings.campaign_goal_framings, cf. lib/settings.ts). Exportés pour
+// que l'admin affiche/réinitialise sur ces valeurs.
+export const DEFAULT_GOAL_FRAMINGS: Record<GoalPreset, string> = {
   cold: "Tu passes un appel à FROID — c'est TOI qui appelles. Présente-toi et accroche dès les 15 premières secondes sur un bénéfice concret. N'attends pas qu'on te sollicite.",
   sales: "Tu es un VENDEUR en appel sortant. Dès l'accueil, présente-toi puis PRÉSENTE activement le produit / l'offre et son bénéfice principal (cite un prix ou un argument fort si pertinent). Tu MÈNES la conversation vers la vente ou la prochaine étape concrète, en t'appuyant sur ta base de connaissance. Tu ne demandes JAMAIS ce que la personne veut — c'est toi qui proposes.",
   lead_gen: "Tu mènes un appel SORTANT pour qualifier le prospect. Annonce d'abord brièvement la raison de ton appel et l'offre, puis pose des questions ciblées. N'attends pas qu'on te sollicite.",
@@ -40,10 +43,16 @@ function substituteVars(
 export function buildCampaignInstructions(
   campaign: { goalPreset: string; objective: string; persona: CampaignPersona },
   contact: { contactName?: string; phoneNumber?: string; vars?: Record<string, string> },
+  // Framings éditables par l'admin (override des défauts). Si absent ou vide
+  // pour le preset → fallback sur DEFAULT_GOAL_FRAMINGS.
+  framings?: Partial<Record<string, string>>,
 ): string {
   const p = campaign.persona ?? {};
   const agentName = (p.agentName || "Sarah").trim();
-  const framing = GOAL_FRAMING[campaign.goalPreset as GoalPreset] ?? "";
+  const framing =
+    (framings?.[campaign.goalPreset]?.trim() ||
+      DEFAULT_GOAL_FRAMINGS[campaign.goalPreset as GoalPreset]) ??
+    "";
 
   const parts: string[] = [];
   parts.push(`Tu es ${agentName}, un agent vocal qui passe un appel SORTANT.`);
