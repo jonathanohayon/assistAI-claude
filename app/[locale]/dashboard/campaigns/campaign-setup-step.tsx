@@ -217,6 +217,16 @@ export function CampaignSetupStep({
             />
           </Field>
         </div>
+        <div className="mt-3">
+          <Field label={t("greetingLabel")} hint={t("greetingHint")}>
+            <input
+              className={inputCls}
+              value={draft.persona.greeting ?? ""}
+              placeholder={t("greetingPlaceholder")}
+              onChange={(e) => setPersona({ greeting: e.target.value })}
+            />
+          </Field>
+        </div>
       </Section>
 
       {/* Connaissance métier depuis le(s) site(s) web */}
