@@ -28,6 +28,8 @@ import { assembleDraft, type AgentOutputs } from "@/lib/website-scan/merge";
 
 // Node runtime (cheerio + dns + fetch streaming). Jamais caché (POST).
 export const dynamic = "force-dynamic";
+// Le crawl multi-pages (rendu JS via Jina) peut prendre 30-90 s.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const session = await auth();

@@ -36,7 +36,7 @@ const USER_AGENT =
 // r.jina.ai qui rend le JS et renvoie du markdown propre (texte + liens).
 const READER_BASE = "https://r.jina.ai/";
 const READER_FALLBACK_CHARS = 800; // sous ce seuil de texte body → site JS
-const READER_TIMEOUT_MS = 25_000;
+const READER_TIMEOUT_MS = 15_000;
 
 // Mots-clés multilingues (fr/en/he-translittéré + hébreu) pour repérer les
 // pages utiles. Chaque entrée porte un poids : les pages les plus riches en
@@ -459,11 +459,36 @@ async function buildPage(
   };
 }
 
-/** Fetch + parse une URL en page scannée (null si injoignable/vide). */
+/** Construit une page directement depuis Jina Reader (sans HTML brut) — utilisé
+ *  quand le fetch direct est bloqué (protection bot / IP datacenter) ou JS. */
+function pageFromReader(
+  u: URL,
+  reader: { text: string; links: { href: string; label: string }[] },
+): { page: ScannedPage; parsed: ParsedPage } {
+  // 1re ligne "Title: …" éventuelle renvoyée par Jina → titre.
+  const titleMatch = reader.text.match(/^Title:\s*(.+)$/m);
+  return {
+    page: {
+      url: u.toString(),
+      title: (titleMatch?.[1] || u.hostname + u.pathname).slice(0, 200),
+      text: reader.text,
+    },
+    parsed: { title: "", text: reader.text, structured: "", links: reader.links },
+  };
+}
+
+/** Fetch + parse une URL en page scannée (null si injoignable/vide). Si le
+ *  fetch direct échoue (bloqué/erreur), tente Jina Reader avant d'abandonner. */
 async function fetchPage(u: URL): Promise<{ page: ScannedPage; parsed: ParsedPage } | null> {
   try {
     const html = await fetchHtml(u);
-    if (html == null) return null;
+    if (html == null) {
+      // Fetch direct bloqué (ex. protection bot Wix/CDN sur IP datacenter) →
+      // on tente Jina Reader qui récupère depuis sa propre infra.
+      const reader = await fetchViaReader(u);
+      if (!reader || !reader.text) return null;
+      return pageFromReader(u, reader);
+    }
     const r = await buildPage(u, html);
     if (!r.page.text) return null;
     return r;
@@ -544,11 +569,19 @@ async function fetchSitemapUrls(root: URL): Promise<URL[]> {
 export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
   const root = normalizeRootUrl(rootRaw);
   const homeHtml = await fetchHtml(root);
+  // Home : si le fetch direct est bloqué (protection bot / IP datacenter →
+  // fréquent sur Wix/Cloudflare en prod), on bascule entièrement sur Jina
+  // Reader. Sinon build normal (avec fallback Reader si coquille JS).
+  let homeBuilt: { page: ScannedPage; parsed: ParsedPage };
   if (homeHtml == null) {
-    throw new ScanError("Impossible de charger la page d'accueil du site.");
+    const reader = await fetchViaReader(root);
+    if (!reader || !reader.text) {
+      throw new ScanError("Impossible de charger la page d'accueil du site.");
+    }
+    homeBuilt = pageFromReader(root, reader);
+  } else {
+    homeBuilt = await buildPage(root, homeHtml);
   }
-  // Home : build avec fallback Jina Reader (texte + liens) si coquille JS.
-  const homeBuilt = await buildPage(root, homeHtml);
   const pages: ScannedPage[] = [homeBuilt.page];
   const visited = new Set<string>([root.toString()]);
 
