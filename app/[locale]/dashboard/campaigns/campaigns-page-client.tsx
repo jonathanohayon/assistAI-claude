@@ -1,22 +1,11 @@
 "use client";
 
-import { useRouter } from "@/i18n/navigation";
-
-import { CampaignsWorkspace } from "./campaigns-workspace";
+import { OutboundHome } from "./outbound-home";
 
 /**
- * Hôte client de l'onglet « Appels sortants ». Rend le workspace campagnes en
- * mode page (inline sous la nav, sans backdrop). Le X / fermeture ramène vers
- * la config entrante (/dashboard).
+ * Hôte client de l'onglet « Appels sortants ». Rend l'accueil 2-boxes
+ * (Agents | Campagnes), chacun ouvrant son workspace en mode page.
  */
 export function CampaignsPageClient({ asUserId }: { asUserId?: string }) {
-  const router = useRouter();
-  return (
-    <CampaignsWorkspace
-      open
-      variant="page"
-      asUserId={asUserId}
-      onClose={() => router.push("/dashboard")}
-    />
-  );
+  return <OutboundHome asUserId={asUserId} />;
 }

@@ -155,6 +155,13 @@
       "when": 1780952806024,
       "tag": "0021_public_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781006938142,
+      "tag": "0022_lucky_jackal",
+      "breakpoints": true
     }
   ]
 }
