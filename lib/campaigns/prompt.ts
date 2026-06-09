@@ -91,8 +91,14 @@ export function buildCampaignGreeting(
   campaign: { persona: CampaignPersona },
   contact: { contactName?: string; phoneNumber?: string; vars?: Record<string, string> },
 ): string {
+  // Greeting LITTÉRAL si l'utilisateur en a saisi un (le worker le prononce
+  // mot pour mot). Sinon, on renvoie VIDE : le worker laisse alors le modèle
+  // générer l'accueil à partir du system prompt complet (qui contient déjà
+  // la consigne « présente-toi + présente l'offre » + la base de connaissance).
+  // ⚠️ NE PAS renvoyer une DIRECTIVE ici : le worker traite greetingInstructions
+  // comme une phrase à dire TEXTUELLEMENT → il prononcerait la directive et le
+  // modèle improviserait une fausse entreprise.
   const greeting = campaign.persona?.greeting?.trim();
   if (greeting) return substituteVars(greeting, contact);
-  const agentName = (campaign.persona?.agentName || "Sarah").trim();
-  return `Ouvre l'appel ainsi : salue brièvement, présente-toi sous le prénom « ${agentName} » (et le nom de l'entreprise si tu le connais — JAMAIS « ${agentName} » remplacé par le nom de la marque), puis annonce EN UNE PHRASE la raison de ton appel ET l'offre/le produit principal, et enchaîne par une question d'engagement. Ne demande JAMAIS « que puis-je faire pour vous » : c'est toi qui appelles pour présenter une offre.`;
+  return "";
 }
