@@ -9,6 +9,7 @@ import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 import { DeleteAccountSection } from "./delete-account-section";
+import { PasswordSection } from "./password-section";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,17 @@ export default async function SettingsPage(props: {
               </dd>
             </div>
           </dl>
+        </div>
+
+        {/* Mot de passe — utile surtout pour les comptes Google sans mdp. */}
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="font-display text-lg text-[var(--color-foreground)]">
+            {t("passwordSection")}
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+            {t("passwordDesc")}
+          </p>
+          <PasswordSection />
         </div>
 
         {/* Abonnement */}
