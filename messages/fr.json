@@ -641,6 +641,8 @@
     "whatsappSubtitle": "Après chaque appel, un récap est envoyé par WhatsApp à la cliente et au propriétaire.",
     "ownerWhatsappLabel": "Numéro WhatsApp du propriétaire",
     "ownerWhatsappHint": "Format international, ex: +972585001007. Laisse vide pour désactiver.",
+    "reminderTitle": "Rappel de RDV (J-1)",
+    "reminderHint": "Envoie automatiquement un rappel WhatsApp au client la veille de son rendez-vous (vers 18h). Le numéro est repris du rendez-vous pris par l'agent.",
     "whatsappFooter": "La cliente reçoit aussi un récap si Twilio détecte qu'elle accepte les messages WhatsApp depuis son numéro d'appel. Configure TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi.",
     "voiceTitle": "Voix",
     "voiceSubtitleAdmin": "Paramètres techniques du moteur vocal. Visible admin uniquement.",

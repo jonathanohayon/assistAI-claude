@@ -187,6 +187,7 @@ export default async function AdminTenantPage({
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
           primaryLanguage: config.primaryLanguage ?? "fr",
+          reminderEnabled: config.reminderEnabled ?? false,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",

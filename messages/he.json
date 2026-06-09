@@ -641,6 +641,8 @@
     "whatsappSubtitle": "אחרי כל שיחה, נשלח סיכום ב-WhatsApp ללקוחה ולבעלת העסק.",
     "ownerWhatsappLabel": "מספר WhatsApp של בעלת העסק",
     "ownerWhatsappHint": "פורמט בינלאומי, למשל: +972585001007. השאירי ריק כדי לכבות.",
+    "reminderTitle": "תזכורת לתור (יום לפני)",
+    "reminderHint": "שולח אוטומטית תזכורת ב-WhatsApp ללקוח יום לפני התור (בסביבות 18:00). המספר נלקח מהתור שנקבע על ידי הסוכן.",
     "whatsappFooter": "הלקוחה גם מקבלת סיכום אם Twilio מזהה שהיא מקבלת הודעות WhatsApp מהמספר שלה. הגדירי TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה.",
     "voiceTitle": "קול",
     "voiceSubtitleAdmin": "פרמטרים טכניים של מנוע הקול. לאדמין בלבד.",
