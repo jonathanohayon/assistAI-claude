@@ -16,6 +16,7 @@ import { getDemoUserId } from "@/lib/settings";
 
 import { AdminTenantTabs } from "./_nav";
 import { DemoAccountToggle } from "./DemoAccountToggle";
+import { PlanAccessControl } from "./PlanAccessControl";
 
 // Layout partagé pour /admin/users/[userId]/* — fournit header + nav 4
 // onglets (Config / Calendrier / CRM / Monitoring) pour que l'admin puisse
@@ -47,6 +48,7 @@ export default async function AdminTenantLayout({
       displayName: users.displayName,
       subscriptionPlan: users.subscriptionPlan,
       subscriptionStatus: users.subscriptionStatus,
+      paidUntil: users.paidUntil,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -76,6 +78,11 @@ export default async function AdminTenantLayout({
       : PLANS[0].key;
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
   const isDemo = (await getDemoUserId()) === target.id;
+  // "Illimité gratuit" = actif avec paidUntil très lointain (>= 2090).
+  const isUnlimited =
+    target.subscriptionStatus === "active" &&
+    !!target.paidUntil &&
+    target.paidUntil.getFullYear() >= 2090;
 
   async function handleLogout() {
     "use server";
@@ -126,7 +133,12 @@ export default async function AdminTenantLayout({
               </strong>{" "}
               · plan {planLabel} · statut {target.subscriptionStatus}
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <PlanAccessControl
+                userId={target.id}
+                initialPlan={planKey}
+                initialUnlimited={isUnlimited}
+              />
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
