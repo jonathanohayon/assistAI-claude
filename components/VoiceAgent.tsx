@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { transportFor } from "@/lib/realtime";
 import {
@@ -40,6 +41,9 @@ const DEMO_MODEL_ORDER = [
 const DEMO_DEFAULT_MODEL = "gpt-realtime-2";
 
 export default function VoiceAgent() {
+  // Langue choisie sur la page d'accueil (sélecteur de langue) → l'agent démo
+  // parle dans CETTE langue, quelle que soit la langue du compte démo.
+  const locale = useLocale();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError]   = useState<string | null>(null);
@@ -67,7 +71,9 @@ export default function VoiceAgent() {
   } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/demo-config")
+    // On passe la langue de la page → le serveur cale la directive de langue
+    // de la persona sur celle-ci (l'agent démo parle la langue du visiteur).
+    fetch(`/api/demo-config?lang=${encodeURIComponent(locale)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled || !d?.configured) return;
@@ -80,7 +86,7 @@ export default function VoiceAgent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
 
   // Liste filtrée pour le dropdown public : uniquement les modèles de la
   // allowlist, dans l'ordre défini. On garde l'ID OpenAI réel mais on
@@ -287,9 +293,9 @@ export default function VoiceAgent() {
           model,
           voice,
           ...(demo?.instructions ? { instructions: demo.instructions } : {}),
-          ...(demo?.primaryLanguage
-            ? { primaryLanguage: demo.primaryLanguage }
-            : {}),
+          // STT calé sur la langue de la page (pas celle du compte démo) → le
+          // visiteur est compris et l'agent répond dans sa langue.
+          primaryLanguage: locale,
         }),
       });
       if (!tokenRes.ok) throw new Error("Impossible d'obtenir le token de session");
@@ -357,12 +363,15 @@ export default function VoiceAgent() {
         setStatus("connected");
         // Démarrer le countdown de session démo dès que le canal est ouvert.
         setSecondsLeft(DEMO_SESSION_SECONDS);
-        // Accueil : si le compte démo a un message d'accueil, on le fait dire
-        // tel quel ; sinon fallback générique Tamara.
-        const demoGreeting = demoConfigRef.current?.greeting?.trim();
-        const greetInstruction = demoGreeting
-          ? `Commence par dire, mot pour mot : « ${demoGreeting} » puis enchaîne naturellement. Si l'appelant répond dans une autre langue, bascule dans sa langue.`
-          : "Salue l'appelant en français : 'Bonjour, Tamara à votre écoute, comment puis-je vous aider ?' Si l'appelant répond en hébreu, bascule en hébreu.";
+        // Accueil FORCÉ dans la langue de la page (sélecteur d'accueil) — quelle
+        // que soit la langue du compte démo. L'agent reste dans cette langue.
+        const LANG_LABEL: Record<string, string> = {
+          fr: "français",
+          he: "hébreu",
+          en: "anglais",
+        };
+        const label = LANG_LABEL[locale] ?? "français";
+        const greetInstruction = `Parle EXCLUSIVEMENT en ${label} pendant tout l'appel. Accueille l'appelant en ${label} : présente-toi brièvement selon ta persona puis demande comment tu peux l'aider. Ne réponds JAMAIS dans une autre langue, même si tu hésites.`;
         dc.send(
           JSON.stringify({
             type: "response.create",

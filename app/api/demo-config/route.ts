@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { renderBusinessPromptBlock, sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
@@ -19,9 +19,15 @@ const langLabel: Record<string, string> = {
   en: "anglais (US)",
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const demoUserId = await getDemoUserId();
   if (!demoUserId) return NextResponse.json({ configured: false });
+
+  // Langue forcée par la page d'accueil (?lang=fr|he|en). L'agent démo parle
+  // CETTE langue, indépendamment de la langue configurée sur le compte démo.
+  const langParam = req.nextUrl.searchParams.get("lang");
+  const forcedLang =
+    langParam && ["fr", "he", "en"].includes(langParam) ? langParam : null;
 
   const [cfg] = await db
     .select({
@@ -38,7 +44,8 @@ export async function GET() {
     .limit(1);
   if (!cfg) return NextResponse.json({ configured: false });
 
-  const primary = cfg.primaryLanguage ?? "fr";
+  // Langue de l'agent : celle forcée par la page si fournie, sinon celle du compte.
+  const primary = forcedLang ?? cfg.primaryLanguage ?? "fr";
 
   // Bloc business (horaires / prestations) — marketing-safe.
   let businessBlock = "";
@@ -52,9 +59,8 @@ export async function GET() {
     /* business mal formé → on ignore le bloc */
   }
 
-  const languageDirective = `LANGUE PAR DÉFAUT : ${langLabel[primary] ?? "français"} (code: ${primary}).
-- Utilise cette langue pour le tout premier message d'accueil.
-- Dès que ton interlocuteur parle, détecte sa langue et réponds dans la sienne.`;
+  const langName = langLabel[primary] ?? "français";
+  const languageDirective = `LANGUE : parle EXCLUSIVEMENT en ${langName} (code: ${primary}) pendant tout l'appel — accueil ET réponses. Ne réponds JAMAIS dans une autre langue, même en cas d'hésitation.`;
 
   const instructions = [cfg.instructions ?? "", businessBlock, languageDirective]
     .filter((s) => s && s.trim().length > 0)
