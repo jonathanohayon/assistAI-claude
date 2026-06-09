@@ -25,6 +25,7 @@ import type {
 } from "@/lib/campaigns/types";
 import { useRealtimeCatalog, voicesForCatalog } from "@/lib/use-realtime-catalog";
 
+import { CampaignAnalytics } from "./campaign-analytics";
 import { CampaignList } from "./campaign-list";
 import { CampaignSetupStep } from "./campaign-setup-step";
 import { ContactsImportStep } from "./contacts-import-step";
@@ -90,6 +91,8 @@ export function CampaignsWorkspace({
   const [saveError, setSaveError] = useState<string | null>(null);
   // Feedback de sauvegarde réussie (badge "✓ Enregistré" + bouton Suivant).
   const [justSaved, setJustSaved] = useState(false);
+  // Campagne dont on affiche les analytics (modal).
+  const [analyticsFor, setAnalyticsFor] = useState<{ id: string; name: string } | null>(null);
 
   // Portal monté côté client → modal rendu dans <body>, donc `fixed` = viewport
   // garanti (immunisé contre un ancêtre transformé qui le confinerait et le
@@ -314,6 +317,20 @@ export function CampaignsWorkspace({
               {view === "editor" && savedCampaign && draft.id && (
                 <button
                   onClick={() =>
+                    setAnalyticsFor({ id: draft.id!, name: draft.name })
+                  }
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
+                  aria-label={t("analytics")}
+                  title={t("analytics")}
+                >
+                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18M7 14l3-3 3 3 5-6" />
+                  </svg>
+                </button>
+              )}
+              {view === "editor" && savedCampaign && draft.id && (
+                <button
+                  onClick={() =>
                     deleteCampaign({ id: draft.id!, name: draft.name })
                   }
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
@@ -426,6 +443,7 @@ export function CampaignsWorkspace({
                 onOpen={openExisting}
                 onCreate={openNew}
                 onDelete={deleteCampaign}
+                onAnalytics={(c) => setAnalyticsFor({ id: c.id, name: c.name })}
               />
             )}
 
@@ -556,6 +574,15 @@ export function CampaignsWorkspace({
           )}
         </motion.div>
       </div>
+
+      {analyticsFor && (
+        <CampaignAnalytics
+          campaignId={analyticsFor.id}
+          campaignName={analyticsFor.name}
+          asUserId={asUserId}
+          onClose={() => setAnalyticsFor(null)}
+        />
+      )}
     </AnimatePresence>,
     document.body,
   );

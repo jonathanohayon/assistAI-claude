@@ -23,6 +23,7 @@ export function CampaignList({
   onOpen,
   onCreate,
   onDelete,
+  onAnalytics,
 }: {
   campaigns: CampaignListItem[];
   loading: boolean;
@@ -30,6 +31,7 @@ export function CampaignList({
   onOpen: (c: CampaignListItem) => void;
   onCreate: () => void;
   onDelete: (c: CampaignListItem) => void;
+  onAnalytics: (c: CampaignListItem) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
 
@@ -127,6 +129,20 @@ export function CampaignList({
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <StatusPill status={c.status} label={t(`status_${c.status}`)} />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAnalytics(c);
+                    }}
+                    aria-label={t("analytics")}
+                    title={t("analytics")}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[#94a3b8] transition hover:bg-[#ede9fe] hover:text-[#7c3aed]"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M3 3v18h18M7 14l3-3 3 3 5-6" />
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     onClick={(e) => {
