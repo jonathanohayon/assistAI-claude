@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "motion/react";
 import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { transportFor } from "@/lib/realtime";
@@ -17,27 +16,14 @@ interface TranscriptEntry {
   text: string;
 }
 
-const STORAGE_MODEL = "tamara:model";
-const STORAGE_VOICE = "tamara:voice";
-
 // Public landing demo : capped session duration so anonymous visitors can
 // try the agent but can't burn unlimited Realtime API budget. After this
 // many seconds the session auto-disconnects with a "demo terminée" UX.
 const DEMO_SESSION_SECONDS = 40;
 
-// Modèles autorisés sur la demo publique. On masque le reste du catalog
-// OpenAI (admin uniquement) et on les présente sous des noms "marque"
-// pour ne pas exposer la techno sous-jacente aux visiteurs.
-// Mapping id OpenAI → label visible. L'ID réel reste envoyé à OpenAI.
-const DEMO_MODEL_ALLOWLIST: Record<string, string> = {
-  "gpt-realtime-2": "tamara-realtime-2",
-  "gpt-realtime-mini-2025-12-15": "tamara-realtime-1",
-};
-// Ordre d'affichage (le plus avancé en premier).
-const DEMO_MODEL_ORDER = [
-  "gpt-realtime-2",
-  "gpt-realtime-mini-2025-12-15",
-] as const;
+// Modèle/voix figés pour la démo publique : plus de sélecteur exposé au
+// visiteur (UX épurée). On utilise toujours le modèle le plus avancé ; la
+// voix vient du compte démo (admin) sinon du défaut catalog.
 const DEMO_DEFAULT_MODEL = "gpt-realtime-2";
 
 export default function VoiceAgent() {
@@ -49,7 +35,9 @@ export default function VoiceAgent() {
   const [error, setError]   = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const catalog = useRealtimeCatalog();
-  const [model, setModel] = useState<string>(DEMO_DEFAULT_MODEL);
+  // Modèle figé (plus de picker) ; la voix reste dynamique (compte démo ou
+  // défaut catalog), mais n'est plus choisie par le visiteur.
+  const model = DEMO_DEFAULT_MODEL;
   const [voice, setVoice] = useState<string>(
     defaultVoiceForCatalog(catalog, DEMO_DEFAULT_MODEL),
   );
@@ -88,46 +76,20 @@ export default function VoiceAgent() {
     };
   }, [locale]);
 
-  // Liste filtrée pour le dropdown public : uniquement les modèles de la
-  // allowlist, dans l'ordre défini. On garde l'ID OpenAI réel mais on
-  // affiche le label "tamara-realtime-X" pour ne pas exposer la techno.
-  const demoModels = useMemo(
-    () =>
-      DEMO_MODEL_ORDER.map((id) => ({
-        id: id as string,
-        label: DEMO_MODEL_ALLOWLIST[id] ?? id,
-      })),
-    [],
-  );
-  const allowedModelIds = useMemo<string[]>(
-    () => demoModels.map((m) => m.id),
-    [demoModels],
-  );
-
-  const availableVoices = useMemo(
-    () => voicesForCatalog(catalog, model),
-    [catalog, model],
-  );
   const transport = useMemo(() => transportFor(model), [model]);
   const isUnsupported = transport !== "webrtc";
 
-  // Restore last selection from localStorage. Si la valeur stockée
-  // n'est plus dans l'allowlist (ancien visiteur qui avait choisi un
-  // modèle maintenant masqué), on fallback au default demo.
-  /* eslint-disable react-hooks/set-state-in-effect -- legitimate browser-API sync (no SSR access to localStorage) */
+  // Une fois le catalog chargé, cale la voix sur le défaut du modèle si elle
+  // n'est pas encore valide (le compte démo peut la surcharger plus tard).
+  /* eslint-disable react-hooks/set-state-in-effect -- sync async catalog → state */
   useEffect(() => {
-    const m = localStorage.getItem(STORAGE_MODEL);
-    const v = localStorage.getItem(STORAGE_VOICE);
-    const validModel =
-      m && allowedModelIds.includes(m) ? m : DEMO_DEFAULT_MODEL;
-    const allowed = voicesForCatalog(catalog, validModel);
-    const validVoice =
-      v && allowed.includes(v)
-        ? v
-        : defaultVoiceForCatalog(catalog, validModel);
-    setModel(validModel);
-    setVoice(validVoice);
-  }, [allowedModelIds, catalog]);
+    const allowed = voicesForCatalog(catalog, DEMO_DEFAULT_MODEL);
+    setVoice((cur) =>
+      cur && allowed.includes(cur)
+        ? cur
+        : defaultVoiceForCatalog(catalog, DEMO_DEFAULT_MODEL),
+    );
+  }, [catalog]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pcRef       = useRef<RTCPeerConnection | null>(null);
@@ -471,30 +433,14 @@ export default function VoiceAgent() {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  const onModelChange = (m: string) => {
-    setModel(m);
-    localStorage.setItem(STORAGE_MODEL, m);
-    const allowed = voicesForCatalog(catalog, m);
-    if (!allowed.includes(voice)) {
-      const v = defaultVoiceForCatalog(catalog, m);
-      setVoice(v);
-      localStorage.setItem(STORAGE_VOICE, v);
-    }
-  };
-
-  const onVoiceChange = (v: string) => {
-    setVoice(v);
-    localStorage.setItem(STORAGE_VOICE, v);
-  };
-
   return (
     <section
-      className="relative overflow-hidden rounded-[2rem] border border-white/50 p-7 shadow-[0_8px_40px_-12px_rgba(14,116,144,0.25)] backdrop-blur-xl sm:p-10"
+      className="relative overflow-hidden rounded-3xl border border-white/60 p-5 shadow-[0_8px_36px_-14px_rgba(14,116,144,0.22)] backdrop-blur-xl sm:p-7"
       style={{
         backgroundColor: "#ffffff",
         backgroundImage: `
-          radial-gradient(at 12% 100%, rgba(34, 211, 238, 0.18) 0px, transparent 50%),
-          radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.15) 0px, transparent 55%),
+          radial-gradient(at 12% 100%, rgba(34, 211, 238, 0.16) 0px, transparent 50%),
+          radial-gradient(at 90% 10%, rgba(236, 72, 153, 0.13) 0px, transparent 55%),
           radial-gradient(at 50% 50%, rgba(255, 255, 255, 0.6) 0px, transparent 60%)
         `,
       }}
@@ -526,81 +472,41 @@ export default function VoiceAgent() {
       {/* Blob décoratif coin opposé — pour ne pas avoir un coin trop nu */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-gradient-to-br from-[#22d3ee]/20 to-transparent blur-3xl"
+        className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-[#22d3ee]/18 to-transparent blur-3xl"
       />
 
-      {/* Header : barre gradient + titre/subtitle + pill statut */}
-      <div className="relative mb-6 flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-1 h-8 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#22d3ee] to-[#0e7490]" />
+      {/* Header : titre compact + pill statut */}
+      <div className="relative mb-5 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="h-6 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#22d3ee] to-[#0e7490]" />
           <div className="min-w-0">
-            <h2 className="text-2xl font-extrabold tracking-tight text-[#18181b] sm:text-3xl">
+            <h2 className="text-lg font-bold tracking-tight text-[#18181b] sm:text-xl">
               Tester en direct
             </h2>
-            <p className="mt-1 text-sm text-[#475569]">
-              Parlez à Tamara depuis votre navigateur — démo gratuite 40s.
+            <p className="mt-0.5 text-xs text-[#64748b]">
+              Parlez à Tamara — démo gratuite 40s.
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span
-            role="status"
-            aria-live="polite"
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ring-1 ring-inset ${pillTone[status].bg} ${pillTone[status].text} ${pillTone[status].ring}`}
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              {status !== "error" && (
-                <span
-                  aria-hidden
-                  className={`absolute inline-flex h-full w-full rounded-full opacity-70 motion-safe:animate-ping ${statusDotClass[status]}`}
-                />
-              )}
+        <span
+          role="status"
+          aria-live="polite"
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset ${pillTone[status].bg} ${pillTone[status].text} ${pillTone[status].ring}`}
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            {status !== "error" && (
               <span
                 aria-hidden
-                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${statusDotClass[status]}`}
+                className={`absolute inline-flex h-full w-full rounded-full opacity-70 motion-safe:animate-ping ${statusDotClass[status]}`}
               />
-            </span>
-            {statusLabel[status]}
+            )}
+            <span
+              aria-hidden
+              className={`relative inline-flex h-1.5 w-1.5 rounded-full ${statusDotClass[status]}`}
+            />
           </span>
-        </div>
-      </div>
-
-      {/* Model / voice picker — gardés mais relookés pour s'intégrer */}
-      <div className="relative mb-6 grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1.5 text-xs">
-          <span className="font-semibold uppercase tracking-wider text-[#0e7490]/80 text-[10px]">
-            Modèle
-          </span>
-          <select
-            value={model}
-            disabled={isLive}
-            onChange={(e) => onModelChange(e.target.value)}
-            className="rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 text-sm text-[#18181b] shadow-xs backdrop-blur transition-colors hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {demoModels.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 text-xs">
-          <span className="font-semibold uppercase tracking-wider text-[#0e7490]/80 text-[10px]">
-            Voix
-          </span>
-          <select
-            value={voice}
-            disabled={isLive}
-            onChange={(e) => onVoiceChange(e.target.value)}
-            className="rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 text-sm text-[#18181b] shadow-xs backdrop-blur transition-colors hover:border-[#22d3ee]/50 focus:border-[#22d3ee] focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {availableVoices.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
+          {statusLabel[status]}
+        </span>
       </div>
 
       {isUnsupported && (
@@ -612,10 +518,10 @@ export default function VoiceAgent() {
         </p>
       )}
 
-      <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[auto_1fr]">
+      <div className="relative grid grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-[auto_1fr]">
         {/* ─── COLONNE MIC ────────────────────────────────────────────── */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-44 w-44 items-center justify-center">
+        <div className="flex flex-col items-center gap-3.5">
+          <div className="relative flex h-36 w-36 items-center justify-center">
             {/* Ripple rings cyan concentriques stagger 0/0.8/1.6s */}
             <span aria-hidden className="va-ripple-ring" />
             <span aria-hidden className="va-ripple-ring va-ripple-ring--2" />
@@ -626,7 +532,7 @@ export default function VoiceAgent() {
               onClick={status === "idle" || status === "error" ? startSession : stopSession}
               disabled={status === "connecting"}
               aria-label={isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
-              className={`group relative inline-flex h-36 w-36 items-center justify-center rounded-full text-white shadow-[0_12px_48px_-8px_rgba(14,116,144,0.65)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
+              className={`group relative inline-flex h-28 w-28 items-center justify-center rounded-full text-white shadow-[0_12px_40px_-8px_rgba(14,116,144,0.6)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
                 status === "connecting"
                   ? "bg-gradient-to-br from-[#f59e0b] to-[#b45309]"
                   : status === "connected"
@@ -663,17 +569,17 @@ export default function VoiceAgent() {
                   aria-hidden
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="h-12 w-12 motion-safe:animate-spin"
+                  className="h-9 w-9 motion-safe:animate-spin"
                 >
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                   <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
               ) : isLive ? (
-                <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-12 w-12">
+                <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="h-9 w-9">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
               ) : (
-                <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-14 w-14">
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-11 w-11">
                   <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor" />
                   <path
                     d="M5 11a7 7 0 0 0 14 0M12 18v3"
@@ -739,7 +645,7 @@ export default function VoiceAgent() {
 
         {/* ─── COLONNE TRANSCRIPT ────────────────────────────────────── */}
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]">
             Aperçu de conversation
           </p>
           <div
@@ -747,7 +653,7 @@ export default function VoiceAgent() {
             role="log"
             aria-live="polite"
             aria-label="Transcript"
-            className="scroll-visible flex max-h-80 min-h-[200px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur"
+            className="scroll-visible flex max-h-64 min-h-[160px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-3.5 backdrop-blur"
           >
             {error && (
               <p
@@ -821,86 +727,6 @@ export default function VoiceAgent() {
       </div>
     </section>
   );
-}
-
-/**
- * AmbientDemo — fake conversation qui se joue toute seule en boucle quand
- * la session WebRTC est idle. Donne envie de cliquer "Démarrer". Reset
- * toutes les ~12s. Désactivé en prefers-reduced-motion (affiche juste un
- * snapshot statique du dernier état).
- */
-const AMBIENT_SCRIPT = [
-  { who: "user" as const, text: "Bonjour, je voudrais prendre rendez-vous." },
-  { who: "assistant" as const, text: "Bien sûr ! Pour quel jour ?" },
-  { who: "user" as const, text: "Demain matin si possible." },
-  { who: "assistant" as const, text: "10h30 avec Sarah ? Ça vous convient ?" },
-];
-
-function AmbientDemo() {
-  const [shown, setShown] = useState<number>(0);
-
-  useEffect(() => {
-    let idx = 0;
-    const tick = () => {
-      idx += 1;
-      if (idx > AMBIENT_SCRIPT.length) {
-        idx = 0;
-      }
-      setShown(idx);
-    };
-    setShown(0);
-    const interval = setInterval(tick, 2200);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      {/* Hint badge en haut — donne le contexte "demo" */}
-      <div className="mb-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]/70">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-[#22d3ee] opacity-70" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22d3ee]" />
-        </span>
-        Exemple de conversation
-      </div>
-      {AMBIENT_SCRIPT.slice(0, shown).map((entry, i) => (
-        <motion.div
-          key={`${shown}-${i}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <BubbleV2 who={entry.who} text={entry.text} time={ambientTime(i)} />
-        </motion.div>
-      ))}
-      {shown < AMBIENT_SCRIPT.length && (
-        <div className="flex items-center gap-2 pt-1">
-          <span
-            aria-hidden
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-white ${
-              AMBIENT_SCRIPT[shown]?.who === "user"
-                ? "bg-gradient-to-br from-[#be185d] to-[#9d174d]"
-                : "bg-gradient-to-br from-[#0891b2] to-[#0e7490]"
-            }`}
-          >
-            {AMBIENT_SCRIPT[shown]?.who === "user" ? "M" : "T"}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfeff] px-3 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "0ms" }} />
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "150ms" }} />
-            <span className="h-1.5 w-1.5 rounded-full bg-[#0e7490] motion-safe:animate-bounce" style={{ animationDelay: "300ms" }} />
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Génère un timestamp pseudo (incrément 1min) pour la fake demo.
-function ambientTime(i: number): string {
-  const base = new Date();
-  base.setMinutes(base.getMinutes() - (AMBIENT_SCRIPT.length - i));
-  return `${String(base.getHours()).padStart(2, "0")}:${String(base.getMinutes()).padStart(2, "0")}`;
 }
 
 /**
