@@ -55,7 +55,9 @@ export function buildCampaignInstructions(
     "";
 
   const parts: string[] = [];
-  parts.push(`Tu es ${agentName}, un agent vocal qui passe un appel SORTANT.`);
+  parts.push(
+    `Tu t'appelles ${agentName}. C'est TON prénom : présente-toi TOUJOURS et UNIQUEMENT sous « ${agentName} », jamais sous le nom de l'entreprise, de la marque, d'un produit ou d'une personne mentionnés dans ta base de connaissance. Tu es un agent vocal qui passe un appel SORTANT au nom de l'entreprise.`,
+  );
   // Règle d'or : c'est l'agent qui appelle → il mène, il ne joue pas la
   // réceptionniste. Empêche le classique "que puis-je faire pour vous".
   parts.push(
@@ -88,5 +90,6 @@ export function buildCampaignGreeting(
 ): string {
   const greeting = campaign.persona?.greeting?.trim();
   if (greeting) return substituteVars(greeting, contact);
-  return "Ouvre l'appel ainsi : salue brièvement, présente-toi (prénom + entreprise si tu la connais), puis annonce EN UNE PHRASE la raison de ton appel ET l'offre/le produit principal, et enchaîne par une question d'engagement. Ne demande JAMAIS « que puis-je faire pour vous » : c'est toi qui appelles pour présenter une offre.";
+  const agentName = (campaign.persona?.agentName || "Sarah").trim();
+  return `Ouvre l'appel ainsi : salue brièvement, présente-toi sous le prénom « ${agentName} » (et le nom de l'entreprise si tu le connais — JAMAIS « ${agentName} » remplacé par le nom de la marque), puis annonce EN UNE PHRASE la raison de ton appel ET l'offre/le produit principal, et enchaîne par une question d'engagement. Ne demande JAMAIS « que puis-je faire pour vous » : c'est toi qui appelles pour présenter une offre.`;
 }
