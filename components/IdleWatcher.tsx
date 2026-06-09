@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 // Idle-logout client-side. Surveille l'activité utilisateur (mouse, clavier,
 // scroll, touch). Au-delà de `timeoutMs` sans interaction, déclenche un
-// signOut() et redirige vers /login. Affiche un dialog d'alerte 60s avant
-// l'expiration pour laisser une chance de relancer l'activité.
+// signOut() et redirige vers la page d'accueil. Affiche un dialog d'alerte
+// 60s avant l'expiration pour laisser une chance de relancer l'activité.
 //
 // La couche serveur (auth.ts session.maxAge = 1h) couvre déjà le cas où le
 // user est INACTIVE entre les requests (la session JWT expire). Ce timer
@@ -24,7 +24,9 @@ const ACTIVITY_EVENTS = [
 ] as const;
 
 export function IdleWatcher() {
-  const lastActivityRef = useRef<number>(Date.now());
+  // Initialisé sur le client au montage (cf. effet tick) — pas d'appel impur
+  // (Date.now()) pendant le render.
+  const lastActivityRef = useRef<number>(0);
   const [warningOpen, setWarningOpen] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(WARNING_BEFORE_MS / 1000);
 
@@ -45,17 +47,20 @@ export function IdleWatcher() {
 
   // Tick chaque seconde. Suffisamment précis pour un timeout 1h et léger.
   useEffect(() => {
+    // Init au montage côté client (évite Date.now() pendant le render).
+    lastActivityRef.current = Date.now();
     const id = setInterval(() => {
       const idleMs = Date.now() - lastActivityRef.current;
       if (idleMs >= IDLE_TIMEOUT_MS) {
         // Timeout atteint → logout. signOut via le endpoint NextAuth.
         // POST direct au lieu d'importer next-auth/react pour éviter une
-        // dep côté client lourde si pas déjà bundlée. Redirige vers /login.
+        // dep côté client lourde si pas déjà bundlée. Redirige vers la page
+        // d'accueil (et pas /login) à l'expiration de session.
         fetch("/api/admin/auth/signout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         }).finally(() => {
-          window.location.href = "/login?reason=idle";
+          window.location.href = "/";
         });
         return;
       }
