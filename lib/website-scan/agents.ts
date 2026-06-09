@@ -232,21 +232,27 @@ export async function locationAgent(ctx: string): Promise<LocationResult> {
 
 // ─── servicesAgent ──────────────────────────────────────────────────────────
 
-const SERVICES_PROMPT = `Tu es un extracteur de prestations/services. À partir du texte d'un site web (salon de beauté, coiffure, clinique esthétique, spa…), liste les PRESTATIONS proposées avec durée et prix si disponibles.
+const SERVICES_PROMPT = `Tu es un extracteur de l'OFFRE commerciale d'une entreprise. À partir du texte d'un site web, liste ce que l'entreprise propose à ses clients — selon le type d'activité :
+- prestations / soins / services (salon, clinique, spa, coiffure…) ;
+- OU produits / articles à vendre (boutique, e-commerce : ex. machines, appareils, accessoires…) ;
+- OU forfaits / abonnements.
+Capture le PRIX et une courte description dès qu'ils sont disponibles.
 
 Réponds STRICTEMENT en JSON :
 {
   "services": [
-    { "name": "nom du soin", "durationMinutes": 30, "priceILS": 0, "description": "courte description ou \\"\\"" }
+    { "name": "nom du soin/produit/forfait", "durationMinutes": 30, "priceILS": 0, "description": "courte description (caractéristiques clés, ou \\"\\")" }
   ],
   "confidence": 0.0
 }
 
 Règles :
-- "durationMinutes" : entier en minutes (ex 60). Si inconnu, mets 30 par défaut.
-- "priceILS" : prix en SHEKELS (₪), entier. Si le prix est dans une autre devise, convertis approximativement ; si inconnu, mets 0.
-- N'INVENTE pas de prestation. Si aucune n'est trouvée, renvoie "services": [].
-- Maximum 40 prestations, les plus importantes d'abord.
+- "durationMinutes" : entier en minutes pour une prestation (ex 60). Pour un PRODUIT à vendre (non basé sur le temps), mets 0.
+- "priceILS" : prix en SHEKELS (₪), entier. Autre devise → convertis approximativement ; inconnu → 0.
+- Inclus les PRODUITS À VENDRE (ex. "3 machines à café" avec leurs prix et caractéristiques) au même titre que les prestations.
+- "description" : pour un produit, résume les caractéristiques importantes (modèle, capacité, options…).
+- N'INVENTE rien. Si aucune offre trouvée, renvoie "services": [].
+- Maximum 40 entrées, les plus importantes d'abord.
 - "confidence" entre 0 et 1.
 - Réponds UNIQUEMENT avec le JSON.`;
 
