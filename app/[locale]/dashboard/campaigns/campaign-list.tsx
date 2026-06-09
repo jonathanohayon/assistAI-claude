@@ -22,12 +22,14 @@ export function CampaignList({
   error,
   onOpen,
   onCreate,
+  onDelete,
 }: {
   campaigns: CampaignListItem[];
   loading: boolean;
   error: string | null;
   onOpen: (c: CampaignListItem) => void;
   onCreate: () => void;
+  onDelete: (c: CampaignListItem) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
 
@@ -91,14 +93,21 @@ export function CampaignList({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {campaigns.map((c, i) => (
-            <motion.button
+            <motion.div
               key={c.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => onOpen(c)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpen(c);
+                }
+              }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
-              className="group flex flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#f97316]/40 hover:shadow-lg"
+              className="group flex cursor-pointer flex-col gap-3 rounded-2xl border border-[#e2e8f0] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#f97316]/40 hover:shadow-lg"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -116,7 +125,23 @@ export function CampaignList({
                     </p>
                   </div>
                 </div>
-                <StatusPill status={c.status} label={t(`status_${c.status}`)} />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <StatusPill status={c.status} label={t(`status_${c.status}`)} />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(c);
+                    }}
+                    aria-label={t("deleteCampaign")}
+                    title={t("deleteCampaign")}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[#cbd5e1] transition hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-4 text-[11px] text-[#64748b]">
@@ -144,7 +169,7 @@ export function CampaignList({
                   />
                 </div>
               )}
-            </motion.button>
+            </motion.div>
           ))}
         </div>
       )}
