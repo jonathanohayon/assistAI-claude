@@ -10,6 +10,7 @@ import { Hero } from "@/components/marketing/Hero";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { Industries } from "@/components/marketing/Industries";
 import { Nav } from "@/components/marketing/Nav";
+import { OutboundCalling } from "@/components/marketing/OutboundCalling";
 import { PerformanceShowcase } from "@/components/marketing/PerformanceShowcase";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Security } from "@/components/marketing/Security";
@@ -47,6 +48,7 @@ export default async function Home({
       <Industries />
       <HowItWorks />
       <VoiceConfigShowcase />
+      <OutboundCalling />
       <PerformanceShowcase />
       <Features />
       <Pricing pricing={pricing} />

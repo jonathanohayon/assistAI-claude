@@ -91,6 +91,24 @@
       "subtitle": "Talk to Tamara from your browser"
     }
   },
+  "OutboundCalling": {
+    "kicker": "Outbound calling",
+    "title": "Your AI call center, dialing for you.",
+    "subtitle": "Load a list of numbers and let AI agents call them in parallel — sales, lead qualification and marketing campaigns, around the clock.",
+    "use_sales_title": "Sales",
+    "use_sales_desc": "Agents present your offer, handle objections and book the next step.",
+    "use_lead_title": "Lead generation",
+    "use_lead_desc": "Qualify prospects with the right questions and capture structured data.",
+    "use_marketing_title": "Marketing",
+    "use_marketing_desc": "Announce launches, events and offers, then measure interest live.",
+    "listTitle": "Live campaign",
+    "listSubtitle": "AI agents calling in parallel",
+    "live": "Live",
+    "status_queued": "Queued",
+    "status_calling": "Calling",
+    "status_connected": "Connected",
+    "status_qualified": "Qualified"
+  },
   "Industries": {
     "kicker": "Who it's for",
     "title": "Built for businesses where every call matters.",

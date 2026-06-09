@@ -91,6 +91,24 @@
       "subtitle": "Parlez à Tamara depuis votre navigateur"
     }
   },
+  "OutboundCalling": {
+    "kicker": "Appels sortants",
+    "title": "Votre centre d'appels IA, qui compose pour vous.",
+    "subtitle": "Chargez une liste de numéros et laissez des agents IA les appeler en parallèle — vente, qualification de leads et campagnes marketing, 24h/24.",
+    "use_sales_title": "Vente",
+    "use_sales_desc": "Les agents présentent l'offre, gèrent les objections et décrochent la prochaine étape.",
+    "use_lead_title": "Génération de leads",
+    "use_lead_desc": "Qualifiez les prospects avec les bonnes questions et capturez des données structurées.",
+    "use_marketing_title": "Marketing",
+    "use_marketing_desc": "Annoncez lancements, événements et offres, puis mesurez l'intérêt en direct.",
+    "listTitle": "Campagne en direct",
+    "listSubtitle": "Agents IA qui appellent en parallèle",
+    "live": "En direct",
+    "status_queued": "En file",
+    "status_calling": "Appel…",
+    "status_connected": "Connecté",
+    "status_qualified": "Qualifié"
+  },
   "Industries": {
     "kicker": "Pour qui",
     "title": "Pensé pour les métiers où chaque appel compte.",
