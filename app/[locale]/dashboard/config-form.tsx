@@ -16,7 +16,6 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
 import { WebsiteScanWizard } from "./website-scan-wizard";
-import { CampaignsWorkspace } from "./campaigns/campaigns-workspace";
 import { UpsellModal } from "./campaigns/upsell-modal";
 import type { PlanFeatures } from "@/lib/plan-features";
 import { PERSONALITY_KEYS } from "@/lib/personality";
@@ -319,7 +318,6 @@ export function ConfigForm({
   // ouvrable seulement si la feature est active (plan premium) OU admin.
   // Sinon clic → modal d'upsell.
   const campaignsEnabled = isAdmin || features?.outbound_campaigns === true;
-  const [campaignsOpen, setCampaignsOpen] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
@@ -599,7 +597,13 @@ export function ConfigForm({
   ] as const;
 
   // Tuiles dans l'ordre choisi par l'opérateur (cf. applyTileOrder).
-  const orderedTiles = applyTileOrder(TILES, tileOrder);
+  // Quand les appels sortants sont activés (premium/admin), la tuile campagnes
+  // disparaît de la grille : la feature a son propre onglet de nav « Appels
+  // sortants ». On ne garde la tuile que verrouillée (upsell) pour les plans
+  // non éligibles, comme point de découverte.
+  const orderedTiles = applyTileOrder(TILES, tileOrder).filter(
+    (tile) => tile.id !== "campaigns" || !campaignsEnabled,
+  );
 
   // Drag & drop natif HTML5 (même pattern que admin/block-order-form), mais
   // sur une grille → on raisonne par id de tuile, pas par index. Le drop
@@ -962,11 +966,11 @@ export function ConfigForm({
                 tile={tile}
                 active={activeTile === tile.id}
                 onClick={() => {
-                  // La tuile campagnes ouvre un workspace modal (ou l'upsell
-                  // si verrouillée), pas le panneau inline classique.
+                  // La tuile campagnes n'apparaît que verrouillée (plans non
+                  // éligibles) → elle ouvre l'upsell. Les plans éligibles
+                  // passent par l'onglet de nav « Appels sortants ».
                   if (tile.id === "campaigns") {
-                    if (campaignsEnabled) setCampaignsOpen(true);
-                    else setUpsellOpen(true);
+                    setUpsellOpen(true);
                     return;
                   }
                   setActiveTile((curr) => (curr === tile.id ? null : tile.id));
@@ -1116,17 +1120,10 @@ export function ConfigForm({
         </div>
       </div>
 
-      {/* Centre d'appels sortant — workspace plein écran (premium/admin) ou
-       *  modal d'upsell (plans inférieurs). Montés au niveau racine du form
-       *  pour s'afficher en overlay au-dessus de toute la config. */}
-      {campaignsEnabled && (
-        <CampaignsWorkspace
-          key={campaignsOpen ? "campaigns-open" : "campaigns-closed"}
-          open={campaignsOpen}
-          onClose={() => setCampaignsOpen(false)}
-          asUserId={asUserId}
-        />
-      )}
+      {/* Centre d'appels sortant — pour les plans éligibles (premium/admin),
+       *  la feature vit dans l'onglet de nav « Appels sortants »
+       *  (/dashboard/campaigns). Ici, seule reste la modal d'upsell déclenchée
+       *  par la tuile verrouillée des plans inférieurs. */}
       <UpsellModal open={upsellOpen} onClose={() => setUpsellOpen(false)} />
     </form>
   );

@@ -16,6 +16,11 @@ interface Tab {
 
 const TABS: ReadonlyArray<Tab> = [
   { href: "/dashboard", labelKey: "tabConfiguration" },
+  {
+    href: "/dashboard/campaigns",
+    labelKey: "tabOutbound",
+    feature: "outbound_campaigns",
+  },
   { href: "/dashboard/calendar", labelKey: "tabCalendar", feature: "calendar" },
   { href: "/dashboard/contacts", labelKey: "tabContacts", feature: "crm" },
   { href: "/dashboard/billing", labelKey: "tabBilling" },
