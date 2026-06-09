@@ -88,6 +88,8 @@ export function CampaignsWorkspace({
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Feedback de sauvegarde réussie (badge "✓ Enregistré" + bouton Suivant).
+  const [justSaved, setJustSaved] = useState(false);
 
   // Portal monté côté client → modal rendu dans <body>, donc `fixed` = viewport
   // garanti (immunisé contre un ancêtre transformé qui le confinerait et le
@@ -180,8 +182,11 @@ export function CampaignsWorkspace({
     setView("editor");
   };
 
-  const patchDraft = (patch: Partial<CampaignDraft>) =>
+  const patchDraft = (patch: Partial<CampaignDraft>) => {
     setDraft((d) => ({ ...d, ...patch }));
+    // Toute modif après une sauvegarde efface le badge "Enregistré".
+    if (justSaved) setJustSaved(false);
+  };
 
   const save = async () => {
     if (saving) return;
@@ -208,7 +213,10 @@ export function CampaignsWorkspace({
       setDraft((d) => ({ ...d, id: data.campaign.id }));
       setActiveStatus(data.campaign.status);
       await loadList();
-      if (isNew) setTab("contacts");
+      // Succès : on reste sur l'étape 1 avec un feedback clair + bouton Suivant
+      // (au lieu d'un saut silencieux), pour que l'utilisateur voie que c'est
+      // bien enregistré et choisisse d'avancer.
+      setJustSaved(true);
     } catch {
       setSaveError(t("createError"));
     } finally {
@@ -220,6 +228,14 @@ export function CampaignsWorkspace({
 
   const savedCampaign = !!draft.id;
   const currentStats = list.find((c) => c.id === draft.id)?.stats;
+  const stepIdx = STEPS.findIndex((s) => s.key === tab);
+  const stepLabel = t(
+    tab === "setup"
+      ? "stepSetup"
+      : tab === "contacts"
+        ? "stepContacts"
+        : "stepLaunch",
+  );
 
   return createPortal(
     <AnimatePresence>
@@ -255,10 +271,14 @@ export function CampaignsWorkspace({
                 <div>
                   <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/80">
                     <span>📣</span>
-                    {t("kicker")}
+                    {view === "editor"
+                      ? `${t("stepProgress", { current: stepIdx + 1, total: STEPS.length })} · ${stepLabel}`
+                      : t("kicker")}
                   </div>
                   <h3 className="text-lg font-extrabold tracking-tight">
-                    {view === "editor" && draft.name ? draft.name : t("title")}
+                    {view === "editor"
+                      ? draft.name.trim() || t("title")
+                      : t("title")}
                   </h3>
                 </div>
                 {view === "editor" && savedCampaign && (
@@ -412,23 +432,49 @@ export function CampaignsWorkspace({
             )}
           </div>
 
-          {/* Footer (editor / setup) — bouton créer/sauver */}
+          {/* Footer (editor / setup) — sauver + feedback + Suivant */}
           {view === "editor" && tab === "setup" && (
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
-              <span className="text-[12px] font-semibold text-[#dc2626]">
-                {saveError ?? ""}
+              <span className="min-w-0 truncate text-[12px] font-semibold">
+                {saveError ? (
+                  <span className="text-[#dc2626]">{saveError}</span>
+                ) : justSaved ? (
+                  <span className="inline-flex items-center gap-1.5 text-[#16a34a]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    {t("savedOk")}
+                  </span>
+                ) : null}
               </span>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
-              >
-                {saving
-                  ? t("savingLabel")
-                  : savedCampaign
-                    ? t("saveCta")
-                    : t("createCta")}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-60 ${
+                    justSaved
+                      ? "border border-[#e2e8f0] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+                      : "bg-gradient-to-br from-[#f97316] to-[#db2777] text-white hover:opacity-90"
+                  }`}
+                >
+                  {saving
+                    ? t("savingLabel")
+                    : savedCampaign
+                      ? t("saveCta")
+                      : t("createCta")}
+                </button>
+                {savedCampaign && (
+                  <button
+                    onClick={() => setTab("contacts")}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                  >
+                    {t("nextStepContacts")}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </motion.div>
