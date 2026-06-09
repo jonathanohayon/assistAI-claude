@@ -48,8 +48,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .limit(500);
 
   // ── Analyse paresseuse des appels connectés non encore analysés ─────────
-  // Critère de succès : niveau campagne (Phase 2), fallback persona embarquée.
-  // Langue : depuis l'agent associé, fallback persona puis "fr".
+  // Critère de succès : niveau campagne. Langue : depuis l'agent, fallback "fr".
   const agent = campaign.agentId
     ? ((
         await db
@@ -59,9 +58,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           .limit(1)
       )[0] ?? null)
     : null;
-  const successCriteria =
-    campaign.successCriteria || campaign.persona?.successCriteria || "";
-  const language = agent?.language ?? campaign.persona?.language ?? "fr";
+  const successCriteria = campaign.successCriteria || "";
+  const language = agent?.language ?? "fr";
   const toAnalyze = rows.filter(
     (c) =>
       c.outcome === "connected" &&

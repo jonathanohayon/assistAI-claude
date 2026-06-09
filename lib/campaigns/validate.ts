@@ -12,7 +12,6 @@ import {
   GOAL_PRESETS,
   MAX_CONCURRENCY,
   type CallWindow,
-  type CampaignPersona,
   type CampaignStatus,
   type ContactStatus,
   type ExtractionField,
@@ -118,31 +117,6 @@ export function normalizeConcurrency(v: unknown): number {
   const n = Math.round(Number(v));
   if (!Number.isFinite(n) || n < 1) return DEFAULT_CONCURRENCY;
   return Math.min(n, MAX_CONCURRENCY);
-}
-
-export function normalizePersona(v: unknown): CampaignPersona {
-  if (!v || typeof v !== "object") return {};
-  const p = v as Record<string, unknown>;
-  const str = (x: unknown) => (typeof x === "string" ? x.slice(0, 4000) : undefined);
-  const out: CampaignPersona = {};
-  if (str(p.agentName)) out.agentName = str(p.agentName);
-  if (str(p.voice)) out.voice = str(p.voice);
-  if (str(p.language)) out.language = str(p.language);
-  if (str(p.instructions)) out.instructions = str(p.instructions);
-  if (str(p.greeting)) out.greeting = str(p.greeting);
-  if (str(p.successCriteria)) out.successCriteria = str(p.successCriteria);
-  // Fiche de connaissance métier (apprise depuis un/des site(s) web) + sources.
-  // Cap dédié plus large que `str` (4000) : on veut garder TOUS les prix/détails.
-  if (typeof p.knowledge === "string" && p.knowledge.trim())
-    out.knowledge = p.knowledge.slice(0, 12_000);
-  if (Array.isArray(p.knowledgeSources)) {
-    const srcs = p.knowledgeSources
-      .filter((s): s is string => typeof s === "string" && !!s.trim())
-      .map((s) => s.trim().slice(0, 300))
-      .slice(0, 10);
-    if (srcs.length) out.knowledgeSources = srcs;
-  }
-  return out;
 }
 
 export function normalizeRetryRules(v: unknown): RetryRules {

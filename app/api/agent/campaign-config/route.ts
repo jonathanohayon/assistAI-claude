@@ -62,9 +62,13 @@ export async function GET(req: NextRequest) {
         successCriteria: campaign.successCriteria,
       }
     : {
-        ...(campaign.persona ?? {}),
-        successCriteria:
-          campaign.successCriteria || campaign.persona?.successCriteria || "",
+        // Campagne sans agent associé : défauts sûrs (la persona embarquée
+        // n'existe plus depuis la Phase 3). Objectif + critère de succès
+        // restent injectés dans le prompt via la campagne.
+        agentName: "Sarah",
+        voice: "marin",
+        language: "fr",
+        successCriteria: campaign.successCriteria,
       };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
   const framings = await getCampaignGoalFramings();
