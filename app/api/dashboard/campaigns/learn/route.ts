@@ -5,6 +5,8 @@ import { learnFromSites, MAX_LEARN_URLS } from "@/lib/campaigns/learn";
 
 // Node runtime (cheerio + dns dans le crawler).
 export const dynamic = "force-dynamic";
+// Le crawl (rendu JS via Jina) + distillation LLM peut prendre 30-90 s.
+export const maxDuration = 300;
 
 // POST { urls: string[], language? } — crawle le(s) site(s) et renvoie une
 // fiche de connaissance métier distillée. N'INSÈRE RIEN : le client la place
