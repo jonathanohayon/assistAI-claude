@@ -26,6 +26,12 @@ const DEMO_SESSION_SECONDS = 40;
 // voix vient du compte démo (admin) sinon du défaut catalog.
 const DEMO_DEFAULT_MODEL = "gpt-realtime-2";
 
+const LANG_LABEL: Record<string, string> = {
+  fr: "français",
+  he: "hébreu",
+  en: "anglais",
+};
+
 export default function VoiceAgent() {
   // Langue choisie sur la page d'accueil (sélecteur de langue) → l'agent démo
   // parle dans CETTE langue, quelle que soit la langue du compte démo.
@@ -99,6 +105,12 @@ export default function VoiceAgent() {
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const pendingCalls = useRef<Map<string, string>>(new Map()); // call_id → function_name
   const stopSessionRef = useRef<() => void>(() => {});
+  // True pendant la fenêtre d'accueil : le micro est coupé pour empêcher le
+  // VAD serveur de créer une réponse auto (depuis le bruit/écho initial) qui
+  // entre en conflit avec notre accueil explicite → "conversation already has
+  // an active response" + l'agent se coupe et reprend. Réactivé à la fin de
+  // l'accueil (response.done) ou après un filet de sécurité.
+  const greetingActiveRef = useRef(false);
 
   // Auto-scroll vers le bas à chaque nouvelle entrée transcript pour suivre
   // la conversation live sans avoir à scroller à la main.
@@ -182,10 +194,25 @@ export default function VoiceAgent() {
       const type = event.type as string;
 
       if (type === "error") {
+        const errObj = (event.error ?? event) as Record<string, unknown>;
+        // Bénin : une réponse était déjà active quand on a (re)demandé un
+        // accueil. On l'ignore (l'accueil en cours suffit) au lieu d'afficher
+        // une erreur effrayante au visiteur.
+        if (errObj?.code === "conversation_already_has_active_response") {
+          console.warn("[realtime] accueil: réponse déjà active, ignoré");
+          return;
+        }
         console.error("[realtime] error event", event);
-        setError(`Realtime: ${JSON.stringify(event.error ?? event)}`);
+        setError(`Realtime: ${JSON.stringify(errObj)}`);
         setAwaitingResponse(false);
         return;
+      }
+
+      // Fin d'une réponse : si c'était l'accueil, on réactive le micro (coupé
+      // pendant l'accueil pour éviter l'auto-réponse VAD qui le tronquait).
+      if (type === "response.done" && greetingActiveRef.current) {
+        greetingActiveRef.current = false;
+        streamRef.current?.getTracks().forEach((t) => (t.enabled = true));
       }
 
       // Accumulate function call arguments
@@ -269,13 +296,21 @@ export default function VoiceAgent() {
       // Voix du compte démo prioritaire sur la voix locale (qui peut ne pas
       // encore être synchronisée si le clic précède le fetch initial).
       const sessionVoice = demo?.voice || voice;
+      // Persona + consigne d'accueil placées dans les instructions de SESSION.
+      // La persona (avec sa directive de langue calée sur la page) reste donc
+      // active PENDANT l'accueil. On n'écrase plus la persona via
+      // response.instructions (qui rendait l'accueil générique puis basculait
+      // sur la persona = "autres configurations").
+      const sessionInstructions = demo?.instructions
+        ? `${demo.instructions}\n\nDÉBUT D'APPEL : dès le début, accueille proactivement l'appelant — présente-toi brièvement selon ta persona puis demande comment tu peux aider.`
+        : undefined;
       const tokenRes = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
           voice: sessionVoice,
-          ...(demo?.instructions ? { instructions: demo.instructions } : {}),
+          ...(sessionInstructions ? { instructions: sessionInstructions } : {}),
           // STT calé sur la langue de la page (pas celle du compte démo) → le
           // visiteur est compris et l'agent répond dans sa langue.
           primaryLanguage: locale,
@@ -312,6 +347,11 @@ export default function VoiceAgent() {
       });
       streamRef.current = stream;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      // Micro coupé pendant l'accueil : aucun audio (bruit/écho) n'atteint
+      // OpenAI → pas d'auto-réponse VAD qui collisionne avec notre accueil.
+      // Réactivé sur response.done de l'accueil (cf. handleDataChannelMessage).
+      greetingActiveRef.current = true;
+      stream.getTracks().forEach((t) => (t.enabled = false));
 
       // 5. Data channel
       const dc = pc.createDataChannel("oai-events");
@@ -346,21 +386,33 @@ export default function VoiceAgent() {
         setStatus("connected");
         // Démarrer le countdown de session démo dès que le canal est ouvert.
         setSecondsLeft(DEMO_SESSION_SECONDS);
-        // Accueil FORCÉ dans la langue de la page (sélecteur d'accueil) — quelle
-        // que soit la langue du compte démo. L'agent reste dans cette langue.
-        const LANG_LABEL: Record<string, string> = {
-          fr: "français",
-          he: "hébreu",
-          en: "anglais",
-        };
-        const label = LANG_LABEL[locale] ?? "français";
-        const greetInstruction = `Parle EXCLUSIVEMENT en ${label} pendant tout l'appel. Accueille l'appelant en ${label} : présente-toi brièvement selon ta persona puis demande comment tu peux l'aider. Ne réponds JAMAIS dans une autre langue, même si tu hésites.`;
-        dc.send(
-          JSON.stringify({
-            type: "response.create",
-            response: { instructions: greetInstruction },
-          })
-        );
+        // Un SEUL response.create d'accueil. Micro coupé (cf. plus haut) → pas
+        // d'auto-réponse VAD concurrente.
+        if (demo?.instructions) {
+          // Persona + consigne d'accueil + langue déjà dans les instructions de
+          // session → response.create nu : accueil cohérent avec la persona.
+          dc.send(JSON.stringify({ type: "response.create" }));
+        } else {
+          // Fallback agent anonyme : pas de persona en session → on force la
+          // langue de la page + l'accueil via les instructions du response.
+          const label = LANG_LABEL[locale] ?? "français";
+          const greetInstruction = `Parle EXCLUSIVEMENT en ${label} pendant tout l'appel. Accueille l'appelant en ${label} : présente-toi brièvement puis demande comment tu peux l'aider. Ne réponds JAMAIS dans une autre langue, même si tu hésites.`;
+          dc.send(
+            JSON.stringify({
+              type: "response.create",
+              response: { instructions: greetInstruction },
+            }),
+          );
+        }
+        // Filet de sécurité : si response.done de l'accueil n'arrive pas (ex.
+        // accueil vide/erreur), on réactive le micro après 8 s pour ne pas
+        // laisser le visiteur muet.
+        setTimeout(() => {
+          if (greetingActiveRef.current) {
+            greetingActiveRef.current = false;
+            streamRef.current?.getTracks().forEach((t) => (t.enabled = true));
+          }
+        }, 8000);
       };
 
       pc.onconnectionstatechange = () => {
@@ -387,6 +439,7 @@ export default function VoiceAgent() {
     dcRef.current  = null;
     pcRef.current  = null;
     streamRef.current = null;
+    greetingActiveRef.current = false;
     setStatus("idle");
     setIsMuted(false);
     setSecondsLeft(null);
