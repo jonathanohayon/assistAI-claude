@@ -1086,6 +1086,7 @@
     "fromNumberLabel": "Numéro appelant",
     "fromNumberNone": "Numéro par défaut",
     "agentNameLabel": "Nom de l'agent",
+    "agentNameHint": "Le nom que l'agent dit au téléphone — et son étiquette dans la liste.",
     "agentNamePlaceholder": "Sarah",
     "greetingLabel": "Phrase d'accueil (optionnel)",
     "greetingHint": "Laisse vide → l'agent ouvre naturellement à partir de l'objectif et de la connaissance. Remplis pour imposer une phrase d'accueil exacte.",

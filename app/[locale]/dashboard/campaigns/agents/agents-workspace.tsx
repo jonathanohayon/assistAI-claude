@@ -177,7 +177,7 @@ export function AgentsWorkspace({
               </div>
               <h3 className="truncate text-lg font-extrabold tracking-tight">
                 {view === "editor"
-                  ? draft.name.trim() || t("agentsTitle")
+                  ? draft.agentName.trim() || t("agentsTitle")
                   : t("agentsTitle")}
               </h3>
             </div>
@@ -339,10 +339,10 @@ function ListView({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-bold text-[#18181b]">
-                    {a.name}
+                    {a.agentName}
                   </p>
                   <p className="mt-0.5 truncate text-[12px] text-[#64748b]">
-                    {a.agentName} · {a.voice} · {a.language.toUpperCase()}
+                    {a.voice} · {a.language.toUpperCase()}
                   </p>
                 </div>
               </div>

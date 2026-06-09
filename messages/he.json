@@ -1086,6 +1086,7 @@
     "fromNumberLabel": "מספר מתקשר",
     "fromNumberNone": "מספר ברירת מחדל",
     "agentNameLabel": "שם הסוכן",
+    "agentNameHint": "השם שהסוכן אומר בטלפון — וגם התווית שלו ברשימה.",
     "agentNamePlaceholder": "שרה",
     "greetingLabel": "משפט פתיחה (אופציונלי)",
     "greetingHint": "השאירו ריק → הסוכן פותח באופן טבעי לפי המטרה והידע. מלאו כדי לכפות משפט פתיחה מדויק.",

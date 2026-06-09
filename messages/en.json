@@ -1086,6 +1086,7 @@
     "fromNumberLabel": "Caller ID",
     "fromNumberNone": "Default number",
     "agentNameLabel": "Agent name",
+    "agentNameHint": "The name the agent says on the phone — also its label in the list.",
     "agentNamePlaceholder": "Sarah",
     "greetingLabel": "Opening line (optional)",
     "greetingHint": "Leave empty → the agent opens naturally from the objective and knowledge. Fill in to force an exact opening sentence.",
