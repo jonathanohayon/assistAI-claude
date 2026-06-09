@@ -578,6 +578,8 @@
     "doneTitle": "Numéro réservé !",
     "doneDesc": "Branché à votre secrétaire. Appelez-le pour tester.",
     "doneCta": "Aller au dashboard",
+    "skipPhone": "Configurer mon numéro plus tard",
+    "skipPhoneNote": "Facultatif — vous pourrez obtenir un numéro à tout moment depuis le dashboard.",
     "countryFrance": "🇫🇷 France",
     "countryIsrael": "🇮🇱 Israël",
     "languageFr": "🇫🇷 Français",

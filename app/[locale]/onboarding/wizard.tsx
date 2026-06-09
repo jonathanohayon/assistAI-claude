@@ -379,6 +379,22 @@ export function OnboardingWizard({
         </button>
       )}
 
+      {/* Le numéro est FACULTATIF : on peut passer et en obtenir un plus tard
+          depuis le dashboard (CTA "Obtenir mon numéro" dans le hero). */}
+      <div className="pt-1 text-center">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          disabled={isPending}
+          className="text-xs font-medium text-[var(--color-muted-foreground)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline disabled:opacity-50"
+        >
+          {t("skipPhone")}
+        </button>
+        <p className="mt-1 text-[11px] text-[var(--color-muted-foreground)]">
+          {t("skipPhoneNote")}
+        </p>
+      </div>
+
     </div>
   );
 }
