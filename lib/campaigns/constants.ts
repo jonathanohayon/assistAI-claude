@@ -93,19 +93,6 @@ export type CallWindow = {
   respectDnc: boolean;
 };
 
-export type CampaignPersona = {
-  agentName?: string;
-  voice?: string;
-  language?: string;
-  instructions?: string;
-  greeting?: string;
-  successCriteria?: string;
-  /** Fiche de connaissance métier distillée depuis un/des site(s) web. */
-  knowledge?: string;
-  /** URLs sources scannées pour générer `knowledge`. */
-  knowledgeSources?: string[];
-};
-
 // Défauts utilisés par l'UI de création et la normalisation serveur.
 export const DEFAULT_RETRY_RULES: RetryRules = {
   maxAttempts: 1,

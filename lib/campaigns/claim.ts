@@ -18,14 +18,6 @@ export interface CampaignJob {
   vars: Record<string, string>;
   attempts: number;
   fromNumber: string;
-  persona: {
-    agentName?: string;
-    voice?: string;
-    language?: string;
-    instructions?: string;
-    greeting?: string;
-    successCriteria?: string;
-  };
   objective: string;
   goalPreset: string;
 }
@@ -69,7 +61,7 @@ export async function claimCampaignJobs(limit: number): Promise<CampaignJob[]> {
     )
     SELECT u.id AS contact_id, u.campaign_id, u.user_id, u.phone_number,
            u.contact_name, u.vars, u.attempts,
-           c.from_number, c.persona, c.objective, c.goal_preset
+           c.from_number, c.objective, c.goal_preset
     FROM updated u
     JOIN campaigns c ON c.id = u.campaign_id
   `);
@@ -86,7 +78,6 @@ export async function claimCampaignJobs(limit: number): Promise<CampaignJob[]> {
     vars: (r.vars as Record<string, string>) ?? {},
     attempts: Number(r.attempts ?? 1),
     fromNumber: String(r.from_number ?? ""),
-    persona: (r.persona as CampaignJob["persona"]) ?? {},
     objective: String(r.objective ?? ""),
     goalPreset: String(r.goal_preset ?? "custom"),
   }));

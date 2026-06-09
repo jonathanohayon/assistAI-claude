@@ -169,6 +169,13 @@
       "when": 1781008449298,
       "tag": "0023_curvy_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1781009579015,
+      "tag": "0024_ambiguous_inhumans",
+      "breakpoints": true
     }
   ]
 }
