@@ -29,6 +29,15 @@ const MAX_REDIRECTS = 4;
 const USER_AGENT =
   "Mozilla/5.0 (compatible; TamaraBot/1.0; +https://aitamara.com/bot)";
 
+// ── Rendu JS via Jina Reader (sites Wix/SPA) ────────────────────────────────
+// Beaucoup de sites (Wix, Squarespace, React…) renvoient une coquille vide en
+// fetch brut : le contenu (produits, prix, textes) est rendu par JS dans le
+// navigateur. Quand le texte extrait est trop court, on refait la page via
+// r.jina.ai qui rend le JS et renvoie du markdown propre (texte + liens).
+const READER_BASE = "https://r.jina.ai/";
+const READER_FALLBACK_CHARS = 800; // sous ce seuil de texte body → site JS
+const READER_TIMEOUT_MS = 25_000;
+
 // Mots-clés multilingues (fr/en/he-translittéré + hébreu) pour repérer les
 // pages utiles. Chaque entrée porte un poids : les pages les plus riches en
 // infos requises (services, tarifs, horaires, contact) sont crawlées en
@@ -382,20 +391,147 @@ function composePageText(parsed: ParsedPage): string {
   return `[DONNÉES STRUCTURÉES schema.org]\n${parsed.structured}\n\n${body}`;
 }
 
+// ── Jina Reader : rend le JS et renvoie markdown (texte + liens) ────────────
+async function fetchViaReader(
+  target: URL,
+): Promise<{ text: string; links: { href: string; label: string }[] } | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), READER_TIMEOUT_MS);
+  try {
+    const headers: Record<string, string> = {
+      Accept: "text/plain",
+      "X-Return-Format": "markdown",
+    };
+    if (process.env.JINA_API_KEY)
+      headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
+    const res = await fetch(READER_BASE + target.toString(), {
+      signal: controller.signal,
+      headers,
+    });
+    if (!res.ok) return null;
+    const md = (await res.text()).slice(0, PER_PAGE_TEXT_CHARS);
+    if (!md || md.length < 200) return null;
+    // Liens depuis le markdown : [label](url).
+    const links: { href: string; label: string }[] = [];
+    const re = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(md)) !== null && links.length < 300) {
+      links.push({ label: m[1].trim(), href: m[2] });
+    }
+    return { text: md, links };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Construit une page scannée depuis son HTML : parse cheerio, puis si le texte
+ * body est trop court (coquille JS), bascule sur Jina Reader (rendu JS) pour
+ * le texte ET les liens (afin de pouvoir crawler les sous-pages d'un site JS).
+ */
+async function buildPage(
+  u: URL,
+  html: string,
+): Promise<{ page: ScannedPage; parsed: ParsedPage }> {
+  const parsed = await parseHtml(html);
+  let text = composePageText(parsed);
+  const links = parsed.links;
+  if (parsed.text.length < READER_FALLBACK_CHARS) {
+    const reader = await fetchViaReader(u);
+    if (reader && reader.text.length > parsed.text.length) {
+      text = parsed.structured
+        ? `[DONNÉES STRUCTURÉES schema.org]\n${parsed.structured}\n\n${reader.text}`
+        : reader.text;
+      const seen = new Set(links.map((l) => l.href));
+      for (const l of reader.links) {
+        if (!seen.has(l.href)) {
+          links.push(l);
+          seen.add(l.href);
+        }
+      }
+    }
+  }
+  return {
+    page: { url: u.toString(), title: parsed.title || u.pathname, text },
+    parsed: { ...parsed, links },
+  };
+}
+
 /** Fetch + parse une URL en page scannée (null si injoignable/vide). */
 async function fetchPage(u: URL): Promise<{ page: ScannedPage; parsed: ParsedPage } | null> {
   try {
     const html = await fetchHtml(u);
     if (html == null) return null;
-    const parsed = await parseHtml(html);
-    const text = composePageText(parsed);
-    if (!text) return null;
-    return {
-      page: { url: u.toString(), title: parsed.title || u.pathname, text },
-      parsed,
-    };
+    const r = await buildPage(u, html);
+    if (!r.page.text) return null;
+    return r;
   } catch {
     return null; // page privée / erreur → skip, pas fatal
+  }
+}
+
+/**
+ * Récupère des URLs depuis le sitemap.xml (même origine) — fiable pour
+ * découvrir les pages produit/catalogue quand la nav est rendue en JS.
+ * Gère le sitemap index (récupère quelques sous-sitemaps). Best-effort.
+ */
+async function fetchSitemapUrls(root: URL): Promise<URL[]> {
+  const sameOrigin = (s: string): URL | null => {
+    try {
+      const u = new URL(s.trim());
+      if (u.hostname !== root.hostname) return null;
+      u.hash = "";
+      return u;
+    } catch {
+      return null;
+    }
+  };
+  const fetchXml = async (u: URL): Promise<string | null> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PER_PAGE_TIMEOUT_MS);
+    try {
+      const res = await fetch(u.toString(), {
+        signal: controller.signal,
+        headers: { "User-Agent": USER_AGENT },
+      });
+      if (!res.ok) return null;
+      return (await res.text()).slice(0, MAX_BYTES);
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  try {
+    const xml = await fetchXml(new URL("/sitemap.xml", root));
+    if (!xml) return [];
+    const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map(
+      (m) => m[1],
+    );
+    const children = locs.filter((l) => /\.xml(\?|$)/i.test(l)).slice(0, 5);
+    const out: URL[] = [];
+    if (children.length > 0) {
+      for (const c of children) {
+        const cu = sameOrigin(c);
+        if (!cu) continue;
+        const cx = await fetchXml(cu);
+        if (!cx) continue;
+        for (const m of cx.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)) {
+          const u = sameOrigin(m[1]);
+          if (u) out.push(u);
+        }
+      }
+    } else {
+      for (const l of locs) {
+        const u = sameOrigin(l);
+        if (u) out.push(u);
+      }
+    }
+    return out;
+  } catch {
+    return [];
   }
 }
 
@@ -411,18 +547,19 @@ export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
   if (homeHtml == null) {
     throw new ScanError("Impossible de charger la page d'accueil du site.");
   }
-  const home = await parseHtml(homeHtml);
-  const pages: ScannedPage[] = [
-    {
-      url: root.toString(),
-      title: home.title || root.hostname,
-      text: composePageText(home),
-    },
-  ];
+  // Home : build avec fallback Jina Reader (texte + liens) si coquille JS.
+  const homeBuilt = await buildPage(root, homeHtml);
+  const pages: ScannedPage[] = [homeBuilt.page];
   const visited = new Set<string>([root.toString()]);
 
+  // Liens candidats : ceux de la home (cheerio + reader) + le sitemap.xml
+  // (découvre les pages produit/catalogue même quand la nav est en JS).
+  const homeLinks = [...homeBuilt.parsed.links];
+  const sitemapUrls = await fetchSitemapUrls(root);
+  for (const u of sitemapUrls) homeLinks.push({ href: u.toString(), label: "" });
+
   // ── Niveau 1 : meilleures pages liées depuis la home ────────────────────
-  const l1 = scoredCandidates(root, home.links)
+  const l1 = scoredCandidates(root, homeLinks)
     .map((c) => c.u)
     .filter((u) => !visited.has(u.toString()))
     .slice(0, L1_BUDGET);
