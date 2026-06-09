@@ -2,7 +2,12 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaignContacts, campaignCalls, campaigns } from "@/lib/db/schema";
+import {
+  campaignContacts,
+  campaignCalls,
+  campaigns,
+  outboundAgents,
+} from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import {
@@ -10,7 +15,6 @@ import {
   normalizeConcurrency,
   normalizeExtractionSchema,
   normalizeGoalPreset,
-  normalizePersona,
   normalizeRetryRules,
 } from "@/lib/campaigns/validate";
 
@@ -71,7 +75,19 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .orderBy(desc(campaignCalls.createdAt))
     .limit(limit);
 
-  return NextResponse.json({ campaign, contacts, calls, counts });
+  // Agent associé (Phase 2) — sert au preflight (connaissance métier) et à
+  // l'affichage. null si la campagne n'a pas encore d'agent.
+  const agent = campaign.agentId
+    ? ((
+        await db
+          .select()
+          .from(outboundAgents)
+          .where(eq(outboundAgents.id, campaign.agentId))
+          .limit(1)
+      )[0] ?? null)
+    : null;
+
+  return NextResponse.json({ campaign, agent, contacts, calls, counts });
 }
 
 // PATCH — mise à jour partielle (champs structurels seulement si draft/paused).
@@ -101,7 +117,25 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       patch.goalPreset = normalizeGoalPreset(body.goalPreset);
     if (typeof body.objective === "string")
       patch.objective = body.objective.slice(0, 4000);
-    if (body.persona !== undefined) patch.persona = normalizePersona(body.persona);
+    if (typeof body.successCriteria === "string")
+      patch.successCriteria = body.successCriteria.slice(0, 4000);
+    if (body.agentId !== undefined) {
+      // null explicite = détacher l'agent ; sinon valider l'appartenance.
+      if (body.agentId === null) patch.agentId = null;
+      else if (typeof body.agentId === "string" && body.agentId) {
+        const [a] = await db
+          .select({ id: outboundAgents.id })
+          .from(outboundAgents)
+          .where(
+            and(
+              eq(outboundAgents.id, body.agentId),
+              eq(outboundAgents.userId, r.userId),
+            ),
+          )
+          .limit(1);
+        patch.agentId = a?.id ?? null;
+      }
+    }
     if (body.extractionSchema !== undefined)
       patch.extractionSchema = normalizeExtractionSchema(body.extractionSchema);
     if (body.concurrency !== undefined)

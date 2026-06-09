@@ -2,7 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaignCalls, campaigns } from "@/lib/db/schema";
+import { campaignCalls, campaigns, outboundAgents } from "@/lib/db/schema";
 import { analyzeCampaignCall } from "@/lib/campaigns/analyze";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 
@@ -48,8 +48,20 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .limit(500);
 
   // ── Analyse paresseuse des appels connectés non encore analysés ─────────
-  const successCriteria = campaign.persona?.successCriteria ?? "";
-  const language = campaign.persona?.language ?? "fr";
+  // Critère de succès : niveau campagne (Phase 2), fallback persona embarquée.
+  // Langue : depuis l'agent associé, fallback persona puis "fr".
+  const agent = campaign.agentId
+    ? ((
+        await db
+          .select({ language: outboundAgents.language })
+          .from(outboundAgents)
+          .where(eq(outboundAgents.id, campaign.agentId))
+          .limit(1)
+      )[0] ?? null)
+    : null;
+  const successCriteria =
+    campaign.successCriteria || campaign.persona?.successCriteria || "";
+  const language = agent?.language ?? campaign.persona?.language ?? "fr";
   const toAnalyze = rows.filter(
     (c) =>
       c.outcome === "connected" &&
