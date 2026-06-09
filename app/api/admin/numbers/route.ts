@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
     userId?: string;
     phoneNumber?: string;
     label?: string;
+    // 'whatsapp' = numéro WhatsApp Business (appels WhatsApp) → stocké avec le
+    // préfixe `whatsapp:` pour que resolveTenantByPhone matche le canal. Défaut
+    // 'pstn' (numéro téléphonique classique).
+    channel?: string;
   };
 
   if (!body.userId || !body.phoneNumber) {
@@ -45,6 +49,10 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  // Canal WhatsApp → on persiste `whatsapp:+<E164>` (cf. resolveTenantByPhone +
+  // /api/twilio/voice-bridge qui réattache le préfixe au SIP user part).
+  const stored =
+    body.channel === "whatsapp" ? `whatsapp:${normalized}` : normalized;
 
   // Verify the target tenant exists.
   const [target] = await db
@@ -61,7 +69,7 @@ export async function POST(req: NextRequest) {
       .insert(phoneNumbers)
       .values({
         userId: body.userId,
-        phoneNumber: normalized,
+        phoneNumber: stored,
         label: body.label?.trim() ?? "",
       })
       .returning();
