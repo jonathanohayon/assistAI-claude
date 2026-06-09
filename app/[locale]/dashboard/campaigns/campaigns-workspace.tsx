@@ -35,6 +35,13 @@ import { StatusPill } from "./_ui";
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
 
+// Les 3 étapes de l'editor, dans l'ordre, pour le stepper numéroté.
+const STEPS: { key: EditorTab; n: number }[] = [
+  { key: "setup", n: 1 },
+  { key: "contacts", n: 2 },
+  { key: "launch", n: 3 },
+];
+
 function emptyDraft(locale: string, defaultName: string): CampaignDraft {
   return {
     name: defaultName,
@@ -230,7 +237,7 @@ export function CampaignsWorkspace({
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:max-h-[88vh] sm:rounded-3xl"
+          className="relative z-10 flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:h-[88vh] sm:rounded-3xl"
         >
           {/* Header dégradé chaud */}
           <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
@@ -272,33 +279,80 @@ export function CampaignsWorkspace({
               </button>
             </div>
 
-            {/* Onglets de l'editor */}
+            {/* Stepper 1·2·3 — rend les 3 étapes explicites (numéro, libellé,
+             *  état fait/actif/verrouillé, ligne de progression). */}
             {view === "editor" && (
-              <div className="relative mt-3 flex gap-1">
-                {(["setup", "contacts", "launch"] as EditorTab[]).map((tb) => {
-                  const locked = tb !== "setup" && !savedCampaign;
-                  const active = tab === tb;
+              <div className="relative mt-4 flex items-center">
+                {STEPS.map((s, i) => {
+                  const locked = s.key !== "setup" && !savedCampaign;
+                  const active = tab === s.key;
+                  const done =
+                    !active &&
+                    (s.key === "setup"
+                      ? savedCampaign
+                      : s.key === "contacts"
+                        ? (currentStats?.total ?? 0) > 0
+                        : activeStatus === "running" ||
+                          activeStatus === "completed");
                   return (
-                    <button
-                      key={tb}
-                      onClick={() => !locked && setTab(tb)}
-                      disabled={locked}
-                      className={`rounded-t-lg px-3 py-1.5 text-[12px] font-bold transition ${
-                        active
-                          ? "bg-[#f8fafc] text-[#db2777]"
-                          : locked
-                            ? "cursor-not-allowed text-white/40"
-                            : "text-white/85 hover:bg-white/10"
-                      }`}
+                    <div
+                      key={s.key}
+                      className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}
                     >
-                      {t(
-                        tb === "setup"
-                          ? "stepSetup"
-                          : tb === "contacts"
-                            ? "stepContacts"
-                            : "stepLaunch",
+                      <button
+                        type="button"
+                        onClick={() => !locked && setTab(s.key)}
+                        disabled={locked}
+                        aria-current={active ? "step" : undefined}
+                        className={`group flex shrink-0 items-center gap-2 ${
+                          locked ? "cursor-not-allowed" : "cursor-pointer"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold transition ${
+                            active
+                              ? "bg-white text-[#db2777] shadow-sm ring-2 ring-white/60"
+                              : done
+                                ? "bg-white/25 text-white"
+                                : locked
+                                  ? "bg-white/10 text-white/40"
+                                  : "bg-white/15 text-white"
+                          }`}
+                        >
+                          {done ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            s.n
+                          )}
+                        </span>
+                        <span
+                          className={`whitespace-nowrap text-[12px] font-bold transition ${
+                            active
+                              ? "text-white"
+                              : locked
+                                ? "text-white/40"
+                                : "text-white/85"
+                          }`}
+                        >
+                          {t(
+                            s.key === "setup"
+                              ? "stepSetup"
+                              : s.key === "contacts"
+                                ? "stepContacts"
+                                : "stepLaunch",
+                          )}
+                        </span>
+                      </button>
+                      {i < STEPS.length - 1 && (
+                        <span
+                          className={`mx-2 h-px flex-1 rounded ${
+                            done ? "bg-white/60" : "bg-white/25"
+                          }`}
+                        />
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
