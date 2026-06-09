@@ -246,14 +246,35 @@ export default function VoiceAgent() {
 
     try {
       // 1. Get ephemeral token (model/voice picked client-side, validated server-side).
-      //    Si un compte démo est déclaré, on injecte sa persona + langue.
-      const demo = demoConfigRef.current;
+      //    Si un compte démo est déclaré, on injecte sa persona + voix + langue.
+      //    On RECHARGE la config démo juste avant de connecter : garantit la
+      //    persona/voix à jour même si le compte démo a été modifié depuis le
+      //    chargement de la page, et élimine la course (clic avant la fin du
+      //    fetch initial → sinon fallback sur la persona générique).
+      let demo = demoConfigRef.current;
+      try {
+        const r = await fetch(
+          `/api/demo-config?lang=${encodeURIComponent(locale)}`,
+        );
+        if (r.ok) {
+          const d = await r.json();
+          if (d?.configured) {
+            demo = d;
+            demoConfigRef.current = d;
+          }
+        }
+      } catch {
+        /* réseau KO → on garde le ref existant (ou agent anonyme) */
+      }
+      // Voix du compte démo prioritaire sur la voix locale (qui peut ne pas
+      // encore être synchronisée si le clic précède le fetch initial).
+      const sessionVoice = demo?.voice || voice;
       const tokenRes = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
-          voice,
+          voice: sessionVoice,
           ...(demo?.instructions ? { instructions: demo.instructions } : {}),
           // STT calé sur la langue de la page (pas celle du compte démo) → le
           // visiteur est compris et l'agent répond dans sa langue.
@@ -352,7 +373,7 @@ export default function VoiceAgent() {
       setStatus("error");
       setError(e instanceof Error ? e.message : "Erreur inconnue");
     }
-  }, [handleDataChannelMessage, model, voice, transport]);
+  }, [handleDataChannelMessage, model, voice, transport, locale]);
 
   // ── Stop session ──────────────────────────────────────────────────────────
 
