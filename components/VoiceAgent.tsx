@@ -19,7 +19,7 @@ interface TranscriptEntry {
 // Public landing demo : capped session duration so anonymous visitors can
 // try the agent but can't burn unlimited Realtime API budget. After this
 // many seconds the session auto-disconnects with a "demo terminée" UX.
-const DEMO_SESSION_SECONDS = 40;
+const DEMO_SESSION_SECONDS = 80;
 
 // Modèle/voix figés pour la démo publique : plus de sélecteur exposé au
 // visiteur (UX épurée). On utilise toujours le modèle le plus avancé ; la
@@ -501,7 +501,7 @@ export default function VoiceAgent() {
 
   // Renvoie l'heure courante (HH:MM) pour les bulles transcript. On la
   // calcule au render — pas critique d'être figée par message ici, vu que
-  // c'est un live test 40s et le user voit la convo se construire.
+  // c'est un live test court et le user voit la convo se construire.
   const nowHHMM = () => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -558,7 +558,7 @@ export default function VoiceAgent() {
               Tester en direct
             </h2>
             <p className="mt-0.5 text-xs text-[#64748b]">
-              Parlez à Tamara — démo gratuite 40s.
+              Parlez à Tamara — démo gratuite 80s.
             </p>
           </div>
         </div>
@@ -688,7 +688,8 @@ export default function VoiceAgent() {
                 <polyline points="12 6 12 12 16 14" />
               </svg>
               <span className="font-mono">
-                00:{String(secondsLeft).padStart(2, "0")}
+                {String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:
+                {String(secondsLeft % 60).padStart(2, "0")}
               </span>
             </span>
           ) : (
@@ -697,7 +698,7 @@ export default function VoiceAgent() {
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              Session de 40s · gratuit
+              Session de 80s · gratuit
             </span>
           )}
 
