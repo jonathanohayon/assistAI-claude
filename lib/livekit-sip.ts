@@ -24,12 +24,28 @@ const getClient = (): SipClient => {
 let cachedTrunkSid: string | null = null;
 const resolveTrunkSid = async (): Promise<string> => {
   if (cachedTrunkSid) return cachedTrunkSid;
+  const trunks = await getClient().listSipInboundTrunk();
   const fromEnv = process.env.LIVEKIT_INBOUND_TRUNK_SID;
   if (fromEnv) {
-    cachedTrunkSid = fromEnv;
-    return fromEnv;
+    // Valide le SID configuré contre les trunks réels du projet. S'il est
+    // périmé (trunk supprimé/recréé, ou SID d'un autre projet LiveKit), on
+    // NE plante PAS le provisioning : on retombe sur le 1er trunk inbound
+    // existant. Évite l'erreur "Inbound trunk … introuvable" au signup.
+    if (trunks.some((t) => t.sipTrunkId === fromEnv)) {
+      cachedTrunkSid = fromEnv;
+      return fromEnv;
+    }
+    if (trunks.length > 0) {
+      console.warn(
+        `[livekit-sip] LIVEKIT_INBOUND_TRUNK_SID=${fromEnv} introuvable dans le projet ; fallback sur ${trunks[0].sipTrunkId}. Corrige l'env.`,
+      );
+      cachedTrunkSid = trunks[0].sipTrunkId;
+      return cachedTrunkSid;
+    }
+    throw new Error(
+      `Inbound trunk ${fromEnv} introuvable et aucun autre trunk inbound dans ce projet LiveKit. Vérifie LIVEKIT_INBOUND_TRUNK_SID (ou crée un trunk).`,
+    );
   }
-  const trunks = await getClient().listSipInboundTrunk();
   if (trunks.length === 0) {
     throw new Error(
       "Aucun inbound trunk LiveKit trouvé. Crée-en un avec setup_sip d'abord.",
