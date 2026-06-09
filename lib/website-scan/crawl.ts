@@ -561,13 +561,40 @@ async function fetchSitemapUrls(root: URL): Promise<URL[]> {
 }
 
 /**
+ * Renvoie une variante de l'URL racine dont l'hôte résout effectivement en
+ * DNS, en basculant le préfixe `www.` si besoin. Beaucoup d'utilisateurs
+ * tapent `www.exemple.com` alors que seul l'apex `exemple.com` est déclaré en
+ * DNS (ou l'inverse) → sans ce fallback, le crawl échoue dès la résolution.
+ * Si aucune variante ne résout, on relaie l'erreur DNS d'origine.
+ */
+async function reachableRoot(root: URL): Promise<URL> {
+  const candidates: URL[] = [root];
+  const alt = new URL(root.toString());
+  alt.hostname = root.hostname.startsWith("www.")
+    ? root.hostname.slice(4)
+    : `www.${root.hostname}`;
+  candidates.push(alt);
+  for (const c of candidates) {
+    try {
+      await assertPublicHost(c.hostname);
+      return c;
+    } catch {
+      /* variante injoignable → on tente la suivante */
+    }
+  }
+  // Aucune variante ne résout : relaie l'erreur DNS de l'hôte d'origine.
+  await assertPublicHost(root.hostname);
+  return root;
+}
+
+/**
  * Crawl sur 2 niveaux : home → pages clés (niveau 1) → sous-pages clés
  * découvertes depuis le niveau 1 (niveau 2, ex. /services → /services/tarifs).
  * Chaque niveau crawlé en parallèle. Priorisé par score, borné à MAX_PAGES.
  * Lève ScanError si la home est injoignable ; sinon renvoie ≥ la home.
  */
 export async function crawlSite(rootRaw: string): Promise<ScannedPage[]> {
-  const root = normalizeRootUrl(rootRaw);
+  const root = await reachableRoot(normalizeRootUrl(rootRaw));
   const homeHtml = await fetchHtml(root);
   // Home : si le fetch direct est bloqué (protection bot / IP datacenter →
   // fréquent sur Wix/Cloudflare en prod), on bascule entièrement sur Jina
