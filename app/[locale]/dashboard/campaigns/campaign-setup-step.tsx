@@ -11,9 +11,9 @@ import {
   type GoalPreset,
 } from "@/lib/campaigns/constants";
 import type { CampaignDraft } from "@/lib/campaigns/types";
+import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
-import { CampaignKnowledge } from "./campaign-knowledge";
 
 const GOAL_EMOJI: Record<GoalPreset, string> = {
   cold: "❄️",
@@ -29,19 +29,18 @@ const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 export function CampaignSetupStep({
   draft,
   onChange,
-  voices,
+  agents,
   fromNumbers,
 }: {
   draft: CampaignDraft;
   onChange: (patch: Partial<CampaignDraft>) => void;
-  voices: readonly string[];
+  agents: OutboundAgentListItem[];
   fromNumbers: string[];
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tDays = useTranslations("DashboardConfig");
 
-  const setPersona = (patch: Partial<CampaignDraft["persona"]>) =>
-    onChange({ persona: { ...draft.persona, ...patch } });
+  const selectedAgent = agents.find((a) => a.id === draft.agentId) ?? null;
   const setRetry = (patch: Partial<CampaignDraft["retryRules"]>) =>
     onChange({ retryRules: { ...draft.retryRules, ...patch } });
   const setWindow = (patch: Partial<CampaignDraft["callWindow"]>) =>
@@ -147,51 +146,54 @@ export function CampaignSetupStep({
         </div>
       </Section>
 
-      {/* Agent / voix */}
+      {/* Agent + n° appelant + critère de succès */}
       <Section
-        title={t("voiceLabel")}
+        title={t("agentSectionTitle")}
         icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
-            <rect x="9" y="3" width="6" height="12" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect x="4" y="8" width="16" height="11" rx="3" />
+            <path d="M12 8V4M9 13h.01M15 13h.01M2 12v3M22 12v3" />
           </svg>
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={t("agentNameLabel")}>
-            <input
-              className={inputCls}
-              value={draft.persona.agentName ?? ""}
-              placeholder={t("agentNamePlaceholder")}
-              onChange={(e) => setPersona({ agentName: e.target.value })}
-            />
-          </Field>
-          <Field label={t("voiceLabel")}>
+        {agents.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-5 text-center">
+            <p className="text-[13px] font-bold text-[#18181b]">
+              {t("noAgentsTitle")}
+            </p>
+            <p className="mt-1 text-[12px] text-[#64748b]">
+              {t("noAgentsBody")}
+            </p>
+          </div>
+        ) : (
+          <Field label={t("agentSelectLabel")} hint={t("agentSelectHint")}>
             <select
               className={inputCls}
-              value={draft.persona.voice ?? ""}
-              onChange={(e) => setPersona({ voice: e.target.value })}
+              value={draft.agentId ?? ""}
+              onChange={(e) => onChange({ agentId: e.target.value || null })}
             >
-              <option value="">—</option>
-              {voices.map((v) => (
-                <option key={v} value={v}>
-                  {v}
+              <option value="">{t("agentSelectNone")}</option>
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} · {a.voice} · {a.language.toUpperCase()}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label={t("languageLabel")}>
-            <select
-              className={inputCls}
-              value={draft.persona.language ?? ""}
-              onChange={(e) => setPersona({ language: e.target.value })}
-            >
-              <option value="">—</option>
-              <option value="fr">Français</option>
-              <option value="he">עברית</option>
-              <option value="en">English</option>
-            </select>
-          </Field>
+        )}
+
+        {selectedAgent && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl bg-[#f5f3ff] px-3 py-2 text-[12px] text-[#6d28d9]">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            <span className="truncate">
+              {t("agentSelectedHint", { name: selectedAgent.agentName })}
+            </span>
+          </div>
+        )}
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label={t("fromNumberLabel")}>
             <select
               className={inputCls}
@@ -206,31 +208,16 @@ export function CampaignSetupStep({
               ))}
             </select>
           </Field>
-        </div>
-        <div className="mt-3">
           <Field label={t("successCriteriaLabel")}>
             <input
               className={inputCls}
-              value={draft.persona.successCriteria ?? ""}
+              value={draft.successCriteria}
               placeholder={t("successCriteriaPlaceholder")}
-              onChange={(e) => setPersona({ successCriteria: e.target.value })}
-            />
-          </Field>
-        </div>
-        <div className="mt-3">
-          <Field label={t("greetingLabel")} hint={t("greetingHint")}>
-            <input
-              className={inputCls}
-              value={draft.persona.greeting ?? ""}
-              placeholder={t("greetingPlaceholder")}
-              onChange={(e) => setPersona({ greeting: e.target.value })}
+              onChange={(e) => onChange({ successCriteria: e.target.value })}
             />
           </Field>
         </div>
       </Section>
-
-      {/* Connaissance métier depuis le(s) site(s) web */}
-      <CampaignKnowledge persona={draft.persona} setPersona={setPersona} />
 
       {/* Concurrence + retry */}
       <Section

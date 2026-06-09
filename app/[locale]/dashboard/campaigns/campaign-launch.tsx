@@ -66,12 +66,14 @@ export function CampaignLaunch({
       .then(
         (data: {
           counts?: Counts;
-          campaign?: { objective?: string; persona?: { knowledge?: string } };
+          campaign?: { objective?: string };
+          agent?: { knowledge?: string } | null;
         }) => {
           if (cancelled) return;
           if (data.counts) setCounts(data.counts);
           const obj = (data.campaign?.objective ?? "").trim();
-          const kn = (data.campaign?.persona?.knowledge ?? "").trim();
+          // La connaissance métier vit désormais sur l'agent associé.
+          const kn = (data.agent?.knowledge ?? "").trim();
           setLacksContent(!obj && !kn);
         },
       )

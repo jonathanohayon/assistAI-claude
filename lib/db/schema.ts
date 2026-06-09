@@ -315,6 +315,10 @@ export const campaigns = pgTable("campaigns", {
   goalPreset: text("goal_preset").notNull().default("custom"),
   // Objectif libre injecté dans le system prompt de l'agent.
   objective: text("objective").notNull().default(""),
+  // Critère de succès de la campagne (lié à l'objectif) — injecté dans le
+  // prompt + utilisé en analyse post-appel. Niveau campagne (Phase 2 :
+  // extrait de persona.successCriteria).
+  successCriteria: text("success_criteria").notNull().default(""),
   // 'draft' | 'running' | 'paused' | 'completed' | 'archived'
   status: text("status").notNull().default("draft"),
   // Caller-id E.164 (numéro appartenant au tenant — validé à la création).

@@ -28,6 +28,10 @@ export type CampaignDTO = {
   objective: string;
   status: CampaignStatus;
   fromNumber: string;
+  // Agent sortant réutilisable associé (Phase 2). La persona embarquée reste
+  // présente en base (drop en Phase 3) mais n'est plus éditée par l'UI.
+  agentId: string | null;
+  successCriteria: string;
   persona: CampaignPersona;
   extractionSchema: ExtractionField[];
   concurrency: number;
@@ -74,7 +78,9 @@ export type CampaignDraft = {
   goalPreset: GoalPreset;
   objective: string;
   fromNumber: string;
-  persona: CampaignPersona;
+  // Agent associé (remplace la persona embarquée). null = aucun choisi.
+  agentId: string | null;
+  successCriteria: string;
   extractionSchema: ExtractionField[];
   concurrency: number;
   retryRules: RetryRules;

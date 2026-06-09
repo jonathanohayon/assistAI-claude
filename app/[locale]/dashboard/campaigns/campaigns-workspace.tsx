@@ -10,8 +10,8 @@
  */
 
 import { AnimatePresence, motion } from "motion/react";
-import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -23,7 +23,7 @@ import type {
   CampaignDraft,
   CampaignListItem,
 } from "@/lib/campaigns/types";
-import { useRealtimeCatalog, voicesForCatalog } from "@/lib/use-realtime-catalog";
+import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { CampaignAnalytics } from "./campaign-analytics";
 import { CampaignList } from "./campaign-list";
@@ -43,15 +43,15 @@ const STEPS: { key: EditorTab; n: number }[] = [
   { key: "launch", n: 3 },
 ];
 
-function emptyDraft(locale: string, defaultName: string): CampaignDraft {
+function emptyDraft(defaultName: string): CampaignDraft {
   return {
     name: defaultName,
     goalPreset: "cold",
     objective: "",
     fromNumber: "",
-    // Valeurs par défaut de la persona : agent "Sarah", voix "marin",
-    // langue = celle de l'utilisateur. Éditables dans l'étape "Agent / voix".
-    persona: { agentName: "Sarah", voice: "marin", language: locale },
+    // Agent choisi dans l'étape « Agent » (null tant qu'aucun associé).
+    agentId: null,
+    successCriteria: "",
     extractionSchema: [],
     concurrency: DEFAULT_CONCURRENCY,
     retryRules: { ...DEFAULT_RETRY_RULES },
@@ -74,9 +74,8 @@ export function CampaignsWorkspace({
   variant?: "modal" | "page";
 }) {
   const t = useTranslations("DashboardCampaigns");
-  const locale = useLocale();
-  const catalog = useRealtimeCatalog();
-  const voices = useMemo(() => voicesForCatalog(catalog, ""), [catalog]);
+  // Agents sortants du tenant (pour le sélecteur d'agent de l'étape Setup).
+  const [agents, setAgents] = useState<OutboundAgentListItem[]>([]);
 
   const [view, setView] = useState<View>("list");
   const [tab, setTab] = useState<EditorTab>("setup");
@@ -89,7 +88,7 @@ export function CampaignsWorkspace({
 
   // Campagne en cours d'édition.
   const [draft, setDraft] = useState<CampaignDraft>(() =>
-    emptyDraft(locale, t("newCampaign")),
+    emptyDraft(t("newCampaign")),
   );
   const [activeStatus, setActiveStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
@@ -158,13 +157,22 @@ export function CampaignsWorkspace({
       .catch(() => {
         /* silencieux : pas de numéros caller-id proposés */
       });
+    fetch(`/api/dashboard/outbound-agents${qs}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch"))))
+      .then((data: { agents?: OutboundAgentListItem[] }) => {
+        if (cancelled) return;
+        setAgents(data.agents ?? []);
+      })
+      .catch(() => {
+        /* silencieux : sélecteur d'agent vide → invite à en créer un */
+      });
     return () => {
       cancelled = true;
     };
   }, [open, qs, t]);
 
   const openNew = () => {
-    setDraft(emptyDraft(locale, t("newCampaign")));
+    setDraft(emptyDraft(t("newCampaign")));
     setActiveStatus("draft");
     setSaveError(null);
     setTab("setup");
@@ -178,7 +186,8 @@ export function CampaignsWorkspace({
       goalPreset: c.goalPreset,
       objective: c.objective,
       fromNumber: c.fromNumber,
-      persona: c.persona ?? {},
+      agentId: c.agentId ?? null,
+      successCriteria: c.successCriteria ?? "",
       extractionSchema: c.extractionSchema ?? [],
       concurrency: c.concurrency,
       retryRules: c.retryRules ?? { ...DEFAULT_RETRY_RULES },
@@ -453,7 +462,7 @@ export function CampaignsWorkspace({
               <CampaignSetupStep
                 draft={draft}
                 onChange={patchDraft}
-                voices={voices}
+                agents={agents}
                 fromNumbers={fromNumbers}
               />
             )}

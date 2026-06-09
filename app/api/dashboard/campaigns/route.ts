@@ -1,10 +1,11 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import {
   campaignContacts,
   campaigns,
+  outboundAgents,
   phoneNumbers,
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -14,9 +15,24 @@ import {
   normalizeConcurrency,
   normalizeExtractionSchema,
   normalizeGoalPreset,
-  normalizePersona,
   normalizeRetryRules,
 } from "@/lib/campaigns/validate";
+
+// Valide qu'un agentId fourni appartient bien au tenant. Renvoie l'id si OK,
+// sinon null (campagne sans agent → le worker retombera sur la persona
+// embarquée tant que la Phase 3 n'a pas retiré la colonne).
+async function validateAgentId(
+  userId: string,
+  raw: unknown,
+): Promise<string | null> {
+  if (typeof raw !== "string" || !raw) return null;
+  const [a] = await db
+    .select({ id: outboundAgents.id })
+    .from(outboundAgents)
+    .where(and(eq(outboundAgents.id, raw), eq(outboundAgents.userId, userId)))
+    .limit(1);
+  return a?.id ?? null;
+}
 
 // GET — liste des campagnes du tenant + stats agrégées par campagne.
 export async function GET(req: NextRequest) {
@@ -106,9 +122,13 @@ export async function POST(req: NextRequest) {
       goalPreset: normalizeGoalPreset(body.goalPreset),
       objective:
         typeof body.objective === "string" ? body.objective.slice(0, 4000) : "",
+      successCriteria:
+        typeof body.successCriteria === "string"
+          ? body.successCriteria.slice(0, 4000)
+          : "",
       status: "draft",
       fromNumber,
-      persona: normalizePersona(body.persona),
+      agentId: await validateAgentId(r.userId, body.agentId),
       extractionSchema: normalizeExtractionSchema(body.extractionSchema),
       concurrency: normalizeConcurrency(body.concurrency),
       retryRules: normalizeRetryRules(body.retryRules),

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaignContacts, campaigns } from "@/lib/db/schema";
+import { campaignContacts, campaigns, outboundAgents } from "@/lib/db/schema";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
 
@@ -39,7 +39,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "contact_not_found" }, { status: 404 });
   }
 
-  const persona = campaign.persona ?? {};
+  // Phase 2 : la persona vient de l'agent réutilisable associé (si présent).
+  // Fallback sur la persona embarquée (campagnes pré-Phase 2 non encore
+  // reliées à un agent). Le critère de succès est désormais niveau campagne.
+  const agent = campaign.agentId
+    ? ((
+        await db
+          .select()
+          .from(outboundAgents)
+          .where(eq(outboundAgents.id, campaign.agentId))
+          .limit(1)
+      )[0] ?? null)
+    : null;
+  const persona = agent
+    ? {
+        agentName: agent.agentName,
+        voice: agent.voice,
+        language: agent.language,
+        instructions: agent.instructions,
+        greeting: agent.greeting,
+        knowledge: agent.knowledge,
+        successCriteria: campaign.successCriteria,
+      }
+    : {
+        ...(campaign.persona ?? {}),
+        successCriteria:
+          campaign.successCriteria || campaign.persona?.successCriteria || "",
+      };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
   const framings = await getCampaignGoalFramings();
   const instructions = buildCampaignInstructions(
