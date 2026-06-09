@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { VOICE_GENDER } from "@/lib/voice-tuning";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
 
@@ -150,6 +151,18 @@ export function AgentEditor({
             {active.id === "channels" && <ChannelsPanel draft={draft} set={set} t={t} asUserId={asUserId} />}
           </div>
         </div>
+      )}
+
+      {/* Tester en live — même panneau que les appels entrants. Disponible une
+       *  fois l'agent enregistré (le worker lit la config depuis la base). */}
+      {draft.id ? (
+        <div className="overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 p-4 shadow-[0_4px_24px_-8px_rgba(99,102,241,0.18)] backdrop-blur-xl sm:p-5">
+          <LiveTestPanelLK dirty={false} asUserId={asUserId} agentId={draft.id} />
+        </div>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-4 text-center text-[12px] text-[#64748b]">
+          {t("agentTestSaveFirst")}
+        </p>
       )}
     </div>
   );

@@ -1041,6 +1041,7 @@
     "agentTagChannels": "Where this agent runs",
     "agentNotifOn": "On",
     "channelsNumbersLabel": "Your numbers",
+    "agentTestSaveFirst": "Save the agent to test it live.",
     "listEmptyTitle": "No campaigns yet",
     "listEmptyBody": "Create your first outbound campaign to start reaching leads with AI agents.",
     "loadError": "Could not load campaigns.",

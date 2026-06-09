@@ -3,10 +3,13 @@ import {
   RoomAgentDispatch,
   RoomConfiguration,
 } from "livekit-server-sdk";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { db } from "@/lib/db";
+import { outboundAgents } from "@/lib/db/schema";
 
 /**
  * Nom de l'agent enregistré côté worker (`config.ts:AGENT_NAME` dans le
@@ -47,7 +50,10 @@ export async function POST(req: NextRequest) {
 
   // Optionnel : admin peut tester en tant qu'un autre tenant via `asUserId`.
   // Bloqué (403) si le caller n'est pas admin. Sinon → userId = target.
-  const body = (await req.json().catch(() => ({}))) as { asUserId?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    asUserId?: string;
+    agentId?: string;
+  };
   const scope = await resolveScopeUserId({
     sessionUserId: session.user.id,
     asUserId: body.asUserId ?? null,
@@ -56,6 +62,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const userId = scope.userId;
+
+  // Test LIVE d'un agent SORTANT : si un agentId (appartenant au tenant scopé)
+  // est fourni, la session teste cet agent (sa voix/persona/connaissance) au
+  // lieu de la config entrante. Le worker route alors vers
+  // /api/agent/outbound-test-config. Sinon → test de l'agent entrant classique.
+  let testAgentId: string | null = null;
+  if (typeof body.agentId === "string" && body.agentId) {
+    const [a] = await db
+      .select({ id: outboundAgents.id })
+      .from(outboundAgents)
+      .where(
+        and(
+          eq(outboundAgents.id, body.agentId),
+          eq(outboundAgents.userId, userId),
+        ),
+      )
+      .limit(1);
+    testAgentId = a?.id ?? null;
+  }
+  const sessionMeta = testAgentId
+    ? JSON.stringify({ source: "outbound_test", agentId: testAgentId, userId })
+    : JSON.stringify({ source: "web", userId });
   // Unique-ish room name. Worker dispatch is per-room ; on a un room
   // dédié par session test, ce qui évite les collisions si l'user
   // ré-ouvre l'onglet ou teste depuis 2 appareils.
@@ -66,8 +94,8 @@ export async function POST(req: NextRequest) {
     identity,
     name: session.user.email ?? identity,
     // Metadata côté participant — lue par le worker dans
-    // ctx.room.remoteParticipants pour identifier le tenant.
-    metadata: JSON.stringify({ source: "web", userId }),
+    // ctx.room.remoteParticipants pour identifier le tenant (ou l'agent testé).
+    metadata: sessionMeta,
     ttl: 15 * 60, // 15 minutes : largement assez pour un test live
   });
   at.addGrant({
@@ -89,7 +117,7 @@ export async function POST(req: NextRequest) {
         // Metadata passée au worker via ctx.job — pas utilisée pour le
         // moment côté agent.ts (on lit participant.metadata), mais utile
         // pour le debug et au cas où le worker veuille filtrer.
-        metadata: JSON.stringify({ source: "web", userId }),
+        metadata: sessionMeta,
       }),
     ],
   });
