@@ -35,6 +35,27 @@ function normalizeKnowledgeSources(v: unknown): string[] {
     .slice(0, 10);
 }
 
+function normalizePersonality(v: unknown): {
+  vitesse?: number;
+  creativite?: number;
+  reactivite?: number;
+} {
+  if (!v || typeof v !== "object") return {};
+  const p = v as Record<string, unknown>;
+  const dim = (x: unknown): number | undefined => {
+    const n = Math.round(Number(x));
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : undefined;
+  };
+  const out: { vitesse?: number; creativite?: number; reactivite?: number } = {};
+  const vi = dim(p.vitesse);
+  if (vi !== undefined) out.vitesse = vi;
+  const cr = dim(p.creativite);
+  if (cr !== undefined) out.creativite = cr;
+  const re = dim(p.reactivite);
+  if (re !== undefined) out.reactivite = re;
+  return out;
+}
+
 // Champs éditables d'un agent → valeurs prêtes pour insert/update Drizzle.
 // `name` est garanti non-vide (fallback sur agentName ou "Agent").
 export function normalizeAgentFields(
@@ -55,5 +76,10 @@ export function normalizeAgentFields(
     knowledgeSources: normalizeKnowledgeSources(body.knowledgeSources),
     notifications: normalizeNotifications(body.notifications),
     channels: normalizeChannels(body.channels),
+    personality: normalizePersonality(body.personality),
+    noiseReductionLevel: (() => {
+      const n = Math.round(Number(body.noiseReductionLevel));
+      return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 8;
+    })(),
   };
 }

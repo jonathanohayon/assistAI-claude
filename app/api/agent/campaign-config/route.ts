@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { campaignContacts, campaigns, outboundAgents } from "@/lib/db/schema";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
+import { personalityToRealtime } from "@/lib/voice-tuning";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
 // Config runtime servie au worker pour un appel sortant donné. Même forme
@@ -83,16 +84,23 @@ export async function GET(req: NextRequest) {
     vars: contact.vars,
   });
 
+  // Réglages voix dérivés de l'agent (mêmes sliders que l'agent entrant).
+  const tuning = personalityToRealtime(
+    agent?.personality,
+    agent?.noiseReductionLevel,
+  );
+
   return NextResponse.json({
     instructions,
     greetingInstructions,
     agentName: (persona.agentName || "Sarah").trim(),
     model: process.env.REALTIME_MODEL || "gpt-realtime",
     voice: persona.voice || "marin",
-    temperature: 0.8,
-    speed: 1.0,
+    temperature: tuning.temperature,
+    speed: tuning.speed,
+    reactivite: tuning.reactivite,
     maxResponseTokens: 320,
-    noiseReductionLevel: 8,
+    noiseReductionLevel: tuning.noiseReductionLevel,
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
     // Pas de calendrier/CRM/WhatsApp sur un appel sortant.
