@@ -157,7 +157,7 @@ export function VerifyForm({ email }: VerifyFormProps) {
       <button
         type="submit"
         disabled={isPending || code.length !== 4}
-        className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ec4899]/30 ring-2 ring-[#22d3ee]/40 transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? t("verifying") : t("submitButton")}
       </button>

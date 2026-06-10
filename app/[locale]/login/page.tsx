@@ -131,7 +131,7 @@ export default async function LoginPage(props: {
 
           <button
             type="submit"
-            className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ec4899]/30 ring-2 ring-[#22d3ee]/40 transition-transform hover:scale-[1.01] active:scale-[0.99]"
           >
             {t("submitButton")}
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">

@@ -46,7 +46,7 @@ export function AlreadyRegisteredModal() {
         <button
           type="button"
           onClick={close}
-          className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
+          className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ec4899]/30 ring-2 ring-[#22d3ee]/40 transition-transform hover:scale-[1.01] active:scale-[0.99]"
         >
           {t("alreadyRegisteredOk")}
         </button>
