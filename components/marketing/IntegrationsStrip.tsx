@@ -1,50 +1,197 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 
-import { Stagger, StaggerItem } from "./Reveal";
+import { EASE } from "./Reveal";
 
 /**
- * Bande fine de crédibilité sous le Hero : « ça se branche sur vos outils ».
- * 3 intégrations concrètes (WhatsApp, Google Calendar, Google Sheets) en une
- * rangée de ~100px — répond à l'objection « et mes outils ? » avant même
- * qu'elle se pose, sans alourdir le haut de page.
+ * Bande intégrations sous le Hero — version playful « data flow ».
+ * 3 cartes légèrement inclinées (posées comme des stickers) reliées par une
+ * ligne de flux animée : des points voyagent entre les outils, façon « la
+ * donnée circule en temps réel ». Hover : la carte se redresse et lève.
  */
 
 const INTEGRATIONS = [
-  { key: "whatsapp", icon: <WhatsAppIcon /> },
-  { key: "calendar", icon: <GoogleCalendarIcon /> },
-  { key: "crm", icon: <GoogleSheetsIcon /> },
+  {
+    key: "whatsapp",
+    icon: <WhatsAppIcon />,
+    tilt: -2.5,
+    glow: "shadow-[0_16px_40px_-12px_rgba(37,211,102,0.45)]",
+    ring: "hover:ring-[#25D366]/50",
+    chipBg: "bg-[#25D366]/10",
+  },
+  {
+    key: "calendar",
+    icon: <GoogleCalendarIcon />,
+    tilt: 1.8,
+    glow: "shadow-[0_16px_40px_-12px_rgba(66,133,244,0.45)]",
+    ring: "hover:ring-[#4285F4]/50",
+    chipBg: "bg-[#4285F4]/10",
+  },
+  {
+    key: "crm",
+    icon: <GoogleSheetsIcon />,
+    tilt: -1.5,
+    glow: "shadow-[0_16px_40px_-12px_rgba(15,157,88,0.45)]",
+    ring: "hover:ring-[#0F9D58]/50",
+    chipBg: "bg-[#0F9D58]/10",
+  },
 ] as const;
 
 export function IntegrationsStrip() {
   const t = useTranslations("Integrations");
+  const reduce = useReducedMotion();
 
   return (
-    <section aria-label={t("kicker")} className="relative py-10 sm:py-12">
-      <div className="mx-auto w-full max-w-5xl px-6">
-        <Stagger className="flex flex-col items-center gap-5">
-          <StaggerItem>
-            <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0e7490]">
-              {t("kicker")}
-            </p>
-          </StaggerItem>
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            {INTEGRATIONS.map((item) => (
-              <StaggerItem key={item.key}>
-                <div className="flex items-center gap-2.5 rounded-full border border-[#fbcfe8] bg-white/80 py-2 ps-3 pe-4 shadow-sm backdrop-blur transition-colors duration-300 hover:border-[#22d3ee]/60">
-                  <span aria-hidden className="h-5 w-5 shrink-0">
-                    {item.icon}
-                  </span>
-                  <span className="text-[13px] font-medium text-[#1e2937]">
-                    {t(item.key)}
-                  </span>
-                </div>
-              </StaggerItem>
+    <section
+      aria-label={t("kicker")}
+      className="relative overflow-hidden py-14 sm:py-16"
+    >
+      {/* Voile gradient très léger pour détacher la bande du fond rose */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-1/2 h-56 -translate-y-1/2 bg-[radial-gradient(60%_100%_at_50%_50%,rgba(34,211,238,0.08),transparent_70%)]"
+      />
+
+      <div className="relative mx-auto w-full max-w-5xl px-6">
+        {/* Kicker avec dot "live" */}
+        <motion.p
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }}
+          whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={{ duration: 0.55, ease: EASE }}
+          className="flex items-center justify-center gap-2 text-center text-[11px] font-bold uppercase tracking-[0.24em]"
+        >
+          <span className="relative flex h-2 w-2" aria-hidden>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-75 motion-safe:animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22d3ee]" />
+          </span>
+          <span className="bg-gradient-to-r from-[#0e7490] via-[#db2777] to-[#0e7490] bg-clip-text text-transparent">
+            {t("kicker")}
+          </span>
+        </motion.p>
+
+        {/* Cartes + ligne de flux derrière */}
+        <div className="relative mt-8">
+          {/* Ligne de flux : pointillés + 2 points qui voyagent (desktop) */}
+          <div
+            aria-hidden
+            dir="ltr"
+            className="pointer-events-none absolute inset-x-[12%] top-1/2 hidden -translate-y-1/2 lg:block"
+          >
+            <div className="h-px w-full border-t-2 border-dashed border-[#db2777]/20" />
+            {!reduce && (
+              <>
+                <span className="flow-dot bg-[#22d3ee] shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
+                <span
+                  className="flow-dot bg-[#db2777] shadow-[0_0_12px_rgba(219,39,119,0.8)]"
+                  style={{ animationDelay: "1.6s" }}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
+            {INTEGRATIONS.map((item, i) => (
+              <motion.div
+                key={item.key}
+                initial={
+                  reduce
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 32, rotate: 0, scale: 0.9 }
+                }
+                whileInView={
+                  reduce
+                    ? { opacity: 1 }
+                    : { opacity: 1, y: 0, rotate: item.tilt, scale: 1 }
+                }
+                viewport={{ once: true, margin: "-12%" }}
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : {
+                        delay: 0.12 + i * 0.12,
+                        type: "spring",
+                        stiffness: 220,
+                        damping: 18,
+                      }
+                }
+                whileHover={
+                  reduce
+                    ? undefined
+                    : { rotate: 0, y: -8, scale: 1.04 }
+                }
+                className={`group flex cursor-default items-center gap-3.5 rounded-3xl border border-white/60 bg-white/85 p-4 ring-1 ring-[#fbcfe8]/60 backdrop-blur-xl transition-shadow duration-300 ${item.glow} ${item.ring} sm:p-5`}
+              >
+                {/* Icône flottante dans un squircle teinté marque */}
+                <motion.span
+                  aria-hidden
+                  animate={
+                    reduce
+                      ? undefined
+                      : { y: [0, -4, 0] }
+                  }
+                  transition={
+                    reduce
+                      ? undefined
+                      : {
+                          duration: 2.6,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.4,
+                        }
+                  }
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${item.chipBg} p-2.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transition-none motion-reduce:group-hover:rotate-0 motion-reduce:group-hover:scale-100`}
+                >
+                  {item.icon}
+                </motion.span>
+                <span className="text-[13.5px] font-semibold leading-snug text-[#1e2937]">
+                  {t(item.key)}
+                </span>
+              </motion.div>
             ))}
           </div>
-        </Stagger>
+        </div>
       </div>
+
+      <style jsx>{`
+        .flow-dot {
+          position: absolute;
+          top: -3px;
+          left: 0;
+          height: 6px;
+          width: 6px;
+          border-radius: 9999px;
+          animation: flow-travel 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+        @keyframes flow-travel {
+          0% {
+            left: 0%;
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          12% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          88% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          100% {
+            left: 100%;
+            opacity: 0;
+            transform: scale(0.5);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .flow-dot {
+            animation: none;
+            display: none;
+          }
+        }
+      `}</style>
     </section>
   );
 }
