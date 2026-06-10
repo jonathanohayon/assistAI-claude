@@ -198,9 +198,25 @@ export default async function DashboardPage(props: {
   // État réel du tenant → checklist de setup en haut du dashboard.
   const hasPhone = Boolean(primaryPhone);
   const googleConnected = Boolean(me?.googleRefreshToken);
+  // "Scanner mon site" terminé = l'agent a des infos métier. On ne se limite
+  // pas au nom (le scan peut remplir services/centres/base de connaissances
+  // sans extraire un nom net) : n'importe quelle donnée métier renseignée coche
+  // l'étape.
+  const biz = (
+    config as unknown as {
+      business?: {
+        identity?: { name?: string };
+        services?: unknown[];
+        centres?: unknown[];
+        knowledgeBase?: string;
+      };
+    }
+  ).business;
   const businessFilled = Boolean(
-    (config as unknown as { business?: { identity?: { name?: string } } })
-      .business?.identity?.name?.trim().length,
+    biz?.identity?.name?.trim().length ||
+      (biz?.services?.length ?? 0) > 0 ||
+      (biz?.centres?.length ?? 0) > 0 ||
+      biz?.knowledgeBase?.trim().length,
   );
   const whatsappSet = Boolean(config?.ownerWhatsapp?.trim().length);
   const setupComplete =
