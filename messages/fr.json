@@ -401,7 +401,19 @@
     "whatsappDesc": "Recevez un résumé après chaque appel.",
     "whatsappCta": "Configurer",
     "allDoneTitle": "Tout est configuré",
-    "allDoneSubtitle": "Votre agent est prêt à recevoir des appels."
+    "allDoneSubtitle": "Votre agent est prêt à recevoir des appels.",
+    "congratsTitle": "Félicitations, votre agent est prêt 🎉",
+    "congratsSubtitle": "Tout est configuré. Voici quelques pistes pour aller plus loin :",
+    "dismiss": "Masquer",
+    "tipVoiceTitle": "Changer la voix",
+    "tipVoiceDesc": "Choisissez la voix et le débit de votre agent.",
+    "tipVoiceCta": "Voix",
+    "tipPersonaTitle": "Personnaliser la personnalité",
+    "tipPersonaDesc": "Ton, style et expertise métier de l’agent.",
+    "tipPersonaCta": "Personnalité",
+    "tipBusinessTitle": "Enrichir la base de connaissances",
+    "tipBusinessDesc": "Services, horaires, infos que l’agent peut citer.",
+    "tipBusinessCta": "Business"
   },
   "SocialProof": {
     "kicker": "Ils nous font confiance",
@@ -992,7 +1004,8 @@
     "campaignsTileLabel": "Appels sortants",
     "campaignsTileTagline": "Centre d'appels IA — composez des leads en parallèle",
     "campaignsTileSummary": "Marketing · ventes · génération de leads",
-    "campaignsTileLocked": "Plan Pro — appuyez pour débloquer"
+    "campaignsTileLocked": "Plan Pro — appuyez pour débloquer",
+    "wowTestSuccess": "Message de test envoyé ✓"
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",

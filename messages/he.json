@@ -401,7 +401,19 @@
     "whatsappDesc": "קבלו סיכום אחרי כל שיחה.",
     "whatsappCta": "הגדרה",
     "allDoneTitle": "הכל מוכן",
-    "allDoneSubtitle": "הסוכן שלך מוכן לקבל שיחות."
+    "allDoneSubtitle": "הסוכן שלך מוכן לקבל שיחות.",
+    "congratsTitle": "מזל טוב, הסוכן שלך מוכן 🎉",
+    "congratsSubtitle": "הכול מוגדר. כמה דרכים להמשיך:",
+    "dismiss": "להסתיר",
+    "tipVoiceTitle": "שינוי הקול",
+    "tipVoiceDesc": "בחרו את הקול והקצב של הסוכן.",
+    "tipVoiceCta": "קול",
+    "tipPersonaTitle": "התאמת האישיות",
+    "tipPersonaDesc": "טון, סגנון ומומחיות מקצועית של הסוכן.",
+    "tipPersonaCta": "אישיות",
+    "tipBusinessTitle": "העשרת בסיס הידע",
+    "tipBusinessDesc": "שירותים, שעות ומידע שהסוכן יכול לצטט.",
+    "tipBusinessCta": "עסק"
   },
   "SocialProof": {
     "kicker": "סומכים עלינו",
@@ -992,7 +1004,8 @@
     "campaignsTileLabel": "שיחות יוצאות",
     "campaignsTileTagline": "מוקד שיחות AI — חייגו ללידים במקביל",
     "campaignsTileSummary": "שיווק · מכירות · גיוס לידים",
-    "campaignsTileLocked": "תוכנית Pro — לחצו לשדרוג"
+    "campaignsTileLocked": "תוכנית Pro — לחצו לשדרוג",
+    "wowTestSuccess": "הודעת בדיקה נשלחה ✓"
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",

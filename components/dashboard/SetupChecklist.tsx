@@ -1,8 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
+
+const DISMISS_KEY = "tamara.setupCongratsDismissed";
 
 type SetupChecklistProps = {
   hasPhone: boolean;
@@ -212,24 +215,104 @@ export function SetupChecklist({
   const done = items.filter((i) => i.done).length;
   const allDone = done === total;
 
-  // Tout est configuré → état compact, discret.
+  // Une fois la félicitation masquée, on ne la ré-affiche plus (localStorage).
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
+      if (localStorage.getItem(DISMISS_KEY) === "1") setDismissed(true);
+    } catch {
+      /* localStorage indispo → on affiche */
+    }
+  }, []);
+
+  const tips: { id: string; icon: (p: SvgProps) => React.JSX.Element; title: string; desc: string; cta: string; href: string }[] = [
+    {
+      id: "voice",
+      icon: WaveIcon,
+      title: t("tipVoiceTitle"),
+      desc: t("tipVoiceDesc"),
+      cta: t("tipVoiceCta"),
+      href: "/dashboard?tile=voice",
+    },
+    {
+      id: "persona",
+      icon: ChatIcon,
+      title: t("tipPersonaTitle"),
+      desc: t("tipPersonaDesc"),
+      cta: t("tipPersonaCta"),
+      href: "/dashboard?tile=persona",
+    },
+    {
+      id: "business",
+      icon: GlobeIcon,
+      title: t("tipBusinessTitle"),
+      desc: t("tipBusinessDesc"),
+      cta: t("tipBusinessCta"),
+      href: "/dashboard?tile=business",
+    },
+  ];
+
+  // Tout est configuré → félicitations + tips (masquable définitivement).
   if (allDone) {
+    if (dismissed) return null;
     return (
       <section
-        className="mb-6 flex items-center gap-3 rounded-3xl border border-[var(--color-border)] bg-white/85 px-5 py-4 backdrop-blur-sm"
-        aria-label={t("title")}
+        className="mb-6 overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-[var(--color-muted)]/40 backdrop-blur-sm"
+        aria-label={t("congratsTitle")}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-          <CheckIcon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-display text-sm font-semibold text-[var(--color-foreground)]">
-            {t("allDoneTitle")}
-          </p>
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            {t("allDoneSubtitle")}
-          </p>
-        </div>
+        <header className="flex items-start gap-3 px-5 py-5 sm:px-6">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <CheckIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-semibold text-[var(--color-foreground)]">
+              {t("congratsTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+              {t("congratsSubtitle")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setDismissed(true);
+              try {
+                localStorage.setItem(DISMISS_KEY, "1");
+              } catch {
+                /* best-effort */
+              }
+            }}
+            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[var(--color-muted-foreground)] transition-colors hover:bg-white hover:text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+          >
+            {t("dismiss")}
+          </button>
+        </header>
+        <ul className="grid grid-cols-1 gap-px bg-[var(--color-border)] sm:grid-cols-3">
+          {tips.map((tip) => {
+            const Icon = tip.icon;
+            return (
+              <li key={tip.id} className="bg-white/70 p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--color-muted)] text-[var(--color-primary)]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <p className="mt-2.5 text-sm font-semibold text-[var(--color-foreground)]">
+                  {tip.title}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
+                  {tip.desc}
+                </p>
+                <Link
+                  href={tip.href}
+                  className="group mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                >
+                  {tip.cta}
+                  <ArrowIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </section>
     );
   }
