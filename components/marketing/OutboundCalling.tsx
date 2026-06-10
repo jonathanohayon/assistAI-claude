@@ -104,20 +104,22 @@ export function OutboundCalling() {
   return (
     <section
       id="outbound"
-      className="relative overflow-hidden bg-[var(--color-dark-bg)] py-24 sm:py-32"
+      // Dégradé slate-bleu plus clair que --color-dark-bg (#1e2937 jugé trop
+      // sombre) — garde l'effet command center sans écraser la page.
+      className="relative overflow-hidden bg-gradient-to-b from-[#2e3d55] via-[#2a374c] to-[#243043] py-24 sm:py-32"
     >
       {/* Glows rose/cyan du command center (décoratif) */}
       <div
         aria-hidden
-        className="pointer-events-none absolute start-[-12%] top-[10%] h-[28rem] w-[28rem] rounded-full bg-[#db2777]/15 blur-3xl"
+        className="pointer-events-none absolute start-[-12%] top-[10%] h-[28rem] w-[28rem] rounded-full bg-[#db2777]/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-[5%] end-[-10%] h-96 w-96 rounded-full bg-[#22d3ee]/10 blur-3xl"
+        className="pointer-events-none absolute bottom-[5%] end-[-10%] h-96 w-96 rounded-full bg-[#22d3ee]/20 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute start-1/3 top-2/3 h-72 w-72 rounded-full bg-[#be185d]/10 blur-3xl"
+        className="pointer-events-none absolute start-1/3 top-2/3 h-72 w-72 rounded-full bg-[#be185d]/15 blur-3xl"
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-6">
@@ -168,7 +170,7 @@ export function OutboundCalling() {
                     <h3 className={`font-display text-lg tracking-tight ${u.tint}`}>
                       {t(`use_${u.key}_title`)}
                     </h3>
-                    <p className="mt-1 text-[13px] leading-relaxed text-white/65">
+                    <p className="mt-1 text-[13px] leading-relaxed text-white/70">
                       {t(`use_${u.key}_desc`)}
                     </p>
                   </div>
@@ -214,7 +216,7 @@ export function OutboundCalling() {
                   <p className="font-display text-[15px] leading-tight text-white">
                     {t("listTitle")}
                   </p>
-                  <p className="text-[11px] text-white/60">{t("listSubtitle")}</p>
+                  <p className="text-[11px] text-white/70">{t("listSubtitle")}</p>
                 </div>
               </div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-300">
@@ -262,7 +264,7 @@ export function OutboundCalling() {
                           st === "calling"
                             ? "bg-gradient-to-br from-[#be185d] to-[#ec4899]"
                             : st === "queued"
-                              ? "bg-white/15 text-white/60"
+                              ? "bg-white/15 text-white/70"
                               : "bg-gradient-to-br from-[#0e7490] to-[#22d3ee]"
                         }`}
                       >
@@ -287,7 +289,7 @@ export function OutboundCalling() {
                         {c.name}
                       </p>
                       <p
-                        className="truncate font-mono text-[12px] tabular-nums text-white/60"
+                        className="truncate font-mono text-[12px] tabular-nums text-white/70"
                         dir="ltr"
                       >
                         {c.phone}
@@ -313,7 +315,7 @@ export function OutboundCalling() {
               <span className="font-display text-3xl tabular-nums leading-none text-white">
                 <AnimatedCount value={activeLines} reduce={reduce} />
               </span>
-              <span className="text-[13px] leading-snug text-white/60">
+              <span className="text-[13px] leading-snug text-white/70">
                 {t("listSubtitle")}
               </span>
             </div>
