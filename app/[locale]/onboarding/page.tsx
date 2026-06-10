@@ -5,14 +5,14 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
-import { getAppOrigin } from "@/lib/app-origin";
 import { db } from "@/lib/db";
-import { phoneNumbers, users } from "@/lib/db/schema";
-import { getLocalizedPlan } from "@/lib/plan-i18n";
+import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 
 import { OnboardingWizard } from "./wizard";
 
 export const dynamic = "force-dynamic";
+
+type Language = "fr" | "he" | "en";
 
 export default async function OnboardingPage(props: {
   params: Promise<{ locale: string }>;
@@ -41,16 +41,33 @@ export default async function OnboardingPage(props: {
     redirect("/dashboard");
   }
 
+  // Préremplissage : nom affiché (entreprise) + langue principale de l'agent.
   const [me] = await db
-    .select({
-      googleRefreshToken: users.googleRefreshToken,
-      subscriptionPlan: users.subscriptionPlan,
-    })
+    .select({ displayName: users.displayName })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
-  const googleConnected = Boolean(me?.googleRefreshToken);
-  const plan = getLocalizedPlan(locale, me?.subscriptionPlan);
+
+  const [config] = await db
+    .select({ primaryLanguage: agentConfigs.primaryLanguage })
+    .from(agentConfigs)
+    .where(eq(agentConfigs.userId, session.user.id))
+    .limit(1);
+
+  // defaultCountry : hébreu → Israël, sinon France.
+  const defaultCountry: "FR" | "IL" = locale === "he" ? "IL" : "FR";
+
+  // initialLanguage : préférence agent si définie, sinon mappée sur la locale,
+  // sinon fr.
+  const isLang = (v: string | null | undefined): v is Language =>
+    v === "fr" || v === "he" || v === "en";
+  const initialLanguage: Language = isLang(config?.primaryLanguage)
+    ? config!.primaryLanguage
+    : isLang(locale)
+      ? locale
+      : "fr";
+
+  const initialCompanyName = me?.displayName ?? "";
 
   const t = await getTranslations({ locale, namespace: "Onboarding" });
 
@@ -62,44 +79,20 @@ export default async function OnboardingPage(props: {
       />
 
       <div className="w-full max-w-2xl">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between gap-4">
           <Link href="/">
             <Logo />
           </Link>
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            {session.user.email} · {t("trialLabel")}
-          </p>
-        </div>
-
-        <div
-          className={`mb-6 flex items-center justify-between gap-4 rounded-2xl border p-4 sm:p-5 ${
-            plan.popular
-              ? "border-transparent bg-gradient-to-br from-[#fff7ec] via-white to-[#fdf2f8] shadow-[0_12px_32px_-12px_rgba(212,165,116,0.4)] ring-1 ring-[#e5c08a]/60"
-              : "border-[var(--color-border)] bg-white/85 shadow-sm"
-          }`}
-        >
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-              {t("activePlan")}
-            </p>
-            <p className="mt-0.5 font-display text-lg text-[var(--color-foreground)]">
-              {plan.name}
-              {plan.popular && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#d4a574] to-[#b8864e] px-2 py-0.5 align-middle text-[10px] font-semibold tracking-wide text-white">
-                  {t("popularBadge")}
-                </span>
-              )}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-              {t("pricePerMonthHT", { price: plan.monthly })} · {plan.tagline}
-            </p>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
+            <span className="truncate">{session.user.email}</span>
+            <span
+              aria-hidden
+              className="h-1 w-1 shrink-0 rounded-full bg-[var(--color-border)]"
+            />
+            <span className="inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+              {t("trialLabel")}
+            </span>
           </div>
-          <Link
-            href="/dashboard/billing"
-            className="whitespace-nowrap rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-muted)]"
-          >
-            {t("changeButton")}
-          </Link>
         </div>
 
         <div className="rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur sm:p-10">
@@ -110,44 +103,14 @@ export default async function OnboardingPage(props: {
             {t("title")}
           </h1>
           <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            {plan.key === "whatsapp" ? t("subtitleWhatsapp") : t("subtitle")}
+            {t("subtitle")}
           </p>
-
-          {plan.onboardingNotes.length > 0 && (
-            <ul className="mt-6 space-y-2.5 rounded-2xl bg-[var(--color-muted)]/60 p-4 text-sm text-[var(--color-foreground)]">
-              {plan.onboardingNotes.map((note) => (
-                <li key={note} className="flex items-start gap-2.5">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary)]"
-                  >
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="9"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M10 6v4l2.5 2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
-          )}
 
           <div className="mt-8">
             <OnboardingWizard
-              googleConnected={googleConnected}
-              appOrigin={await getAppOrigin()}
-              subscriptionPlan={plan.key}
+              initialLanguage={initialLanguage}
+              initialCompanyName={initialCompanyName}
+              defaultCountry={defaultCountry}
             />
           </div>
         </div>

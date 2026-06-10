@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { sendVerificationEmail } from "@/lib/email";
 import { logEvent } from "@/lib/logger";
-import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
+import { TRIAL_PLAN_KEY } from "@/lib/plans";
 import { createEmailVerification } from "@/lib/verify-code";
 
 import { SignupContent } from "./signup-content";
@@ -36,24 +36,14 @@ export default async function SignupPage(props: {
     redirect("/dashboard");
   }
 
-  const selectedPlanKey = isValidPlanKey(planParam)
-    ? planParam
-    : DEFAULT_PLAN_KEY;
-  const billingMode = billing === "annual" ? "annual" : "monthly";
-
   async function handleSignup(formData: FormData) {
     "use server";
 
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
-    const displayName = String(formData.get("displayName") ?? "").trim();
-    const planRaw = String(formData.get("plan") ?? "");
-    const subscriptionPlan = isValidPlanKey(planRaw)
-      ? planRaw
-      : DEFAULT_PLAN_KEY;
 
     if (!email.includes("@") || password.length < 8) {
-      redirect(`/${locale}/signup?error=invalid&plan=${subscriptionPlan}`);
+      redirect(`/${locale}/signup?error=invalid`);
     }
 
     const existing = await db
@@ -62,16 +52,18 @@ export default async function SignupPage(props: {
       .where(eq(users.email, email))
       .limit(1);
     if (existing.length > 0) {
-      redirect(`/${locale}/signup?error=exists&plan=${subscriptionPlan}`);
+      redirect(`/${locale}/signup?error=exists`);
     }
 
     const hash = await bcrypt.hash(password, 12);
     // Crée le tenant (users + agent_config). emailVerified=false → gate
     // /verify-email actif pour le signup email/mdp (cf. logique ci-dessous).
+    // L'essai gratuit donne accès à toutes les fonctionnalités : on provisionne
+    // sur TRIAL_PLAN_KEY. Le nom (displayName) est collecté à l'onboarding.
     const created = await provisionTenant({
       email,
-      displayName,
-      plan: subscriptionPlan,
+      displayName: "",
+      plan: TRIAL_PLAN_KEY,
       locale,
       emailVerified: false,
       passwordHash: hash,
@@ -133,12 +125,13 @@ export default async function SignupPage(props: {
     }
   }
 
-  async function startGoogleSignup(formData: FormData) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async function startGoogleSignup(_formData: FormData) {
     "use server";
-    // Le plan coché et la locale sont transmis au callback signIn Google via
-    // des cookies courts (httpOnly, 10 min). Voir auth.ts → callbacks.signIn.
-    const planRaw = String(formData.get("plan") ?? "");
-    const plan = isValidPlanKey(planRaw) ? planRaw : DEFAULT_PLAN_KEY;
+    // La locale et le plan (essai = toutes fonctionnalités, TRIAL_PLAN_KEY) sont
+    // transmis au callback signIn Google via des cookies courts (httpOnly,
+    // 10 min). auth.ts → callbacks.signIn s'en sert pour distinguer signup vs
+    // login. Voir auth.ts → callbacks.signIn.
     const cookieStore = await cookies();
     const opts = {
       httpOnly: true,
@@ -146,7 +139,7 @@ export default async function SignupPage(props: {
       path: "/",
       maxAge: 600,
     };
-    cookieStore.set("signup_plan", plan, opts);
+    cookieStore.set("signup_plan", TRIAL_PLAN_KEY, opts);
     cookieStore.set("signup_locale", locale, opts);
     // Nouveau tenant Google → wizard onboarding (choix pays + numéro + langue).
     // Si le compte existe déjà, le callback signIn redirige vers /login (popup).
@@ -160,8 +153,6 @@ export default async function SignupPage(props: {
         className="pointer-events-none absolute inset-0 -z-10 gradient-mesh"
       />
       <SignupContent
-        initialPlanKey={selectedPlanKey}
-        billingMode={billingMode}
         error={error}
         handleSignup={handleSignup}
         startGoogleSignup={startGoogleSignup}

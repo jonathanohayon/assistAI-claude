@@ -44,7 +44,7 @@ export const PLANS: readonly Plan[] = [
   {
     key: "whatsapp",
     name: "Permanence téléphonique",
-    tagline: "Réponse aux appels par IA, 24/7.",
+    tagline: "Ne ratez plus jamais un appel.",
     monthly: 59,
     annualTotal: 588,
     annualMonthly: 49,
@@ -62,7 +62,7 @@ export const PLANS: readonly Plan[] = [
       "Intégration CRM",
       "Calendrier connecté (prise de RDV)",
     ],
-    bestFor: "freelances, indépendants et petites entreprises",
+    bestFor: "indépendants, commerces et petites équipes",
     onboardingNotes: [
       "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",
       "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels.",
@@ -71,7 +71,7 @@ export const PLANS: readonly Plan[] = [
   {
     key: "global",
     name: "Réceptionniste",
-    tagline: "Votre réceptionniste virtuelle intelligente.",
+    tagline: "Vos rendez-vous pris automatiquement, 24/7.",
     monthly: 129,
     annualTotal: 1284,
     annualMonthly: 107,
@@ -88,7 +88,7 @@ export const PLANS: readonly Plan[] = [
       "Voix naturelle et professionnelle",
     ],
     excludedFeatures: [],
-    bestFor: "consultants, agences, cliniques et services B2B",
+    bestFor: "cabinets, cliniques, agences et services B2B",
     onboardingNotes: [
       "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
       "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google.",
@@ -97,23 +97,23 @@ export const PLANS: readonly Plan[] = [
   {
     key: "premium",
     name: "Centre d'appels pro",
-    tagline: "Votre centre d'appels complet propulsé par l'IA.",
+    tagline: "Votre centre d'appels entrants & sortants, propulsé par l'IA.",
     monthly: 299,
     annualTotal: 2988,
     annualMonthly: 249,
     model: "gpt-realtime",
     minutesIncluded: 1500,
     features: [
+      "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
+      "Appels entrants & sortants en parallèle",
       "1500 minutes incluses",
-      "Tout ce qui est inclus dans Réceptionniste",
-      "Gestion de plusieurs appels simultanés",
       "Tableau de bord analytics en temps réel",
       "Routage avancé et scénarios complexes",
-      "Intégrations CRM et outils approfondies",
+      "Tout ce qui est inclus dans Réceptionniste",
       "Support prioritaire",
     ],
     excludedFeatures: [],
-    bestFor: "entreprises en croissance et équipes qui montent en charge sur leur support téléphonique",
+    bestFor: "centres d'appels, équipes sales et support à fort volume",
     onboardingNotes: [
       "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
       "Modèle gpt-realtime activé automatiquement après l'onboarding.",
@@ -122,6 +122,17 @@ export const PLANS: readonly Plan[] = [
 ] as const;
 
 export const DEFAULT_PLAN_KEY: PlanKey = "whatsapp";
+
+/**
+ * Plan sur lequel tout compte en essai gratuit est provisionné.
+ *
+ * L'essai gratuit donne accès à TOUTES les fonctionnalités (y compris les
+ * appels sortants Premium). On provisionne donc systématiquement les comptes
+ * en trial sur "premium" pour exposer l'intégralité des features pendant la
+ * durée de l'essai. Le choix réel du plan se fait plus tard, au moment du
+ * paiement (page billing).
+ */
+export const TRIAL_PLAN_KEY: PlanKey = "premium";
 
 export function planByKey(key: string | null | undefined): Plan {
   const found = PLANS.find((p) => p.key === key);

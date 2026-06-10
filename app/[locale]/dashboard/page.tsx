@@ -20,6 +20,8 @@ import {
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 
+import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
+
 import { ConfigForm, DEFAULT_BUSINESS } from "./config-form";
 
 export default async function DashboardPage(props: {
@@ -36,7 +38,11 @@ export default async function DashboardPage(props: {
     .limit(1);
 
   const [me] = await db
-    .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
+    .select({
+      role: users.role,
+      subscriptionPlan: users.subscriptionPlan,
+      googleRefreshToken: users.googleRefreshToken,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
@@ -189,8 +195,27 @@ export default async function DashboardPage(props: {
     .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
     .join("\n\n");
 
+  // État réel du tenant → checklist de setup en haut du dashboard.
+  const hasPhone = Boolean(primaryPhone);
+  const googleConnected = Boolean(me?.googleRefreshToken);
+  const businessFilled = Boolean(
+    (config as unknown as { business?: { identity?: { name?: string } } })
+      .business?.identity?.name?.trim().length,
+  );
+  const whatsappSet = Boolean(config?.ownerWhatsapp?.trim().length);
+  const setupComplete =
+    hasPhone && googleConnected && businessFilled && whatsappSet;
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
+      {!setupComplete && (
+        <SetupChecklist
+          hasPhone={hasPhone}
+          googleConnected={googleConnected}
+          businessFilled={businessFilled}
+          whatsappSet={whatsappSet}
+        />
+      )}
       <ConfigForm
         initial={{
           instructions: config.instructions,

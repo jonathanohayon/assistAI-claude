@@ -60,7 +60,7 @@ export function CTA() {
 
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
-                href="/login"
+                href="/signup"
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_-8px_rgba(190,24,93,0.5)] ring-2 ring-[#22d3ee]/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
