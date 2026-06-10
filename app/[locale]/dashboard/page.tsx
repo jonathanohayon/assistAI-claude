@@ -219,19 +219,18 @@ export default async function DashboardPage(props: {
       biz?.knowledgeBase?.trim().length,
   );
   const whatsappSet = Boolean(config?.ownerWhatsapp?.trim().length);
-  const setupComplete =
-    hasPhone && googleConnected && businessFilled && whatsappSet;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-      {!setupComplete && (
-        <SetupChecklist
-          hasPhone={hasPhone}
-          googleConnected={googleConnected}
-          businessFilled={businessFilled}
-          whatsappSet={whatsappSet}
-        />
-      )}
+      {/* Checklist de setup. Tant que tout n'est pas configuré → liste d'étapes.
+          Une fois complet → carte "Félicitations + tips" (masquable). Le
+          composant gère lui-même le rendu null quand masquée. */}
+      <SetupChecklist
+        hasPhone={hasPhone}
+        googleConnected={googleConnected}
+        businessFilled={businessFilled}
+        whatsappSet={whatsappSet}
+      />
       <ConfigForm
         initial={{
           instructions: config.instructions,

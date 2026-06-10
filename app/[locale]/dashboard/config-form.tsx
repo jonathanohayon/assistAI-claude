@@ -20,7 +20,7 @@
  */
 
 import { useLocale, useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
@@ -126,6 +126,7 @@ export function ConfigForm({
   // avec ?tile=business|notifs|… → on ouvre la tuile correspondante et on
   // scrolle dessus. Soft-nav friendly (l'effet réagit au changement de param).
   const searchParams = useSearchParams();
+  const router = useRouter();
   const tilesRef = useRef<HTMLDivElement | null>(null);
   const tileParam = searchParams.get("tile");
   useEffect(() => {
@@ -299,6 +300,10 @@ export function ConfigForm({
         locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
       setSavedAt(new Date().toLocaleTimeString(timeLocale));
       setDirty(false);
+      // Re-render le server component parent (dashboard) pour que la checklist
+      // de setup reflète l'état fraîchement sauvegardé (ex: numéro WhatsApp
+      // renseigné → étape "Recap WhatsApp" passe au vert sans reload manuel).
+      router.refresh();
     });
   };
 

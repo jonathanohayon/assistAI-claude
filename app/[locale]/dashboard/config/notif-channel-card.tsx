@@ -94,7 +94,7 @@ export function NotifChannelCard({
         return;
       }
       setTestStatus("sent");
-      scheduleStatusReset(3500);
+      scheduleStatusReset(6000);
     } catch (e) {
       setTestStatus("error");
       setTestError((e as Error).message);
@@ -237,12 +237,22 @@ export function NotifChannelCard({
         </button>
       </div>
 
+      {testStatus === "sent" && (
+        <p className="inline-flex items-center gap-1.5 rounded-lg border border-[#a7f3d0] bg-[#ecfdf5] px-2.5 py-1.5 text-[11px] font-medium leading-snug text-[#047857]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {t("wowTestSuccess")}
+        </p>
+      )}
       {testError && (
         <p className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5 text-[11px] leading-snug text-[#991b1b]">
           {testError}
         </p>
       )}
-      {hint && !testError && <p className="text-[11px] text-[#475569]">{hint}</p>}
+      {hint && testStatus !== "sent" && !testError && (
+        <p className="text-[11px] text-[#475569]">{hint}</p>
+      )}
     </div>
   );
 }

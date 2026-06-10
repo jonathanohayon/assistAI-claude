@@ -401,7 +401,19 @@
     "whatsappDesc": "Get a summary after every call.",
     "whatsappCta": "Set up",
     "allDoneTitle": "All set up",
-    "allDoneSubtitle": "Your agent is ready to take calls."
+    "allDoneSubtitle": "Your agent is ready to take calls.",
+    "congratsTitle": "Congratulations, your agent is ready 🎉",
+    "congratsSubtitle": "Everything is set up. A few ways to go further:",
+    "dismiss": "Hide",
+    "tipVoiceTitle": "Change the voice",
+    "tipVoiceDesc": "Pick your agent’s voice and speaking rate.",
+    "tipVoiceCta": "Voice",
+    "tipPersonaTitle": "Customize the personality",
+    "tipPersonaDesc": "Tone, style and business expertise of the agent.",
+    "tipPersonaCta": "Personality",
+    "tipBusinessTitle": "Enrich the knowledge base",
+    "tipBusinessDesc": "Services, hours and info the agent can cite.",
+    "tipBusinessCta": "Business"
   },
   "SocialProof": {
     "kicker": "They trust us",
@@ -992,7 +1004,8 @@
     "campaignsTileLabel": "Outbound calls",
     "campaignsTileTagline": "AI call center — dial leads in parallel",
     "campaignsTileSummary": "Marketing · sales · lead-gen",
-    "campaignsTileLocked": "Pro plan — tap to unlock"
+    "campaignsTileLocked": "Pro plan — tap to unlock",
+    "wowTestSuccess": "Test message sent ✓"
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
