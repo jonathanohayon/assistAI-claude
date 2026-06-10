@@ -19,7 +19,8 @@ export type AgentKey =
   | "hours"
   | "location"
   | "services"
-  | "languages";
+  | "languages"
+  | "knowledge";
 
 export interface IdentityResult {
   name: string;
@@ -64,6 +65,13 @@ export interface ServicesResult {
 export interface LanguagesResult {
   detectedLanguages: string[];
   suggestedPrimary: string;
+  confidence: number;
+}
+
+export interface KnowledgeResult {
+  /** Document markdown : corps de métier, expertise, descriptions détaillées,
+   *  détails techniques, arguments de vente. Vide si rien d'exploitable. */
+  knowledgeBase: string;
   confidence: number;
 }
 
@@ -305,6 +313,42 @@ export async function languagesAgent(ctx: string): Promise<LanguagesResult> {
   return {
     detectedLanguages: Array.from(new Set(detected)),
     suggestedPrimary: primary,
+    confidence: clampConfidence(r.confidence),
+  };
+}
+
+// ─── knowledgeAgent ─────────────────────────────────────────────────────────
+
+const KNOWLEDGE_PROMPT = `Tu es un expert qui construit la BASE DE CONNAISSANCES d'un agent vocal commercial, à partir du texte du site web d'une entreprise. Objectif : donner à l'agent de quoi PRÉSENTER l'activité, CONSEILLER, ARGUMENTER et RÉPONDRE aux questions techniques des clients.
+
+Produis un document Markdown clair et factuel, structuré avec ces sections (omets une section si l'info est absente) :
+- **Corps de métier** : le secteur/la spécialité exacte de l'entreprise (ex. "torréfacteur & vente de machines à café professionnelles", "salon de coiffure & barbier").
+- **Expertise & valeur** : ce qui distingue l'entreprise, son savoir-faire, ses engagements.
+- **Services / produits en détail** : pour chaque prestation OU produit important, une description riche + ses **détails techniques** (caractéristiques, modèles, capacités, matériaux, options, garanties, compatibilités…).
+- **Arguments de vente** : bénéfices clients, points forts, raisons d'acheter/réserver, réponses aux objections courantes.
+- **Infos utiles** : livraison, paiement, SAV, conditions, public visé, FAQ — tout ce qui aide à vendre/rassurer.
+
+Réponds STRICTEMENT en JSON :
+{
+  "knowledgeBase": "document Markdown (## titres, listes), ou \\"\\" si rien d'exploitable",
+  "confidence": 0.0
+}
+
+Règles :
+- N'INVENTE RIEN : utilise uniquement ce qui est présent sur le site. Pas d'info → omets-la.
+- Sois DÉTAILLÉ sur les caractéristiques techniques des produits/services quand elles existent.
+- Écris dans la langue principale du site.
+- Maximum ~5000 caractères, les infos les plus utiles à la vente d'abord.
+- "confidence" entre 0 et 1.
+- Réponds UNIQUEMENT avec le JSON.`;
+
+export async function knowledgeAgent(ctx: string): Promise<KnowledgeResult> {
+  const r = await runExtractor<{
+    knowledgeBase?: unknown;
+    confidence?: unknown;
+  }>(KNOWLEDGE_PROMPT, ctx);
+  return {
+    knowledgeBase: String(r.knowledgeBase ?? "").trim().slice(0, 6000),
     confidence: clampConfidence(r.confidence),
   };
 }

@@ -55,6 +55,15 @@ export interface BusinessConfig {
    * blackout dates, etc.). Vide → la section n'est pas injectée du tout.
    */
   centresRules?: string;
+  /**
+   * Base de connaissances orientée VENTE & expertise (texte libre, markdown).
+   * Décrit le corps de métier, les domaines d'expertise, des descriptions
+   * détaillées des services/produits + détails techniques, arguments de vente
+   * et infos utiles. Alimentée par le scan du site web (knowledgeBaseAgent) et
+   * éditable dans le dashboard. Injectée dans le system prompt sous une section
+   * "Base de connaissances (expertise & vente)". Vide → section non injectée.
+   */
+  knowledgeBase?: string;
 }
 
 const WEEK_DAYS: readonly WeekDay[] = [
@@ -214,7 +223,12 @@ export function sanitizeBusinessConfig(raw: unknown): BusinessConfig {
     (r as { centresRules?: unknown }).centresRules,
     4000,
   );
-  return { identity, centres, services, centresRules };
+  // Base de connaissances vente/expertise — cap 6000 chars (document plus riche).
+  const knowledgeBase = trim(
+    (r as { knowledgeBase?: unknown }).knowledgeBase,
+    6000,
+  );
+  return { identity, centres, services, centresRules, knowledgeBase };
 }
 
 /** Rendu markdown pour le prompt system block envoyé à OpenAI. */
@@ -224,7 +238,9 @@ export function renderBusinessPromptBlock(b: BusinessConfig): string {
   const hasCentres = b.centres.length > 0;
   const hasServices = b.services.length > 0;
   const hasRules = (b.centresRules ?? "").trim().length > 0;
-  if (!hasIdentity && !hasCentres && !hasServices && !hasRules) return "";
+  const hasKnowledge = (b.knowledgeBase ?? "").trim().length > 0;
+  if (!hasIdentity && !hasCentres && !hasServices && !hasRules && !hasKnowledge)
+    return "";
 
   const dayLabels: Record<WeekDay, string> = {
     sun: "Dim",
@@ -256,6 +272,15 @@ export function renderBusinessPromptBlock(b: BusinessConfig): string {
     if (b.identity.tagline) lines.push(`- Slogan : ${b.identity.tagline}`);
     if (b.identity.email) lines.push(`- Email : ${b.identity.email}`);
     parts.push(lines.join("\n"));
+  }
+
+  if (hasKnowledge) {
+    // Base de connaissances vente/expertise : corps de métier, descriptions
+    // détaillées, détails techniques, arguments de vente. Placée tôt (après
+    // identité) pour donner le CONTEXTE métier avant les détails structurés.
+    parts.push(
+      `\n## Base de connaissances (expertise & vente)\n\n${(b.knowledgeBase ?? "").trim()}\n\nUTILISE ces informations pour présenter l'activité, conseiller, argumenter et répondre aux questions techniques. Pour les chiffres officiels (horaires, prix), privilégie toujours les tools.`,
+    );
   }
 
   if (hasCentres) {
