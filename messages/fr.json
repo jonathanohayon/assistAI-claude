@@ -704,7 +704,8 @@
     "userMenuAria": "Menu utilisateur",
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
-    "logoutButton": "Se déconnecter"
+    "logoutButton": "Se déconnecter",
+    "trialCallMinutesLeft": "{min} min d'appels restantes"
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",
