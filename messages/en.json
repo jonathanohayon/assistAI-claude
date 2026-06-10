@@ -95,7 +95,8 @@
     "kicker": "Plugs into your tools",
     "whatsapp": "Call summaries on WhatsApp",
     "calendar": "Appointments synced to Google Calendar",
-    "crm": "Contacts saved to your Google Sheets CRM"
+    "crm": "Contacts saved to your Google Sheets CRM",
+    "gmail": "Notifications and summaries via Gmail"
   },
   "OutboundCalling": {
     "kicker": "Outbound calling",

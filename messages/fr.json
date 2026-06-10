@@ -95,7 +95,8 @@
     "kicker": "Connecté à vos outils",
     "whatsapp": "Compte rendu d'appel sur WhatsApp",
     "calendar": "RDV synchronisés dans Google Calendar",
-    "crm": "Contacts enregistrés dans votre CRM Google Sheets"
+    "crm": "Contacts enregistrés dans votre CRM Google Sheets",
+    "gmail": "Notifications et résumés par Gmail"
   },
   "OutboundCalling": {
     "kicker": "Appels sortants",

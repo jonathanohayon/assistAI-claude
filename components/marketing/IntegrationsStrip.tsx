@@ -16,6 +16,7 @@ const TOOLS = [
   { key: "whatsapp", icon: <WhatsAppIcon /> },
   { key: "calendar", icon: <GoogleCalendarIcon /> },
   { key: "crm", icon: <GoogleSheetsIcon /> },
+  { key: "gmail", icon: <GmailIcon /> },
 ] as const;
 
 export function IntegrationsStrip() {
@@ -119,6 +120,13 @@ export function IntegrationsStrip() {
               </motion.div>
             </motion.div>
           </div>
+
+          {/* Gmail en bas — le cluster forme un losange autour de Tamara */}
+          <motion.div {...pop(0.55)}>
+            <motion.div {...float(3.0)}>
+              <Tile>{TOOLS[3].icon}</Tile>
+            </motion.div>
+          </motion.div>
         </div>
 
         {/* Texte sous le cluster */}
@@ -146,6 +154,10 @@ export function IntegrationsStrip() {
               ·
             </span>
             <span>{t("crm")}</span>
+            <span aria-hidden className="text-[#f472b6]">
+              ·
+            </span>
+            <span>{t("gmail")}</span>
           </p>
         </motion.div>
       </div>
@@ -251,6 +263,35 @@ function GoogleCalendarIcon() {
       >
         31
       </text>
+    </svg>
+  );
+}
+
+/** Logo officiel Gmail (2020) : enveloppe M quadricolore — barres bleue et
+ *  verte, diagonale jaune, bandeau rouge, attache rouge foncé. */
+function GmailIcon() {
+  return (
+    <svg viewBox="0 0 256 193" className="h-full w-full" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M58.182 192.05V93.14L27.507 65.077 0 49.504v126.31c0 8.964 7.264 16.236 16.227 16.236h41.955Z"
+      />
+      <path
+        fill="#34A853"
+        d="M197.818 192.05h41.955c8.963 0 16.227-7.272 16.227-16.236V49.505l-31.156 17.837-27.026 25.798v98.91Z"
+      />
+      <path
+        fill="#EA4335"
+        d="m58.182 93.14-4.174-38.647 4.174-36.989L128 69.868l69.818-52.364 4.67 34.992-4.67 40.644L128 145.504z"
+      />
+      <path
+        fill="#FBBC04"
+        d="M197.818 17.504V93.14L256 49.504V25.668c0-20.03-22.864-31.452-38.4-19.418z"
+      />
+      <path
+        fill="#C5221F"
+        d="m0 49.504 26.759 20.07L58.182 93.14V17.504L41.6 6.25C26.018-5.785 0 5.639 0 25.668z"
+      />
     </svg>
   );
 }
