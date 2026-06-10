@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
@@ -122,6 +123,59 @@ export async function POST(req: NextRequest) {
     );
   }
   const endParts = addMinutesJerusalem(date, time, duration);
+
+  // Deterministic overlap guard — THE rule that the prompt cannot enforce.
+  // Re-check the live calendar with the ACTUAL service duration right before
+  // inserting (closes the TOCTOU gap between check_availability and book).
+  try {
+    const conflicts = await findConflicts(
+      caller.calendar,
+      caller.calendarId,
+      date,
+      time,
+      duration,
+    );
+    if (conflicts.length > 0) {
+      const slots = await computeFreeSlots(
+        caller.calendar,
+        caller.calendarId,
+        date,
+        duration,
+      );
+      await logEvent({
+        source: "calendar",
+        event: "book_conflict",
+        message: `Réservation refusée : chevauchement (${date} ${time}, ${duration} min)`,
+        level: "warn",
+        metadata: { name, phone, date, time, duration, conflicts },
+      });
+      return NextResponse.json(
+        {
+          error: "slot_conflict",
+          message:
+            slots.length > 0
+              ? `Le créneau ${time} (${duration} min) chevauche un rendez-vous existant le ${date}. Créneaux libres : ${slots.join(", ")}.`
+              : `Le créneau ${time} (${duration} min) chevauche un rendez-vous existant et il n'y a plus de place le ${date}.`,
+          available_slots: slots,
+        },
+        { status: 409 },
+      );
+    }
+  } catch (err) {
+    // Don't book blind if the conflict check itself fails — surface the error.
+    const msg = err instanceof Error ? err.message : "Erreur vérification créneau";
+    await logEvent({
+      source: "calendar",
+      event: "book_conflict_check_failed",
+      message: `Vérification créneau échouée : ${msg.slice(0, 200)}`,
+      level: "error",
+      metadata: { name, phone, date, time, duration, error: msg },
+    });
+    return NextResponse.json(
+      { error: `Impossible de vérifier la disponibilité : ${msg}` },
+      { status: 502 },
+    );
+  }
 
   try {
     const event = await caller.calendar.events.insert({
