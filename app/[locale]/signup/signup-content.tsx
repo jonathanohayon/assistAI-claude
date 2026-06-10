@@ -51,6 +51,7 @@ export function SignupContent({
   const errorMessages: Record<string, string> = {
     invalid: t("errInvalid"),
     exists: t("errExists"),
+    exists_google: t("errExistsGoogle"),
   };
 
   return (

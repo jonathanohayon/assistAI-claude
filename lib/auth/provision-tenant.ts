@@ -1,7 +1,3 @@
-import { randomUUID } from "node:crypto";
-
-import bcrypt from "bcryptjs";
-
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { getInitialInstructionsForPlan } from "@/lib/initial-config";
@@ -36,12 +32,14 @@ interface ProvisionTenantInput {
 export async function provisionTenant(input: ProvisionTenantInput) {
   const { email, displayName, plan, locale, emailVerified } = input;
 
-  // passwordHash est notNull en DB. Pour un compte OAuth sans mot de passe on
-  // stocke le hash d'un secret aleatoire jamais communique → bcrypt.compare
-  // renverra toujours false cote Credentials, donc le login email/mdp reste
-  // impossible tant que l'user n'a pas defini de mot de passe.
-  const passwordHash =
-    input.passwordHash ?? (await bcrypt.hash(randomUUID(), 12));
+  // passwordHash est notNull en DB. Pour un compte OAuth (Google) sans mot de
+  // passe, on stocke la SENTINELLE "" — un marqueur explicite « aucun mot de
+  // passe défini ». Ça permet de détecter de façon fiable un compte Google
+  // (vs un compte email) pour afficher le bon message ("connectez-vous avec
+  // Google") au lieu d'un "identifiants incorrects" trompeur. Le login
+  // email/mdp reste impossible (authorize refuse explicitement passwordHash
+  // vide) tant que l'user n'a pas défini de mot de passe (cf. /set-password).
+  const passwordHash = input.passwordHash ?? "";
 
   // Free trial demarre a la creation, duree definie dans lib/trial.ts.
   const trialEndsAt = computeTrialEndsAt();

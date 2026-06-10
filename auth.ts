@@ -63,6 +63,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // passwordHash vide = compte Google sans mot de passe défini
+        // (sentinelle posée par provisionTenant). On refuse explicitement le
+        // login email/mdp. Le code d'erreur dédié laisse la page login
+        // afficher « connectez-vous avec Google » plutôt que « identifiants
+        // incorrects ». Voir handleLogin (app/[locale]/login/page.tsx).
+        if (user.passwordHash === "") {
+          await logEvent({
+            source: "auth",
+            event: "login_no_password",
+            message: `Login email refusé — compte sans mot de passe (Google) : ${email}`,
+            level: "warn",
+            userId: user.id,
+            metadata: { email },
+          });
+          return null;
+        }
+
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) {
           await logEvent({

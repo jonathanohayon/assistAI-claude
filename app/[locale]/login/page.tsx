@@ -1,9 +1,12 @@
+import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 import { Link } from "@/i18n/navigation";
 
 import { AlreadyRegisteredModal } from "./already-registered-modal";
@@ -36,14 +39,28 @@ export default async function LoginPage(props: {
 
   async function handleLogin(formData: FormData) {
     "use server";
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
     try {
       await signIn("credentials", {
-        email: formData.get("email"),
+        email,
         password: formData.get("password"),
         redirectTo: "/dashboard",
       });
     } catch (e) {
       if (e instanceof AuthError) {
+        // Si l'email correspond à un compte Google sans mot de passe défini
+        // (passwordHash sentinelle ""), on oriente vers la connexion Google
+        // au lieu d'un "identifiants incorrects" trompeur.
+        if (email) {
+          const [u] = await db
+            .select({ passwordHash: users.passwordHash })
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+          if (u && u.passwordHash === "") {
+            redirect(`/${locale}/login?notice=use_google`);
+          }
+        }
         redirect(`/${locale}/login?error=${e.type}`);
       }
       throw e;
@@ -87,7 +104,15 @@ export default async function LoginPage(props: {
             </p>
           </div>
 
-          {error && (
+          {notice === "use_google" && (
+            <p
+              role="status"
+              className="rounded-lg border border-[#22d3ee]/40 bg-[#ecfeff] px-3 py-2 text-xs text-[#0e7490]"
+            >
+              {t("useGoogleNotice")}
+            </p>
+          )}
+          {error && notice !== "use_google" && (
             <p
               role="alert"
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"

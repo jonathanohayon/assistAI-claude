@@ -569,7 +569,8 @@
     "loginLink": "Sign in",
     "orDivider": "or with an email",
     "continueWithGoogle": "Continue with Google",
-    "backHome": "← Back"
+    "backHome": "← Back",
+    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”."
   },
   "Login": {
     "title": "Sign in",
@@ -586,7 +587,8 @@
     "alreadyRegisteredTitle": "You already have an account",
     "alreadyRegisteredBody": "An account already exists with this Google email. Sign in to continue.",
     "alreadyRegisteredOk": "Got it",
-    "backHome": "← Back"
+    "backHome": "← Back",
+    "useGoogleNotice": "This account uses Google sign-in. Click “Continue with Google” below."
   },
   "VerifyEmail": {
     "title": "Verify your email",

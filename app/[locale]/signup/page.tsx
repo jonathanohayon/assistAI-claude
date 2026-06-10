@@ -52,7 +52,12 @@ export default async function SignupPage(props: {
       .where(eq(users.email, email))
       .limit(1);
     if (existing.length > 0) {
-      redirect(`/${locale}/signup?error=exists`);
+      // Compte Google (passwordHash sentinelle "") → message dédié orientant
+      // vers la connexion Google, au lieu d'un générique "compte existe déjà".
+      const isGoogleAccount = existing[0].passwordHash === "";
+      redirect(
+        `/${locale}/signup?error=${isGoogleAccount ? "exists_google" : "exists"}`,
+      );
     }
 
     const hash = await bcrypt.hash(password, 12);
