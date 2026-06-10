@@ -186,7 +186,7 @@ export function SetupChecklist({
       title: t("scanTitle"),
       desc: t("scanDesc"),
       ctaLabel: t("scanCta"),
-      href: "/dashboard",
+      href: "/dashboard?tile=business",
     },
     {
       id: "calendar",
@@ -195,7 +195,7 @@ export function SetupChecklist({
       title: t("calendarTitle"),
       desc: t("calendarDesc"),
       ctaLabel: t("calendarCta"),
-      href: "/dashboard",
+      href: "/dashboard/calendar",
     },
     {
       id: "whatsapp",
@@ -204,7 +204,7 @@ export function SetupChecklist({
       title: t("whatsappTitle"),
       desc: t("whatsappDesc"),
       ctaLabel: t("whatsappCta"),
-      href: "/dashboard",
+      href: "/dashboard?tile=notifs",
     },
   ];
 
