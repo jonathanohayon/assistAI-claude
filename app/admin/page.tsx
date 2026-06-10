@@ -13,6 +13,7 @@ import {
   getGlobalInstructionsByPlan,
   getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
+  getOnboardingGreetingByPlan,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplateByPlan,
   getPromptBlockOrderByPlan,
@@ -35,6 +36,7 @@ export default async function AdminPage() {
   const [
     globalInstructionsByPlan,
     onboardingTemplateByPlan,
+    onboardingGreetingByPlan,
     summaryPromptByPlan,
     planFeatures,
     planPricing,
@@ -48,6 +50,7 @@ export default async function AdminPage() {
   ] = await Promise.all([
     getGlobalInstructionsByPlan(),
     getOnboardingTemplateByPlan(),
+    getOnboardingGreetingByPlan(),
     getSummaryPromptByPlan(),
     getPlanFeatureMatrix(),
     getPlanPricingMap(),
@@ -137,6 +140,7 @@ export default async function AdminPage() {
         <AdminShell
           globalInstructionsByPlan={globalInstructionsByPlan}
           onboardingTemplateByPlan={onboardingTemplateByPlan}
+          onboardingGreetingByPlan={onboardingGreetingByPlan}
           summaryPromptByPlan={summaryPromptByPlan}
           spokenTimeByPlan={spokenTimeByPlan}
           spokenPhoneByPlan={spokenPhoneByPlan}

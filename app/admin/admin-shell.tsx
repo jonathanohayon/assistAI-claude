@@ -7,6 +7,7 @@ import type {
   GlobalInstructionsByPlan,
   GreetingFallbackTemplateByPlan,
   HangupDirectiveByPlan,
+  OnboardingGreetingByPlan,
   OnboardingTemplateByPlan,
   PerCallContextTemplateByPlan,
   PromptBlockOrderByPlan,
@@ -65,6 +66,7 @@ type AdminTableRow = {
 export interface AdminShellProps {
   globalInstructionsByPlan: GlobalInstructionsByPlan;
   onboardingTemplateByPlan: OnboardingTemplateByPlan;
+  onboardingGreetingByPlan: OnboardingGreetingByPlan;
   summaryPromptByPlan: SummaryPromptByPlan;
   spokenTimeByPlan: SpokenTimeDirectiveByPlan;
   spokenPhoneByPlan: SpokenPhoneDirectiveByPlan;
@@ -419,6 +421,7 @@ export function AdminShell(props: AdminShellProps) {
               <GlobalInstructionsForm
                 initialGlobalByPlan={props.globalInstructionsByPlan}
                 initialTemplateByPlan={props.onboardingTemplateByPlan}
+                initialGreetingByPlan={props.onboardingGreetingByPlan}
                 initialSummaryPromptByPlan={props.summaryPromptByPlan}
                 section={
                   active === "global-rules"

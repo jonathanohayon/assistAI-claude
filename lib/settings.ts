@@ -40,6 +40,10 @@ export const SETTING_KEYS = {
   // take_message, globale/premium = Johana multi-centres). Empty pour un
   // plan donné → fallback INITIAL_INSTRUCTIONS_FOR_PLAN hardcodé.
   ONBOARDING_TEMPLATE_BY_PLAN: "onboarding_template_by_plan",
+  // JSON map plan → consigne d'accueil (greetingInstructions) seedée à
+  // l'inscription d'un nouveau tenant. Empty pour un plan donné →
+  // fallback sur le greeting hardcodé per-plan de lib/initial-config.
+  ONBOARDING_GREETING_BY_PLAN: "onboarding_greeting_by_plan",
   // JSON map plan → feature flags (Calendar, CRM, etc.). Voir lib/plan-features.ts.
   PLAN_FEATURES: "plan_features",
   // JSON map plan → { eurMonthly, eurAnnual, ilsMonthly, ilsAnnual }. Grille
@@ -258,6 +262,50 @@ export async function setOnboardingTemplateByPlan(
   }
   await setSetting(
     SETTING_KEYS.ONBOARDING_TEMPLATE_BY_PLAN,
+    JSON.stringify(merged),
+  );
+}
+
+export type OnboardingGreetingByPlan = Record<PlanKey, string>;
+
+/**
+ * Map plan → consigne d'accueil (greetingInstructions) seedée à
+ * l'inscription. Même philosophie que le persona template : un plan sans
+ * texte dédié renvoie "" et le signup retombe sur le greeting hardcodé
+ * per-plan de lib/initial-config (GREETING_WHATSAPP / GLOBAL / PREMIUM).
+ * Ne touche QUE les nouveaux comptes — les tenants existants gardent leur
+ * phrase d'accueil (éditable dans leur dashboard).
+ */
+export async function getOnboardingGreetingByPlan(): Promise<OnboardingGreetingByPlan> {
+  const raw = await getSetting(SETTING_KEYS.ONBOARDING_GREETING_BY_PLAN);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, ""]),
+  ) as OnboardingGreetingByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // JSON corrompu → on garde "" partout (= greeting hardcodé per-plan).
+    }
+  }
+  return out;
+}
+
+export async function setOnboardingGreetingByPlan(
+  map: Partial<OnboardingGreetingByPlan>,
+): Promise<void> {
+  const current = await getOnboardingGreetingByPlan();
+  const merged: OnboardingGreetingByPlan = { ...current };
+  for (const p of PLANS) {
+    const v = map[p.key];
+    if (typeof v === "string") merged[p.key] = v;
+  }
+  await setSetting(
+    SETTING_KEYS.ONBOARDING_GREETING_BY_PLAN,
     JSON.stringify(merged),
   );
 }
