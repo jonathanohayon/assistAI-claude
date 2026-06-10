@@ -704,7 +704,8 @@
     "userMenuAria": "User menu",
     "loggedInAs": "Signed in as",
     "settingsLink": "Settings",
-    "logoutButton": "Sign out"
+    "logoutButton": "Sign out",
+    "trialCallMinutesLeft": "{min} call min left"
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",

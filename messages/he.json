@@ -704,7 +704,8 @@
     "userMenuAria": "תפריט משתמש",
     "loggedInAs": "מחובר בתור",
     "settingsLink": "הגדרות",
-    "logoutButton": "התנתקות"
+    "logoutButton": "התנתקות",
+    "trialCallMinutesLeft": "{min} דקות שיחה נותרו"
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",
