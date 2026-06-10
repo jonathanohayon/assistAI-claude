@@ -92,7 +92,10 @@ export function IntegrationsStrip() {
                     ? undefined
                     : { duration: 3.4, repeat: Infinity, ease: "easeInOut" }
                 }
-                className="relative flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#db2777] to-[#22d3ee] shadow-[0_16px_40px_-12px_rgba(219,39,119,0.5)] ring-1 ring-white/40"
+                // Même signature que le CTA héro : magenta→rose vif saturé +
+                // anneau cyan (le mix rose→cyan en dégradé donnait un milieu
+                // grisâtre, d'où l'effet « fade »).
+                className="relative flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#be185d] via-[#ec4899] to-[#ff4d8d] shadow-[0_18px_44px_-10px_rgba(236,72,153,0.65)] ring-2 ring-[#22d3ee]/50"
               >
                 <svg
                   viewBox="0 0 24 24"
