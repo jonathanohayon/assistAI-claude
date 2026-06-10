@@ -8,6 +8,7 @@ import { FeatureBento } from "@/components/marketing/FeatureBento";
 import { Footer } from "@/components/marketing/Footer";
 import { Hero } from "@/components/marketing/Hero";
 import { Industries } from "@/components/marketing/Industries";
+import { IntegrationsStrip } from "@/components/marketing/IntegrationsStrip";
 import { Journey } from "@/components/marketing/Journey";
 import { Nav } from "@/components/marketing/Nav";
 import { OutboundCalling } from "@/components/marketing/OutboundCalling";
@@ -45,6 +46,7 @@ export default async function Home({
     <main className="noise-grain relative flex flex-col overflow-x-hidden">
       <Nav />
       <Hero />
+      <IntegrationsStrip />
       <TryDemo />
       <OutboundCalling />
       <Journey />

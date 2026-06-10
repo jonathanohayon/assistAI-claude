@@ -91,6 +91,12 @@
       "subtitle": "דברו עם תמרה דרך הדפדפן"
     }
   },
+  "Integrations": {
+    "kicker": "מתחבר לכלים שלכם",
+    "whatsapp": "סיכום שיחה בוואטסאפ",
+    "calendar": "פגישות מסונכרנות ביומן Google",
+    "crm": "אנשי קשר נשמרים ב-CRM של Google Sheets"
+  },
   "OutboundCalling": {
     "kicker": "שיחות יוצאות",
     "title": "מוקד השיחות החכם שלך — מחייג בשבילך.",

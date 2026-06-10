@@ -91,6 +91,12 @@
       "subtitle": "Parlez à Tamara depuis votre navigateur"
     }
   },
+  "Integrations": {
+    "kicker": "Connecté à vos outils",
+    "whatsapp": "Compte rendu d'appel sur WhatsApp",
+    "calendar": "RDV synchronisés dans Google Calendar",
+    "crm": "Contacts enregistrés dans votre CRM Google Sheets"
+  },
   "OutboundCalling": {
     "kicker": "Appels sortants",
     "title": "Votre centre d'appels IA, qui compose pour vous.",

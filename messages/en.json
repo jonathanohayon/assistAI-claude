@@ -91,6 +91,12 @@
       "subtitle": "Talk to Tamara from your browser"
     }
   },
+  "Integrations": {
+    "kicker": "Plugs into your tools",
+    "whatsapp": "Call summaries on WhatsApp",
+    "calendar": "Appointments synced to Google Calendar",
+    "crm": "Contacts saved to your Google Sheets CRM"
+  },
   "OutboundCalling": {
     "kicker": "Outbound calling",
     "title": "Your AI call center, dialing for you.",
