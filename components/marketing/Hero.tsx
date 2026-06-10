@@ -12,23 +12,21 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Sparkle positions hardcodées (déterministes — pas de SSR mismatch).
- *  Mix cyan / magenta, tailles 3–5px, autour du H1. */
+import { EASE } from "./Reveal";
+
+/** Sparkles réduits à 3, très subtils (opacité max 0.7, tailles 3–4px).
+ *  Positions hardcodées déterministes — pas de SSR mismatch. */
 const SPARKLES = [
   { top: "-6%", left: "8%", size: 4, color: "#22D3EE", delay: 0 },
-  { top: "12%", left: "-3%", size: 3, color: "#BE185D", delay: 0.4 },
-  { top: "38%", left: "95%", size: 5, color: "#22D3EE", delay: 0.8 },
-  { top: "62%", left: "2%", size: 3, color: "#BE185D", delay: 1.2 },
-  { top: "-4%", left: "72%", size: 4, color: "#BE185D", delay: 1.6 },
-  { top: "78%", left: "58%", size: 3, color: "#22D3EE", delay: 0.6 },
-  { top: "22%", left: "48%", size: 4, color: "#22D3EE", delay: 2.0 },
-  { top: "92%", left: "30%", size: 3, color: "#BE185D", delay: 1.4 },
+  { top: "38%", left: "95%", size: 4, color: "#22D3EE", delay: 0.8 },
+  { top: "78%", left: "58%", size: 3, color: "#BE185D", delay: 1.4 },
 ];
 
 /**
  * Hero — full-bleed avec vidéo de fond + overlay gradient. Titre centré
- * en grand, CTAs. La démo VoiceAgent a été extraite dans la section
- * `<TryDemo />` juste après le Hero (cf. app/[locale]/page.tsx).
+ * en grand, 2 CTAs. Pièce maîtresse : parallaxe de sortie scroll-driven —
+ * le contenu remonte et fade pendant que la vidéo zoome légèrement quand
+ * on quitte le hero. La démo VoiceAgent vit dans `<TryDemo />` (#demo).
  */
 export function Hero() {
   const t = useTranslations("Hero");
@@ -49,7 +47,7 @@ export function Hero() {
           opacity: 1,
           y: 0,
           filter: "blur(0px)",
-          transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] as const },
+          transition: { duration: 0.65, ease: EASE },
         },
       };
 
@@ -63,14 +61,24 @@ export function Hero() {
       : {
           initial: { opacity: 0, y: 20 },
           animate: { opacity: 1, y: 0 },
-          transition: { delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
+          transition: { delay, duration: 0.6, ease: EASE },
         };
 
-  // ── Scroll-driven underline pour le mot "humainement" ─────────────
-  // useScroll global avec offset relative au scrollY — l'underline scaleX
-  // passe de 0 (top of page) à 1 (au moment où la première section
-  // dessous est en vue). Donne un effet "le mot s'ancre quand on scroll".
-  const emphasisRef = useRef<HTMLSpanElement | null>(null);
+  // ── Parallaxe de sortie scroll-driven ──────────────────────────────
+  // Quand on scrolle hors du hero : le contenu translate vers le haut et
+  // fade, la vidéo scale légèrement derrière. Progress 0 = hero plein
+  // écran, 1 = hero entièrement sorti par le haut.
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.08]);
+
+  // ── Scroll-driven underline pour le mot emphasis (signature) ───────
+  // scaleX 0 (top of page) → 1 quand l'user commence à scroller.
   const { scrollY } = useScroll();
   const underlineProgress = useTransform(scrollY, [0, 400], [0, 1]);
   const underlineScaleX = useSpring(underlineProgress, {
@@ -125,12 +133,16 @@ export function Hero() {
   }, [magX, magY]);
 
   return (
-    <section className="relative isolate overflow-hidden pt-32 pb-32 sm:pt-40 sm:pb-40 lg:min-h-[88vh]">
+    <section
+      ref={sectionRef}
+      className="relative isolate overflow-hidden pt-32 pb-32 sm:pt-40 sm:pb-40 lg:min-h-[88vh]"
+    >
       {/* Vidéo de fond servie localement depuis /public/videos — pas de CDN
        *  tiers, pas de CORS, pas de cache external. `isolate` sur la section
        *  crée un stacking context propre pour que les z-index négatifs des
-       *  overlays restent contenus ici. */}
-      <video
+       *  overlays restent contenus ici. Scale scroll-driven (1→1.08) pour la
+       *  parallaxe de sortie. */}
+      <motion.video
         aria-hidden
         autoPlay
         muted
@@ -138,6 +150,7 @@ export function Hero() {
         playsInline
         preload="auto"
         src="/videos/hero-bg.mp4"
+        style={reduce ? undefined : { scale: videoScale }}
         className="absolute inset-0 -z-30 h-full w-full object-cover"
       />
 
@@ -149,8 +162,11 @@ export function Hero() {
         className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-b from-black/35 via-black/10 to-black/45"
       />
 
-      {/* Content centré */}
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center px-6 text-center">
+      {/* Content centré — translate + fade quand on scrolle hors du hero. */}
+      <motion.div
+        style={reduce ? undefined : { y: contentY, opacity: contentOpacity }}
+        className="relative mx-auto flex w-full max-w-5xl flex-col items-center px-6 text-center"
+      >
         {/* Badge live */}
         <motion.div
           {...fadeUp(0.1)}
@@ -163,7 +179,7 @@ export function Hero() {
           {t("badge")}
         </motion.div>
 
-        {/* H1 + sparkles autour */}
+        {/* H1 + 3 sparkles subtils autour */}
         <div className="relative mt-8">
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
             {SPARKLES.map((s, i) => (
@@ -176,18 +192,18 @@ export function Hero() {
                   width: s.size,
                   height: s.size,
                   backgroundColor: s.color,
-                  boxShadow: `0 0 10px ${s.color}99`,
+                  boxShadow: `0 0 8px ${s.color}66`,
                 }}
                 animate={
                   reduce
-                    ? { opacity: 0.5, scale: 1 }
-                    : { opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }
+                    ? { opacity: 0.4, scale: 1 }
+                    : { opacity: [0, 0.7, 0], scale: [0.5, 1, 0.5] }
                 }
                 transition={
                   reduce
                     ? { duration: 0 }
                     : {
-                        duration: 2.4,
+                        duration: 3.2,
                         repeat: Infinity,
                         ease: "easeInOut",
                         delay: s.delay,
@@ -218,7 +234,6 @@ export function Hero() {
                   >
                     {trimmed === emphasis ? (
                       <span
-                        ref={emphasisRef}
                         className="relative inline-block text-[#ff4d8d]"
                         style={{
                           textShadow:
@@ -228,13 +243,13 @@ export function Hero() {
                         {trimmed}
                         {/* Underline scroll-driven : scaleX 0 → 1 quand l'user
                          *  commence à scroller en bas du hero. Brush stroke
-                         *  brand-gradient ancré à gauche. */}
+                         *  brand-gradient ancré au centre (RTL-safe). */}
                         <motion.span
                           aria-hidden
                           className="pointer-events-none absolute inset-x-0 -bottom-1 h-[6px] rounded-full"
                           style={{
                             scaleX: reduce ? 1 : underlineScaleX,
-                            transformOrigin: "left center",
+                            transformOrigin: "center",
                             background:
                               "linear-gradient(90deg, #ec4899 0%, #fb7185 50%, #22d3ee 100%)",
                             boxShadow:
@@ -260,8 +275,8 @@ export function Hero() {
           {t("subtitle")}
         </motion.p>
 
-        {/* Stats inline */}
-        <div className="mt-10 flex flex-wrap items-end justify-center gap-x-6 gap-y-4 sm:gap-x-10">
+        {/* Stats inline — rangée resserrée */}
+        <div className="mt-8 flex flex-wrap items-end justify-center gap-x-4 gap-y-3 sm:gap-x-6">
           <Stat
             value="24/7"
             label={t("stats.availability")}
@@ -291,7 +306,7 @@ export function Hero() {
           />
         </div>
 
-        {/* CTAs */}
+        {/* CTAs — 2 seulement : signup magnétique + live demo cyan */}
         <motion.div
           initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
           animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
@@ -311,14 +326,14 @@ export function Hero() {
             <Link
               ref={ctaRef}
               href="/signup"
-              className="cta-glow group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-8 py-4 text-base font-semibold text-white shadow-lg ring-2 ring-[#22d3ee]/40 transition-all hover:scale-[1.03] hover:shadow-xl active:scale-95"
+              className="cta-glow group relative inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-8 py-4 text-base font-semibold text-white shadow-lg ring-2 ring-[#22d3ee]/40 transition-all hover:scale-[1.03] hover:shadow-xl active:scale-95"
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <span className="relative">{t("ctaDemo")}</span>
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
-                className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5"
               >
                 <path
                   d="M5 12h14M13 5l7 7-7 7"
@@ -331,20 +346,13 @@ export function Hero() {
             </Link>
           </motion.div>
 
-          <Link
-            href="#how"
-            className="inline-flex items-center gap-2 rounded-full border-2 border-white/40 bg-white/15 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-all hover:border-white/70 hover:bg-white/25"
-          >
-            {t("ctaConfigure")}
-          </Link>
-
           {/* CTA Live Demo : scroll vers la section #demo (TryDemo). Bordure
-           *  cyan animée + onde sonore (3 barres pulsantes) à gauche du label
+           *  cyan animée + onde sonore (3 barres pulsantes) à côté du label
            *  pour signaler "parle live maintenant". */}
           <Link
             href="#demo"
             aria-label={t("ctaLiveDemo")}
-            className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full border-2 border-[#22d3ee]/70 bg-[#22d3ee]/15 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_28px_-8px_rgba(34,211,238,0.55)] backdrop-blur-md transition-all hover:scale-[1.03] hover:border-[#22d3ee] hover:bg-[#22d3ee]/25"
+            className="group relative inline-flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-full border-2 border-[#22d3ee]/70 bg-[#22d3ee]/15 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_28px_-8px_rgba(34,211,238,0.55)] backdrop-blur-md transition-all hover:scale-[1.03] hover:border-[#22d3ee] hover:bg-[#22d3ee]/25"
           >
             {/* Pulse halo cyan derrière */}
             <span
@@ -375,7 +383,7 @@ export function Hero() {
             <span className="relative">{t("ctaLiveDemo")}</span>
           </Link>
         </motion.div>
-      </div>
+      </motion.div>
 
       <style jsx>{`
         .cta-glow {
@@ -394,21 +402,6 @@ export function Hero() {
               0 0 0 12px rgba(34, 211, 238, 0.20);
           }
         }
-        .aurora-mesh {
-          animation: aurora-shift 20s ease-in-out infinite;
-        }
-        @keyframes aurora-shift {
-          0%,
-          100% {
-            transform: scale(1) translate(0, 0);
-          }
-          33% {
-            transform: scale(1.05) translate(2%, -1%);
-          }
-          66% {
-            transform: scale(0.98) translate(-1%, 2%);
-          }
-        }
         @keyframes live-demo-wave {
           0%, 100% { transform: scaleY(0.4); }
           50% { transform: scaleY(1); }
@@ -422,8 +415,7 @@ export function Hero() {
           }
         }
         @media (prefers-reduced-motion: reduce) {
-          .cta-glow,
-          .aurora-mesh {
+          .cta-glow {
             animation: none;
           }
         }
@@ -479,7 +471,7 @@ function Stat({
       transition={{
         delay,
         duration: reduce ? 0.2 : 0.5,
-        ease: [0.16, 1, 0.3, 1] as const,
+        ease: EASE,
       }}
       className="text-center"
     >

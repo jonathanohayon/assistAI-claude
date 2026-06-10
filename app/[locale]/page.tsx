@@ -4,26 +4,28 @@ import { DEFAULT_PLAN_PRICING, type PlanPricingMap } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { CTA } from "@/components/marketing/CTA";
 import { FAQ } from "@/components/marketing/FAQ";
-import { Features } from "@/components/marketing/Features";
+import { FeatureBento } from "@/components/marketing/FeatureBento";
 import { Footer } from "@/components/marketing/Footer";
 import { Hero } from "@/components/marketing/Hero";
-import { HowItWorks } from "@/components/marketing/HowItWorks";
 import { Industries } from "@/components/marketing/Industries";
+import { Journey } from "@/components/marketing/Journey";
 import { Nav } from "@/components/marketing/Nav";
 import { OutboundCalling } from "@/components/marketing/OutboundCalling";
-import { PerformanceShowcase } from "@/components/marketing/PerformanceShowcase";
 import { Pricing } from "@/components/marketing/Pricing";
-import { Security } from "@/components/marketing/Security";
-import { SocialProof } from "@/components/marketing/SocialProof";
+import { Proof } from "@/components/marketing/Proof";
 import { SupportFab } from "@/components/marketing/SupportFab";
+import { TrustStrip } from "@/components/marketing/TrustStrip";
 import { TryDemo } from "@/components/marketing/TryDemo";
-import { TwoMinutesToLive } from "@/components/marketing/TwoMinutesToLive";
-import { VoiceConfigShowcase } from "@/components/marketing/VoiceConfigShowcase";
 
 // ISR : la landing reste cachée/statique mais se régénère toutes les 10 min
 // pour refléter les tarifs édités dans /admin sans redéploiement.
 export const revalidate = 600;
 
+// Redesign 2026-06 : 16 → 12 sections. Les fusions (Journey = TwoMinutesToLive
+// +HowItWorks, FeatureBento = Features+VoiceConfigShowcase, Proof =
+// PerformanceShowcase+SocialProof, TrustStrip = Security compressée) suppriment
+// les répétitions, pas les arguments. OutboundCalling remonte juste après la
+// démo : la cible prioritaire est PME / centres d'appels / équipes de vente.
 export default async function Home({
   params,
 }: {
@@ -44,16 +46,13 @@ export default async function Home({
       <Nav />
       <Hero />
       <TryDemo />
-      <TwoMinutesToLive />
-      <Industries />
-      <HowItWorks />
-      <VoiceConfigShowcase />
       <OutboundCalling />
-      <PerformanceShowcase />
-      <Features />
+      <Journey />
+      <FeatureBento />
+      <Industries />
+      <Proof />
       <Pricing pricing={pricing} />
-      <SocialProof />
-      <Security />
+      <TrustStrip />
       <FAQ />
       <CTA />
       <Footer />

@@ -4,6 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
+
 const FAQ_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"] as const;
 type FaqKey = (typeof FAQ_KEYS)[number];
 
@@ -28,13 +30,7 @@ export function FAQ() {
       />
 
       <div className="mx-auto w-full max-w-5xl px-6">
-        <motion.div
-          initial={reduce ? false : { opacity: 0, y: 24 }}
-          whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto max-w-2xl text-center"
-        >
+        <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#0e7490]">
             {t("kicker")}
           </p>
@@ -44,111 +40,95 @@ export function FAQ() {
           <p className="mt-5 text-base leading-relaxed text-slate-600 sm:text-lg">
             {t("subtitle")}
           </p>
-        </motion.div>
+        </Reveal>
 
-        <div className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-          {FAQ_KEYS.map((key, i) => {
+        <Stagger className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+          {FAQ_KEYS.map((key) => {
             const isOpen = openKey === key;
             return (
-              <motion.div
-                key={key}
-                initial={reduce ? false : { opacity: 0, y: 18 }}
-                whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{
-                  duration: 0.55,
-                  delay: (i % 2) * 0.06 + Math.floor(i / 2) * 0.08,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className={`group relative overflow-hidden rounded-2xl border bg-white/60 shadow-md backdrop-blur transition-colors ${
-                  isOpen
-                    ? "border-[#22d3ee]/50"
-                    : "border-white/40 hover:border-[#22d3ee]/40"
-                }`}
-              >
-                {/* Left accent gradient when open */}
-                <motion.span
-                  aria-hidden
-                  initial={false}
-                  animate={{ opacity: isOpen ? 1 : 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#be185d] to-[#22d3ee]"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setOpenKey(isOpen ? null : key)}
-                  aria-expanded={isOpen}
-                  aria-controls={`faq-panel-${key}`}
-                  className="flex w-full items-start justify-between gap-4 px-6 py-5 text-left"
+              <StaggerItem key={key}>
+                <div
+                  className={`group relative overflow-hidden rounded-2xl border bg-white/60 shadow-md backdrop-blur transition-colors ${
+                    isOpen
+                      ? "border-[#22d3ee]/50"
+                      : "border-white/40 hover:border-[#22d3ee]/40"
+                  }`}
                 >
-                  <span className="text-base font-extrabold leading-snug text-[#18181b] sm:text-lg">
-                    {t(`${key}.question`)}
-                  </span>
+                  {/* Accent gradient côté début quand ouvert */}
                   <motion.span
                     aria-hidden
                     initial={false}
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                      isOpen
-                        ? "border-[#22d3ee]/50 bg-gradient-to-br from-[#fce7f3] to-[#cffafe] text-[#be185d]"
-                        : "border-slate-200 bg-white text-slate-500 group-hover:text-[#be185d]"
-                    }`}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="h-4 w-4"
-                      aria-hidden
-                    >
-                      <path
-                        d="m6 9 6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </motion.span>
-                </button>
+                    animate={{ opacity: isOpen ? 1 : 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute start-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#be185d] to-[#22d3ee]"
+                  />
 
-                <AnimatePresence initial={false}>
-                  {isOpen ? (
-                    <motion.div
-                      id={`faq-panel-${key}`}
-                      key="content"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{
-                        height: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
-                        opacity: { duration: 0.25, ease: "easeOut" },
-                      }}
-                      className="overflow-hidden"
+                  <button
+                    type="button"
+                    onClick={() => setOpenKey(isOpen ? null : key)}
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-panel-${key}`}
+                    className="flex w-full cursor-pointer items-start justify-between gap-4 px-6 py-5 text-start"
+                  >
+                    <span className="text-base font-extrabold leading-snug text-[#18181b] sm:text-lg">
+                      {t(`${key}.question`)}
+                    </span>
+                    <motion.span
+                      aria-hidden
+                      initial={false}
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
+                      className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        isOpen
+                          ? "border-[#22d3ee]/50 bg-gradient-to-br from-[#fce7f3] to-[#cffafe] text-[#be185d]"
+                          : "border-slate-200 bg-white text-slate-500 group-hover:text-[#be185d]"
+                      }`}
                     >
-                      <div className="px-6 pb-5 pt-0">
-                        <p className="text-sm leading-relaxed text-[#475569]">
-                          {t(`${key}.answer`)}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </motion.div>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="h-4 w-4"
+                        aria-hidden
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </motion.span>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen ? (
+                      <motion.div
+                        id={`faq-panel-${key}`}
+                        key="content"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{
+                          height: { duration: reduce ? 0 : 0.35, ease: EASE },
+                          opacity: { duration: reduce ? 0 : 0.25, ease: "easeOut" },
+                        }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 pb-5 pt-0">
+                          <p className="text-sm leading-relaxed text-[#475569]">
+                            {t(`${key}.answer`)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       </div>
-
-      <style jsx>{`
-        @media (prefers-reduced-motion: reduce) {
-          section :global(*) {
-            animation: none !important;
-            transition: none !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }
