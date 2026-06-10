@@ -14,7 +14,7 @@
  * total du rendu. ~250 lignes suffisent pour ce niveau de feature.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Origin = "sip" | "web";
 
@@ -128,15 +128,23 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   // Helper : extrait la valeur Y selon la métrique sélectionnée.
-  const getY = (p: LatencyPoint): number | null => {
-    if (yMetric === "ttfa") return p.yMetrics.ttfa ?? p.yMetrics.greeting;
-    if (yMetric === "p95") return p.yMetrics.p95 ?? p.yMetrics.ttfa;
-    return p.yMetrics.greeting;
-  };
+  // useCallback pour que les useMemo qui en dépendent ne recalculent que
+  // quand la métrique change (pas à chaque render).
+  const getY = useCallback(
+    (p: LatencyPoint): number | null => {
+      if (yMetric === "ttfa") return p.yMetrics.ttfa ?? p.yMetrics.greeting;
+      if (yMetric === "p95") return p.yMetrics.p95 ?? p.yMetrics.ttfa;
+      return p.yMetrics.greeting;
+    },
+    [yMetric],
+  );
   const [hover, setHover] = useState<{
     point: LatencyPoint;
     x: number;
     y: number;
+    /** Largeur du conteneur au moment du hover — capturée dans le handler
+     *  pour positionner le tooltip sans lire une ref pendant le render. */
+    containerWidth: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Appel sélectionné = on affiche le panel détail à droite (drill-down).
@@ -209,7 +217,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
     const yTo = (v: number) =>
       CHART.padTop + plotH - (v / Math.max(1, yMax)) * plotH;
     return { xMin, xMax, yMax, plotW, plotH, xTo, yTo };
-  }, [data]);
+  }, [data, getY]);
 
   const plotPoints = useMemo(() => {
     if (!data || !scales) return [];
@@ -222,8 +230,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
         cx: scales.xTo(new Date(p.timestamp).getTime()),
         cy: scales.yTo(y),
       }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, scales, yMetric]);
+  }, [data, scales, getY]);
 
   // X axis ticks (4 evenly spaced)
   const xTicks = useMemo(() => {
@@ -429,6 +436,8 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                       point: p,
                       x: p.cx * scale,
                       y: p.cy * scale,
+                      containerWidth:
+                        containerRef.current?.clientWidth ?? rect.width,
                     });
                   }}
                   onMouseLeave={scheduleTooltipClose}
@@ -447,10 +456,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
               onMouseLeave={scheduleTooltipClose}
               className="absolute z-10 min-w-[280px] rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-lg"
               style={{
-                left: Math.min(
-                  hover.x + 12,
-                  (containerRef.current?.clientWidth ?? 800) - 300,
-                ),
+                left: Math.min(hover.x + 12, hover.containerWidth - 300),
                 top: Math.max(hover.y - 8, 0),
               }}
             >
@@ -509,7 +515,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3">
                   <path d="M3 12h18M14 5l7 7-7 7" />
                 </svg>
-                Détails de l'appel
+                Détails de l’appel
               </button>
             </div>
           )}

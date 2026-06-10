@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 import FinanceDashboard from "@/app/admin/finance/FinanceDashboard";
 
@@ -18,17 +18,7 @@ export default async function AdminTenantFinancePage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  // Projection explicite { role } : évite le SELECT * (toutes colonnes) qui
-  // casse tant que la migration d'abonnement n'est pas appliquée.
-  const [me] = await db
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (me?.role !== "admin") redirect("/dashboard");
+  await requireAdminPage();
 
   const { userId } = await params;
   const [target] = await db

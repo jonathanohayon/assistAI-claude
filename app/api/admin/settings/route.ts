@@ -1,10 +1,7 @@
-import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { requireAdmin } from "@/lib/api/auth-guards";
 import { logEvent } from "@/lib/logger";
 import { type PlanFeatureMatrix } from "@/lib/plan-features";
 import {
@@ -52,21 +49,10 @@ import {
   type SummaryPromptByPlan,
 } from "@/lib/settings";
 
-const requireAdmin = async () => {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  return me?.role === "admin" ? me : null;
-};
-
 // GET — return all known settings.
 export async function GET() {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const globalInstructions =
     (await getSetting(SETTING_KEYS.GLOBAL_INSTRUCTIONS)) ?? "";
@@ -107,9 +93,11 @@ export async function GET() {
 
 // PUT — update one or more settings.
 export async function PUT(req: NextRequest) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+  const me = guard.admin;
 
+  // body optionnel : un body vide est accepté (changed=[] → no-op, 200 ok).
   const body = (await req.json().catch(() => ({}))) as {
     globalInstructions?: string;
     globalInstructionsByPlan?: Partial<GlobalInstructionsByPlan>;

@@ -21,44 +21,59 @@ const getClient = (): SipClient => {
   return new SipClient(url.replace(/^wss:\/\//, "https://"), key, secret);
 };
 
+// Cache module-level du trunk SID résolu. Durée de vie = celle du process
+// (pas de TTL) : le trunk inbound partagé ne change qu'en cas d'intervention
+// manuelle, et un redeploy suffit alors à invalider le cache.
 let cachedTrunkSid: string | null = null;
+
 const resolveTrunkSid = async (): Promise<string> => {
   if (cachedTrunkSid) return cachedTrunkSid;
+
+  // IMPORTANT : on ne remplit `cachedTrunkSid` qu'au point de succès unique
+  // (fin de fonction). Si listSipInboundTrunk() throw ou si aucun trunk ne
+  // convient, l'erreur remonte au caller SANS polluer le cache — le prochain
+  // appel retentera une résolution complète.
   const trunks = await getClient().listSipInboundTrunk();
   const fromEnv = process.env.LIVEKIT_INBOUND_TRUNK_SID;
+  let resolved: string;
   if (fromEnv) {
     // Valide le SID configuré contre les trunks réels du projet. S'il est
     // périmé (trunk supprimé/recréé, ou SID d'un autre projet LiveKit), on NE
     // plante PAS le provisioning : fallback sur le 1er trunk inbound existant.
     // Évite l'erreur "Inbound trunk … introuvable" au signup.
     if (trunks.some((t) => t.sipTrunkId === fromEnv)) {
-      cachedTrunkSid = fromEnv;
-      return fromEnv;
-    }
-    if (trunks.length > 0) {
+      resolved = fromEnv;
+    } else if (trunks.length > 0) {
       console.warn(
         `[livekit-sip] LIVEKIT_INBOUND_TRUNK_SID=${fromEnv} introuvable dans le projet ; fallback sur ${trunks[0].sipTrunkId}. Corrige l'env.`,
       );
-      cachedTrunkSid = trunks[0].sipTrunkId;
-      return cachedTrunkSid;
+      resolved = trunks[0].sipTrunkId;
+    } else {
+      throw new Error(
+        `Inbound trunk ${fromEnv} introuvable et aucun autre trunk inbound dans ce projet LiveKit. Vérifie LIVEKIT_INBOUND_TRUNK_SID (ou crée un trunk).`,
+      );
     }
-    throw new Error(
-      `Inbound trunk ${fromEnv} introuvable et aucun autre trunk inbound dans ce projet LiveKit. Vérifie LIVEKIT_INBOUND_TRUNK_SID (ou crée un trunk).`,
-    );
+  } else {
+    if (trunks.length === 0) {
+      throw new Error(
+        "Aucun inbound trunk LiveKit trouvé. Crée-en un avec setup_sip d'abord.",
+      );
+    }
+    resolved = trunks[0].sipTrunkId;
   }
-  if (trunks.length === 0) {
-    throw new Error(
-      "Aucun inbound trunk LiveKit trouvé. Crée-en un avec setup_sip d'abord.",
-    );
-  }
-  cachedTrunkSid = trunks[0].sipTrunkId;
-  return cachedTrunkSid;
+
+  cachedTrunkSid = resolved;
+  return resolved;
 };
 
 /**
  * Append a phone number (E.164) to the inbound trunk's allowed numbers list.
  * Idempotent: if the number is already there, no-op. Uses the
  * "update fields" endpoint so we don't have to round-trip the whole trunk.
+ *
+ * ⚠️ Pendant côté Twilio : un numéro acheté via purchaseNumber()
+ * (lib/twilio-numbers.ts) DOIT ensuite être ajouté ici, sinon LiveKit
+ * rejette les appels entrants sur ce numéro (pas dans l'allow-list du trunk).
  */
 export async function addNumberToTrunk(phoneNumber: string): Promise<void> {
   const client = getClient();

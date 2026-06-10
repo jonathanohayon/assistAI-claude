@@ -1,13 +1,13 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
 import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { db } from "@/lib/db";
 import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
@@ -28,15 +28,7 @@ export default async function AdminTenantPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!me || me.role !== "admin") redirect("/dashboard");
+  await requireAdminPage();
 
   const { userId } = await params;
   const [target] = await db

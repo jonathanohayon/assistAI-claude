@@ -1,6 +1,7 @@
 import { isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -20,11 +21,8 @@ import { syncTenantCalendarToSheet } from "@/lib/sync-tenant";
 // non-null — pas de whitelist par email/role, tout salon configuré y a droit.
 
 export async function GET(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const startedAt = Date.now();
   const allTenants = await db

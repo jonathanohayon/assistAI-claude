@@ -1,8 +1,11 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { normalizeE164 } from "@/lib/phone-utils";
 
 // Internal-only backfill: recopie les valeurs Google globales (env) sur la
 // ligne `users` d'un admin, et (optionnellement) upsert un phone_numbers
@@ -12,17 +15,10 @@ import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 //
 // Gated par INTERNAL_SECRET (admin login pas toujours dispo en headless).
 
-const normalizeE164 = (input: string): string => {
-  const stripped = input.trim().replace(/[\s()-]/g, "");
-  return stripped.startsWith("+") ? stripped : `+${stripped}`;
-};
-
 // GET = diag : renvoie l'état courant de l'admin (user + phone_numbers + agent_config)
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  if (!secret || secret !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
   const email = req.nextUrl.searchParams.get("email")?.toLowerCase();
   if (!email) {
     return NextResponse.json({ error: "email requis" }, { status: 400 });
@@ -61,12 +57,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  if (!secret || secret !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     email?: string;
     userId?: string;
     phoneNumber?: string;
@@ -74,7 +68,9 @@ export async function POST(req: NextRequest) {
     twilioSid?: string;
     countryCode?: string;
     role?: "admin" | "user";
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   let userId = body.userId;
   if (!userId && body.email) {

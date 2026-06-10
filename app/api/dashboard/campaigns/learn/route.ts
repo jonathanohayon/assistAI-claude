@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { learnFromSites, MAX_LEARN_URLS } from "@/lib/campaigns/learn";
 
@@ -18,10 +19,9 @@ export async function POST(req: NextRequest) {
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as {
-    urls?: unknown;
-    language?: unknown;
-  };
+  const parsed = await parseJsonBody<{ urls?: unknown; language?: unknown }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const urls = Array.isArray(body.urls)
     ? body.urls.filter((u): u is string => typeof u === "string")
     : [];

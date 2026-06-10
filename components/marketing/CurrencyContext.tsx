@@ -54,6 +54,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(CURRENCY_PREF_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
       if (isCurrency(saved)) setCurrencyState(saved);
     } catch {
       // localStorage indispo (mode privé Safari, etc.) → stick à EUR
@@ -79,6 +80,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
           rates: Record<Currency, number>;
         };
         if (Date.now() - parsed.ts < FX_CACHE_TTL_MS) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation du cache sessionStorage post-mount (SSR-safe), pattern voulu
           setRates(parsed.rates);
           return;
         }

@@ -8,6 +8,7 @@ import { JERUSALEM_TZ } from "@/lib/tz";
 import { CalendarSettings } from "./calendar-settings";
 import { CalendarTable } from "./calendar-table";
 import { SyncNowButton } from "./sync-button";
+import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 export const dynamic = "force-dynamic";
 
@@ -106,23 +107,19 @@ export default async function CalendarPage(props: {
         {notConnected ? (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
             <p>{t("notConnectedBlock")}</p>
-            <a
-              href="/api/onboarding/google/start"
-              className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
-            >
+            <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]">
               {t("connectButton")}
-            </a>
+            </ConnectGoogleLink>
           </div>
         ) : tokenExpired ? (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
             <p>{t("tokenExpiredBlock")}</p>
-            <p className="text-xs italic">{t("techDetail")} {error}</p>
-            <a
-              href="/api/onboarding/google/start"
-              className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
-            >
+            <p className="text-xs italic">
+              {t("techDetail")} {error}
+            </p>
+            <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]">
               {t("reconnectButton")}
-            </a>
+            </ConnectGoogleLink>
           </div>
         ) : (
           <>

@@ -257,6 +257,7 @@ export function PaletteSwitcher() {
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
     setSelectedId(stored && PALETTES.some((p) => p.id === stored) ? stored : "brand");
   }, []);
 

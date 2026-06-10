@@ -1,6 +1,7 @@
 import { and, desc, eq, gt, inArray, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
@@ -10,11 +11,8 @@ import { events } from "@/lib/db/schema";
 //
 // GET ?source=latency,tenant&level=warn,error&since=ISO&limit=50
 export async function GET(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const url = req.nextUrl;
   const sourceCsv = url.searchParams.get("source") ?? "";

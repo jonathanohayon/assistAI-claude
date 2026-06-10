@@ -59,6 +59,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!agent)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  // body optionnel : patch partiel mergé sur l'agent existant.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const fields = normalizeAgentFields({ ...agent, ...body });
 

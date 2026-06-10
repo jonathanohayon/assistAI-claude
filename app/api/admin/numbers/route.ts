@@ -1,31 +1,17 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-
-const normalizeE164 = (input: string): string => {
-  const cleaned = input.trim().replace(/[\s()-]/g, "");
-  return cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
-};
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  return me?.role === "admin" ? me : null;
-}
+import { normalizeE164 } from "@/lib/phone-utils";
 
 export async function POST(req: NextRequest) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     userId?: string;
     phoneNumber?: string;
     label?: string;
@@ -33,7 +19,9 @@ export async function POST(req: NextRequest) {
     // préfixe `whatsapp:` pour que resolveTenantByPhone matche le canal. Défaut
     // 'pstn' (numéro téléphonique classique).
     channel?: string;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   if (!body.userId || !body.phoneNumber) {
     return NextResponse.json(
@@ -87,8 +75,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) {

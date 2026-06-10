@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { auth } from "@/auth";
 import { CalendarSettings } from "@/app/[locale]/dashboard/calendar/calendar-settings";
 import { CalendarTable } from "@/app/[locale]/dashboard/calendar/calendar-table";
 import { SyncNowButton } from "@/app/[locale]/dashboard/calendar/sync-button";
@@ -10,6 +9,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { JERUSALEM_TZ } from "@/lib/tz";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 export const dynamic = "force-dynamic";
 
@@ -65,15 +65,7 @@ export default async function AdminTenantCalendarPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!me || me.role !== "admin") redirect("/dashboard");
+  await requireAdminPage();
 
   const { userId } = await params;
   const [target] = await db

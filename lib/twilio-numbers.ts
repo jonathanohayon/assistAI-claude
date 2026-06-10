@@ -81,6 +81,10 @@ export interface PurchasedNumber {
 /**
  * Buy a Twilio number and attach it to our shared SIP trunk so all calls
  * forward to LiveKit. The trunk's Origination URI handles SIP routing.
+ *
+ * ⚠️ Étape suivante obligatoire : après l'achat, le numéro doit aussi être
+ * ajouté à l'allow-list du trunk inbound LiveKit via addNumberToTrunk()
+ * (lib/livekit-sip.ts), sinon LiveKit rejette les appels entrants.
  */
 export async function purchaseNumber(opts: {
   phoneNumber: string;

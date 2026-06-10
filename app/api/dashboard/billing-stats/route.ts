@@ -1,8 +1,7 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, campaignCalls, paymentOrders, users } from "@/lib/db/schema";
 import { currencyForLocale } from "@/lib/hyp";
@@ -31,20 +30,14 @@ import {
 const TZ = "Asia/Jerusalem";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const asUserId = req.nextUrl.searchParams.get("asUserId");
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) {
+  if ("forbidden" in r) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const userId = scope.userId;
+  const userId = r.userId;
 
   const [me] = await db
     .select({

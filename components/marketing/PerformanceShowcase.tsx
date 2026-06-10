@@ -36,11 +36,9 @@ function CountUp({
   );
 
   useEffect(() => {
-    if (!inView) return;
-    if (reduce) {
-      setDisplay(value.toFixed(decimals));
-      return;
-    }
+    // En reduced-motion on n'anime pas : la valeur finale est dérivée au
+    // render (voir `shown` ci-dessous), pas besoin d'effect.
+    if (!inView || reduce) return;
     const controls = animate(mv, value, {
       duration,
       ease: [0.16, 1, 0.3, 1],
@@ -51,10 +49,13 @@ function CountUp({
     return () => controls.stop();
   }, [inView, value, decimals, duration, mv, reduce]);
 
+  // prefers-reduced-motion → affiche directement la valeur finale.
+  const shown = reduce && inView ? value.toFixed(decimals) : display;
+
   return (
     <span ref={ref}>
       {prefix}
-      {display}
+      {shown}
       {suffix}
     </span>
   );

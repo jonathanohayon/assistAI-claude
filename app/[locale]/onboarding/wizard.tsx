@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 interface AvailableNumber {
   phoneNumber: string;
@@ -37,14 +38,22 @@ export function OnboardingWizard({
   // hardcodée pour que ESLint flag toute clé inattendue.
   const googleStatusKeyToLabel = (key: string | null): string | null => {
     switch (key) {
-      case "connected": return t("googleStatusConnected");
-      case "denied": return t("googleStatusDenied");
-      case "no_refresh": return t("googleStatusNoRefresh");
-      case "bad_state": return t("googleStatusBadState");
-      case "user_mismatch": return t("googleStatusUserMismatch");
-      case "missing": return t("googleStatusMissing");
-      case "error": return t("googleStatusError");
-      default: return null;
+      case "connected":
+        return t("googleStatusConnected");
+      case "denied":
+        return t("googleStatusDenied");
+      case "no_refresh":
+        return t("googleStatusNoRefresh");
+      case "bad_state":
+        return t("googleStatusBadState");
+      case "user_mismatch":
+        return t("googleStatusUserMismatch");
+      case "missing":
+        return t("googleStatusMissing");
+      case "error":
+        return t("googleStatusError");
+      default:
+        return null;
     }
   };
 
@@ -66,7 +75,9 @@ export function OnboardingWizard({
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>("pick");
   const [country, setCountry] = useState("FR");
-  const [primaryLanguage, setPrimaryLanguage] = useState<"fr" | "he" | "en">("fr");
+  const [primaryLanguage, setPrimaryLanguage] = useState<"fr" | "he" | "en">(
+    "fr",
+  );
   const [numbers, setNumbers] = useState<AvailableNumber[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [provisioned, setProvisioned] = useState<{
@@ -137,7 +148,13 @@ export function OnboardingWizard({
       <div className="flex flex-col items-center gap-5 text-center">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white shadow-lg">
           <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8">
-            <path d="m5 13 4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="m5 13 4 4L19 7"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <div className="space-y-2">
@@ -157,7 +174,13 @@ export function OnboardingWizard({
         >
           {t("doneCta")}
           <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-            <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M5 12h14M13 5l7 7-7 7"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
       </div>
@@ -169,7 +192,9 @@ export function OnboardingWizard({
       {/* Step 1: Connect Google (skippable, disabled si plan WhatsApp) */}
       <div
         className={`rounded-2xl border border-[var(--color-border)] p-5 transition-colors ${
-          googleStepDisabled ? "bg-[var(--color-muted)]/40 opacity-70" : "bg-white/70"
+          googleStepDisabled
+            ? "bg-[var(--color-muted)]/40 opacity-70"
+            : "bg-white/70"
         }`}
       >
         <div className="flex items-start justify-between gap-4">
@@ -181,7 +206,9 @@ export function OnboardingWizard({
               {t("step1Title")}
             </h3>
             <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-              {googleStepDisabled ? t("step1DescDisabled") : t("step1DescAvailable")}
+              {googleStepDisabled
+                ? t("step1DescDisabled")
+                : t("step1DescAvailable")}
             </p>
             {googleStepDisabled && (
               <Link
@@ -210,17 +237,25 @@ export function OnboardingWizard({
                 className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-muted-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                  <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M12 11v5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                   <circle cx="12" cy="8" r="1" fill="currentColor" />
                 </svg>
               </button>
-              <a
-                href="/api/onboarding/google/start"
-                className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
-              >
+              <ConnectGoogleLink className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]">
                 {t("connectGoogle")}
-              </a>
+              </ConnectGoogleLink>
             </div>
           )}
         </div>
@@ -296,7 +331,9 @@ export function OnboardingWizard({
       {/* Country picker */}
       <form onSubmit={search} className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-[var(--color-foreground)]">{t("countryLabel")}</span>
+          <span className="font-medium text-[var(--color-foreground)]">
+            {t("countryLabel")}
+          </span>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
@@ -394,7 +431,6 @@ export function OnboardingWizard({
           {t("skipPhoneNote")}
         </p>
       </div>
-
     </div>
   );
 }

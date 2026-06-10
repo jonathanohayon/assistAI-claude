@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent } from "@/lib/logger";
 
 // POST /api/agent/usage — ingestion de l'usage OpenAI Realtime réel depuis le
@@ -25,13 +27,12 @@ function toInt(v: unknown): number {
 }
 
 export async function POST(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
-  const body = (await req.json().catch(() => ({}))) as UsageBody;
+  const parsed = await parseJsonBody<UsageBody>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const inputTokens = toInt(body.inputTokens);
   const outputTokens = toInt(body.outputTokens);
   const cachedTokens = toInt(body.cachedTokens);

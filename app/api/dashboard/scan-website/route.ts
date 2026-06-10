@@ -13,7 +13,8 @@
 
 import { NextRequest } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent } from "@/lib/logger";
 import {
   hoursAgent,
@@ -33,14 +34,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const userId = session.user.id;
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
+  const userId = guard.userId;
 
-  const body = (await req.json().catch(() => ({}))) as { url?: string };
-  const url = (body.url ?? "").trim();
+  const parsed = await parseJsonBody<{ url?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const url = (parsed.data.url ?? "").trim();
   if (!url) {
     return Response.json({ error: "URL manquante" }, { status: 400 });
   }

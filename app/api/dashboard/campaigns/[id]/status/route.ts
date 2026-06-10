@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
@@ -30,7 +31,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { action?: string };
+  const parsed = await parseJsonBody<{ action?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const action = body.action ?? "";
   const rule = TRANSITIONS[action];
   if (!rule)

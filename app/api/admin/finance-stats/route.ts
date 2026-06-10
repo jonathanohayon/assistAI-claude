@@ -1,9 +1,6 @@
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { requireAdmin } from "@/lib/api/auth-guards";
 import { computeFinanceStats, type Granularity } from "@/lib/finance/cost";
 import { getCostRates } from "@/lib/finance/rates-storage";
 
@@ -24,18 +21,8 @@ function defaultRange(g: Granularity): { from: Date; to: Date } {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  const [me] = await db
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (me?.role !== "admin") {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
   const granParam = sp.get("granularity") ?? "month";

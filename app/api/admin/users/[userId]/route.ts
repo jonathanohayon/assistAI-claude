@@ -1,23 +1,13 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { isValidPlanKey } from "@/lib/plans";
 import { fullyDeleteUser } from "@/lib/release-user";
-
-const requireAdmin = async () => {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  return me?.role === "admin" ? me : null;
-};
 
 // Date très lointaine = "accès illimité" : le compte reste 'active' et n'est
 // jamais expiré par le cron billing (qui ne flippe que les paidUntil < now).
@@ -33,8 +23,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+  const me = guard.admin;
 
   const { userId } = await params;
   const [target] = await db
@@ -45,10 +36,12 @@ export async function PATCH(
   if (!target)
     return NextResponse.json({ error: "user introuvable" }, { status: 404 });
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     plan?: string;
     freeUnlimited?: boolean;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const updates: Partial<typeof users.$inferInsert> = {};
   const changed: string[] = [];
@@ -115,8 +108,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+  const me = guard.admin;
 
   const { userId } = await params;
   if (!userId) {

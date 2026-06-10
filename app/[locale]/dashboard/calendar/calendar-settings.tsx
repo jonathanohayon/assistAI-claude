@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
+import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 interface Calendar {
   id: string;
@@ -39,13 +40,19 @@ export function CalendarSettings({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/google/calendars${qs}`, { cache: "no-store" });
+        const res = await fetch(`/api/google/calendars${qs}`, {
+          cache: "no-store",
+        });
         const data = (await res.json()) as
           | { ok: true; calendars: Calendar[]; selectedId: string }
           | { ok: false; reason: string };
         if (cancelled) return;
         if (data.ok) {
-          setState({ status: "ready", calendars: data.calendars, selectedId: data.selectedId });
+          setState({
+            status: "ready",
+            calendars: data.calendars,
+            selectedId: data.selectedId,
+          });
         } else if (data.reason === "invalid_grant") {
           setState({ status: "invalid_grant" });
         } else {
@@ -73,7 +80,9 @@ export function CalendarSettings({
       if (data.ok) {
         setState({ ...state, selectedId: calendarId });
         const picked = state.calendars.find((c) => c.id === calendarId);
-        setSavedToast(t("calendarSelected", { name: picked?.summary ?? calendarId }));
+        setSavedToast(
+          t("calendarSelected", { name: picked?.summary ?? calendarId }),
+        );
         setTimeout(() => setSavedToast(null), 3000);
       }
     });
@@ -135,13 +144,12 @@ export function CalendarSettings({
           )}
         </div>
 
-        <a
-          href="/api/onboarding/google/start"
+        <ConnectGoogleLink
           className="shrink-0 rounded-full border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-foreground)] shadow-sm transition hover:bg-[var(--color-muted)]"
           title={t("reconnectTooltip")}
         >
           {t("reconnectButton")}
-        </a>
+        </ConnectGoogleLink>
       </div>
       {/* initialSelectedId est passé pour SSR-render correct avant le fetch ;
           on s'en sert pas directement dans le rendu vu que le state est

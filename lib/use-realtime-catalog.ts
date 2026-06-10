@@ -76,6 +76,7 @@ export function useRealtimeCatalog(): Catalog {
       if (cached) {
         const parsed = JSON.parse(cached) as Catalog;
         if (parsed?.models?.length > 0 && !cancelled) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation sessionStorage post-mount (SSR-safe), pattern voulu
           setCatalog(parsed);
         }
       }

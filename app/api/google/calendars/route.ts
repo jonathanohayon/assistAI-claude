@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { getTenantGoogleClients } from "@/lib/google";
 
 // GET /api/google/calendars[?asUserId=<uuid>]
@@ -13,14 +12,10 @@ import { getTenantGoogleClients } from "@/lib/google";
 // `asUserId` autorisé pour admin uniquement → liste les calendriers du
 // tenant cible (pour /admin/users/[id]/calendar).
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const scope = await resolveTargetUserId(req);
+  if ("unauthorized" in scope) {
     return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId: req.nextUrl.searchParams.get("asUserId"),
-  });
   if ("forbidden" in scope) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }

@@ -97,6 +97,7 @@ export class ScanError extends Error {}
 
 // ─── Garde anti-SSRF ────────────────────────────────────────────────────────
 
+/** True si l'IP (v4 ou v6) est privée/loopback/link-local/CGNAT — garde anti-SSRF. */
 const isPrivateIp = (ip: string): boolean => {
   const v = isIP(ip);
   if (v === 4) {
@@ -225,6 +226,7 @@ async function safeFetch(startUrl: URL): Promise<Response> {
 
 // ─── Extraction texte / liens (cheerio chargé dynamiquement) ────────────────
 
+/** Fetch sécurisé d'une page HTML, lecture bornée à MAX_BYTES — null si non-HTML/erreur réseau. */
 async function fetchHtml(url: URL): Promise<string | null> {
   let res: Response;
   try {
@@ -258,6 +260,7 @@ async function fetchHtml(url: URL): Promise<string | null> {
   );
 }
 
+/** Concatène des chunks de stream en un seul buffer, tronqué à `size` octets. */
 function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
   const out = new Uint8Array(size);
   let offset = 0;
@@ -279,6 +282,7 @@ interface ParsedPage {
   links: { href: string; label: string }[];
 }
 
+/** Parse le HTML (cheerio) → titre, texte nettoyé, données structurées schema.org, liens. */
 async function parseHtml(html: string): Promise<ParsedPage> {
   const { load } = await import("cheerio");
   const $ = load(html);
@@ -392,6 +396,7 @@ function composePageText(parsed: ParsedPage): string {
 }
 
 // ── Jina Reader : rend le JS et renvoie markdown (texte + liens) ────────────
+/** Récupère une page via r.jina.ai (rendu JS côté Jina) — null si vide/erreur/timeout. */
 async function fetchViaReader(
   target: URL,
 ): Promise<{ text: string; links: { href: string; label: string }[] } | null> {

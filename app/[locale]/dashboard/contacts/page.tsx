@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getTenantGoogleClients } from "@/lib/google";
 
 import { ContactsTable } from "./contacts-table";
+import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 export const dynamic = "force-dynamic";
 
@@ -90,12 +91,9 @@ export default async function ContactsPage(props: {
         {result.status === "no_google" ? (
           <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
             <p>{t("googleNotConnected")}</p>
-            <a
-              href="/api/onboarding/google/start"
-              className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]"
-            >
+            <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[var(--color-primary)]">
               {t("connectButton")}
-            </a>
+            </ConnectGoogleLink>
           </div>
         ) : result.status === "no_sheet" ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">

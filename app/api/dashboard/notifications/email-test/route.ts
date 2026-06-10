@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { sendNotificationTestEmail } from "@/lib/email";
 
 // Envoie un email de test branded Tamara au destinataire passé en body.
@@ -18,8 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { to?: string };
-  const to = (body.to ?? "").trim();
+  const parsed = await parseJsonBody<{ to?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const to = (parsed.data.to ?? "").trim();
   if (!to) {
     return NextResponse.json(
       { error: "Adresse email manquante" },

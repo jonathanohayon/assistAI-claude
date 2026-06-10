@@ -8,16 +8,11 @@ import {
   normalizeCostRates,
   type CostRates,
 } from "@/lib/finance/rates";
-import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
+import { SETTING_KEYS, getJsonSetting, setSetting } from "@/lib/settings";
 
 export async function getCostRates(): Promise<CostRates> {
-  const raw = await getSetting(SETTING_KEYS.COST_RATES);
-  if (!raw) return { ...DEFAULT_COST_RATES };
-  try {
-    return normalizeCostRates(JSON.parse(raw));
-  } catch {
-    return { ...DEFAULT_COST_RATES };
-  }
+  // getJsonSetting gère absent/corrompu → copie de DEFAULT_COST_RATES.
+  return getJsonSetting(SETTING_KEYS.COST_RATES, DEFAULT_COST_RATES, normalizeCostRates);
 }
 
 export async function setCostRates(rates: unknown): Promise<void> {

@@ -83,10 +83,19 @@ export type CreatePaymentInput = {
 };
 
 /**
- * Extrait les infos carte/token d'une réponse VERIFY HYP, de façon défensive
- * (les noms de champs varient selon la config du masof). Utilisé pour stocker
- * un token récurrent + l'affichage "•••• 1234". Renvoie des champs null si
- * absents — JAMAIS throw.
+ * Extrait les infos carte/token d'une réponse VERIFY HYP, de façon défensive.
+ *
+ * Pourquoi des noms de champs « flexibles » (Token|token, Tokef|TokenExp…) :
+ * la réponse VERIFY de Yaad/HYP n'est pas un schéma fixe — les champs présents
+ * et leur casse varient selon la configuration du masof (terminal marchand) et
+ * les options activées côté HYP. On teste donc plusieurs alias connus pour
+ * chaque info plutôt que de supposer un nom unique.
+ *
+ * Usage : stocker le token récurrent Hok Keva (HK=True, voir issueToken) qui
+ * permet de recharger la carte aux renouvellements sans la ressaisir, et
+ * l'affichage "•••• 1234" dans le billing. Renvoie des champs null si
+ * absents — JAMAIS throw (un VERIFY sans token ne doit pas casser le callback
+ * de paiement).
  */
 export function extractCardFromVerify(raw: Record<string, string>): {
   token: string | null;

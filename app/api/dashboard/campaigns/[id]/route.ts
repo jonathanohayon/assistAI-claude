@@ -103,6 +103,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (!campaign)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  // body optionnel : tous les champs sont facultatifs (patch partiel).
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const editable = campaign.status === "draft" || campaign.status === "paused";
 

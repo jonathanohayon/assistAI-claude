@@ -9,6 +9,7 @@ import {
   phoneNumbers,
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import {
   normalizeCallWindow,
@@ -94,7 +95,9 @@ export async function POST(req: NextRequest) {
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = await parseJsonBody<Record<string, unknown>>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const name =
     typeof body.name === "string" && body.name.trim()
       ? body.name.trim().slice(0, 160)

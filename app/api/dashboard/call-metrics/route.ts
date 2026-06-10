@@ -1,8 +1,7 @@
 import { and, desc, eq, gte, lte, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
@@ -57,24 +56,18 @@ interface CallMetricsMetadata {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const r = await resolveTargetUserId(req);
+  if ("unauthorized" in r) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if ("forbidden" in r) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const url = req.nextUrl;
   const period = url.searchParams.get("period") ?? "24h";
   const sinceRaw = url.searchParams.get("since");
   const untilRaw = url.searchParams.get("until");
-  const asUserId = url.searchParams.get("asUserId");
-
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   // Construit la fenêtre temporelle. Priorité : since/until explicites,
   // sinon period preset, sinon 24h par défaut.
@@ -96,7 +89,7 @@ export async function GET(req: NextRequest) {
   }
 
   const conditions: SQL[] = [
-    eq(events.userId, scope.userId),
+    eq(events.userId, r.userId),
     eq(events.event, "call_metrics"),
     gte(events.createdAt, sinceDate),
   ];

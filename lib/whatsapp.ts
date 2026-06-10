@@ -20,6 +20,16 @@
 //   Notre cas: la cliente vient de raccrocher → on est dans la fenêtre. Pour
 //   le proprio, idem si historique récent. Sinon, fallback template via
 //   WHATSAPP_OWNER_TEMPLATE_NAME (optionnel).
+//
+// Fallback template Twilio (erreur 21656) :
+//   Quand on envoie via un Content Template (ContentSid) et que Twilio répond
+//   21656 "Content Variables parameter is invalid" — template qui attend
+//   d'autres noms de variables, ou ContentSid supprimé — on retombe sur un
+//   message free-form. Ça ne marche que dans la fenêtre 24h, mais comme le
+//   récap part juste après l'appel de la cliente, la fenêtre est très
+//   probablement ouverte si elle nous a déjà écrit. Voir sendViaTwilio.
+
+import { normalizeE164 } from "@/lib/phone-utils";
 
 export interface WhatsAppResult {
   ok: boolean;
@@ -43,12 +53,6 @@ export interface WhatsAppOptions {
 }
 
 const META_API = "https://graph.facebook.com";
-
-const normalizeE164 = (number: string): string => {
-  const trimmed = number.trim();
-  const stripped = trimmed.replace(/^whatsapp:/, "").replace(/[\s()-]/g, "");
-  return stripped.startsWith("+") ? stripped : `+${stripped}`;
-};
 
 // Meta accepts the number without leading "+", per their docs.
 const metaNumber = (e164: string): string => e164.replace(/^\+/, "");

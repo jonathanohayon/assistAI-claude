@@ -2,7 +2,8 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -16,13 +17,12 @@ import { logEvent } from "@/lib/logger";
 // car un compte OAuth n'en a pas (un détournement de session = déjà un accès
 // complet, donc aucun risque nouveau).
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
-  const body = (await req.json().catch(() => ({}))) as { password?: string };
-  const password = String(body.password ?? "");
+  const parsed = await parseJsonBody<{ password?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const password = String(parsed.data.password ?? "");
   if (password.length < 8) {
     return NextResponse.json({ error: "too_short" }, { status: 400 });
   }
@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
   await db
     .update(users)
     .set({ passwordHash })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, guard.userId));
 
   await logEvent({
     source: "auth",
     event: "password_set",
     message: "Mot de passe défini/mis à jour depuis les réglages",
-    userId: session.user.id,
+    userId: guard.userId,
   });
 
   return NextResponse.json({ ok: true });

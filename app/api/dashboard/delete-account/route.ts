@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -20,20 +22,17 @@ import { fullyDeleteUser } from "@/lib/release-user";
 //   - Admin ne peut pas se self-delete via ce endpoint (would lock out
 //     l'instance — passer par l'autre admin si plusieurs)
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
-  const body = (await req.json().catch(() => ({}))) as {
-    confirmEmail?: string;
-  };
-  const typed = (body.confirmEmail ?? "").trim().toLowerCase();
+  const parsed = await parseJsonBody<{ confirmEmail?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const typed = (parsed.data.confirmEmail ?? "").trim().toLowerCase();
 
   const [me] = await db
     .select({ id: users.id, email: users.email, role: users.role })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, guard.userId))
     .limit(1);
   if (!me) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });

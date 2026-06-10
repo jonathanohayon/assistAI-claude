@@ -363,6 +363,7 @@ export function LiveTestPanel({
     temperature,
     speed,
     reactivity,
+    primaryLanguage,
     handleDataChannelMessage,
   ]);
 
@@ -391,6 +392,7 @@ export function LiveTestPanel({
   useEffect(() => {
     if (secondsLeft == null) return;
     if (secondsLeft <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fin de démo : il faut figer demoEnded AVANT stopSession() (qui reset secondsLeft à null), non dérivable au render
       setDemoEnded(true);
       stopSession();
       return;

@@ -21,19 +21,57 @@ import { currentPeriodWindow } from "@/lib/subscription";
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
 import { TrialExpiredGate } from "./billing/trial-expired-gate";
+import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 /**
  * "Sarah Cohen" → "SC" · "salon@prestige.com" → "S" · "" → "?"
  * Affiché dans l'avatar du UserMenu en lieu et place d'une vraie photo.
  */
-function getInitials(displayName: string | null | undefined, email: string | null | undefined): string {
+function getInitials(
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+): string {
   const name = (displayName ?? "").trim();
   if (name) {
     const parts = name.split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0] ?? "").join("").toUpperCase() || "?";
+    return (
+      parts
+        .map((p) => p[0] ?? "")
+        .join("")
+        .toUpperCase() || "?"
+    );
   }
   const e = (email ?? "").trim();
   return (e[0] ?? "?").toUpperCase();
+}
+
+/**
+ * Calcule le bandeau de compte à rebours d'essai gratuit.
+ * Retourne null si l'utilisateur n'est pas en période d'essai, sinon un label
+ * humain ("3h 20min" / "45 min" / "expired") + un niveau d'urgence (critical
+ * sous 2h) pour la couleur du bandeau.
+ */
+function computeTrialCountdown(
+  me:
+    | {
+        trialEndsAt: Date | string | null;
+        subscriptionStatus: string | null;
+      }
+    | undefined,
+): { label: string; urgency: "normal" | "critical" } | null {
+  if (!me?.trialEndsAt) return null;
+  if (me.subscriptionStatus !== "trialing") return null;
+  const ms = new Date(me.trialEndsAt).getTime() - Date.now();
+  if (ms <= 0) return { label: "expired", urgency: "critical" };
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const label =
+    hours > 0
+      ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}`
+      : `${minutes} min`;
+  const urgency = ms <= 2 * 60 * 60 * 1000 ? "critical" : "normal";
+  return { label, urgency };
 }
 
 export default async function DashboardLayout({
@@ -58,19 +96,7 @@ export default async function DashboardLayout({
   }
 
   // Trial countdown — shown as a banner above the tabs.
-  const trial = (() => {
-    if (!me?.trialEndsAt) return null;
-    if (me.subscriptionStatus !== "trialing") return null;
-    const ms = new Date(me.trialEndsAt).getTime() - Date.now();
-    if (ms <= 0) return { label: "expired" as const, urgency: "critical" as const };
-    const totalMinutes = Math.floor(ms / 60000);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const label = hours > 0 ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}` : `${minutes} min`;
-    const urgency =
-      ms <= 2 * 60 * 60 * 1000 ? ("critical" as const) : ("normal" as const);
-    return { label, urgency };
-  })();
+  const trial = computeTrialCountdown(me);
 
   // Essai terminé et compte non payé → gate bloquant (choix formule + CB).
   // Les admins n'y sont jamais soumis. Réutilise currentPeriodWindow.
@@ -81,7 +107,10 @@ export default async function DashboardLayout({
       {
         subscriptionStatus: me.subscriptionStatus,
         subscriptionPlan: me.subscriptionPlan,
-        subscriptionPeriod: me.subscriptionPeriod as "monthly" | "annual" | null,
+        subscriptionPeriod: me.subscriptionPeriod as
+          | "monthly"
+          | "annual"
+          | null,
         trialEndsAt: me.trialEndsAt,
         paidUntil: me.paidUntil,
       },
@@ -154,12 +183,9 @@ export default async function DashboardLayout({
         <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-4">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 sm:text-sm">
             <span>{t("googleNotConnected")}</span>
-            <a
-              href="/api/onboarding/google/start"
-              className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white"
-            >
+            <ConnectGoogleLink className="whitespace-nowrap rounded-full bg-[var(--color-foreground)] px-3 py-1 text-[11px] font-medium text-white">
               {t("connectButton")}
-            </a>
+            </ConnectGoogleLink>
           </div>
         </div>
       )}

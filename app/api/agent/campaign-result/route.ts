@@ -1,6 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { campaignCalls, campaignContacts, campaigns } from "@/lib/db/schema";
 import { CALL_OUTCOMES, type CallOutcome } from "@/lib/campaigns/constants";
@@ -28,12 +30,12 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  if (!secret || secret !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
-  const body = (await req.json().catch(() => ({}))) as Body;
+  const parsed = await parseJsonBody<Body>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const campaignId = body.campaignId ?? "";
   const contactId = body.contactId ?? "";
   if (!campaignId || !contactId) {

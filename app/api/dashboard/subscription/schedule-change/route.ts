@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -19,11 +19,11 @@ import { classifyChange, effectiveDowngradeDate } from "@/lib/subscription";
 //   - plan == plan courant → annule (no-op).
 //   - plan upgrade → 400 (doit passer par le paiement).
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
+  // body optionnel : un body vide ⇒ plan undefined ⇒ annule le downgrade
+  // programmé (même sémantique que { plan: null }).
   const body = (await req.json().catch(() => ({}))) as {
     plan?: string | null;
     period?: string;
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       paidUntil: users.paidUntil,
     })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, guard.userId))
     .limit(1);
   if (!me) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -47,12 +47,12 @@ export async function POST(req: NextRequest) {
     await db
       .update(users)
       .set({ scheduledPlan: null, scheduledPlanPeriod: null, scheduledPlanAt: null })
-      .where(eq(users.id, session.user.id));
+      .where(eq(users.id, guard.userId));
     await logEvent({
       source: "auth",
       event: "subscription_schedule_cleared",
       message: "Changement de plan programmé annulé",
-      userId: session.user.id,
+      userId: guard.userId,
     });
     return NextResponse.json({ ok: true, cleared: true });
   }
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     await db
       .update(users)
       .set({ scheduledPlan: null, scheduledPlanPeriod: null, scheduledPlanAt: null })
-      .where(eq(users.id, session.user.id));
+      .where(eq(users.id, guard.userId));
     return NextResponse.json({ ok: true, cleared: true });
   }
   if (change === "upgrade") {
@@ -107,13 +107,13 @@ export async function POST(req: NextRequest) {
       scheduledPlanPeriod: period,
       scheduledPlanAt: effectiveAt,
     })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, guard.userId));
 
   await logEvent({
     source: "auth",
     event: "subscription_downgrade_scheduled",
     message: `Downgrade ${currentPlan} → ${nextPlan} programmé pour le ${effectiveAt.toISOString()}`,
-    userId: session.user.id,
+    userId: guard.userId,
     metadata: { from: currentPlan, to: nextPlan, period, effectiveAt: effectiveAt.toISOString() },
   });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent, type LogLevel, type LogSource } from "@/lib/logger";
 
 // Internal POST endpoint for the LiveKit agent worker (or any other service)
@@ -12,14 +13,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     source?: string;
     event?: string;
     message?: string;
     level?: string;
     userId?: string | null;
     metadata?: Record<string, unknown>;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   if (!body.source || !body.event || !body.message) {
     return NextResponse.json(

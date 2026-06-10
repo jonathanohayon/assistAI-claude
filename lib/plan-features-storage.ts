@@ -7,18 +7,11 @@ import {
   normalizeMatrix,
   type PlanFeatureMatrix,
 } from "@/lib/plan-features";
-import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
+import { SETTING_KEYS, getJsonSetting, setSetting } from "@/lib/settings";
 
 export async function getPlanFeatureMatrix(): Promise<PlanFeatureMatrix> {
-  const raw = await getSetting(SETTING_KEYS.PLAN_FEATURES);
-  if (!raw) return JSON.parse(JSON.stringify(DEFAULT_MATRIX));
-  try {
-    return normalizeMatrix(JSON.parse(raw));
-  } catch {
-    // JSON corrompu — pas de log ici, le getter est appelé à chaque
-    // requête API. On retombe silencieusement sur le défaut.
-    return JSON.parse(JSON.stringify(DEFAULT_MATRIX));
-  }
+  // getJsonSetting gère absent/corrompu → copie de DEFAULT_MATRIX.
+  return getJsonSetting(SETTING_KEYS.PLAN_FEATURES, DEFAULT_MATRIX, normalizeMatrix);
 }
 
 export async function setPlanFeatureMatrix(

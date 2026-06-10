@@ -1,25 +1,24 @@
 import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
 import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { logEvent } from "@/lib/logger";
+import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
   const [config] = await db
     .select()
     .from(agentConfigs)
-    .where(eq(agentConfigs.userId, session.user.id))
+    .where(eq(agentConfigs.userId, guard.userId))
     .limit(1);
 
   if (!config) {
@@ -30,11 +29,11 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
+  // body optionnel : tous les champs sont facultatifs, un body vide est un
+  // no-op valide (seul updatedAt bouge).
   const body = (await req.json().catch(() => ({}))) as Partial<{
     instructions: string;
     greetingInstructions: string;
@@ -71,7 +70,7 @@ export async function PUT(req: NextRequest) {
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
-    .where(eq(agentConfigs.userId, session.user.id))
+    .where(eq(agentConfigs.userId, guard.userId))
     .limit(1);
   if (!current) {
     return NextResponse.json({ error: "No config" }, { status: 404 });
@@ -208,14 +207,14 @@ export async function PUT(req: NextRequest) {
   const [updated] = await db
     .update(agentConfigs)
     .set(updates)
-    .where(eq(agentConfigs.userId, session.user.id))
+    .where(eq(agentConfigs.userId, guard.userId))
     .returning();
 
   await logEvent({
     source: "web",
     event: "config_updated",
     message: `Config mise à jour (${Object.keys(updates).length - 1} champs)`,
-    userId: session.user.id,
+    userId: guard.userId,
     metadata: {
       changedFields: Object.keys(updates).filter((k) => k !== "updatedAt"),
     },
@@ -223,11 +222,7 @@ export async function PUT(req: NextRequest) {
 
   // Pré-génère l'audio d'accueil en arrière-plan (greeting/voix/langue ont pu
   // changer) → 1er appel instantané. Fire-and-forget, ne bloque pas la réponse.
-  void warmGreetingAudioForUser(session.user.id);
+  void warmGreetingAudioForUser(guard.userId);
 
   return NextResponse.json(updated);
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(Math.max(n, min), max);
 }

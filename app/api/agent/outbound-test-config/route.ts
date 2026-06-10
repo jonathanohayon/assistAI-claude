@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
 import { db } from "@/lib/db";
 import { outboundAgents } from "@/lib/db/schema";
@@ -13,10 +14,8 @@ import { personalityToRealtime } from "@/lib/voice-tuning";
 // même parser), mais bâtie depuis l'agent réutilisable seul — sans campagne ni
 // contact : on teste sa voix / persona / connaissance « à blanc ».
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  if (!secret || secret !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const agentId = req.nextUrl.searchParams.get("agentId") ?? "";
   if (!agentId) {

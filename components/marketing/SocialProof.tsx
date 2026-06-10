@@ -29,11 +29,9 @@ function Stat({
   const reduce = useReducedMotion();
 
   useEffect(() => {
-    if (!inView) return;
-    if (reduce) {
-      setDisplay(formatFr(value));
-      return;
-    }
+    // En reduced-motion on n'anime pas : la valeur finale est dérivée au
+    // render (voir `shown` ci-dessous), pas besoin d'effect.
+    if (!inView || reduce) return;
     const controls = animate(mv, value, {
       duration: 1.8,
       delay,
@@ -43,10 +41,13 @@ function Stat({
     return () => controls.stop();
   }, [inView, value, delay, mv, reduce]);
 
+  // prefers-reduced-motion → affiche directement la valeur finale.
+  const shown = reduce && inView ? formatFr(value) : display;
+
   return (
     <div ref={ref} className="flex flex-col items-start gap-2">
       <div className="font-display text-5xl leading-none tracking-tight text-[#BE185D] sm:text-6xl">
-        {display}
+        {shown}
         {suffix ? <span className="ml-1 text-3xl sm:text-4xl">{suffix}</span> : null}
       </div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
