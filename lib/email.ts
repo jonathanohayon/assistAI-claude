@@ -21,6 +21,7 @@ import { Resend } from "resend";
 
 import type { PlanFeatures } from "@/lib/plan-features";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
+import { ltrIsolate } from "@/lib/phone-utils";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 const SUPPORTED_LOCALES = ["fr", "he", "en"] as const;
@@ -150,10 +151,10 @@ export async function sendTrialWarningEmail(
       : t("subjectHours");
 
   const phoneLineText = opts.phoneNumber
-    ? t("phoneLineWithPhone", { phone: opts.phoneNumber })
+    ? t("phoneLineWithPhone", { phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneLineGeneric");
   const phoneSpecificHtml = opts.phoneNumber
-    ? t("phoneSpecific", { phone: opts.phoneNumber })
+    ? t("phoneSpecific", { phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneGeneric");
 
   if (!client) {
@@ -223,7 +224,7 @@ export async function sendTrialDeletedEmail(
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const subject = t("subject");
   const phoneLine = opts.phoneNumber
-    ? t("phoneLineWithPhone", { phone: opts.phoneNumber })
+    ? t("phoneLineWithPhone", { phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneLineGeneric");
 
   if (!client) {
@@ -328,7 +329,7 @@ export async function sendWelcomeEmail(
 
   recos.push({
     title: t("reco1Title"),
-    body: t("reco1Body", { phone: opts.phoneNumber }),
+    body: t("reco1Body", { phone: ltrIsolate(opts.phoneNumber) }),
   });
 
   let n = 2;
@@ -358,11 +359,11 @@ export async function sendWelcomeEmail(
     href: "https://aitamara.com/dashboard",
   });
 
-  const subject = t("subject", { phone: opts.phoneNumber });
+  const subject = t("subject", { phone: ltrIsolate(opts.phoneNumber) });
   const text =
     `${helloText}\n\n` +
     `${t("introTextBody")}\n\n` +
-    `   ${opts.phoneNumber}\n\n` +
+    `   ${ltrIsolate(opts.phoneNumber)}\n\n` +
     `${t("activePlanTextLabel")} ${planLabel}\n` +
     `${trialLine}\n\n` +
     `${t("todoHeadingText")}\n\n` +
@@ -376,7 +377,7 @@ export async function sendWelcomeEmail(
       `\n=================== WELCOME EMAIL FALLBACK (no RESEND_API_KEY) ===================` +
         `\nTo:    ${to}` +
         `\nFrom:  ${from}` +
-        `\nPhone: ${opts.phoneNumber}` +
+        `\nPhone: ${ltrIsolate(opts.phoneNumber)}` +
         `\nPlan:  ${planLabel}` +
         `\n==================================================================================\n`,
     );
@@ -405,7 +406,7 @@ export async function sendWelcomeEmail(
         ${helloHtml}
       </p>
       <div style="background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;text-align:center;font-family:'SF Mono',Menlo,monospace;font-size:24px;font-weight:600;letter-spacing:0.04em;padding:18px 20px;border-radius:14px;margin:0 0 22px;">
-        ${opts.phoneNumber}
+        ${ltrIsolate(opts.phoneNumber)}
       </div>
       <table cellspacing="0" cellpadding="0" style="width:100%;margin:0 0 22px;font-size:13px;border-collapse:collapse;">
         <tr>

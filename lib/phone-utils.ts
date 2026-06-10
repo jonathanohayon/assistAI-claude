@@ -65,3 +65,17 @@ export function normalizePhoneStrict(raw: string): string | null {
  */
 export const normalizePhoneForDedup = (phone: string): string =>
   (phone ?? "").replace(/[^\d]/g, "");
+
+/**
+ * Entoure une valeur de marques d'isolation bidi LTR (U+2066 … U+2069) pour
+ * qu'elle s'affiche correctement quand elle est insérée dans un texte RTL
+ * (hébreu) : sans ça, le « + » en tête d'un numéro E.164 ("+972…") est rejeté
+ * en fin de chaîne par l'algorithme bidi (rendu "972…+"). À utiliser pour tout
+ * numéro/identifiant LTR injecté dans un message multilingue (WhatsApp, email…).
+ * Renvoie la chaîne vide inchangée.
+ */
+export const ltrIsolate = (s: string): string => {
+  const LRI = String.fromCharCode(0x2066); // LEFT-TO-RIGHT ISOLATE
+  const PDI = String.fromCharCode(0x2069); // POP DIRECTIONAL ISOLATE
+  return s ? LRI + s + PDI : s;
+};
