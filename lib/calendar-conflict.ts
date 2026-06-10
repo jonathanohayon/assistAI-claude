@@ -10,7 +10,44 @@
 // See lib/schedule.ts for the companion centre/day rules.
 import type { calendar_v3 } from "@googleapis/calendar";
 
+import { logEvent } from "@/lib/logger";
 import { JERUSALEM_TZ, jerusalemToUTCISO } from "@/lib/tz";
+
+/**
+ * Mesure la durée d'un appel Google `events.list` et la logge (fire-and-forget
+ * pour ne pas ajouter de latence à la mesure). Visible dans /dashboard/logs
+ * (source=calendar, event=google_events_list_latency). Sert à décider si un
+ * cache/miroir DB des créneaux occupés vaut le coup vs la latence réelle.
+ */
+async function timedEventsList(
+  calendar: calendar_v3.Calendar,
+  params: calendar_v3.Params$Resource$Events$List,
+  op: string,
+) {
+  const t0 = Date.now();
+  try {
+    const res = await calendar.events.list(params);
+    const ms = Date.now() - t0;
+    void logEvent({
+      source: "calendar",
+      event: "google_events_list_latency",
+      level: ms > 800 ? "warn" : "info",
+      message: `events.list ${op} → ${ms}ms (${res.data.items?.length ?? 0} events)`,
+      metadata: { op, ms, calendarId: params.calendarId, count: res.data.items?.length ?? 0 },
+    });
+    return res;
+  } catch (e) {
+    const ms = Date.now() - t0;
+    void logEvent({
+      source: "calendar",
+      event: "google_events_list_error",
+      level: "error",
+      message: `events.list ${op} échoué après ${ms}ms : ${(e as Error).message?.slice(0, 150)}`,
+      metadata: { op, ms, calendarId: params.calendarId },
+    });
+    throw e;
+  }
+}
 
 // Business hours (wall clock, Asia/Jerusalem). Slots sit on a 30-min grid;
 // a candidate start is only valid if the FULL service duration fits before
@@ -118,14 +155,18 @@ export async function findConflicts(
   // Google's events.list timeMin is exclusive on end time and timeMax
   // exclusive on start time — which already matches our edge-touching rule —
   // but we re-check in JS to be robust to all-day events and TZ edge cases.
-  const res = await calendar.events.list({
-    calendarId,
-    timeMin: new Date(startMs).toISOString(),
-    timeMax: new Date(endMs).toISOString(),
-    singleEvents: true,
-    orderBy: "startTime",
-    timeZone: JERUSALEM_TZ,
-  });
+  const res = await timedEventsList(
+    calendar,
+    {
+      calendarId,
+      timeMin: new Date(startMs).toISOString(),
+      timeMax: new Date(endMs).toISOString(),
+      singleEvents: true,
+      orderBy: "startTime",
+      timeZone: JERUSALEM_TZ,
+    },
+    "findConflicts",
+  );
 
   const conflicts: CalendarConflict[] = [];
   for (const ev of res.data.items || []) {
@@ -162,14 +203,18 @@ export async function computeFreeSlots(
 ): Promise<string[]> {
   const timeMin = jerusalemToUTCISO(date, "08:00:00");
   const timeMax = jerusalemToUTCISO(date, "20:00:00");
-  const res = await calendar.events.list({
-    calendarId,
-    timeMin,
-    timeMax,
-    singleEvents: true,
-    orderBy: "startTime",
-    timeZone: JERUSALEM_TZ,
-  });
+  const res = await timedEventsList(
+    calendar,
+    {
+      calendarId,
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      orderBy: "startTime",
+      timeZone: JERUSALEM_TZ,
+    },
+    "computeFreeSlots",
+  );
 
   const busy = blockingIntervals(res.data.items || []);
   return freeSlotsFromBusy(date, durationMin, busy, Date.now());

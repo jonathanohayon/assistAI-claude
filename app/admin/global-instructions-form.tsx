@@ -40,11 +40,16 @@ Règles :
 
 Laisse vide pour utiliser le prompt par défaut.`;
 
+const PLACEHOLDER_GREETING = `Salue chaleureusement l'appelant en quelques mots et demande-lui comment tu peux l'aider. Reste sur 1 ou 2 phrases maximum, ton naturel et amical.
+
+Laisse vide pour utiliser la consigne d'accueil hardcodée du plan.`;
+
 export type GlobalInstructionsSection = "global" | "template" | "summary";
 
 export function GlobalInstructionsForm({
   initialGlobalByPlan,
   initialTemplateByPlan,
+  initialGreetingByPlan,
   initialSummaryPromptByPlan,
   /** Si fourni, n'affiche QUE cette sous-section (les 2 autres sont
    *  masquées via display:none mais conservent leur state pour pouvoir
@@ -54,6 +59,7 @@ export function GlobalInstructionsForm({
 }: {
   initialGlobalByPlan: Record<PlanKey, string>;
   initialTemplateByPlan: Record<PlanKey, string>;
+  initialGreetingByPlan: Record<PlanKey, string>;
   initialSummaryPromptByPlan: Record<PlanKey, string>;
   section?: GlobalInstructionsSection;
 }) {
@@ -64,6 +70,8 @@ export function GlobalInstructionsForm({
     useState<Record<PlanKey, string>>(initialGlobalByPlan);
   const [templateByPlan, setTemplateByPlan] =
     useState<Record<PlanKey, string>>(initialTemplateByPlan);
+  const [greetingByPlan, setGreetingByPlan] =
+    useState<Record<PlanKey, string>>(initialGreetingByPlan);
   const [summaryByPlan, setSummaryByPlan] =
     useState<Record<PlanKey, string>>(initialSummaryPromptByPlan);
   // Onglet partagé entre les 2 sections (Règles communes + Template
@@ -86,6 +94,7 @@ export function GlobalInstructionsForm({
         body: JSON.stringify({
           globalInstructionsByPlan: globalByPlan,
           onboardingTemplateByPlan: templateByPlan,
+          onboardingGreetingByPlan: greetingByPlan,
           summaryPromptByPlan: summaryByPlan,
         }),
       });
@@ -201,7 +210,8 @@ export function GlobalInstructionsForm({
           {PLANS.map((p) => {
             const active = activePlan === p.key;
             const planDirty =
-              templateByPlan[p.key] !== initialTemplateByPlan[p.key];
+              templateByPlan[p.key] !== initialTemplateByPlan[p.key] ||
+              greetingByPlan[p.key] !== initialGreetingByPlan[p.key];
             return (
               <button
                 type="button"
@@ -238,6 +248,36 @@ export function GlobalInstructionsForm({
           placeholder={PLACEHOLDER_TEMPLATE}
           className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
         />
+
+        {/* Greeting d'inscription — consigne d'accueil seedée avec la persona.
+            Même cascade : vide ⇒ greeting hardcodé per-plan (initial-config). */}
+        <div className="mt-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
+            2b · Consigne d&apos;accueil des nouveaux tenants
+          </p>
+          <p className="mb-3 mt-1 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
+            La <strong>phrase d&apos;entrée</strong> seedée avec la persona à
+            l&apos;inscription (champ « phrase d&apos;accueil » du dashboard
+            tenant, plan{" "}
+            <strong>{PLANS.find((p) => p.key === activePlan)?.name}</strong>).
+            Consigne ouverte plutôt que texte littéral : le modèle Realtime
+            compose mieux un accueil fluide qu&apos;il ne récite un texte
+            imposé. N&apos;affecte pas les tenants existants.
+          </p>
+          <textarea
+            value={greetingByPlan[activePlan] ?? ""}
+            onChange={(e) => {
+              setGreetingByPlan((prev) => ({
+                ...prev,
+                [activePlan]: e.target.value,
+              }));
+              setDirty(true);
+            }}
+            rows={5}
+            placeholder={PLACEHOLDER_GREETING}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+          />
+        </div>
       </div>
 
       {/* WhatsApp summary system prompt — per plan, applied at runtime when

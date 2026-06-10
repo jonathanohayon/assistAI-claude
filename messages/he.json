@@ -611,7 +611,7 @@
     "errNetwork": "שגיאת רשת"
   },
   "Onboarding": {
-    "trialLabel": "ניסיון חינם — כל הפיצ'רים כלולים",
+    "trialLabel": "ניסיון חינם — 60 דקות שיחה או 24 שעות",
     "activePlan": "תוכנית פעילה",
     "popularBadge": "★ פופולרי",
     "pricePerMonthHT": "{price} € ללא מע״מ / חודש",
@@ -711,7 +711,8 @@
     "userMenuAria": "תפריט משתמש",
     "loggedInAs": "מחובר בתור",
     "settingsLink": "הגדרות",
-    "logoutButton": "התנתקות"
+    "logoutButton": "התנתקות",
+    "trialCallMinutesLeft": "{min} דקות שיחה נותרו"
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",

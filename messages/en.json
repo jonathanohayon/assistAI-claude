@@ -611,7 +611,7 @@
     "errNetwork": "Network error"
   },
   "Onboarding": {
-    "trialLabel": "Free trial — all features included",
+    "trialLabel": "Free trial — 60 call minutes or 24h",
     "activePlan": "Active plan",
     "popularBadge": "★ Popular",
     "pricePerMonthHT": "€{price} ex. VAT / month",
@@ -711,7 +711,8 @@
     "userMenuAria": "User menu",
     "loggedInAs": "Signed in as",
     "settingsLink": "Settings",
-    "logoutButton": "Sign out"
+    "logoutButton": "Sign out",
+    "trialCallMinutesLeft": "{min} call min left"
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",

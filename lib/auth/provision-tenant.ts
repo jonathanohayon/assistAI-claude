@@ -6,7 +6,10 @@ import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { getInitialInstructionsForPlan } from "@/lib/initial-config";
 import { type PlanKey } from "@/lib/plans";
-import { getOnboardingTemplateByPlan } from "@/lib/settings";
+import {
+  getOnboardingGreetingByPlan,
+  getOnboardingTemplateByPlan,
+} from "@/lib/settings";
 import { computeTrialEndsAt } from "@/lib/trial";
 
 interface ProvisionTenantInput {
@@ -59,15 +62,22 @@ export async function provisionTenant(input: ProvisionTenantInput) {
     .returning();
 
   // Bootstrap agent_config avec la persona du PLAN choisi.
-  const templatesByPlan = await getOnboardingTemplateByPlan();
+  // Cascade : template/greeting admin per-plan (/admin → Persona template)
+  // → sinon valeurs hardcodées per-plan de lib/initial-config.
+  const [templatesByPlan, greetingsByPlan] = await Promise.all([
+    getOnboardingTemplateByPlan(),
+    getOnboardingGreetingByPlan(),
+  ]);
   const defaults = getInitialInstructionsForPlan(plan);
   const adminTemplate = templatesByPlan[plan]?.trim() ?? "";
+  const adminGreeting = greetingsByPlan[plan]?.trim() ?? "";
   const seedInstructions = adminTemplate || defaults.instructions;
+  const seedGreeting = adminGreeting || defaults.greeting;
 
   await db.insert(agentConfigs).values({
     userId: created.id,
     instructions: seedInstructions,
-    greetingInstructions: defaults.greeting,
+    greetingInstructions: seedGreeting,
   });
 
   return created;

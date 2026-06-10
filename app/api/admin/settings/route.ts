@@ -19,6 +19,7 @@ import {
   getGlobalInstructionsByPlan,
   getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
+  getOnboardingGreetingByPlan,
   getOnboardingTemplateByPlan,
   getPerCallContextTemplateByPlan,
   getPromptBlockOrderByPlan,
@@ -30,6 +31,7 @@ import {
   setGlobalInstructionsByPlan,
   setGreetingFallbackTemplateByPlan,
   setHangupDirectiveByPlan,
+  setOnboardingGreetingByPlan,
   setOnboardingTemplateByPlan,
   setPerCallContextTemplateByPlan,
   setPromptBlockOrderByPlan,
@@ -41,6 +43,7 @@ import {
   type GlobalInstructionsByPlan,
   type GreetingFallbackTemplateByPlan,
   type HangupDirectiveByPlan,
+  type OnboardingGreetingByPlan,
   type OnboardingTemplateByPlan,
   type PerCallContextTemplateByPlan,
   type PromptBlockOrderByPlan,
@@ -60,6 +63,7 @@ export async function GET() {
   const onboardingTemplate =
     (await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE)) ?? "";
   const onboardingTemplateByPlan = await getOnboardingTemplateByPlan();
+  const onboardingGreetingByPlan = await getOnboardingGreetingByPlan();
   const planFeatures = await getPlanFeatureMatrix();
   const planPricing = await getPlanPricingMap();
   const summaryPromptByPlan = await getSummaryPromptByPlan();
@@ -78,6 +82,7 @@ export async function GET() {
     globalInstructionsByPlan,
     onboardingTemplate,
     onboardingTemplateByPlan,
+    onboardingGreetingByPlan,
     planFeatures,
     planPricing,
     summaryPromptByPlan,
@@ -103,6 +108,7 @@ export async function PUT(req: NextRequest) {
     globalInstructionsByPlan?: Partial<GlobalInstructionsByPlan>;
     onboardingTemplate?: string;
     onboardingTemplateByPlan?: Partial<OnboardingTemplateByPlan>;
+    onboardingGreetingByPlan?: Partial<OnboardingGreetingByPlan>;
     planFeatures?: PlanFeatureMatrix;
     planPricing?: Partial<PlanPricingMap>;
     summaryPromptByPlan?: Partial<SummaryPromptByPlan>;
@@ -144,6 +150,13 @@ export async function PUT(req: NextRequest) {
   ) {
     await setOnboardingTemplateByPlan(body.onboardingTemplateByPlan);
     changed.push("onboarding_template_by_plan");
+  }
+  if (
+    body.onboardingGreetingByPlan &&
+    typeof body.onboardingGreetingByPlan === "object"
+  ) {
+    await setOnboardingGreetingByPlan(body.onboardingGreetingByPlan);
+    changed.push("onboarding_greeting_by_plan");
   }
   if (body.planFeatures && typeof body.planFeatures === "object") {
     // Le helper normalise les clés inconnues + fillna les manquantes.

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -11,12 +11,13 @@ import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { calls, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { PLANS } from "@/lib/plans";
 import { currentPeriodWindow } from "@/lib/subscription";
+import { TRIAL_SECONDS_LIMIT } from "@/lib/trial";
 
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
@@ -58,20 +59,39 @@ function computeTrialCountdown(
         subscriptionStatus: string | null;
       }
     | undefined,
-): { label: string; urgency: "normal" | "critical" } | null {
+  trialSecondsUsed = 0,
+):
+  | {
+      expired: boolean;
+      timeLabel: string;
+      callMinutesLeft: number;
+      urgency: "normal" | "critical";
+    }
+  | null {
   if (!me?.trialEndsAt) return null;
   if (me.subscriptionStatus !== "trialing") return null;
   const ms = new Date(me.trialEndsAt).getTime() - Date.now();
-  if (ms <= 0) return { label: "expired", urgency: "critical" };
+  // Minutes d'appels restantes sur le quota essai (60 min). On arrondit au
+  // supérieur pour ne pas afficher "0 min" tant qu'il reste des secondes.
+  const callMinutesLeft = Math.max(
+    0,
+    Math.ceil((TRIAL_SECONDS_LIMIT - trialSecondsUsed) / 60),
+  );
+  // Épuisé au PREMIER atteint : temps OU minutes (cohérent avec
+  // isTrialExhausted côté api/agent/config).
+  if (ms <= 0 || trialSecondsUsed >= TRIAL_SECONDS_LIMIT) {
+    return { expired: true, timeLabel: "", callMinutesLeft: 0, urgency: "critical" };
+  }
   const totalMinutes = Math.floor(ms / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  const label =
+  const timeLabel =
     hours > 0
       ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}`
       : `${minutes} min`;
-  const urgency = ms <= 2 * 60 * 60 * 1000 ? "critical" : "normal";
-  return { label, urgency };
+  const urgency =
+    ms <= 2 * 60 * 60 * 1000 || callMinutesLeft <= 10 ? "critical" : "normal";
+  return { expired: false, timeLabel, callMinutesLeft, urgency };
 }
 
 export default async function DashboardLayout({
@@ -95,8 +115,20 @@ export default async function DashboardLayout({
     redirect(`/${locale}/verify-email?email=${encodeURIComponent(me.email)}`);
   }
 
-  // Trial countdown — shown as a banner above the tabs.
-  const trial = computeTrialCountdown(me);
+  // Trial countdown — shown as a banner above the tabs. Pour un tenant en
+  // essai, on lit aussi les minutes d'appels consommées (quota 60 min) afin
+  // d'afficher les minutes restantes en plus du temps.
+  let trialSecondsUsed = 0;
+  if (me?.subscriptionStatus === "trialing") {
+    const [usage] = await db
+      .select({
+        seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
+      })
+      .from(calls)
+      .where(eq(calls.userId, me.id));
+    trialSecondsUsed = usage?.seconds ?? 0;
+  }
+  const trial = computeTrialCountdown(me, trialSecondsUsed);
 
   // Essai terminé et compte non payé → gate bloquant (choix formule + CB).
   // Les admins n'y sont jamais soumis. Réutilise currentPeriodWindow.
@@ -213,7 +245,7 @@ export default async function DashboardLayout({
         <div
           className={`relative z-10 mx-auto w-full max-w-5xl px-6 pt-4 ${
             trial.urgency === "critical"
-              ? trial.label === "expired"
+              ? trial.expired
                 ? "text-red-700"
                 : "text-amber-700"
               : "text-[var(--color-muted-foreground)]"
@@ -222,18 +254,20 @@ export default async function DashboardLayout({
           <div
             className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-2 text-xs sm:text-sm ${
               trial.urgency === "critical"
-                ? trial.label === "expired"
+                ? trial.expired
                   ? "border-red-200 bg-red-50"
                   : "border-amber-200 bg-amber-50"
                 : "border-[var(--color-border)] bg-white"
             }`}
           >
             <span>
-              {trial.label === "expired" ? (
+              {trial.expired ? (
                 t("trialExpired")
               ) : (
                 <>
-                  {t("trialRemainingMessage", { label: trial.label })}
+                  {t("trialRemainingMessage", { label: trial.timeLabel })}
+                  {" · "}
+                  {t("trialCallMinutesLeft", { min: trial.callMinutesLeft })}
                   {trial.urgency === "critical" && (
                     <> · {t("trialAccountDeletion")}</>
                   )}

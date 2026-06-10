@@ -1,6 +1,10 @@
+import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { db } from "@/lib/db";
+import { calls } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { isTrialExhausted } from "@/lib/trial";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -54,6 +58,44 @@ export async function GET(req: NextRequest) {
   if (!tenant) tenant = await resolveDefaultTenant();
   if (!tenant) {
     return NextResponse.json({ error: "No tenant" }, { status: 404 });
+  }
+
+  // ── Plafond essai gratuit : 60 min d'appels OU 24h, au premier atteint ──
+  // Pour un tenant `trialing`, on refuse de servir la config (403) dès qu'une
+  // des deux limites est franchie → le worker ne démarre pas l'agent. La
+  // suppression complète (compte + numéro Twilio) à 24h reste gérée par le
+  // cron trial-cleanup ; ce gate coupe en amont quand les 60 min sont
+  // atteintes avant la fin des 24h.
+  if (tenant.user.subscriptionStatus === "trialing") {
+    const [usage] = await db
+      .select({
+        seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
+      })
+      .from(calls)
+      .where(eq(calls.userId, tenant.user.id));
+    const trialSecondsUsed = usage?.seconds ?? 0;
+    if (
+      isTrialExhausted({
+        subscriptionStatus: tenant.user.subscriptionStatus,
+        trialEndsAt: tenant.user.trialEndsAt,
+        trialSecondsUsed,
+      })
+    ) {
+      await logEvent({
+        source: "tenant",
+        event: "trial_exhausted_block",
+        message: `Appel refusé : essai épuisé (${Math.round(
+          trialSecondsUsed / 60,
+        )} min utilisées) pour ${tenant.user.email}`,
+        level: "warn",
+        userId: tenant.user.id,
+        metadata: {
+          trialSecondsUsed,
+          trialEndsAt: tenant.user.trialEndsAt,
+        },
+      });
+      return NextResponse.json({ error: "trial_exhausted" }, { status: 403 });
+    }
   }
 
   // ── Parallel DB roundtrips ─────────────────────────────────────────────

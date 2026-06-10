@@ -611,7 +611,7 @@
     "errNetwork": "Erreur réseau"
   },
   "Onboarding": {
-    "trialLabel": "Essai gratuit — toutes les fonctionnalités incluses",
+    "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",
     "activePlan": "Formule active",
     "popularBadge": "★ Populaire",
     "pricePerMonthHT": "{price} € HT / mois",
@@ -711,7 +711,8 @@
     "userMenuAria": "Menu utilisateur",
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
-    "logoutButton": "Se déconnecter"
+    "logoutButton": "Se déconnecter",
+    "trialCallMinutesLeft": "{min} min d'appels restantes"
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",
