@@ -569,7 +569,8 @@
     "loginLink": "Connexion",
     "orDivider": "ou avec un email",
     "continueWithGoogle": "Continuer avec Google",
-    "backHome": "← Retour"
+    "backHome": "← Retour",
+    "errExistsGoogle": "Cet email est déjà inscrit via Google. Connectez-vous avec « Continuer avec Google »."
   },
   "Login": {
     "title": "Connexion",
@@ -586,7 +587,8 @@
     "alreadyRegisteredTitle": "Vous avez déjà un compte",
     "alreadyRegisteredBody": "Un compte existe déjà avec cet email Google. Connectez-vous pour continuer.",
     "alreadyRegisteredOk": "Compris",
-    "backHome": "← Retour"
+    "backHome": "← Retour",
+    "useGoogleNotice": "Ce compte utilise la connexion Google. Cliquez sur « Continuer avec Google » ci-dessous."
   },
   "VerifyEmail": {
     "title": "Vérifiez votre email",

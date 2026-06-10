@@ -569,7 +569,8 @@
     "loginLink": "התחברות",
     "orDivider": "או עם אימייל",
     "continueWithGoogle": "המשך עם Google",
-    "backHome": "→ חזרה"
+    "backHome": "→ חזרה",
+    "errExistsGoogle": "האימייל כבר רשום דרך Google. התחברו עם «המשך עם Google»."
   },
   "Login": {
     "title": "התחברות",
@@ -586,7 +587,8 @@
     "alreadyRegisteredTitle": "כבר יש לך חשבון",
     "alreadyRegisteredBody": "כבר קיים חשבון עם כתובת ה-Google הזו. התחבר/י כדי להמשיך.",
     "alreadyRegisteredOk": "הבנתי",
-    "backHome": "→ חזרה"
+    "backHome": "→ חזרה",
+    "useGoogleNotice": "החשבון משתמש בהתחברות Google. לחצו על «המשך עם Google» למטה."
   },
   "VerifyEmail": {
     "title": "אימות האימייל",
