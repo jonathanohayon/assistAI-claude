@@ -6,10 +6,10 @@ import { useTranslations } from "next-intl";
 import { EASE } from "./Reveal";
 
 /**
- * Bande intégrations — pattern « integrations cloud » (cnblocks / 21st.dev) :
- * un cluster centré de tuiles logos, Tamara au milieu avec des anneaux qui
- * pulsent, les 3 outils autour. Sobre, premium, une seule idée visuelle :
- * « tout converge vers Tamara ».
+ * Bande intégrations — pattern « integrations cloud » (21st.dev) :
+ * cluster centré, Tamara au milieu (anneaux pulsants + respiration), les
+ * 3 outils en orbite qui flottent doucement. Logos OFFICIELS (constructions
+ * vectorielles fidèles : cadre multicolore Calendar, fichier vert Sheets).
  */
 
 const TOOLS = [
@@ -31,6 +31,20 @@ export function IntegrationsStrip() {
       : { delay, type: "spring" as const, stiffness: 240, damping: 20 },
   });
 
+  /** Flottement continu des tuiles outils, déphasé pour un effet organique. */
+  const float = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          animate: { y: [0, -5, 0] },
+          transition: {
+            duration: 3.8,
+            repeat: Infinity,
+            ease: "easeInOut" as const,
+            delay,
+          },
+        };
+
   return (
     <section
       aria-label={t("kicker")}
@@ -39,22 +53,26 @@ export function IntegrationsStrip() {
       {/* Glow radial doux derrière le cluster */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[42%] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(34,211,238,0.14),rgba(219,39,119,0.08),transparent)] blur-2xl"
+        className="pointer-events-none absolute left-1/2 top-[42%] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(34,211,238,0.16),rgba(219,39,119,0.09),transparent)] blur-2xl"
       />
 
       <div className="relative mx-auto w-full max-w-5xl px-6">
         {/* Cluster : WhatsApp au-dessus, Calendar · TAMARA · Sheets au centre */}
         <div className="mx-auto flex w-fit flex-col items-center gap-3">
           <motion.div {...pop(0.25)}>
-            <Tile>{TOOLS[0].icon}</Tile>
+            <motion.div {...float(0.6)}>
+              <Tile>{TOOLS[0].icon}</Tile>
+            </motion.div>
           </motion.div>
 
           <div className="flex items-center gap-3">
             <motion.div {...pop(0.35)}>
-              <Tile>{TOOLS[1].icon}</Tile>
+              <motion.div {...float(1.4)}>
+                <Tile>{TOOLS[1].icon}</Tile>
+              </motion.div>
             </motion.div>
 
-            {/* Tuile Tamara — plus grande, gradient marque, anneaux pulsants */}
+            {/* Tuile Tamara — anneaux pulsants + respiration lente */}
             <motion.div {...pop(0.1)} className="relative">
               {!reduce && (
                 <>
@@ -66,7 +84,15 @@ export function IntegrationsStrip() {
                   />
                 </>
               )}
-              <div className="relative flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#db2777] to-[#22d3ee] shadow-[0_16px_40px_-12px_rgba(219,39,119,0.5)] ring-1 ring-white/40">
+              <motion.div
+                animate={reduce ? undefined : { scale: [1, 1.045, 1] }}
+                transition={
+                  reduce
+                    ? undefined
+                    : { duration: 3.4, repeat: Infinity, ease: "easeInOut" }
+                }
+                className="relative flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#db2777] to-[#22d3ee] shadow-[0_16px_40px_-12px_rgba(219,39,119,0.5)] ring-1 ring-white/40"
+              >
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -84,11 +110,13 @@ export function IntegrationsStrip() {
                     strokeLinecap="round"
                   />
                 </svg>
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div {...pop(0.45)}>
-              <Tile>{TOOLS[2].icon}</Tile>
+              <motion.div {...float(2.2)}>
+                <Tile>{TOOLS[2].icon}</Tile>
+              </motion.div>
             </motion.div>
           </div>
         </div>
@@ -101,7 +129,11 @@ export function IntegrationsStrip() {
           transition={{ delay: 0.5, duration: 0.6, ease: EASE }}
           className="mx-auto mt-8 max-w-2xl text-center"
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#0e7490]">
+          <p className="flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-[#0e7490]">
+            <span className="relative flex h-1.5 w-1.5" aria-hidden>
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-75 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22d3ee]" />
+            </span>
             {t("kicker")}
           </p>
           <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm leading-relaxed text-[#64748b]">
@@ -150,8 +182,11 @@ export function IntegrationsStrip() {
 
 function Tile({ children }: { children: React.ReactNode }) {
   return (
-    <div className="group flex size-16 items-center justify-center rounded-2xl border border-[#fbcfe8] bg-white/90 p-3.5 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-[#22d3ee]/50 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-    <span aria-hidden className="h-full w-full">
+    <div className="group flex size-16 items-center justify-center rounded-2xl border border-[#fbcfe8] bg-white/90 p-3 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-[#22d3ee]/50 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+      <span
+        aria-hidden
+        className="h-full w-full transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:rotate-0 motion-reduce:group-hover:scale-100"
+      >
         {children}
       </span>
     </div>
@@ -159,7 +194,7 @@ function Tile({ children }: { children: React.ReactNode }) {
 }
 
 /* ----------------------------- brand icons -------------------------------- */
-/* Logos officiels simplifiés, viewBox 24, couleurs marque — pas d'emoji.     */
+/* Constructions vectorielles fidèles aux logos officiels — pas d'emoji.      */
 
 function WhatsAppIcon() {
   return (
@@ -176,48 +211,67 @@ function WhatsAppIcon() {
   );
 }
 
+/** Logo officiel Google Calendar (construction 2020) : cadre multicolore
+ *  bleu/jaune/vert + coins dark-blue et triangle rouge plié, « 31 » centré. */
 function GoogleCalendarIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-full w-full" aria-hidden>
-      <rect x="3" y="4" width="18" height="17" rx="2" fill="#fff" />
-      <path d="M3 8h18v3H3z" fill="#4285F4" />
-      <path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2H3V6Z" fill="#1967D2" />
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="17"
-        rx="2"
-        fill="none"
-        stroke="#1967D2"
-        strokeWidth="1.2"
+    <svg viewBox="0 0 200 200" className="h-full w-full" aria-hidden>
+      {/* centre blanc */}
+      <path fill="#fff" d="M152.6 47.4H47.4v105.2h105.2z" />
+      {/* L bleu : barre haute + barre gauche */}
+      <path
+        fill="#4285F4"
+        d="M152.6 47.4V0H15.8C7.1 0 0 7.1 0 15.8v136.8h47.4V47.4z"
       />
-      <text
-        x="12"
-        y="17.5"
-        textAnchor="middle"
-        fontSize="8.5"
-        fontWeight="700"
+      {/* barre droite jaune */}
+      <path fill="#FBBC04" d="M152.6 47.4H200v105.2h-47.4z" />
+      {/* barre basse verte */}
+      <path fill="#34A853" d="M47.4 152.6h105.2V200H47.4z" />
+      {/* coin bas-gauche vert foncé */}
+      <path
+        fill="#188038"
+        d="M0 152.6v31.6C0 192.9 7.1 200 15.8 200h31.6v-47.4z"
+      />
+      {/* coin haut-droit bleu foncé */}
+      <path
         fill="#1967D2"
-        fontFamily="system-ui, sans-serif"
+        d="M200 47.4V15.8C200 7.1 192.9 0 184.2 0h-31.6v47.4z"
+      />
+      {/* coin plié bas-droit rouge */}
+      <path fill="#EA4335" d="M152.6 200l47.4-47.4h-47.4z" />
+      {/* le « 31 » */}
+      <text
+        x="100"
+        y="124"
+        textAnchor="middle"
+        fontSize="68"
+        fontWeight="500"
+        fill="#1A73E8"
+        fontFamily="'Google Sans', Roboto, system-ui, sans-serif"
       >
-        17
+        31
       </text>
     </svg>
   );
 }
 
+/** Logo officiel Google Sheets : fichier vert #0F9D58, coin plié clair,
+ *  tableau blanc 2 colonnes × 3 lignes. */
 function GoogleSheetsIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-full w-full" aria-hidden>
+    <svg viewBox="0 0 200 200" className="h-full w-full" aria-hidden>
       <path
-        d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z"
         fill="#0F9D58"
+        d="M37.5 0h87.5l50 50v137.5c0 6.9-5.6 12.5-12.5 12.5h-125c-6.9 0-12.5-5.6-12.5-12.5v-175C25 5.6 30.6 0 37.5 0z"
       />
-      <path d="M14 2v5h5l-5-5Z" fill="#87CEAC" />
+      {/* coin plié */}
+      <path fill="#87CEAC" d="M125 0l50 50h-50z" />
+      {/* ombre sous le pli */}
+      <path fill="#0C7B43" d="M125 50l12.5 12.5L125 50z" opacity=".4" />
+      {/* tableau : cadre + cellules */}
       <path
-        d="M8 11h8v7H8v-7Zm1.5 1.5v1.25h2v-1.25h-2Zm3.5 0v1.25h2v-1.25h-2Zm-3.5 2.5v1.25h2V15h-2Zm3.5 0v1.25h2V15h-2Z"
         fill="#fff"
+        d="M58.3 91.7v75h83.4v-75H58.3zm12.5 12.5h22.9v12.5H70.8v-12.5zm0 25h22.9v12.5H70.8v-12.5zm0 25h22.9v12.5H70.8v-12.5zm58.4 12.5h-22.9v-12.5h22.9v12.5zm0-25h-22.9v-12.5h22.9v12.5zm0-25h-22.9v-12.5h22.9v12.5z"
       />
     </svg>
   );
