@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 
@@ -15,11 +16,8 @@ import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 //   - phones (liste E.164 mappés à ce user dans phone_numbers)
 //   - hasAgentConfig (bool)
 export async function GET(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const allUsers = await db.select().from(users);
   const allConfigs = await db.select().from(agentConfigs);

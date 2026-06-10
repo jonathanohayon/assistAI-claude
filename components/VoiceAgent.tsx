@@ -2,6 +2,7 @@
 
 import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { transportFor } from "@/lib/realtime";
 import {
   defaultVoiceForCatalog,
@@ -450,6 +451,7 @@ export default function VoiceAgent() {
   useEffect(() => {
     if (secondsLeft == null) return;
     if (secondsLeft <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fin de démo : il faut figer demoEnded AVANT stopSession() (qui reset secondsLeft à null), non dérivable au render
       setDemoEnded(true);
       stopSession();
       return;
@@ -745,9 +747,9 @@ export default function VoiceAgent() {
                 className="rounded-lg border border-[#f59e0b]/40 bg-[#fef3c7] px-3 py-2 text-[11px] leading-snug text-[#92400e]"
               >
                 Session de démo terminée ({DEMO_SESSION_SECONDS}s).{" "}
-                <a href="/signup" className="font-semibold underline hover:no-underline">
+                <Link href="/signup" className="font-semibold underline hover:no-underline">
                   Crée un compte
-                </a>{" "}
+                </Link>{" "}
                 pour passer/recevoir des appels sans limite.
               </p>
             )}

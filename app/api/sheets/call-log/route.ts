@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import {
@@ -28,12 +29,10 @@ const APPELS_HEADERS = [
 //
 // Auth : INTERNAL_SECRET + x-tenant-phone (même pattern que les calendar tools).
 export async function POST(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const guard = requireInternalSecret(req);
+  if (!guard.ok) return guard.response;
 
+  // body optionnel : tous les champs sont facultatifs (cellules vides).
   const body = (await req.json().catch(() => ({}))) as {
     fromNumber?: string;
     callerName?: string;

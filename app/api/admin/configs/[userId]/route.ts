@@ -1,32 +1,22 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { logEvent } from "@/lib/logger";
+import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
-
-const requireAdmin = async () => {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  return me?.role === "admin" ? me : null;
-};
 
 interface Ctx {
   params: Promise<{ userId: string }>;
 }
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
 
   const { userId } = await ctx.params;
   const [user] = await db
@@ -46,10 +36,13 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
-  const me = await requireAdmin();
-  if (!me) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+  const me = guard.admin;
 
   const { userId } = await ctx.params;
+  // body optionnel : tous les champs sont facultatifs (body vide = touch
+  // updatedAt seulement), on garde donc le fallback {} silencieux.
   const body = (await req.json().catch(() => ({}))) as Partial<{
     instructions: string;
     greetingInstructions: string;
@@ -152,8 +145,4 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   void warmGreetingAudioForUser(userId);
 
   return NextResponse.json(updated);
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(Math.max(n, min), max);
 }

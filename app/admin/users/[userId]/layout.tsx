@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 
 import frMessages from "@/messages/fr.json";
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
@@ -17,6 +17,7 @@ import { getDemoUserId } from "@/lib/settings";
 import { AdminTenantTabs } from "./_nav";
 import { DemoAccountToggle } from "./DemoAccountToggle";
 import { PlanAccessControl } from "./PlanAccessControl";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 // Layout partagé pour /admin/users/[userId]/* — fournit header + nav 4
 // onglets (Config / Calendrier / CRM / Monitoring) pour que l'admin puisse
@@ -30,15 +31,7 @@ export default async function AdminTenantLayout({
   children: React.ReactNode;
   params: Promise<{ userId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!me || me.role !== "admin") redirect("/dashboard");
+  await requireAdminPage();
 
   const { userId } = await params;
   const [target] = await db

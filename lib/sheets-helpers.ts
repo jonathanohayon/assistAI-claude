@@ -14,6 +14,8 @@
 
 import type { sheets_v4 } from "@googleapis/sheets";
 
+import { normalizePhoneForDedup } from "@/lib/phone-utils";
+
 /**
  * Préfixe avec une apostrophe pour forcer Sheets à traiter comme texte.
  * Sans ça, "0585001007" devient 585001007 (le 0 initial tombe).
@@ -26,12 +28,10 @@ export const forceTextPhone = (phone: string): string => {
 };
 
 /**
- * Normalise un numéro pour la dedupe (digits only, trailing/leading whitespace
- * supprimés). N'altère PAS la valeur stockée — sert uniquement à matcher
- * "0585001007" et "058 500 10 07" comme la même clé.
+ * Normalise un numéro pour la dedupe (digits only). Re-export rétro-compatible :
+ * l'implémentation vit désormais dans lib/phone-utils.ts (normalizePhoneForDedup).
  */
-export const normalizePhone = (phone: string): string =>
-  (phone ?? "").replace(/[^\d]/g, "");
+export { normalizePhoneForDedup as normalizePhone };
 
 /**
  * Normalise un nom : trim, lowercase, espaces multiples → 1.

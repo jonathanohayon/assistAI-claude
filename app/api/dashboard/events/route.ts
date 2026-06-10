@@ -1,8 +1,7 @@
 import { and, desc, eq, gt, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
@@ -14,28 +13,22 @@ import { events } from "@/lib/db/schema";
 //   - Par défaut : events.userId = session.user.id (tenant authentifié).
 //   - Si `?asUserId=<uuid>` ET caller est admin → events du tenant cible.
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const scope = await resolveTargetUserId(req);
+  if ("unauthorized" in scope) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if ("forbidden" in scope) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const url = req.nextUrl;
   const since = url.searchParams.get("since");
   const sourceCsv = url.searchParams.get("source") ?? "";
   const levelCsv = url.searchParams.get("level") ?? "";
-  const asUserId = url.searchParams.get("asUserId");
   const limit = Math.min(
     Math.max(Number(url.searchParams.get("limit") ?? "200"), 1),
     500,
   );
-
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const conditions: SQL[] = [eq(events.userId, scope.userId)];
   if (since) {

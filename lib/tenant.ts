@@ -7,12 +7,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
-
-const normalizeE164 = (input: string): string => {
-  const trimmed = input.trim();
-  const stripped = trimmed.replace(/^whatsapp:/, "").replace(/[\s()-]/g, "");
-  return stripped.startsWith("+") ? stripped : `+${stripped}`;
-};
+import { normalizeE164 } from "@/lib/phone-utils";
 
 export interface ResolvedTenant {
   user: typeof users.$inferSelect;

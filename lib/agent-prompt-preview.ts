@@ -26,11 +26,6 @@ const buildLanguageDirective = (primary: string): string => {
 - S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
 };
 
-const buildAdminBlock = (globalForPlan: string): string => {
-  if (!globalForPlan.trim()) return "";
-  return `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona ci-dessus, jamais à sa place) :\n\n${globalForPlan}`;
-};
-
 export interface PromptBlock {
   id: string;
   label: string;

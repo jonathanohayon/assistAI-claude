@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, lt, lte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -23,11 +24,8 @@ import { isValidPlanKey } from "@/lib/plans";
 // Auth : INTERNAL_SECRET via header x-internal-secret. Fréquence : ~horaire.
 
 export async function GET(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const now = new Date();
   let downgraded = 0;

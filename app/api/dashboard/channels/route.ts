@@ -1,10 +1,9 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { phoneNumbers } from "@/lib/db/schema";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
 
 // Twilio encode les numéros WhatsApp avec le préfixe `whatsapp:` dans
 // phone_numbers.phoneNumber ; les numéros PSTN classiques sont stockés en
@@ -22,23 +21,9 @@ interface ChannelNumber {
   countryCode: string;
 }
 
-// Résout l'userId effectif : session.user.id par défaut, OU asUserId si le
-// caller est admin (sinon 403). Même pattern que les autres routes
-// /api/dashboard/* — l'admin peut donc voir les numéros d'un tenant via
-// le prop asUserId du ConfigForm.
-async function resolveTargetUserId(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return { unauthorized: true as const };
-  const asUserId = req.nextUrl.searchParams.get("asUserId");
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) return { forbidden: true as const };
-  return { userId: scope.userId };
-}
-
 // GET — liste les numéros du tenant avec leur canal (PSTN / WhatsApp).
+// L'admin peut voir les numéros d'un tenant via ?asUserId (resolveTargetUserId
+// centralisé dans lib/api/auth-guards).
 export async function GET(req: NextRequest) {
   const r = await resolveTargetUserId(req);
   if ("unauthorized" in r)

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent } from "@/lib/logger";
 import { resolveTenant } from "@/lib/tenant";
 import { sendWhatsApp } from "@/lib/whatsapp";
@@ -14,11 +16,8 @@ import { sendWhatsApp } from "@/lib/whatsapp";
 //
 // POST { message: string, callerName?: string, callerPhone?: string }
 export async function POST(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const tenantPhone = req.headers.get("x-tenant-phone");
   const tenant = await resolveTenant(tenantPhone);
@@ -29,11 +28,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     message?: string;
     callerName?: string;
     callerPhone?: string;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const message = (body.message ?? "").trim();
   if (!message) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { getTenantGoogleClients } from "@/lib/google";
 import { JERUSALEM_TZ } from "@/lib/tz";
 
@@ -20,22 +20,8 @@ interface CalendarEvent {
 //
 // `?asUserId=<uuid>` autorisé pour admin uniquement → opère sur le
 // Google Calendar du tenant cible. Permet aux pages /admin/users/[id]/*
-// de réutiliser ces routes via les composants client partagés.
-async function resolveTargetUserId(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { unauthorized: true as const };
-  }
-  const asUserId = req.nextUrl.searchParams.get("asUserId");
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) {
-    return { forbidden: true as const };
-  }
-  return { userId: scope.userId };
-}
+// de réutiliser ces routes via les composants client partagés
+// (resolveTargetUserId centralisé dans lib/api/auth-guards).
 
 export async function GET(req: NextRequest) {
   const r = await resolveTargetUserId(req);
@@ -86,7 +72,7 @@ export async function PUT(req: NextRequest) {
   if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     eventId?: string;
     summary?: string;
     description?: string;
@@ -94,7 +80,9 @@ export async function PUT(req: NextRequest) {
     startTime?: string;
     endDate?: string;
     endTime?: string;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   if (!body.eventId) {
     return NextResponse.json({ error: "eventId requis" }, { status: 400 });

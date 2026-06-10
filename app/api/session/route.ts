@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { clamp } from "@/lib/numbers";
 import {
   DEFAULT_REALTIME_MODEL,
   REALTIME_INSTRUCTIONS,
@@ -36,6 +37,7 @@ interface SessionBody {
 }
 
 export async function POST(req: NextRequest) {
+  // body optionnel : tous les champs ont des défauts (model, voice, etc.).
   const body = (await req.json().catch(() => ({}))) as SessionBody;
 
   // Trust the model id from the client — it was picked from the live OpenAI
@@ -221,8 +223,4 @@ export async function POST(req: NextRequest) {
     // Surface to the client so the dashboard can render a "code drift" badge.
     stripped_field: stripped,
   });
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(Math.max(n, min), max);
 }

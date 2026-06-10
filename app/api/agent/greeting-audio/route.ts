@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { buildOpenerText, openerHash } from "@/lib/opener";
 import {
   getGreetingAudio,
@@ -21,9 +22,8 @@ export const dynamic = "force-dynamic";
 //   génération en arrière-plan (jamais bloquant) pour que le prochain appel
 //   soit instantané.
 export async function GET(req: NextRequest) {
-  if (req.headers.get("x-internal-secret") !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
   const phone = req.nextUrl.searchParams.get("phone");
   if (!phone) {
     return NextResponse.json({ error: "phone requis" }, { status: 400 });

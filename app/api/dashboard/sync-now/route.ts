@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { requireSession } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -13,12 +13,12 @@ import { syncTenantCalendarToSheet } from "@/lib/sync-tenant";
 // loggué (ou pour le tenant cible si admin avec asUserId). Compagnon du
 // cron Railway 5min.
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // requireSession + resolveScopeUserId (et pas resolveTargetUserId) : on a
+  // besoin de l'userId de session pour tracer `triggeredBy` dans le log.
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
   const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
+    sessionUserId: guard.userId,
     asUserId: req.nextUrl.searchParams.get("asUserId"),
   });
   if ("forbidden" in scope) {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const r = await syncTenantCalendarToSheet(target.id);
   const elapsedMs = Date.now() - startedAt;
 
-  const metadata = { ...r, triggeredBy: session.user.id } as Record<string, unknown>;
+  const metadata = { ...r, triggeredBy: guard.userId } as Record<string, unknown>;
   if (r.ok) {
     await logEvent({
       source: "sync",

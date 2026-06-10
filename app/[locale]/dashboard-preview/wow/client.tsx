@@ -1,5 +1,6 @@
 "use client";
 
+import NextLink from "next/link";
 import { useState } from "react";
 
 type Gender = "f" | "m";
@@ -465,12 +466,12 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
             <span className="rounded-full bg-white/60 px-3 py-1 text-[11px] font-medium text-[#831843] ring-1 ring-inset ring-[#fbcfe8] backdrop-blur">
               Preview · v2
             </span>
-            <a
+            <NextLink
               href="/fr/dashboard-preview"
               className="text-[11px] text-[#831843]/60 underline-offset-4 hover:underline"
             >
               Voir v1 ↗
-            </a>
+            </NextLink>
           </div>
         </header>
 
@@ -510,7 +511,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
 
             <p className="mt-6 max-w-md text-sm leading-relaxed text-[#831843]/70">
               Ta secrétaire vocale prend les appels 24/7. Les changements
-              s'appliquent au prochain appel.
+              s’appliquent au prochain appel.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-x-8 gap-y-4 border-t border-[#fbcfe8] pt-6">
@@ -828,101 +829,6 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
 }
 
 // ─── Sous-composants ────────────────────────────────────────────────────
-
-function Box({
-  accent,
-  title,
-  subtitle,
-  summary,
-  defaultOpen = false,
-  delay = 0,
-  className = "",
-  children,
-}: {
-  accent: string;
-  title: string;
-  subtitle?: string;
-  /** Texte résumé affiché quand la box est fermée (état "config actuelle"
-   *  en un coup d'œil sans avoir à expand). */
-  summary?: string;
-  defaultOpen?: boolean;
-  delay?: number;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div
-      className={`card-hover anim-fade-up overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)] backdrop-blur-xl ${className}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {/* Header cliquable — toujours visible, change selon état */}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="group flex w-full items-center justify-between gap-4 p-6 text-left transition-colors hover:bg-white/30 sm:p-7"
-      >
-        <div className="flex min-w-0 items-start gap-3">
-          <span
-            className={`mt-1 h-8 w-1 shrink-0 rounded-full bg-gradient-to-b ${accent} transition-all ${
-              open ? "h-9" : "h-8"
-            }`}
-          />
-          <div className="min-w-0">
-            <h2 className="text-xl font-extrabold tracking-tight text-[#18181b] sm:text-2xl">
-              {title}
-            </h2>
-            {open ? (
-              subtitle && (
-                <p className="mt-1 text-sm text-[#831843]/70">{subtitle}</p>
-              )
-            ) : (
-              summary && (
-                <p className="mt-1 truncate text-sm text-[#0e7490]">
-                  {summary}
-                </p>
-              )
-            )}
-          </div>
-        </div>
-        {/* Chevron qui pivote */}
-        <span
-          aria-hidden
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ecfeff] text-[#0e7490] transition-all duration-300 group-hover:bg-[#cffafe] ${
-            open ? "rotate-180" : "rotate-0"
-          }`}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-4 w-4"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </span>
-      </button>
-
-      {/* Content collapsible via grid trick (animatable height) */}
-      <div
-        className={`grid transition-all duration-500 ease-out ${
-          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-        aria-hidden={!open}
-      >
-        <div className="overflow-hidden">
-          <div className="px-6 pb-7 sm:px-7 sm:pb-8">
-            <div className="border-t border-[#e2e8f0] pt-5">{children}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RadioCard({
   active,
@@ -1576,7 +1482,7 @@ function PersonaPanel({
       {/* Greeting */}
       <div>
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          Phrase d'accueil
+          Phrase d’accueil
         </p>
         <input
           type="text"
@@ -1673,40 +1579,6 @@ function NotifsPanel({
         placeholder="contact@..."
         inputType="email"
       />
-    </div>
-  );
-}
-
-function Bubble({
-  who,
-  text,
-  delay = 0,
-}: {
-  who: "user" | "assistant";
-  text: string;
-  delay?: number;
-}) {
-  const isUser = who === "user";
-  return (
-    <div
-      className={`flex anim-fade-up ${isUser ? "justify-end" : "justify-start"}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div
-        className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
-          isUser
-            ? "bg-[#be185d] text-white rounded-br-md"
-            : "bg-gradient-to-br from-[#ecfeff] to-[#fdf2f8] text-[#18181b] ring-1 ring-inset ring-[#22d3ee]/20 rounded-bl-md"
-        }`}
-      >
-        {!isUser && (
-          <span className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            <span className="h-1 w-1 rounded-full bg-[#22d3ee]" />
-            Assistante
-          </span>
-        )}
-        {text}
-      </div>
     </div>
   );
 }

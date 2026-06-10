@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 // Envoie un message WhatsApp de test au numéro fourni (typiquement le
@@ -21,10 +22,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    to?: string;
-  };
-  const raw = (body.to ?? "").trim();
+  const parsed = await parseJsonBody<{ to?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const raw = (parsed.data.to ?? "").trim();
   if (!raw) {
     return NextResponse.json(
       { error: "Numéro destinataire manquant" },

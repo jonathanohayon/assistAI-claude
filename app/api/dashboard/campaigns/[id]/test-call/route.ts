@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns, phoneNumbers } from "@/lib/db/schema";
 import { dialOneNow } from "@/lib/campaigns/dispatch";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { logEvent } from "@/lib/logger";
 
@@ -27,7 +28,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { phoneNumber?: string };
+  const parsed = await parseJsonBody<{ phoneNumber?: string }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const phoneNumber = (body.phoneNumber ?? "").trim();
   if (!E164.test(phoneNumber)) {
     return NextResponse.json({ error: "invalid_phone" }, { status: 400 });

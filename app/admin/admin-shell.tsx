@@ -304,6 +304,7 @@ export function AdminShell(props: AdminShellProps) {
       }
       // Append toute tile ajoutée depuis le dernier save (forward-compat)
       for (const id of defaultOrder) if (!seen.has(id)) out.push(id);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
       setTileOrder(out);
     } catch {
       // ignore

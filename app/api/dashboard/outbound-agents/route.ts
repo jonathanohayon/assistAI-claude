@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // body optionnel : normalizeAgentFields applique des défauts sur tout.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const fields = normalizeAgentFields(body);
 

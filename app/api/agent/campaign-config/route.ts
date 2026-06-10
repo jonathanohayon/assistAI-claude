@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns, outboundAgents } from "@/lib/db/schema";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
@@ -12,10 +13,8 @@ import { personalityToRealtime } from "@/lib/voice-tuning";
 // que /api/agent/config (le worker réutilise le même parser, tout en `?? default`).
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  if (!secret || secret !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const campaignId = req.nextUrl.searchParams.get("campaignId") ?? "";
   const contactId = req.nextUrl.searchParams.get("contactId") ?? "";

@@ -109,42 +109,48 @@ function SpeedMeter({ reduce }: { reduce: boolean }) {
 }
 
 /** Calendar — 7×3 grid of slots filling progressively, 10:30 highlighted */
+const CALENDAR_CELL_COUNT = 21;
+
 function CalendarMock({ reduce }: { reduce: boolean }) {
-  const cells = Array.from({ length: 21 });
+  // Uniquement pour les keys de rendu — la logique d'anim utilise la constante.
+  const cells = Array.from({ length: CALENDAR_CELL_COUNT });
   const [filled, setFilled] = useState<number[]>(reduce ? [...cells.keys()] : []);
   const [highlight, setHighlight] = useState(reduce);
 
   useEffect(() => {
     if (reduce) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de l'animation quand prefers-reduced-motion change, pattern voulu
     setFilled([]);
     setHighlight(false);
     const timers: ReturnType<typeof setTimeout>[] = [];
-    cells.forEach((_, i) => {
+    for (let i = 0; i < CALENDAR_CELL_COUNT; i++) {
       timers.push(
         setTimeout(() => {
           setFilled((prev) => [...prev, i]);
         }, 120 + i * 80),
       );
-    });
-    timers.push(setTimeout(() => setHighlight(true), 120 + cells.length * 80 + 300));
+    }
+    timers.push(
+      setTimeout(() => setHighlight(true), 120 + CALENDAR_CELL_COUNT * 80 + 300),
+    );
     // Loop
     const loop = setInterval(() => {
       setFilled([]);
       setHighlight(false);
-      cells.forEach((_, i) => {
+      for (let i = 0; i < CALENDAR_CELL_COUNT; i++) {
         timers.push(
           setTimeout(() => setFilled((prev) => [...prev, i]), 120 + i * 80),
         );
-      });
+      }
       timers.push(
-        setTimeout(() => setHighlight(true), 120 + cells.length * 80 + 300),
+        setTimeout(() => setHighlight(true), 120 + CALENDAR_CELL_COUNT * 80 + 300),
       );
-    }, cells.length * 80 + 2200);
+    }, CALENDAR_CELL_COUNT * 80 + 2200);
     return () => {
       clearInterval(loop);
       timers.forEach(clearTimeout);
     };
-  }, [reduce, cells.length]);
+  }, [reduce]);
 
   const highlightIdx = 8; // arbitrary slot we badge "10:30"
 
@@ -197,6 +203,7 @@ function ContactCard({ reduce }: { reduce: boolean }) {
     if (reduce) return;
     let n = 0;
     let p = 0;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de l'animation quand prefers-reduced-motion change, pattern voulu
     setNLen(0);
     setPLen(0);
     const nTimer = setInterval(() => {

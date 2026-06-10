@@ -1,8 +1,7 @@
-import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
@@ -23,18 +22,10 @@ import {
 } from "@/lib/settings";
 
 import { AdminShell } from "./admin-shell";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 export default async function AdminPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  // Gate: only admins.
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!me || me.role !== "admin") redirect("/dashboard");
+  const me = await requireAdminPage();
 
   const allUsers = await db
     .select()

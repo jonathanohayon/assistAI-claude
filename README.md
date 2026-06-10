@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tamara — app web
 
-## Getting Started
+SaaS multi-tenant de **secrétaire vocale IA** : chaque client a un numéro de
+téléphone, un agent vocal (OpenAI Realtime) répond à ses appels, prend des RDV
+Google Calendar, enregistre les contacts, envoie des récaps WhatsApp et gère
+des campagnes d'appels sortants.
 
-First, run the development server:
+Ce repo = **l'application web** (Next.js 16) : landing, dashboard client,
+admin, et toutes les routes API. L'agent vocal temps réel vit dans le repo
+séparé `assistAI-claude-agent` (le « worker »).
+
+> 📖 **Commencer par [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** : vue
+> d'ensemble, arborescence commentée, flux principaux, conventions et pièges
+> connus.
+
+## Démarrage rapide
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+# Secrets dans .env.local (DATABASE_URL, OPENAI_API_KEY, TWILIO_*, LIVEKIT_*,
+# INTERNAL_SECRET, RESEND_API_KEY, HYP_*, …) — demander à Jonathan.
+npm run db:migrate     # applique les migrations drizzle/
+npm run dev            # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Commandes utiles
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Commande | Rôle |
+| --- | --- |
+| `npm run dev` | Serveur de dev |
+| `npm run build` | Build prod (à faire passer avant toute PR) |
+| `npm test` | Tests unitaires (`scripts/tests/*.test.ts`, runner tsx) |
+| `npx tsc --noEmit` | Type-check strict |
+| `npx eslint .` | Lint (0 erreur attendu) |
+| `npm run db:generate` | Génère une migration après modif de `lib/db/schema.ts` |
+| `npm run db:migrate` | Applique les migrations |
+| `npm run db:studio` | Explorateur de BDD Drizzle |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Déploiement
 
-## Learn More
+**Railway** (web + worker + Postgres). Le déploiement part de `main` ;
+`npm start` applique les migrations (`scripts/migrate.mjs`) avant de lancer
+le serveur. Les crons Railway appellent les routes `/api/cron/*` (protégées
+par `INTERNAL_SECRET`).
 
-To learn more about Next.js, take a look at the following resources:
+⚠️ L'intégration Vercel visible sur les PRs GitHub n'est qu'une **preview** —
+ce n'est pas le déploiement de prod.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Avant de coder
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Lire `AGENTS.md` : la version de Next.js utilisée a des breaking changes,
+  les guides à jour sont dans `node_modules/next/dist/docs/`.
+- Lire [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), en particulier les
+  sections **Conventions** et **Pièges connus**.
+- Tout texte visible dans `app/[locale]/` passe par next-intl
+  (`messages/{fr,he,en}.json`) — jamais de chaîne en dur.

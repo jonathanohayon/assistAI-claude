@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -12,15 +12,13 @@ import { logEvent } from "@/lib/logger";
 // payée n'est pas expirée (paidUntil > now). Au-delà, le tenant doit repayer
 // (le compte est 'expired'), donc on refuse.
 export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
   const [me] = await db
     .select({ paidUntil: users.paidUntil })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, guard.userId))
     .limit(1);
   if (!me) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -37,13 +35,13 @@ export async function POST() {
   await db
     .update(users)
     .set({ autoRenew: true, cancelledAt: null })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, guard.userId));
 
   await logEvent({
     source: "auth",
     event: "subscription_resumed",
     message: "Renouvellement auto réactivé",
-    userId: session.user.id,
+    userId: guard.userId,
   });
 
   return NextResponse.json({ ok: true });

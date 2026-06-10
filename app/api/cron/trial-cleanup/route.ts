@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { sendTrialDeletedEmail, sendTrialWarningEmail } from "@/lib/email";
@@ -29,11 +30,8 @@ import { TRIAL_WARNING_BEFORE_END_MS } from "@/lib/trial";
 // les admins n'ont pas de trial qui expire).
 
 export async function GET(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const startedAt = Date.now();
   const now = new Date();

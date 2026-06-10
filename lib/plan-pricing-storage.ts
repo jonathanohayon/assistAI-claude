@@ -8,16 +8,15 @@ import {
   normalizePlanPricing,
   type PlanPricingMap,
 } from "@/lib/plan-pricing";
-import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
+import { SETTING_KEYS, getJsonSetting, setSetting } from "@/lib/settings";
 
 export async function getPlanPricingMap(): Promise<PlanPricingMap> {
-  const raw = await getSetting(SETTING_KEYS.PLAN_PRICING);
-  if (!raw) return JSON.parse(JSON.stringify(DEFAULT_PLAN_PRICING));
-  try {
-    return normalizePlanPricing(JSON.parse(raw));
-  } catch {
-    return JSON.parse(JSON.stringify(DEFAULT_PLAN_PRICING));
-  }
+  // getJsonSetting gère absent/corrompu → copie de DEFAULT_PLAN_PRICING.
+  return getJsonSetting(
+    SETTING_KEYS.PLAN_PRICING,
+    DEFAULT_PLAN_PRICING,
+    normalizePlanPricing,
+  );
 }
 
 export async function setPlanPricingMap(map: unknown): Promise<void> {

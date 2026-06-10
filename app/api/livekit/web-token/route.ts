@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
 
   // Optionnel : admin peut tester en tant qu'un autre tenant via `asUserId`.
   // Bloqué (403) si le caller n'est pas admin. Sinon → userId = target.
+  // body optionnel : vide ⇒ test de l'agent entrant du tenant courant.
   const body = (await req.json().catch(() => ({}))) as {
     asUserId?: string;
     agentId?: string;

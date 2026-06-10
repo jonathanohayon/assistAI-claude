@@ -245,6 +245,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
 
   // Initial load
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial des logs : setState après fetch, pattern voulu
     fetchLogs(true);
   }, [fetchLogs]);
 

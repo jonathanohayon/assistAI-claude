@@ -121,6 +121,44 @@ export async function setSetting(key: string, value: string): Promise<void> {
     });
 }
 
+/**
+ * Lit une setting stockée en JSON, avec fallback sur des valeurs par défaut.
+ *
+ * Pattern commun à toutes les settings JSON (plan_features, plan_pricing,
+ * cost_rates…) :
+ *   1. `getSetting(key)` — si la clé n'existe pas en DB, on renvoie une
+ *      copie profonde des defaults (structuredClone, pour que le caller
+ *      puisse muter le résultat sans corrompre la constante partagée).
+ *   2. `JSON.parse` du raw — JSON corrompu → defaults (jamais de throw).
+ *   3. `normalizer` (optionnel) — valide/complète la donnée parsée et la
+ *      ramène au type T (clamp, champs manquants…). S'il throw → defaults.
+ *
+ * Le getter est typiquement appelé à chaque requête API : on ne log PAS
+ * les erreurs de parse ici (ce serait du spam), on retombe silencieusement
+ * sur les defaults.
+ *
+ * @param key        Clé app_settings (voir SETTING_KEYS).
+ * @param defaults   Valeur renvoyée si absent/corrompu (clonée à chaque appel).
+ * @param normalizer Optionnel — transforme le JSON parsé (unknown) en T.
+ *                   Sans normalizer, le JSON parsé est renvoyé tel quel
+ *                   (cast en T : à réserver aux clés écrites par nos setters).
+ */
+export async function getJsonSetting<T>(
+  key: string,
+  defaults: T,
+  normalizer?: (data: unknown) => T,
+): Promise<T> {
+  const raw = await getSetting(key);
+  if (raw == null) return structuredClone(defaults);
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return normalizer ? normalizer(parsed) : (parsed as T);
+  } catch {
+    // JSON corrompu ou normalizer qui throw → defaults, jamais d'erreur.
+    return structuredClone(defaults);
+  }
+}
+
 /** userId du compte démo de la page d'accueil (vide → non configuré). */
 export async function getDemoUserId(): Promise<string | null> {
   const v = (await getSetting(SETTING_KEYS.DEMO_USER_ID))?.trim();
@@ -418,6 +456,17 @@ export async function setPromptBlockOrder(order: BlockId[]): Promise<void> {
 // Helper générique pour ne pas dupliquer le pattern 5 fois.
 type PlanStringMap = Record<PlanKey, string>;
 
+/**
+ * Lit une map plan → texte avec fallback en cascade sur 3 niveaux :
+ *   1. Map per-plan (`key`, JSON `{ basique: "…", globale: "…", … }`) —
+ *      si le plan y a une string (même vide : choix explicite de l'admin),
+ *      elle gagne.
+ *   2. Singleton legacy (`legacyKey`) — valeur unique d'avant la migration
+ *      per-plan, utilisée pour TOUS les plans absents de la map.
+ *   3. `fallback` — la constante DEFAULT_* hardcodée, si même le legacy
+ *      n'a jamais été écrit en DB.
+ * JSON per-plan corrompu → on garde le niveau 2/3 pour tous les plans.
+ */
 async function readByPlanMap(
   key: string,
   legacyKey: string,

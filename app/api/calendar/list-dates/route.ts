@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { CENTERS, type Center, labelFor, nextDatesForCenter } from "@/lib/schedule";
 
 // Returns the next N valid dates for a given center per the schedule rules.
@@ -10,13 +12,16 @@ import { CENTERS, type Center, labelFor, nextDatesForCenter } from "@/lib/schedu
 // Auth: same INTERNAL_SECRET gate as the other agent-facing endpoints, so
 // only the worker can hit it. No tenant lookup needed (schedule is shared).
 export async function POST(req: NextRequest) {
-  const expected = process.env.INTERNAL_SECRET;
-  const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const guard = requireInternalSecret(req);
+  if (!guard.ok) return guard.response;
 
-  const { center, count, after } = await req.json().catch(() => ({}));
+  const parsed = await parseJsonBody<{
+    center?: string;
+    count?: number;
+    after?: string;
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const { center, count, after } = parsed.data;
 
   if (!center || !CENTERS.includes(center as Center)) {
     return NextResponse.json(

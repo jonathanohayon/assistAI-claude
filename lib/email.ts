@@ -48,7 +48,14 @@ const getResend = (): Resend | null => {
   if (resendClient) return resendClient;
   const key = process.env.RESEND_API_KEY;
   if (!key) return null;
-  resendClient = new Resend(key);
+  try {
+    resendClient = new Resend(key);
+  } catch (e) {
+    // Clé malformée / SDK qui throw au constructeur → on log et on renvoie
+    // null : chaque caller a déjà un fallback console (voir blocs `!client`).
+    console.error("[email] Resend init failed:", e);
+    return null;
+  }
   return resendClient;
 };
 

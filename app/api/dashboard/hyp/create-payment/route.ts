@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { paymentOrders, users } from "@/lib/db/schema";
 import {
@@ -19,17 +20,17 @@ import { isValidPlanKey, planByKey } from "@/lib/plans";
 // hébergée. On verrouille la suppression auto (deletionLockedUntil) 2h pour
 // éviter une race avec le cron trial-cleanup pendant que l'utilisateur paie.
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.response;
 
   try {
-    const body = (await req.json().catch(() => ({}))) as {
+    const parsed = await parseJsonBody<{
       plan?: string;
       period?: string;
       locale?: string;
-    };
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     const { plan, period } = body;
 
     if (!isValidPlanKey(plan)) {
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
         displayName: users.displayName,
       })
       .from(users)
-      .where(eq(users.id, session.user.id))
+      .where(eq(users.id, guard.userId))
       .limit(1);
     if (!user) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     const [order] = await db
       .insert(paymentOrders)
       .values({
-        userId: session.user.id,
+        userId: guard.userId,
         planKey: plan,
         period,
         currency,
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
       source: "web",
       event: "subscription_checkout_started",
       message: `Checkout HYP : ${plan} / ${period} → ${amount} ${currency} (locale ${locale})`,
-      userId: session.user.id,
+      userId: guard.userId,
       metadata: {
         plan,
         period,
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
     await db
       .update(users)
       .set({ deletionLockedUntil: new Date(now.getTime() + 2 * 60 * 60 * 1000) })
-      .where(eq(users.id, session.user.id));
+      .where(eq(users.id, guard.userId));
 
     const base = process.env.APP_URL;
     // Succès ET annulation passent par le callback : il casse l'iframe vers le

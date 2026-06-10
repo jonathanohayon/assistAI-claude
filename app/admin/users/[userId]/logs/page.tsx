@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
 import { LogsView } from "@/app/[locale]/dashboard/logs/logs-view";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +17,7 @@ export default async function AdminTenantLogsPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const [me] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!me || me.role !== "admin") redirect("/dashboard");
+  await requireAdminPage();
 
   const { userId } = await params;
   const [target] = await db

@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // body optionnel : tous les champs ont des défauts (countryCode US,
+  // recherche auto d'un numéro si phoneNumber absent).
   const body = (await req.json().catch(() => ({}))) as ProvisionBody;
   const countryCode = (body.countryCode ?? "US").toUpperCase();
   const areaCode = body.areaCode?.trim();

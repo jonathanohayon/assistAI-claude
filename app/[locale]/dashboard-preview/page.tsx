@@ -1,5 +1,3 @@
-import { getTranslations } from "next-intl/server";
-
 import { ConfigForm, DEFAULT_BUSINESS } from "../dashboard/config-form";
 import { PaletteSwitcher } from "./palette-switcher";
 
@@ -12,7 +10,6 @@ export default async function DashboardPreviewPage(props: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await props.params;
-  const t = await getTranslations({ locale, namespace: "DashboardConfig" });
 
   const dateLocale =
     locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
@@ -43,7 +40,7 @@ export default async function DashboardPreviewPage(props: {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
       <div className="mb-4 rounded-2xl border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-4 py-2.5 text-xs text-[var(--color-warning-strong)]">
-        <strong>Preview mode</strong> — données mockées, pas d'authentification.
+        <strong>Preview mode</strong> — données mockées, pas d’authentification.
         Visite <code className="rounded bg-white/60 px-1 font-mono">/dashboard</code>
         {" "}une fois loggé pour la vraie page.
       </div>

@@ -1,6 +1,7 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
@@ -97,16 +98,15 @@ const inferCallType = (summary: string, transcript: string[]): string => {
 };
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-internal-secret");
-  const expected = process.env.INTERNAL_SECRET;
-  if (!expected || secret !== expected) {
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) {
     await logEvent({
       source: "web",
       event: "calls_end_forbidden",
       message: "Tentative d'accès non autorisée à /api/calls/end",
       level: "warn",
     });
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return auth.response;
   }
 
   const body = (await req.json().catch(() => ({}))) as EndBody;

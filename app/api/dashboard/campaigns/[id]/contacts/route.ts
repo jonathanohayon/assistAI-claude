@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { MAX_CONTACTS_PER_IMPORT } from "@/lib/campaigns/constants";
 import { validateContacts, type RawContact } from "@/lib/campaigns/validate";
@@ -31,9 +32,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!campaign)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const body = (await req.json().catch(() => ({}))) as {
-    contacts?: RawContact[];
-  };
+  const parsed = await parseJsonBody<{ contacts?: RawContact[] }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const raw = Array.isArray(body.contacts) ? body.contacts : [];
   if (!raw.length)
     return NextResponse.json({ error: "no_contacts" }, { status: 400 });

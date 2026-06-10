@@ -15,8 +15,6 @@ import {
   Track,
   type RemoteAudioTrack,
   type RemoteTrack,
-  type RemoteTrackPublication,
-  type RemoteParticipant,
 } from "livekit-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -102,13 +100,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
       });
       roomRef.current = room;
 
-      room.on(
-        RoomEvent.TrackSubscribed,
-        (
-          track: RemoteTrack,
-          _pub: RemoteTrackPublication,
-          _p: RemoteParticipant,
-        ) => {
+      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
           if (track.kind !== Track.Kind.Audio) return;
           const audioTrack = track as RemoteAudioTrack;
           const el = audioElRef.current;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { getTenantGoogleClients, type TenantGoogleClients } from "@/lib/google";
 
 const SHEET_RANGE = "Contacts!A:E";
@@ -15,20 +15,6 @@ interface Contact {
   phone: string;
   email: string;
   notes: string;
-}
-
-// Résout l'userId effectif : session.user.id par défaut, OU asUserId
-// si caller admin (sinon 403). Retourne un discriminated result.
-async function resolveTargetUserId(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return { unauthorized: true as const };
-  const asUserId = req.nextUrl.searchParams.get("asUserId");
-  const scope = await resolveScopeUserId({
-    sessionUserId: session.user.id,
-    asUserId,
-  });
-  if ("forbidden" in scope) return { forbidden: true as const };
-  return { userId: scope.userId };
 }
 
 // Resolve the connected user's own Sheet. Returns null if Google isn't
@@ -89,14 +75,16 @@ export async function PUT(req: NextRequest) {
   if ("unauthorized" in r) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await parseJsonBody<{
     rowIndex?: number;
     name?: string;
     phone?: string;
     email?: string;
     notes?: string;
     timestamp?: string;
-  };
+  }>(req);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   if (!body.rowIndex || body.rowIndex < 1) {
     return NextResponse.json({ error: "rowIndex invalide" }, { status: 400 });

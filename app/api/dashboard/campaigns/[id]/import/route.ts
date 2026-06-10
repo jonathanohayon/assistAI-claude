@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { campaigns } from "@/lib/db/schema";
+import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import {
   extractSpreadsheetId,
@@ -56,11 +57,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
 
     // ── Google Sheets (JSON) ────────────────────────────────────────────
-    const body = (await req.json().catch(() => ({}))) as {
+    const parsed = await parseJsonBody<{
       source?: string;
       spreadsheetId?: string;
       range?: string;
-    };
+    }>(req);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
     if (body.source === "sheets") {
       const sheetId = extractSpreadsheetId(body.spreadsheetId ?? "");
       const result = await fetchSheet(r.userId, sheetId, body.range ?? "");
