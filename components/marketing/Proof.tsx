@@ -371,7 +371,12 @@ function LogosMarquee({ label }: { label: string }) {
       <p className="mb-6 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
         {label}
       </p>
+      {/* dir="ltr" : le track est animé translateX(0→-50%). En RTL le
+       *  conteneur ancre le track à droite → la translation vers la gauche
+       *  vidait le marquee la moitié du cycle sur /he. Les logos sont
+       *  latins, on force LTR sur ce bloc uniquement. */}
       <div
+        dir="ltr"
         className="group relative overflow-hidden"
         style={{
           maskImage:

@@ -128,9 +128,11 @@ function LanguageSwitcher({ reduce }: { reduce: boolean }) {
           </span>
         </motion.div>
       </AnimatePresence>
+      {/* left-1/2 + -translate-x-1/2 : paire physique cohérente pour un
+       *  centrage — start-1/2 + translate-x négatif décentre en RTL. */}
       <div
         aria-hidden
-        className="absolute bottom-3 start-1/2 flex -translate-x-1/2 gap-1.5"
+        className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5"
       >
         {greetings.map((_, i) => (
           <span
@@ -150,7 +152,10 @@ function LanguageSwitcher({ reduce }: { reduce: boolean }) {
 /* -------------------------------------------------------------------------- */
 
 function SpeedMeter({ reduce }: { reduce: boolean }) {
-  const [ms, setMs] = useState(reduce ? 280 : 100);
+  // État initial STABLE pour le SSR (useReducedMotion → null côté serveur :
+  // dériver l'init de `reduce` provoquait un hydration mismatch pour les
+  // utilisateurs prefers-reduced-motion). 280 = valeur de repos affichée.
+  const [ms, setMs] = useState(280);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -160,18 +165,30 @@ function SpeedMeter({ reduce }: { reduce: boolean }) {
 
   useEffect(() => {
     if (reduce) return;
+    // Flag d'arrêt : la chaîne setTimeout→rAF ne peut pas être annulée par un
+    // seul clearTimeout (un rAF déjà programmé survivait à l'unmount et la
+    // boucle setState tournait pour toujours).
+    let stopped = false;
+    let timer = 0;
     let raf = 0;
     let dir = 1;
     let val = 100;
     const tick = () => {
+      if (stopped) return;
       val += dir * 2.5;
       if (val >= 290) dir = -1;
       if (val <= 100) dir = 1;
       setMs(Math.round(val));
-      raf = window.setTimeout(() => requestAnimationFrame(tick), 40) as unknown as number;
+      timer = window.setTimeout(() => {
+        raf = requestAnimationFrame(tick);
+      }, 40);
     };
     tick();
-    return () => clearTimeout(raf);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+    };
   }, [reduce]);
 
   const pct = Math.min(100, ((ms - 100) / 200) * 100);
@@ -206,38 +223,45 @@ function SpeedMeter({ reduce }: { reduce: boolean }) {
 function ContactCard({ reduce }: { reduce: boolean }) {
   const name = "Sarah Cohen";
   const phone = "+972 54 871 2208";
-  const [nLen, setNLen] = useState(reduce ? name.length : 0);
-  const [pLen, setPLen] = useState(reduce ? phone.length : 0);
+  // Init à 0 (= SSR stable, useReducedMotion étant null côté serveur) ; le
+  // mode reduced bascule vers le texte complet dans l'effect.
+  const [nLen, setNLen] = useState(0);
+  const [pLen, setPLen] = useState(0);
 
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bascule one-shot post-hydratation (évite le mismatch SSR), pattern voulu
+      setNLen(name.length);
+      setPLen(phone.length);
+      return;
+    }
+    // UN seul ticker à machine d'états (frappe nom → frappe tel → pause →
+    // reset → re-frappe). L'ancienne version à 3 intervals s'auto-clearait
+    // après le 1er cycle : la carte restait vide pour toujours après 6 s.
     let n = 0;
     let p = 0;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de l'animation quand prefers-reduced-motion change, pattern voulu
-    setNLen(0);
-    setPLen(0);
-    const nTimer = setInterval(() => {
-      n += 1;
-      setNLen(n);
-      if (n >= name.length) clearInterval(nTimer);
-    }, 90);
-    const pTimer = setInterval(() => {
-      if (n < name.length) return;
-      p += 1;
-      setPLen(p);
-      if (p >= phone.length) clearInterval(pTimer);
-    }, 60);
-    const reset = setInterval(() => {
-      n = 0;
-      p = 0;
-      setNLen(0);
-      setPLen(0);
-    }, 6000);
-    return () => {
-      clearInterval(nTimer);
-      clearInterval(pTimer);
-      clearInterval(reset);
-    };
+    let pause = 0;
+    const tick = setInterval(() => {
+      if (n < name.length) {
+        n += 1;
+        setNLen(n);
+        return;
+      }
+      if (p < phone.length) {
+        p += 1;
+        setPLen(p);
+        return;
+      }
+      pause += 1;
+      if (pause >= 30) {
+        n = 0;
+        p = 0;
+        pause = 0;
+        setNLen(0);
+        setPLen(0);
+      }
+    }, 80);
+    return () => clearInterval(tick);
   }, [reduce, name.length, phone.length]);
 
   return (
@@ -424,12 +448,20 @@ const CALENDAR_CELL_COUNT = 21;
 function CalendarMock({ reduce }: { reduce: boolean }) {
   // Uniquement pour les keys de rendu — la logique d'anim utilise la constante.
   const cells = Array.from({ length: CALENDAR_CELL_COUNT });
-  const [filled, setFilled] = useState<number[]>(reduce ? [...cells.keys()] : []);
-  const [highlight, setHighlight] = useState(reduce);
+  // Init vide = SSR stable (useReducedMotion est null côté serveur — dériver
+  // l'init de `reduce` créait un hydration mismatch pour les users
+  // prefers-reduced-motion). Le mode reduced se remplit dans l'effect.
+  const [filled, setFilled] = useState<number[]>([]);
+  const [highlight, setHighlight] = useState(false);
 
   useEffect(() => {
-    if (reduce) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de l'animation quand prefers-reduced-motion change, pattern voulu
+    if (reduce) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bascule one-shot post-hydratation (évite le mismatch SSR), pattern voulu
+      setFilled([...Array(CALENDAR_CELL_COUNT).keys()]);
+      setHighlight(true);
+      return;
+    }
+     
     setFilled([]);
     setHighlight(false);
     const timers: ReturnType<typeof setTimeout>[] = [];

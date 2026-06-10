@@ -65,9 +65,19 @@ export function OutboundCalling() {
   const reduce = useReducedMotion() ?? false;
 
   // Index de l'appel « en cours » qui descend la liste (effet live).
-  const [active, setActive] = useState(reduce ? CONTACTS.length : 0);
+  // Init 0 = SSR stable. Le mode statique (reduced-motion) ne s'applique
+  // qu'APRÈS hydratation via staticMode — useReducedMotion est null côté
+  // serveur, brancher le premier render dessus créait un hydration mismatch
+  // (badges queued/calling vs qualified/connected) pour les users concernés.
+  const [active, setActive] = useState(0);
+  const [staticMode, setStaticMode] = useState(false);
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bascule one-shot post-hydratation (évite le mismatch SSR), pattern voulu
+      setStaticMode(true);
+      return;
+    }
+    setStaticMode(false);
     const id = setInterval(
       () => setActive((i) => (i >= CONTACTS.length ? 0 : i + 1)),
       1600,
@@ -76,7 +86,7 @@ export function OutboundCalling() {
   }, [reduce]);
 
   const stateOf = (i: number): RowState => {
-    if (reduce)
+    if (staticMode)
       return i % 3 === 0 ? "qualified" : i % 3 === 1 ? "connected" : "queued";
     if (i < active) return i % 2 === 0 ? "qualified" : "connected";
     if (i === active) return "calling";
