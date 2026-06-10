@@ -20,7 +20,8 @@
  */
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
@@ -120,6 +121,23 @@ export function ConfigForm({
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTile, setActiveTile] = useState<string | null>(null);
+
+  // Deep-link vers une tuile : la checklist de setup (dashboard) renvoie ici
+  // avec ?tile=business|notifs|… → on ouvre la tuile correspondante et on
+  // scrolle dessus. Soft-nav friendly (l'effet réagit au changement de param).
+  const searchParams = useSearchParams();
+  const tilesRef = useRef<HTMLDivElement | null>(null);
+  const tileParam = searchParams.get("tile");
+  useEffect(() => {
+    const OPENABLE = ["voice", "business", "persona", "notifs", "channels"];
+    if (tileParam && OPENABLE.includes(tileParam)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ouverture pilotée par l'URL (deep-link), pattern voulu
+      setActiveTile(tileParam);
+      requestAnimationFrame(() => {
+        tilesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [tileParam]);
 
   // Centre d'appels sortant : visible sur tous les plans, mais workspace
   // ouvrable seulement si la feature est active (plan premium) OU admin.
@@ -484,7 +502,7 @@ export function ConfigForm({
         </aside>
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}
-        <section className="mb-6 xl:col-start-1 xl:row-start-2">
+        <section ref={tilesRef} className="mb-6 scroll-mt-24 xl:col-start-1 xl:row-start-2">
           <div className="mb-4">
             <h2 className="text-xl font-extrabold tracking-tight text-[#18181b] sm:text-2xl">
               {t("header")}
