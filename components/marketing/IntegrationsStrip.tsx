@@ -6,193 +6,155 @@ import { useTranslations } from "next-intl";
 import { EASE } from "./Reveal";
 
 /**
- * Bande intégrations sous le Hero — version playful « data flow ».
- * 3 cartes légèrement inclinées (posées comme des stickers) reliées par une
- * ligne de flux animée : des points voyagent entre les outils, façon « la
- * donnée circule en temps réel ». Hover : la carte se redresse et lève.
+ * Bande intégrations — pattern « integrations cloud » (cnblocks / 21st.dev) :
+ * un cluster centré de tuiles logos, Tamara au milieu avec des anneaux qui
+ * pulsent, les 3 outils autour. Sobre, premium, une seule idée visuelle :
+ * « tout converge vers Tamara ».
  */
 
-const INTEGRATIONS = [
-  {
-    key: "whatsapp",
-    icon: <WhatsAppIcon />,
-    tilt: -2.5,
-    glow: "shadow-[0_16px_40px_-12px_rgba(37,211,102,0.45)]",
-    ring: "hover:ring-[#25D366]/50",
-    chipBg: "bg-[#25D366]/10",
-  },
-  {
-    key: "calendar",
-    icon: <GoogleCalendarIcon />,
-    tilt: 1.8,
-    glow: "shadow-[0_16px_40px_-12px_rgba(66,133,244,0.45)]",
-    ring: "hover:ring-[#4285F4]/50",
-    chipBg: "bg-[#4285F4]/10",
-  },
-  {
-    key: "crm",
-    icon: <GoogleSheetsIcon />,
-    tilt: -1.5,
-    glow: "shadow-[0_16px_40px_-12px_rgba(15,157,88,0.45)]",
-    ring: "hover:ring-[#0F9D58]/50",
-    chipBg: "bg-[#0F9D58]/10",
-  },
+const TOOLS = [
+  { key: "whatsapp", icon: <WhatsAppIcon /> },
+  { key: "calendar", icon: <GoogleCalendarIcon /> },
+  { key: "crm", icon: <GoogleSheetsIcon /> },
 ] as const;
 
 export function IntegrationsStrip() {
   const t = useTranslations("Integrations");
   const reduce = useReducedMotion();
 
+  const pop = (delay: number) => ({
+    initial: reduce ? { opacity: 0 } : { opacity: 0, scale: 0.75, y: 16 },
+    whileInView: reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 },
+    viewport: { once: true, margin: "-10%" } as const,
+    transition: reduce
+      ? { duration: 0.2 }
+      : { delay, type: "spring" as const, stiffness: 240, damping: 20 },
+  });
+
   return (
     <section
       aria-label={t("kicker")}
-      className="relative overflow-hidden py-14 sm:py-16"
+      className="relative overflow-hidden py-16 sm:py-20"
     >
-      {/* Voile gradient très léger pour détacher la bande du fond rose */}
+      {/* Glow radial doux derrière le cluster */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-1/2 h-56 -translate-y-1/2 bg-[radial-gradient(60%_100%_at_50%_50%,rgba(34,211,238,0.08),transparent_70%)]"
+        className="pointer-events-none absolute left-1/2 top-[42%] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(34,211,238,0.14),rgba(219,39,119,0.08),transparent)] blur-2xl"
       />
 
       <div className="relative mx-auto w-full max-w-5xl px-6">
-        {/* Kicker avec dot "live" */}
-        <motion.p
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }}
-          whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.55, ease: EASE }}
-          className="flex items-center justify-center gap-2 text-center text-[11px] font-bold uppercase tracking-[0.24em]"
-        >
-          <span className="relative flex h-2 w-2" aria-hidden>
-            <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-75 motion-safe:animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22d3ee]" />
-          </span>
-          <span className="bg-gradient-to-r from-[#0e7490] via-[#db2777] to-[#0e7490] bg-clip-text text-transparent">
-            {t("kicker")}
-          </span>
-        </motion.p>
+        {/* Cluster : WhatsApp au-dessus, Calendar · TAMARA · Sheets au centre */}
+        <div className="mx-auto flex w-fit flex-col items-center gap-3">
+          <motion.div {...pop(0.25)}>
+            <Tile>{TOOLS[0].icon}</Tile>
+          </motion.div>
 
-        {/* Cartes + ligne de flux derrière */}
-        <div className="relative mt-8">
-          {/* Ligne de flux : pointillés + 2 points qui voyagent (desktop) */}
-          <div
-            aria-hidden
-            dir="ltr"
-            className="pointer-events-none absolute inset-x-[12%] top-1/2 hidden -translate-y-1/2 lg:block"
-          >
-            <div className="h-px w-full border-t-2 border-dashed border-[#db2777]/20" />
-            {!reduce && (
-              <>
-                <span className="flow-dot bg-[#22d3ee] shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
-                <span
-                  className="flow-dot bg-[#db2777] shadow-[0_0_12px_rgba(219,39,119,0.8)]"
-                  style={{ animationDelay: "1.6s" }}
-                />
-              </>
-            )}
-          </div>
+          <div className="flex items-center gap-3">
+            <motion.div {...pop(0.35)}>
+              <Tile>{TOOLS[1].icon}</Tile>
+            </motion.div>
 
-          <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
-            {INTEGRATIONS.map((item, i) => (
-              <motion.div
-                key={item.key}
-                initial={
-                  reduce
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: 32, rotate: 0, scale: 0.9 }
-                }
-                whileInView={
-                  reduce
-                    ? { opacity: 1 }
-                    : { opacity: 1, y: 0, rotate: item.tilt, scale: 1 }
-                }
-                viewport={{ once: true, margin: "-12%" }}
-                transition={
-                  reduce
-                    ? { duration: 0.2 }
-                    : {
-                        delay: 0.12 + i * 0.12,
-                        type: "spring",
-                        stiffness: 220,
-                        damping: 18,
-                      }
-                }
-                whileHover={
-                  reduce
-                    ? undefined
-                    : { rotate: 0, y: -8, scale: 1.04 }
-                }
-                className={`group flex cursor-default items-center gap-3.5 rounded-3xl border border-white/60 bg-white/85 p-4 ring-1 ring-[#fbcfe8]/60 backdrop-blur-xl transition-shadow duration-300 ${item.glow} ${item.ring} sm:p-5`}
-              >
-                {/* Icône flottante dans un squircle teinté marque */}
-                <motion.span
+            {/* Tuile Tamara — plus grande, gradient marque, anneaux pulsants */}
+            <motion.div {...pop(0.1)} className="relative">
+              {!reduce && (
+                <>
+                  <span aria-hidden className="pulse-ring" />
+                  <span
+                    aria-hidden
+                    className="pulse-ring"
+                    style={{ animationDelay: "1.4s" }}
+                  />
+                </>
+              )}
+              <div className="relative flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#db2777] to-[#22d3ee] shadow-[0_16px_40px_-12px_rgba(219,39,119,0.5)] ring-1 ring-white/40">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="h-9 w-9 text-white"
                   aria-hidden
-                  animate={
-                    reduce
-                      ? undefined
-                      : { y: [0, -4, 0] }
-                  }
-                  transition={
-                    reduce
-                      ? undefined
-                      : {
-                          duration: 2.6,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.4,
-                        }
-                  }
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${item.chipBg} p-2.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transition-none motion-reduce:group-hover:rotate-0 motion-reduce:group-hover:scale-100`}
                 >
-                  {item.icon}
-                </motion.span>
-                <span className="text-[13.5px] font-semibold leading-snug text-[#1e2937]">
-                  {t(item.key)}
-                </span>
-              </motion.div>
-            ))}
+                  <path
+                    d="M12 3a4 4 0 0 0-4 4v4a4 4 0 0 0 8 0V7a4 4 0 0 0-4-4Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M5 11a7 7 0 0 0 14 0M12 18v3"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            <motion.div {...pop(0.45)}>
+              <Tile>{TOOLS[2].icon}</Tile>
+            </motion.div>
           </div>
         </div>
+
+        {/* Texte sous le cluster */}
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={{ delay: 0.5, duration: 0.6, ease: EASE }}
+          className="mx-auto mt-8 max-w-2xl text-center"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#0e7490]">
+            {t("kicker")}
+          </p>
+          <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm leading-relaxed text-[#64748b]">
+            <span>{t("whatsapp")}</span>
+            <span aria-hidden className="text-[#f472b6]">
+              ·
+            </span>
+            <span>{t("calendar")}</span>
+            <span aria-hidden className="text-[#f472b6]">
+              ·
+            </span>
+            <span>{t("crm")}</span>
+          </p>
+        </motion.div>
       </div>
 
       <style jsx>{`
-        .flow-dot {
+        .pulse-ring {
           position: absolute;
-          top: -3px;
-          left: 0;
-          height: 6px;
-          width: 6px;
-          border-radius: 9999px;
-          animation: flow-travel 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+          inset: 0;
+          border-radius: 1rem;
+          border: 1.5px solid rgba(34, 211, 238, 0.45);
+          animation: tile-pulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+          pointer-events: none;
         }
-        @keyframes flow-travel {
+        @keyframes tile-pulse {
           0% {
-            left: 0%;
-            opacity: 0;
-            transform: scale(0.5);
-          }
-          12% {
-            opacity: 1;
             transform: scale(1);
-          }
-          88% {
-            opacity: 1;
-            transform: scale(1);
+            opacity: 0.9;
           }
           100% {
-            left: 100%;
+            transform: scale(1.55);
             opacity: 0;
-            transform: scale(0.5);
           }
         }
         @media (prefers-reduced-motion: reduce) {
-          .flow-dot {
+          .pulse-ring {
             animation: none;
             display: none;
           }
         }
       `}</style>
     </section>
+  );
+}
+
+function Tile({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="group flex size-16 items-center justify-center rounded-2xl border border-[#fbcfe8] bg-white/90 p-3.5 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-[#22d3ee]/50 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    <span aria-hidden className="h-full w-full">
+        {children}
+      </span>
+    </div>
   );
 }
 
