@@ -61,7 +61,8 @@ export function HeroSection({
 
         {primaryPhone ? (
           <p
-            className="mt-4 break-words bg-gradient-to-r from-[#0e7490] via-[#be185d] to-[#ec4899] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl"
+            dir="ltr"
+            className="mt-4 break-words bg-gradient-to-r from-[#0e7490] via-[#be185d] to-[#ec4899] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
             style={{
               fontFeatureSettings: '"tnum"',
               backgroundSize: "200% 100%",

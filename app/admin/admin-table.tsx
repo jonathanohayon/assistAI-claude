@@ -266,7 +266,7 @@ function NumbersCell({
               key={n.id}
               className="inline-flex items-center gap-2 self-start rounded-full bg-[var(--color-muted)] py-1 pl-3 pr-1 text-xs"
             >
-              <span className="font-mono text-[var(--color-foreground)]">
+              <span dir="ltr" className="font-mono text-[var(--color-foreground)]">
                 {n.phoneNumber}
               </span>
               {n.label && (

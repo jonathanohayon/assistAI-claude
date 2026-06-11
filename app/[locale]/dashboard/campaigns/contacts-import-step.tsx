@@ -400,7 +400,7 @@ export function ContactsImportStep({
               <tbody>
                 {accepted.slice(0, 50).map((c) => (
                   <tr key={c.phoneNumber} className="border-t border-[#e2e8f0]/60">
-                    <td className="py-1 font-mono text-[#18181b]">{c.phoneNumber}</td>
+                    <td dir="ltr" className="py-1 font-mono text-[#18181b] ltr:text-left rtl:text-right">{c.phoneNumber}</td>
                     <td className="py-1 text-[#64748b]">{c.contactName}</td>
                     <td className="py-1 text-right">
                       <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10px] font-bold text-[#166534]">

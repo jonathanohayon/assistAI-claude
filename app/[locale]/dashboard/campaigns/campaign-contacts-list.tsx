@@ -86,7 +86,7 @@ export function CampaignContactsList({
             <tbody>
               {contacts.map((c) => (
                 <tr key={c.id} className="border-t border-[#f1f5f9]">
-                  <td className="py-1.5 font-mono text-[#18181b]">
+                  <td dir="ltr" className="py-1.5 font-mono text-[#18181b] ltr:text-left rtl:text-right">
                     {c.phoneNumber}
                   </td>
                   <td className="py-1.5 text-[#64748b]">{c.contactName || "—"}</td>
