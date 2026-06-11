@@ -137,10 +137,18 @@ export const CONFIG_FORM_CSS = `
           to   { opacity: 1; }
         }
         .overlay-anim { animation: overlay-fade 0.2s ease-out; }
+        /* Sautillement du bouton Save quand des changements ne sont pas
+           encore enregistrés — attire l'œil sans être agressif. */
+        @keyframes save-hop {
+          0%, 70%, 100% { transform: translateY(0); }
+          80% { transform: translateY(-5px); }
+          90% { transform: translateY(-2px); }
+        }
+        .anim-save-hop { animation: save-hop 1.6s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
           .anim-fade-up, .anim-bounce-in, .anim-bounce-soft, .anim-pulse-soft,
           .anim-flash, .anim-slide-x, .anim-tilt, .anim-sparkle, .anim-wiggle,
-          .anim-pulse-quick, .anim-spin-slow, .ripple-ring,
+          .anim-pulse-quick, .anim-spin-slow, .ripple-ring, .anim-save-hop,
           .drawer-anim, .modal-anim, .overlay-anim { animation: none; }
           .card-hover { transition: none; }
           .card-hover:hover { transform: none; }
