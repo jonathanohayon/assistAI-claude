@@ -143,7 +143,7 @@ export default async function SettingsPage(props: {
                   key={n.id}
                   className="inline-flex items-center gap-2 rounded-full bg-[var(--color-muted)] px-3 py-1 font-mono text-xs"
                 >
-                  {n.phoneNumber}
+                  <span dir="ltr">{n.phoneNumber}</span>
                   {n.label && (
                     <span className="text-[var(--color-muted-foreground)]">
                       · {n.label}

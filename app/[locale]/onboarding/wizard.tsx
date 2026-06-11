@@ -315,7 +315,7 @@ export function OnboardingWizard({
           <h2 className="font-display text-2xl text-[var(--color-foreground)]">
             {t("doneTitle")}
           </h2>
-          <p className="font-mono text-3xl font-semibold tracking-tight text-[var(--color-foreground)] sm:text-4xl">
+          <p dir="ltr" className="font-mono text-3xl font-semibold tracking-tight text-[var(--color-foreground)] sm:text-4xl">
             {provisioned.phoneNumber}
           </p>
           <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -531,7 +531,7 @@ export function OnboardingWizard({
                         className="accent-[var(--color-primary)]"
                       />
                       <div>
-                        <div className="font-mono text-sm text-[var(--color-foreground)]">
+                        <div dir="ltr" className="font-mono text-sm text-[var(--color-foreground)] ltr:text-left rtl:text-right">
                           {n.friendlyName || n.phoneNumber}
                         </div>
                         {(n.locality || n.region) && (
