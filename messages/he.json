@@ -1441,7 +1441,19 @@
     "errStatus": "שגיאה {status}",
     "deletingButton": "מוחק…",
     "confirmDeleteButton": "אישור מחיקה",
-    "cancelButton": "ביטול"
+    "cancelButton": "ביטול",
+    "apiSection": "API וגישת מפתחים",
+    "apiDesc": "חברו את האפליקציה שלכם (יומן) כדי לקבל תמלולי שיחות דרך מפתח API. מספר הטלפון חובה בכל בקשה.",
+    "apiNoKey": "אין מפתח API פעיל.",
+    "apiGenerate": "יצירת מפתח",
+    "apiRegenerate": "יצירה מחדש",
+    "apiRevoke": "ביטול",
+    "apiActiveSince": "פעיל מאז",
+    "apiKeyOnceWarning": "העתיקו את המפתח עכשיו — הוא לא יוצג שוב.",
+    "apiCopy": "העתקה",
+    "apiCopied": "הועתק",
+    "apiEndpointLabel": "נקודת קצה",
+    "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset."
   },
   "DashboardBilling": {
     "header": "מנוי",
