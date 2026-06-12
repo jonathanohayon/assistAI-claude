@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
+import { ApiKeySection } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
 
@@ -154,6 +155,17 @@ export default async function SettingsPage(props: {
             </ul>
           </div>
         )}
+
+        {/* API / Accès développeur — clé pour l'API publique v1 (app journal). */}
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="font-display text-lg text-[var(--color-foreground)]">
+            {t("apiSection")}
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+            {t("apiDesc")}
+          </p>
+          <ApiKeySection />
+        </div>
 
         {/* Danger zone */}
         <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm sm:p-6">

@@ -1441,7 +1441,19 @@
     "errStatus": "Erreur {status}",
     "deletingButton": "Suppression…",
     "confirmDeleteButton": "Confirmer la suppression",
-    "cancelButton": "Annuler"
+    "cancelButton": "Annuler",
+    "apiSection": "API & accès développeur",
+    "apiDesc": "Connectez votre app (journal) pour récupérer les transcripts d’appels via une clé API. Le numéro est obligatoire dans chaque requête.",
+    "apiNoKey": "Aucune clé API active.",
+    "apiGenerate": "Générer une clé",
+    "apiRegenerate": "Régénérer",
+    "apiRevoke": "Révoquer",
+    "apiActiveSince": "active depuis le",
+    "apiKeyOnceWarning": "Copiez cette clé maintenant : elle ne sera plus jamais affichée.",
+    "apiCopy": "Copier",
+    "apiCopied": "Copié",
+    "apiEndpointLabel": "Point d’accès",
+    "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset."
   },
   "DashboardBilling": {
     "header": "Abonnement",

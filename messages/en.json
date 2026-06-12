@@ -1441,7 +1441,19 @@
     "errStatus": "Error {status}",
     "deletingButton": "Deleting…",
     "confirmDeleteButton": "Confirm deletion",
-    "cancelButton": "Cancel"
+    "cancelButton": "Cancel",
+    "apiSection": "API & developer access",
+    "apiDesc": "Connect your app (journal) to fetch call transcripts via an API key. The phone number is required on every request.",
+    "apiNoKey": "No active API key.",
+    "apiGenerate": "Generate a key",
+    "apiRegenerate": "Regenerate",
+    "apiRevoke": "Revoke",
+    "apiActiveSince": "active since",
+    "apiKeyOnceWarning": "Copy this key now — it will never be shown again.",
+    "apiCopy": "Copy",
+    "apiCopied": "Copied",
+    "apiEndpointLabel": "Endpoint",
+    "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset."
   },
   "DashboardBilling": {
     "header": "Billing",
