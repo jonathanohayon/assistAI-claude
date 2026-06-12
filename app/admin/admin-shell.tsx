@@ -19,6 +19,7 @@ import type { PlanFeatureMatrix } from "@/lib/plan-features";
 import type { PlanPricingMap } from "@/lib/plan-pricing";
 
 import { AdminTable } from "./admin-table";
+import { ApiTranscriptsExplorer } from "./api-transcripts-explorer";
 import { BlockOrderForm } from "./block-order-form";
 import FinanceDashboard from "./finance/FinanceDashboard";
 import { GlobalInstructionsForm } from "./global-instructions-form";
@@ -37,7 +38,8 @@ type TileId =
   | "campaign-prompts"
   | "pricing"
   | "users"
-  | "finance";
+  | "finance"
+  | "api-transcripts";
 
 interface TileDef {
   id: TileId;
@@ -282,6 +284,19 @@ export function AdminShell(props: AdminShellProps) {
         </svg>
       ),
     },
+    {
+      id: "api-transcripts",
+      label: "API Transcripts",
+      tagline: "Prévisualise la sortie de l’API publique /api/v1/transcripts par tenant.",
+      summary: "Tester l’API journal · entrants & sortants",
+      accent: "from-[#7c3aed] to-[#a855f7]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M4 17l6-6-6-6" />
+          <path d="M12 19h8" />
+        </svg>
+      ),
+    },
   ] as const;
 
   // Ordre custom des tiles (drag & drop persistant en localStorage).
@@ -458,6 +473,15 @@ export function AdminShell(props: AdminShellProps) {
               <AdminTable rows={props.rows} currentUserId={props.currentUserId} />
             )}
             {active === "finance" && <FinanceDashboard />}
+            {active === "api-transcripts" && (
+              <ApiTranscriptsExplorer
+                rows={props.rows.map((r) => ({
+                  id: r.id,
+                  email: r.email,
+                  displayName: r.displayName,
+                }))}
+              />
+            )}
           </div>
         </div>
       )}
