@@ -771,7 +771,11 @@
     "introOrders": "תיעוד הזמנות והזמנות",
     "sheetColumnsHint": "עמודות שנוצרות אוטומטית:",
     "sheetColumnsCustomers": "תאריך · שם · טלפון · אימייל · הערות",
-    "sheetColumnsOrders": "תאריך · שעה · שם · טלפון · תיאור · סניף"
+    "sheetColumnsOrders": "תאריך · שעה · שם · טלפון · תיאור · סניף",
+    "sheetPasteLabel": "או הדביקו קישור (או מזהה) של Sheet קיים",
+    "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
+    "sheetPasteBtn": "שימוש",
+    "sheetPasteInvalid": "קישור או מזהה Sheet לא תקין."
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",
