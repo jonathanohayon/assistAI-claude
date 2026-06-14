@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
   const capabilitiesDirective = `CAPACITÉS ACTIVÉES PAR LE TENANT — RESPECTE-LES STRICTEMENT :
 - Prise de rendez-vous : ${cap(features.calendar)}.${features.calendar ? "" : " Ne propose JAMAIS de rendez-vous et n'utilise aucun outil de calendrier."}
 - Enregistrement client (CRM) : ${cap(features.crm)}.${features.crm ? "" : " N'enregistre pas de fiche client."}
-- Prise de commandes : ${cap(ordersEnabled)}.${ordersEnabled ? " Tu peux enregistrer une commande/réservation via l'outil record_order. NE DEMANDE PAS le nom ni le numéro du client — le numéro de l'appelant est déjà connu. Enregistre directement : l'article (et la quantité/les détails utiles) suffisent." : " Ne prends pas de commande."}`;
+- Prise de commandes : ${cap(ordersEnabled)}.${ordersEnabled ? " Tu peux enregistrer une commande/réservation via l'outil record_order. Le numéro de l'appelant est rempli automatiquement ; le nom et les détails sont optionnels. Pour savoir quelles infos demander (ex. le nom du client), suis ta persona." : " Ne prends pas de commande."}`;
 
   const langLabel: Record<string, string> = {
     fr: "français",
