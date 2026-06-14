@@ -771,7 +771,11 @@
     "introOrders": "enregistrez vos commandes et réservations",
     "sheetColumnsHint": "Colonnes créées automatiquement :",
     "sheetColumnsCustomers": "Date · Nom · Téléphone · Email · Notes",
-    "sheetColumnsOrders": "Date · Heure · Nom · Téléphone · Description · Centre"
+    "sheetColumnsOrders": "Date · Heure · Nom · Téléphone · Description · Centre",
+    "sheetPasteLabel": "Ou collez le lien (ou l’ID) d’un Sheet existant",
+    "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
+    "sheetPasteBtn": "Utiliser",
+    "sheetPasteInvalid": "Lien ou ID de Sheet invalide."
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",

@@ -34,7 +34,19 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
   const [pickStatus, setPickStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
+  const [pasteValue, setPasteValue] = useState("");
+  const [pasteStatus, setPasteStatus] = useState<
+    "idle" | "saving" | "saved" | "error" | "invalid"
+  >("idle");
   const [isPending, startTransition] = useTransition();
+
+  // Extrait l'ID d'un Sheet depuis une URL Google Sheets ou un ID brut collé.
+  const extractSheetId = (input: string): string | null => {
+    const m = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (m) return m[1];
+    const raw = input.trim();
+    return /^[a-zA-Z0-9-_]{20,}$/.test(raw) ? raw : null;
+  };
 
   const load = async () => {
     try {
@@ -104,6 +116,32 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
         await load();
       } catch {
         setPickStatus("error");
+      }
+    });
+  };
+
+  // Sélection par lien/ID collé — marche SANS le scope Drive (pas besoin de
+  // lister). On extrait l'ID puis on réutilise l'action "select".
+  const selectByPaste = () => {
+    const id = extractSheetId(pasteValue);
+    if (!id) {
+      setPasteStatus("invalid");
+      return;
+    }
+    setPasteStatus("saving");
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/dashboard/sheets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type, action: "select", id }),
+        });
+        if (!res.ok) throw new Error("select");
+        setPasteStatus("saved");
+        setPasteValue("");
+        await load();
+      } catch {
+        setPasteStatus("error");
       }
     });
   };
@@ -241,21 +279,14 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
           </div>
 
           {/* Choisir un Sheet existant */}
-          <div className="space-y-2 border-t border-[var(--color-border)]/60 pt-4">
-            {state?.scopeMissing ? (
-              <div className="space-y-2">
-                <p className="text-xs text-[var(--color-muted-foreground)]">
-                  {t("sheetReconnectHint")}
-                </p>
-                <ConnectGoogleLink className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-foreground)] shadow-sm transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2">
-                  {t("sheetReconnect")}
-                </ConnectGoogleLink>
-              </div>
-            ) : state && state.list.length === 0 ? (
-              <p className="text-xs text-[var(--color-muted-foreground)]">
-                {t("sheetPickEmpty")}
-              </p>
-            ) : (
+          <div className="space-y-3 border-t border-[var(--color-border)]/60 pt-4">
+            <p className="text-xs font-medium text-[var(--color-foreground)]">
+              {t("sheetPickLabel")}
+            </p>
+
+            {/* Dropdown (comme le sélecteur de calendriers) — nécessite le
+                scope Drive pour lister. */}
+            {!state?.scopeMissing && state && state.list.length > 0 && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-end gap-2">
                   <select
@@ -294,6 +325,63 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
                 )}
               </div>
             )}
+
+            {/* Sans scope Drive : on ne peut pas lister → on propose la
+                reconnexion (pour avoir le dropdown) ET la sélection par lien. */}
+            {state?.scopeMissing && (
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                {t("sheetReconnectHint")}{" "}
+                <ConnectGoogleLink className="font-medium text-[var(--color-primary)] underline underline-offset-2">
+                  {t("sheetReconnect")}
+                </ConnectGoogleLink>
+              </p>
+            )}
+
+            {/* Sélection par lien/ID collé — universelle, sans reconnexion. */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-[var(--color-muted-foreground)]">
+                {t("sheetPasteLabel")}
+              </label>
+              <div className="flex flex-wrap items-end gap-2">
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={pasteValue}
+                  onChange={(e) => {
+                    setPasteValue(e.target.value);
+                    setPasteStatus("idle");
+                  }}
+                  placeholder={t("sheetPastePlaceholder")}
+                  aria-label={t("sheetPasteLabel")}
+                  className="min-w-[180px] flex-1 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 font-mono text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-1"
+                />
+                <button
+                  type="button"
+                  onClick={selectByPaste}
+                  disabled={
+                    isPending || pasteStatus === "saving" || !pasteValue.trim()
+                  }
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-foreground)] shadow-sm transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50"
+                >
+                  {pasteStatus === "saving" ? "…" : t("sheetPasteBtn")}
+                </button>
+              </div>
+              {pasteStatus === "invalid" && (
+                <p className="text-xs font-medium text-red-700">
+                  {t("sheetPasteInvalid")}
+                </p>
+              )}
+              {pasteStatus === "saved" && (
+                <p className="text-xs font-medium text-emerald-700">
+                  {t("sheetSaved")}
+                </p>
+              )}
+              {pasteStatus === "error" && (
+                <p className="text-xs font-medium text-red-700">
+                  {t("sheetError")}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}

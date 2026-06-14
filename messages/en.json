@@ -771,7 +771,11 @@
     "introOrders": "record your orders and reservations",
     "sheetColumnsHint": "Columns created automatically:",
     "sheetColumnsCustomers": "Date · Name · Phone · Email · Notes",
-    "sheetColumnsOrders": "Date · Time · Name · Phone · Description · Center"
+    "sheetColumnsOrders": "Date · Time · Name · Phone · Description · Center",
+    "sheetPasteLabel": "Or paste the link (or ID) of an existing Sheet",
+    "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
+    "sheetPasteBtn": "Use",
+    "sheetPasteInvalid": "Invalid Sheet link or ID."
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",
