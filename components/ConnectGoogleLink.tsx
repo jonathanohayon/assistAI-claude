@@ -14,14 +14,20 @@ export function ConnectGoogleLink({
   className,
   title,
   children,
+  returnTo,
 }: {
   className?: string;
   title?: string;
   children: React.ReactNode;
+  /** Chemin interne où revenir après le callback OAuth (ex: "/dashboard/crm").
+   *  Sans ça, on retombe sur /onboarding (comportement historique). */
+  returnTo?: string;
 }) {
+  const href = returnTo
+    ? `/api/onboarding/google/start?returnTo=${encodeURIComponent(returnTo)}`
+    : "/api/onboarding/google/start";
   return (
-    // eslint-disable-next-line @next/next/no-html-link-for-pages -- route API OAuth : navigation complète requise (cf. doc ci-dessus)
-    <a href="/api/onboarding/google/start" className={className} title={title}>
+    <a href={href} className={className} title={title}>
       {children}
     </a>
   );

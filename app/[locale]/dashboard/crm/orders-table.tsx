@@ -24,28 +24,29 @@ export function OrdersTable() {
   const t = useTranslations("DashboardCrm");
   const locale = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [source, setSource] = useState<"sheet" | "calendar" | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [sync, setSync] = useState<SyncState>("idle");
   const [isPending, startTransition] = useTransition();
 
+  const load = async () => {
+    try {
+      const res = await fetch("/api/dashboard/orders", { cache: "no-store" });
+      if (!res.ok) throw new Error("load");
+      const data = await res.json();
+      setOrders(Array.isArray(data?.orders) ? data.orders : []);
+      setSource(data?.source ?? null);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/dashboard/orders");
-        if (!res.ok) throw new Error("load");
-        const data = await res.json();
-        if (!cancelled) setOrders(Array.isArray(data?.orders) ? data.orders : []);
-      } catch {
-        if (!cancelled) setLoadError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial post-fetch, pattern voulu
+    void load();
   }, []);
 
   const fmtDate = (value: string) => {
@@ -65,6 +66,7 @@ export function OrdersTable() {
         const res = await fetch("/api/dashboard/orders", { method: "POST" });
         if (res.ok) {
           setSync("synced");
+          await load(); // recharge depuis le Sheet pour voir les lignes exportées
           return;
         }
         const data = await res.json().catch(() => ({}));
@@ -104,6 +106,13 @@ export function OrdersTable() {
 
   return (
     <div className="space-y-3">
+      {source && (
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          {source === "sheet"
+            ? t("ordersSourceSheet")
+            : t("ordersSourceCalendar")}
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-h-[20px] text-xs">
           {sync === "synced" && (

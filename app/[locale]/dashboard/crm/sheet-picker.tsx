@@ -15,6 +15,7 @@ interface SheetState {
   selectedName: string | null;
   list: SheetItem[];
   scopeMissing: boolean;
+  apiDisabled: boolean;
 }
 
 /**
@@ -61,6 +62,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
         selectedName: data?.selectedName ?? null,
         list: Array.isArray(data?.list) ? data.list : [],
         scopeMissing: Boolean(data?.scopeMissing),
+        apiDisabled: Boolean(data?.apiDisabled),
       });
       setPickId(data?.selectedId ?? "");
     } catch {
@@ -69,6 +71,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
         selectedName: null,
         list: [],
         scopeMissing: false,
+        apiDisabled: false,
       });
     } finally {
       setLoading(false);
@@ -326,12 +329,24 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
               </div>
             )}
 
+            {/* API Drive non activée sur le projet → message dédié (un
+                re-consentement n'y changera rien ; le champ "coller le lien"
+                ci-dessous fonctionne quand même). */}
+            {state?.apiDisabled && (
+              <p className="text-xs text-amber-700">
+                {t("sheetDriveApiDisabled")}
+              </p>
+            )}
+
             {/* Sans scope Drive : on ne peut pas lister → on propose la
                 reconnexion (pour avoir le dropdown) ET la sélection par lien. */}
-            {state?.scopeMissing && (
+            {state?.scopeMissing && !state?.apiDisabled && (
               <p className="text-xs text-[var(--color-muted-foreground)]">
                 {t("sheetReconnectHint")}{" "}
-                <ConnectGoogleLink className="font-medium text-[var(--color-primary)] underline underline-offset-2">
+                <ConnectGoogleLink
+                  returnTo="/dashboard/crm"
+                  className="font-medium text-[var(--color-primary)] underline underline-offset-2"
+                >
                   {t("sheetReconnect")}
                 </ConnectGoogleLink>
               </p>

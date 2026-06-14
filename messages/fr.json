@@ -779,7 +779,10 @@
     "agentEnabledLabel": "Agent : activé",
     "agentDisabledLabel": "Agent : désactivé",
     "agentToggleAria": "Activer ou désactiver cette capacité pour l’agent vocal",
-    "agentToggleHint": "Quand c’est désactivé, l’agent au téléphone ne propose plus ce service."
+    "agentToggleHint": "Quand c’est désactivé, l’agent au téléphone ne propose plus ce service.",
+    "sheetDriveApiDisabled": "L’API Google Drive n’est pas activée sur le projet. Activez-la dans Google Cloud Console (ou collez le lien du Sheet ci-dessous).",
+    "ordersSourceSheet": "Lu depuis votre Google Sheet Commandes.",
+    "ordersSourceCalendar": "Lu depuis votre agenda. Connectez un Sheet Commandes pour y enregistrer vos commandes."
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",

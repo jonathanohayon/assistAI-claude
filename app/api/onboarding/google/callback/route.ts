@@ -28,6 +28,29 @@ export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get("state");
   const error = req.nextUrl.searchParams.get("error");
 
+  // Chemin de retour encodé dans le state (rt) → on revient là où l'utilisateur
+  // a cliqué (ex: /dashboard/crm). Défaut /onboarding. Validé interne.
+  let back = "/onboarding";
+  if (state) {
+    try {
+      const s = JSON.parse(Buffer.from(state, "base64url").toString()) as {
+        rt?: string;
+      };
+      if (
+        typeof s.rt === "string" &&
+        s.rt.startsWith("/") &&
+        !s.rt.startsWith("//") &&
+        !s.rt.startsWith("/\\")
+      ) {
+        back = s.rt;
+      }
+    } catch {
+      /* state illisible → /onboarding */
+    }
+  }
+  const backWith = (q: string) =>
+    `${back}${back.includes("?") ? "&" : "?"}${q}`;
+
   if (error) {
     await logEvent({
       source: "auth",
@@ -37,11 +60,11 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
       metadata: { error },
     });
-    return redirectTo("/onboarding?google=denied");
+    return redirectTo(backWith("google=denied"));
   }
 
   if (!code || !state) {
-    return redirectTo("/onboarding?google=missing");
+    return redirectTo(backWith("google=missing"));
   }
 
   // Verify state binds to this user — defends against the OAuth flow being
@@ -52,10 +75,10 @@ export async function GET(req: NextRequest) {
       uid?: string;
     };
   } catch {
-    return redirectTo("/onboarding?google=bad_state");
+    return redirectTo(backWith("google=bad_state"));
   }
   if (parsed.uid !== session.user.id) {
-    return redirectTo("/onboarding?google=user_mismatch");
+    return redirectTo(backWith("google=user_mismatch"));
   }
 
   try {
@@ -71,7 +94,7 @@ export async function GET(req: NextRequest) {
         level: "warn",
         userId: session.user.id,
       });
-      return redirectTo("/onboarding?google=no_refresh");
+      return redirectTo(backWith("google=no_refresh"));
     }
 
     await db
@@ -86,7 +109,7 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
     });
 
-    return redirectTo("/onboarding?google=connected");
+    return redirectTo(backWith("google=connected"));
   } catch (e) {
     const msg = e instanceof Error ? e.message : "oauth failed";
     await logEvent({
@@ -97,6 +120,6 @@ export async function GET(req: NextRequest) {
       userId: session.user.id,
       metadata: { error: msg },
     });
-    return redirectTo(`/onboarding?google=error&msg=${encodeURIComponent(msg)}`);
+    return redirectTo(backWith(`google=error&msg=${encodeURIComponent(msg)}`));
   }
 }
