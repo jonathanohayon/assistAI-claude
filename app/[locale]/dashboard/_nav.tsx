@@ -12,6 +12,8 @@ interface Tab {
   // Si défini, l'onglet n'apparaît que si la feature est activée pour le
   // plan du tenant (matrice admin éditable). Sans gate = toujours visible.
   feature?: FeatureKey;
+  // Comme `feature`, mais visible si AU MOINS UNE des features est activée.
+  featureAny?: FeatureKey[];
 }
 
 const TABS: ReadonlyArray<Tab> = [
@@ -21,8 +23,11 @@ const TABS: ReadonlyArray<Tab> = [
     labelKey: "tabOutbound",
     feature: "outbound_campaigns",
   },
-  { href: "/dashboard/calendar", labelKey: "tabCalendar", feature: "calendar" },
-  { href: "/dashboard/contacts", labelKey: "tabContacts", feature: "crm" },
+  {
+    href: "/dashboard/crm",
+    labelKey: "tabCalendarCrm",
+    featureAny: ["calendar", "crm"],
+  },
   { href: "/dashboard/billing", labelKey: "tabBilling" },
   { href: "/dashboard/logs", labelKey: "tabLogs" },
 ];
@@ -41,7 +46,11 @@ export function DashboardTabs({
   const t = useTranslations("Dashboard");
   const pathname = usePathname();
   const visibleTabs = TABS.filter(
-    (tab) => isAdmin || !tab.feature || features[tab.feature],
+    (tab) =>
+      isAdmin ||
+      (!tab.feature && !tab.featureAny) ||
+      (tab.feature && features[tab.feature]) ||
+      (tab.featureAny && tab.featureAny.some((f) => features[f])),
   );
   // next-intl/navigation/usePathname renvoie le pathname SANS la locale
   // prefix (ex: "/dashboard/calendar" même quand l'URL est "/he/dashboard/..."),

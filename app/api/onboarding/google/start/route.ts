@@ -28,6 +28,7 @@ export async function GET() {
     scope: [
       "https://www.googleapis.com/auth/calendar",
       "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.metadata.readonly",
     ],
     state,
   });
