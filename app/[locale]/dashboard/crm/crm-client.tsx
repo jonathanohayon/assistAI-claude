@@ -13,7 +13,7 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
@@ -44,6 +44,53 @@ interface Contact {
 }
 
 type TileId = "calendar" | "customers" | "orders";
+
+type Toggles = { calendar: boolean; customers: boolean; orders: boolean };
+
+/** Switch on/off d'une capacité agent (style aligné sur les toggles notifs). */
+function AgentToggle({
+  on,
+  busy,
+  onChange,
+  label,
+  aria,
+}: {
+  on: boolean;
+  busy: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  aria: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-white px-3 py-2">
+      <span
+        className={`text-[11px] font-medium ${
+          on ? "text-[#0e7490]" : "text-[var(--color-muted-foreground)]"
+        }`}
+      >
+        {label}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={aria}
+        disabled={busy}
+        onClick={() => onChange(!on)}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50 ${
+          on
+            ? "bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)]"
+            : "bg-[#cbd5e1]"
+        }`}
+      >
+        <span
+          className="block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300"
+          style={{ transform: on ? "translateX(20px)" : "translateX(0)" }}
+        />
+      </button>
+    </div>
+  );
+}
 
 // Keyframes consommées par <Tile> (anim-bounce-in) et le workspace
 // (anim-fade-up). Elles vivent normalement dans CONFIG_FORM_CSS, injecté
@@ -89,6 +136,35 @@ export function CrmClient({
 
   const showCalendar = hasCalendar || isAdmin;
   const showCrm = hasCrm || isAdmin;
+
+  // Toggles "capacité agent" par tuile (calendar/customers/orders). Pilotent
+  // les tools + le prompt côté worker via /api/agent/config.
+  const [toggles, setToggles] = useState<Toggles | null>(null);
+  const [, startToggle] = useTransition();
+  useEffect(() => {
+    fetch("/api/dashboard/tile-toggles", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.toggles && setToggles(d.toggles))
+      .catch(() => {});
+  }, []);
+
+  const setToggle = (key: keyof Toggles, value: boolean) => {
+    setToggles((prev) => (prev ? { ...prev, [key]: value } : prev));
+    startToggle(async () => {
+      try {
+        await fetch("/api/dashboard/tile-toggles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [key]: value }),
+        });
+      } catch {
+        /* revert silencieux ignoré — l'état optimiste reste, refetch au reload */
+      }
+    });
+  };
+
+  const toggleKeyFor = (id: TileId): keyof Toggles =>
+    id === "calendar" ? "calendar" : id === "customers" ? "customers" : "orders";
 
   // ── Métadata des tuiles (même structure que config-form.tsx) ─────────
   const TILES = useMemo<(TileDef & { id: TileId })[]>(() => {
@@ -199,20 +275,37 @@ export function CrmClient({
         </ul>
       </div>
 
-      {/* ── Grille de tuiles (style config-form) ─────────────────────── */}
+      {/* ── Grille de tuiles (style config-form) + toggle agent ──────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {TILES.map((tile, i) => (
-          <Tile
-            key={tile.id}
-            tile={tile}
-            active={activeTile === tile.id}
-            onClick={() =>
-              setActiveTile((curr) => (curr === tile.id ? null : tile.id))
-            }
-            delay={120 + i * 60}
-          />
-        ))}
+        {TILES.map((tile, i) => {
+          const key = toggleKeyFor(tile.id);
+          const on = toggles ? toggles[key] : false;
+          return (
+            <div key={tile.id} className="flex flex-col gap-2">
+              <Tile
+                tile={tile}
+                active={activeTile === tile.id}
+                onClick={() =>
+                  setActiveTile((curr) => (curr === tile.id ? null : tile.id))
+                }
+                delay={120 + i * 60}
+              />
+              {toggles && (
+                <AgentToggle
+                  on={on}
+                  busy={false}
+                  onChange={(v) => setToggle(key, v)}
+                  label={on ? t("agentEnabledLabel") : t("agentDisabledLabel")}
+                  aria={t("agentToggleAria")}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
+      <p className="mt-2 text-[11px] text-[var(--color-muted-foreground)]">
+        {t("agentToggleHint")}
+      </p>
 
       {/* ── Workspace de la tuile active ─────────────────────────────── */}
       {active && (

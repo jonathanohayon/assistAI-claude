@@ -775,7 +775,11 @@
     "sheetPasteLabel": "Ou collez le lien (ou l’ID) d’un Sheet existant",
     "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
     "sheetPasteBtn": "Utiliser",
-    "sheetPasteInvalid": "Lien ou ID de Sheet invalide."
+    "sheetPasteInvalid": "Lien ou ID de Sheet invalide.",
+    "agentEnabledLabel": "Agent : activé",
+    "agentDisabledLabel": "Agent : désactivé",
+    "agentToggleAria": "Activer ou désactiver cette capacité pour l’agent vocal",
+    "agentToggleHint": "Quand c’est désactivé, l’agent au téléphone ne propose plus ce service."
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",
