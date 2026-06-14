@@ -768,7 +768,10 @@
     "introLead": "Trois espaces pour piloter votre activité :",
     "introCalendar": "vos rendez-vous",
     "introCustomers": "conservez vos clients (CRM)",
-    "introOrders": "enregistrez vos commandes et réservations"
+    "introOrders": "enregistrez vos commandes et réservations",
+    "sheetColumnsHint": "Colonnes créées automatiquement :",
+    "sheetColumnsCustomers": "Date · Nom · Téléphone · Email · Notes",
+    "sheetColumnsOrders": "Date · Heure · Nom · Téléphone · Description · Centre"
   },
   "DashboardConfig": {
     "noConfigPre": "Aucune config trouvée. Lance",

@@ -76,10 +76,24 @@ export async function GET(req: NextRequest) {
   const list: DriveFile[] | null = listed.ok ? listed.files : null;
   const scopeMissing = listed.ok ? false : listed.scopeMissing;
 
-  const selectedName =
-    selectedId && list
-      ? (list.find((f) => f.id === selectedId)?.name ?? null)
-      : null;
+  // Nom du Sheet lié : d'abord depuis la liste Drive si dispo, sinon via
+  // l'API Sheets (scope `spreadsheets`, fonctionne même sans scope Drive et
+  // pour un Sheet tout juste créé pas encore indexé par Drive).
+  let selectedName: string | null = selectedId
+    ? (list?.find((f) => f.id === selectedId)?.name ?? null)
+    : null;
+  if (selectedId && !selectedName) {
+    try {
+      const sheets = getSheetsFor(me.refreshToken);
+      const meta = await sheets.spreadsheets.get({
+        spreadsheetId: selectedId,
+        fields: "properties.title",
+      });
+      selectedName = meta.data.properties?.title ?? null;
+    } catch {
+      // Sheet supprimé / inaccessible → on laisse null (UI affiche l'id).
+    }
+  }
 
   return NextResponse.json({ selectedId, selectedName, list, scopeMissing });
 }
