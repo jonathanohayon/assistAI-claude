@@ -40,6 +40,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
     try {
       const res = await fetch(
         `/api/dashboard/sheets?type=${encodeURIComponent(type)}`,
+        { cache: "no-store" },
       );
       if (!res.ok) throw new Error("load");
       const data = await res.json();
@@ -219,6 +220,14 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
                   : t("sheetCreateBtn")}
               </button>
             </div>
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              {t("sheetColumnsHint")}{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {type === "customers"
+                  ? t("sheetColumnsCustomers")
+                  : t("sheetColumnsOrders")}
+              </span>
+            </p>
             {createStatus === "saved" && (
               <p className="text-xs font-medium text-emerald-700">
                 {t("sheetSaved")}

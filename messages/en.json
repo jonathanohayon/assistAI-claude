@@ -768,7 +768,10 @@
     "introLead": "Three spaces to run your business:",
     "introCalendar": "your appointments",
     "introCustomers": "keep your customers (CRM)",
-    "introOrders": "record your orders and reservations"
+    "introOrders": "record your orders and reservations",
+    "sheetColumnsHint": "Columns created automatically:",
+    "sheetColumnsCustomers": "Date · Name · Phone · Email · Notes",
+    "sheetColumnsOrders": "Date · Time · Name · Phone · Description · Center"
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",

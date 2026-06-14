@@ -768,7 +768,10 @@
     "introLead": "שלושה מרחבים לניהול העסק שלך:",
     "introCalendar": "הפגישות שלך",
     "introCustomers": "שמירת הלקוחות (CRM)",
-    "introOrders": "תיעוד הזמנות והזמנות"
+    "introOrders": "תיעוד הזמנות והזמנות",
+    "sheetColumnsHint": "עמודות שנוצרות אוטומטית:",
+    "sheetColumnsCustomers": "תאריך · שם · טלפון · אימייל · הערות",
+    "sheetColumnsOrders": "תאריך · שעה · שם · טלפון · תיאור · סניף"
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",
