@@ -779,7 +779,10 @@
     "agentEnabledLabel": "Agent: on",
     "agentDisabledLabel": "Agent: off",
     "agentToggleAria": "Enable or disable this capability for the voice agent",
-    "agentToggleHint": "When off, the agent on the phone no longer offers this service."
+    "agentToggleHint": "When off, the agent on the phone no longer offers this service.",
+    "sheetDriveApiDisabled": "The Google Drive API is not enabled on the project. Enable it in Google Cloud Console (or paste the Sheet link below).",
+    "ordersSourceSheet": "Read from your Google Sheet Orders.",
+    "ordersSourceCalendar": "Read from your calendar. Connect an Orders Sheet to record orders there."
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",

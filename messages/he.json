@@ -779,7 +779,10 @@
     "agentEnabledLabel": "סוכן: פעיל",
     "agentDisabledLabel": "סוכן: כבוי",
     "agentToggleAria": "הפעלה או כיבוי של היכולת הזו עבור הסוכן הקולי",
-    "agentToggleHint": "כשכבוי, הסוכן בטלפון לא יציע יותר את השירות הזה."
+    "agentToggleHint": "כשכבוי, הסוכן בטלפון לא יציע יותר את השירות הזה.",
+    "sheetDriveApiDisabled": "ה-API של Google Drive אינו מופעל בפרויקט. הפעילו אותו ב-Google Cloud Console (או הדביקו את קישור ה-Sheet למטה).",
+    "ordersSourceSheet": "נקרא מה-Google Sheet של ההזמנות.",
+    "ordersSourceCalendar": "נקרא מהיומן. חברו Sheet הזמנות כדי לתעד שם הזמנות."
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",

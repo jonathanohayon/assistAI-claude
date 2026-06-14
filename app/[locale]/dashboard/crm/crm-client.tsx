@@ -345,7 +345,7 @@ export function CrmClient({
             {!googleConnected ? (
               <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                 <p>{t("googleNotConnected")}</p>
-                <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                   {t("connectButton")}
                 </ConnectGoogleLink>
               </div>
@@ -353,7 +353,7 @@ export function CrmClient({
               tokenExpired ? (
                 <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                   <p>{t("tokenExpired")}</p>
-                  <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                  <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                     {t("reconnectButton")}
                   </ConnectGoogleLink>
                 </div>
@@ -369,7 +369,7 @@ export function CrmClient({
                 {tokenExpired ? (
                   <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                     <p>{t("tokenExpired")}</p>
-                    <ConnectGoogleLink className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                    <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                       {t("reconnectButton")}
                     </ConnectGoogleLink>
                   </div>

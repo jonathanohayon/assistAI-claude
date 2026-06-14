@@ -11,12 +11,16 @@
 // propose un re-consentement plutôt que d'afficher une erreur opaque.
 
 import { getAuthenticatedClientFor } from "@/lib/google";
+import { logEvent } from "@/lib/logger";
 
 export type DriveFile = { id: string; name: string };
 
 export type ListSpreadsheetsResult =
   | { ok: true; files: DriveFile[] }
-  | { ok: false; scopeMissing: boolean };
+  // scopeMissing : le tenant n'a pas consenti au scope Drive → re-consentement.
+  // apiDisabled : l'API Google Drive n'est pas activée sur le projet Cloud →
+  //   à activer dans la console (un re-consentement n'y changera rien).
+  | { ok: false; scopeMissing: boolean; apiDisabled?: boolean };
 
 const DRIVE_FILES_URL =
   "https://www.googleapis.com/drive/v3/files" +
@@ -27,13 +31,15 @@ const DRIVE_FILES_URL =
   "&fields=" +
   encodeURIComponent("files(id,name)") +
   "&pageSize=100" +
+  "&supportsAllDrives=true&includeItemsFromAllDrives=true" +
   "&orderBy=" +
   encodeURIComponent("modifiedTime desc");
 
 /**
  * Renvoie les spreadsheets du Drive du tenant (max 100, plus récents d'abord).
  * Robuste : toute erreur réseau/parse → { ok:false, scopeMissing:false }.
- * 403/insufficient scope → { ok:false, scopeMissing:true }.
+ * Distingue scope manquant (re-consentement) vs API Drive désactivée (config
+ * Cloud). Logge le corps d'erreur Drive pour diagnostic (/dashboard/logs).
  */
 export async function listSpreadsheets(
   refreshToken: string,
@@ -50,16 +56,29 @@ export async function listSpreadsheets(
     });
 
     if (!res.ok) {
-      // 403 insufficientPermissions / ACCESS_TOKEN_SCOPE_INSUFFICIENT →
-      // le tenant n'a pas (encore) consenti au scope Drive.
-      if (res.status === 403 || res.status === 401) {
-        const body = await res.text().catch(() => "");
-        const scopeMissing =
-          res.status === 403 ||
-          /insufficient|scope|insufficientPermissions/i.test(body);
-        return { ok: false, scopeMissing };
-      }
-      return { ok: false, scopeMissing: false };
+      const body = await res.text().catch(() => "");
+      // API Drive non activée sur le projet (≠ scope manquant) :
+      // "accessNotConfigured" / "SERVICE_DISABLED" / "has not been used/enabled".
+      const apiDisabled =
+        /accessNotConfigured|SERVICE_DISABLED|has not been used|has not been enabled|API has not been/i.test(
+          body,
+        );
+      // Scope insuffisant → re-consentement utile.
+      const scopeMissing =
+        !apiDisabled &&
+        (res.status === 401 ||
+          /insufficient|scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficientPermissions/i.test(
+            body,
+          ) ||
+          res.status === 403);
+      void logEvent({
+        source: "sheets",
+        event: "drive_list_failed",
+        message: `Drive files.list → HTTP ${res.status} (apiDisabled=${apiDisabled}, scopeMissing=${scopeMissing})`,
+        level: "warn",
+        metadata: { status: res.status, body: body.slice(0, 400) },
+      });
+      return { ok: false, scopeMissing, apiDisabled };
     }
 
     const data = (await res.json()) as {
@@ -69,7 +88,13 @@ export async function listSpreadsheets(
       .filter((f): f is { id: string; name?: string } => typeof f.id === "string")
       .map((f) => ({ id: f.id, name: f.name ?? "(sans nom)" }));
     return { ok: true, files };
-  } catch {
+  } catch (e) {
+    void logEvent({
+      source: "sheets",
+      event: "drive_list_error",
+      message: `Drive files.list exception : ${(e as Error).message?.slice(0, 200)}`,
+      level: "error",
+    });
     return { ok: false, scopeMissing: false };
   }
 }

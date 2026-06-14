@@ -52,11 +52,51 @@ const timeFmt = new Intl.DateTimeFormat("fr-FR", {
   hour12: false,
 });
 
-// Construit la fenêtre de lecture et lit les events du calendrier du tenant.
-async function fetchOrders(userId: string): Promise<Order[] | null> {
-  const g = await getTenantGoogleClients(userId);
-  if (!g) return null;
+type GoogleClients = NonNullable<
+  Awaited<ReturnType<typeof getTenantGoogleClients>>
+>;
 
+// Lit les commandes directement depuis le Google Sheet "Commandes" connecté
+// (la "vérité" pour le tenant : ce qu'il voit dans SON fichier — agent
+// record_order + export agenda). Onglet date/heure/nom/téléphone/description/centre.
+async function readOrdersSheet(
+  g: GoogleClients,
+  sheetId: string,
+): Promise<Order[]> {
+  await ensureSheet({
+    sheets: g.sheets,
+    spreadsheetId: sheetId,
+    title: ORDERS_TAB,
+    headers: ORDERS_HEADERS,
+  });
+  const res = await g.sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${ORDERS_TAB}!A2:F`,
+  });
+  const rows = (res.data.values ?? []) as string[][];
+  const orders: Order[] = rows
+    .filter((row) => row.some((c) => (c ?? "").trim()))
+    .map((row, i) => {
+      const [d = "", h = "", name = "", phone = "", description = "", center = ""] =
+        row;
+      const start = d && h ? `${d}T${h}:00` : d ? `${d}T00:00:00` : "";
+      return {
+        id: `sheet-${i}`,
+        name: String(name),
+        phone: String(phone).replace(/^'/, ""),
+        description: String(description),
+        center: String(center),
+        start,
+        date: start || String(d),
+      };
+    });
+  // Plus récentes d'abord.
+  orders.sort((a, b) => b.start.localeCompare(a.start));
+  return orders;
+}
+
+// Construit la fenêtre de lecture et lit les events du calendrier du tenant.
+async function fetchOrdersFromCalendar(g: GoogleClients): Promise<Order[]> {
   const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -96,6 +136,24 @@ async function fetchOrders(userId: string): Promise<Order[] | null> {
   return orders;
 }
 
+// Source des commandes : si un Sheet "Commandes" est connecté → on lit CE
+// fichier (ce que le tenant attend de voir). Sinon → l'agenda (réservations).
+async function fetchOrders(
+  userId: string,
+): Promise<{ orders: Order[]; source: "sheet" | "calendar" } | null> {
+  const g = await getTenantGoogleClients(userId);
+  if (!g) return null;
+  const ordersSheetId = await getOrdersSheetId(userId);
+  if (ordersSheetId) {
+    try {
+      return { orders: await readOrdersSheet(g, ordersSheetId), source: "sheet" };
+    } catch {
+      /* Sheet inaccessible (droits/suppression) → fallback agenda. */
+    }
+  }
+  return { orders: await fetchOrdersFromCalendar(g), source: "calendar" };
+}
+
 export async function GET(req: NextRequest) {
   const r = await resolveTargetUserId(req);
   if ("unauthorized" in r)
@@ -103,14 +161,14 @@ export async function GET(req: NextRequest) {
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const orders = await fetchOrders(r.userId);
-  if (orders === null) {
+  const result = await fetchOrders(r.userId);
+  if (result === null) {
     return NextResponse.json(
       { error: "google_not_connected" },
       { status: 409 },
     );
   }
-  return NextResponse.json({ orders });
+  return NextResponse.json({ orders: result.orders, source: result.source });
 }
 
 export async function POST(req: NextRequest) {
@@ -133,13 +191,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "no_orders_sheet" }, { status: 400 });
   }
 
-  const orders = await fetchOrders(r.userId);
-  if (orders === null) {
-    return NextResponse.json(
-      { error: "google_not_connected" },
-      { status: 409 },
-    );
-  }
+  // Export = snapshot des réservations de l'AGENDA vers le Sheet (et non une
+  // relecture du Sheet, ce que ferait fetchOrders quand un Sheet est lié).
+  const orders = await fetchOrdersFromCalendar(g);
 
   // Stratégie simple et déterministe : on (ré)écrit tout l'onglet. ensureSheet
   // garantit l'existence du tab + des en-têtes, puis on remplace les lignes de

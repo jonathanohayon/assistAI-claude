@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
   const listed = await listSpreadsheets(me.refreshToken);
   const list: DriveFile[] | null = listed.ok ? listed.files : null;
   const scopeMissing = listed.ok ? false : listed.scopeMissing;
+  const apiDisabled = listed.ok ? false : Boolean(listed.apiDisabled);
 
   // Nom du Sheet lié : d'abord depuis la liste Drive si dispo, sinon via
   // l'API Sheets (scope `spreadsheets`, fonctionne même sans scope Drive et
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ selectedId, selectedName, list, scopeMissing });
+  return NextResponse.json({ selectedId, selectedName, list, scopeMissing, apiDisabled });
 }
 
 export async function POST(req: NextRequest) {
