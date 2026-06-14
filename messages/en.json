@@ -775,7 +775,11 @@
     "sheetPasteLabel": "Or paste the link (or ID) of an existing Sheet",
     "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
     "sheetPasteBtn": "Use",
-    "sheetPasteInvalid": "Invalid Sheet link or ID."
+    "sheetPasteInvalid": "Invalid Sheet link or ID.",
+    "agentEnabledLabel": "Agent: on",
+    "agentDisabledLabel": "Agent: off",
+    "agentToggleAria": "Enable or disable this capability for the voice agent",
+    "agentToggleHint": "When off, the agent on the phone no longer offers this service."
   },
   "DashboardConfig": {
     "noConfigPre": "No config found. Run",

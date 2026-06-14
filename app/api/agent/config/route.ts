@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { isTrialExhausted } from "@/lib/trial";
+import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -170,7 +171,26 @@ export async function GET(req: NextRequest) {
   // Features activées pour le plan de ce tenant (matrice admin). Le worker
   // utilise cette map pour décider quels tools enregistrer (cf. recent
   // session : règles métier déterministes côté tools, pas dans le prompt).
-  const features = featuresForPlan(planMatrix, tenant.user.subscriptionPlan);
+  const planFeatures = featuresForPlan(planMatrix, tenant.user.subscriptionPlan);
+
+  // Toggles par tuile CRM (pilotés par le tenant) : ne peuvent que DÉSACTIVER
+  // une feature autorisée par le plan. Le worker n'enregistre alors plus les
+  // tools correspondants, et le prompt annonce la capacité comme désactivée.
+  const tileToggles = await getTileToggles(tenant.user.id);
+  const features = {
+    ...planFeatures,
+    calendar: planFeatures.calendar && tileToggles.calendar,
+    crm: planFeatures.crm && tileToggles.customers,
+  };
+  // Prise de commandes au téléphone (nouveau tool record_order côté worker) :
+  // réservée aux plans CRM, activable via le toggle "Commandes".
+  const ordersEnabled = Boolean(planFeatures.crm) && tileToggles.orders;
+
+  const cap = (on: boolean) => (on ? "ACTIVÉE" : "DÉSACTIVÉE");
+  const capabilitiesDirective = `CAPACITÉS ACTIVÉES PAR LE TENANT — RESPECTE-LES STRICTEMENT :
+- Prise de rendez-vous : ${cap(features.calendar)}.${features.calendar ? "" : " Ne propose JAMAIS de rendez-vous et n'utilise aucun outil de calendrier."}
+- Enregistrement client (CRM) : ${cap(features.crm)}.${features.crm ? "" : " N'enregistre pas de fiche client."}
+- Prise de commandes : ${cap(ordersEnabled)}.${ordersEnabled ? " Tu peux enregistrer une commande/réservation via l'outil record_order (produit/service, quantité, détails utiles)." : " Ne prends pas de commande."}`;
 
   const langLabel: Record<string, string> = {
     fr: "français",
@@ -238,10 +258,11 @@ export async function GET(req: NextRequest) {
     language: languageDirective,
     admin_global: adminBlock,
   };
-  const mergedInstructions = blockOrder
-    .map((id) => blockContent[id] ?? "")
-    .filter(Boolean)
-    .join("\n\n──────────────────────────────────────────\n\n");
+  const SEP = "\n\n──────────────────────────────────────────\n\n";
+  const mergedInstructions = [
+    ...blockOrder.map((id) => blockContent[id] ?? "").filter(Boolean),
+    capabilitiesDirective,
+  ].join(SEP);
 
   // Strip internal IDs — the agent only needs the runtime values.
   const { id: _id, userId: _userId, updatedAt, ...runtime } = config;
@@ -256,6 +277,7 @@ export async function GET(req: NextRequest) {
     ...runtime,
     instructions: mergedInstructions,
     features,
+    ordersEnabled,
     updatedAt,
     // Template per-call avec placeholders {date_fr}, {iso_date}, {time},
     // {caller_hint_block} substitués côté worker à chaque appel.

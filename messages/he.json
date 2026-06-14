@@ -775,7 +775,11 @@
     "sheetPasteLabel": "או הדביקו קישור (או מזהה) של Sheet קיים",
     "sheetPastePlaceholder": "https://docs.google.com/spreadsheets/d/…",
     "sheetPasteBtn": "שימוש",
-    "sheetPasteInvalid": "קישור או מזהה Sheet לא תקין."
+    "sheetPasteInvalid": "קישור או מזהה Sheet לא תקין.",
+    "agentEnabledLabel": "סוכן: פעיל",
+    "agentDisabledLabel": "סוכן: כבוי",
+    "agentToggleAria": "הפעלה או כיבוי של היכולת הזו עבור הסוכן הקולי",
+    "agentToggleHint": "כשכבוי, הסוכן בטלפון לא יציע יותר את השירות הזה."
   },
   "DashboardConfig": {
     "noConfigPre": "לא נמצאה הגדרה. הריצי",
