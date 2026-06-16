@@ -11,6 +11,7 @@ import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
+  getCapabilitiesDirectiveByPlan,
   getGreetingFallbackTemplateByPlan,
   getHangupDirectiveByPlan,
   getOnboardingGreetingByPlan,
@@ -47,6 +48,7 @@ export default async function AdminPage() {
     configBlocksByPlan,
     promptBlockOrderByPlan,
     greetingFallbackByPlan,
+    capabilitiesByPlan,
   ] = await Promise.all([
     getGlobalInstructionsByPlan(),
     getOnboardingTemplateByPlan(),
@@ -61,6 +63,7 @@ export default async function AdminPage() {
     getConfigBlocksDirectiveByPlan(),
     getPromptBlockOrderByPlan(),
     getGreetingFallbackTemplateByPlan(),
+    getCapabilitiesDirectiveByPlan(),
   ]);
 
   // Group numbers per user.
@@ -149,6 +152,7 @@ export default async function AdminPage() {
           configBlocksByPlan={configBlocksByPlan}
           promptBlockOrderByPlan={promptBlockOrderByPlan}
           greetingFallbackByPlan={greetingFallbackByPlan}
+          capabilitiesByPlan={capabilitiesByPlan}
           planFeatures={planFeatures}
           planPricing={planPricing}
           rows={rows}

@@ -4,12 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
+import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { isTrialExhausted } from "@/lib/trial";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
+  getCapabilitiesDirectiveByPlan,
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
   getGreetingFallbackTemplateByPlan,
@@ -186,11 +189,13 @@ export async function GET(req: NextRequest) {
   // réservée aux plans CRM, activable via le toggle "Commandes".
   const ordersEnabled = Boolean(planFeatures.crm) && tileToggles.orders;
 
-  const cap = (on: boolean) => (on ? "ACTIVÉE" : "DÉSACTIVÉE");
-  const capabilitiesDirective = `CAPACITÉS ACTIVÉES PAR LE TENANT — RESPECTE-LES STRICTEMENT :
-- Prise de rendez-vous : ${cap(features.calendar)}.${features.calendar ? "" : " Ne propose JAMAIS de rendez-vous et n'utilise aucun outil de calendrier."}
-- Enregistrement client (CRM) : ${cap(features.crm)}.${features.crm ? "" : " N'enregistre pas de fiche client."}
-- Prise de commandes : ${cap(ordersEnabled)}.${ordersEnabled ? " Tu peux enregistrer une commande/réservation via l'outil record_order. Le numéro de l'appelant est rempli automatiquement ; le nom et les détails sont optionnels. Pour savoir quelles infos demander (ex. le nom du client), suis ta persona." : " Ne prends pas de commande."}`;
+  // Template "capacités" éditable par plan depuis /admin ({calendar}/{crm}/
+  // {orders} substitués par le statut réel du tenant). Toujours présent.
+  const capabilitiesByPlan = await getCapabilitiesDirectiveByPlan();
+  const capabilitiesDirective = renderCapabilitiesDirective(
+    capabilitiesByPlan[planKey] ?? DEFAULT_CAPABILITIES_DIRECTIVE,
+    { calendar: features.calendar, crm: features.crm, orders: ordersEnabled },
+  );
 
   const langLabel: Record<string, string> = {
     fr: "français",

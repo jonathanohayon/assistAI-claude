@@ -10,7 +10,8 @@ type DirectiveKey =
   | "hangup"
   | "perCallCtx"
   | "configBlocks"
-  | "greetingFallback";
+  | "greetingFallback"
+  | "capabilities";
 type PlanMap = Record<PlanKey, string>;
 type Initial = Record<DirectiveKey, PlanMap>;
 
@@ -84,6 +85,12 @@ export function SystemDirectivesForm({ initialByPlan }: { initialByPlan: Initial
       description:
         "Texte injecté au moment du greeting QUAND le tenant n'a pas renseigné son greetingInstructions. Évite que le LLM hallucine un faux centre / faux prénom. Placeholder : {agent_name}.",
     },
+    {
+      key: "capabilities",
+      label: "Capacités",
+      description:
+        "Bloc annonçant à l'agent quelles capacités sont activées selon les toggles des tuiles CRM du tenant. Placeholders remplacés au runtime par l'état réel : {calendar}, {crm}, {orders} → ACTIVÉE/DÉSACTIVÉE + consignes.",
+    },
   ];
 
   const dirty = directives.some((d) =>
@@ -127,6 +134,7 @@ export function SystemDirectivesForm({ initialByPlan }: { initialByPlan: Initial
         perCallCtx: "perCallContextTemplateByPlan",
         configBlocks: "configBlocksDirectiveByPlan",
         greetingFallback: "greetingFallbackTemplateByPlan",
+        capabilities: "capabilitiesDirectiveByPlan",
       };
       for (const d of directives) {
         const patch: Partial<PlanMap> = {};

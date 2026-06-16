@@ -2,13 +2,20 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
-import { DEFAULT_PROMPT_BLOCK_ORDER } from "@/lib/agent-prompt-defaults";
+import {
+  DEFAULT_CAPABILITIES_DIRECTIVE,
+  DEFAULT_PROMPT_BLOCK_ORDER,
+} from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
+import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { db } from "@/lib/db";
 import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import {
+  getCapabilitiesDirectiveByPlan,
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
   getHangupDirectiveByPlan,
@@ -17,6 +24,7 @@ import {
   getSpokenPhoneDirectiveByPlan,
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
+import { getTileToggles } from "@/lib/tile-toggles";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +147,18 @@ export default async function AdminTenantPage({
     getConfigBlocksDirectiveByPlan(),
     getPromptBlockOrderByPlan(),
   ]);
+  // Bloc capacités rendu pour le tenant cible (features plan ∧ toggles tuiles).
+  const planMatrix = await getPlanFeatureMatrix();
+  const features = featuresForPlan(planMatrix, target.subscriptionPlan);
+  const tileToggles = await getTileToggles(userId);
+  const capabilitiesTemplate =
+    (await getCapabilitiesDirectiveByPlan())[planKey] ??
+    DEFAULT_CAPABILITIES_DIRECTIVE;
+  const capabilitiesRendered = renderCapabilitiesDirective(capabilitiesTemplate, {
+    calendar: Boolean(features.calendar) && tileToggles.calendar,
+    crm: Boolean(features.crm) && tileToggles.customers,
+    orders: Boolean(features.crm) && tileToggles.orders,
+  });
   const promptBlocksPreview = buildAgentPromptPreview({
     config,
     globalForPlan: globalByPlan[planKey] ?? "",
@@ -149,6 +169,7 @@ export default async function AdminTenantPage({
     perCallContextTemplate: perCallContextByPlan[planKey] ?? "",
     configBlocks: configBlocksByPlan[planKey] ?? "",
     blockOrder: blockOrderByPlan[planKey] ?? [...DEFAULT_PROMPT_BLOCK_ORDER],
+    capabilities: capabilitiesRendered,
   });
   const ADMIN_INHERIT_BLOCKS = new Set([
     "spoken_time",

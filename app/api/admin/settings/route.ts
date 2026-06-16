@@ -29,6 +29,9 @@ import {
   getSummaryPromptByPlan,
   setConfigBlocksDirectiveByPlan,
   setGlobalInstructionsByPlan,
+  getCapabilitiesDirectiveByPlan,
+  setCapabilitiesDirectiveByPlan,
+  type CapabilitiesDirectiveByPlan,
   setGreetingFallbackTemplateByPlan,
   setHangupDirectiveByPlan,
   setOnboardingGreetingByPlan,
@@ -77,6 +80,7 @@ export async function GET() {
   const promptBlockOrderByPlan = await getPromptBlockOrderByPlan();
   const greetingFallbackTemplateByPlan =
     await getGreetingFallbackTemplateByPlan();
+  const capabilitiesDirectiveByPlan = await getCapabilitiesDirectiveByPlan();
   return NextResponse.json({
     globalInstructions,
     globalInstructionsByPlan,
@@ -93,6 +97,7 @@ export async function GET() {
     configBlocksDirectiveByPlan,
     promptBlockOrderByPlan,
     greetingFallbackTemplateByPlan,
+    capabilitiesDirectiveByPlan,
   });
 }
 
@@ -119,6 +124,7 @@ export async function PUT(req: NextRequest) {
     configBlocksDirectiveByPlan?: Partial<ConfigBlocksDirectiveByPlan>;
     promptBlockOrderByPlan?: Partial<PromptBlockOrderByPlan>;
     greetingFallbackTemplateByPlan?: Partial<GreetingFallbackTemplateByPlan>;
+    capabilitiesDirectiveByPlan?: Partial<CapabilitiesDirectiveByPlan>;
   };
 
   const changed: string[] = [];
@@ -229,6 +235,13 @@ export async function PUT(req: NextRequest) {
       body.greetingFallbackTemplateByPlan,
     );
     changed.push("greeting_fallback_template_by_plan");
+  }
+  if (
+    body.capabilitiesDirectiveByPlan &&
+    typeof body.capabilitiesDirectiveByPlan === "object"
+  ) {
+    await setCapabilitiesDirectiveByPlan(body.capabilitiesDirectiveByPlan);
+    changed.push("capabilities_directive_by_plan");
   }
 
   if (changed.length > 0) {

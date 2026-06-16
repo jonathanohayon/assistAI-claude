@@ -61,6 +61,9 @@ export function buildAgentPromptPreview(opts: {
   perCallContextTemplate: string;
   configBlocks: string;
   blockOrder: BlockId[];
+  /** Bloc "capacités" DÉJÀ rendu (placeholders substitués selon les toggles
+   *  du tenant). Affiché en fin de prompt, comme côté /api/agent/config. */
+  capabilities: string;
 }): PromptBlock[] {
   const {
     config,
@@ -72,6 +75,7 @@ export function buildAgentPromptPreview(opts: {
     perCallContextTemplate,
     configBlocks,
     blockOrder,
+    capabilities,
   } = opts;
   const primary = config.primaryLanguage ?? "fr";
 
@@ -228,8 +232,16 @@ export function buildAgentPromptPreview(opts: {
     },
     ...orderedBlocks,
     {
+      id: "capabilities",
+      label: `${orderedBlocks.length + 2}. Capacités (RDV / CRM / Commandes)`,
+      source:
+        "app_settings.capabilities_directive_by_plan — placeholders {calendar}/{crm}/{orders} substitués selon les toggles des tuiles CRM du tenant. Édition du template dans /admin → Directives → Capacités.",
+      editHref: `/admin#directives`,
+      content: capabilities,
+    },
+    {
       id: "per_call_ctx",
-      label: `${orderedBlocks.length + 2}. Template contexte par appel`,
+      label: `${orderedBlocks.length + 3}. Template contexte par appel`,
       source: "app_settings.per_call_context_template",
       editHref: `/admin#directives`,
       content: perCallContextTemplate,

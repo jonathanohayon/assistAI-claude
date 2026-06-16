@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type {
+  CapabilitiesDirectiveByPlan,
   ConfigBlocksDirectiveByPlan,
   GlobalInstructionsByPlan,
   GreetingFallbackTemplateByPlan,
@@ -77,6 +78,7 @@ export interface AdminShellProps {
   configBlocksByPlan: ConfigBlocksDirectiveByPlan;
   promptBlockOrderByPlan: PromptBlockOrderByPlan;
   greetingFallbackByPlan: GreetingFallbackTemplateByPlan;
+  capabilitiesByPlan: CapabilitiesDirectiveByPlan;
   planFeatures: PlanFeatureMatrix;
   planPricing: PlanPricingMap;
   rows: AdminTableRow[];
@@ -456,6 +458,7 @@ export function AdminShell(props: AdminShellProps) {
                   perCallCtx: props.perCallContextByPlan,
                   configBlocks: props.configBlocksByPlan,
                   greetingFallback: props.greetingFallbackByPlan,
+                  capabilities: props.capabilitiesByPlan,
                 }}
               />
             )}
