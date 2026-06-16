@@ -7,6 +7,7 @@ import {
   BLOCK_IDS,
   DEFAULT_CONFIG_BLOCKS_DIRECTIVE,
   DEFAULT_GREETING_FALLBACK_TEMPLATE,
+  DEFAULT_CAPABILITIES_DIRECTIVE,
   DEFAULT_HANGUP_DIRECTIVE,
   DEFAULT_PER_CALL_CONTEXT_TEMPLATE,
   DEFAULT_PROMPT_BLOCK_ORDER,
@@ -85,6 +86,10 @@ export const SETTING_KEYS = {
   // n'étaient pas pilotables sans patch code. Maintenant éditable depuis
   // /admin par plan, comme les autres blocs.
   GREETING_FALLBACK_TEMPLATE_BY_PLAN: "greeting_fallback_template_by_plan",
+  // Bloc "capacités" (RDV/CRM/Commandes activées via les toggles tenant),
+  // annoncé à l'agent. Template per-plan avec placeholders {calendar}/{crm}/
+  // {orders}. Vide pour un plan → DEFAULT_CAPABILITIES_DIRECTIVE.
+  CAPABILITIES_DIRECTIVE_BY_PLAN: "capabilities_directive_by_plan",
   // JSON array des IDs de blocs dans l'ordre où ils sont injectés dans
   // le system prompt. Legacy singleton, conservé en fallback.
   PROMPT_BLOCK_ORDER: "prompt_block_order",
@@ -677,6 +682,38 @@ export async function setGreetingFallbackTemplateByPlan(
   const current = await getGreetingFallbackTemplateByPlan();
   await writeByPlanMap(
     SETTING_KEYS.GREETING_FALLBACK_TEMPLATE_BY_PLAN,
+    current,
+    patch,
+  );
+}
+
+// Bloc "capacités" per-plan (template avec placeholders {calendar}/{crm}/
+// {orders}). Pas de legacy singleton → fallback direct sur DEFAULT.
+export type CapabilitiesDirectiveByPlan = PlanStringMap;
+export async function getCapabilitiesDirectiveByPlan(): Promise<CapabilitiesDirectiveByPlan> {
+  const raw = await getSetting(SETTING_KEYS.CAPABILITIES_DIRECTIVE_BY_PLAN);
+  const out = Object.fromEntries(
+    PLANS.map((p) => [p.key, DEFAULT_CAPABILITIES_DIRECTIVE]),
+  ) as CapabilitiesDirectiveByPlan;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Partial<Record<PlanKey, string>>;
+      for (const p of PLANS) {
+        const v = parsed[p.key];
+        if (typeof v === "string") out[p.key] = v;
+      }
+    } catch {
+      // garbage en DB → defaults pour les 3 plans
+    }
+  }
+  return out;
+}
+export async function setCapabilitiesDirectiveByPlan(
+  patch: Partial<CapabilitiesDirectiveByPlan>,
+): Promise<void> {
+  const current = await getCapabilitiesDirectiveByPlan();
+  await writeByPlanMap(
+    SETTING_KEYS.CAPABILITIES_DIRECTIVE_BY_PLAN,
     current,
     patch,
   );

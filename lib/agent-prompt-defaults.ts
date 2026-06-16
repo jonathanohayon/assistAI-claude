@@ -171,3 +171,15 @@ export const BLOCK_LABELS: Record<BlockId, string> = {
   language: "Directive langue",
   admin_global: "Règles transverses admin (par plan)",
 };
+
+/**
+ * Bloc "capacités" annoncé à l'agent : quelles fonctionnalités (RDV / CRM /
+ * Commandes) sont activées selon les toggles des tuiles CRM du tenant.
+ * Éditable par plan depuis /admin. Placeholders remplacés au runtime par
+ * renderCapabilitiesDirective (lib/capabilities.ts) : {calendar}, {crm},
+ * {orders} → "ACTIVÉE."/"DÉSACTIVÉE — …" selon l'état réel du tenant.
+ */
+export const DEFAULT_CAPABILITIES_DIRECTIVE = `CAPACITÉS ACTIVÉES PAR LE TENANT — RESPECTE-LES STRICTEMENT :
+- Prise de rendez-vous : {calendar}
+- Enregistrement client (CRM) : {crm}
+- Prise de commandes : {orders}`;
