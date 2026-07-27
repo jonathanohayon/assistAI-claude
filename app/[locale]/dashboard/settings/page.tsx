@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
+import { AgentUrlSection } from "./agent-url-section";
 import { ApiKeySection } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
@@ -165,6 +166,18 @@ export default async function SettingsPage(props: {
             {t("apiDesc")}
           </p>
           <ApiKeySection />
+        </div>
+
+        {/* URL publique de l'agent — à coller dans un client vocal. */}
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="font-display text-lg text-[var(--color-foreground)]">
+            Agent joignable
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+            Donnez à votre agent une voix et un numéro depuis un service vocal
+            externe, en lui fournissant cette URL.
+          </p>
+          <AgentUrlSection />
         </div>
 
         {/* Danger zone */}
