@@ -278,8 +278,25 @@ export async function GET(req: NextRequest) {
   // `{agent_name}` substitué côté worker (cf. agent.ts).
   const greetingFallbackTemplate = greetingFallbackByPlan[planKey] ?? "";
 
+  // ── Mode BYO-agent (bêta) ───────────────────────────────────────────
+  // Quand un webhook client est configuré, le worker cesse d'utiliser la
+  // persona ci-dessus comme cerveau : il transcrit, POSTe chaque tour à ce
+  // endpoint, et prononce la réponse. Piloté par env le temps de la bêta —
+  // une colonne par tenant viendra quand le flux sera validé.
+  const agentWebhookUrl = process.env.AGENT_WEBHOOK_URL;
+  const agentWebhook =
+    agentWebhookUrl && agentWebhookUrl.startsWith("http")
+      ? {
+          url: agentWebhookUrl,
+          ...(process.env.AGENT_WEBHOOK_SECRET
+            ? { secret: process.env.AGENT_WEBHOOK_SECRET }
+            : {}),
+        }
+      : undefined;
+
   return NextResponse.json({
     ...runtime,
+    ...(agentWebhook ? { agentWebhook } : {}),
     instructions: mergedInstructions,
     features,
     ordersEnabled,

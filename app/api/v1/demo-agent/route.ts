@@ -155,10 +155,15 @@ export async function POST(req: NextRequest) {
     ? (body.history as Array<{ role: string; text: string }>)
     : [];
 
+  // Transcript vide = tour d'ouverture : le worker demande la première
+  // phrase avant que l'appelant ait parlé. Renvoyer le repli générique
+  // ("pouvez-vous m'en dire plus ?") ferait démarrer l'appel sur une
+  // question absurde.
   if (!transcript) {
     return NextResponse.json({
-      reply: scriptedReply("", language),
+      reply: scriptedReply("bonjour", language),
       source: "scripted",
+      language,
     });
   }
 
