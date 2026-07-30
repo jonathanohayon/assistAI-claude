@@ -21,9 +21,16 @@ import { resolveTenantByUserId } from "@/lib/tenant";
  * doit ouvrir que la parole.
  */
 
-// On coupe bien avant les 2 s autorisées : le trajet réseau depuis l'appelant
-// compte dans son budget, pas seulement notre temps de calcul.
-const INTERNAL_BUDGET_MS = 1300;
+// Budget interne, calibré sur la PRODUCTION et non sur une machine de dev.
+//
+// Mesuré depuis Railway (europe-west4) vers OpenAI (US) : ~1,53 s de bout en
+// bout, là où le local tournait à ~1,1 s. Un budget de 1,3 s faisait donc
+// retomber CHAQUE tour sur la phrase d'attente en prod — la fonctionnalité
+// avait l'air de marcher et ne disait jamais rien d'utile.
+//
+// 1,75 s laisse la marge dont le worker a besoin : il coupe à 2 s, et le
+// trajet worker→web est intra-région (quelques ms).
+const INTERNAL_BUDGET_MS = 1750;
 const MAX_TRANSCRIPT = 600;
 const MAX_HISTORY = 10;
 
@@ -178,7 +185,7 @@ export async function POST(
       signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 110,
+        max_tokens: 70,
         messages: [
           { role: "system", content: system },
           ...history.map((turn) => ({
