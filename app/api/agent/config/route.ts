@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
+import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { logEvent } from "@/lib/logger";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
@@ -278,8 +279,38 @@ export async function GET(req: NextRequest) {
   // `{agent_name}` substitué côté worker (cf. agent.ts).
   const greetingFallbackTemplate = greetingFallbackByPlan[planKey] ?? "";
 
+  // ── Cerveau de l'agent : persona Tamara, ou agent externe du tenant ──
+  // Réglage par tenant (dashboard). Quand il est actif, le worker cesse
+  // d'utiliser la persona assemblée ci-dessus : il transcrit, POSTe chaque
+  // tour au endpoint du tenant, et prononce la réponse.
+  //
+  // AGENT_WEBHOOK_URL reste accepté comme surcharge globale, utile pour
+  // tester un endpoint sur tous les tenants sans toucher à leurs réglages.
+  const brain = await getAgentBrain(tenant.user.id);
+  const envOverride = process.env.AGENT_WEBHOOK_URL;
+  const agentWebhook =
+    envOverride && envOverride.startsWith("http")
+      ? {
+          url: envOverride,
+          ...(process.env.AGENT_WEBHOOK_SECRET
+            ? { secret: process.env.AGENT_WEBHOOK_SECRET }
+            : {}),
+        }
+      : toWorkerWebhook(brain);
+  if (agentWebhook) {
+    await logEvent({
+      source: "tenant",
+      event: "agent_brain_external",
+      message: `Cerveau externe actif pour ${tenant.user.email} → ${agentWebhook.url}`,
+      level: "info",
+      userId: tenant.user.id,
+      metadata: { via: envOverride ? "env_override" : "tenant_setting" },
+    });
+  }
+
   return NextResponse.json({
     ...runtime,
+    ...(agentWebhook ? { agentWebhook } : {}),
     instructions: mergedInstructions,
     features,
     ordersEnabled,
