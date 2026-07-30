@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // On répond bien avant la limite : le temps réseau compte dans le budget du
 // caller, pas seulement notre temps de calcul.
-const INTERNAL_BUDGET_MS = 1200;
+const INTERNAL_BUDGET_MS = 1750;
 const MAX_TRANSCRIPT = 500;
 
 type Lang = "en" | "fr" | "he";
@@ -103,7 +103,7 @@ async function llmReply(
       signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 90,
+        max_tokens: 70,
         messages: [
           {
             role: "system",
