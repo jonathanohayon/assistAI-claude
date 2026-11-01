@@ -202,7 +202,7 @@ function PhoneMockup() {
       {/* Liseré gradient en haut */}
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#22d3ee] via-[#db2777] to-[#fb7185]"
+        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#be185d] via-[#db2777] to-[#fb7185]"
       />
 
       {/* En-tête téléphone */}
@@ -329,13 +329,13 @@ export function Journey() {
             {reduce ? (
               <div
                 aria-hidden
-                className="absolute start-10 top-10 bottom-10 w-0.5 rounded-full bg-gradient-to-b from-[#db2777] via-[#be185d] to-[#22d3ee]"
+                className="absolute start-10 top-10 bottom-10 w-0.5 rounded-full bg-gradient-to-b from-[#db2777] via-[#be185d] to-[#f472b6]"
               />
             ) : (
               <motion.div
                 aria-hidden
                 style={{ scaleY: lineProgress, transformOrigin: "top" }}
-                className="absolute start-10 top-10 bottom-10 w-0.5 rounded-full bg-gradient-to-b from-[#db2777] via-[#be185d] to-[#22d3ee]"
+                className="absolute start-10 top-10 bottom-10 w-0.5 rounded-full bg-gradient-to-b from-[#db2777] via-[#be185d] to-[#f472b6]"
               />
             )}
 

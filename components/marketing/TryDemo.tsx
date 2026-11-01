@@ -49,7 +49,7 @@ export function TryDemo() {
               className="demo-halo absolute top-1/2 left-1/2 aspect-square w-[140%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
               style={{
                 background:
-                  "conic-gradient(from 0deg, rgba(236,72,153,0.30), rgba(34,211,238,0.22), rgba(251,113,133,0.26), rgba(236,72,153,0.30))",
+                  "conic-gradient(from 0deg, rgba(190,24,93,0.30), rgba(236,72,153,0.26), rgba(251,113,133,0.26), rgba(190,24,93,0.30))",
               }}
             />
           </div>

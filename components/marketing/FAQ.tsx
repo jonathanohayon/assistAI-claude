@@ -60,7 +60,7 @@ export function FAQ() {
                     initial={false}
                     animate={{ opacity: isOpen ? 1 : 0 }}
                     transition={{ duration: 0.25 }}
-                    className="absolute start-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#be185d] to-[#22d3ee]"
+                    className="absolute start-0 top-0 h-full w-[3px] bg-gradient-to-b from-[#be185d] to-[#f472b6]"
                   />
 
                   <button
@@ -80,7 +80,7 @@ export function FAQ() {
                       transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
                       className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors ${
                         isOpen
-                          ? "border-[#22d3ee]/50 bg-gradient-to-br from-[#fce7f3] to-[#cffafe] text-[#be185d]"
+                          ? "border-[#22d3ee]/50 bg-gradient-to-br from-[#fce7f3] to-[#fdf2f8] text-[#be185d]"
                           : "border-slate-200 bg-white text-slate-500 group-hover:text-[#be185d]"
                       }`}
                     >

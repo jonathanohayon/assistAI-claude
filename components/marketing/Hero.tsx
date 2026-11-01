@@ -251,7 +251,7 @@ export function Hero() {
                             scaleX: reduce ? 1 : underlineScaleX,
                             transformOrigin: "center",
                             background:
-                              "linear-gradient(90deg, #ec4899 0%, #fb7185 50%, #22d3ee 100%)",
+                              "linear-gradient(90deg, #be185d 0%, #ec4899 50%, #f472b6 100%)",
                             boxShadow:
                               "0 4px 16px -2px rgba(236,72,153,0.5)",
                           }}

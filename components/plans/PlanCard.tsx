@@ -270,7 +270,7 @@ function HeadsetIcon() {
         className="absolute -inset-[3px] rounded-[20px] opacity-70"
         style={{
           background:
-            "conic-gradient(from 0deg, #22d3ee, #ec4899, #be185d, #f472b6, #22d3ee)",
+            "conic-gradient(from 0deg, #be185d, #ec4899, #f472b6, #ec4899, #be185d)",
           maskImage:
             "radial-gradient(circle at center, transparent 56%, black 60%)",
           WebkitMaskImage:

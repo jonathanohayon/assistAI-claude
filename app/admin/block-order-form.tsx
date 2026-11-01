@@ -200,7 +200,7 @@ export function BlockOrderForm({
               {isDropTarget && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee]"
+                  className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6]"
                 />
               )}
 

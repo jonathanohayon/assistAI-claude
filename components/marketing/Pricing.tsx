@@ -49,7 +49,7 @@ function BillingToggle({
               <motion.span
                 layoutId="billing-pill"
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] shadow-md"
+                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] shadow-md"
               />
             )}
             {opt === "monthly" ? t("monthly") : t("annual")}

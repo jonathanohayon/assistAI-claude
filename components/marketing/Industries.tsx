@@ -16,7 +16,7 @@ import { Reveal, Stagger, StaggerItem } from "./Reveal";
 const INDUSTRIES = [
   {
     key: "medical" as const,
-    accent: "from-[#fb7185]/15 to-[#22d3ee]/10",
+    accent: "from-[#fb7185]/15 to-[#f472b6]/10",
     iconBg: "from-[#be185d] to-[#ec4899]",
     image:
       "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80",
@@ -29,7 +29,7 @@ const INDUSTRIES = [
   },
   {
     key: "beauty" as const,
-    accent: "from-[#f472b6]/15 to-[#22d3ee]/10",
+    accent: "from-[#f472b6]/15 to-[#f472b6]/10",
     iconBg: "from-[#ec4899] to-[#be185d]",
     image:
       "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80",
@@ -43,7 +43,7 @@ const INDUSTRIES = [
   },
   {
     key: "barber" as const,
-    accent: "from-[#22d3ee]/15 to-[#ec4899]/10",
+    accent: "from-[#f472b6]/15 to-[#ec4899]/10",
     iconBg: "from-[#0e7490] to-[#22d3ee]",
     image:
       "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80",
@@ -66,7 +66,7 @@ export function Industries() {
       {/* Blob décoratif subtil — pas de mesh full, juste une touche */}
       <div
         aria-hidden
-        className="pointer-events-none absolute right-1/4 top-1/4 h-96 w-96 rounded-full bg-gradient-to-br from-[#fb7185]/8 to-[#22d3ee]/8 blur-3xl"
+        className="pointer-events-none absolute right-1/4 top-1/4 h-96 w-96 rounded-full bg-gradient-to-br from-[#fb7185]/8 to-[#f472b6]/8 blur-3xl"
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-6">

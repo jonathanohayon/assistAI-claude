@@ -45,7 +45,7 @@ export function HeroSection({
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-gradient-to-br from-[#22d3ee]/30 to-[#ec4899]/20 blur-3xl motion-safe:animate-[aurora_15s_ease-in-out_infinite]"
+          className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-gradient-to-br from-[#f472b6]/30 to-[#ec4899]/20 blur-3xl motion-safe:animate-[aurora_15s_ease-in-out_infinite]"
         />
 
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#be185d]">
