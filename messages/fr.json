@@ -163,7 +163,7 @@
     },
     "step4": {
       "title": "Vos clients parlent à l'IA",
-      "desc": "Latence sub-300ms. La conversation est naturelle, polie, et toujours dans la langue du client."
+      "desc": "La conversation est naturelle, polie, et toujours dans la langue du client."
     }
   },
   "Features": {
@@ -175,8 +175,8 @@
         "desc": "Détection automatique de la langue. Bascule en cours d'appel sans rupture entre français, hébreu et anglais."
       },
       "latency": {
-        "title": "Sub-300ms",
-        "desc": "Latence vocale imperceptible — la conversation se déroule comme avec un humain."
+        "title": "Temps réel",
+        "desc": "Une conversation fluide, au rythme d'un échange humain."
       },
       "calendar": {
         "title": "Calendrier vivant",
@@ -196,7 +196,7 @@
       },
       "voice": {
         "title": "Voix premium",
-        "desc": "Voix naturelles OpenAI Realtime. Choisissez entre marin, cedar, alloy, et plus."
+        "desc": "Voix naturelles, masculines et féminines, à choisir depuis votre dashboard."
       },
       "config": {
         "title": "Configuration live",
@@ -208,73 +208,15 @@
     "kicker": "Performance",
     "title": "Le moteur vocal le plus avancé.",
     "titleHighlight": "Au monde.",
-    "subtitle": "Modèle hyper-évolué, latence sub-300ms, et le meilleur algorithme de réduction de bruit jamais déployé sur du temps réel.",
-    "pillar1": {
-      "title": "Modèle hyper-évolué",
-      "subtitle": "Pas un wrapper. Une stack vocale propriétaire — 7 couches enchaînées pour battre la latence, la précision et la fluidité d'une API Realtime standard.",
-      "standardName": "API Realtime standard",
-      "standardLayersBadge": "2 couches",
-      "tamaraLayersBadge": "7 couches",
-      "hyperBadge": "Hyper-évolué",
-      "vs": "vs",
-      "standardFootnote": "Aucun filtrage audio dédié. Modèle générique non spécialisé FR/HE.",
-      "layers": {
-        "audioStd": "Audio I/O",
-        "llmGeneric": "LLM générique",
-        "audioTamara": "Audio I/O — WebRTC + SIP",
-        "aicoustics": "ai-coustics QVF 2.1 L — isolation primary speaker",
-        "nearField": "Near-field filter (maison)",
-        "asr": "ASR spécialisé FR / HE / EN",
-        "llmTamara": "LLM hyper-évolué · sub-300 ms",
-        "nlu": "NLU déterministe — règles métier",
-        "tts": "TTS natif premium · 12 voix"
-      },
-      "metrics": {
-        "standardLabel": "Standard",
-        "tamaraLabel": "Tamara",
-        "latency": {
-          "label": "Latence A→A"
-        },
-        "accuracy": {
-          "label": "Précision FR / HE"
-        },
-        "interruption": {
-          "label": "Interruption"
-        },
-        "languages": {
-          "label": "Langues natives"
-        }
-      },
-      "metricsFootnote": "Mesures internes — moyenne sur 50 000 appels production Q2 2026."
-    },
-    "pillar2": {
-      "title": "Le meilleur algorithme de réduction de bruit au monde",
-      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + filtre near-field maison. Le client peut appeler depuis n'importe quel environnement.",
-      "envs": {
-        "cafe": {
-          "title": "Café bruyant",
-          "desc": "Voix isolée à 99,2 %"
-        },
-        "car": {
-          "title": "Voiture en mouvement",
-          "desc": "Bruit moteur supprimé"
-        },
-        "openSpace": {
-          "title": "Plateau ouvert / open space",
-          "desc": "Conversations parasites filtrées"
-        }
-      }
-    },
+    "subtitle": "Une IA vocale en temps réel, une réduction de bruit active sur chaque appel, et trois langues natives.",
     "pillar3": {
-      "title": "Précision multilangue inégalée",
-      "subtitle": "Reconnaissance et synthèse natives en FR, HE, EN — et 9 autres langues. Première solution à atteindre 98%+ en hébreu vocal.",
-      "unprecedentedBadge": "Inédit",
+      "title": "Trois langues natives",
+      "subtitle": "Reconnaissance et synthèse natives en français, en hébreu et en anglais, avec bascule automatique en cours d'appel.",
       "langs": {
         "fr": "Français",
         "he": "עברית (Hébreu)",
         "en": "English"
-      },
-      "footnote": "Mesuré sur 50 000 appels réels — benchmark interne Q2 2026."
+      }
     }
   },
   "TwoMinutes": {
@@ -314,7 +256,7 @@
     "subtitle": "Voix, personnalité, langue principale, ton — tout est ajustable depuis votre tableau de bord. En direct, sans intervention dev.",
     "features": {
       "voices": {
-        "title": "12 voix premium",
+        "title": "Voix premium",
         "desc": "Hommes / femmes, accents variés (FR, HE, EN…)"
       },
       "sliders": {
@@ -358,9 +300,9 @@
     },
     "card": {
       "popular": "Recommandé",
-      "perMonth": "HT / mois",
+      "perMonth": "TTC / mois",
       "monthlyHint": "Facturation mensuelle, sans engagement.",
-      "annualHint": "{total} HT / an",
+      "annualHint": "{total} TTC / an",
       "overage": "puis {price} / min supplémentaire",
       "custom": "Sur mesure",
       "customHint": "Tarif sur devis selon vos besoins.",
@@ -369,7 +311,7 @@
       "ctaAria": "Choisir la formule {name}",
       "model": "Modèle"
     },
-    "footer": "Prix HT en euros. TVA applicable selon votre pays. Gros volume ou besoin sur mesure ? Parlons-en."
+    "footer": "Prix TTC en euros. Gros volume ou besoin sur mesure ? Parlons-en."
   },
   "PricingComparison": {
     "title": "Comparer en détail",
@@ -444,12 +386,21 @@
       "author": "Studio Eleven",
       "role": "Coiffeur · Jérusalem"
     },
-    "stats": {
-      "salons": "Salons utilisent Tamara",
-      "calls": "Appels traités",
-      "minutes": "Minutes/jour économisées",
-      "trustLabel": "Ils s'intègrent avec Tamara"
-    }
+    "facts": {
+      "languages": {
+        "value": "FR · HE · EN",
+        "label": "Langues natives"
+      },
+      "availability": {
+        "value": "24/7",
+        "label": "Disponibilité"
+      },
+      "recap": {
+        "value": "WhatsApp",
+        "label": "Récap après chaque appel"
+      }
+    },
+    "trustLabel": "Ils s'intègrent avec Tamara"
   },
   "CTA": {
     "kicker": "Prêt à essayer ?",
@@ -465,11 +416,11 @@
     "subtitle": "Les réponses claires aux questions qu'on nous pose le plus souvent — du prix à la sécurité, en passant par l'installation.",
     "q1": {
       "question": "Combien coûte Tamara ?",
-      "answer": "Tamara démarre à 49 € HT / mois sur la formule Permanence téléphonique, avec 500 minutes incluses. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard. Voir la grille tarifaire complète plus haut."
+      "answer": "Tamara démarre avec la formule Permanence téléphonique ; le tarif à jour est dans la grille ci-dessus. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
     },
     "q2": {
       "question": "Comment l'IA parle-t-elle avec mes clientes ?",
-      "answer": "Tamara utilise les voix temps réel d'OpenAI Realtime — la même technologie qui équipe les assistants vocaux haut de gamme. La latence est inférieure à 300 ms, la voix est naturelle, posée, sans coupure ni robotisation. Les clientes ont l'impression de parler à une vraie réceptionniste."
+      "answer": "Tamara parle avec une voix naturelle et posée, en temps réel, sans coupure ni robotisation. Les clientes ont l'impression de parler à une vraie réceptionniste."
     },
     "q3": {
       "question": "Est-ce qu'elle comprend l'hébreu ?",
@@ -584,7 +535,7 @@
   },
   "Login": {
     "title": "Connexion",
-    "subtitle": "Accède à la configuration de ton agent vocal.",
+    "subtitle": "Accédez à la configuration de votre agent vocal.",
     "errBadCredentials": "Identifiants incorrects.",
     "idleNotice": "⏰ Vous avez été déconnecté après 1 heure d'inactivité. Reconnectez-vous pour reprendre.",
     "emailLabel": "Email",

@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  animate,
   motion,
-  useInView,
   useMotionValue,
   useReducedMotion,
   useScroll,
@@ -11,17 +9,9 @@ import {
   useTransform,
 } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
-import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
-
-// Stats hardcoded per industry — chiffres "estimés" issus de cas client moyens.
-// À remplacer par data DB réelle quand l'instrumentation tracking sera en place.
-const INDUSTRY_STATS = {
-  medical: { rdv: 89, manques: 42 },
-  beauty: { rdv: 76, manques: 38 },
-  barber: { rdv: 82, manques: 45 },
-} as const;
+import { Reveal, Stagger, StaggerItem } from "./Reveal";
 
 const INDUSTRIES = [
   {
@@ -95,7 +85,7 @@ export function Industries() {
         <Stagger className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {INDUSTRIES.map((ind) => (
             <StaggerItem key={ind.key} className="h-full">
-              <IndustryCard ind={ind} t={t} stats={INDUSTRY_STATS[ind.key]} />
+              <IndustryCard ind={ind} t={t} />
             </StaggerItem>
           ))}
         </Stagger>
@@ -117,11 +107,9 @@ function subscribeHoverMedia(onChange: () => void) {
 function IndustryCard({
   ind,
   t,
-  stats,
 }: {
   ind: (typeof INDUSTRIES)[number];
   t: ReturnType<typeof useTranslations<"Industries">>;
-  stats: { rdv: number; manques: number };
 }) {
   const reduce = useReducedMotion();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -217,23 +205,6 @@ function IndustryCard({
             {t(`${ind.key}.desc`)}
           </p>
 
-          {/* Mini-stats count-up — proof points par industrie */}
-          <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-gradient-to-br from-[#ecfeff]/60 to-white/40 p-3 ring-1 ring-inset ring-[#22d3ee]/15">
-            <CountUpStat
-              value={stats.rdv}
-              suffix="%"
-              prefix="+"
-              label={t.has(`${ind.key}.statRdv`) ? t(`${ind.key}.statRdv`) : "RDV pris"}
-            />
-            <CountUpStat
-              value={stats.manques}
-              suffix="%"
-              prefix="−"
-              label={t.has(`${ind.key}.statManques`) ? t(`${ind.key}.statManques`) : "appels manqués"}
-              tone="cyan"
-            />
-          </div>
-
           {/* Checklist compacte en pills — une ligne par feature */}
           <ul className="mt-5 flex flex-wrap gap-2 border-t border-[#e2e8f0] pt-4">
             {(["f1", "f2", "f3"] as const).map((fk) => (
@@ -255,64 +226,6 @@ function IndustryCard({
           </ul>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-function CountUpStat({
-  value,
-  suffix = "",
-  prefix = "",
-  label,
-  tone = "primary",
-}: {
-  value: number;
-  suffix?: string;
-  prefix?: string;
-  label: string;
-  tone?: "primary" | "cyan";
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
-  const reduce = useReducedMotion();
-  const motionVal = useMotionValue(0);
-  const rounded = useTransform(motionVal, (v) => Math.round(v));
-
-  useEffect(() => {
-    if (!inView) return;
-    if (reduce) {
-      motionVal.set(value);
-      return;
-    }
-    const controls = animate(motionVal, value, {
-      duration: 1.2,
-      ease: EASE,
-    });
-    return controls.stop;
-  }, [inView, motionVal, value, reduce]);
-
-  return (
-    <div ref={ref} className="min-w-0">
-      <div className="flex items-baseline gap-0.5">
-        <span className="text-[11px] font-bold text-[#475569]">{prefix}</span>
-        <motion.span
-          className={`font-display text-2xl font-bold tabular-nums ${
-            tone === "cyan" ? "text-[#0e7490]" : "text-[#be185d]"
-          }`}
-        >
-          {rounded}
-        </motion.span>
-        <span
-          className={`text-sm font-bold ${
-            tone === "cyan" ? "text-[#0e7490]" : "text-[#be185d]"
-          }`}
-        >
-          {suffix}
-        </span>
-      </div>
-      <p className="mt-0.5 text-[10px] uppercase tracking-wider text-[#475569]">
-        {label}
-      </p>
     </div>
   );
 }

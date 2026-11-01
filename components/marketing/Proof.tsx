@@ -1,289 +1,8 @@
 "use client";
 
-import {
-  animate,
-  motion,
-  useInView,
-  useMotionValue,
-  useReducedMotion,
-} from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
 import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
-
-/* ------------------------------------------------------------------ */
-/*  Count-up helper — small animated number that ticks on inView      */
-/* ------------------------------------------------------------------ */
-
-function CountUp({
-  value,
-  decimals = 0,
-  duration = 1.6,
-  prefix = "",
-  suffix = "",
-}: {
-  value: number;
-  decimals?: number;
-  duration?: number;
-  prefix?: string;
-  suffix?: string;
-}) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  const mv = useMotionValue(0);
-  const reduce = useReducedMotion();
-  const [display, setDisplay] = useState(
-    decimals > 0 ? (0).toFixed(decimals) : "0",
-  );
-
-  useEffect(() => {
-    // En reduced-motion on n'anime pas : la valeur finale est dérivée au
-    // render (voir `shown` ci-dessous), pas besoin d'effect.
-    if (!inView || reduce) return;
-    const controls = animate(mv, value, {
-      duration,
-      ease: EASE,
-      onUpdate: (latest) => {
-        setDisplay(latest.toFixed(decimals));
-      },
-    });
-    return () => controls.stop();
-  }, [inView, value, decimals, duration, mv, reduce]);
-
-  // prefers-reduced-motion → affiche directement la valeur finale.
-  const shown = reduce && inView ? value.toFixed(decimals) : display;
-
-  return (
-    <span ref={ref}>
-      {prefix}
-      {shown}
-      {suffix}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Duel Metric — dueling gauges (standard vs Tamara)                  */
-/*  Fills animés en scaleX (transform-only, RTL-safe via origin)       */
-/* ------------------------------------------------------------------ */
-
-function DuelMetric({
-  label,
-  leftDisplay,
-  rightValue,
-  rightDecimals = 0,
-  unit = "",
-  leftPct,
-  rightPct,
-  callout,
-  delay = 0,
-  standardLabel,
-  tamaraLabel,
-}: {
-  label: string;
-  leftDisplay: string;
-  rightValue: number;
-  rightDecimals?: number;
-  unit?: string;
-  leftPct: number;
-  rightPct: number;
-  callout: string;
-  delay?: number;
-  standardLabel: string;
-  tamaraLabel: string;
-}) {
-  const reduce = useReducedMotion();
-
-  return (
-    <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }}
-      whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.55, delay, ease: EASE }}
-      className="relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur-md sm:p-6"
-    >
-      {/* Glow tag — coin haut/fin de ligne */}
-      <span className="absolute end-4 top-4 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#BE185D] to-[#EC4899] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white shadow">
-        {callout}
-      </span>
-
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-        {label}
-      </p>
-
-      {/* Standard row */}
-      <div className="mt-4">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            {standardLabel}
-          </span>
-          <span className="text-xs font-semibold text-slate-500 line-through decoration-slate-300/80">
-            {leftDisplay}
-          </span>
-        </div>
-        <div className="relative mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <motion.div
-            className="absolute inset-y-0 start-0 origin-left rounded-full bg-slate-300 rtl:origin-right"
-            style={{ width: `${leftPct}%` }}
-            initial={reduce ? false : { scaleX: 0 }}
-            whileInView={reduce ? undefined : { scaleX: 1 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 1.0, delay: delay + 0.1, ease: EASE }}
-          />
-        </div>
-      </div>
-
-      {/* Tamara row */}
-      <div className="mt-3.5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BE185D]">
-            {tamaraLabel}
-          </span>
-          <span className="font-display text-xl font-bold tabular-nums text-[#BE185D] sm:text-2xl">
-            <CountUp
-              value={rightValue}
-              decimals={rightDecimals}
-              suffix={unit}
-              duration={1.4}
-            />
-          </span>
-        </div>
-        <div className="relative mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <motion.div
-            className="absolute inset-y-0 start-0 origin-left rounded-full rtl:origin-right"
-            style={{
-              width: `${rightPct}%`,
-              background:
-                "linear-gradient(90deg,#BE185D 0%,#EC4899 60%,#FB7185 100%)",
-              boxShadow: "0 0 12px rgba(190,24,93,0.45)",
-            }}
-            initial={reduce ? false : { scaleX: 0 }}
-            whileInView={reduce ? undefined : { scaleX: 1 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 1.4, delay: delay + 0.3, ease: EASE }}
-          />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Animated horizontal bar — multilingual accuracy                    */
-/* ------------------------------------------------------------------ */
-
-function AccuracyBar({
-  label,
-  value,
-  highlight = false,
-  delay = 0,
-  isRTL = false,
-  highlightBadge,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-  delay?: number;
-  isRTL?: boolean;
-  highlightBadge?: string;
-}) {
-  const reduce = useReducedMotion();
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <span
-          dir={isRTL ? "rtl" : "ltr"}
-          className={`text-sm font-semibold ${
-            highlight ? "text-[#BE185D]" : "text-[#18181B]"
-          }`}
-        >
-          {label}
-          {highlight && highlightBadge ? (
-            <span className="ms-2 inline-flex items-center rounded-full bg-[#BE185D]/10 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-[#BE185D]">
-              {highlightBadge}
-            </span>
-          ) : null}
-        </span>
-        <span className="font-display text-base tabular-nums text-[#0E7490]">
-          <CountUp value={value} decimals={1} suffix="%" />
-        </span>
-      </div>
-      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-        <motion.div
-          className="absolute inset-y-0 start-0 origin-left rounded-full rtl:origin-right"
-          style={{
-            width: `${value}%`,
-            background: highlight
-              ? "linear-gradient(90deg,#BE185D 0%,#EC4899 60%,#FB7185 100%)"
-              : "linear-gradient(90deg,#0E7490 0%,#22D3EE 100%)",
-          }}
-          initial={reduce ? false : { scaleX: 0 }}
-          whileInView={reduce ? undefined : { scaleX: 1 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 1.4, delay, ease: EASE }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Big stat — count-up FR-formatted                                   */
-/* ------------------------------------------------------------------ */
-
-function formatFr(n: number) {
-  // 23410 -> "23 410" (espace insécable fine)
-  return Math.round(n).toLocaleString("fr-FR").replace(/,/g, " ");
-}
-
-function Stat({
-  value,
-  label,
-  suffix,
-  delay = 0,
-}: {
-  value: number;
-  label: string;
-  suffix?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const mv = useMotionValue(0);
-  const [display, setDisplay] = useState("0");
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    // En reduced-motion on n'anime pas : la valeur finale est dérivée au
-    // render (voir `shown` ci-dessous), pas besoin d'effect.
-    if (!inView || reduce) return;
-    const controls = animate(mv, value, {
-      duration: 1.8,
-      delay,
-      ease: EASE,
-      onUpdate: (latest) => setDisplay(formatFr(latest)),
-    });
-    return () => controls.stop();
-  }, [inView, value, delay, mv, reduce]);
-
-  // prefers-reduced-motion → affiche directement la valeur finale.
-  const shown = reduce && inView ? formatFr(value) : display;
-
-  return (
-    <div ref={ref} className="flex flex-col items-start gap-2">
-      <div className="font-display text-5xl leading-none tracking-tight text-[#BE185D] sm:text-6xl">
-        {shown}
-        {suffix ? (
-          <span className="ms-1 text-3xl sm:text-4xl">{suffix}</span>
-        ) : null}
-      </div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-    </div>
-  );
-}
 
 /* --------------------------- avatar (initial) --------------------------- */
 
@@ -502,6 +221,10 @@ function CompactCard({ quote, idx }: { quote: Quote; idx: number }) {
 /*  Public component — Proof : performance + traction + témoignages   */
 /* ================================================================== */
 
+// Product facts only: each one is true for every account and checkable on a
+// single call. Traction figures come back when they are measured.
+const FACTS = ["languages", "availability", "recap"] as const;
+
 export function Proof() {
   const tPerf = useTranslations("Performance");
   const tSocial = useTranslations("SocialProof");
@@ -524,12 +247,6 @@ export function Proof() {
     },
   ];
 
-  const STATS_LABELS = {
-    salons: tSocial("stats.salons"),
-    calls: tSocial("stats.calls"),
-    minutes: tSocial("stats.minutes"),
-    trust: tSocial("stats.trustLabel"),
-  };
 
   return (
     <section
@@ -571,83 +288,42 @@ export function Proof() {
           </p>
         </Reveal>
 
-        {/* ── 2. Duel de métriques (latence + précision) ────────────── */}
-        <div className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <DuelMetric
-            label={tPerf("pillar1.metrics.latency.label")}
-            leftDisplay="~800 ms"
-            rightValue={280}
-            unit=" ms"
-            leftPct={35}
-            rightPct={92}
-            callout="3× +"
-            delay={0.0}
-            standardLabel={tPerf("pillar1.metrics.standardLabel")}
-            tamaraLabel={tPerf("pillar1.metrics.tamaraLabel")}
-          />
-          <DuelMetric
-            label={tPerf("pillar1.metrics.accuracy.label")}
-            leftDisplay="87 %"
-            rightValue={98.4}
-            rightDecimals={1}
-            unit=" %"
-            leftPct={87}
-            rightPct={98.4}
-            callout="+11 pts"
-            delay={0.08}
-            standardLabel={tPerf("pillar1.metrics.standardLabel")}
-            tamaraLabel={tPerf("pillar1.metrics.tamaraLabel")}
-          />
-        </div>
-
-        {/* ── 3. Précision multilangue ──────────────────────────────── */}
-        <Reveal className="mx-auto mt-12 max-w-3xl">
+        {/* ── 2. Langues natives ──────────────────────────────────────
+            No accuracy percentages: none has been measured. The card states
+            what the product does, which a visitor can check on a call. */}
+        <Reveal className="mx-auto mt-14 max-w-3xl">
           <div className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-xl shadow-slate-900/[0.04] backdrop-blur-xl sm:p-8">
             <h3 className="font-display text-xl tracking-tight text-[#18181B] sm:text-2xl">
               {tPerf("pillar3.title")}
             </h3>
-            <div className="mt-6 flex flex-col gap-5">
-              <AccuracyBar
-                label={tPerf("pillar3.langs.fr")}
-                value={98.7}
-                delay={0.0}
-              />
-              <AccuracyBar
-                label={tPerf("pillar3.langs.he")}
-                value={98.4}
-                highlight
-                delay={0.15}
-                isRTL
-                highlightBadge={tPerf("pillar3.unprecedentedBadge")}
-              />
-              <AccuracyBar
-                label={tPerf("pillar3.langs.en")}
-                value={99.1}
-                delay={0.3}
-              />
-            </div>
-            <p className="mt-6 text-[11px] italic text-[#94A3B8]">
-              {tPerf("pillar3.footnote")}
+            <p className="mt-2 text-sm leading-relaxed text-[#475569]">
+              {tPerf("pillar3.subtitle")}
             </p>
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {(["fr", "he", "en"] as const).map((lang) => (
+                <li
+                  key={lang}
+                  className="rounded-full bg-[#FFF1F2] px-3.5 py-1.5 text-sm font-medium text-[#BE185D] ring-1 ring-inset ring-[#FBCFE8]"
+                >
+                  {tPerf(`pillar3.langs.${lang}`)}
+                </li>
+              ))}
+            </ul>
           </div>
         </Reveal>
 
-        {/* ── 4. Bande de stats (traction) ──────────────────────────── */}
+        {/* ── 3. Faits vérifiables ──────────────────────────────────── */}
         <Stagger className="mt-20 grid grid-cols-1 gap-10 border-y border-slate-200/70 py-10 sm:grid-cols-3">
-          <StaggerItem>
-            <Stat value={127} label={STATS_LABELS.salons} delay={0} />
-          </StaggerItem>
-          <StaggerItem>
-            <Stat value={23410} label={STATS_LABELS.calls} delay={0.1} />
-          </StaggerItem>
-          <StaggerItem>
-            <Stat
-              value={184}
-              suffix="min"
-              label={STATS_LABELS.minutes}
-              delay={0.2}
-            />
-          </StaggerItem>
+          {FACTS.map((key) => (
+            <StaggerItem key={key}>
+              <p className="font-display text-4xl tracking-tight text-[#BE185D] sm:text-5xl">
+                <bdi>{tSocial(`facts.${key}.value`)}</bdi>
+              </p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {tSocial(`facts.${key}.label`)}
+              </p>
+            </StaggerItem>
+          ))}
         </Stagger>
 
         {/* ── 5. Témoignages — layout asymétrique 3 + 2 ─────────────── */}
@@ -673,7 +349,7 @@ export function Proof() {
         </div>
 
         {/* ── 6. Logos marquee ──────────────────────────────────────── */}
-        <LogosMarquee label={STATS_LABELS.trust} />
+        <LogosMarquee label={tSocial("trustLabel")} />
       </div>
     </section>
   );

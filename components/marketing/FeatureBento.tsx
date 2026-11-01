@@ -198,11 +198,13 @@ function SpeedMeter({ reduce }: { reduce: boolean }) {
       {loading ? (
         <div className="h-10 w-24 animate-pulse rounded-md bg-[#22d3ee]/15" />
       ) : (
-        <div className="flex items-baseline gap-1">
-          <span className="font-display text-4xl font-extrabold tracking-tight text-[#0e7490] tabular-nums">
-            {ms}
+        // No millisecond figure until latency is measured in production: the
+        // bar alone conveys "live" without making a number claim.
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#22d3ee] shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0e7490]">
+            Live
           </span>
-          <span className="text-sm font-medium text-[#0e7490]/70">ms</span>
         </div>
       )}
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#22d3ee]/15">

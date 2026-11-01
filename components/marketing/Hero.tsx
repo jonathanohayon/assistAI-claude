@@ -285,13 +285,6 @@ export function Hero() {
           />
           <Divider />
           <Stat
-            value="<300ms"
-            label={t("stats.latency")}
-            delay={0.93}
-            reduce={!!reduce}
-          />
-          <Divider />
-          <Stat
             value="Multi"
             label={t("stats.languages")}
             delay={1.01}
