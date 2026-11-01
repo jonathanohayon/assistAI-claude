@@ -1398,7 +1398,8 @@
     "cancelEditButton": "Annuler",
     "editButton": "Modifier",
     "cancelAppointmentButton": "Annuler",
-    "openLink": "Ouvrir ↗"
+    "openLink": "Ouvrir ↗",
+    "allDay": "Toute la journée"
   },
   "DashboardContacts": {
     "header": "Contacts CRM",
@@ -1670,5 +1671,30 @@
       "recoPersonaTitle": "{n} · Personnalisez la persona",
       "recoPersonaBody": "Allez dans Configuration pour ajuster le ton, les horaires, les centres et les règles métier. La persona par défaut est \"Tamara\" — renommez-la et adaptez-la à votre activité."
     }
+  },
+  "LiveTest": {
+    "kicker": "Live Test",
+    "title": "Tester en direct",
+    "status": {
+      "idle": "Prêt",
+      "connecting": "Connexion…",
+      "connected": "En ligne — parlez",
+      "ending": "Fermeture…",
+      "error": "Erreur"
+    },
+    "saveFirst": "Enregistrez avant de tester : l'agent lit la configuration enregistrée.",
+    "startAria": "Démarrer le test vocal",
+    "stopAria": "Arrêter le test",
+    "hintLive": "Parlez, ou cliquez pour arrêter",
+    "hintIdle": "Cliquez et parlez pour tester",
+    "mute": "Couper le micro",
+    "muted": "Micro coupé",
+    "conversation": "Conversation",
+    "emptyLive": "En écoute… parlez à votre agent.",
+    "emptyIdle": "Cliquez sur le micro pour démarrer un test."
+  },
+  "Voices": {
+    "display": "Voix {n}{gender, select, f { · féminine} m { · masculine} other {}}",
+    "custom": "Voix personnalisée"
   }
 }

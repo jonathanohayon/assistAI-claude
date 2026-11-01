@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
@@ -113,6 +114,7 @@ export function ConfigForm({
   fullPromptConcat?: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
@@ -313,7 +315,7 @@ export function ConfigForm({
       id: "voice",
       label: t("voiceTitle"),
       tagline: t("wowTagVoice"),
-      summary: `${form.voice} · ${getPersonalityValue("vitesse")}/10`,
+      summary: `${voiceLabel(form.voice)} · ${getPersonalityValue("vitesse")}/10`,
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">

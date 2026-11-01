@@ -57,7 +57,10 @@ export default async function DashboardPage(props: {
     me?.subscriptionPlan && PLANS.some((p) => p.key === me.subscriptionPlan)
       ? (me.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
+  const tPlans = await getTranslations({ locale, namespace: "Plans" });
+  const planLabel = tPlans.has(`${planKey}.name`)
+    ? tPlans(`${planKey}.name`)
+    : (PLANS.find((p) => p.key === planKey)?.name ?? planKey);
 
   // Matrice feature×plan → features actives pour ce tenant. Sert au gating
   // de la tuile "Centre d'appels sortant" (visible partout, activée premium).

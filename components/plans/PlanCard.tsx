@@ -414,7 +414,6 @@ export function PlanCard({
   status = null,
   currentBadgeLabel,
   quote = false,
-  showModel = true,
 }: {
   plan: Plan;
   billing: Billing;
@@ -427,8 +426,6 @@ export function PlanCard({
   currentBadgeLabel?: string;
   /** Render "sur mesure" instead of a price (landing premium tier). */
   quote?: boolean;
-  /** The voice model is supplier detail: shown in billing, hidden on the public landing. */
-  showModel?: boolean;
 }) {
   const t = useTranslations("Pricing.card");
   const localized = useLocalizedPlan(plan);
@@ -676,11 +673,6 @@ export function PlanCard({
           >
             <CtaInner label={action.label} />
           </button>
-        )}
-        {showModel && (
-          <p className="mt-3 text-center text-[11px] text-[var(--color-muted-foreground)]">
-            {t("model")} <span className="font-mono">{plan.model}</span>
-          </p>
         )}
       </div>
     </motion.article>

@@ -18,13 +18,13 @@ import type { Personality } from "./types";
 // Module-level : SEULEMENT les icons/anim/enabled/badge. Les labels sont
 // construits dynamiquement via t() dans le composant (voir `sliderDefs`).
 export const PERSONALITY_SLIDER_META = [
-  { key: "vitesse", anim: "anim-slide-x", enabled: true, badge: "OpenAI", icon: (
+  { key: "vitesse", anim: "anim-slide-x", enabled: true, badge: undefined as string | undefined, icon: (
     <>
       <polygon points="13 19 22 12 13 5 13 19" />
       <polygon points="2 19 11 12 2 5 2 19" />
     </>
   ) },
-  { key: "creativite", anim: "anim-sparkle", enabled: true, badge: "OpenAI", icon: (
+  { key: "creativite", anim: "anim-sparkle", enabled: true, badge: undefined as string | undefined, icon: (
     <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
   ) },
   { key: "reactivite", anim: "anim-pulse-quick", enabled: true, badge: "VAD", icon: (

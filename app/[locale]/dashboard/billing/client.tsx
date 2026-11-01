@@ -134,6 +134,12 @@ export function BillingClient({
   email: string;
 }) {
   const t = useTranslations("DashboardBilling");
+  const tPlans = useTranslations("Plans");
+  // lib/plans.ts names are French; the localized name lives in messages.
+  const planName = (key: string) =>
+    tPlans.has(`${key}.name`)
+      ? tPlans(`${key}.name`)
+      : (plans.find((p) => p.key === key)?.name ?? key);
   const locale = useLocale();
   const currency = currencyForLocale(locale);
   const rates = useExchangeRates();
@@ -261,10 +267,10 @@ export function BillingClient({
   const resumeSub = () => void post("/api/dashboard/subscription/resume");
   const scheduleDowngrade = (planKey: PlanKey) => {
     const date = fmtDate(stats?.paidUntil ?? null);
-    const planName = plans.find((p) => p.key === planKey)?.name ?? planKey;
+    const name = planName(planKey);
     if (
       typeof window !== "undefined" &&
-      !window.confirm(t("scheduleConfirm", { plan: planName, date }))
+      !window.confirm(t("scheduleConfirm", { plan: name, date }))
     )
       return;
     void post("/api/dashboard/subscription/schedule-change", {
@@ -304,7 +310,7 @@ export function BillingClient({
         <CurrentPlanCard
           stats={stats}
           statusLabel={statusLabel}
-          planName={plans.find((p) => p.key === stats.plan)?.name ?? stats.plan}
+          planName={planName(stats.plan)}
           scheduledPlanName={
             stats.scheduledPlan
               ? (plans.find((p) => p.key === stats.scheduledPlan)?.name ??
@@ -378,7 +384,7 @@ export function BillingClient({
           />
           <InvoicesTable
             payments={stats.payments}
-            planName={(k) => plans.find((p) => p.key === k)?.name ?? k}
+            planName={planName}
             fmtDate={fmtDate}
             t={t}
           />
@@ -462,13 +468,13 @@ export function BillingClient({
                               kind: "button",
                               label: pending
                                 ? t("processing")
-                                : t("planUpgradeCta", { plan: plan.name }),
+                                : t("planUpgradeCta", { plan: planName(plan.key) }),
                               onClick: () => openPayment(plan.key),
                               pending,
                             }
                           : {
                               kind: "button",
-                              label: t("planDowngradeCta", { plan: plan.name }),
+                              label: t("planDowngradeCta", { plan: planName(plan.key) }),
                               onClick: () => scheduleDowngrade(plan.key),
                             }
                   }
@@ -520,7 +526,7 @@ export function BillingClient({
 
       {payPlan && payPlanObj && (
         <PaymentModal
-          planName={payPlanObj.name}
+          planName={planName(payPlanObj.key)}
           period={payPeriod}
           onPeriodChange={setPayPeriod}
           priceLabel={`${formatEuro(
@@ -570,9 +576,13 @@ function CurrentPlanCard({
           ? "bg-amber-100 text-amber-700"
           : "bg-red-100 text-red-700";
 
+  // No date, no line: "Free trial until —" reads as a bug, not as information.
   const dateLine = (() => {
     if (stats.status === "trialing")
-      return t("trialEndsOn", { date: fmtDate(stats.trialEndsAt) });
+      return stats.trialEndsAt
+        ? t("trialEndsOn", { date: fmtDate(stats.trialEndsAt) })
+        : null;
+    if (!stats.paidUntil) return null;
     if (stats.status === "expired")
       return t("expiredOn", { date: fmtDate(stats.paidUntil) });
     if (!stats.autoRenew || stats.cancelledAt)
@@ -598,9 +608,11 @@ function CurrentPlanCard({
               {statusLabel}
             </span>
           </div>
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            {dateLine}
-          </p>
+          {dateLine && (
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {dateLine}
+            </p>
+          )}
         </div>
       </div>
 

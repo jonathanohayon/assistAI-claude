@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 
 import { Meta, Stat } from "./shared-ui";
 import type { DashboardStats } from "./types";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 export function HeroSection({
   primaryPhone,
@@ -36,6 +37,7 @@ export function HeroSection({
   currentLangLabel: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
 
   return (
     <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12 xl:col-span-2">
@@ -174,7 +176,7 @@ export function HeroSection({
         </div>
 
         <div className="relative space-y-2.5">
-          <Meta label={t("heroVoiceLabel")} value={voice} />
+          <Meta label={t("heroVoiceLabel")} value={voiceLabel(voice)} />
           <Meta label={t("heroLanguageLabel")} value={currentLangLabel} />
           <Meta label={t("wowPlanLabel")} value={planLabel || "—"} />
         </div>

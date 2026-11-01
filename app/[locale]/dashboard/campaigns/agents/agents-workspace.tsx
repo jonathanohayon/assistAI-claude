@@ -12,6 +12,7 @@ import {
 } from "@/lib/outbound-agents/types";
 
 import { AgentEditor } from "./agent-editor";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const ACCENT_AGENTS = "from-[#6366f1] to-[#8b5cf6]";
 
@@ -285,6 +286,7 @@ function ListView({
   onDelete: (id: string, campaignCount: number) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const voiceLabel = useVoiceLabel();
   if (loading)
     return (
       <div className="grid gap-3 sm:grid-cols-2">
@@ -342,7 +344,7 @@ function ListView({
                     {a.agentName}
                   </p>
                   <p className="mt-0.5 truncate text-[12px] text-[#64748b]">
-                    {a.voice} · {a.language.toUpperCase()}
+                    {voiceLabel(a.voice)} · {a.language.toUpperCase()}
                   </p>
                 </div>
               </div>

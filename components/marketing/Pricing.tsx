@@ -259,7 +259,6 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
                 rates={rates}
                 pricing={pricing}
                 quote={plan.key === "premium"}
-                showModel={false}
                 action={{
                   kind: "link",
                   href: `/signup?plan=${plan.key}&billing=${billing}`,

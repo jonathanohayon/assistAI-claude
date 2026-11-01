@@ -1398,7 +1398,8 @@
     "cancelEditButton": "Cancel",
     "editButton": "Edit",
     "cancelAppointmentButton": "Cancel",
-    "openLink": "Open ↗"
+    "openLink": "Open ↗",
+    "allDay": "All day"
   },
   "DashboardContacts": {
     "header": "Contacts CRM",
@@ -1670,5 +1671,30 @@
       "recoPersonaTitle": "{n} · Customize the persona",
       "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. Default persona is \"Tamara\" — rename it and adapt it to your activity."
     }
+  },
+  "LiveTest": {
+    "kicker": "Live test",
+    "title": "Test it live",
+    "status": {
+      "idle": "Ready",
+      "connecting": "Connecting…",
+      "connected": "Live — speak now",
+      "ending": "Closing…",
+      "error": "Error"
+    },
+    "saveFirst": "Save before testing: the agent reads the saved configuration.",
+    "startAria": "Start the voice test",
+    "stopAria": "Stop the test",
+    "hintLive": "Speak, or click to stop",
+    "hintIdle": "Click and speak to test",
+    "mute": "Mute mic",
+    "muted": "Mic muted",
+    "conversation": "Conversation",
+    "emptyLive": "Listening… speak to your agent.",
+    "emptyIdle": "Click the mic to start a test."
+  },
+  "Voices": {
+    "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
+    "custom": "Custom voice"
   }
 }

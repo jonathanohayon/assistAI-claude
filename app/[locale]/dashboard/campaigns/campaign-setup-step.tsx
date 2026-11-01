@@ -14,6 +14,7 @@ import type { CampaignDraft } from "@/lib/campaigns/types";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const GOAL_EMOJI: Record<GoalPreset, string> = {
   cold: "❄️",
@@ -38,6 +39,7 @@ export function CampaignSetupStep({
   fromNumbers: string[];
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const voiceLabel = useVoiceLabel();
   const tDays = useTranslations("DashboardConfig");
 
   const selectedAgent = agents.find((a) => a.id === draft.agentId) ?? null;
@@ -175,7 +177,7 @@ export function CampaignSetupStep({
               <option value="">{t("agentSelectNone")}</option>
               {agents.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} · {a.voice} · {a.language.toUpperCase()}
+                  {a.name} · {voiceLabel(a.voice)} · {a.language.toUpperCase()}
                 </option>
               ))}
             </select>
