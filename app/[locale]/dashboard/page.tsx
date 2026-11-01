@@ -10,7 +10,8 @@ import {
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { db } from "@/lib/db";
-import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
+import { bookingRate, callSecondsSql, formatAvgDuration } from "@/lib/call-stats";
+import { agentConfigs, calls, events, phoneNumbers, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -97,10 +98,10 @@ export default async function DashboardPage(props: {
     timeStyle: "short",
   });
 
-  // Stats hero — agrégat depuis la table `calls`. Pas de durée stockée
-  // côté DB, on estime via `transcript.length × 6s/bulle`. Pas de outcome
-  // structuré : "RDV pris" via heuristique keyword dans `summary`. Conversion
-  // = pourcentage d'appels avec summary non-vide (proxy "appel utile").
+  // Stats hero. Durations: real calls.duration_seconds when recorded, else
+  // the historical 6 s/bubble estimate (lib/call-stats). Bookings: real
+  // `book_success` events attributed to this tenant, no longer a keyword
+  // regex on the summary. Conversion = bookings ÷ calls.
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const startOfMonth = new Date(
@@ -118,8 +119,7 @@ export default async function DashboardPage(props: {
       );
     const [monthRow] = await db
       .select({
-        // Total estimé en secondes pour les calls du mois (×6s par bulle).
-        totalSeconds: sql<number>`coalesce(sum(jsonb_array_length(transcript)) * 6, 0)::int`,
+        totalSeconds: sql<number>`coalesce(sum(${callSecondsSql}), 0)::int`,
       })
       .from(calls)
       .where(
@@ -128,31 +128,24 @@ export default async function DashboardPage(props: {
     const [totalRow] = await db
       .select({
         count: sql<number>`count(*)::int`,
-        withSummary: sql<number>`count(*) filter (where length(summary) > 0)::int`,
-        rdv: sql<number>`count(*) filter (where summary ~* 'rdv|rendez-vous|appointment|תור')::int`,
-        avgBubbles: sql<number>`coalesce(avg(jsonb_array_length(transcript)), 0)::float`,
+        avgSeconds: sql<number>`coalesce(avg(${callSecondsSql}), 0)::float`,
       })
       .from(calls)
       .where(eq(calls.userId, userIdRef));
+    const [bookingRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(events)
+      .where(
+        and(eq(events.userId, userIdRef), eq(events.event, "book_success")),
+      );
     const total = totalRow?.count ?? 0;
-    const withSummary = totalRow?.withSummary ?? 0;
-    const conversion = total > 0 ? Math.round((withSummary / total) * 100) : 0;
-    const avgSeconds = Math.round((totalRow?.avgBubbles ?? 0) * 6);
-    const avgMin = Math.floor(avgSeconds / 60);
-    const avgSec = avgSeconds % 60;
-    const avgDuration =
-      avgSeconds === 0
-        ? "—"
-        : `${avgMin}m${avgSec.toString().padStart(2, "0")}`;
-    // Minutes totales appelées sur le numéro depuis le 1er du mois.
-    const monthSeconds = monthRow?.totalSeconds ?? 0;
-    const monthMinutes = Math.round(monthSeconds / 60);
+    const bookings = bookingRow?.count ?? 0;
     return {
       callsToday: todayRow?.count ?? 0,
-      conversion,
-      avgDuration,
-      rdv: totalRow?.rdv ?? 0,
-      minutesThisMonth: monthMinutes,
+      conversion: bookingRate(bookings, total),
+      avgDuration: formatAvgDuration(totalRow?.avgSeconds ?? 0),
+      rdv: bookings,
+      minutesThisMonth: Math.round((monthRow?.totalSeconds ?? 0) / 60),
     };
   })();
 

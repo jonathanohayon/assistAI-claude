@@ -202,6 +202,8 @@ export async function POST(req: NextRequest) {
       source: "calendar",
       event: "book_success",
       message: `RDV créé : ${name} · ${date} ${time} · ${resolved.label}`,
+      // Attributed to the tenant: the dashboard counts real bookings from it.
+      ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: {
         eventId: event.data.id,
         name,
