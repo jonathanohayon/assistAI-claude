@@ -144,7 +144,7 @@ export function PlanFeaturesForm({
           <button
             type="submit"
             disabled={isPending || !dirty}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? "Sauvegarde…" : "Sauvegarder"}
           </button>

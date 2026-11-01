@@ -233,7 +233,7 @@ export default async function DashboardLayout({
             </span>
             <Link
               href="/dashboard/billing"
-              className="whitespace-nowrap rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-3 py-1 text-[11px] font-medium text-white"
+              className="whitespace-nowrap rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] px-3 py-1 text-[11px] font-medium text-white"
             >
               {t("upgradeLink")}
             </Link>

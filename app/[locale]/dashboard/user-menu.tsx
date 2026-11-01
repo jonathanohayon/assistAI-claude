@@ -49,7 +49,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
         aria-label={t("userMenuAria")}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-xs font-semibold text-white shadow-sm transition-transform hover:scale-105 ${
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-xs font-semibold text-white shadow-sm transition-transform hover:scale-105 ${
           open ? "ring-2 ring-[var(--color-primary)]/30 ring-offset-2" : ""
         }`}
       >

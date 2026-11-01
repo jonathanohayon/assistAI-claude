@@ -153,7 +153,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
     <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2.5">
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white shadow-md"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-white shadow-md"
           aria-hidden
         >
           <svg
@@ -243,7 +243,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
                 disabled={
                   isPending || createStatus === "creating" || !createName.trim()
                 }
-                className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:hover:scale-100"
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:hover:scale-100"
               >
                 <svg
                   viewBox="0 0 24 24"

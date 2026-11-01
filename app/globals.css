@@ -219,13 +219,12 @@ body {
   }
 }
 
-/* Soft gradient utility used in hero — mesh marque Tamara (rose + cyan
- * voice tech). Trois radials qui se croisent pour un fond vivant sans
- * être agressif. Le cyan en haut-droite porte la signature "AI voice". */
+/* Soft gradient utility used in hero — mesh marque Tamara. Trois radials
+ * magenta → rose : a cyan radial here blended with the pink into grey. */
 .gradient-mesh {
   background:
     radial-gradient(at 18% 12%, rgb(249 168 212 / 0.7) 0px, transparent 48%),
-    radial-gradient(at 82% 8%, rgb(34 211 238 / 0.55) 0px, transparent 52%),
+    radial-gradient(at 82% 8%, rgb(244 114 182 / 0.45) 0px, transparent 52%),
     radial-gradient(at 50% 100%, rgb(219 39 119 / 0.35) 0px, transparent 55%);
 }
 

@@ -96,7 +96,7 @@ function BillingToggle({
               <motion.span
                 layoutId="billing-pill-dashboard"
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] shadow-sm"
+                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] shadow-sm"
               />
             )}
             {opt === "monthly" ? t("monthly") : t("annual")}
@@ -391,7 +391,7 @@ export function BillingClient({
           <SectionTitle title={t("sectionPaymentMethod")} />
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-12 items-center justify-center rounded-md bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-[10px] font-bold text-white">
+              <span className="flex h-9 w-12 items-center justify-center rounded-md bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-[10px] font-bold text-white">
                 CARD
               </span>
               <p className="text-sm text-[var(--color-foreground)]">
@@ -586,7 +586,7 @@ function CurrentPlanCard({
       animate={{ opacity: 1, y: 0 }}
       className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-br from-[var(--color-primary)]/[0.06] to-[var(--color-accent)]/[0.06] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-br from-[var(--color-primary)]/[0.06] to-[#f472b6]/[0.06] p-5">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-xl text-[var(--color-foreground)]">
