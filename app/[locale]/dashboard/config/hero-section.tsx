@@ -95,7 +95,7 @@ export function HeroSection({
                 className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
               >
                 {t("heroGetNumber")}
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:-scale-x-100">
                   <path
                     d="M5 12h14M13 5l7 7-7 7"
                     stroke="currentColor"
