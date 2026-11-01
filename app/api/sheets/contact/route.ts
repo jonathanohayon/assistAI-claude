@@ -57,10 +57,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sheets",
       event: "contact_misconfigured",
-      message:
-        caller.mode === "demo"
-          ? "GOOGLE_SHEET_ID non configuré"
-          : "Sheet ID manquant pour ce compte",
+      message: "Sheet ID manquant pour ce compte",
       level: "error",
     });
     return NextResponse.json(
