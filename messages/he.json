@@ -1669,14 +1669,14 @@
     },
     "trialWarning": {
       "subjectMinutes": "⏰ הניסיון שלך ב-Tamara יפוג בעוד {minutes} דקות",
-      "subjectHours": "⏰ הניסיון שלך ב-Tamara יפוג בעוד שעתיים",
-      "heading": "⏰ הניסיון שלך יפוג בקרוב",
-      "introHtml": "הניסיון החינמי שלך ב-<strong>Tamara</strong> יפוג בעוד כ-<strong>שעתיים</strong>.",
-      "introText": "הניסיון החינמי שלך ב-Tamara יפוג בעוד כשעתיים.",
-      "warningBoxHtml": "עם תום הניסיון, החשבון שלך יי<strong>מחק</strong> ו{phoneLine} י<strong>שוחרר</strong>.",
+      "subjectHours": "⏰ החשבון שלך ב-Tamara יימחק בעוד 24 שעות",
+      "heading": "⏰ הניסיון שלך מסתיים",
+      "introHtml": "הניסיון החינמי שלך ב-<strong>Tamara</strong> מסתיים. ללא תוכנית פעילה, החשבון שלך יימחק בעוד <strong>24 שעות</strong>.",
+      "introText": "הניסיון החינמי שלך ב-Tamara מסתיים. ללא תוכנית פעילה, החשבון שלך יימחק בעוד 24 שעות.",
+      "warningBoxHtml": "בעוד 24 שעות, החשבון שלך <strong>יימחק</strong> ו{phoneLine} <strong>ישוחרר</strong>.",
       "phoneSpecific": "המספר <strong>{phone}</strong>",
       "phoneGeneric": "מספר ה-Twilio שלך",
-      "actionLineText": "כדי לשמור על המספר וההגדרות שלך, הפעילי תוכנית מהדאשבורד לפני תום הניסיון :",
+      "actionLineText": "כדי לשמור על המספר וההגדרות שלך, הפעילי תוכנית מהדאשבורד עד אז :",
       "actionLineHtml": "כדי לשמור על המספר וההגדרות שלך, הפעילי תוכנית מהדאשבורד :",
       "ctaButton": "הפעלת התוכנית שלי →",
       "footerText": "אם אינך מעוניינת להמשיך, אין צורך לעשות דבר — הכל ינוקה אוטומטית.",
@@ -1684,7 +1684,7 @@
       "phoneLineWithPhone": "המספר {phone} ישוחרר ב-Twilio.",
       "phoneLineGeneric": "מספר ה-Twilio שלך ישוחרר.",
       "signature": "— צוות Tamara",
-      "textBullet": "עם תום הניסיון :"
+      "textBullet": "בעוד 24 שעות :"
     },
     "trialDeleted": {
       "subject": "החשבון שלך ב-Tamara נמחק",
