@@ -17,10 +17,11 @@ import { candidateUrls, isValidTwilioSignature } from "@/lib/twilio-signature";
 // Returns TwiML XML (Content-Type text/xml), status 200.
 //
 // Auth: X-Twilio-Signature (lib/twilio-signature). Without it anyone could
-// POST here and get calls bridged into our SIP trunk on our bill. Enforced
-// whenever TWILIO_AUTH_TOKEN is set; TWILIO_SIGNATURE_MODE=log turns a
-// failure into an error event only, as a rollback switch if the public URL
-// Twilio signs ever differs from APP_URL.
+// POST here and get calls bridged into our SIP trunk on our bill. Checked
+// whenever TWILIO_AUTH_TOKEN is set. Log-only by default: one wrong public
+// URL in enforce mode would cut every inbound call. Set
+// TWILIO_SIGNATURE_MODE=enforce once a real call has logged
+// twilio_signature_valid.
 
 // Shared LiveKit inbound SIP trunk host. No exported constant exists elsewhere
 // in the repo (lib/livekit-sip.ts drives the trunk via the server SDK using
@@ -71,17 +72,17 @@ export async function POST(req: NextRequest): Promise<Response> {
       ),
       params,
     });
-    if (!valid) {
-      const enforce = process.env.TWILIO_SIGNATURE_MODE !== "log";
-      await logEvent({
-        source: "web",
-        event: "twilio_signature_invalid",
-        message: `Signature Twilio invalide sur voice-bridge (to=${to || "?"})${enforce ? " — refusé" : " — mode log"}`,
-        level: "error",
-        metadata: { toNumber: to, enforce },
-      });
-      if (enforce) return new Response("Forbidden", { status: 403 });
-    }
+    const enforce = process.env.TWILIO_SIGNATURE_MODE === "enforce";
+    await logEvent({
+      source: "web",
+      event: valid ? "twilio_signature_valid" : "twilio_signature_invalid",
+      message: valid
+        ? `Signature Twilio valide sur voice-bridge (to=${to || "?"})`
+        : `Signature Twilio invalide sur voice-bridge (to=${to || "?"})${enforce ? " — refusé" : " — mode log"}`,
+      level: valid ? "info" : "error",
+      metadata: { toNumber: to, enforce },
+    });
+    if (!valid && enforce) return new Response("Forbidden", { status: 403 });
   }
 
   // Channel is WhatsApp if either leg carries the whatsapp: prefix. The dialed
