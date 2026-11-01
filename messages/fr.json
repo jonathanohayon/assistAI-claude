@@ -1,4 +1,8 @@
 {
+  "Metadata": {
+    "title": "Tamara — Réceptionniste vocale IA",
+    "description": "Une secrétaire vocale qui prend les rendez-vous de votre salon en français, en hébreu et en anglais, 24/7."
+  },
   "Plans": {
     "whatsapp": {
       "name": "Permanence téléphonique",
@@ -439,6 +443,12 @@
       "text": "Configurer le ton de la voix depuis un dashboard simple — game changer pour notre identité de marque.",
       "author": "Studio Eleven",
       "role": "Coiffeur · Jérusalem"
+    },
+    "stats": {
+      "salons": "Salons utilisent Tamara",
+      "calls": "Appels traités",
+      "minutes": "Minutes/jour économisées",
+      "trustLabel": "Ils s'intègrent avec Tamara"
     }
   },
   "CTA": {
