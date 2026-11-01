@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
@@ -8,8 +8,9 @@ import {
 } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
+import { computeDashboardStats } from "@/lib/dashboard-stats";
 import { db } from "@/lib/db";
-import { agentConfigs, calls, phoneNumbers, users } from "@/lib/db/schema";
+import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -79,54 +80,8 @@ export default async function AdminTenantPage({
     timeStyle: "short",
   });
 
-  // Stats du tenant cible — mêmes calculs que /dashboard/page.tsx mais
-  // scopés sur target.id.
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1,
-  );
-  const stats = await (async () => {
-    const [todayRow] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(calls)
-      .where(and(eq(calls.userId, userId), gte(calls.createdAt, startOfToday)));
-    const [monthRow] = await db
-      .select({
-        totalSeconds: sql<number>`coalesce(sum(jsonb_array_length(transcript)) * 6, 0)::int`,
-      })
-      .from(calls)
-      .where(and(eq(calls.userId, userId), gte(calls.createdAt, startOfMonth)));
-    const [totalRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-        withSummary: sql<number>`count(*) filter (where length(summary) > 0)::int`,
-        rdv: sql<number>`count(*) filter (where summary ~* 'rdv|rendez-vous|appointment|תור')::int`,
-        avgBubbles: sql<number>`coalesce(avg(jsonb_array_length(transcript)), 0)::float`,
-      })
-      .from(calls)
-      .where(eq(calls.userId, userId));
-    const total = totalRow?.count ?? 0;
-    const withSummary = totalRow?.withSummary ?? 0;
-    const conversion = total > 0 ? Math.round((withSummary / total) * 100) : 0;
-    const avgSeconds = Math.round((totalRow?.avgBubbles ?? 0) * 6);
-    const avgMin = Math.floor(avgSeconds / 60);
-    const avgSec = avgSeconds % 60;
-    const avgDuration =
-      avgSeconds === 0
-        ? "—"
-        : `${avgMin}m${avgSec.toString().padStart(2, "0")}`;
-    const monthSeconds = monthRow?.totalSeconds ?? 0;
-    return {
-      callsToday: todayRow?.count ?? 0,
-      conversion,
-      avgDuration,
-      rdv: totalRow?.rdv ?? 0,
-      minutesThisMonth: Math.round(monthSeconds / 60),
-    };
-  })();
+  // Stats du tenant cible — même calcul que /dashboard (lib/dashboard-stats).
+  const stats = await computeDashboardStats(userId);
 
   // Preview des blocs admin hérités + prompt complet (alimente la tuile
   // admin-only "Prompt système").

@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -9,9 +9,9 @@ import {
 } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
+import { computeDashboardStats } from "@/lib/dashboard-stats";
 import { db } from "@/lib/db";
-import { bookingRate, callSecondsSql, formatAvgDuration } from "@/lib/call-stats";
-import { agentConfigs, calls, events, phoneNumbers, users } from "@/lib/db/schema";
+import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -98,56 +98,8 @@ export default async function DashboardPage(props: {
     timeStyle: "short",
   });
 
-  // Stats hero. Durations: real calls.duration_seconds when recorded, else
-  // the historical 6 s/bubble estimate (lib/call-stats). Bookings: real
-  // `book_success` events attributed to this tenant, no longer a keyword
-  // regex on the summary. Conversion = bookings ÷ calls.
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1,
-  );
-  const stats = await (async () => {
-    const userIdRef = session.user!.id!;
-    const [todayRow] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(calls)
-      .where(
-        and(eq(calls.userId, userIdRef), gte(calls.createdAt, startOfToday)),
-      );
-    const [monthRow] = await db
-      .select({
-        totalSeconds: sql<number>`coalesce(sum(${callSecondsSql}), 0)::int`,
-      })
-      .from(calls)
-      .where(
-        and(eq(calls.userId, userIdRef), gte(calls.createdAt, startOfMonth)),
-      );
-    const [totalRow] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-        avgSeconds: sql<number>`coalesce(avg(${callSecondsSql}), 0)::float`,
-      })
-      .from(calls)
-      .where(eq(calls.userId, userIdRef));
-    const [bookingRow] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(events)
-      .where(
-        and(eq(events.userId, userIdRef), eq(events.event, "book_success")),
-      );
-    const total = totalRow?.count ?? 0;
-    const bookings = bookingRow?.count ?? 0;
-    return {
-      callsToday: todayRow?.count ?? 0,
-      conversion: bookingRate(bookings, total),
-      avgDuration: formatAvgDuration(totalRow?.avgSeconds ?? 0),
-      rdv: bookings,
-      minutesThisMonth: Math.round((monthRow?.totalSeconds ?? 0) / 60),
-    };
-  })();
+  // Stats hero — see lib/dashboard-stats.ts (real durations and bookings).
+  const stats = await computeDashboardStats(session.user!.id!);
 
   // Construit la preview des blocs admin hérités (pour le popup de la
   // checkbox). On lit les directives system per-plan + admin block et

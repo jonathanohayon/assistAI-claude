@@ -117,6 +117,8 @@ export type DashboardStats = {
   conversion: number;
   avgDuration: string;
   rdv: number;
+  /** First attributed booking (YYYY-MM-DD), null if none: label "since …". */
+  rdvSince?: string | null;
   minutesThisMonth: number;
 };
 
