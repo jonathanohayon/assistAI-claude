@@ -80,7 +80,7 @@ export function Nav() {
          *    être lisible sur la vidéo sombre.
          *  - scrolled (background nav blanc) : deep teal palette.
          *  Hover magenta dans les 2 cas. */}
-        <nav className="hidden items-center gap-9 text-base md:flex">
+        <nav className="hidden items-center gap-9 text-base lg:flex">
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
@@ -116,7 +116,7 @@ export function Nav() {
           </Link>
           <Link
             href="/signup"
-            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] md:inline-flex"
+            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] lg:inline-flex"
             style={{
               boxShadow:
                 "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
@@ -149,7 +149,7 @@ export function Nav() {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={open}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] shadow-sm transition-colors hover:bg-[var(--color-muted)] md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] shadow-sm transition-colors hover:bg-[var(--color-muted)] lg:hidden"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
               {open ? (
@@ -191,7 +191,7 @@ export function Nav() {
           role="dialog"
           aria-modal="false"
           aria-label="Menu"
-          className="fixed right-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-l border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl md:hidden"
+          className="fixed right-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-l border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl lg:hidden"
         >
             <nav className="flex flex-col gap-1 px-5 py-5 text-sm">
               {NAV_LINKS.map((l) => (
