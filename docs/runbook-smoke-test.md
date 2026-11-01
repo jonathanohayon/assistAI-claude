@@ -36,6 +36,13 @@ Exit code `0` = all checks passed, `1` = at least one failed. Each line says wha
 | `KNOWN_PHONE` | `+97223764700` | A number that must resolve to a tenant. |
 | `UNKNOWN_PHONE` | `+15555550100` | Reserved fictional US number, never ours. |
 
+## After rotating the OpenAI key
+
+1. Set the new `OPENAI_API_KEY` on **both** Railway services: web (`assistAI-claude`) and worker (`assistAI-claude-agent`).
+2. **Restart the worker** even if Railway didn't redeploy it. A Realtime session that outlived its call keeps reconnecting with whatever state it had, and a restart is the only guaranteed way to kill it (assistAI-claude-agent#14 closes sessions at job end from now on).
+3. Run this smoke test: the OpenAI check must PASS.
+4. Place one real call (below) and confirm `realtime_session_shutdown` reads `closed` after hang-up.
+
 ## Not covered (do it by hand after a deploy that touches calls)
 
 Place one real call to `+97223764700` and check in the events table: `call_started`, `agent_config_loaded` (`phone_match`), `call_metrics` with a non-zero `greetingMs`, and `twilio_signature_valid` if the call went through the voice bridge.
