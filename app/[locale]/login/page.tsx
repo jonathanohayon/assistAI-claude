@@ -91,10 +91,9 @@ export default async function LoginPage(props: {
           </Link>
         </div>
 
-        <form
-          action={handleLogin}
-          className="relative flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur"
-        >
+        {/* Same order as signup: Google first, then the email form. The card
+            is a div because the two forms cannot nest. */}
+        <div className="relative flex flex-col gap-4 rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur">
           <div className="space-y-1">
             <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
               {t("title")}
@@ -129,40 +128,77 @@ export default async function LoginPage(props: {
             </p>
           )}
 
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">{t("emailLabel")}</span>
-            <input
-              name="email"
-              type="email"
-              required
-              autoFocus
-              autoComplete="email"
-              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            />
-          </label>
+          <form action={signInWithGoogle}>
+            <button
+              type="submit"
+              className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-muted)]"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"
+                />
+              </svg>
+              {t("continueWithGoogle")}
+            </button>
+          </form>
 
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">{t("passwordLabel")}</span>
-            <input
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
-            />
-          </label>
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-[var(--color-border)]" />
+            <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted-foreground)]">
+              {t("orDivider")}
+            </span>
+            <span className="h-px flex-1 bg-[var(--color-border)]" />
+          </div>
 
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <form action={handleLogin} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--color-foreground)]">{t("emailLabel")}</span>
+              <input
+                name="email"
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+              />
+            </label>
 
-          <button
-            type="submit"
-            className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ec4899]/30 ring-2 ring-[#22d3ee]/40 transition-transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            {t("submitButton")}
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-              <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium text-[var(--color-foreground)]">{t("passwordLabel")}</span>
+              <input
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15"
+              />
+            </label>
+
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+
+            <button
+              type="submit"
+              className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#ec4899]/30 ring-2 ring-[#22d3ee]/40 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            >
+              {t("submitButton")}
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:-scale-x-100">
+                <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </form>
 
           <p className="text-center text-xs text-[var(--color-muted-foreground)]">
             {t("noAccount")}{" "}
@@ -173,42 +209,8 @@ export default async function LoginPage(props: {
               {t("signupLink")}
             </Link>
           </p>
-        </form>
-
-        <div className="my-4 flex items-center gap-3">
-          <span className="h-px flex-1 bg-[var(--color-border)]" />
-          <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted-foreground)]">
-            {t("orDivider")}
-          </span>
-          <span className="h-px flex-1 bg-[var(--color-border)]" />
         </div>
 
-        <form action={signInWithGoogle}>
-          <button
-            type="submit"
-            className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-foreground)] shadow-xs transition-colors hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-muted)]"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"
-              />
-            </svg>
-            {t("continueWithGoogle")}
-          </button>
-        </form>
 
         <p className="mt-6 text-center text-xs text-[var(--color-muted-foreground)]">
           <Link href="/" className="hover:text-[var(--color-foreground)]">

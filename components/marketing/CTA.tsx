@@ -68,7 +68,7 @@ export function CTA() {
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  className="relative h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5"
                 >
                   <path
                     d="M5 12h14M13 5l7 7-7 7"

@@ -285,7 +285,7 @@ export function Hero() {
           />
           <Divider />
           <Stat
-            value="Multi"
+            value="3"
             label={t("stats.languages")}
             delay={1.01}
             reduce={!!reduce}
@@ -468,7 +468,10 @@ function Stat({
       }}
       className="text-center"
     >
+      {/* dir="ltr": numeric values ("24/7") must not be reordered by the
+          Hebrew bidi context. */}
       <p
+        dir="ltr"
         className="font-display text-3xl font-bold tracking-tight tabular-nums text-white sm:text-4xl"
         style={{ textShadow: "0 2px 12px rgba(0,0,0,0.45)" }}
       >
