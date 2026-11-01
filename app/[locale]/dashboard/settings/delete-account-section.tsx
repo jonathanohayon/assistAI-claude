@@ -16,7 +16,7 @@ interface DeleteAccountSectionProps {
  *   4. Redirect / (signOut côté server)
  *
  * Pattern UX standard SaaS pour actions destructives — Stripe / GitHub
- * / Vercel font tous pareil avec retape de l'identifiant.
+ * font tous pareil avec retape de l'identifiant.
  */
 export function DeleteAccountSection({ email }: DeleteAccountSectionProps) {
   const t = useTranslations("DashboardSettings");
