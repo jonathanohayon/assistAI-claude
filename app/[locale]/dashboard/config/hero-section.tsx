@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 
 import { Meta, Stat } from "./shared-ui";
 import type { DashboardStats } from "./types";
+import { formatPhone } from "@/lib/format-phone";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 export function HeroSection({
@@ -64,14 +65,14 @@ export function HeroSection({
         {primaryPhone ? (
           <p
             dir="ltr"
-            className="mt-4 break-words bg-gradient-to-r from-[#0e7490] via-[#be185d] to-[#ec4899] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
+            className="mt-4 break-words bg-gradient-to-r from-[#be185d] via-[#db2777] to-[#f472b6] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
             style={{
               fontFeatureSettings: '"tnum"',
               backgroundSize: "200% 100%",
               animation: "shimmer 8s linear infinite",
             }}
           >
-            {primaryPhone}
+            {formatPhone(primaryPhone)}
           </p>
         ) : (
           <div className="mt-4">
@@ -82,7 +83,7 @@ export function HeroSection({
             {!asUserId && (
               <Link
                 href="/onboarding"
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#0e7490] to-[#be185d] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
               >
                 {t("heroGetNumber")}
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
@@ -108,7 +109,7 @@ export function HeroSection({
             />
             <Stat
               label={t("wowStatMinutesMonth")}
-              value={`${stats.minutesThisMonth} min`}
+              value={`≈ ${stats.minutesThisMonth} min`}
               tone="cyan"
             />
             <Stat
@@ -118,7 +119,7 @@ export function HeroSection({
             />
             <Stat
               label={t("wowStatAvgDuration")}
-              value={stats.avgDuration}
+              value={stats.avgDuration === "—" ? "—" : `≈ ${stats.avgDuration}`}
               tone="teal"
             />
             <Stat
