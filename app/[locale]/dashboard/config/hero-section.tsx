@@ -8,7 +8,7 @@
  * Rendu en haut de ConfigForm (config-form.tsx) — span 2 colonnes en xl+.
  */
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 
@@ -39,6 +39,15 @@ export function HeroSection({
 }) {
   const t = useTranslations("DashboardConfig");
   const voiceLabel = useVoiceLabel();
+  const locale = useLocale();
+  // `rdvSince` only exists once stats come from book_success events (and
+  // real durations). Until then the figures are summary-regex counts and
+  // transcript-length estimates, and the labels say so.
+  const measured = stats?.rdvSince !== undefined;
+  const sinceFmt = new Intl.DateTimeFormat(
+    locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR",
+    { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" },
+  );
 
   return (
     <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12 xl:col-span-2">
@@ -108,24 +117,39 @@ export function HeroSection({
               tone="cyan"
             />
             <Stat
-              label={t("wowStatMinutesMonth")}
-              value={`≈ ${stats.minutesThisMonth} min`}
+              label={t(measured ? "statMinutesMonth" : "wowStatMinutesMonth")}
+              value={`${measured ? "" : "≈ "}${stats.minutesThisMonth} min`}
               tone="cyan"
             />
             <Stat
-              label={t("wowStatConversion")}
+              label={t(measured ? "statBookingRate" : "wowStatConversion")}
               value={`${stats.conversion}%`}
               tone="teal"
             />
             <Stat
-              label={t("wowStatAvgDuration")}
-              value={stats.avgDuration === "—" ? "—" : `≈ ${stats.avgDuration}`}
+              label={t(measured ? "statAvgDuration" : "wowStatAvgDuration")}
+              value={
+                measured || stats.avgDuration === "—"
+                  ? stats.avgDuration
+                  : `≈ ${stats.avgDuration}`
+              }
               tone="teal"
             />
             <Stat
-              label={t("wowStatRdv")}
+              label={t(measured ? "statBookings" : "wowStatRdv")}
               value={stats.rdv.toString()}
               tone="primary"
+              hint={
+                !measured
+                  ? undefined
+                  : stats.rdvSince
+                    ? t("statBookingsSince", {
+                        date: sinceFmt.format(
+                          new Date(`${stats.rdvSince}T00:00:00Z`),
+                        ),
+                      })
+                    : t("statBookingsTrackedFromNow")
+              }
             />
           </div>
         )}

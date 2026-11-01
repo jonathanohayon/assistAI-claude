@@ -1027,7 +1027,13 @@
     "campaignsTileTagline": "Centre d'appels IA — composez des leads en parallèle",
     "campaignsTileSummary": "Marketing · ventes · génération de leads",
     "campaignsTileLocked": "Plan Pro — appuyez pour débloquer",
-    "wowTestSuccess": "Message de test envoyé ✓"
+    "wowTestSuccess": "Message de test envoyé ✓",
+    "statMinutesMonth": "Minutes ce mois",
+    "statBookingRate": "Taux de RDV",
+    "statAvgDuration": "Durée moy.",
+    "statBookings": "RDV pris",
+    "statBookingsSince": "depuis le {date}",
+    "statBookingsTrackedFromNow": "comptés à partir de maintenant"
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",

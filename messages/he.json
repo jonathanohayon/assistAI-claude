@@ -1027,7 +1027,13 @@
     "campaignsTileTagline": "מוקד שיחות AI — חייגו ללידים במקביל",
     "campaignsTileSummary": "שיווק · מכירות · גיוס לידים",
     "campaignsTileLocked": "תוכנית Pro — לחצו לשדרוג",
-    "wowTestSuccess": "הודעת בדיקה נשלחה ✓"
+    "wowTestSuccess": "הודעת בדיקה נשלחה ✓",
+    "statMinutesMonth": "דקות החודש",
+    "statBookingRate": "שיעור קביעת תורים",
+    "statAvgDuration": "משך ממוצע",
+    "statBookings": "תורים שנקבעו",
+    "statBookingsSince": "מאז {date}",
+    "statBookingsTrackedFromNow": "נספרים מעכשיו"
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",

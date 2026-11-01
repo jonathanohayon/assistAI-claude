@@ -489,21 +489,14 @@ export function ConfigForm({
 
         {/* ── LIVE TEST ───────────────────────────────────────────────── */}
         {/* < xl : inline sous le hero (comportement historique).
-         *  xl+  : positionné dans la col droite, row 2. Le wrapper interne
-         *         est sticky avec top:50vh → le panel scroll naturellement
-         *         depuis sa position de départ (sous le hero), puis se fige
-         *         à mi-écran et reste visible pendant le scroll. */}
+         *  xl+  : positionné dans la col droite, row 2, sticky sous le
+         *         header pendant le scroll. */}
         <aside className="card-hover anim-fade-up mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
-          {/* Trick centrage vertical sans overlap avec le hero :
-           *  - xl:mt-[280px] décale la position naturelle vers le bas de
-           *    ≈ moitié de la hauteur du panel.
-           *  - xl:-translate-y-1/2 décale ensuite visuellement vers le haut
-           *    de 50% de la hauteur du panel.
-           *  Au repos : ces deux décalages s'annulent → panel pile sous le
-           *  hero (jamais d'overlap avec la box statut).
-           *  Pendant le scroll : sticky top:50vh + translate = centre du
-           *  panel calé sur le centre du viewport. */}
-          <div className="xl:mt-[280px] xl:sticky xl:top-[50vh] xl:-translate-y-1/2">
+          {/* Sticky just below the header. The previous centring trick
+           *  (mt-[280px] + -translate-y-1/2) moved the panel up visually but
+           *  its layout box still reserved the 280 px, leaving an empty band
+           *  under the tiles at the bottom of the page. */}
+          <div className="xl:sticky xl:top-24">
             <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
           </div>
         </aside>

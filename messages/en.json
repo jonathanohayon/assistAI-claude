@@ -1027,7 +1027,13 @@
     "campaignsTileTagline": "AI call center — dial leads in parallel",
     "campaignsTileSummary": "Marketing · sales · lead-gen",
     "campaignsTileLocked": "Pro plan — tap to unlock",
-    "wowTestSuccess": "Test message sent ✓"
+    "wowTestSuccess": "Test message sent ✓",
+    "statMinutesMonth": "Minutes this month",
+    "statBookingRate": "Booking rate",
+    "statAvgDuration": "Avg. duration",
+    "statBookings": "Bookings",
+    "statBookingsSince": "since {date}",
+    "statBookingsTrackedFromNow": "counted from now on"
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
