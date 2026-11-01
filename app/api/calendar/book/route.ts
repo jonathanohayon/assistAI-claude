@@ -122,6 +122,18 @@ export async function POST(req: NextRequest) {
       { status: 404 },
     );
   }
+  if (caller.mode === "demo") {
+    // Public landing demo: confirm like the real thing, write nothing
+    // (lib/demo-sandbox). No event, no personal data stored, and no conflict
+    // check, which would read real events.
+    return NextResponse.json({
+      success: true,
+      simulated: true,
+      center: resolved.center,
+      summary: `RDV confirmé le ${date} à ${time} pour ${name} à ${resolved.label}`,
+    });
+  }
+
   const endParts = addMinutesJerusalem(date, time, duration);
 
   // Deterministic overlap guard — THE rule that the prompt cannot enforce.

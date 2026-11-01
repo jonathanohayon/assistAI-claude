@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
       { status: 404 },
     );
   }
+  if (caller.mode === "demo") {
+    // Public landing demo: acknowledge, store nothing (lib/demo-sandbox).
+    return NextResponse.json({ success: true, simulated: true });
+  }
   if (!caller.sheetId) {
     await logEvent({
       source: "sheets",
