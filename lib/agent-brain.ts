@@ -14,6 +14,8 @@
  * tenant qui débranche son agent pour déboguer ne doit pas avoir à la
  * retrouver.
  */
+import { randomBytes } from "node:crypto";
+
 import { getSetting, setSetting } from "@/lib/settings";
 
 const SETTING = "tenant_agent_brain";
@@ -54,6 +56,26 @@ export async function getAgentBrain(userId: string): Promise<AgentBrain> {
   };
 }
 
+/**
+ * Secret to store for a tenant's external agent. An explicit value wins;
+ * otherwise the existing one is kept (the dashboard never sends it, so every
+ * save used to erase it); otherwise one is generated as soon as the external
+ * agent is enabled. Unsigned requests leave the tenant unable to tell ours
+ * from anyone's.
+ */
+export function nextBrainSecret(args: {
+  existing: string | undefined;
+  provided: string | undefined;
+  enabled: boolean;
+  generate?: () => string;
+}): string | undefined {
+  const provided = args.provided?.trim();
+  if (provided) return provided;
+  if (args.existing) return args.existing;
+  if (!args.enabled) return undefined;
+  return (args.generate ?? (() => randomBytes(24).toString("hex")))();
+}
+
 export async function setAgentBrain(
   userId: string,
   next: AgentBrain,
@@ -64,10 +86,16 @@ export async function setAgentBrain(
   // enverrait chaque tour dans le vide, et l'appelant n'entendrait que la
   // phrase d'attente sans qu'aucun réglage n'ait l'air faux.
   const enabled = next.enabled && url.startsWith("http");
+  const secret = nextBrainSecret({
+    existing:
+      typeof map[userId]?.secret === "string" ? map[userId]?.secret : undefined,
+    provided: next.secret,
+    enabled,
+  });
   map[userId] = {
     enabled,
     url,
-    ...(next.secret?.trim() ? { secret: next.secret.trim() } : {}),
+    ...(secret ? { secret } : {}),
   };
   await setSetting(SETTING, JSON.stringify(map));
   return getAgentBrain(userId);
