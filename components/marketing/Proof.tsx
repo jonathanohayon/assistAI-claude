@@ -1,75 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
-
-/* --------------------------- avatar (initial) --------------------------- */
-
-const AVATAR_GRADIENTS = [
-  "from-[#BE185D] to-[#F472B6]", // magenta → rose
-  "from-[#0E7490] to-[#22D3EE]", // teal → cyan
-  "from-[#F97316] to-[#FBBF24]", // orange → amber
-];
-
-function Avatar({ name, idx }: { name: string; idx: number }) {
-  const initial =
-    name
-      .replace(/^(Dr\.|Salon|Studio)\s+/i, "")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "•";
-  return (
-    <motion.div
-      whileHover={{ scale: 1.08 }}
-      transition={{ type: "spring", stiffness: 320, damping: 20 }}
-      className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]} font-display text-2xl text-white shadow-lg ring-2 ring-white transition-shadow hover:ring-4 hover:ring-cyan-300/40`}
-      aria-hidden
-    >
-      {initial}
-    </motion.div>
-  );
-}
-
-/* -------------------------- kinetic pull-quote -------------------------- */
-
-function KineticQuote({ text }: { text: string }) {
-  const reduce = useReducedMotion();
-  const words = text.split(" ");
-  if (reduce) {
-    return (
-      <span className="font-display text-[26px] italic leading-[1.2] text-[#BE185D] sm:text-[30px]">
-        {text}
-      </span>
-    );
-  }
-  return (
-    <motion.span
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ staggerChildren: 0.04 }}
-      className="font-display text-[26px] italic leading-[1.2] text-[#BE185D] sm:text-[30px]"
-    >
-      {words.map((w, i) => (
-        <motion.span
-          key={i}
-          variants={{
-            hidden: { opacity: 0, y: 8 },
-            visible: { opacity: 1, y: 0 },
-          }}
-          transition={{ duration: 0.5, ease: EASE }}
-          className="inline-block"
-        >
-          {w}
-          {i < words.length - 1 ? " " : ""}
-        </motion.span>
-      ))}
-    </motion.span>
-  );
-}
-
-/* ------------------------------ logos ----------------------------------- */
+import { Reveal, Stagger, StaggerItem } from "./Reveal";
 
 // Customer-facing integrations that exist in the product. Infrastructure
 // suppliers are not "integrations" and are not named on public pages.
@@ -136,87 +68,6 @@ function LogosMarquee({ label }: { label: string }) {
   );
 }
 
-/* ------------------------------- cards ----------------------------------- */
-
-type Quote = { text: string; author: string; role: string };
-
-function FeaturedCard({ quote, idx }: { quote: Quote; idx: number }) {
-  return (
-    <motion.figure
-      variants={{
-        hidden: { opacity: 0, y: 24 },
-        visible: { opacity: 1, y: 0 },
-      }}
-      transition={{ duration: 0.7, ease: EASE }}
-      className="relative flex h-full flex-col justify-between overflow-hidden rounded-[2rem] border border-[#BE185D]/15 bg-white/70 p-8 shadow-[0_30px_80px_-40px_rgba(190,24,93,0.35)] backdrop-blur-xl sm:p-10"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full bg-[#BE185D]/10 blur-3xl"
-      />
-      <svg
-        viewBox="0 0 32 24"
-        fill="none"
-        aria-hidden
-        className="mb-6 h-10 w-10 text-[#BE185D]/30"
-      >
-        <path
-          d="M0 24V12C0 5.4 4.5 1 12 0v6c-3 1-4.5 3-4.5 6H12v12H0Zm20 0V12C20 5.4 24.5 1 32 0v6c-3 1-4.5 3-4.5 6H32v12H20Z"
-          fill="currentColor"
-        />
-      </svg>
-      <blockquote className="relative">
-        <KineticQuote text={quote.text} />
-      </blockquote>
-      <figcaption className="mt-8 flex items-center gap-4 border-t border-[#BE185D]/10 pt-6">
-        <Avatar name={quote.author} idx={idx} />
-        <div className="min-w-0">
-          <p className="font-display text-base text-slate-900">
-            {quote.author}
-          </p>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0E7490]">
-            {quote.role}
-          </p>
-        </div>
-      </figcaption>
-    </motion.figure>
-  );
-}
-
-function CompactCard({ quote, idx }: { quote: Quote; idx: number }) {
-  return (
-    <motion.figure
-      variants={{
-        hidden: { opacity: 0, y: 24 },
-        visible: { opacity: 1, y: 0 },
-      }}
-      transition={{ duration: 0.6, ease: EASE }}
-      className="relative rounded-2xl border border-slate-200/70 bg-white/80 p-6 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.25)] backdrop-blur"
-    >
-      <blockquote className="font-display text-[17px] italic leading-snug text-slate-800">
-        <span className="text-[#BE185D]">“</span>
-        {quote.text}
-        <span className="text-[#BE185D]">”</span>
-      </blockquote>
-      <figcaption className="mt-5 flex items-center gap-3">
-        <div className="origin-left scale-75 rtl:origin-right">
-          <Avatar name={quote.author} idx={idx} />
-        </div>
-        <div className="-ms-2 min-w-0">
-          <p className="text-sm font-medium text-slate-900">{quote.author}</p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0E7490]">
-            {quote.role}
-          </p>
-        </div>
-      </figcaption>
-    </motion.figure>
-  );
-}
-
-/* ================================================================== */
-/*  Public component — Proof : performance + traction + témoignages   */
-/* ================================================================== */
-
 // Product facts only: each one is true for every account and checkable on a
 // single call. Traction figures come back when they are measured.
 const FACTS = ["languages", "availability", "recap"] as const;
@@ -225,23 +76,6 @@ export function Proof() {
   const tPerf = useTranslations("Performance");
   const tSocial = useTranslations("SocialProof");
 
-  const QUOTES: Quote[] = [
-    {
-      text: tSocial("q1.text"),
-      author: tSocial("q1.author"),
-      role: tSocial("q1.role"),
-    },
-    {
-      text: tSocial("q2.text"),
-      author: tSocial("q2.author"),
-      role: tSocial("q2.role"),
-    },
-    {
-      text: tSocial("q3.text"),
-      author: tSocial("q3.author"),
-      role: tSocial("q3.role"),
-    },
-  ];
 
 
   return (
@@ -321,28 +155,6 @@ export function Proof() {
             </StaggerItem>
           ))}
         </Stagger>
-
-        {/* ── 5. Témoignages — layout asymétrique 3 + 2 ─────────────── */}
-        <div id="testimonials" className="mt-20 scroll-mt-24">
-          <Reveal className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#BE185D]">
-              {tSocial("kicker")}
-            </p>
-            <h3 className="mt-3 font-display text-3xl tracking-tight text-slate-900 sm:text-4xl">
-              {tSocial("title")}
-            </h3>
-          </Reveal>
-
-          <Stagger className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-5">
-            <div className="lg:col-span-3">
-              <FeaturedCard quote={QUOTES[0]} idx={0} />
-            </div>
-            <div className="flex flex-col gap-6 lg:col-span-2">
-              <CompactCard quote={QUOTES[1]} idx={1} />
-              <CompactCard quote={QUOTES[2]} idx={2} />
-            </div>
-          </Stagger>
-        </div>
 
         {/* ── 6. Logos marquee ──────────────────────────────────────── */}
         <LogosMarquee label={tSocial("trustLabel")} />

@@ -300,9 +300,9 @@
     },
     "card": {
       "popular": "Recommended",
-      "perMonth": "ex. VAT / month",
+      "perMonth": "incl. VAT / month",
       "monthlyHint": "Monthly billing, no commitment.",
-      "annualHint": "{total} ex. VAT / year",
+      "annualHint": "{total} incl. VAT / year",
       "overage": "then {price} / extra minute",
       "custom": "Custom",
       "customHint": "Pricing tailored to your needs.",
@@ -311,7 +311,7 @@
       "ctaAria": "Choose the {name} plan",
       "model": "Model"
     },
-    "footer": "Prices in euros, ex. VAT. VAT applies depending on your country. High volume or custom needs? Let's talk."
+    "footer": "Prices include VAT. High volume or custom needs? Let's talk."
   },
   "PricingComparison": {
     "title": "Compare in detail",
@@ -369,23 +369,6 @@
     "tipBusinessCta": "Business"
   },
   "SocialProof": {
-    "kicker": "They trust us",
-    "title": "Professionals who never miss a call again.",
-    "q1": {
-      "text": "Before Tamara, we lost 20% of calls in peak hours. Today: zero. And our calendar is full.",
-      "author": "Eden Salon · Tel Aviv",
-      "role": "Beauty center"
-    },
-    "q2": {
-      "text": "The AI takes appointments, handles cancellations, and speaks Hebrew, French and English. Exactly what we were looking for.",
-      "author": "Dr. Cohen",
-      "role": "Medical practice"
-    },
-    "q3": {
-      "text": "Tweaking the voice tone from a simple dashboard — game changer for our brand.",
-      "author": "Studio Eleven",
-      "role": "Barber · Jerusalem"
-    },
     "facts": {
       "languages": {
         "value": "FR · HE · EN",

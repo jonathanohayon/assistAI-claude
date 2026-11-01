@@ -369,23 +369,6 @@
     "tipBusinessCta": "Business"
   },
   "SocialProof": {
-    "kicker": "Ils nous font confiance",
-    "title": "Des professionnels qui ne ratent plus un appel.",
-    "q1": {
-      "text": "Avant Tamara, on perdait 20% des appels en heure de pointe. Aujourd'hui : zéro. Et notre agenda est plein.",
-      "author": "Salon Eden · Tel Aviv",
-      "role": "Centre de beauté"
-    },
-    "q2": {
-      "text": "L'IA prend les RDV, gère les annulations, et parle hébreu, français et anglais. C'est exactement ce qu'on cherchait.",
-      "author": "Dr. Cohen",
-      "role": "Cabinet médical"
-    },
-    "q3": {
-      "text": "Configurer le ton de la voix depuis un dashboard simple — game changer pour notre identité de marque.",
-      "author": "Studio Eleven",
-      "role": "Coiffeur · Jérusalem"
-    },
     "facts": {
       "languages": {
         "value": "FR · HE · EN",
