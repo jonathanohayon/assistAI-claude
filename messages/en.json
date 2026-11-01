@@ -127,7 +127,7 @@
     "medical": {
       "title": "Medical practices",
       "desc": "Booking, reminders, cancellations, emergency triage. Compliant with medical confidentiality.",
-      "f1": "Doctolib / calendar sync",
+      "f1": "Google Calendar sync",
       "f2": "Automatic SMS reminders",
       "f3": "Emergency filtering"
     },

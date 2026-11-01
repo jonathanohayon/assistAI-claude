@@ -71,17 +71,13 @@ function KineticQuote({ text }: { text: string }) {
 
 /* ------------------------------ logos ----------------------------------- */
 
+// Customer-facing integrations that exist in the product. Infrastructure
+// suppliers are not "integrations" and are not named on public pages.
 const LOGOS = [
-  "DOCTOLIB",
-  "TWILIO",
   "GOOGLE CALENDAR",
-  "LIVEKIT",
-  "OPENAI",
-  "STRIPE",
+  "GOOGLE SHEETS",
+  "GMAIL",
   "WHATSAPP BUSINESS",
-  "VERCEL",
-  "SUPABASE",
-  "AI-COUSTICS",
 ];
 
 function LogosMarquee({ label }: { label: string }) {

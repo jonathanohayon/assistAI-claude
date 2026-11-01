@@ -127,7 +127,7 @@
     "medical": {
       "title": "Cabinets médicaux",
       "desc": "Prise de RDV, rappels, annulations, triage des urgences. Conforme au secret médical.",
-      "f1": "Synchro Doctolib / agenda",
+      "f1": "Synchro Google Agenda",
       "f2": "Rappels SMS automatiques",
       "f3": "Filtre les urgences"
     },
