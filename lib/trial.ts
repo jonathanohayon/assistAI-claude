@@ -26,8 +26,11 @@ export function isTrialExhausted(args: {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
   trialSecondsUsed: number;
+  /** Admins never run out: the admin account is `trialing` in prod. */
+  role?: string | null;
   now?: Date;
 }): boolean {
+  if (args.role === "admin") return false;
   if (args.subscriptionStatus !== "trialing") return false;
   const now = args.now ?? new Date();
   const timeUp = args.trialEndsAt
