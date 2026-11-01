@@ -150,8 +150,16 @@ export function Hero() {
         playsInline
         preload="auto"
         src="/videos/hero-bg.mp4"
-        style={reduce ? undefined : { scale: videoScale }}
-        className="absolute inset-0 -z-30 h-full w-full object-cover"
+        style={
+          reduce
+            ? { transformOrigin: "top left" }
+            : { scale: videoScale, transformOrigin: "top left" }
+        }
+        // The source clip carries a supplier watermark in its bottom-right
+        // corner. Oversizing the box to 125% and anchoring the frame top-left
+        // pushes that corner past the section's overflow-hidden edge at every
+        // aspect ratio, until a clean asset replaces the file.
+        className="absolute left-0 top-0 -z-30 h-[125%] w-[125%] object-cover object-left-top"
       />
 
       {/* Voile sombre vertical pour lisibilité du texte clair par-dessus la
