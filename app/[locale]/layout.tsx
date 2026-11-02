@@ -8,6 +8,7 @@ import {
 } from "next-intl/server";
 
 import { LocaleHtmlAttributes } from "@/components/LocaleHtmlAttributes";
+import { PUBLIC_NAMESPACES, pickNamespaces } from "@/i18n/public-namespaces";
 import { routing, type Locale } from "@/i18n/routing";
 
 export function generateStaticParams() {
@@ -40,7 +41,10 @@ export default async function LocaleLayout({
   }
   const typedLocale = locale as Locale;
   setRequestLocale(typedLocale);
-  const messages = await getMessages();
+  // Public namespaces only (~23 KB instead of ~84 KB in every page's HTML);
+  // the dashboard re-provides the full set. The provider must stay here, not
+  // in the root layout, or the language switcher freezes on soft navigation.
+  const messages = pickNamespaces(await getMessages(), PUBLIC_NAMESPACES);
   return (
     <NextIntlClientProvider locale={typedLocale} messages={messages}>
       <LocaleHtmlAttributes locale={typedLocale} />
