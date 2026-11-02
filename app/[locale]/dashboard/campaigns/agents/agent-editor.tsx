@@ -8,6 +8,7 @@ import { VOICE_GENDER } from "@/lib/voice-tuning";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
 
 import { Field, inputCls } from "../_ui";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 // Éditeur d'agent sortant — MÊME système de tuiles + panneaux que la config
 // entrante (config-form.tsx) pour une cohérence visuelle totale : grille de
@@ -36,6 +37,7 @@ export function AgentEditor({
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tc = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
   const [activeTile, setActiveTile] = useState<TileId | null>("voice");
 
   const vitesse = draft.personality.vitesse ?? 5;
@@ -45,7 +47,7 @@ export function AgentEditor({
       id: "voice",
       label: t("sectionVoice"),
       tagline: t("agentTagVoice"),
-      summary: `${draft.voice} · ${vitesse}/10`,
+      summary: `${voiceLabel(draft.voice)} · ${vitesse}/10`,
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: <IconMic />,
     },
@@ -226,12 +228,14 @@ function VoicePanel({
   voices: readonly string[];
   tc: ReturnType<typeof useTranslations>;
 }) {
+  const voiceLabel = useVoiceLabel();
   const setP = (patch: Partial<OutboundAgentDraft["personality"]>) =>
     set({ personality: { ...draft.personality, ...patch } });
   const nrl = draft.noiseReductionLevel ?? 8;
-  const sliders: { key: "vitesse" | "creativite" | "reactivite"; badge: string }[] = [
-    { key: "vitesse", badge: "OpenAI" },
-    { key: "creativite", badge: "OpenAI" },
+  // No supplier names in tenant UI, so only the VAD slider keeps a badge.
+  const sliders: { key: "vitesse" | "creativite" | "reactivite"; badge?: string }[] = [
+    { key: "vitesse" },
+    { key: "creativite" },
     { key: "reactivite", badge: "VAD" },
   ];
 
@@ -263,7 +267,7 @@ function VoicePanel({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold">{v}</p>
+                    <p className="truncate text-sm font-semibold">{voiceLabel(v)}</p>
                     <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-inset ${isActive ? "bg-white/20 text-white ring-white/30" : inactiveBadge}`}>
                       {isF ? "F" : "M"}
                     </span>
@@ -337,7 +341,7 @@ function PersonalitySlider({
   label, value, onChange, minLabel, maxLabel, midLabel, badge,
 }: {
   label: string; value: number; onChange: (v: number) => void;
-  minLabel: string; maxLabel: string; midLabel: string; badge: string;
+  minLabel: string; maxLabel: string; midLabel: string; badge?: string;
 }) {
   const pct = ((value - 1) / 9) * 100;
   return (
@@ -345,7 +349,7 @@ function PersonalitySlider({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-sm font-semibold text-[#18181b]">{label}</p>
-          <span className="shrink-0 rounded-full bg-[#ecfeff] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40">{badge}</span>
+          {badge && <span className="shrink-0 rounded-full bg-[#ecfeff] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40">{badge}</span>}
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#ecfeff] to-[#cffafe] px-2 py-0.5 font-mono text-[11px] font-bold text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40 shadow-sm">
           {value}<span className="opacity-50">/10</span>

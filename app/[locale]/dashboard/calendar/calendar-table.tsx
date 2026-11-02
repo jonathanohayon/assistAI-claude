@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { JERUSALEM_TZ } from "@/lib/tz";
+
 interface CalendarEvent {
   id: string;
   summary: string;
@@ -32,11 +34,17 @@ const splitIso = (iso: string): { date: string; time: string } => {
   return { date, time: timeWithMs.slice(0, 5) };
 };
 
+const ALL_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function CalendarTable({
   initialEvents,
   asUserId,
+  timeZone = JERUSALEM_TZ,
 }: {
   initialEvents: CalendarEvent[];
+  /** Tenant timezone used for every displayed date (server and client alike). */
+  timeZone?: string;
   /** Admin agissant sur un tenant cible — propagé aux APIs /api/dashboard/calendar. */
   asUserId?: string;
 }) {
@@ -45,17 +53,51 @@ export function CalendarTable({
   const locale = useLocale();
   const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
 
-  const formatDate = (iso: string): string => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString(dateLocale, {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  // Every date is formatted in the tenant's timezone, never the runtime's:
+  // this component renders on the server (UTC) and hydrates in the browser
+  // (local time), and any runtime-dependent output is a hydration mismatch.
+  const timeFmt = new Intl.DateTimeFormat(dateLocale, {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const dateTimeFmt = new Intl.DateTimeFormat(dateLocale, {
+    timeZone,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  // All-day events carry a bare calendar date ("2026-11-01"). It is a day,
+  // not an instant, so it is formatted in UTC to stay on that same day.
+  const dayFmt = new Intl.DateTimeFormat(dateLocale, {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
+  const formatRange = (start: string, end: string): string => {
+    if (!start) return "—";
+    if (ALL_DAY.test(start)) {
+      const first = new Date(`${start}T00:00:00Z`);
+      // Google's all-day end date is exclusive.
+      const last = ALL_DAY.test(end)
+        ? new Date(new Date(`${end}T00:00:00Z`).getTime() - DAY_MS)
+        : first;
+      const range =
+        last.getTime() > first.getTime()
+          ? `${dayFmt.format(first)} → ${dayFmt.format(last)}`
+          : dayFmt.format(first);
+      return `${range} · ${t("allDay")}`;
+    }
+    const s = new Date(start);
+    if (Number.isNaN(s.getTime())) return start;
+    const e = new Date(end);
+    return Number.isNaN(e.getTime())
+      ? dateTimeFmt.format(s)
+      : `${dateTimeFmt.format(s)} → ${timeFmt.format(e)}`;
   };
 
   const [events, setEvents] = useState(initialEvents);
@@ -243,7 +285,7 @@ export function CalendarTable({
                     {e.summary}
                   </h3>
                   <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-                    {formatDate(e.start)} → {formatDate(e.end).split(" ").slice(-1)}
+                    {formatRange(e.start, e.end)}
                   </p>
                   {e.description && (
                     <p className="mt-2 whitespace-pre-line text-xs text-[var(--color-muted-foreground)]">

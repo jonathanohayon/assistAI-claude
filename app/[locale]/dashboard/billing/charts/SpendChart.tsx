@@ -61,7 +61,7 @@ export default function SpendChart({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="rounded-2xl border bg-white p-4"
+      className="rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm"
     >
       <h3 className="mb-4 text-sm font-medium text-[var(--color-foreground,inherit)]">
         {title}

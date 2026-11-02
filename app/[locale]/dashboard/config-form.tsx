@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
@@ -113,6 +114,7 @@ export function ConfigForm({
   fullPromptConcat?: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
@@ -313,7 +315,7 @@ export function ConfigForm({
       id: "voice",
       label: t("voiceTitle"),
       tagline: t("wowTagVoice"),
-      summary: `${form.voice} · ${getPersonalityValue("vitesse")}/10`,
+      summary: `${voiceLabel(form.voice)} · ${getPersonalityValue("vitesse")}/10`,
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -487,21 +489,14 @@ export function ConfigForm({
 
         {/* ── LIVE TEST ───────────────────────────────────────────────── */}
         {/* < xl : inline sous le hero (comportement historique).
-         *  xl+  : positionné dans la col droite, row 2. Le wrapper interne
-         *         est sticky avec top:50vh → le panel scroll naturellement
-         *         depuis sa position de départ (sous le hero), puis se fige
-         *         à mi-écran et reste visible pendant le scroll. */}
+         *  xl+  : positionné dans la col droite, row 2, sticky sous le
+         *         header pendant le scroll. */}
         <aside className="card-hover anim-fade-up mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
-          {/* Trick centrage vertical sans overlap avec le hero :
-           *  - xl:mt-[280px] décale la position naturelle vers le bas de
-           *    ≈ moitié de la hauteur du panel.
-           *  - xl:-translate-y-1/2 décale ensuite visuellement vers le haut
-           *    de 50% de la hauteur du panel.
-           *  Au repos : ces deux décalages s'annulent → panel pile sous le
-           *  hero (jamais d'overlap avec la box statut).
-           *  Pendant le scroll : sticky top:50vh + translate = centre du
-           *  panel calé sur le centre du viewport. */}
-          <div className="xl:mt-[280px] xl:sticky xl:top-[50vh] xl:-translate-y-1/2">
+          {/* Sticky just below the header. The previous centring trick
+           *  (mt-[280px] + -translate-y-1/2) moved the panel up visually but
+           *  its layout box still reserved the 280 px, leaving an empty band
+           *  under the tiles at the bottom of the page. */}
+          <div className="xl:sticky xl:top-24">
             <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
           </div>
         </aside>
@@ -684,7 +679,7 @@ export function ConfigForm({
             >
               <span className="inline-flex items-center gap-1.5">
                 {isPending ? t("saving") : t("saveButton")}
-                <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5">
+                <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5">
                   <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>

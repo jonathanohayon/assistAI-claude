@@ -423,10 +423,13 @@ export function Stat({
   label,
   value,
   tone = "default",
+  hint,
 }: {
   label: string;
   value: string;
   tone?: "default" | "primary" | "cyan" | "teal";
+  /** Small line under the value (e.g. what period a count covers). */
+  hint?: string;
 }) {
   const valueColor =
     tone === "primary"
@@ -446,6 +449,7 @@ export function Stat({
       >
         {value}
       </p>
+      {hint && <p className="mt-0.5 text-[10px] text-[#94a3b8]">{hint}</p>}
     </div>
   );
 }

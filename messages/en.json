@@ -793,10 +793,10 @@
     "wowLiveLabel": "Live",
     "wowPlanLabel": "Plan",
     "wowStatCallsToday": "Calls today",
-    "wowStatConversion": "Conversion",
-    "wowStatAvgDuration": "Avg. duration",
-    "wowStatRdv": "Bookings",
-    "wowStatMinutesMonth": "Minutes this month",
+    "wowStatConversion": "Calls with a summary",
+    "wowStatAvgDuration": "Avg. duration (est.)",
+    "wowStatRdv": "Appointments mentioned",
+    "wowStatMinutesMonth": "Minutes this month (est.)",
     "wowAgentNameLabel": "Agent name",
     "wowAgentNameHint": "First name your assistant uses in the greeting. Leave empty to use the name defined in the instructions.",
     "wowAgentNamePlaceholder": "Sarah, Tamara, Marie…",
@@ -1027,7 +1027,13 @@
     "campaignsTileTagline": "AI call center — dial leads in parallel",
     "campaignsTileSummary": "Marketing · sales · lead-gen",
     "campaignsTileLocked": "Pro plan — tap to unlock",
-    "wowTestSuccess": "Test message sent ✓"
+    "wowTestSuccess": "Test message sent ✓",
+    "statMinutesMonth": "Minutes this month",
+    "statBookingRate": "Booking rate",
+    "statAvgDuration": "Avg. duration",
+    "statBookings": "Bookings",
+    "statBookingsSince": "since {date}",
+    "statBookingsTrackedFromNow": "counted from now on"
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
@@ -1398,7 +1404,8 @@
     "cancelEditButton": "Cancel",
     "editButton": "Edit",
     "cancelAppointmentButton": "Cancel",
-    "openLink": "Open ↗"
+    "openLink": "Open ↗",
+    "allDay": "All day"
   },
   "DashboardContacts": {
     "header": "Contacts CRM",
@@ -1670,5 +1677,30 @@
       "recoPersonaTitle": "{n} · Customize the persona",
       "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. Default persona is \"Tamara\" — rename it and adapt it to your activity."
     }
+  },
+  "LiveTest": {
+    "kicker": "Live test",
+    "title": "Test it live",
+    "status": {
+      "idle": "Ready",
+      "connecting": "Connecting…",
+      "connected": "Live — speak now",
+      "ending": "Closing…",
+      "error": "Error"
+    },
+    "saveFirst": "Save before testing: the agent reads the saved configuration.",
+    "startAria": "Start the voice test",
+    "stopAria": "Stop the test",
+    "hintLive": "Speak, or click to stop",
+    "hintIdle": "Click and speak to test",
+    "mute": "Mute mic",
+    "muted": "Mic muted",
+    "conversation": "Conversation",
+    "emptyLive": "Listening… speak to your agent.",
+    "emptyIdle": "Click the mic to start a test."
+  },
+  "Voices": {
+    "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
+    "custom": "Custom voice"
   }
 }

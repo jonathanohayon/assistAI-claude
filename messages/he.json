@@ -793,10 +793,10 @@
     "wowLiveLabel": "חי",
     "wowPlanLabel": "תוכנית",
     "wowStatCallsToday": "שיחות היום",
-    "wowStatConversion": "המרה",
-    "wowStatAvgDuration": "משך ממוצע",
-    "wowStatRdv": "תורים שנקבעו",
-    "wowStatMinutesMonth": "דקות החודש",
+    "wowStatConversion": "שיחות עם סיכום",
+    "wowStatAvgDuration": "משך ממוצע (משוער)",
+    "wowStatRdv": "תורים שהוזכרו",
+    "wowStatMinutesMonth": "דקות החודש (משוער)",
     "wowAgentNameLabel": "שם הסוכנת",
     "wowAgentNameHint": "השם הפרטי שהמזכירה שלך מבטאת במשפט הפתיחה. השאירי ריק כדי להשתמש בשם שמוגדר בהוראות.",
     "wowAgentNamePlaceholder": "שרה, יוהנה, מארי…",
@@ -1027,7 +1027,13 @@
     "campaignsTileTagline": "מוקד שיחות AI — חייגו ללידים במקביל",
     "campaignsTileSummary": "שיווק · מכירות · גיוס לידים",
     "campaignsTileLocked": "תוכנית Pro — לחצו לשדרוג",
-    "wowTestSuccess": "הודעת בדיקה נשלחה ✓"
+    "wowTestSuccess": "הודעת בדיקה נשלחה ✓",
+    "statMinutesMonth": "דקות החודש",
+    "statBookingRate": "שיעור קביעת תורים",
+    "statAvgDuration": "משך ממוצע",
+    "statBookings": "תורים שנקבעו",
+    "statBookingsSince": "מאז {date}",
+    "statBookingsTrackedFromNow": "נספרים מעכשיו"
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",
@@ -1398,7 +1404,8 @@
     "cancelEditButton": "ביטול",
     "editButton": "עריכה",
     "cancelAppointmentButton": "ביטול",
-    "openLink": "פתיחה ↗"
+    "openLink": "פתיחה ↗",
+    "allDay": "כל היום"
   },
   "DashboardContacts": {
     "header": "אנשי קשר CRM",
@@ -1670,5 +1677,30 @@
       "recoPersonaTitle": "{n} · התאמת הפרסונה",
       "recoPersonaBody": "עברי להגדרות כדי להתאים את הסגנון, השעות, הסניפים והכללים העסקיים. הפרסונה ברירת המחדל היא \"Tamara\" — שנני את השם והתאימי אותה לעסק שלך."
     }
+  },
+  "LiveTest": {
+    "kicker": "בדיקה חיה",
+    "title": "בדיקה בזמן אמת",
+    "status": {
+      "idle": "מוכן",
+      "connecting": "מתחבר…",
+      "connected": "מחובר — דברו",
+      "ending": "נסגר…",
+      "error": "שגיאה"
+    },
+    "saveFirst": "שמרו לפני הבדיקה: הסוכן קורא את ההגדרות השמורות.",
+    "startAria": "התחלת בדיקה קולית",
+    "stopAria": "עצירת הבדיקה",
+    "hintLive": "דברו, או לחצו כדי לעצור",
+    "hintIdle": "לחצו ודברו כדי לבדוק",
+    "mute": "השתקת המיקרופון",
+    "muted": "המיקרופון מושתק",
+    "conversation": "שיחה",
+    "emptyLive": "מאזין… דברו עם הסוכן שלכם.",
+    "emptyIdle": "לחצו על המיקרופון כדי להתחיל בדיקה."
+  },
+  "Voices": {
+    "display": "קול {n}{gender, select, f { · נשי} m { · גברי} other {}}",
+    "custom": "קול מותאם אישית"
   }
 }

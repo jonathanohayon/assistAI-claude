@@ -8,6 +8,7 @@ export type Gender = "f" | "m";
 // Genre par défaut de chaque voix OpenAI Realtime (rose = F, cyan = M).
 export const VOICE_GENDER: Record<string, Gender> = {
   marin: "f",
+  cedar: "m",
   ballad: "m",
   sage: "f",
   verse: "m",

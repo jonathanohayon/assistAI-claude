@@ -16,6 +16,7 @@ import {
   type RemoteAudioTrack,
   type RemoteTrack,
 } from "livekit-client";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Status = "idle" | "connecting" | "connected" | "ending" | "error";
@@ -43,6 +44,7 @@ interface Props {
 }
 
 export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
+  const tl = useTranslations("LiveTest");
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -170,11 +172,11 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
   const isLive = status === "connected";
   const isConnecting = status === "connecting";
   const statusLabel: Record<Status, string> = {
-    idle: "Prêt",
-    connecting: "Connexion…",
-    connected: "En ligne — parlez",
-    ending: "Fermeture…",
-    error: "Erreur",
+    idle: tl("status.idle"),
+    connecting: tl("status.connecting"),
+    connected: tl("status.connected"),
+    ending: tl("status.ending"),
+    error: tl("status.error"),
   };
   const statusDotClass: Record<Status, string> = {
     idle: "bg-[#22d3ee]",
@@ -228,10 +230,10 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-[#0e7490]">
-            Live Test
+            {tl("kicker")}
           </p>
           <h3 className="mt-1 font-display text-xl tracking-tight text-[#18181b]">
-            Tester en direct
+            {tl("title")}
           </h3>
         </div>
         <span
@@ -244,7 +246,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
 
       {dirty && (
         <div className="mb-4 rounded-2xl border border-[#fde68a] bg-[#fef3c7]/60 px-3 py-2 text-[11px] leading-snug text-[#92400e]">
-          Sauvegardez avant de tester — le worker lit la config en base.
+          {tl("saveFirst")}
         </div>
       )}
 
@@ -265,7 +267,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
               onClick={isLive ? stopSession : startSession}
               disabled={isConnecting || status === "ending"}
               aria-label={
-                isLive ? "Arrêter le test" : "Démarrer le test vocal"
+                isLive ? tl("stopAria") : tl("startAria")
               }
               className={`group relative inline-flex h-24 w-24 items-center justify-center rounded-full text-white shadow-[0_12px_48px_-8px_rgba(14,116,144,0.65)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
                 isConnecting || status === "ending"
@@ -355,8 +357,8 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
 
           <p className="max-w-[200px] text-center text-xs font-medium leading-relaxed text-[#475569]">
             {isLive
-              ? "Parlez, ou cliquez pour arrêter"
-              : "Cliquez et parlez pour tester"}
+              ? tl("hintLive")
+              : tl("hintIdle")}
           </p>
 
           {isLive && (
@@ -369,7 +371,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
                   : "bg-white/80 text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-white"
               }`}
             >
-              {isMuted ? "Micro coupé" : "Couper le micro"}
+              {isMuted ? tl("muted") : tl("mute")}
             </button>
           )}
         </div>
@@ -377,7 +379,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
         {/* ─── BLOC TRANSCRIPT ───────────────────────────────────────── */}
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Conversation
+            {tl("conversation")}
           </p>
           <div
             ref={transcriptRef}
@@ -398,8 +400,8 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
             {transcript.length === 0 && !error ? (
               <p className="m-auto text-center text-xs leading-snug text-[#94a3b8]">
                 {isLive
-                  ? "En écoute… parlez à votre agent."
-                  : "Cliquez sur le mic pour démarrer un test."}
+                  ? tl("emptyLive")
+                  : tl("emptyIdle")}
               </p>
             ) : (
               transcript.map((t, i) => {

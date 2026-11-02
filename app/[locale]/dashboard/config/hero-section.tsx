@@ -8,12 +8,14 @@
  * Rendu en haut de ConfigForm (config-form.tsx) — span 2 colonnes en xl+.
  */
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 
 import { Meta, Stat } from "./shared-ui";
 import type { DashboardStats } from "./types";
+import { formatPhone } from "@/lib/format-phone";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 export function HeroSection({
   primaryPhone,
@@ -36,6 +38,16 @@ export function HeroSection({
   currentLangLabel: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
+  const locale = useLocale();
+  // `rdvSince` only exists once stats come from book_success events (and
+  // real durations). Until then the figures are summary-regex counts and
+  // transcript-length estimates, and the labels say so.
+  const measured = stats?.rdvSince !== undefined;
+  const sinceFmt = new Intl.DateTimeFormat(
+    locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR",
+    { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" },
+  );
 
   return (
     <section className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-12 xl:col-span-2">
@@ -62,14 +74,14 @@ export function HeroSection({
         {primaryPhone ? (
           <p
             dir="ltr"
-            className="mt-4 break-words bg-gradient-to-r from-[#0e7490] via-[#be185d] to-[#ec4899] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
+            className="mt-4 break-words bg-gradient-to-r from-[#be185d] via-[#db2777] to-[#f472b6] bg-clip-text font-display text-4xl font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
             style={{
               fontFeatureSettings: '"tnum"',
               backgroundSize: "200% 100%",
               animation: "shimmer 8s linear infinite",
             }}
           >
-            {primaryPhone}
+            {formatPhone(primaryPhone)}
           </p>
         ) : (
           <div className="mt-4">
@@ -80,10 +92,10 @@ export function HeroSection({
             {!asUserId && (
               <Link
                 href="/onboarding"
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#0e7490] to-[#be185d] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
               >
                 {t("heroGetNumber")}
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:-scale-x-100">
                   <path
                     d="M5 12h14M13 5l7 7-7 7"
                     stroke="currentColor"
@@ -105,24 +117,39 @@ export function HeroSection({
               tone="cyan"
             />
             <Stat
-              label={t("wowStatMinutesMonth")}
-              value={`${stats.minutesThisMonth} min`}
+              label={t(measured ? "statMinutesMonth" : "wowStatMinutesMonth")}
+              value={`${measured ? "" : "≈ "}${stats.minutesThisMonth} min`}
               tone="cyan"
             />
             <Stat
-              label={t("wowStatConversion")}
+              label={t(measured ? "statBookingRate" : "wowStatConversion")}
               value={`${stats.conversion}%`}
               tone="teal"
             />
             <Stat
-              label={t("wowStatAvgDuration")}
-              value={stats.avgDuration}
+              label={t(measured ? "statAvgDuration" : "wowStatAvgDuration")}
+              value={
+                measured || stats.avgDuration === "—"
+                  ? stats.avgDuration
+                  : `≈ ${stats.avgDuration}`
+              }
               tone="teal"
             />
             <Stat
-              label={t("wowStatRdv")}
+              label={t(measured ? "statBookings" : "wowStatRdv")}
               value={stats.rdv.toString()}
               tone="primary"
+              hint={
+                !measured
+                  ? undefined
+                  : stats.rdvSince
+                    ? t("statBookingsSince", {
+                        date: sinceFmt.format(
+                          new Date(`${stats.rdvSince}T00:00:00Z`),
+                        ),
+                      })
+                    : t("statBookingsTrackedFromNow")
+              }
             />
           </div>
         )}
@@ -174,7 +201,7 @@ export function HeroSection({
         </div>
 
         <div className="relative space-y-2.5">
-          <Meta label={t("heroVoiceLabel")} value={voice} />
+          <Meta label={t("heroVoiceLabel")} value={voiceLabel(voice)} />
           <Meta label={t("heroLanguageLabel")} value={currentLangLabel} />
           <Meta label={t("wowPlanLabel")} value={planLabel || "—"} />
         </div>

@@ -13,8 +13,9 @@ import { useMemo } from "react";
 
 import { cap } from "./formatting";
 import { PERSONALITY_SLIDER_META } from "./personality-constants";
-import { AdminBadge, PersonalitySlider, Tag } from "./shared-ui";
+import { AdminBadge, PersonalitySlider } from "./shared-ui";
 import type { FormState, FormUpdater } from "./types";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 type Gender = "f" | "m";
 
@@ -63,6 +64,7 @@ export function VoicePanel({
   resetPersonality: () => void;
 }) {
   const t = useTranslations("DashboardConfig");
+  const voiceLabel = useVoiceLabel();
 
   // Maps traduits dynamiquement (dépendent de la locale active).
   const voiceDescMap = useMemo<Record<string, string>>(() => {
@@ -88,10 +90,10 @@ export function VoicePanel({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Modèle — picker dropdown réservé admin. Le tenant voit un Tag
-       *  verrouillé (lock) à la place. Badge ADMIN pour signaler que
+      {/* Modèle — picker dropdown réservé admin. The model id is supplier
+       *  detail, so tenants see nothing here. Badge ADMIN pour signaler que
        *  ce contrôle n'apparaît PAS sur /dashboard du tenant. */}
-      {isAdmin ? (
+      {isAdmin && (
         <div>
           <div className="mb-1.5 flex items-baseline gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
@@ -112,8 +114,6 @@ export function VoicePanel({
           </select>
           <p className="mt-1.5 text-[11px] text-[#0e7490]">{t("modelHint")}</p>
         </div>
-      ) : (
-        <Tag label={t("modelLabel")} value={form.model} lock />
       )}
 
       {/* Voice picker avec gender */}
@@ -152,7 +152,7 @@ export function VoicePanel({
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold">{v}</p>
+                    <p className="truncate text-sm font-semibold">{voiceLabel(v)}</p>
                     <span
                       className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-inset transition-colors ${
                         active
