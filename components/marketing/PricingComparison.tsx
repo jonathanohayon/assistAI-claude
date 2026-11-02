@@ -81,7 +81,7 @@ export function PricingComparison() {
   };
 
   const rows: Row[] = [
-    { labelKey: "rowMinutes", values: ["300", "500", "1500"] },
+    { labelKey: "rowMinutes", values: PLANS.map((p) => String(p.minutesIncluded)) as Row["values"] },
     { labelKey: "rowInbound", values: [true, true, true] },
     { labelKey: "rowMessages", values: [true, true, true] },
     { labelKey: "rowCalendar", values: [false, true, true] },

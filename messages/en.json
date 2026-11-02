@@ -8,7 +8,7 @@
       "name": "Business Answering Service",
       "tagline": "Never miss a call again.",
       "features": [
-        "300 minutes included",
+        "{minutes} minutes included",
         "24/7 automated call answering",
         "Voice messages transcribed and summarized by AI, sent via WhatsApp or Email",
         "Personalized greeting message",
@@ -29,7 +29,7 @@
       "name": "Receptionist",
       "tagline": "Your appointments booked automatically, 24/7.",
       "features": [
-        "500 minutes included",
+        "{minutes} minutes included",
         "Everything included in Business Answering Service",
         "CRM & connected calendar integration",
         "Caller qualification and automatic appointment booking",
@@ -50,7 +50,7 @@
       "features": [
         "Outbound call center: AI campaigns (prospecting, follow-ups, no-show reminders)",
         "Inbound & outbound calls in parallel",
-        "1500 minutes included",
+        "{minutes} minutes included",
         "Real-time analytics dashboard",
         "Advanced routing and complex scenarios",
         "Everything included in Receptionist",
@@ -560,7 +560,6 @@
     "trialLabel": "Free trial — 60 call minutes or 24h",
     "activePlan": "Active plan",
     "popularBadge": "★ Popular",
-    "pricePerMonthHT": "€{price} ex. VAT / month",
     "changeButton": "Change",
     "sectionHeader": "Onboarding",
     "title": "Activate your agent in 2 minutes.",
@@ -1499,8 +1498,6 @@
     "annualSavings": "Save 20% with annual billing.",
     "popularBadge": "★ Popular",
     "currentBadge": "✓ Current plan",
-    "vatExclMonth": "ex. VAT / month",
-    "annualTotal": "i.e., €{total} ex. VAT / year",
     "bestFor": "Best for:",
     "currentPlanButton": "Current plan",
     "updatingButton": "Updating…",
