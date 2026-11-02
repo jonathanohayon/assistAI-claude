@@ -39,7 +39,7 @@ Railway, qui consomme les APIs `/api/agent/*` de ce repo.
 | IA | OpenAI Realtime (voix, côté worker) + OpenAI API (scan de site, résumés) |
 | Notifications | WhatsApp (templates Twilio Content), email (Resend) |
 | Paiement | HYP (passerelle israélienne) — `lib/hyp.ts` |
-| Déploiement | **Railway** (web + worker). L'intégration Vercel visible sur les PRs n'est qu'une preview. |
+| Déploiement | **Railway** uniquement (web + worker). |
 
 ## Arborescence commentée
 

@@ -38,13 +38,10 @@ npm run dev            # http://localhost:3000
 
 ## Déploiement
 
-**Railway** (web + worker + Postgres). Le déploiement part de `main` ;
+**Railway** uniquement (web + worker + Postgres). Le déploiement part de `main` ;
 `npm start` applique les migrations (`scripts/migrate.mjs`) avant de lancer
 le serveur. Les crons Railway appellent les routes `/api/cron/*` (protégées
 par `INTERNAL_SECRET`).
-
-⚠️ L'intégration Vercel visible sur les PRs GitHub n'est qu'une **preview** —
-ce n'est pas le déploiement de prod.
 
 ## Avant de coder
 
