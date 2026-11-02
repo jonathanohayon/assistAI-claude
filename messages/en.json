@@ -1,4 +1,8 @@
 {
+  "Metadata": {
+    "title": "Tamara — AI voice receptionist",
+    "description": "A voice receptionist that books your salon's appointments in English, French and Hebrew, 24/7."
+  },
   "Plans": {
     "whatsapp": {
       "name": "Business Answering Service",
@@ -439,6 +443,12 @@
       "text": "Tweaking the voice tone from a simple dashboard — game changer for our brand.",
       "author": "Studio Eleven",
       "role": "Barber · Jerusalem"
+    },
+    "stats": {
+      "salons": "Salons use Tamara",
+      "calls": "Calls handled",
+      "minutes": "Minutes saved per day",
+      "trustLabel": "They integrate with Tamara"
     }
   },
   "CTA": {

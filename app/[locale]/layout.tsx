@@ -1,12 +1,30 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import {
+  getMessages,
+  getTranslations,
+  setRequestLocale,
+} from "next-intl/server";
 
 import { LocaleHtmlAttributes } from "@/components/LocaleHtmlAttributes";
 import { routing, type Locale } from "@/i18n/routing";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+// Per-locale <title>/description. The root layout's static metadata is French
+// and only remains as a fallback for routes outside [locale].
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  if (!routing.locales.includes(locale as Locale)) return {};
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return { title: t("title"), description: t("description") };
 }
 
 export default async function LocaleLayout({

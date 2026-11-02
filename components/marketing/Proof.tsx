@@ -524,13 +524,11 @@ export function Proof() {
     },
   ];
 
-  // TODO(i18n): déplacer ces 4 libellés dans messages/{fr,en,he}.json
-  // sous SocialProof.stats.{salons,calls,minutes,trustLabel}
   const STATS_LABELS = {
-    salons: "Salons utilisent Tamara",
-    calls: "Appels traités",
-    minutes: "Minutes/jour économisées",
-    trust: "Ils s'intègrent avec Tamara",
+    salons: tSocial("stats.salons"),
+    calls: tSocial("stats.calls"),
+    minutes: tSocial("stats.minutes"),
+    trust: tSocial("stats.trustLabel"),
   };
 
   return (
