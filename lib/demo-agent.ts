@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { renderBusinessPromptBlock, sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
+import { demoRegisterDirective } from "@/lib/demo-register";
 import { getDemoUserId } from "@/lib/settings";
 
 const langLabel: Record<string, string> = {
@@ -76,7 +77,12 @@ export async function loadDemoAgent(
   const langName = langLabel[primary] ?? "français";
   const languageDirective = `LANGUE : parle EXCLUSIVEMENT en ${langName} (code: ${primary}) pendant tout l'appel — accueil ET réponses. Ne réponds JAMAIS dans une autre langue, même en cas d'hésitation.`;
 
-  const instructions = [cfg.instructions ?? "", businessBlock, languageDirective]
+  const instructions = [
+    cfg.instructions ?? "",
+    businessBlock,
+    languageDirective,
+    demoRegisterDirective(primary),
+  ]
     .filter((s) => s && s.trim().length > 0)
     .join("\n\n");
 
