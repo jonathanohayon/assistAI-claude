@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { auth } from "@/auth";
+import { DEMO_SESSION_OPENING, loadDemoAgent } from "@/lib/demo-agent";
 import { clamp } from "@/lib/numbers";
+import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import {
   DEFAULT_REALTIME_MODEL,
   REALTIME_INSTRUCTIONS,
@@ -36,16 +39,38 @@ interface SessionBody {
   primaryLanguage?: string;
 }
 
+// Anonymous callers (the public landing demo) mint OpenAI client secrets on
+// our account: bound them per IP. Logged-in dashboard users are not limited.
+const anonymousSessions = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
+
 export async function POST(req: NextRequest) {
   // body optionnel : tous les champs ont des défauts (model, voice, etc.).
   const body = (await req.json().catch(() => ({}))) as SessionBody;
+
+  // Anonymous = landing demo. It gets the demo agent built server-side
+  // (instructions and model), never what the body asks for: otherwise this
+  // route is an open OpenAI Realtime proxy billed to us.
+  const session = await auth();
+  const anonymous = !session?.user?.id;
+  if (anonymous && !anonymousSessions.hit(clientIp(req.headers))) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many demo sessions, try again later." },
+      { status: 429 },
+    );
+  }
+  const demo = anonymous
+    ? await loadDemoAgent(body.primaryLanguage ?? null)
+    : null;
 
   // Trust the model id from the client — it was picked from the live OpenAI
   // catalog (/api/realtime/catalog). The previous hardcoded REALTIME_MODELS
   // allowlist silently rewrote unknown ids to DEFAULT, which broke gpt-realtime-2
   // and any new alias OpenAI ships. If OpenAI rejects, the resilient fetch
   // below surfaces the error to the client triage panel.
-  const requestedModel = (body.model ?? "").trim();
+  // Anonymous callers are pinned to the demo account's model.
+  const requestedModel = anonymous
+    ? (demo?.model ?? "").trim()
+    : (body.model ?? "").trim();
   const model = requestedModel || DEFAULT_REALTIME_MODEL;
 
   // Voices : on garde la validation locale parce qu'OpenAI n'expose pas la
@@ -66,8 +91,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const instructions =
-    typeof body.instructions === "string" && body.instructions.trim().length > 0
+  const instructions = anonymous
+    ? demo
+      ? `${demo.instructions}${DEMO_SESSION_OPENING}`
+      : REALTIME_INSTRUCTIONS
+    : typeof body.instructions === "string" &&
+        body.instructions.trim().length > 0
       ? body.instructions
       : REALTIME_INSTRUCTIONS;
 
