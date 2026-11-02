@@ -20,6 +20,8 @@
  *   - 403 forbidden    : authentifié mais droits insuffisants (non-admin
  *     sur une route admin, asUserId sans rôle admin).
  */
+import { timingSafeEqual } from "node:crypto";
+
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -77,12 +79,19 @@ export async function requireAdmin(): Promise<
  * crons, scripts d'admin interne). Refuse aussi si INTERNAL_SECRET n'est
  * pas configuré côté serveur (fail-closed).
  */
+/** Constant-time string comparison (no early exit on the first differing byte). */
+export function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
 export function requireInternalSecret(
   req: NextRequest,
 ): { ok: true } | { ok: false; response: NextResponse } {
   const expected = process.env.INTERNAL_SECRET;
   const provided = req.headers.get("x-internal-secret");
-  if (!expected || provided !== expected) {
+  if (!expected || !provided || !safeEqual(provided, expected)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
