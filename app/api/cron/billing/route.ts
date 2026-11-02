@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { runHealthChecks } from "@/lib/health-checks";
 import { logEvent } from "@/lib/logger";
 import { isValidPlanKey } from "@/lib/plans";
 
@@ -22,6 +23,7 @@ import { isValidPlanKey } from "@/lib/plans";
 //    HYP_TOKENS_ENABLED quand le contrat token sera vérifié sur le masof.)
 //
 // Auth : INTERNAL_SECRET via header x-internal-secret. Fréquence : ~horaire.
+// Also runs lib/health-checks (OpenAI key + error rate → admin alerts).
 
 export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
@@ -108,10 +110,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // Production health piggybacks on this hourly tick: OpenAI key validity
+  // and error rate, each alerting the admins once per window.
+  const health = await runHealthChecks();
+
   return NextResponse.json({
     ok: true,
     downgraded,
     expired,
+    health,
     tookMs: Date.now() - now.getTime(),
   });
 }

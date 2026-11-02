@@ -642,3 +642,37 @@ export async function sendNotificationTestEmail(
     return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────
+//   Internal ops alert to admins (lib/alerts.ts). Plain text, not
+//   localized: it goes to us, not to customers.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendAdminAlertEmail(
+  to: string,
+  opts: { subject: string; body: string },
+): Promise<SendResult> {
+  const client = getResend();
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const subject = `🚨 [Tamara prod] ${opts.subject}`;
+
+  if (!client) {
+    console.warn(
+      `\n=================== ADMIN ALERT FALLBACK (no RESEND_API_KEY) ===================` +
+        `\nTo:      ${to}` +
+        `\nSubject: ${subject}` +
+        `\n${opts.body}` +
+        `\n================================================================================\n`,
+    );
+    return { ok: true, fallback: "console_log" };
+  }
+
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text: opts.body });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}
