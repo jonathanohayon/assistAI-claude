@@ -333,7 +333,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-xs text-[var(--color-muted-foreground)]">
             {t("countDisplayed", { count: filtered.length, total: logs.length })}
           </span>
@@ -346,11 +346,11 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
             }`}
             title={
               groupByCall
-                ? "Vue groupée par appel — click pour passer en flat"
-                : "Vue chronologique brute — click pour regrouper par appel"
+                ? t("groupedTitle")
+                : t("flatTitle")
             }
           >
-            {groupByCall ? "☰ Groupé" : "≡ Flat"}
+            {groupByCall ? `☰ ${t("groupedButton")}` : `≡ ${t("flatButton")}`}
           </button>
           {groupByCall && (
             <div className="inline-flex overflow-hidden rounded-full ring-1 ring-inset ring-[var(--color-border)]">
@@ -361,17 +361,17 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                   )
                 }
                 className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-                title="Déplier tous les appels"
+                title={t("expandAllTitle")}
               >
-                ⊕ Tout ouvrir
+                ⊕ {t("expandAll")}
               </button>
               <span className="self-stretch w-px bg-[var(--color-border)]" />
               <button
                 onClick={() => setExpandedGroups(new Set())}
                 className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-                title="Replier tous les appels"
+                title={t("collapseAllTitle")}
               >
-                ⊖ Tout fermer
+                ⊖ {t("collapseAll")}
               </button>
             </div>
           )}

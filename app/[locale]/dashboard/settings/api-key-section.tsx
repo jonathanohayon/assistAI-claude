@@ -134,7 +134,7 @@ export function ApiKeySection() {
         <code dir="ltr" className="mt-1 block break-all font-mono text-[var(--color-muted-foreground)]">
           GET {origin}/api/v1/transcripts
         </code>
-        <p className="mt-2 text-[var(--color-muted-foreground)]">{t("apiDocsParams")}</p>
+        <p className="mt-2 text-[var(--color-muted-foreground)] [overflow-wrap:anywhere]">{t("apiDocsParams")}</p>
         <pre dir="ltr" className="mt-2 overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
 {example}
         </pre>

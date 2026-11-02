@@ -1575,7 +1575,15 @@
     "liveButton": "חי",
     "waitingForEvents": "מחכה לאירועים…",
     "noMatchingEvents": "אין אירועים עם המסננים האלה.",
-    "fetchError": "שגיאת טעינה"
+    "fetchError": "שגיאת טעינה",
+    "groupedButton": "לפי שיחה",
+    "flatButton": "ציר זמן",
+    "groupedTitle": "תצוגה לפי שיחה — לחצו למעבר לציר זמן",
+    "flatTitle": "תצוגת ציר זמן — לחצו לקיבוץ לפי שיחה",
+    "expandAll": "פתח הכול",
+    "collapseAll": "סגור הכול",
+    "expandAllTitle": "פתיחת כל השיחות",
+    "collapseAllTitle": "סגירת כל השיחות"
   },
   "Email": {
     "subscriptionConfirmation": {
