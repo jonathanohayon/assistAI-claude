@@ -313,8 +313,10 @@ export async function GET(req: NextRequest) {
     await logEvent({
       source: "tenant",
       event: "agent_brain_external",
-      message: `Cerveau externe actif pour ${tenant.user.email} → ${agentWebhook.url}`,
-      level: "info",
+      message: `Cerveau externe actif pour ${tenant.user.email} → ${agentWebhook.url}${envOverride ? " (AGENT_WEBHOOK_URL global override: every tenant goes there)" : ""}`,
+      // The env override reroutes EVERY tenant to one endpoint with one
+      // secret. Fine for a test, an incident if left on in prod: make it loud.
+      level: envOverride ? "warn" : "info",
       userId: tenant.user.id,
       metadata: { via: envOverride ? "env_override" : "tenant_setting" },
     });
