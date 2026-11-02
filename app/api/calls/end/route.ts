@@ -2,6 +2,7 @@ import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
+import { parseCallEndBody } from "@/lib/call-end-body";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
@@ -30,24 +31,6 @@ const APPELS_HEADERS = [
   "Type",
   "Résumé",
 ];
-
-interface EndBody {
-  fromNumber?: string;
-  toNumber?: string;
-  transcript?: Array<{ role: "user" | "assistant"; text: string }>;
-  /** Durée de l'appel en secondes (best-effort, peut être undefined). */
-  durationSeconds?: number;
-  /** Phase 2 web LiveTest : userId du tenant qui a initié la session,
-   *  prioritaire sur toNumber pour la résolution du tenant. Sans ça,
-   *  les sessions web (pas de toNumber SIP) tombaient sur resolveDefaultTenant
-   *  → le call était attribué au premier tenant de la DB (cross-tenant leak). */
-  userId?: string;
-  /** Canal de l'appel SIP. Pour 'whatsapp', le client vient de joindre via
-   *  WhatsApp → fenêtre de service 24h ouverte → on envoie le recap client en
-   *  free-form dans le même thread (UX chaude) au lieu d'un template froid.
-   *  Absent / 'pstn' → comportement template historique. */
-  channel?: "pstn" | "whatsapp";
-}
 
 /**
  * Vérifie le delivery status Twilio d'un message 8s après l'envoi. Si Twilio
@@ -110,12 +93,8 @@ export async function POST(req: NextRequest) {
     return auth.response;
   }
 
-  const body = (await req.json().catch(() => ({}))) as EndBody;
-  const fromNumber = (body.fromNumber ?? "").trim();
-  const toNumber = (body.toNumber ?? "").trim();
-  const userId = (body.userId ?? "").trim();
-  const channel = body.channel === "whatsapp" ? "whatsapp" : "pstn";
-  const transcript = Array.isArray(body.transcript) ? body.transcript : [];
+  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds } =
+    parseCallEndBody(await req.json().catch(() => ({})));
 
   // userId prioritaire (chemin web LiveTest Phase 2) → exact match par PK.
   // Sinon, toNumber (chemin SIP Twilio) → phone_numbers → tenant.
@@ -135,13 +114,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "no tenant" }, { status: 500 });
   }
   const { user, config: cfg } = tenant;
-
-  // Durée persistée pour les graphes d'usage billing (minutes consommées).
-  // Best-effort : clamp à un entier >= 0 ; 0 si non fournie / invalide.
-  const durationSeconds = Math.max(
-    0,
-    Math.round(Number(body.durationSeconds)) || 0,
-  );
 
   const [callRow] = await db
     .insert(calls)
@@ -450,7 +422,7 @@ export async function POST(req: NextRequest) {
         hour: "2-digit",
         minute: "2-digit",
       });
-      const dur = body.durationSeconds;
+      const dur = durationSeconds;
       const durFormatted =
         typeof dur === "number" && dur > 0
           ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`

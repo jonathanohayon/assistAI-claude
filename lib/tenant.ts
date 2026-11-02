@@ -1,6 +1,6 @@
 // Multi-tenant resolver: maps a called phone number to the user that owns it,
-// then loads their agent_config. Falls back to the first tenant in the DB
-// when no number is supplied (LiveTestPanel calls /api/agent/config without
+// then loads their agent_config. An unknown dialed number is refused; the
+// first tenant in the DB is only used when no number is supplied (LiveTestPanel calls /api/agent/config without
 // a phone param) so single-user dev keeps working.
 
 import { eq } from "drizzle-orm";
@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { normalizeE164 } from "@/lib/phone-utils";
+import { resolveTenantWith } from "@/lib/tenant-resolution";
 
 export interface ResolvedTenant {
   user: typeof users.$inferSelect;
@@ -77,18 +78,20 @@ export async function resolveDefaultTenant(): Promise<ResolvedTenant | null> {
 }
 
 /**
- * Combined resolver: try phone routing first, fall back to default tenant.
- * Logs the chosen path for observability.
+ * Combined resolver used by /api/calls/end and /api/whatsapp/notify.
+ * A dialed number with no phone_numbers row returns null (refused); the
+ * default tenant is only used when no number is supplied. See
+ * resolveTenantWith in lib/tenant-resolution.ts.
  */
 export async function resolveTenant(
   phone: string | null,
 ): Promise<ResolvedTenant | null> {
-  if (phone) {
-    const matched = await resolveTenantByPhone(phone);
-    if (matched) return matched;
-    console.warn(
-      `[tenant] no phone_number row for ${phone}, falling back to default`,
-    );
+  const tenant = await resolveTenantWith(phone, {
+    byPhone: resolveTenantByPhone,
+    byDefault: resolveDefaultTenant,
+  });
+  if (!tenant && phone?.trim()) {
+    console.warn(`[tenant] no phone_numbers row for ${phone}, refused`);
   }
-  return resolveDefaultTenant();
+  return tenant;
 }
