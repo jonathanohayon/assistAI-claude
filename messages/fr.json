@@ -1576,14 +1576,109 @@
     "waitingForEvents": "En attente d'événements…",
     "noMatchingEvents": "Aucun événement avec ces filtres.",
     "fetchError": "fetch error",
-    "groupedButton": "Groupé",
-    "flatButton": "Chronologique",
-    "groupedTitle": "Vue groupée par appel — cliquez pour passer en vue chronologique",
-    "flatTitle": "Vue chronologique — cliquez pour regrouper par appel",
-    "expandAll": "Tout ouvrir",
-    "collapseAll": "Tout fermer",
+    "offCallActivity": "Activité hors-appel",
+    "groupedViewTitle": "Vue groupée par appel — cliquer pour passer en vue chronologique",
+    "flatViewTitle": "Vue chronologique brute — cliquer pour regrouper par appel",
+    "groupedViewButton": "☰ Groupé",
+    "flatViewButton": "≡ Chronologique",
     "expandAllTitle": "Déplier tous les appels",
-    "collapseAllTitle": "Replier tous les appels"
+    "expandAll": "⊕ Tout ouvrir",
+    "collapseAllTitle": "Replier tous les appels",
+    "collapseAll": "⊖ Tout fermer",
+    "groupEvents": "{count, plural, one {# événement} other {# événements}}",
+    "groupDuration": "durée ~{seconds} s",
+    "groupTokens": "{tokens} tokens",
+    "latency": {
+      "eyebrow": "Monitoring · {metric}",
+      "title": "Latence par appel (ms)",
+      "callsInPeriod": "{count, plural, =0 {0 appel} one {# appel} other {# appels}} sur la période",
+      "liveRefreshEvery": "Rafraîchissement auto toutes les {seconds} s",
+      "liveRefreshPaused": "Rafraîchissement auto (en pause)",
+      "metricLabel": "Métrique",
+      "periodLabel": "Période",
+      "pauseTitle": "Mettre en pause le rafraîchissement auto",
+      "resumeTitle": "Reprendre le rafraîchissement auto",
+      "loading": "Chargement…",
+      "empty": "Aucun appel sur cette période. Lancez un test pour voir les données.",
+      "fetchError": "erreur de chargement",
+      "chartAria": "Graphique de latence par appel",
+      "originSip": "SIP (tél.)",
+      "originWeb": "Web LiveTest",
+      "legendSip": "SIP (téléphone Twilio)",
+      "callDetails": "Détails de l’appel",
+      "callNotFound": "Appel introuvable — fermez ce panneau.",
+      "closeDetail": "Fermer le détail",
+      "detailEyebrow": "Détail · {origin}",
+      "turns": "{count, plural, =0 {0 tour} one {# tour} other {# tours}}",
+      "perTurnHeading": "Aller-retour par tour (X = n° de tour, Y = ms)",
+      "noTurns": "Aucun tour de conversation enregistré pour cet appel.",
+      "turnNumber": "Tour n° {n}",
+      "setupHeading": "↗ Aller (setup, lignes pointillées)",
+      "runtimeHeading": "↘ Retour (par tour, lignes pleines)",
+      "toggleHide": "Cliquer pour masquer · {label}",
+      "toggleShow": "Cliquer pour afficher · {label}",
+      "topologyHeading": "🌍 Topologie infra",
+      "period": {
+        "1h": "1 heure",
+        "24h": "24 heures",
+        "7d": "7 jours",
+        "30d": "30 jours"
+      },
+      "metric": {
+        "ttfa": {
+          "short": "TTFA moyen",
+          "long": "Time-To-First-Audio — temps moyen entre la fin de phrase de l’utilisateur et le 1er son de la réponse (= latence perçue par l’utilisateur, moyennée sur tous les tours de l’appel)."
+        },
+        "p95": {
+          "short": "TTFA p95",
+          "long": "Time-To-First-Audio p95 — pire latence parmi les tours de l’appel (95e percentile). Plus représentatif que la moyenne pour repérer les valeurs extrêmes."
+        },
+        "greeting": {
+          "short": "Accueil initial",
+          "long": "Temps total entre le début de session et le 1er son de l’accueil de l’agent. Inclut les phases de setup (connexion, config, WS OpenAI)."
+        }
+      },
+      "hop": {
+        "twilioToWorker": "Twilio/Web → Worker",
+        "workerToLivekit": "Worker → LiveKit (connexion)",
+        "workerToWebConfig": "Worker → Web (config)",
+        "workerToOpenai": "Worker → OpenAI (WS)",
+        "greeting": "Accueil (init E2E)",
+        "transcription": "Transcription (STT)",
+        "endOfUtterance": "Fin de phrase (LLM)",
+        "firstAudio": "Premier son (TTS)"
+      },
+      "setup": {
+        "twilioToWorker": "Twilio/Web → Worker",
+        "workerToLivekit": "Worker → LiveKit",
+        "workerToWebConfig": "Worker → Web (config)",
+        "workerToOpenai": "Worker → OpenAI"
+      },
+      "setupShort": {
+        "twilioToWorker": "Worker",
+        "workerToLivekit": "LiveKit",
+        "workerToWebConfig": "Web (config)",
+        "workerToOpenai": "OpenAI"
+      },
+      "series": {
+        "transcription": {
+          "label": "STT → Worker (transcription)",
+          "hint": "Temps entre la fin de parole de l’utilisateur et la fin du STT. Retour OpenAI → Worker."
+        },
+        "eou": {
+          "label": "LLM → Worker (fin de phrase)",
+          "hint": "Temps entre la fin de parole de l’utilisateur et le début de la réponse du LLM. Retour OpenAI → Worker."
+        },
+        "firstAudio": {
+          "label": "Audio → Worker (1er segment)",
+          "hint": "Temps entre le début du LLM et le 1er son audible. Retour OpenAI → Worker."
+        },
+        "ttft": {
+          "label": "Worker → Utilisateur (TTFA total)",
+          "hint": "Latence finale perçue : l’utilisateur finit de parler → l’agent émet son 1er son."
+        }
+      }
+    }
   },
   "Email": {
     "verification": {

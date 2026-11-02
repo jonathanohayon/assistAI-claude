@@ -1576,14 +1576,109 @@
     "waitingForEvents": "מחכה לאירועים…",
     "noMatchingEvents": "אין אירועים עם המסננים האלה.",
     "fetchError": "שגיאת טעינה",
-    "groupedButton": "לפי שיחה",
-    "flatButton": "ציר זמן",
-    "groupedTitle": "תצוגה לפי שיחה — לחצו למעבר לציר זמן",
-    "flatTitle": "תצוגת ציר זמן — לחצו לקיבוץ לפי שיחה",
-    "expandAll": "פתח הכול",
-    "collapseAll": "סגור הכול",
+    "offCallActivity": "פעילות מחוץ לשיחות",
+    "groupedViewTitle": "תצוגה מקובצת לפי שיחה — לחצו למעבר לציר זמן",
+    "flatViewTitle": "ציר זמן גולמי — לחצו לקיבוץ לפי שיחה",
+    "groupedViewButton": "☰ מקובץ",
+    "flatViewButton": "≡ ציר זמן",
     "expandAllTitle": "פתיחת כל השיחות",
-    "collapseAllTitle": "סגירת כל השיחות"
+    "expandAll": "⊕ פתיחת הכול",
+    "collapseAllTitle": "סגירת כל השיחות",
+    "collapseAll": "⊖ סגירת הכול",
+    "groupEvents": "{count, plural, one {אירוע אחד} other {# אירועים}}",
+    "groupDuration": "משך ~{seconds} שניות",
+    "groupTokens": "{tokens} טוקנים",
+    "latency": {
+      "eyebrow": "ניטור · {metric}",
+      "title": "השהיה לכל שיחה (ms)",
+      "callsInPeriod": "{count, plural, =0 {אין שיחות} one {שיחה אחת} other {# שיחות}} בתקופה",
+      "liveRefreshEvery": "רענון אוטומטי כל {seconds} שניות",
+      "liveRefreshPaused": "רענון אוטומטי (מושהה)",
+      "metricLabel": "מדד",
+      "periodLabel": "תקופה",
+      "pauseTitle": "השהיית רענון אוטומטי",
+      "resumeTitle": "חידוש רענון אוטומטי",
+      "loading": "טוען…",
+      "empty": "אין שיחות בתקופה הזו. הריצו שיחת בדיקה כדי לראות נתונים.",
+      "fetchError": "שגיאת טעינה",
+      "chartAria": "גרף השהיה לכל שיחה",
+      "originSip": "SIP (טלפון)",
+      "originWeb": "Web LiveTest",
+      "legendSip": "SIP (טלפון Twilio)",
+      "callDetails": "פרטי השיחה",
+      "callNotFound": "השיחה לא נמצאה — סגרו את החלונית.",
+      "closeDetail": "סגירת הפרטים",
+      "detailEyebrow": "פרטים · {origin}",
+      "turns": "{count, plural, =0 {0 סבבים} one {סבב אחד} other {# סבבים}}",
+      "perTurnHeading": "זמן הלוך-חזור לכל סבב, ב-ms",
+      "noTurns": "לא נרשמו סבבי שיחה עבור שיחה זו.",
+      "turnNumber": "סבב {n}",
+      "setupHeading": "↗ הלוך (הקמה, קווים מקווקווים)",
+      "runtimeHeading": "↘ חזור (לכל סבב, קווים רציפים)",
+      "toggleHide": "לחצו להסתרה · {label}",
+      "toggleShow": "לחצו להצגה · {label}",
+      "topologyHeading": "🌍 טופולוגיית תשתית",
+      "period": {
+        "1h": "שעה",
+        "24h": "24 שעות",
+        "7d": "7 ימים",
+        "30d": "30 יום"
+      },
+      "metric": {
+        "ttfa": {
+          "short": "TTFA ממוצע",
+          "long": "Time-To-First-Audio — הזמן הממוצע בין סוף המשפט של המשתמש לצליל הראשון של התשובה (= ההשהיה שהמשתמש מרגיש, בממוצע על כל סבבי השיחה)."
+        },
+        "p95": {
+          "short": "TTFA p95",
+          "long": "Time-To-First-Audio p95 — ההשהיה הגרועה ביותר מבין סבבי השיחה (אחוזון 95). מתאים יותר מהממוצע לזיהוי חריגים."
+        },
+        "greeting": {
+          "short": "ברכת פתיחה",
+          "long": "הזמן הכולל מתחילת הסשן ועד הצליל הראשון של ברכת הפתיחה של הסוכן. כולל את שלבי ההקמה (חיבור, הגדרות, WS של OpenAI)."
+        }
+      },
+      "hop": {
+        "twilioToWorker": "Twilio/Web → Worker",
+        "workerToLivekit": "Worker → LiveKit (חיבור)",
+        "workerToWebConfig": "Worker → Web (הגדרות)",
+        "workerToOpenai": "Worker → OpenAI (WS)",
+        "greeting": "ברכת פתיחה (אתחול E2E)",
+        "transcription": "תמלול (STT)",
+        "endOfUtterance": "סוף משפט (LLM)",
+        "firstAudio": "צליל ראשון (TTS)"
+      },
+      "setup": {
+        "twilioToWorker": "Twilio/Web → Worker",
+        "workerToLivekit": "Worker → LiveKit",
+        "workerToWebConfig": "Worker → Web (הגדרות)",
+        "workerToOpenai": "Worker → OpenAI"
+      },
+      "setupShort": {
+        "twilioToWorker": "Worker",
+        "workerToLivekit": "LiveKit",
+        "workerToWebConfig": "Web (config)",
+        "workerToOpenai": "OpenAI"
+      },
+      "series": {
+        "transcription": {
+          "label": "STT → Worker (תמלול)",
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד סיום ה-STT. חזרה OpenAI → Worker."
+        },
+        "eou": {
+          "label": "LLM → Worker (סוף משפט)",
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד שה-LLM מתחיל לענות. חזרה OpenAI → Worker."
+        },
+        "firstAudio": {
+          "label": "Audio → Worker (מקטע ראשון)",
+          "hint": "הזמן מתחילת ה-LLM ועד הצליל הראשון שנשמע. חזרה OpenAI → Worker."
+        },
+        "ttft": {
+          "label": "Worker → משתמש (TTFA כולל)",
+          "hint": "ההשהיה הסופית שהמשתמש מרגיש: המשתמש מסיים לדבר → הסוכן משמיע את הצליל הראשון."
+        }
+      }
+    }
   },
   "Email": {
     "subscriptionConfirmation": {
