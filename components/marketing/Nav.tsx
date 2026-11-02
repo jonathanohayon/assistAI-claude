@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
@@ -19,6 +19,8 @@ const NAV_LINKS = [
 
 export function Nav() {
   const t = useTranslations("Nav");
+  // The drawer slides in from the burger's side: right in LTR, left in RTL.
+  const offscreen = useLocale() === "he" ? "-100%" : "100%";
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY, scrollYProgress } = useScroll();
@@ -147,7 +149,7 @@ export function Nav() {
             ref={burgerRef}
             type="button"
             onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-label={open ? t("menuClose") : t("menuOpen")}
             aria-expanded={open}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-foreground)] shadow-sm transition-colors hover:bg-[var(--color-muted)] lg:hidden"
           >
@@ -184,14 +186,14 @@ export function Nav() {
         <motion.aside
           ref={drawerRef as React.RefObject<HTMLElement>}
           key="drawer"
-          initial={{ x: "100%" }}
+          initial={{ x: offscreen }}
           animate={{ x: 0 }}
-          exit={{ x: "100%" }}
+          exit={{ x: offscreen }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           role="dialog"
           aria-modal="false"
-          aria-label="Menu"
-          className="fixed right-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-l border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl lg:hidden"
+          aria-label={t("menu")}
+          className="fixed end-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-s border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl lg:hidden"
         >
             <nav className="flex flex-col gap-1 px-5 py-5 text-sm">
               {NAV_LINKS.map((l) => (
