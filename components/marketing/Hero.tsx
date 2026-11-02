@@ -150,8 +150,16 @@ export function Hero() {
         playsInline
         preload="auto"
         src="/videos/hero-bg.mp4"
-        style={reduce ? undefined : { scale: videoScale }}
-        className="absolute inset-0 -z-30 h-full w-full object-cover"
+        style={
+          reduce
+            ? { transformOrigin: "top left" }
+            : { scale: videoScale, transformOrigin: "top left" }
+        }
+        // The source clip carries a supplier watermark in its bottom-right
+        // corner. Oversizing the box to 125% and anchoring the frame top-left
+        // pushes that corner past the section's overflow-hidden edge at every
+        // aspect ratio, until a clean asset replaces the file.
+        className="absolute left-0 top-0 -z-30 h-[125%] w-[125%] object-cover object-left-top"
       />
 
       {/* Voile sombre vertical pour lisibilité du texte clair par-dessus la
@@ -285,7 +293,7 @@ export function Hero() {
           />
           <Divider />
           <Stat
-            value="Multi"
+            value="3"
             label={t("stats.languages")}
             delay={1.01}
             reduce={!!reduce}
@@ -468,7 +476,10 @@ function Stat({
       }}
       className="text-center"
     >
+      {/* dir="ltr": numeric values ("24/7") must not be reordered by the
+          Hebrew bidi context. */}
       <p
+        dir="ltr"
         className="font-display text-3xl font-bold tracking-tight tabular-nums text-white sm:text-4xl"
         style={{ textShadow: "0 2px 12px rgba(0,0,0,0.45)" }}
       >

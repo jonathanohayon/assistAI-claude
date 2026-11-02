@@ -700,7 +700,7 @@ function CtaInner({ label }: { label: string }) {
       <svg
         viewBox="0 0 16 16"
         fill="none"
-        className="relative h-3.5 w-3.5 transition-transform group-hover/cta:translate-x-0.5"
+        className="relative h-3.5 w-3.5 transition-transform group-hover/cta:translate-x-0.5 rtl:rotate-180 rtl:group-hover/cta:-translate-x-0.5"
       >
         <path
           d="M3 8h10M9 4l4 4-4 4"
