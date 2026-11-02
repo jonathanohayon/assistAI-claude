@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseBookingRequest } from "@/lib/booking-request";
 import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
@@ -7,30 +8,18 @@ import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
-  const {
-    name,
-    phone,
-    email,
-    date,
-    time,
-    duration = 30,
-    description,
-    center,
-  } = await req.json();
-
-  if (!name || !phone || !date || !time) {
+  const parsed = parseBookingRequest(await req.json().catch(() => null));
+  if (!parsed.ok) {
     await logEvent({
       source: "calendar",
       event: "book_invalid",
-      message: `Réservation refusée — champs manquants`,
+      message: `Réservation refusée — ${parsed.error}`,
       level: "warn",
-      metadata: { name, phone, date, time },
     });
-    return NextResponse.json(
-      { error: "Champs requis manquants (name, phone, date, time)" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const { name, phone, email, date, time, duration, description, center } =
+    parsed.value;
 
   // Center rules: each day of the week is bound to exactly one centre.
   // Reject if the agent picked a date that doesn't match the requested
