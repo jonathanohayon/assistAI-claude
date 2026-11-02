@@ -36,21 +36,6 @@ export function Hero() {
   const titleTemplate = t("title", { emphasis: ` ${emphasis} ` });
   const titleParts = titleTemplate.split(" ");
 
-  const wordVariants = reduce
-    ? {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { duration: 0.2 } },
-      }
-    : {
-        hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
-        visible: {
-          opacity: 1,
-          y: 0,
-          filter: "blur(0px)",
-          transition: { duration: 0.65, ease: EASE },
-        },
-      };
-
   const fadeUp = (delay: number) =>
     reduce
       ? {
@@ -225,20 +210,19 @@ export function Hero() {
             className="relative z-10 font-display text-5xl leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-[88px]"
             style={{ textShadow: "0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35)" }}
           >
-            <motion.span
-              initial="hidden"
-              animate="visible"
-              transition={{ staggerChildren: 0.05, delayChildren: 0.25 }}
-              className="inline"
-            >
+            {/* The H1 and the subtitle are the LCP candidates on mobile. They
+             *  rise in with a CSS transform only: no opacity/blur start state,
+             *  so they paint at full opacity on first paint, before hydration.
+             *  (A JS fade from opacity 0 held LCP back ~3 s.) */}
+            <span className="inline">
               {titleParts.map((w, i) => {
                 const trimmed = w.trim();
                 if (!trimmed) return null;
                 return (
-                  <motion.span
+                  <span
                     key={i}
-                    variants={wordVariants}
-                    className="me-[0.22em] inline-block"
+                    className="hero-rise me-[0.22em] inline-block"
+                    style={{ animationDelay: `${0.25 + i * 0.05}s` }}
                   >
                     {trimmed === emphasis ? (
                       <span
@@ -268,20 +252,19 @@ export function Hero() {
                     ) : (
                       trimmed
                     )}
-                  </motion.span>
+                  </span>
                 );
               })}
-            </motion.span>
+            </span>
           </h1>
         </div>
 
-        <motion.p
-          {...fadeUp(0.7)}
-          className="mt-7 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl"
-          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.5)" }}
+        <p
+          className="hero-rise mt-7 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl"
+          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.5)", animationDelay: "0.5s" }}
         >
           {t("subtitle")}
-        </motion.p>
+        </p>
 
         {/* Stats inline — rangée resserrée */}
         <div className="mt-8 flex flex-wrap items-end justify-center gap-x-4 gap-y-3 sm:gap-x-6">
@@ -387,6 +370,22 @@ export function Hero() {
       </motion.div>
 
       <style jsx>{`
+        .hero-rise {
+          animation: hero-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes hero-rise {
+          from {
+            transform: translateY(18px);
+          }
+          to {
+            transform: none;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-rise {
+            animation: none;
+          }
+        }
         .cta-glow {
           animation: cta-glow 2.4s ease-in-out infinite;
         }
