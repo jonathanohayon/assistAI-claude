@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { logEvent } from "@/lib/logger";
+import { decideTenantResolution } from "@/lib/tenant-resolution";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { isTrialExhausted } from "@/lib/trial";
@@ -49,17 +50,22 @@ export async function GET(req: NextRequest) {
     : phone
       ? await resolveTenantByPhone(phone)
       : null;
-  const resolution:
-    | "user_match"
-    | "phone_match"
-    | "default_fallback"
-    | "no_id" = tenant
-    ? userId
-      ? "user_match"
-      : "phone_match"
-    : phone || userId
-      ? "default_fallback"
-      : "no_id";
+  const resolution = decideTenantResolution({
+    phone,
+    userId,
+    matched: Boolean(tenant),
+  });
+  if (resolution === "unknown_number") {
+    // Refuse rather than serve another tenant. The worker hangs up on 404.
+    await logEvent({
+      source: "tenant",
+      event: "unknown_dialed_number",
+      message: `Appel refusé : aucun tenant pour le numéro ${phone}`,
+      level: "error",
+      metadata: { toNumber: phone },
+    });
+    return NextResponse.json({ error: "unknown_number" }, { status: 404 });
+  }
   if (!tenant) tenant = await resolveDefaultTenant();
   if (!tenant) {
     return NextResponse.json({ error: "No tenant" }, { status: 404 });
