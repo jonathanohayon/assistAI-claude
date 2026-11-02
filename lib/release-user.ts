@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { removeNumberFromTrunk } from "@/lib/livekit-sip";
 import { releaseNumber } from "@/lib/twilio-numbers";
 
 export interface ReleaseSummary {
@@ -54,6 +55,25 @@ export async function releaseAllTwilioNumbersFor(
         userId,
         metadata: { phoneNumber: n.phoneNumber, sid: n.twilioSid },
       });
+      // Also drop it from the LiveKit inbound trunk allowlist. This was never
+      // called: every released number stayed on the trunk (14 of 15 at the
+      // 01/11/2026 audit), still accepted by LiveKit. Best-effort: the Twilio
+      // release already happened; scripts/livekit-trunk-cleanup.ts reconciles.
+      try {
+        await removeNumberFromTrunk(n.phoneNumber);
+      } catch (trunkErr) {
+        await logEvent({
+          source: "web",
+          event: "livekit_trunk_remove_failed",
+          message: `Numéro ${n.phoneNumber} libéré chez Twilio mais pas retiré du trunk LiveKit`,
+          level: "warn",
+          userId,
+          metadata: {
+            phoneNumber: n.phoneNumber,
+            error: trunkErr instanceof Error ? trunkErr.message : String(trunkErr),
+          },
+        });
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "release failed";
       summary.failedCount++;
