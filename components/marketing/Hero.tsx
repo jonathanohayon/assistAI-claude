@@ -338,7 +338,7 @@ export function Hero() {
             <Link
               ref={ctaRef}
               href="/signup"
-              className="cta-glow group relative inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-8 py-4 text-base font-semibold text-white shadow-lg ring-2 ring-[#22d3ee]/40 transition-all hover:scale-[1.03] hover:shadow-xl active:scale-95"
+              className="cta-glow group relative inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-8 py-4 text-base font-semibold text-white shadow-lg ring-2 ring-[#22d3ee]/40 transition-all hover:scale-[1.03] hover:shadow-xl active:scale-95"
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <span className="relative">{t("ctaDemo")}</span>
