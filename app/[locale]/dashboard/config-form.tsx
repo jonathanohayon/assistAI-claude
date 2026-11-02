@@ -123,6 +123,18 @@ export function ConfigForm({
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTile, setActiveTile] = useState<string | null>(null);
+  // On phones the tile grid fills the screen, so the panel opens below the
+  // fold and a tap looks like it did nothing. Bring the panel into view when
+  // its top is off-screen; on desktop it opens in view, so nothing moves.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!activeTile || !el) return;
+    // Less than ~96px of the panel visible → treat it as off-screen.
+    if (el.getBoundingClientRect().top < window.innerHeight - 96) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, [activeTile]);
 
   // Deep-link vers une tuile : la checklist de setup (dashboard) renvoie ici
   // avec ?tile=business|notifs|… → on ouvre la tuile correspondante et on
@@ -555,7 +567,8 @@ export function ConfigForm({
           {activeTile && (
             <div
               key={activeTile}
-              className="anim-fade-up mt-5 overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)] backdrop-blur-xl"
+              ref={panelRef}
+              className="anim-fade-up mt-5 scroll-mt-24 overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 shadow-[0_4px_24px_-8px_rgba(190,24,93,0.15)] backdrop-blur-xl"
             >
               <header className="flex items-center justify-between gap-3 border-b border-[#e2e8f0] bg-gradient-to-br from-white/60 to-white/30 px-6 py-4 sm:px-8">
                 <div className="flex min-w-0 items-center gap-3">

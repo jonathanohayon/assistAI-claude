@@ -59,7 +59,7 @@ export function UserMenu({ email, initials, logoutAction }: UserMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-64 origin-top-right rounded-xl border border-[var(--color-border)] bg-white p-1.5 shadow-xl ring-1 ring-black/5"
+          className="absolute end-0 top-full z-50 mt-2 w-64 origin-top-right rtl:origin-top-left rounded-xl border border-[var(--color-border)] bg-white p-1.5 shadow-xl ring-1 ring-black/5"
         >
           <div className="px-3 py-2.5 border-b border-[var(--color-border)]/60">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
