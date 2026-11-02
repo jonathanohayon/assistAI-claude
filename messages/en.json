@@ -1802,5 +1802,29 @@
   "Voices": {
     "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
     "custom": "Custom voice"
+  },
+  "VoiceDemo": {
+    "title": "Try it live",
+    "subtitle": "Talk to Tamara — free {seconds}-second demo.",
+    "statusIdle": "Ready",
+    "statusConnecting": "Connecting…",
+    "statusConnected": "Live — speak now",
+    "statusError": "Error",
+    "startCall": "Start the call",
+    "stopCall": "End the call",
+    "hintLive": "Speak, or click to stop",
+    "hintIdle": "Click and speak to try Tamara",
+    "freeSession": "{seconds}-second session · free",
+    "muteMic": "Mute mic",
+    "micMuted": "Mic muted",
+    "transcriptHeading": "Conversation preview",
+    "transcriptAria": "Transcript",
+    "ended": "Demo session over ({seconds} s). <signup>Create an account</signup> to make and take calls without limits.",
+    "emptyLive": "Listening… Talk to Tamara.",
+    "emptyIdle": "Click the mic to start a demo call.",
+    "you": "You",
+    "errorStart": "The demo couldn't start. Please try again in a moment.",
+    "errorConnectionLost": "Connection lost. Click the mic to start again.",
+    "errorGeneric": "Something went wrong during the call. Please try again in a moment."
   }
 }

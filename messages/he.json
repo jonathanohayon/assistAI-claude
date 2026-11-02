@@ -1802,5 +1802,29 @@
   "Voices": {
     "display": "קול {n}{gender, select, f { · נשי} m { · גברי} other {}}",
     "custom": "קול מותאם אישית"
+  },
+  "VoiceDemo": {
+    "title": "נסו בשידור חי",
+    "subtitle": "דברו עם תמרה — הדגמה חינמית של {seconds} שניות.",
+    "statusIdle": "מוכנה",
+    "statusConnecting": "מתחברת…",
+    "statusConnected": "מחוברת — דברו",
+    "statusError": "שגיאה",
+    "startCall": "התחלת שיחה",
+    "stopCall": "סיום שיחה",
+    "hintLive": "דברו, או לחצו כדי לעצור",
+    "hintIdle": "לחצו ודברו כדי לנסות את תמרה",
+    "freeSession": "שיחה של {seconds} שניות · חינם",
+    "muteMic": "השתקת מיקרופון",
+    "micMuted": "המיקרופון מושתק",
+    "transcriptHeading": "תצוגת השיחה",
+    "transcriptAria": "תמלול",
+    "ended": "הדגמה הסתיימה ({seconds} שניות). <signup>צרו חשבון</signup> כדי להתקשר ולקבל שיחות בלי הגבלה.",
+    "emptyLive": "מקשיבה… דברו עם תמרה.",
+    "emptyIdle": "לחצו על המיקרופון כדי להתחיל שיחת הדגמה.",
+    "you": "אתם",
+    "errorStart": "לא ניתן להפעיל את ההדגמה. נסו שוב בעוד רגע.",
+    "errorConnectionLost": "החיבור נותק. לחצו על המיקרופון כדי להתחיל מחדש.",
+    "errorGeneric": "משהו השתבש במהלך השיחה. נסו שוב בעוד רגע."
   }
 }

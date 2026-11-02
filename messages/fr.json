@@ -1802,5 +1802,29 @@
   "Voices": {
     "display": "Voix {n}{gender, select, f { · féminine} m { · masculine} other {}}",
     "custom": "Voix personnalisée"
+  },
+  "VoiceDemo": {
+    "title": "Tester en direct",
+    "subtitle": "Parlez à Tamara — démo gratuite de {seconds} s.",
+    "statusIdle": "Prêt",
+    "statusConnecting": "Connexion…",
+    "statusConnected": "En ligne — parlez",
+    "statusError": "Erreur",
+    "startCall": "Démarrer l'appel",
+    "stopCall": "Arrêter l'appel",
+    "hintLive": "Parlez, ou cliquez pour arrêter",
+    "hintIdle": "Cliquez et parlez pour tester Tamara",
+    "freeSession": "Session de {seconds} s · gratuit",
+    "muteMic": "Couper le micro",
+    "micMuted": "Micro coupé",
+    "transcriptHeading": "Aperçu de conversation",
+    "transcriptAria": "Transcription",
+    "ended": "Session de démo terminée ({seconds} s). <signup>Créez un compte</signup> pour passer et recevoir des appels sans limite.",
+    "emptyLive": "En écoute… Parlez à Tamara.",
+    "emptyIdle": "Cliquez sur le micro pour démarrer un appel de démo.",
+    "you": "Vous",
+    "errorStart": "Impossible de démarrer la démo. Réessayez dans un instant.",
+    "errorConnectionLost": "Connexion perdue. Cliquez sur le micro pour relancer.",
+    "errorGeneric": "Un problème est survenu pendant l'appel. Réessayez dans un instant."
   }
 }
