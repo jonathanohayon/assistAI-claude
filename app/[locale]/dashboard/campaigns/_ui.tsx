@@ -5,7 +5,7 @@
 
 import type { ReactNode } from "react";
 
-export const ACCENT = "from-[#f97316] to-[#db2777]";
+export const ACCENT = "from-[#c2410c] to-[#db2777]";
 
 export function Field({
   label,
@@ -40,7 +40,7 @@ export function Section({
     <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
       <div className="mb-3 flex items-center gap-2">
         {icon && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#f97316] to-[#db2777] text-white">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#c2410c] to-[#db2777] text-white">
             {icon}
           </span>
         )}
@@ -69,7 +69,7 @@ export function Chip({
       onClick={onClick}
       className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition ${
         active
-          ? "bg-gradient-to-br from-[#f97316] to-[#db2777] text-white shadow-sm"
+          ? "bg-gradient-to-br from-[#c2410c] to-[#db2777] text-white shadow-sm"
           : "border border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#f97316]/40"
       }`}
     >

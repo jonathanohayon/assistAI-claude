@@ -388,7 +388,7 @@ export function SetupChecklist({
                 ) : (
                   <Link
                     href={item.href}
-                    className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                    className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
                   >
                     {item.ctaLabel}
                     <ArrowIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />

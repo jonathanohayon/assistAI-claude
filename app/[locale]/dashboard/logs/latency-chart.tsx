@@ -505,7 +505,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                   setSelectedCallId(hover.point.id);
                   setHover(null);
                 }}
-                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#be185d] px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3">
                   <path d="M3 12h18M14 5l7 7-7 7" />

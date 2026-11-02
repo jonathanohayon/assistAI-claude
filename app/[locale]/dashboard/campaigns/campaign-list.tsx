@@ -44,7 +44,7 @@ export function CampaignList({
         <button
           type="button"
           onClick={onCreate}
-          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-md transition hover:scale-[1.03] hover:shadow-lg active:scale-95"
+          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-md transition hover:scale-[1.03] hover:shadow-lg active:scale-95"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 transition-transform group-hover:rotate-90">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">
@@ -72,7 +72,7 @@ export function CampaignList({
         </div>
       ) : campaigns.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#fed7aa] bg-gradient-to-br from-[#fff7ed] to-[#fdf2f8] px-6 py-12 text-center">
-          <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f97316] to-[#db2777] text-white shadow-md">
+          <span className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#c2410c] to-[#db2777] text-white shadow-md">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
               <path d="M3 11l18-5v12L3 14v-3z" />
               <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
@@ -87,7 +87,7 @@ export function CampaignList({
           <button
             type="button"
             onClick={onCreate}
-            className="mt-4 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90"
+            className="mt-4 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90"
           >
             {t("newCampaign")}
           </button>

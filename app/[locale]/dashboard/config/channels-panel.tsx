@@ -59,7 +59,7 @@ export function ChannelsPanel({
       <section className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
         <header className="border-b border-[#e2e8f0]/70 bg-white/60 px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white shadow-sm">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#128C7E] to-[#075E54] text-white shadow-sm">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -136,7 +136,7 @@ export function ChannelsPanel({
       <section className="overflow-hidden rounded-2xl border border-[#25D366]/30 bg-gradient-to-br from-[#25D366]/8 to-white shadow-sm">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#25D366]/20 bg-white/60 px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white shadow-sm">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#128C7E] to-[#075E54] text-white shadow-sm">
               <svg
                 viewBox="0 0 24 24"
                 fill="currentColor"
@@ -166,7 +166,7 @@ export function ChannelsPanel({
             type="button"
             onClick={openTwilioDocs}
             aria-label={t("channelsActivateWhatsapp")}
-            className="inline-flex min-h-[44px] w-fit items-center gap-2 rounded-xl bg-gradient-to-br from-[#25D366] to-[#128C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#128C7E] focus-visible:ring-offset-2 active:scale-95"
+            className="inline-flex min-h-[44px] w-fit items-center gap-2 rounded-xl bg-gradient-to-br from-[#128C7E] to-[#075E54] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#128C7E] focus-visible:ring-offset-2 active:scale-95"
           >
             {t("channelsActivateWhatsapp")}
             <svg

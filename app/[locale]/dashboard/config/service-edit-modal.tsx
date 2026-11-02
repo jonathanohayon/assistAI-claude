@@ -310,7 +310,7 @@ export function ServiceEditModal({
               type="button"
               onClick={onClose}
               disabled={!canSave}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#b45309] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                 <polyline points="20 6 9 17 4 12" />

@@ -365,7 +365,7 @@ export function WebsiteScanWizard({
         className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
       >
         {/* Header dégradé */}
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#6366f1] via-[#7c3aed] to-[#a855f7] px-6 py-5 text-white">
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#4f46e5] via-[#7c3aed] to-[#9333ea] px-6 py-5 text-white">
           <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -469,7 +469,7 @@ export function WebsiteScanWizard({
             </button>
             <button
               onClick={applyToForm}
-              className="rounded-xl bg-gradient-to-br from-[#6366f1] to-[#7c3aed] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+              className="rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
             >
               {t("apply")}
             </button>
@@ -528,7 +528,7 @@ function InputStep({
       <button
         onClick={onStart}
         disabled={!url.trim()}
-        className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#6366f1] to-[#7c3aed] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         ✨ {t("scanCta")}
       </button>

@@ -184,7 +184,7 @@ export function CampaignLaunch({
           <button
             onClick={() => act("start")}
             disabled={busy || !canStart}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
               <path d="M8 5v14l11-7z" />

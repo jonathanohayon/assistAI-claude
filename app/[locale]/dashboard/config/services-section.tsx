@@ -94,7 +94,7 @@ export function ServicesSection({
       style={{ animationDelay: "180ms" }}
     >
       <header className="flex flex-wrap items-center gap-3 border-b border-[#e2e8f0] px-5 py-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-md">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#b45309] to-[#b45309] text-white shadow-md">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
             <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
           </svg>
@@ -112,7 +112,7 @@ export function ServicesSection({
         <button
           type="button"
           onClick={addService}
-          className="group inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
+          className="group inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#b45309] to-[#b45309] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 transition-transform group-hover:rotate-90">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">

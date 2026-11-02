@@ -288,7 +288,7 @@ export function CampaignsWorkspace({
           }
         >
           {/* Header dégradé chaud */}
-          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-4 text-white">
+          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#c2410c] via-[#dc2626] to-[#db2777] px-6 py-4 text-white">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
             <div className="relative flex items-center gap-3">
               {view === "editor" && (
@@ -521,7 +521,7 @@ export function CampaignsWorkspace({
                   className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-60 ${
                     justSaved
                       ? "border border-[#e2e8f0] bg-white text-[#64748b] hover:bg-[#f8fafc]"
-                      : "bg-gradient-to-br from-[#f97316] to-[#db2777] text-white hover:opacity-90"
+                      : "bg-gradient-to-br from-[#c2410c] to-[#db2777] text-white hover:opacity-90"
                   }`}
                 >
                   {saving
@@ -533,7 +533,7 @@ export function CampaignsWorkspace({
                 {savedCampaign && (
                   <button
                     onClick={() => setTab("contacts")}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
                   >
                     {t("nextStepContacts")}
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -559,7 +559,7 @@ export function CampaignsWorkspace({
               </button>
               <button
                 onClick={() => setTab("launch")}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
               >
                 {t("nextStepLaunch")}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">

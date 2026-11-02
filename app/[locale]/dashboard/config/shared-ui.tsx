@@ -222,7 +222,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={cta.onClick}
-          className="mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
+          className="mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-br from-[#b45309] to-[#b45309] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">

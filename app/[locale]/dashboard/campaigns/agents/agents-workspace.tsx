@@ -14,7 +14,7 @@ import {
 import { AgentEditor } from "./agent-editor";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
-const ACCENT_AGENTS = "from-[#6366f1] to-[#8b5cf6]";
+const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
 type View = "list" | "editor";
 
@@ -159,7 +159,7 @@ export function AgentsWorkspace({
         className="relative z-10 flex min-h-[78vh] w-full flex-col overflow-hidden rounded-3xl bg-[#f8fafc] shadow-xl ring-1 ring-black/5"
       >
         {/* Header dégradé indigo→violet (distinct du orange des campagnes). */}
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#6366f1] via-[#7c3aed] to-[#8b5cf6] px-6 py-4 text-white">
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#4f46e5] via-[#7c3aed] to-[#7c3aed] px-6 py-4 text-white">
           <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
           <div className="relative flex items-center gap-3">
             <button

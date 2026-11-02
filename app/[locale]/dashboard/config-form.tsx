@@ -688,7 +688,7 @@ export function ConfigForm({
             <button
               type="submit"
               disabled={isPending}
-              className="group rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-5 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-5 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="inline-flex items-center gap-1.5">
                 {isPending ? t("saving") : t("saveButton")}

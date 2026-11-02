@@ -178,7 +178,7 @@ export function CampaignAnalytics({
           className="relative z-10 flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-[#f8fafc] shadow-2xl sm:h-[88vh] sm:rounded-3xl"
         >
           {/* Header */}
-          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#6366f1] via-[#7c3aed] to-[#db2777] px-6 py-4 text-white">
+          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#4f46e5] via-[#7c3aed] to-[#db2777] px-6 py-4 text-white">
             <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
             <div className="relative flex items-center justify-between gap-3">
               <div className="min-w-0">

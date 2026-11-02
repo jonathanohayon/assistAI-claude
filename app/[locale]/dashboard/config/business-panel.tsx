@@ -49,7 +49,7 @@ export function BusinessPanel({
         className="group flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#c4b5fd] bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] px-4 py-3.5 text-left transition hover:border-[#a78bfa] hover:shadow-sm"
       >
         <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#6366f1] to-[#7c3aed] text-white shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white shadow-sm">
             ✨
           </span>
           <span>
@@ -265,7 +265,7 @@ function KnowledgeBaseSection({
     <section className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/50 to-white shadow-sm">
       <header className="border-b border-[#e2e8f0]/70 bg-white/60 px-5 py-3.5">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0891b2] to-[#0e7490] text-white shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0e7490] to-[#0e7490] text-white shadow-sm">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -349,7 +349,7 @@ function IdentitySection({
       style={{ animationDelay: "60ms" }}
     >
       <header className="flex items-center gap-3 border-b border-[#fde68a]/40 px-5 py-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#b45309] text-white shadow-md">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#b45309] to-[#b45309] text-white shadow-md">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
             <circle cx="12" cy="8" r="4" />
             <path d="M4 21a8 8 0 0 1 16 0" />
