@@ -141,7 +141,7 @@ export function ApiTranscriptsExplorer({ rows }: { rows: Row[] }) {
         type="button"
         onClick={run}
         disabled={loading || !userId || !phone}
-        className="rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899] px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50"
+        className="rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-5 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-50"
       >
         {loading ? "Chargement…" : "Lancer la requête"}
       </button>
