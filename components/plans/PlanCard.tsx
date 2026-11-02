@@ -414,6 +414,7 @@ export function PlanCard({
   status = null,
   currentBadgeLabel,
   quote = false,
+  showModel = true,
 }: {
   plan: Plan;
   billing: Billing;
@@ -426,6 +427,8 @@ export function PlanCard({
   currentBadgeLabel?: string;
   /** Render "sur mesure" instead of a price (landing premium tier). */
   quote?: boolean;
+  /** The voice model is supplier detail: shown in billing, hidden on the public landing. */
+  showModel?: boolean;
 }) {
   const t = useTranslations("Pricing.card");
   const localized = useLocalizedPlan(plan);
@@ -587,11 +590,6 @@ export function PlanCard({
               <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
                 {t("perMonth")}
               </span>
-              {currency === "EUR" && (
-                <span className="text-xs font-medium text-[var(--color-muted-foreground)]">
-                  TTC
-                </span>
-              )}
             </div>
             <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
               {annualHint ?? t("monthlyHint")}
@@ -679,9 +677,11 @@ export function PlanCard({
             <CtaInner label={action.label} />
           </button>
         )}
-        <p className="mt-3 text-center text-[11px] text-[var(--color-muted-foreground)]">
-          {t("model")} <span className="font-mono">{plan.model}</span>
-        </p>
+        {showModel && (
+          <p className="mt-3 text-center text-[11px] text-[var(--color-muted-foreground)]">
+            {t("model")} <span className="font-mono">{plan.model}</span>
+          </p>
+        )}
       </div>
     </motion.article>
   );

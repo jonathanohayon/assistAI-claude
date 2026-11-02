@@ -21,8 +21,8 @@
       ],
       "bestFor": "indépendants, commerces et petites équipes",
       "onboardingNotes": [
-        "Confirmations WhatsApp activées : tes clientes recevront un message automatique après chaque RDV.",
-        "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels."
+        "Confirmations WhatsApp activées : vos clientes recevront un message automatique après chaque RDV.",
+        "Renseignez votre numéro WhatsApp owner pour recevoir les recaps d'appels."
       ]
     },
     "global": {
@@ -34,14 +34,14 @@
         "Intégration CRM & calendrier connecté",
         "Qualification des appelants et prise de rendez-vous automatique",
         "Réponses aux questions fréquentes",
-        "Transfert d'appel intelligent vers toi ou ton équipe",
+        "Transfert d'appel intelligent vers vous ou votre équipe",
         "Voix naturelle et professionnelle"
       ],
       "excludedFeatures": [],
       "bestFor": "cabinets, cliniques, agences et services B2B",
       "onboardingNotes": [
-        "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
-        "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google."
+        "Vous pouvez rattacher jusqu'à 3 centres / calendriers distincts.",
+        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google."
       ]
     },
     "premium": {
@@ -59,7 +59,7 @@
       "excludedFeatures": [],
       "bestFor": "centres d'appels, équipes sales et support à fort volume",
       "onboardingNotes": [
-        "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
+        "Notre équipe vous contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
         "Modèle gpt-realtime activé automatiquement après l'onboarding."
       ]
     }
@@ -127,7 +127,7 @@
     "medical": {
       "title": "Cabinets médicaux",
       "desc": "Prise de RDV, rappels, annulations, triage des urgences. Conforme au secret médical.",
-      "f1": "Synchro Doctolib / agenda",
+      "f1": "Synchro Google Agenda",
       "f2": "Rappels SMS automatiques",
       "f3": "Filtre les urgences"
     },
@@ -163,7 +163,7 @@
     },
     "step4": {
       "title": "Vos clients parlent à l'IA",
-      "desc": "Latence sub-300ms. La conversation est naturelle, polie, et toujours dans la langue du client."
+      "desc": "La conversation est naturelle, polie, et toujours dans la langue du client."
     }
   },
   "Features": {
@@ -175,8 +175,8 @@
         "desc": "Détection automatique de la langue. Bascule en cours d'appel sans rupture entre français, hébreu et anglais."
       },
       "latency": {
-        "title": "Sub-300ms",
-        "desc": "Latence vocale imperceptible — la conversation se déroule comme avec un humain."
+        "title": "Temps réel",
+        "desc": "Une conversation fluide, au rythme d'un échange humain."
       },
       "calendar": {
         "title": "Calendrier vivant",
@@ -196,7 +196,7 @@
       },
       "voice": {
         "title": "Voix premium",
-        "desc": "Voix naturelles OpenAI Realtime. Choisissez entre marin, cedar, alloy, et plus."
+        "desc": "Voix naturelles, masculines et féminines, à choisir depuis votre dashboard."
       },
       "config": {
         "title": "Configuration live",
@@ -208,73 +208,15 @@
     "kicker": "Performance",
     "title": "Le moteur vocal le plus avancé.",
     "titleHighlight": "Au monde.",
-    "subtitle": "Modèle hyper-évolué, latence sub-300ms, et le meilleur algorithme de réduction de bruit jamais déployé sur du temps réel.",
-    "pillar1": {
-      "title": "Modèle hyper-évolué",
-      "subtitle": "Pas un wrapper. Une stack vocale propriétaire — 7 couches enchaînées pour battre la latence, la précision et la fluidité d'une API Realtime standard.",
-      "standardName": "API Realtime standard",
-      "standardLayersBadge": "2 couches",
-      "tamaraLayersBadge": "7 couches",
-      "hyperBadge": "Hyper-évolué",
-      "vs": "vs",
-      "standardFootnote": "Aucun filtrage audio dédié. Modèle générique non spécialisé FR/HE.",
-      "layers": {
-        "audioStd": "Audio I/O",
-        "llmGeneric": "LLM générique",
-        "audioTamara": "Audio I/O — WebRTC + SIP",
-        "aicoustics": "ai-coustics QVF 2.1 L — isolation primary speaker",
-        "nearField": "Near-field filter (maison)",
-        "asr": "ASR spécialisé FR / HE / EN",
-        "llmTamara": "LLM hyper-évolué · sub-300 ms",
-        "nlu": "NLU déterministe — règles métier",
-        "tts": "TTS natif premium · 12 voix"
-      },
-      "metrics": {
-        "standardLabel": "Standard",
-        "tamaraLabel": "Tamara",
-        "latency": {
-          "label": "Latence A→A"
-        },
-        "accuracy": {
-          "label": "Précision FR / HE"
-        },
-        "interruption": {
-          "label": "Interruption"
-        },
-        "languages": {
-          "label": "Langues natives"
-        }
-      },
-      "metricsFootnote": "Mesures internes — moyenne sur 50 000 appels production Q2 2026."
-    },
-    "pillar2": {
-      "title": "Le meilleur algorithme de réduction de bruit au monde",
-      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + filtre near-field maison. Le client peut appeler depuis n'importe quel environnement.",
-      "envs": {
-        "cafe": {
-          "title": "Café bruyant",
-          "desc": "Voix isolée à 99,2 %"
-        },
-        "car": {
-          "title": "Voiture en mouvement",
-          "desc": "Bruit moteur supprimé"
-        },
-        "openSpace": {
-          "title": "Plateau ouvert / open space",
-          "desc": "Conversations parasites filtrées"
-        }
-      }
-    },
+    "subtitle": "Une IA vocale en temps réel, une réduction de bruit active sur chaque appel, et trois langues natives.",
     "pillar3": {
-      "title": "Précision multilangue inégalée",
-      "subtitle": "Reconnaissance et synthèse natives en FR, HE, EN — et 9 autres langues. Première solution à atteindre 98%+ en hébreu vocal.",
-      "unprecedentedBadge": "Inédit",
+      "title": "Trois langues natives",
+      "subtitle": "Reconnaissance et synthèse natives en français, en hébreu et en anglais, avec bascule automatique en cours d'appel.",
       "langs": {
         "fr": "Français",
         "he": "עברית (Hébreu)",
         "en": "English"
-      },
-      "footnote": "Mesuré sur 50 000 appels réels — benchmark interne Q2 2026."
+      }
     }
   },
   "TwoMinutes": {
@@ -314,7 +256,7 @@
     "subtitle": "Voix, personnalité, langue principale, ton — tout est ajustable depuis votre tableau de bord. En direct, sans intervention dev.",
     "features": {
       "voices": {
-        "title": "12 voix premium",
+        "title": "Voix premium",
         "desc": "Hommes / femmes, accents variés (FR, HE, EN…)"
       },
       "sliders": {
@@ -323,11 +265,11 @@
       },
       "multilingual": {
         "title": "Multilingue natif",
-        "desc": "Configure la langue principale en 1 clic"
+        "desc": "Configurez la langue principale en 1 clic"
       },
       "liveTest": {
         "title": "Test en direct",
-        "desc": "Écoute ta config avant de la pousser en prod"
+        "desc": "Écoutez votre config avant de la pousser en prod"
       }
     },
     "sliders": {
@@ -358,9 +300,9 @@
     },
     "card": {
       "popular": "Recommandé",
-      "perMonth": "HT / mois",
+      "perMonth": "TTC / mois",
       "monthlyHint": "Facturation mensuelle, sans engagement.",
-      "annualHint": "{total} HT / an",
+      "annualHint": "{total} TTC / an",
       "overage": "puis {price} / min supplémentaire",
       "custom": "Sur mesure",
       "customHint": "Tarif sur devis selon vos besoins.",
@@ -369,7 +311,7 @@
       "ctaAria": "Choisir la formule {name}",
       "model": "Modèle"
     },
-    "footer": "Prix HT en euros. TVA applicable selon votre pays. Gros volume ou besoin sur mesure ? Parlons-en."
+    "footer": "Prix TTC en euros. Gros volume ou besoin sur mesure ? Parlons-en."
   },
   "PricingComparison": {
     "title": "Comparer en détail",
@@ -427,29 +369,21 @@
     "tipBusinessCta": "Business"
   },
   "SocialProof": {
-    "kicker": "Ils nous font confiance",
-    "title": "Des professionnels qui ne ratent plus un appel.",
-    "q1": {
-      "text": "Avant Tamara, on perdait 20% des appels en heure de pointe. Aujourd'hui : zéro. Et notre agenda est plein.",
-      "author": "Salon Eden · Tel Aviv",
-      "role": "Centre de beauté"
+    "facts": {
+      "languages": {
+        "value": "FR · HE · EN",
+        "label": "Langues natives"
+      },
+      "availability": {
+        "value": "24/7",
+        "label": "Disponibilité"
+      },
+      "recap": {
+        "value": "WhatsApp",
+        "label": "Récap après chaque appel"
+      }
     },
-    "q2": {
-      "text": "L'IA prend les RDV, gère les annulations, et parle hébreu, français et anglais. C'est exactement ce qu'on cherchait.",
-      "author": "Dr. Cohen",
-      "role": "Cabinet médical"
-    },
-    "q3": {
-      "text": "Configurer le ton de la voix depuis un dashboard simple — game changer pour notre identité de marque.",
-      "author": "Studio Eleven",
-      "role": "Coiffeur · Jérusalem"
-    },
-    "stats": {
-      "salons": "Salons utilisent Tamara",
-      "calls": "Appels traités",
-      "minutes": "Minutes/jour économisées",
-      "trustLabel": "Ils s'intègrent avec Tamara"
-    }
+    "trustLabel": "Ils s'intègrent avec Tamara"
   },
   "CTA": {
     "kicker": "Prêt à essayer ?",
@@ -465,11 +399,11 @@
     "subtitle": "Les réponses claires aux questions qu'on nous pose le plus souvent — du prix à la sécurité, en passant par l'installation.",
     "q1": {
       "question": "Combien coûte Tamara ?",
-      "answer": "Tamara démarre à 49 € HT / mois sur la formule Permanence téléphonique, avec 500 minutes incluses. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard. Voir la grille tarifaire complète plus haut."
+      "answer": "Tamara démarre avec la formule Permanence téléphonique ; le tarif à jour est dans la grille ci-dessus. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
     },
     "q2": {
       "question": "Comment l'IA parle-t-elle avec mes clientes ?",
-      "answer": "Tamara utilise les voix temps réel d'OpenAI Realtime — la même technologie qui équipe les assistants vocaux haut de gamme. La latence est inférieure à 300 ms, la voix est naturelle, posée, sans coupure ni robotisation. Les clientes ont l'impression de parler à une vraie réceptionniste."
+      "answer": "Tamara parle avec une voix naturelle et posée, en temps réel, sans coupure ni robotisation. Les clientes ont l'impression de parler à une vraie réceptionniste."
     },
     "q3": {
       "question": "Est-ce qu'elle comprend l'hébreu ?",
@@ -584,7 +518,7 @@
   },
   "Login": {
     "title": "Connexion",
-    "subtitle": "Accède à la configuration de ton agent vocal.",
+    "subtitle": "Accédez à la configuration de votre agent vocal.",
     "errBadCredentials": "Identifiants incorrects.",
     "idleNotice": "⏰ Vous avez été déconnecté après 1 heure d'inactivité. Reconnectez-vous pour reprendre.",
     "emailLabel": "Email",
@@ -618,7 +552,7 @@
     "resendButton": "Renvoyer le code",
     "cancelTitle": "Annuler",
     "cancelAriaLabel": "Annuler l'inscription et retourner à l'accueil",
-    "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Tu pourras te réinscrire avec le même ou un autre email.",
+    "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Vous pourrez vous réinscrire avec le même ou un autre email.",
     "restartButton": "Recommencer avec un autre email",
     "errNetwork": "Erreur réseau"
   },
@@ -650,38 +584,38 @@
     "step1Optional": "Étape 1 · optionnel",
     "step1Unavailable": "Étape 1 · non disponible",
     "step1Title": "Connecter Google Calendar & Sheets",
-    "step1DescDisabled": "Connexion à TON Google Calendar/Sheets réservée aux formules Globale et Premium. Sur la formule WhatsApp, ton agent utilise un calendrier mutualisé et envoie les confirmations par WhatsApp.",
-    "step1DescAvailable": "Pour que ton agent puisse réserver des RDV dans TON calendrier et enregistrer les contacts dans TON sheet. Tu peux aussi le faire plus tard depuis le dashboard.",
+    "step1DescDisabled": "Connexion à VOTRE Google Calendar/Sheets réservée aux formules Globale et Premium. Sur la formule WhatsApp, votre agent utilise un calendrier mutualisé et envoie les confirmations par WhatsApp.",
+    "step1DescAvailable": "Pour que votre agent puisse réserver des RDV dans VOTRE calendrier et enregistrer les contacts dans VOTRE sheet. Vous pouvez aussi le faire plus tard depuis le dashboard.",
     "upgradeLink": "Passer à Globale ou Premium →",
     "locked": "🔒 Verrouillé",
     "connected": "✓ Connecté",
     "helpButtonAria": "Pré-requis Google Cloud Console",
     "connectGoogle": "Connecter Google",
-    "redirectHintTitle": "Pré-requis : ajoute le redirect URI dans Google Cloud Console",
-    "redirectHintStep1Pre": "Va sur",
-    "redirectHintStep1Post": "→ APIs & Services → Credentials → ton OAuth client.",
-    "redirectHintStep2": "Dans Authorized redirect URIs, ajoute :",
+    "redirectHintTitle": "Pré-requis : ajoutez le redirect URI dans Google Cloud Console",
+    "redirectHintStep1Pre": "Allez sur",
+    "redirectHintStep1Post": "→ APIs & Services → Credentials → votre OAuth client.",
+    "redirectHintStep2": "Dans Authorized redirect URIs, ajoutez :",
     "redirectHintStep3": "Save.",
     "redirectHintFooter": "Sans ça, Google refuse l'OAuth avec redirect_uri_mismatch.",
     "googleStatusConnected": "✅ Google Calendar et Sheets connectés.",
-    "googleStatusDenied": "Connexion refusée — réessaie ou continue sans pour l'instant.",
-    "googleStatusNoRefresh": "Google n'a pas renvoyé de refresh token. Va sur https://myaccount.google.com/permissions, retire l'accès à l'app, et reconnecte.",
-    "googleStatusBadState": "État de session invalide — réessaie.",
+    "googleStatusDenied": "Connexion refusée — réessayez ou continuez sans pour l'instant.",
+    "googleStatusNoRefresh": "Google n'a pas renvoyé de refresh token. Allez sur https://myaccount.google.com/permissions, retirez l'accès à l'app, et reconnectez-vous.",
+    "googleStatusBadState": "État de session invalide — réessayez.",
     "googleStatusUserMismatch": "Compte Google différent du tenant connecté.",
-    "googleStatusMissing": "Code OAuth manquant — réessaie.",
+    "googleStatusMissing": "Code OAuth manquant — réessayez.",
     "googleStatusError": "Erreur lors de la connexion Google.",
     "step2Header": "Étape 2 · langue principale de l'agent",
-    "step2Title": "Dans quelle langue ton agent doit-il accueillir les appels ?",
+    "step2Title": "Dans quelle langue votre agent doit-il accueillir les appels ?",
     "step2Desc": "Cette langue sera utilisée pour la phrase d'accueil. L'agent bascule automatiquement vers la langue de la cliente dès qu'elle parle.",
     "step3Header": "Étape 3 · numéro de téléphone",
     "countryLabel": "Pays",
     "searching": "Recherche…",
     "searchButton": "Chercher des numéros disponibles",
-    "pickNumber": "Choisis un numéro",
+    "pickNumber": "Choisissez un numéro",
     "purchasing": "Provisionnement en cours…",
     "confirmButton": "Confirmer et activer ce numéro",
     "errSearchFailed": "Recherche échouée",
-    "errNoNumbers": "Aucun numéro disponible pour ce pays pour le moment. Réessaie dans quelques minutes ou choisis un autre pays.",
+    "errNoNumbers": "Aucun numéro disponible pour ce pays pour le moment. Réessayez dans quelques minutes ou choisissez un autre pays.",
     "errProvisionFailed": "Provisioning échoué",
     "doneTitle": "Votre agent est en ligne !",
     "doneDesc": "Appelez ce numéro maintenant pour entendre votre agent en direct.",
@@ -708,7 +642,7 @@
     "googleNotConnected": "Google Calendar non connecté. Sans ça, votre agent ne peut pas prendre de rendez-vous dans VOTRE calendrier.",
     "connectButton": "Connecter",
     "whatsappPlanLabel": "Formule WhatsApp.",
-    "whatsappPlanDesc": "Connexion à ton propre Google Calendar/Sheets verrouillée.",
+    "whatsappPlanDesc": "Connexion à votre propre Google Calendar/Sheets verrouillée.",
     "upgradeLink": "Passer à Globale ou Premium →",
     "trialExpired": "Votre essai est terminé. Votre compte va être supprimé sous peu.",
     "trialRemainingMessage": "Essai gratuit — {label} restant",
@@ -795,8 +729,8 @@
     "ordersSourceCalendar": "Lu depuis votre agenda. Connectez un Sheet Commandes pour y enregistrer vos commandes."
   },
   "DashboardConfig": {
-    "noConfigPre": "Aucune config trouvée. Lance",
-    "noConfigPost": "pour initialiser ta secrétaire.",
+    "noConfigPre": "Aucune config trouvée. Lancez",
+    "noConfigPost": "pour initialiser votre secrétaire.",
     "header": "Configuration",
     "pageTitle": "Donnez sa voix à votre secrétaire.",
     "pageSubtitle": "Modifiez la persona, le ton et les paramètres techniques de l'agent. Les changements s'appliquent au prochain appel — l'agent recharge la configuration en début de chaque session.",
@@ -816,21 +750,21 @@
     "greetingHint": "Première phrase prononcée à chaque appel — avant que la cliente parle. Garde-la courte et chaleureuse (1 à 2 phrases). Ex : « Bonjour, c'est Tamara du centre Prestige, comment puis-je vous aider ? »",
     "greetingPlaceholder": "Bonjour, c'est [prénom] de [centre]. Comment puis-je vous aider ?",
     "inheritAdminTitle": "Héritage du prompt admin",
-    "inheritAdminSubtitle": "Décide si ton agent utilise les directives globales définies par l'admin pour ton plan.",
+    "inheritAdminSubtitle": "Décidez si votre agent utilise les directives globales définies par l'admin pour votre plan.",
     "inheritAdminLabel": "Hériter du prompt global admin",
-    "inheritAdminHelp": "Coché : ton agent reçoit les directives système définies par l'admin pour ton plan (heures, numéros, fin d'appel, config blocs, règles transverses, contexte per-call). Décoché : seuls ta persona et la directive de langue sont utilisées.",
+    "inheritAdminHelp": "Coché : votre agent reçoit les directives système définies par l'admin pour votre plan (heures, numéros, fin d'appel, config blocs, règles transverses, contexte per-call). Décoché : seules votre persona et la directive de langue sont utilisées.",
     "inheritAdminPopupTitle": "Blocs admin hérités",
     "inheritAdminPopupEmpty": "(aucun bloc admin configuré pour ce plan)",
     "whatsappTitle": "Notifications WhatsApp",
     "whatsappSubtitle": "Après chaque appel, un récap est envoyé par WhatsApp à la cliente et au propriétaire.",
     "ownerWhatsappLabel": "Numéro WhatsApp du propriétaire",
-    "ownerWhatsappHint": "Format international, ex: +972585001007. Laisse vide pour désactiver.",
+    "ownerWhatsappHint": "Format international, ex: +972585001007. Laissez vide pour désactiver.",
     "reminderTitle": "Rappel de RDV (J-1)",
     "reminderHint": "Envoie automatiquement un rappel WhatsApp au client la veille de son rendez-vous (vers 18h). Le numéro est repris du rendez-vous pris par l'agent.",
-    "whatsappFooter": "La cliente reçoit aussi un récap si Twilio détecte qu'elle accepte les messages WhatsApp depuis son numéro d'appel. Configure TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi.",
+    "whatsappFooter": "La cliente reçoit aussi un récap si Twilio détecte qu'elle accepte les messages WhatsApp depuis son numéro d'appel. Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi.",
     "voiceTitle": "Voix",
     "voiceSubtitleAdmin": "Paramètres techniques du moteur vocal. Visible admin uniquement.",
-    "voiceSubtitleUser": "Choisis la voix de ton agent et sa vitesse de parole.",
+    "voiceSubtitleUser": "Choisissez la voix de votre agent et sa vitesse de parole.",
     "modelLabel": "Modèle",
     "modelHint": "Visible uniquement pour l'admin · sert au testing cross-modèles.",
     "voiceLabel": "Voix",
@@ -864,17 +798,17 @@
     "wowStatRdv": "RDV pris",
     "wowStatMinutesMonth": "Minutes ce mois",
     "wowAgentNameLabel": "Nom de l'agent",
-    "wowAgentNameHint": "Le prénom que ta secrétaire prononce dans la phrase d'accueil. Laisse vide pour utiliser celui défini dans les instructions.",
+    "wowAgentNameHint": "Le prénom que votre secrétaire prononce dans la phrase d'accueil. Laissez vide pour utiliser celui défini dans les instructions.",
     "wowAgentNamePlaceholder": "Sarah, Tamara, Marie…",
     "wowOptional": "(facultatif)",
     "wowTileNotifs": "Notifications",
     "wowCloseAria": "Fermer",
-    "wowTileHintIdle": "Clique sur une tuile pour ouvrir sa configuration.",
-    "wowTileHintActive": "Clique sur une autre tuile pour basculer, ou sur la croix pour fermer.",
+    "wowTileHintIdle": "Cliquez sur une tuile pour ouvrir sa configuration.",
+    "wowTileHintActive": "Cliquez sur une autre tuile pour basculer, ou sur la croix pour fermer.",
     "wowTileReorderHint": "Glisse-dépose les tuiles pour réorganiser l'ordre.",
     "wowTagVoice": "Le timbre, le rythme, l'âme.",
     "wowTagPersona": "Qui elle est, comment elle parle.",
-    "wowTagNotifs": "Reste connectée à tes appels.",
+    "wowTagNotifs": "Restez connecté(e) à vos appels.",
     "wowPersonaSummaryInherit": "Hérite admin",
     "wowPersonaSummaryCustom": "Personnalisé",
     "wowNotifsSummaryActive": "WhatsApp actif",
@@ -883,7 +817,7 @@
     "wowAddTileTitle": "Tuiles supplémentaires à venir",
     "wowPersonalityTitle": "Personnalité de la voix",
     "wowNoiseTitle": "Réduction de bruit",
-    "wowNoiseSubtitle": "Isolation du locuteur principal en temps réel via ai-coustics Quail Voice Focus 2.1 L. Filtre les conversations parasites, bruit moteur, plateau ouvert. Augmente l'intensité si tes clients appellent depuis des environnements bruyants.",
+    "wowNoiseSubtitle": "Isolation du locuteur principal en temps réel via ai-coustics Quail Voice Focus 2.1 L. Filtre les conversations parasites, bruit moteur, plateau ouvert. Augmentez l'intensité si vos clients appellent depuis des environnements bruyants.",
     "wowNoiseMin": "Léger",
     "wowNoiseMax": "Agressif",
     "wowReset": "Réinitialiser",
@@ -934,7 +868,7 @@
     "wowModeTitle": "Mode de configuration",
     "wowModeTitleWithPlan": "Mode de configuration ({plan})",
     "wowModeCustom": "Personnalisé",
-    "wowModeCustomDesc": "Utilise uniquement ta persona ci-dessous.",
+    "wowModeCustomDesc": "Utilise uniquement votre persona ci-dessous.",
     "wowViewInherited": "Voir les directives admin héritées",
     "wowTestButton": "Tester",
     "wowTestSending": "Envoi…",
@@ -973,7 +907,7 @@
     "businessIdentityNameLabel": "Nom du business",
     "businessIdentityNamePlaceholder": "Tamara Coiffure",
     "businessIdentityTaglineLabel": "Slogan / accroche",
-    "businessIdentityTaglinePlaceholder": "Un salon, trois centres, une équipe à ton écoute.",
+    "businessIdentityTaglinePlaceholder": "Un salon, trois centres, une équipe à votre écoute.",
     "businessIdentityEmailLabel": "Email de contact",
     "businessIdentityEmailPlaceholder": "contact@tamara.co.il",
     "businessIdentityEmailInvalid": "Format d'email invalide",
@@ -984,7 +918,7 @@
     "businessCentresEmptyLabel": "Aucun centre défini",
     "businessCentresCountActive": "{count, plural, one {# centre actif} other {# centres actifs}}",
     "businessCentresAdd": "Ajouter un centre",
-    "businessCentresEmptyBody": "Ajoute ton premier centre pour que Tamara puisse aiguiller les clients vers le bon endroit.",
+    "businessCentresEmptyBody": "Ajoutez votre premier centre pour que Tamara puisse aiguiller les clients vers le bon endroit.",
     "businessCentresEmptyCta": "Créer un centre",
     "businessCentreCardNoName": "Sans nom",
     "businessCentreCardNoAddress": "Aucune adresse renseignée",
@@ -1023,10 +957,10 @@
     "businessServicesFilterAria": "Filtrer par centre",
     "businessServicesFilterAll": "Tous les centres",
     "businessServicesCentreNoName": "Centre sans nom",
-    "businessServicesEmptyBody": "Ajoute tes prestations pour que Tamara puisse les proposer aux clients et donner les tarifs.",
+    "businessServicesEmptyBody": "Ajoutez vos prestations pour que Tamara puisse les proposer aux clients et donner les tarifs.",
     "businessServicesEmptyCta": "Créer un soin",
     "businessServicesNoMatchTitle": "Aucun soin correspondant",
-    "businessServicesNoMatchHint": "Essaie un autre nom ou change le filtre centre.",
+    "businessServicesNoMatchHint": "Essayez un autre nom ou changez le filtre centre.",
     "businessServicesColName": "Soin",
     "businessServicesColDuration": "Durée",
     "businessServicesColPrice": "Prix",
@@ -1053,7 +987,7 @@
     "businessModalCentresLabel": "Disponible dans",
     "businessModalCentresAll": "Tous les centres",
     "businessModalCentresSentinel": "Sentinel «all»",
-    "businessModalCentresNoneHint": "Ajoute d'abord des centres pour pouvoir restreindre la dispo.",
+    "businessModalCentresNoneHint": "Ajoutez d'abord des centres pour pouvoir restreindre la dispo.",
     "businessModalDelete": "Supprimer",
     "businessModalCancel": "Annuler",
     "businessModalSave": "Sauvegarder",
@@ -1074,7 +1008,7 @@
     "businessRulesInsertExample": "📋 Insérer un exemple",
     "businessRulesPlaceholder": "Ex: Natanya uniquement le mercredi. Ashdod uniquement le lundi. Autres jours = Jérusalem. Avant chaque check_availability, vérifier que le jour matche le centre.",
     "businessRulesActiveNote": "✓ Sera injecté dans le system prompt à chaque session.",
-    "businessRulesEmptyNote": "Laisse vide pour ne pas injecter cette section.",
+    "businessRulesEmptyNote": "Laissez vide pour ne pas injecter cette section.",
     "businessDaySunShort": "Dim",
     "businessDayMonShort": "Lun",
     "businessDayTueShort": "Mar",
@@ -1231,12 +1165,12 @@
     "channelsFromNumberNote": "Le numéro appelant exact se choisit dans chaque campagne.",
     "agentTagVoice": "Voix, accent & personnalité",
     "agentTagPersona": "Nom, langue & directives",
-    "agentTagBusiness": "Ce qu'il vend (appris depuis ton site)",
+    "agentTagBusiness": "Ce qu'il vend (appris depuis votre site)",
     "agentTagNotifs": "Destinataires des récaps d'appel",
     "agentTagChannels": "Où cet agent opère",
     "agentNotifOn": "Actif",
-    "channelsNumbersLabel": "Tes numéros",
-    "agentTestSaveFirst": "Enregistre l'agent pour le tester en direct.",
+    "channelsNumbersLabel": "Vos numéros",
+    "agentTestSaveFirst": "Enregistrez l'agent pour le tester en direct.",
     "listEmptyTitle": "Aucune campagne pour le moment",
     "listEmptyBody": "Créez votre première campagne sortante pour commencer à contacter des leads avec des agents IA.",
     "loadError": "Impossible de charger les campagnes.",
@@ -1284,8 +1218,8 @@
     "agentNameHint": "Le nom que l'agent dit au téléphone — et son étiquette dans la liste.",
     "agentNamePlaceholder": "Sarah",
     "greetingLabel": "Phrase d'accueil (optionnel)",
-    "greetingHint": "Laisse vide → l'agent ouvre naturellement à partir de l'objectif et de la connaissance. Remplis pour imposer une phrase d'accueil exacte.",
-    "greetingPlaceholder": "Bonjour, ici {{name}}… — laisse vide pour laisser l'agent improviser l'accueil",
+    "greetingHint": "Laissez vide → l'agent ouvre naturellement à partir de l'objectif et de la connaissance. Remplissez pour imposer une phrase d'accueil exacte.",
+    "greetingPlaceholder": "Bonjour, ici {{name}}… — laissez vide pour laisser l'agent improviser l'accueil",
     "successCriteriaLabel": "Critères de succès",
     "successCriteriaPlaceholder": "Un appel est comptabilisé comme un succès quand…",
     "concurrencyLabel": "Appels simultanés",
@@ -1360,7 +1294,7 @@
     "sheetsLoad": "Charger le sheet",
     "sheetsNotConnected": "Connectez Google dans les Paramètres pour importer depuis Sheets.",
     "launchTitle": "Prêt à lancer",
-    "launchNoContentWarning": "Cette campagne n'a ni objectif ni connaissance métier — l'agent ne saura pas quoi vendre et risque d'improviser. Ajoute un objectif ou scanne un site dans la configuration avant de lancer.",
+    "launchNoContentWarning": "Cette campagne n'a ni objectif ni connaissance métier — l'agent ne saura pas quoi vendre et risque d'improviser. Ajoutez un objectif ou scannez un site dans la configuration avant de lancer.",
     "detailQueued": "En file d'attente",
     "detailInFlight": "En cours",
     "detailDone": "Terminé",
@@ -1377,7 +1311,7 @@
     "testCallSent": "Appel lancé — le téléphone va sonner.",
     "testCallError": "Échec de l'appel test.",
     "testCallInvalid": "Numéro invalide (format +972…).",
-    "testCallNoCallerId": "Aucun numéro émetteur disponible (ajoute un numéro à ton compte).",
+    "testCallNoCallerId": "Aucun numéro émetteur disponible (ajoutez un numéro à votre compte).",
     "monitorTitle": "Moniteur en direct",
     "monitorInFlight": "Appels en cours",
     "monitorPickup": "Taux de décrochage",
@@ -1415,7 +1349,7 @@
     "upsellCta": "Passer à {plan}",
     "upsellLater": "Peut-être plus tard",
     "knowledgeTitle": "Connaissance métier (site web)",
-    "knowledgeHint": "Scanne un ou plusieurs sites web — l'agent apprend l'offre, les prix et les arguments pour vendre comme un spécialiste.",
+    "knowledgeHint": "Scannez un ou plusieurs sites web — l'agent apprend l'offre, les prix et les arguments pour vendre comme un spécialiste.",
     "knowledgeUrlsLabel": "Site(s) web de référence",
     "knowledgeUrlsPlaceholder": "https://exemple.com\nUne URL par ligne (jusqu'à 5)",
     "knowledgeScanCta": "Apprendre depuis ces sites",
@@ -1423,7 +1357,7 @@
     "knowledgeLabel": "Fiche de connaissance métier (modifiable)",
     "knowledgePlaceholder": "Ce que vend l'entreprise, prix, arguments de vente…",
     "knowledgeSourcesLabel": "{count, plural, one {# source scannée} other {# sources scannées}}",
-    "knowledgeError": "Impossible de scanner le(s) site(s). Vérifie les URLs et réessaie."
+    "knowledgeError": "Impossible de scanner le(s) site(s). Vérifiez les URLs et réessayez."
   },
   "DashboardCalendar": {
     "header": "Calendrier",
@@ -1432,17 +1366,17 @@
     "eventCountSubtitle": "{count, plural, one {# événement dans les 30 prochains jours, synchronisé avec Google Calendar. Modifiez l'heure, le titre, ou annulez en un clic.} other {# événements dans les 30 prochains jours, synchronisés avec Google Calendar. Modifiez l'heure, le titre, ou annulez en un clic.}}",
     "notConnectedBlock": "Google Calendar n'est pas encore connecté à votre compte. Sans ça, votre agent ne peut pas réserver dans VOTRE calendrier.",
     "connectButton": "Connecter Google",
-    "tokenExpiredBlock": "Ta connexion Google semble expirée — impossible de récupérer tes événements. Reconnecte ton compte pour rétablir l'accès (l'agent ne peut plus réserver de RDV en attendant).",
+    "tokenExpiredBlock": "Votre connexion Google semble expirée — impossible de récupérer vos événements. Reconnectez votre compte pour rétablir l'accès (l'agent ne peut plus réserver de RDV en attendant).",
     "techDetail": "Détail technique :",
     "reconnectButton": "Reconnecter Google",
     "errFallback": "Erreur calendrier",
     "settingsTitle": "Calendrier utilisé par l'agent",
-    "settingsDesc": "Quand l'agent prend un RDV, il l'écrit dans ce calendrier-là. Tu peux en sélectionner un autre — par exemple un calendrier dédié \"Salon\" séparé de ton calendrier perso.",
+    "settingsDesc": "Quand l'agent prend un RDV, il l'écrit dans ce calendrier-là. Vous pouvez en sélectionner un autre — par exemple un calendrier dédié \"Salon\" séparé de votre calendrier perso.",
     "loadingCalendars": "Chargement des calendriers…",
     "primarySuffix": " (principal)",
     "saving": "Enregistrement…",
     "calendarSelected": "✓ Calendrier \"{name}\" sélectionné",
-    "errInvalidGrant": "Ta connexion Google a expiré. Clique sur \"Reconnecter Google\" à droite pour la rétablir — sans ça l'agent ne pourra plus prendre de RDV.",
+    "errInvalidGrant": "Votre connexion Google a expiré. Cliquez sur \"Reconnecter Google\" à droite pour la rétablir — sans ça l'agent ne pourra plus prendre de RDV.",
     "errFetchList": "Impossible de récupérer la liste : {message}",
     "reconnectTooltip": "Re-lancer le flow OAuth Google (utile si le token a expiré)",
     "syncSucceededNoChanges": "Aucun changement ({total} events scannés en {ms}ms)",
@@ -1489,7 +1423,7 @@
   "DashboardSettings": {
     "header": "Paramètres",
     "title": "Mon compte",
-    "subtitle": "Gère ton compte, ta facturation et tes données personnelles.",
+    "subtitle": "Gérez votre compte, votre facturation et vos données personnelles.",
     "profileSection": "Profil",
     "profileEmail": "Email",
     "profileName": "Nom",
@@ -1510,10 +1444,10 @@
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordError": "Erreur. Réessayez.",
     "dangerZone": "Zone dangereuse",
-    "dangerDesc": "Supprimer ton compte est définitif. Tes données (config, appels, contacts, RDV via l'app) seront effacées et tes numéros Twilio libérés. Action irréversible.",
-    "adminCannotDelete": "⚠️ En tant qu'admin, tu ne peux pas te self-supprimer depuis ce menu (risque de lock-out de l'instance). Demande à un autre admin de te supprimer via le panneau /admin.",
+    "dangerDesc": "Supprimer votre compte est définitif. Vos données (config, appels, contacts, RDV via l'app) seront effacées et vos numéros Twilio libérés. Action irréversible.",
+    "adminCannotDelete": "⚠️ En tant qu'admin, vous ne pouvez pas vous self-supprimer depuis ce menu (risque de lock-out de l'instance). Demandez à un autre admin de vous supprimer via le panneau /admin.",
     "deleteButton": "Supprimer mon compte",
-    "confirmRetypeEmailPre": "Pour confirmer, retape ton email",
+    "confirmRetypeEmailPre": "Pour confirmer, retapez votre email",
     "errEmailMismatch": "L'email saisi ne correspond pas.",
     "errNetwork": "Erreur réseau",
     "errStatus": "Erreur {status}",
@@ -1568,7 +1502,7 @@
     "selectButton": "Choisir cette formule",
     "modelLabel": "Modèle",
     "flashChanged": "Plan mis à jour : {plan}.",
-    "flashSame": "Tu es déjà sur ce plan.",
+    "flashSame": "Vous êtes déjà sur ce plan.",
     "flashError": "Plan invalide.",
     "statusActive": "Actif",
     "statusTrialing": "Essai",
@@ -1653,7 +1587,7 @@
       "heading": "Paiement réussi",
       "helloWithName": "Bonjour {name},",
       "helloNoName": "Bonjour,",
-      "intro": "Merci ! Ton paiement a bien été reçu et ton abonnement Tamara est désormais actif.",
+      "intro": "Merci ! Votre paiement a bien été reçu et votre abonnement Tamara est désormais actif.",
       "planLabel": "Formule",
       "periodLabel": "Facturation",
       "periodLabelText": "Facturation :",
@@ -1663,19 +1597,19 @@
       "amountLabelText": "Montant :",
       "includedHeading": "Ce qui est inclus",
       "ctaButton": "Accéder à mon dashboard",
-      "footer": "Cet email est une confirmation de paiement. Tu peux gérer ton abonnement à tout moment depuis ton dashboard.",
+      "footer": "Cet email est une confirmation de paiement. Vous pouvez gérer votre abonnement à tout moment depuis votre dashboard.",
       "signature": "— L'équipe Tamara"
     },
     "notificationTest": {
       "subject": "🔔 Test notification Tamara",
       "eyebrow": "Notification test",
-      "heading": "Tes notifications email sont OK ✓",
-      "defaultGreeting": "à toi",
+      "heading": "Vos notifications email sont OK ✓",
+      "defaultGreeting": "à vous",
       "hello": "Bonjour {name},",
-      "intro": "Ceci est un email de test envoyé depuis ton dashboard Tamara. Si tu lis ce message, ça veut dire que les notifications email sont correctement configurées sur ton compte.",
-      "confirm": "Tu recevras désormais un récap email après chaque appel.",
+      "intro": "Ceci est un email de test envoyé depuis votre dashboard Tamara. Si vous lisez ce message, cela veut dire que les notifications email sont correctement configurées sur votre compte.",
+      "confirm": "Vous recevrez désormais un récap email après chaque appel.",
       "signature": "— L'équipe Tamara",
-      "footer": "Tu peux changer l'adresse ou désactiver les notifications email à tout moment depuis ton dashboard. Cet email est purement transactionnel."
+      "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est purement transactionnel."
     },
     "trialWarning": {
       "subjectMinutes": "⏰ Votre essai Tamara expire dans {minutes} minutes",

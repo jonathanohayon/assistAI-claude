@@ -127,7 +127,7 @@
     "medical": {
       "title": "Medical practices",
       "desc": "Booking, reminders, cancellations, emergency triage. Compliant with medical confidentiality.",
-      "f1": "Doctolib / calendar sync",
+      "f1": "Google Calendar sync",
       "f2": "Automatic SMS reminders",
       "f3": "Emergency filtering"
     },
@@ -163,7 +163,7 @@
     },
     "step4": {
       "title": "Your clients talk to the AI",
-      "desc": "Sub-300ms latency. The conversation is natural, polite, and always in the client's language."
+      "desc": "The conversation is natural, polite, and always in the client's language."
     }
   },
   "Features": {
@@ -175,8 +175,8 @@
         "desc": "Automatic language detection. Switches mid-call seamlessly between French, Hebrew and English."
       },
       "latency": {
-        "title": "Sub-300ms",
-        "desc": "Imperceptible voice latency — the conversation flows like with a human."
+        "title": "Real time",
+        "desc": "A fluid conversation at the pace of a human exchange."
       },
       "calendar": {
         "title": "Live calendar",
@@ -196,7 +196,7 @@
       },
       "voice": {
         "title": "Premium voice",
-        "desc": "Natural OpenAI Realtime voices. Choose between marin, cedar, alloy, and more."
+        "desc": "Natural male and female voices, chosen from your dashboard."
       },
       "config": {
         "title": "Live configuration",
@@ -208,73 +208,15 @@
     "kicker": "Performance",
     "title": "The most advanced voice engine.",
     "titleHighlight": "In the world.",
-    "subtitle": "Hyper-evolved model, sub-300ms latency, and the best noise-reduction algorithm ever deployed in real time.",
-    "pillar1": {
-      "title": "Hyper-evolved model",
-      "subtitle": "Not a wrapper. A proprietary voice stack — 7 chained layers that beat a standard Realtime API on latency, accuracy and fluidity.",
-      "standardName": "Standard Realtime API",
-      "standardLayersBadge": "2 layers",
-      "tamaraLayersBadge": "7 layers",
-      "hyperBadge": "Hyper-evolved",
-      "vs": "vs",
-      "standardFootnote": "No dedicated audio filtering. Generic model not specialized for FR/HE.",
-      "layers": {
-        "audioStd": "Audio I/O",
-        "llmGeneric": "Generic LLM",
-        "audioTamara": "Audio I/O — WebRTC + SIP",
-        "aicoustics": "ai-coustics QVF 2.1 L — primary speaker isolation",
-        "nearField": "Near-field filter (in-house)",
-        "asr": "ASR specialized FR / HE / EN",
-        "llmTamara": "Hyper-evolved LLM · sub-300 ms",
-        "nlu": "Deterministic NLU — business rules",
-        "tts": "Premium native TTS · 12 voices"
-      },
-      "metrics": {
-        "standardLabel": "Standard",
-        "tamaraLabel": "Tamara",
-        "latency": {
-          "label": "Latency A→A"
-        },
-        "accuracy": {
-          "label": "Accuracy FR / HE"
-        },
-        "interruption": {
-          "label": "Interruption"
-        },
-        "languages": {
-          "label": "Native languages"
-        }
-      },
-      "metricsFootnote": "Internal measurements — average over 50,000 production calls Q2 2026."
-    },
-    "pillar2": {
-      "title": "The world-leading noise-reduction algorithm",
-      "subtitle": "ai-coustics Quail Voice Focus 2.1 L + in-house near-field filter. Customers can call from any environment.",
-      "envs": {
-        "cafe": {
-          "title": "Noisy café",
-          "desc": "Voice isolated at 99.2%"
-        },
-        "car": {
-          "title": "Moving car",
-          "desc": "Engine noise removed"
-        },
-        "openSpace": {
-          "title": "Open-plan office",
-          "desc": "Background chatter filtered out"
-        }
-      }
-    },
+    "subtitle": "Real-time voice AI, noise reduction on every call, and three native languages.",
     "pillar3": {
-      "title": "Unmatched multilingual accuracy",
-      "subtitle": "Native recognition and synthesis in FR, HE, EN — and 9 other languages. First solution to hit 98%+ on spoken Hebrew.",
-      "unprecedentedBadge": "Unprecedented",
+      "title": "Three native languages",
+      "subtitle": "Native recognition and synthesis in French, Hebrew and English, with automatic switching mid-call.",
       "langs": {
         "fr": "French",
         "he": "עברית (Hebrew)",
         "en": "English"
-      },
-      "footnote": "Measured on 50,000 real calls — internal benchmark Q2 2026."
+      }
     }
   },
   "TwoMinutes": {
@@ -314,7 +256,7 @@
     "subtitle": "Voice, personality, primary language, tone — everything is tunable from your dashboard. Live, no dev intervention required.",
     "features": {
       "voices": {
-        "title": "12 premium voices",
+        "title": "Premium voices",
         "desc": "Male / female, varied accents (FR, HE, EN…)"
       },
       "sliders": {
@@ -358,9 +300,9 @@
     },
     "card": {
       "popular": "Recommended",
-      "perMonth": "ex. VAT / month",
+      "perMonth": "incl. VAT / month",
       "monthlyHint": "Monthly billing, no commitment.",
-      "annualHint": "{total} ex. VAT / year",
+      "annualHint": "{total} incl. VAT / year",
       "overage": "then {price} / extra minute",
       "custom": "Custom",
       "customHint": "Pricing tailored to your needs.",
@@ -369,7 +311,7 @@
       "ctaAria": "Choose the {name} plan",
       "model": "Model"
     },
-    "footer": "Prices in euros, ex. VAT. VAT applies depending on your country. High volume or custom needs? Let's talk."
+    "footer": "Prices include VAT. High volume or custom needs? Let's talk."
   },
   "PricingComparison": {
     "title": "Compare in detail",
@@ -427,29 +369,21 @@
     "tipBusinessCta": "Business"
   },
   "SocialProof": {
-    "kicker": "They trust us",
-    "title": "Professionals who never miss a call again.",
-    "q1": {
-      "text": "Before Tamara, we lost 20% of calls in peak hours. Today: zero. And our calendar is full.",
-      "author": "Eden Salon · Tel Aviv",
-      "role": "Beauty center"
+    "facts": {
+      "languages": {
+        "value": "FR · HE · EN",
+        "label": "Native languages"
+      },
+      "availability": {
+        "value": "24/7",
+        "label": "Availability"
+      },
+      "recap": {
+        "value": "WhatsApp",
+        "label": "Recap after every call"
+      }
     },
-    "q2": {
-      "text": "The AI takes appointments, handles cancellations, and speaks Hebrew, French and English. Exactly what we were looking for.",
-      "author": "Dr. Cohen",
-      "role": "Medical practice"
-    },
-    "q3": {
-      "text": "Tweaking the voice tone from a simple dashboard — game changer for our brand.",
-      "author": "Studio Eleven",
-      "role": "Barber · Jerusalem"
-    },
-    "stats": {
-      "salons": "Salons use Tamara",
-      "calls": "Calls handled",
-      "minutes": "Minutes saved per day",
-      "trustLabel": "They integrate with Tamara"
-    }
+    "trustLabel": "They integrate with Tamara"
   },
   "CTA": {
     "kicker": "Ready to try?",
@@ -465,11 +399,11 @@
     "subtitle": "Clear answers to the questions we hear most often — from pricing to security, and everything in between.",
     "q1": {
       "question": "How much does Tamara cost?",
-      "answer": "Tamara starts at €49 (ex. VAT) / month on the Answering Service plan, with 500 minutes included. The Receptionist and Call Center plans unlock booking, multi-location and advanced routing. All plans have no commitment and can be cancelled anytime from the dashboard. See the full pricing grid above."
+      "answer": "Tamara starts with the Answering Service plan; current pricing is in the grid above. The Receptionist and Call Center plans unlock booking, multi-location and advanced routing. All plans have no commitment and can be cancelled anytime from the dashboard."
     },
     "q2": {
       "question": "How does the AI talk to my clients?",
-      "answer": "Tamara uses OpenAI Realtime voices — the same technology powering top-tier voice assistants. Latency stays under 300ms, the voice is natural, calm, with no choppiness or robotic feel. Clients feel like they're talking to a real receptionist."
+      "answer": "Tamara speaks with a natural, calm voice in real time, with no choppiness or robotic feel. Clients feel like they're talking to a real receptionist."
     },
     "q3": {
       "question": "Does it understand Hebrew?",
