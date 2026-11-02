@@ -236,7 +236,7 @@ function PhoneMockup() {
 
       {/* Appelante */}
       <div className="mt-6 flex items-center gap-4">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#fb7185] to-[#db2777] font-display text-lg font-semibold text-white">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#e11d48] to-[#db2777] font-display text-lg font-semibold text-white">
           SC
         </div>
         <div>

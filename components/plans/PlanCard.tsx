@@ -264,7 +264,7 @@ function PhoneIcon() {
 /** Headset icon with rotating conic gradient ring (premium receptionist). */
 function HeadsetIcon() {
   return (
-    <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#be185d] via-[#ec4899] to-[#f472b6] text-white shadow-lg shadow-[#be185d]/40">
+    <div className="relative inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#be185d] via-[#c81e63] to-[#db2777] text-white shadow-lg shadow-[#be185d]/40">
       {/* Rotating gradient ring */}
       <motion.span
         aria-hidden
@@ -351,7 +351,7 @@ const TIER_THEME: Record<Plan["key"], TierTheme> = {
     accent: "#0E7490",
     accentSoft: "#22D3EE",
     gradient: "from-[#22d3ee] to-[#0e7490]",
-    ctaGradient: "from-[#0e7490] via-[#22d3ee] to-[#67e8f9]",
+    ctaGradient: "from-[#155e75] via-[#0e7490] to-[#0e7490]",
     haloFrom: "rgba(34,211,238,0.18)",
     haloVia: "rgba(103,232,249,0.08)",
     haloTo: "rgba(255,255,255,0)",
@@ -364,7 +364,7 @@ const TIER_THEME: Record<Plan["key"], TierTheme> = {
     accent: "#BE185D",
     accentSoft: "#EC4899",
     gradient: "from-[#be185d] via-[#ec4899] to-[#f472b6]",
-    ctaGradient: "from-[#be185d] via-[#ec4899] to-[#f472b6]",
+    ctaGradient: "from-[#be185d] via-[#c81e63] to-[#db2777]",
     haloFrom: "rgba(236,72,153,0.20)",
     haloVia: "rgba(251,113,133,0.14)",
     haloTo: "rgba(34,211,238,0.10)",
@@ -377,7 +377,7 @@ const TIER_THEME: Record<Plan["key"], TierTheme> = {
     accent: "#BE185D",
     accentSoft: "#FB7185",
     gradient: "from-[#be185d] via-[#fb7185] to-[#f59e0b]",
-    ctaGradient: "from-[#be185d] via-[#fb7185] to-[#f59e0b]",
+    ctaGradient: "from-[#be185d] via-[#e11d48] to-[#c2410c]",
     haloFrom: "rgba(251,113,133,0.20)",
     haloVia: "rgba(245,158,11,0.12)",
     haloTo: "rgba(190,24,93,0.10)",
@@ -517,12 +517,12 @@ export function PlanCard({
               {localized.name}
             </h3>
             {isCurrent && currentBadgeLabel ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[#f472b6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[#db2777] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
                 {currentBadgeLabel}
               </span>
             ) : plan.popular ? (
               <motion.span
-                className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm"
+                className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#db2777] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm"
                 animate={{
                   boxShadow: [
                     "0 4px 12px -4px rgba(236,72,153,0.45)",

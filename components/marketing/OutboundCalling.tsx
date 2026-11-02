@@ -198,7 +198,7 @@ export function OutboundCalling() {
             {/* Header de la carte */}
             <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-5 py-4 sm:px-6">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#be185d] to-[#f472b6] text-white shadow-sm">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] text-white shadow-sm">
                   <svg
                     viewBox="0 0 24 24"
                     className="h-[18px] w-[18px]"
@@ -262,7 +262,7 @@ export function OutboundCalling() {
                       <span
                         className={`relative flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm ${
                           st === "calling"
-                            ? "bg-gradient-to-br from-[#be185d] to-[#ec4899]"
+                            ? "bg-gradient-to-br from-[#be185d] to-[#db2777]"
                             : st === "queued"
                               ? "bg-white/15 text-white/70"
                               : "bg-gradient-to-br from-[#0e7490] to-[#22d3ee]"

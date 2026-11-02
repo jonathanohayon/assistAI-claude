@@ -118,7 +118,7 @@ export function Nav() {
           </Link>
           <Link
             href="/signup"
-            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] lg:inline-flex"
+            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#db2777] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] lg:inline-flex"
             style={{
               boxShadow:
                 "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
@@ -217,7 +217,7 @@ export function Nav() {
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-4 py-3 text-base font-bold text-white"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#db2777] px-4 py-3 text-base font-bold text-white"
                   style={{
                     boxShadow:
                       "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
