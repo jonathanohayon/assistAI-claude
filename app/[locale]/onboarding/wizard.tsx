@@ -299,7 +299,7 @@ export function OnboardingWizard({
   if (stage === "done" && provisioned) {
     return (
       <div className="flex flex-col items-center gap-6 text-center">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-white shadow-lg">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] text-white shadow-lg">
           <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8">
             <path
               d="m5 13 4 4L19 7"
@@ -326,7 +326,7 @@ export function OnboardingWizard({
         <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <a
             href={`tel:${provisioned.phoneNumber}`}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
               <path
@@ -553,7 +553,7 @@ export function OnboardingWizard({
           <button
             onClick={purchase}
             disabled={!selected || isPending}
-            className="w-full rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+            className="w-full rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-4 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
           >
             {numberState === "purchasing" ? t("purchasing") : t("confirmButton")}
           </button>
@@ -628,7 +628,7 @@ export function OnboardingWizard({
                 <span
                   className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
                     active
-                      ? "bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-white"
+                      ? "bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] text-white"
                       : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
                   }`}
                   aria-hidden
@@ -668,7 +668,7 @@ export function OnboardingWizard({
                 aria-pressed={active}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 ${
                   active
-                    ? "bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-white shadow-sm"
+                    ? "bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] text-white shadow-sm"
                     : "border border-[var(--color-border)] bg-white text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
                 }`}
               >
@@ -689,7 +689,7 @@ export function OnboardingWizard({
         type="button"
         onClick={submitActivity}
         disabled={isPending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-5 py-2.5 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.01] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
       >
         {t("continueButton")}
         <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:rotate-180">
