@@ -77,7 +77,12 @@ export async function GET(req: NextRequest) {
   // suppression complète (compte + numéro Twilio) à 24h reste gérée par le
   // cron trial-cleanup ; ce gate coupe en amont quand les 60 min sont
   // atteintes avant la fin des 24h.
-  if (tenant.user.subscriptionStatus === "trialing") {
+  // Admins are exempt: the prod admin is `trialing` with no end date, and the
+  // 60-min cap would cut their own number once call durations are recorded.
+  if (
+    tenant.user.subscriptionStatus === "trialing" &&
+    tenant.user.role !== "admin"
+  ) {
     const [usage] = await db
       .select({
         seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
@@ -90,6 +95,7 @@ export async function GET(req: NextRequest) {
         subscriptionStatus: tenant.user.subscriptionStatus,
         trialEndsAt: tenant.user.trialEndsAt,
         trialSecondsUsed,
+        role: tenant.user.role,
       })
     ) {
       await logEvent({
