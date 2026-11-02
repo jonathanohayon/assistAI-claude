@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { transportFor } from "@/lib/realtime";
@@ -37,6 +37,7 @@ export default function VoiceAgent() {
   // Langue choisie sur la page d'accueil (sélecteur de langue) → l'agent démo
   // parle dans CETTE langue, quelle que soit la langue du compte démo.
   const locale = useLocale();
+  const t = useTranslations("VoiceDemo");
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError]   = useState<string | null>(null);
@@ -204,7 +205,7 @@ export default function VoiceAgent() {
           return;
         }
         console.error("[realtime] error event", event);
-        setError(`Realtime: ${JSON.stringify(errObj)}`);
+        setError(t("errorGeneric"));
         setAwaitingResponse(false);
         return;
       }
@@ -257,7 +258,7 @@ export default function VoiceAgent() {
         setAwaitingResponse(true);
       }
     },
-    [executeTool]
+    [executeTool, t]
   );
 
   // ── Start session ─────────────────────────────────────────────────────────
@@ -269,9 +270,8 @@ export default function VoiceAgent() {
 
     if (transport !== "webrtc") {
       setStatus("error");
-      setError(
-        `Le modèle ${model} requiert un transport ${transport.toUpperCase()} non encore implémenté côté client.`,
-      );
+      console.error(`[realtime] transport ${transport} not implemented for ${model}`);
+      setError(t("errorStart"));
       return;
     }
 
@@ -427,14 +427,15 @@ export default function VoiceAgent() {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
           setStatus("error");
-          setError("Connexion perdue");
+          setError(t("errorConnectionLost"));
         }
       };
     } catch (e) {
       setStatus("error");
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      console.error("[realtime] start failed", e);
+      setError(t("errorStart"));
     }
-  }, [handleDataChannelMessage, model, voice, transport, locale]);
+  }, [handleDataChannelMessage, model, voice, transport, locale, t]);
 
   // ── Stop session ──────────────────────────────────────────────────────────
 
@@ -486,10 +487,10 @@ export default function VoiceAgent() {
   // ── UI ────────────────────────────────────────────────────────────────────
 
   const statusLabel: Record<Status, string> = {
-    idle: "Prêt",
-    connecting: "Connexion…",
-    connected: "En ligne — parlez",
-    error: "Erreur",
+    idle: t("statusIdle"),
+    connecting: t("statusConnecting"),
+    connected: t("statusConnected"),
+    error: t("statusError"),
   };
 
   const statusDotClass: Record<Status, string> = {
@@ -565,10 +566,10 @@ export default function VoiceAgent() {
           <span className="h-6 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#22d3ee] to-[#0e7490]" />
           <div className="min-w-0">
             <h2 className="text-lg font-bold tracking-tight text-[#18181b] sm:text-xl">
-              Tester en direct
+              {t("title")}
             </h2>
             <p className="mt-0.5 text-xs text-[#64748b]">
-              Parlez à Tamara — démo gratuite 80s.
+              {t("subtitle", { seconds: DEMO_SESSION_SECONDS })}
             </p>
           </div>
         </div>
@@ -598,7 +599,7 @@ export default function VoiceAgent() {
           className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"
           role="alert"
         >
-          Transport {transport.toUpperCase()} non implémenté côté client. La connexion échouera.
+          {t("errorStart")}
         </p>
       )}
 
@@ -615,7 +616,7 @@ export default function VoiceAgent() {
               type="button"
               onClick={status === "idle" || status === "error" ? startSession : stopSession}
               disabled={status === "connecting"}
-              aria-label={isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
+              aria-label={isLive ? t("stopCall") : t("startCall")}
               className={`group relative inline-flex h-28 w-28 items-center justify-center rounded-full text-white shadow-[0_12px_40px_-8px_rgba(14,116,144,0.6)] transition-transform duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#22d3ee]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 ${
                 status === "connecting"
                   ? "bg-gradient-to-br from-[#f59e0b] to-[#b45309]"
@@ -625,7 +626,7 @@ export default function VoiceAgent() {
               }`}
             >
               <span className="sr-only">
-                {isLive ? "Arrêter l'appel" : "Démarrer l'appel"}
+                {isLive ? t("stopCall") : t("startCall")}
               </span>
               {/* Halo cyan/rouge selon état — toujours présent */}
               <span
@@ -678,8 +679,8 @@ export default function VoiceAgent() {
 
           <p className="max-w-[180px] text-center text-xs font-medium leading-relaxed text-[#475569]">
             {isLive
-              ? "Parlez, ou cliquez pour arrêter"
-              : "Clique et parle pour tester Tamara"}
+              ? t("hintLive")
+              : t("hintIdle")}
           </p>
 
           {/* Badge bas — switche entre "40s gratuit" et le timer live */}
@@ -708,7 +709,7 @@ export default function VoiceAgent() {
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              Session de 80s · gratuit
+              {t("freeSession", { seconds: DEMO_SESSION_SECONDS })}
             </span>
           )}
 
@@ -723,7 +724,7 @@ export default function VoiceAgent() {
                   : "bg-white/80 text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-white"
               }`}
             >
-              {isMuted ? "Micro coupé" : "Couper le micro"}
+              {isMuted ? t("micMuted") : t("muteMic")}
             </button>
           )}
         </div>
@@ -731,13 +732,13 @@ export default function VoiceAgent() {
         {/* ─── COLONNE TRANSCRIPT ────────────────────────────────────── */}
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Aperçu de conversation
+            {t("transcriptHeading")}
           </p>
           <div
             ref={transcriptRef}
             role="log"
             aria-live="polite"
-            aria-label="Transcript"
+            aria-label={t("transcriptAria")}
             className="scroll-visible flex max-h-64 min-h-[160px] flex-col gap-2.5 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-3.5 backdrop-blur"
           >
             {error && (
@@ -754,19 +755,22 @@ export default function VoiceAgent() {
                 role="status"
                 className="rounded-lg border border-[#f59e0b]/40 bg-[#fef3c7] px-3 py-2 text-[11px] leading-snug text-[#92400e]"
               >
-                Session de démo terminée ({DEMO_SESSION_SECONDS}s).{" "}
-                <Link href="/signup" className="font-semibold underline hover:no-underline">
-                  Crée un compte
-                </Link>{" "}
-                pour passer/recevoir des appels sans limite.
+                {t.rich("ended", {
+                  seconds: DEMO_SESSION_SECONDS,
+                  signup: (chunks) => (
+                    <Link href="/signup" className="font-semibold underline hover:no-underline">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </p>
             )}
 
             {transcript.length === 0 && !error && !demoEnded ? (
               <p className="m-auto text-center text-xs leading-snug text-[#94a3b8]">
                 {isLive
-                  ? "En écoute… Parlez à Tamara."
-                  : "Cliquez sur le mic pour démarrer un appel de démo."}
+                  ? t("emptyLive")
+                  : t("emptyIdle")}
               </p>
             ) : (
               transcript.map((entry, i) => (
@@ -775,6 +779,7 @@ export default function VoiceAgent() {
                   who={entry.role}
                   text={entry.text}
                   time={nowHHMM()}
+                  youLabel={t("you")}
                 />
               ))
             )}
@@ -823,10 +828,12 @@ function BubbleV2({
   who,
   text,
   time,
+  youLabel,
 }: {
   who: "user" | "assistant";
   text: string;
   time: string;
+  youLabel: string;
 }) {
   const isUser = who === "user";
   return (
@@ -842,14 +849,14 @@ function BubbleV2({
         }`}
         aria-hidden
       >
-        {isUser ? "M" : "T"}
+        {isUser ? youLabel.charAt(0).toUpperCase() : "T"}
       </span>
 
       <div
         className={`flex max-w-[78%] flex-col ${isUser ? "items-end" : "items-start"}`}
       >
         <span className="px-1 text-[9px] font-medium uppercase tracking-wider text-[#94a3b8]">
-          {isUser ? "Vous" : "Tamara"} · {time}
+          {isUser ? youLabel : "Tamara"} · <span dir="ltr">{time}</span>
         </span>
         <div
           className={`mt-0.5 rounded-2xl px-3 py-2 text-xs leading-relaxed shadow-sm ${
@@ -858,7 +865,7 @@ function BubbleV2({
               : "rounded-bl-md bg-gradient-to-br from-[#ecfeff] to-white text-[#18181b] ring-1 ring-inset ring-[#22d3ee]/30"
           }`}
         >
-          <span className="sr-only">{isUser ? "Vous : " : "Tamara : "}</span>
+          <span className="sr-only">{isUser ? youLabel : "Tamara"}: </span>
           {text}
         </div>
       </div>
