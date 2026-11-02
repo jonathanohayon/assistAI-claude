@@ -23,6 +23,7 @@ import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
 import { TrialExpiredGate } from "./billing/trial-expired-gate";
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
+import { FullMessagesProvider } from "@/components/i18n/FullMessagesProvider";
 
 /**
  * "Sarah Cohen" → "SC" · "salon@prestige.com" → "S" · "" → "?"
@@ -94,7 +95,22 @@ function computeTrialCountdown(
   return { expired: false, timeLabel, callMinutesLeft, urgency };
 }
 
-export default async function DashboardLayout({
+type DashboardLayoutProps = {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+};
+
+// Dashboard client components read namespaces that public pages don't ship
+// (see i18n/public-namespaces), so the whole dashboard tree gets them all.
+export default function DashboardLayout(props: DashboardLayoutProps) {
+  return (
+    <FullMessagesProvider>
+      <DashboardShell {...props} />
+    </FullMessagesProvider>
+  );
+}
+
+async function DashboardShell({
   children,
   params,
 }: {
