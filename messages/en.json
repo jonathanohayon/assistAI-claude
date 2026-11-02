@@ -1575,7 +1575,15 @@
     "liveButton": "Live",
     "waitingForEvents": "Waiting for events…",
     "noMatchingEvents": "No events matching these filters.",
-    "fetchError": "fetch error"
+    "fetchError": "fetch error",
+    "groupedButton": "Grouped",
+    "flatButton": "Timeline",
+    "groupedTitle": "Grouped by call — click for the timeline view",
+    "flatTitle": "Timeline view — click to group by call",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "expandAllTitle": "Expand every call",
+    "collapseAllTitle": "Collapse every call"
   },
   "Email": {
     "subscriptionConfirmation": {

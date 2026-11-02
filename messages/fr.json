@@ -1575,7 +1575,15 @@
     "liveButton": "Live",
     "waitingForEvents": "En attente d'événements…",
     "noMatchingEvents": "Aucun événement avec ces filtres.",
-    "fetchError": "fetch error"
+    "fetchError": "fetch error",
+    "groupedButton": "Groupé",
+    "flatButton": "Chronologique",
+    "groupedTitle": "Vue groupée par appel — cliquez pour passer en vue chronologique",
+    "flatTitle": "Vue chronologique — cliquez pour regrouper par appel",
+    "expandAll": "Tout ouvrir",
+    "collapseAll": "Tout fermer",
+    "expandAllTitle": "Déplier tous les appels",
+    "collapseAllTitle": "Replier tous les appels"
   },
   "Email": {
     "verification": {
