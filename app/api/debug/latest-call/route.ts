@@ -1,6 +1,7 @@
 import { and, desc, eq, gte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 
@@ -12,10 +13,10 @@ import { calls, events } from "@/lib/db/schema";
 // Env exposés (booleans only, jamais la valeur) : indique si les SIDs de
 // templates WhatsApp sont configurés pour chaque langue.
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  if (!token || token !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  // Secret in the x-internal-secret header only: a ?token= query string ends
+  // up in HTTP logs and browser history.
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const [latest] = await db
     .select()

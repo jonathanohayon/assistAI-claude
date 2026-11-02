@@ -1,16 +1,17 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 
 // Temp diagnostic: list all tenants, their phone numbers, and a snippet of
 // their agent_config instructions. Gated by INTERNAL_SECRET.
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  if (!token || token !== process.env.INTERNAL_SECRET) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+  // Secret in the x-internal-secret header only: a ?token= query string ends
+  // up in HTTP logs and browser history.
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
 
   const allUsers = await db.select().from(users).orderBy(users.createdAt);
   const result = [];
