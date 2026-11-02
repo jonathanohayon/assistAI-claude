@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { DEMO_SESSION_OPENING, loadDemoAgent } from "@/lib/demo-agent";
+import { loadDemoAgent } from "@/lib/demo-agent";
+import { anonymousDemoInstructions } from "@/lib/demo-instructions";
 import { clamp } from "@/lib/numbers";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import {
@@ -92,9 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   const instructions = anonymous
-    ? demo
-      ? `${demo.instructions}${DEMO_SESSION_OPENING}`
-      : REALTIME_INSTRUCTIONS
+    ? anonymousDemoInstructions(demo?.instructions ?? null, body.primaryLanguage ?? null)
     : typeof body.instructions === "string" &&
         body.instructions.trim().length > 0
       ? body.instructions
@@ -241,6 +240,9 @@ export async function POST(req: NextRequest) {
     model,
     provider,
     webrtc_url: webrtcUrl(provider),
+    // Anonymous sessions carry the full persona + greeting rule server-side:
+    // the browser must greet with a bare response.create (see VoiceAgent).
+    server_instructions: anonymous,
     requested_temperature: requestedTemperature,
     requested_speed: requestedSpeed,
     silence_duration_ms_applied: silenceMs,
