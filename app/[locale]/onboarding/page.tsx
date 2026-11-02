@@ -89,7 +89,7 @@ export default async function OnboardingPage(props: {
               aria-hidden
               className="h-1 w-1 shrink-0 rounded-full bg-[var(--color-border)]"
             />
-            <span className="inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+            <span className="inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-2.5 py-0.5 text-[11px] font-semibold text-white">
               {t("trialLabel")}
             </span>
           </div>
