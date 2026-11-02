@@ -11,8 +11,14 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 
 import { EASE } from "./Reveal";
+
+// 960px H.264 CRF 31 (~485 KB, was 880 KB at 1280px) + its first frame as
+// poster. Re-encode both from the clean asset when it replaces this clip.
+const HERO_VIDEO = "/videos/hero-bg-960.mp4";
+const HERO_POSTER = "/videos/hero-bg-poster.jpg";
 
 /** Sparkles réduits à 3, très subtils (opacité max 0.7, tailles 3–4px).
  *  Positions hardcodées déterministes — pas de SSR mismatch. */
@@ -54,6 +60,26 @@ export function Hero() {
   // fade, la vidéo scale légèrement derrière. Progress 0 = hero plein
   // écran, 1 = hero entièrement sorti par le haut.
   const sectionRef = useRef<HTMLElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // The poster is the first frame (~40 KB): it paints long before the video
+  // can, so mobile LCP no longer waits for the video's first frame.
+  preload(HERO_POSTER, { as: "image", fetchPriority: "high" });
+
+  // Reduced motion: keep the still poster frame instead of a looping video.
+  // Decided on the client (useReducedMotion is null during SSR).
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      const v = videoRef.current;
+      if (!v) return;
+      if (mq.matches) v.pause();
+      else void v.play().catch(() => {});
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -134,7 +160,9 @@ export function Hero() {
         loop
         playsInline
         preload="auto"
-        src="/videos/hero-bg.mp4"
+        ref={videoRef}
+        poster={HERO_POSTER}
+        src={HERO_VIDEO}
         style={
           reduce
             ? { transformOrigin: "top left" }
