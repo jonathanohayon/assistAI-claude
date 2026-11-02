@@ -74,7 +74,10 @@
     },
     "login": "Connexion",
     "ctaTry": "Tester maintenant",
-    "ctaSignup": "S'inscrire"
+    "ctaSignup": "S'inscrire",
+    "menu": "Menu",
+    "menuOpen": "Ouvrir le menu",
+    "menuClose": "Fermer le menu"
   },
   "Hero": {
     "badge": "Conciergerie vocale temps réel · Live",
