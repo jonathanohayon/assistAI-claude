@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveAgentToken } from "@/lib/agent-tokens";
+import { createAgentTurnLimiter } from "@/lib/agent-turn-limit";
 import { resolveTenantByUserId } from "@/lib/tenant";
 
 /**
@@ -94,6 +95,8 @@ export async function GET(
   });
 }
 
+const agentTurns = createAgentTurnLimiter();
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
@@ -102,6 +105,14 @@ export async function POST(
   const userId = await resolveAgentToken(token);
   if (!userId) {
     return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
+  }
+
+  // Keyed by tenant, not by token string: regenerating the URL does not reset it.
+  if (!agentTurns.hit(userId)) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many turns for this agent, retry in a minute." },
+      { status: 429 },
+    );
   }
 
   const tenant = await resolveTenantByUserId(userId);
