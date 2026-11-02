@@ -14,6 +14,7 @@
  * total du rendu. ~250 lignes suffisent pour ce niveau de feature.
  */
 
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Origin = "sip" | "web";
@@ -64,33 +65,14 @@ interface ChartData {
 
 type Period = "1h" | "24h" | "7d" | "30d";
 
-const PERIOD_LABELS: Record<Period, string> = {
-  "1h": "1 heure",
-  "24h": "24 heures",
-  "7d": "7 jours",
-  "30d": "30 jours",
-};
+// Labels resolved at render time via t(`period.${p}`).
+const PERIODS: ReadonlyArray<Period> = ["1h", "24h", "7d", "30d"];
 
 /** Choix de la métrique Y du graph. */
 type YMetric = "ttfa" | "p95" | "greeting";
 
-const Y_METRIC_LABELS: Record<YMetric, { short: string; long: string }> = {
-  ttfa: {
-    short: "TTFA moyen",
-    long:
-      "Time-To-First-Audio — temps moyen entre la fin de phrase user et le 1er son de réponse (= latence perçue par l'utilisateur, moyennée sur tous les tours de l'appel).",
-  },
-  p95: {
-    short: "TTFA p95",
-    long:
-      "Time-To-First-Audio p95 — pire latence parmi les tours de l'appel (95e percentile). Plus représentatif que la moyenne si on veut voir les outliers.",
-  },
-  greeting: {
-    short: "Greeting init",
-    long:
-      "Temps total entre le début de session et le 1er son du greeting de l'agent. Inclut les phases de setup (connect, config, OpenAI WS).",
-  },
-};
+// Labels resolved at render time via t(`metric.${m}.short|long`).
+const Y_METRICS: ReadonlyArray<YMetric> = ["ttfa", "p95", "greeting"];
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -109,19 +91,28 @@ const COLOR_BY_ORIGIN: Record<Origin, { fill: string; stroke: string }> = {
   web: { fill: "#22d3ee", stroke: "#0e7490" },
 };
 
-const HOP_LABELS: Array<{ key: keyof LatencyPoint["latencies"]; label: string }> =
-  [
-    { key: "twilioToWorker", label: "Twilio/Web → Worker" },
-    { key: "workerToLivekit", label: "Worker → LiveKit (connect)" },
-    { key: "workerToWebConfig", label: "Worker → Web (config)" },
-    { key: "workerToOpenai", label: "Worker → OpenAI (WS)" },
-    { key: "greeting", label: "Greeting (E2E init)" },
-    { key: "transcription", label: "Transcription (STT)" },
-    { key: "endOfUtterance", label: "End of utterance (LLM)" },
-    { key: "firstAudio", label: "First audio (TTS)" },
-  ];
+// Labels resolved at render time via t(`hop.${key}`).
+const HOP_KEYS: ReadonlyArray<keyof LatencyPoint["latencies"]> = [
+  "twilioToWorker",
+  "workerToLivekit",
+  "workerToWebConfig",
+  "workerToOpenai",
+  "greeting",
+  "transcription",
+  "endOfUtterance",
+  "firstAudio",
+];
+
+type Translator = ReturnType<typeof useTranslations>;
+
+/** Maps the next-intl locale to a full BCP-47 tag for Intl date formatting. */
+function toIntlLocale(locale: string): string {
+  return locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
+}
 
 export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
+  const t = useTranslations("DashboardLogs.latency");
+  const intlLocale = toIntlLocale(useLocale());
   const [period, setPeriod] = useState<Period>("24h");
   const [yMetric, setYMetric] = useState<YMetric>("ttfa");
   const [data, setData] = useState<ChartData | null>(null);
@@ -187,7 +178,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
         }
       } catch (e) {
         if (!aborted)
-          setError(e instanceof Error ? e.message : "fetch error");
+          setError(e instanceof Error ? e.message : t("fetchError"));
       }
     };
     void fetchData();
@@ -199,7 +190,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
       aborted = true;
       clearInterval(id);
     };
-  }, [period, paused, asUserId]);
+  }, [period, paused, asUserId, t]);
 
   // Compute scales
   const scales = useMemo(() => {
@@ -240,10 +231,10 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
       const t = scales.xMin + ((scales.xMax - scales.xMin) * i) / ticks;
       return {
         x: scales.xTo(t),
-        label: formatTickX(t, period),
+        label: formatTickX(t, period, intlLocale),
       };
     });
-  }, [scales, period]);
+  }, [scales, period, intlLocale]);
 
   const yTicks = useMemo(() => {
     if (!scales) return [] as Array<{ y: number; label: string }>;
@@ -259,26 +250,28 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#be185d]">
-            Monitoring · {Y_METRIC_LABELS[yMetric].short}
+            {t("eyebrow", { metric: t(`metric.${yMetric}.short`) })}
           </p>
           <h3 className="mt-1 font-display text-xl tracking-tight text-[#18181b] sm:text-2xl">
-            Latence par appel (ms)
+            {t("title")}
           </h3>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#475569]">
-            {Y_METRIC_LABELS[yMetric].long}
+            {t(`metric.${yMetric}.long`)}
           </p>
           <p className="mt-1 text-[11px] text-[#94a3b8]">
-            {data && `${plotPoints.length} appel${plotPoints.length > 1 ? "s" : ""} sur la période · `}
-            Live refresh {paused ? "(en pause)" : `toutes les ${POLL_INTERVAL_MS / 1000}s`}
+            {data && `${t("callsInPeriod", { count: plotPoints.length })} · `}
+            {paused
+              ? t("liveRefreshPaused")
+              : t("liveRefreshEvery", { seconds: POLL_INTERVAL_MS / 1000 })}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {/* Sélecteur de métrique Y */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-              Métrique
+              {t("metricLabel")}
             </span>
-            {(Object.keys(Y_METRIC_LABELS) as YMetric[]).map((m) => (
+            {Y_METRICS.map((m) => (
               <button
                 key={m}
                 type="button"
@@ -288,18 +281,18 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                     ? "bg-[#be185d] text-white shadow-sm"
                     : "bg-white text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#fdf2f8]"
                 }`}
-                title={Y_METRIC_LABELS[m].long}
+                title={t(`metric.${m}.long`)}
               >
-                {Y_METRIC_LABELS[m].short}
+                {t(`metric.${m}.short`)}
               </button>
             ))}
           </div>
           {/* Sélecteur de période */}
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-              Période
+              {t("periodLabel")}
             </span>
-            {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            {PERIODS.map((p) => (
               <button
                 key={p}
                 type="button"
@@ -310,14 +303,15 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                     : "bg-white text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#ecfeff]"
                 }`}
               >
-                {PERIOD_LABELS[p]}
+                <bdi>{t(`period.${p}`)}</bdi>
               </button>
             ))}
             <button
               type="button"
               onClick={() => setPaused((v) => !v)}
               className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#475569] ring-1 ring-inset ring-[#e2e8f0] hover:bg-[#fef3c7]"
-              title="Pause / reprendre auto-refresh"
+              title={paused ? t("resumeTitle") : t("pauseTitle")}
+              aria-label={paused ? t("resumeTitle") : t("pauseTitle")}
             >
               {paused ? "▶" : "⏸"}
             </button>
@@ -332,12 +326,12 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
       )}
 
       {!data && !error && (
-        <p className="py-12 text-center text-xs text-[#94a3b8]">Chargement…</p>
+        <p className="py-12 text-center text-xs text-[#94a3b8]">{t("loading")}</p>
       )}
 
       {data && plotPoints.length === 0 && (
         <p className="py-12 text-center text-xs text-[#94a3b8]">
-          Aucun appel sur cette période. Lance un test pour voir les données.
+          {t("empty")}
         </p>
       )}
 
@@ -356,7 +350,8 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
             preserveAspectRatio="xMidYMid meet"
             className="block"
             role="img"
-            aria-label="Graph latence par appel"
+            aria-label={t("chartAria")}
+            direction="ltr"
           >
             {/* Grid Y */}
             {yTicks.map((t, i) => (
@@ -461,7 +456,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
               }}
             >
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-[#475569]">
-                {new Date(hover.point.timestamp).toLocaleString("fr-FR", {
+                {new Date(hover.point.timestamp).toLocaleString(intlLocale, {
                   day: "2-digit",
                   month: "short",
                   hour: "2-digit",
@@ -473,14 +468,14 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                     color: COLOR_BY_ORIGIN[hover.point.origin].stroke,
                   }}
                 >
-                  {hover.point.origin === "sip" ? "SIP (tel)" : "Web LiveTest"}
+                  {hover.point.origin === "sip" ? t("originSip") : t("originWeb")}
                 </span>
               </p>
               <div className="flex items-baseline justify-between border-b border-[#e2e8f0] pb-2">
                 <span className="text-xs font-semibold text-[#18181b]">
-                  {Y_METRIC_LABELS[yMetric].short}
+                  {t(`metric.${yMetric}.short`)}
                 </span>
-                <span className="font-mono text-base font-bold text-[#be185d]">
+                <span dir="ltr" className="font-mono text-base font-bold text-[#be185d]">
                   {(() => {
                     const v = getY(hover.point);
                     return v != null ? `${Math.round(v)} ms` : "—";
@@ -488,15 +483,15 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                 </span>
               </div>
               <ul className="mt-2 space-y-1 text-[11px]">
-                {HOP_LABELS.map(({ key, label }) => {
+                {HOP_KEYS.map((key) => {
                   const v = hover.point.latencies[key];
                   return (
                     <li
                       key={key}
                       className="flex items-baseline justify-between gap-3"
                     >
-                      <span className="text-[#475569]">{label}</span>
-                      <span className="font-mono tabular-nums text-[#18181b]">
+                      <span className="text-[#475569]">{t(`hop.${key}`)}</span>
+                      <span dir="ltr" className="font-mono tabular-nums text-[#18181b]">
                         {v != null ? `${Math.round(v)} ms` : "—"}
                       </span>
                     </li>
@@ -515,7 +510,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3">
                   <path d="M3 12h18M14 5l7 7-7 7" />
                 </svg>
-                Détails de l’appel
+                {t("callDetails")}
               </button>
             </div>
           )}
@@ -539,14 +534,14 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: COLOR_BY_ORIGIN.sip.fill }}
           />
-          SIP (téléphone Twilio)
+          {t("legendSip")}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: COLOR_BY_ORIGIN.web.fill }}
           />
-          Web LiveTest
+          {t("originWeb")}
         </span>
       </div>
     </section>
@@ -565,51 +560,31 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
 // car elles n'ont pas de dimension "par tour" — c'est de la latence
 // d'initialisation, pas de runtime.
 
+// Label and hint resolved at render time via t(`series.${key}.label|hint`).
 interface SeriesDef {
   key: keyof NonNullable<LatencyPoint["perTurn"]>;
-  label: string;
   color: string;
-  hint: string;
 }
 
 /** 4 phases RETOUR (runtime, mesuré à chaque tour). */
 const PERTURN_SERIES: ReadonlyArray<SeriesDef> = [
-  {
-    key: "transcription",
-    label: "STT → Worker (transcription)",
-    color: "#22d3ee",
-    hint: "Temps user-finit-de-parler → STT done. Retour OpenAI→Worker.",
-  },
-  {
-    key: "eou",
-    label: "LLM → Worker (end of utterance)",
-    color: "#f472b6",
-    hint: "Temps user-finit → LLM commence à répondre. Retour OpenAI→Worker.",
-  },
-  {
-    key: "firstAudio",
-    label: "Audio → Worker (1er chunk)",
-    color: "#f59e0b",
-    hint: "Temps LLM-start → 1er son audible. Retour OpenAI→Worker.",
-  },
-  {
-    key: "ttft",
-    label: "Worker → User (TTFA total)",
-    color: "#7c3aed",
-    hint: "Retour final user-perçu : user finit → agent émet 1er son.",
-  },
+  { key: "transcription", color: "#22d3ee" },
+  { key: "eou", color: "#f472b6" },
+  { key: "firstAudio", color: "#f59e0b" },
+  { key: "ttft", color: "#7c3aed" },
 ];
 
 /** 4 phases ALLER (setup, mesuré une fois au session.start). */
+// Label resolved at render time via t(`setup.${key}`) (full) and
+// t(`setupShort.${key}`) (inline label next to the dashed line).
 const SETUP_SERIES: ReadonlyArray<{
   key: keyof LatencyPoint["latencies"];
-  label: string;
   color: string;
 }> = [
-  { key: "twilioToWorker", label: "Twilio/Web → Worker", color: "#06b6d4" },
-  { key: "workerToLivekit", label: "Worker → LiveKit", color: "#0e7490" },
-  { key: "workerToWebConfig", label: "Worker → Web (config)", color: "#ec4899" },
-  { key: "workerToOpenai", label: "Worker → OpenAI", color: "#be185d" },
+  { key: "twilioToWorker", color: "#06b6d4" },
+  { key: "workerToLivekit", color: "#0e7490" },
+  { key: "workerToWebConfig", color: "#ec4899" },
+  { key: "workerToOpenai", color: "#be185d" },
 ];
 
 function CallDetailPanel({
@@ -619,6 +594,8 @@ function CallDetailPanel({
   point: LatencyPoint | null;
   onClose: () => void;
 }) {
+  const t = useTranslations("DashboardLogs.latency");
+  const intlLocale = toIntlLocale(useLocale());
   // État du hover sur un point de la time-series (pour tooltip)
   const [seriesHover, setSeriesHover] = useState<{
     series: SeriesDef;
@@ -642,7 +619,7 @@ function CallDetailPanel({
   if (!point) {
     return (
       <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#e2e8f0] bg-white/50 p-6 text-xs text-[#94a3b8]">
-        Appel introuvable — fermez ce panel.
+        {t("callNotFound")}
       </div>
     );
   }
@@ -721,8 +698,8 @@ function CallDetailPanel({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Fermer le détail"
-        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-[#475569] transition-colors hover:bg-[#fee2e2] hover:text-[#dc2626]"
+        aria-label={t("closeDetail")}
+        className="absolute end-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-[#475569] transition-colors hover:bg-[#fee2e2] hover:text-[#dc2626]"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-4 w-4">
           <path d="M18 6 6 18M6 6l12 12" />
@@ -730,27 +707,29 @@ function CallDetailPanel({
       </button>
 
       <p className="text-[10px] font-semibold uppercase tracking-widest text-[#475569]">
-        Détail · {point.origin === "sip" ? "SIP (tel)" : "Web LiveTest"}
+        {t("detailEyebrow", {
+          origin: point.origin === "sip" ? t("originSip") : t("originWeb"),
+        })}
       </p>
       <h4 className="mt-1 font-display text-base tracking-tight text-[#18181b]">
-        {new Date(point.timestamp).toLocaleString("fr-FR", {
+        {new Date(point.timestamp).toLocaleString(intlLocale, {
           day: "2-digit",
           month: "short",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
         })}{" "}
-        · {turns > 0 ? `${turns} tour${turns > 1 ? "s" : ""}` : "0 tour"}
+        · {t("turns", { count: turns })}
       </h4>
 
       {/* Multi-line chart par tour */}
       <div className="mt-3">
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-          Round-trip par tour (X = #tour, Y = ms)
+          {t("perTurnHeading")}
         </p>
         {turns === 0 ? (
           <p className="rounded-lg bg-[#f8fafc] py-6 text-center text-xs text-[#94a3b8]">
-            Aucun tour de conversation enregistré pour cet appel.
+            {t("noTurns")}
           </p>
         ) : (
           <div className="relative">
@@ -759,6 +738,7 @@ function CallDetailPanel({
               width="100%"
               preserveAspectRatio="xMidYMid meet"
               className="block"
+              direction="ltr"
             >
               {/* Grid Y */}
               {yTicks.map((t, i) => (
@@ -842,7 +822,7 @@ function CallDetailPanel({
                       fill={s.color}
                       fontFamily="ui-monospace, monospace"
                     >
-                      {s.label.split(" → ")[1] ?? s.label} · {Math.round(s.value)}
+                      {t(`setupShort.${s.key}`)} · {Math.round(s.value)}
                     </text>
                   </g>
                 );
@@ -912,12 +892,12 @@ function CallDetailPanel({
                     style={{ backgroundColor: seriesHover.series.color }}
                   />
                   <span className="font-semibold text-[#18181b]">
-                    {seriesHover.series.label}
+                    {t(`series.${seriesHover.series.key}.label`)}
                   </span>
                 </div>
                 <div className="mt-0.5 text-[#475569]">
-                  Tour #{seriesHover.turnIndex + 1} ·{" "}
-                  <span className="font-mono font-bold text-[#18181b]">
+                  {t("turnNumber", { n: seriesHover.turnIndex + 1 })} ·{" "}
+                  <span dir="ltr" className="font-mono font-bold text-[#18181b]">
                     {Math.round(seriesHover.value)} ms
                   </span>
                 </div>
@@ -932,7 +912,7 @@ function CallDetailPanel({
           {/* Section ALLER (setup) */}
           <div>
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-widest text-[#0e7490]">
-              ↗ Aller (setup, lignes pointillées)
+              {t("setupHeading")}
             </p>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
               {SETUP_SERIES.map((s) => {
@@ -946,10 +926,10 @@ function CallDetailPanel({
                     type="button"
                     onClick={() => toggle(id)}
                     disabled={empty}
-                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-start transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
                       !visible ? "opacity-40" : ""
                     }`}
-                    title={`Click pour ${visible ? "masquer" : "afficher"} · ${s.label}`}
+                    title={toggleTitle(t, visible, t(`setup.${s.key}`))}
                   >
                     <span
                       className="h-0.5 w-4 shrink-0"
@@ -964,7 +944,7 @@ function CallDetailPanel({
                         empty ? "text-[#94a3b8] line-through" : "text-[#475569]"
                       }`}
                     >
-                      {s.label}
+                      {t(`setup.${s.key}`)}
                     </span>
                     {!empty && (
                       <span className="font-mono text-[9px] font-semibold tabular-nums text-[#18181b]">
@@ -979,7 +959,7 @@ function CallDetailPanel({
           {/* Section RETOUR (runtime) */}
           <div>
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-widest text-[#be185d]">
-              ↘ Retour (runtime par tour, lignes pleines)
+              {t("runtimeHeading")}
             </p>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1">
               {PERTURN_SERIES.map((s) => {
@@ -993,10 +973,10 @@ function CallDetailPanel({
                     type="button"
                     onClick={() => toggle(id)}
                     disabled={empty}
-                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-start transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50 ${
                       !visible ? "opacity-40" : ""
                     }`}
-                    title={`Click pour ${visible ? "masquer" : "afficher"} · ${s.hint}`}
+                    title={toggleTitle(t, visible, t(`series.${s.key}.hint`))}
                   >
                     <span
                       className="h-0.5 w-4 shrink-0 rounded-full"
@@ -1007,7 +987,7 @@ function CallDetailPanel({
                         empty ? "text-[#94a3b8] line-through" : "text-[#475569]"
                       }`}
                     >
-                      {s.label}
+                      {t(`series.${s.key}.label`)}
                     </span>
                   </button>
                 );
@@ -1022,7 +1002,7 @@ function CallDetailPanel({
         {point.topology && (
           <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
             <p className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-[#475569]">
-              🌍 Topologie infra
+              {t("topologyHeading")}
             </p>
             <dl className="grid grid-cols-1 gap-1 text-[11px]">
               {(
@@ -1058,16 +1038,21 @@ function CallDetailPanel({
   );
 }
 
+/** Tooltip for a legend toggle: "click to hide/show · <label>". */
+function toggleTitle(t: Translator, visible: boolean, label: string): string {
+  return t(visible ? "toggleHide" : "toggleShow", { label });
+}
+
 /** Format un timestamp pour l'axe X selon la période sélectionnée. */
-function formatTickX(ts: number, period: Period): string {
+function formatTickX(ts: number, period: Period, locale: string): string {
   const d = new Date(ts);
   if (period === "1h" || period === "24h") {
-    return d.toLocaleTimeString("fr-FR", {
+    return d.toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
-  return d.toLocaleDateString("fr-FR", {
+  return d.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
   });

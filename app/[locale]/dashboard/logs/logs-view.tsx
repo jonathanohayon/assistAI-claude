@@ -124,7 +124,8 @@ function groupEventsByCall(events: EventRow[]): CallGroup[] {
           startedAt: e.createdAt,
           endedAt: e.createdAt,
           origin: "unknown",
-          label: "Activité hors-appel",
+          // Translated at render time (see group.kind === "other").
+          label: "",
           events: [e],
           errorCount: e.level === "error" ? 1 : 0,
           warnCount: e.level === "warn" ? 1 : 0,
@@ -333,7 +334,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs text-[var(--color-muted-foreground)]">
             {t("countDisplayed", { count: filtered.length, total: logs.length })}
           </span>
@@ -346,11 +347,11 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
             }`}
             title={
               groupByCall
-                ? t("groupedTitle")
-                : t("flatTitle")
+                ? t("groupedViewTitle")
+                : t("flatViewTitle")
             }
           >
-            {groupByCall ? `☰ ${t("groupedButton")}` : `≡ ${t("flatButton")}`}
+            {groupByCall ? t("groupedViewButton") : t("flatViewButton")}
           </button>
           {groupByCall && (
             <div className="inline-flex overflow-hidden rounded-full ring-1 ring-inset ring-[var(--color-border)]">
@@ -363,7 +364,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                 className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
                 title={t("expandAllTitle")}
               >
-                ⊕ {t("expandAll")}
+                {t("expandAll")}
               </button>
               <span className="self-stretch w-px bg-[var(--color-border)]" />
               <button
@@ -371,7 +372,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                 className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
                 title={t("collapseAllTitle")}
               >
-                ⊖ {t("collapseAll")}
+                {t("collapseAll")}
               </button>
             </div>
           )}
@@ -450,7 +451,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[#18181b]">
-                        {group.label}
+                        {group.kind === "other" ? t("offCallActivity") : group.label}
                       </p>
                       <p className="text-[11px] text-[#475569]">
                         {new Date(group.startedAt).toLocaleTimeString(timeLocale, {
@@ -458,9 +459,9 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                           minute: "2-digit",
                           second: "2-digit",
                         })}{" "}
-                        · {group.events.length} event{group.events.length > 1 ? "s" : ""}
+                        · {t("groupEvents", { count: group.events.length })}
                         {group.kind === "call" && durationS > 0 && (
-                          <> · durée ~{durationS}s</>
+                          <> · <bdi>{t("groupDuration", { seconds: durationS })}</bdi></>
                         )}
                         {group.kind === "call" &&
                           typeof group.totalTokens === "number" && (
@@ -468,7 +469,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                               {" "}
                               ·{" "}
                               <span className="font-medium text-[#0e7490]">
-                                {group.totalTokens.toLocaleString(timeLocale)} tokens
+                                {t("groupTokens", { tokens: group.totalTokens.toLocaleString(timeLocale) })}
                                 {typeof group.costUsd === "number" && (
                                   <> ~${group.costUsd.toFixed(4)}</>
                                 )}
