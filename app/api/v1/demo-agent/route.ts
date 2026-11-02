@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { demoAgentEnabled } from "@/lib/demo-agent-flag";
+
 /**
  * Agent de démo au format webhook Tamara — cible de test publique.
  *
@@ -15,7 +17,11 @@ import { NextRequest, NextResponse } from "next/server";
  * éphémère côté tamaravox tant qu'aucun compte n'est créé. Un vrai agent
  * client doit la vérifier (cf. docs/webhook-contract.md du repo tamaravox).
  *
- * Public et sans auth, par nature — c'est une cible de test. Le budget interne
+ * Public et sans auth, par nature — c'est une cible de test.
+ *
+ * Disabled unless DEMO_AGENT_ENABLED=true (404 otherwise): it calls OpenAI on
+ * our bill with no auth, and tamaravox, its only user, is parked. Re-enable
+ * with a per-IP rate limit and a history cap when tamaravox comes back. Le budget interne
  * est volontairement plus court que les 2 s autorisées pour garder une marge
  * réseau.
  */
@@ -135,7 +141,10 @@ async function llmReply(
   }
 }
 
+const DISABLED = () => NextResponse.json({ error: "not_found" }, { status: 404 });
+
 export async function POST(req: NextRequest) {
+  if (!demoAgentEnabled()) return DISABLED();
   let body: Body;
   try {
     body = await req.json();
@@ -178,6 +187,7 @@ export async function POST(req: NextRequest) {
 
 /** Permet de vérifier d'un coup d'œil que l'URL est vivante. */
 export async function GET() {
+  if (!demoAgentEnabled()) return DISABLED();
   return NextResponse.json({
     ok: true,
     service: "tamara-demo-agent",
