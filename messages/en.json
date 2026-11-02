@@ -985,7 +985,7 @@
     "businessModalDescriptionPlaceholder": "Wash + cut + blow-dry. Ideal for mid-length hair.",
     "businessModalCentresLabel": "Available at",
     "businessModalCentresAll": "All locations",
-    "businessModalCentresSentinel": "Sentinel \"all\"",
+    "businessModalCentresAllHint": "Including centres added later",
     "businessModalCentresNoneHint": "Add locations first to restrict availability.",
     "businessModalDelete": "Delete",
     "businessModalCancel": "Cancel",

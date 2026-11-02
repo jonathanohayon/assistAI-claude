@@ -985,7 +985,7 @@
     "businessModalDescriptionPlaceholder": "Lavage + coupe + brushing. Idéal pour cheveux mi-longs.",
     "businessModalCentresLabel": "Disponible dans",
     "businessModalCentresAll": "Tous les centres",
-    "businessModalCentresSentinel": "Sentinel «all»",
+    "businessModalCentresAllHint": "Y compris les centres ajoutés plus tard",
     "businessModalCentresNoneHint": "Ajoutez d'abord des centres pour pouvoir restreindre la dispo.",
     "businessModalDelete": "Supprimer",
     "businessModalCancel": "Annuler",

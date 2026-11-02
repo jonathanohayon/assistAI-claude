@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import { formatDuration, formatPriceILS } from "./formatting";
 import type { BusinessCentre, BusinessService, Translator } from "./types";
@@ -72,7 +73,9 @@ export function ServiceEditModal({
 
   const canSave = service.name.trim().length > 0;
 
-  return (
+  // Portal: the settings panel has a transform and backdrop-filter, which
+  // trap a `fixed` overlay inside it (below the header and the save dock).
+  return createPortal(
     <div
       className="overlay-anim fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
       onClick={(e) => {
@@ -214,8 +217,8 @@ export function ServiceEditModal({
                 <span className="text-sm font-semibold text-[#18181b]">
                   {t("businessModalCentresAll")}
                 </span>
-                <span className="ml-auto text-[10px] text-[#94a3b8]">
-                  {t("businessModalCentresSentinel")}
+                <span className="ms-auto text-[10px] text-[#94a3b8]">
+                  {t("businessModalCentresAllHint")}
                 </span>
               </button>
 
@@ -272,7 +275,7 @@ export function ServiceEditModal({
           </div>
         </div>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-[#e2e8f0] bg-white px-5 py-4">
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e2e8f0] bg-white px-5 py-4">
           <button
             type="button"
             onClick={() => {
@@ -295,7 +298,7 @@ export function ServiceEditModal({
             </svg>
             {t("businessModalDelete")}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -317,6 +320,7 @@ export function ServiceEditModal({
           </div>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
