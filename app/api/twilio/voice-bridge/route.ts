@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
 
+import { logEvent } from "@/lib/logger";
+import { candidateUrls, isValidTwilioSignature } from "@/lib/twilio-signature";
+
 // Twilio Voice webhook → LiveKit SIP bridge.
 //
 // Twilio POSTs an inbound call here (application/x-www-form-urlencoded). We
@@ -12,6 +15,13 @@ import { NextRequest } from "next/server";
 //     matches the prefixed phone_numbers row (see resolveTenantByPhone).
 //
 // Returns TwiML XML (Content-Type text/xml), status 200.
+//
+// Auth: X-Twilio-Signature (lib/twilio-signature). Without it anyone could
+// POST here and get calls bridged into our SIP trunk on our bill. Checked
+// whenever TWILIO_AUTH_TOKEN is set. Log-only by default: one wrong public
+// URL in enforce mode would cut every inbound call. Set
+// TWILIO_SIGNATURE_MODE=enforce once a real call has logged
+// twilio_signature_valid.
 
 // Shared LiveKit inbound SIP trunk host. No exported constant exists elsewhere
 // in the repo (lib/livekit-sip.ts drives the trunk via the server SDK using
@@ -45,6 +55,35 @@ export async function POST(req: NextRequest): Promise<Response> {
   const form = await req.formData().catch(() => null);
   const to = form ? String(form.get("To") ?? "") : "";
   const from = form ? String(form.get("From") ?? "") : "";
+
+  const authToken = process.env.TWILIO_AUTH_TOKEN ?? "";
+  if (authToken) {
+    const params: Record<string, string> = {};
+    form?.forEach((v, k) => {
+      if (typeof v === "string") params[k] = v;
+    });
+    const valid = isValidTwilioSignature({
+      authToken,
+      signature: req.headers.get("x-twilio-signature"),
+      urls: candidateUrls(
+        req.nextUrl.pathname + req.nextUrl.search,
+        req.headers,
+        process.env.APP_URL,
+      ),
+      params,
+    });
+    const enforce = process.env.TWILIO_SIGNATURE_MODE === "enforce";
+    await logEvent({
+      source: "web",
+      event: valid ? "twilio_signature_valid" : "twilio_signature_invalid",
+      message: valid
+        ? `Signature Twilio valide sur voice-bridge (to=${to || "?"})`
+        : `Signature Twilio invalide sur voice-bridge (to=${to || "?"})${enforce ? " — refusé" : " — mode log"}`,
+      level: valid ? "info" : "error",
+      metadata: { toNumber: to, enforce },
+    });
+    if (!valid && enforce) return new Response("Forbidden", { status: 403 });
+  }
 
   // Channel is WhatsApp if either leg carries the whatsapp: prefix. The dialed
   // number drives the SIP user part; the caller leg only informs the channel.
