@@ -115,6 +115,8 @@ export async function getTenantGoogleClients(
 export type AgentCallerGoogle =
   | {
       mode: "tenant";
+      /** Tenant user id — lets callers attribute events (e.g. book_success). */
+      userId: string;
       calendar: ReturnType<typeof getCalendarFor>;
       sheets: ReturnType<typeof getSheetsFor>;
       calendarId: string;
@@ -166,12 +168,12 @@ export async function resolveAgentCallerGoogle(
         if (!tenant) return { mode: "unknown_tenant", dialedPhone: dialed };
         const clients = await getTenantGoogleClients(tenant.user.id);
         if (!clients) return { mode: "user_no_google" };
-        return { mode: "tenant", ...clients };
+        return { mode: "tenant", userId: tenant.user.id, ...clients };
       }
       if (tenantUserId) {
         const clients = await getTenantGoogleClients(tenantUserId);
         if (!clients) return { mode: "user_no_google" };
-        return { mode: "tenant", ...clients };
+        return { mode: "tenant", userId: tenantUserId, ...clients };
       }
       return { mode: "unknown_tenant", dialedPhone: "" };
     }
@@ -180,7 +182,7 @@ export async function resolveAgentCallerGoogle(
   const session = await auth();
   if (session?.user?.id) {
     const tenant = await getTenantGoogleClients(session.user.id);
-    if (tenant) return { mode: "tenant", ...tenant };
+    if (tenant) return { mode: "tenant", userId: session.user.id, ...tenant };
     return { mode: "user_no_google" };
   }
 
