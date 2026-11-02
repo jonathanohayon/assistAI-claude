@@ -235,7 +235,12 @@ export default function VoiceAgent() {
       }
 
       // Transcript: assistant text
-      if (type === "response.audio_transcript.done") {
+      // GA Realtime emits `response.output_audio_transcript.done`; the beta
+      // name is kept so an older model/session shape keeps working.
+      if (
+        type === "response.output_audio_transcript.done" ||
+        type === "response.audio_transcript.done"
+      ) {
         const text = event.transcript as string;
         if (text) {
           setTranscript((prev) => [...prev, { role: "assistant", text }]);
