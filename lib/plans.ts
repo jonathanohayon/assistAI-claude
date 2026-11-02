@@ -40,6 +40,15 @@ export interface Plan {
  */
 export const OVERAGE_RATE_ILS_PER_MIN = 0.6;
 
+/**
+ * Feature copy (here and in messages/*.json) writes the included minutes as
+ * `{minutes}` so the number lives only in `minutesIncluded`. Call this
+ * wherever a feature list is displayed.
+ */
+export function fillPlanFeatures(plan: Pick<Plan, "minutesIncluded">, features: readonly string[]): string[] {
+  return features.map((f) => f.replaceAll("{minutes}", String(plan.minutesIncluded)));
+}
+
 export const PLANS: readonly Plan[] = [
   {
     key: "whatsapp",
@@ -51,7 +60,7 @@ export const PLANS: readonly Plan[] = [
     model: "gpt-realtime",
     minutesIncluded: 300,
     features: [
-      "300 minutes incluses",
+      "{minutes} minutes incluses",
       "Prise d'appels automatisée 24/7",
       "Messages vocaux transcrits et résumés par l'IA, envoyés sur WhatsApp ou email",
       "Message d'accueil personnalisé",
@@ -79,7 +88,7 @@ export const PLANS: readonly Plan[] = [
     popular: true,
     minutesIncluded: 500,
     features: [
-      "500 minutes incluses",
+      "{minutes} minutes incluses",
       "Tout ce qui est inclus dans Permanence téléphonique",
       "Intégration CRM & calendrier connecté",
       "Qualification des appelants et prise de rendez-vous automatique",
@@ -106,7 +115,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
       "Appels entrants & sortants en parallèle",
-      "1500 minutes incluses",
+      "{minutes} minutes incluses",
       "Tableau de bord analytics en temps réel",
       "Routage avancé et scénarios complexes",
       "Tout ce qui est inclus dans Réceptionniste",

@@ -19,7 +19,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
-import { OVERAGE_RATE_ILS_PER_MIN, type Plan } from "@/lib/plans";
+import { fillPlanFeatures, OVERAGE_RATE_ILS_PER_MIN, type Plan } from "@/lib/plans";
 import { resolvePrice, type PlanPricingMap } from "@/lib/plan-pricing";
 
 export type Currency = "EUR" | "USD" | "ILS";
@@ -165,8 +165,9 @@ function useLocalizedPlan(plan: Plan) {
   const features = (() => {
     try {
       const raw = t.raw(`${plan.key}.features`);
-      return Array.isArray(raw) ? (raw as string[]) : plan.features;
-    } catch { return plan.features; }
+      // t.raw skips ICU interpolation, so {minutes} is filled from PLANS.
+      return fillPlanFeatures(plan, Array.isArray(raw) ? (raw as string[]) : plan.features);
+    } catch { return fillPlanFeatures(plan, plan.features); }
   })();
   const excludedFeatures = (() => {
     try {

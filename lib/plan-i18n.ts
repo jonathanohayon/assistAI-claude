@@ -6,7 +6,7 @@
 // sur les valeurs hardcodées de lib/plans.ts (= FR). Évite un trou visuel
 // si une feature est ajoutée et oubliée en traduction.
 
-import { type Plan, planByKey } from "@/lib/plans";
+import { fillPlanFeatures, type Plan, planByKey } from "@/lib/plans";
 import { routing, type Locale } from "@/i18n/routing";
 
 import fr from "@/messages/fr.json";
@@ -66,7 +66,7 @@ export function getLocalizedPlan(
     popular: plan.popular,
     name: block?.name ?? plan.name,
     tagline: block?.tagline ?? plan.tagline,
-    features: block?.features ?? Array.from(plan.features),
+    features: fillPlanFeatures(plan, block?.features ?? plan.features),
     bestFor: block?.bestFor ?? plan.bestFor,
     onboardingNotes:
       block?.onboardingNotes ?? Array.from(plan.onboardingNotes),

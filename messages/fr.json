@@ -8,7 +8,7 @@
       "name": "Permanence téléphonique",
       "tagline": "Ne ratez plus jamais un appel.",
       "features": [
-        "300 minutes incluses",
+        "{minutes} minutes incluses",
         "Prise d'appels automatisée 24/7",
         "Messages vocaux transcrits et résumés par l'IA, envoyés sur WhatsApp ou email",
         "Message d'accueil personnalisé",
@@ -29,7 +29,7 @@
       "name": "Réceptionniste",
       "tagline": "Vos rendez-vous pris automatiquement, 24/7.",
       "features": [
-        "500 minutes incluses",
+        "{minutes} minutes incluses",
         "Tout ce qui est inclus dans Permanence téléphonique",
         "Intégration CRM & calendrier connecté",
         "Qualification des appelants et prise de rendez-vous automatique",
@@ -50,7 +50,7 @@
       "features": [
         "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
         "Appels entrants & sortants en parallèle",
-        "1500 minutes incluses",
+        "{minutes} minutes incluses",
         "Tableau de bord analytics en temps réel",
         "Routage avancé et scénarios complexes",
         "Tout ce qui est inclus dans Réceptionniste",
@@ -560,7 +560,6 @@
     "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",
     "activePlan": "Formule active",
     "popularBadge": "★ Populaire",
-    "pricePerMonthHT": "{price} € HT / mois",
     "changeButton": "Changer",
     "sectionHeader": "Onboarding",
     "title": "Activez votre agent en 2 minutes.",
@@ -1499,8 +1498,6 @@
     "annualSavings": "Économisez 20% avec l'abonnement annuel.",
     "popularBadge": "★ Populaire",
     "currentBadge": "✓ Plan actuel",
-    "vatExclMonth": "HT / mois",
-    "annualTotal": "soit {total} € HT / an",
     "bestFor": "Idéal pour :",
     "currentPlanButton": "Plan actuel",
     "updatingButton": "Mise à jour…",
