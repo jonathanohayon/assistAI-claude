@@ -23,3 +23,23 @@ export function decideTenantResolution(args: {
   if (phone) return matched ? "phone_match" : "unknown_number";
   return "no_id";
 }
+
+/**
+ * Tenant lookup shared by /api/calls/end and /api/whatsapp/notify, with the
+ * DB lookups injected so it is unit-testable. A dialed number with no
+ * phone_numbers row resolves to null: those routes used to fall back to the
+ * default tenant, recording the call and sending WhatsApp recaps under an
+ * arbitrary customer. The default tenant is only used when no number was
+ * supplied at all (legacy callers).
+ */
+export async function resolveTenantWith<T>(
+  phone: string | null,
+  lookups: {
+    byPhone: (phone: string) => Promise<T | null>;
+    byDefault: () => Promise<T | null>;
+  },
+): Promise<T | null> {
+  const dialed = (phone ?? "").trim();
+  if (!dialed) return lookups.byDefault();
+  return lookups.byPhone(dialed);
+}
