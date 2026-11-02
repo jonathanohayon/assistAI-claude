@@ -985,7 +985,7 @@
     "businessModalDescriptionPlaceholder": "חפיפה + תספורת + פן. מתאים לשיער באורך בינוני.",
     "businessModalCentresLabel": "זמין ב-",
     "businessModalCentresAll": "כל הסניפים",
-    "businessModalCentresSentinel": "Sentinel \"all\"",
+    "businessModalCentresAllHint": "כולל סניפים שיתווספו בהמשך",
     "businessModalCentresNoneHint": "הוסיפי קודם סניפים כדי להגביל את הזמינות.",
     "businessModalDelete": "מחיקה",
     "businessModalCancel": "ביטול",

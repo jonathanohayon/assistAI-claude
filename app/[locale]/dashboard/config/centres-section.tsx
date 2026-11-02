@@ -10,6 +10,7 @@
  */
 
 import { forwardRef, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   isHoursValid,
@@ -326,7 +327,9 @@ function CentreEditDrawer({
     onPatch({ hours: next });
   };
 
-  return (
+  // Portal: the settings panel has a transform and backdrop-filter, which
+  // trap a `fixed` overlay inside it (below the header and the save dock).
+  return createPortal(
     <div
       className="overlay-anim fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
       onClick={(e) => {
@@ -453,7 +456,8 @@ function CentreEditDrawer({
           </div>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
