@@ -3,11 +3,11 @@
 import {
   motion,
   useMotionValue,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
 } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useRef, useSyncExternalStore } from "react";
 
@@ -111,7 +111,7 @@ function IndustryCard({
   ind: (typeof INDUSTRIES)[number];
   t: ReturnType<typeof useTranslations<"Industries">>;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Tilt 3D uniquement sur device à souris (jamais tactile / reduced-motion).

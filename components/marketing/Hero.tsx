@@ -3,12 +3,13 @@
 import {
   motion,
   useMotionValue,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
 } from "motion/react";
 import { useTranslations } from "next-intl";
+
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
@@ -36,7 +37,9 @@ const SPARKLES = [
  */
 export function Hero() {
   const t = useTranslations("Hero");
-  const reduce = useReducedMotion();
+  // Not useReducedMotion(): it's null during SSR and made the first client
+  // render differ from the server HTML (hydration error with reduce motion on).
+  const reduce = useReducedMotionAfterMount();
 
   const emphasis = t("titleEmphasis");
   const titleTemplate = t("title", { emphasis: ` ${emphasis} ` });
@@ -110,7 +113,10 @@ export function Hero() {
     const onTouch = () => {
       isTouchRef.current = true;
     };
-    window.addEventListener("touchstart", onTouch, { once: true, passive: true });
+    window.addEventListener("touchstart", onTouch, {
+      once: true,
+      passive: true,
+    });
     return () => window.removeEventListener("touchstart", onTouch);
   }, []);
 
@@ -236,7 +242,10 @@ export function Hero() {
 
           <h1
             className="relative z-10 font-display text-5xl leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-[88px]"
-            style={{ textShadow: "0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35)" }}
+            style={{
+              textShadow:
+                "0 2px 24px rgba(0,0,0,0.55), 0 1px 4px rgba(0,0,0,0.35)",
+            }}
           >
             {/* The H1 and the subtitle are the LCP candidates on mobile. They
              *  rise in with a CSS transform only: no opacity/blur start state,
@@ -272,8 +281,7 @@ export function Hero() {
                             transformOrigin: "center",
                             background:
                               "linear-gradient(90deg, #be185d 0%, #ec4899 50%, #f472b6 100%)",
-                            boxShadow:
-                              "0 4px 16px -2px rgba(236,72,153,0.5)",
+                            boxShadow: "0 4px 16px -2px rgba(236,72,153,0.5)",
                           }}
                         />
                       </span>
@@ -289,7 +297,10 @@ export function Hero() {
 
         <p
           className="hero-rise mt-7 max-w-2xl text-base leading-relaxed text-white/90 sm:text-lg lg:text-xl"
-          style={{ textShadow: "0 1px 12px rgba(0,0,0,0.5)", animationDelay: "0.5s" }}
+          style={{
+            textShadow: "0 1px 12px rgba(0,0,0,0.5)",
+            animationDelay: "0.5s",
+          }}
         >
           {t("subtitle")}
         </p>
@@ -376,10 +387,7 @@ export function Hero() {
               }}
             />
             {/* Onde sonore : 3 barres qui battent en cadence */}
-            <span
-              aria-hidden
-              className="relative flex items-center gap-[3px]"
-            >
+            <span aria-hidden className="relative flex items-center gap-[3px]">
               {[0, 0.15, 0.3].map((delay, i) => (
                 <span
                   key={i}
@@ -427,19 +435,25 @@ export function Hero() {
           50% {
             box-shadow:
               0 14px 40px -10px rgba(190, 24, 93, 0.55),
-              0 0 0 12px rgba(34, 211, 238, 0.20);
+              0 0 0 12px rgba(34, 211, 238, 0.2);
           }
         }
         @keyframes live-demo-wave {
-          0%, 100% { transform: scaleY(0.4); }
-          50% { transform: scaleY(1); }
-        }
-        @keyframes live-demo-halo {
-          0%, 100% {
-            box-shadow: 0 0 0 0 rgba(34,211,238,0);
+          0%,
+          100% {
+            transform: scaleY(0.4);
           }
           50% {
-            box-shadow: 0 0 0 8px rgba(34,211,238,0.18);
+            transform: scaleY(1);
+          }
+        }
+        @keyframes live-demo-halo {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(34, 211, 238, 0.18);
           }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -468,11 +482,7 @@ function Stat({
   useEffect(() => {
     if (reduce) return;
     const target = Number(value);
-    if (
-      !Number.isFinite(target) ||
-      !Number.isInteger(target) ||
-      target <= 0
-    )
+    if (!Number.isFinite(target) || !Number.isInteger(target) || target <= 0)
       return;
     const start = performance.now();
     const duration = 800;

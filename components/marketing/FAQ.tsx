@@ -1,6 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -11,7 +12,7 @@ type FaqKey = (typeof FAQ_KEYS)[number];
 
 export function FAQ() {
   const t = useTranslations("FAQ");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
   const [openKey, setOpenKey] = useState<FaqKey | null>(null);
 
   return (

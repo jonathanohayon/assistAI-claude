@@ -3,6 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { DEFAULT_PLAN_PRICING, type PlanPricingMap } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { CTA } from "@/components/marketing/CTA";
+import { RespectReducedMotion } from "@/components/marketing/RespectReducedMotion";
 import { FAQ } from "@/components/marketing/FAQ";
 import { FeatureBento } from "@/components/marketing/FeatureBento";
 import { Footer } from "@/components/marketing/Footer";
@@ -43,22 +44,24 @@ export default async function Home({
     pricing = DEFAULT_PLAN_PRICING;
   }
   return (
-    <main className="noise-grain relative flex flex-col overflow-x-hidden">
-      <Nav />
-      <Hero />
-      <IntegrationsStrip />
-      <TryDemo />
-      <OutboundCalling />
-      <Journey />
-      <FeatureBento />
-      <Industries />
-      <Proof />
-      <Pricing pricing={pricing} />
-      <TrustStrip />
-      <FAQ />
-      <CTA />
-      <Footer />
-      <SupportFab />
-    </main>
+    <RespectReducedMotion>
+      <main className="noise-grain relative flex flex-col overflow-x-hidden">
+        <Nav />
+        <Hero />
+        <IntegrationsStrip />
+        <TryDemo />
+        <OutboundCalling />
+        <Journey />
+        <FeatureBento />
+        <Industries />
+        <Proof />
+        <Pricing pricing={pricing} />
+        <TrustStrip />
+        <FAQ />
+        <CTA />
+        <Footer />
+        <SupportFab />
+      </main>
+    </RespectReducedMotion>
   );
 }
