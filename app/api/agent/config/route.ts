@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
@@ -30,13 +31,20 @@ import {
   resolveTenantByUserId,
 } from "@/lib/tenant";
 
-// Read-only endpoint consumed by the LiveKit agent worker at session start.
+// Read-only endpoint consumed by the LiveKit agent worker at session start,
+// gated by INTERNAL_SECRET.
 // Routes by `?phone=<called number>` to load the right tenant's config.
 //
 // Effective instructions = [global system prompt set by admin] + [tenant persona]
 // — that way every tenant inherits cross-cutting rules (anti-silence, tool
 // description, response length, etc.) without each having to re-paste them.
 export async function GET(req: NextRequest) {
+  // Worker-only, like every other /api/agent/* route: the response carries a
+  // tenant's full prompt, business data and external-brain webhook secret.
+  // The worker sends x-internal-secret on every call (src/web-api.ts).
+  const auth = requireInternalSecret(req);
+  if (!auth.ok) return auth.response;
+
   const phone = req.nextUrl.searchParams.get("phone");
   // Phase 2 (web LiveTest via LiveKit) : le worker passe `userId` extrait
   // du `participant.metadata` JSON pour cibler directement le bon tenant
