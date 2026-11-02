@@ -10,10 +10,11 @@
 
 import type { Personality } from "./types";
 
-// 9 dimensions de personnalité — 3 branchées E2E (vitesse → speed,
-// creativite → temperature, reactivite → VAD silence_duration_ms côté
-// /api/session), 6 autres en preview UI seulement (DB persisté mais agent
-// vocal ne les consomme pas encore).
+// 9 dimensions de personnalité — 2 branchées E2E (vitesse → speed,
+// reactivite → VAD silence_duration_ms côté /api/session), 7 autres en
+// preview UI seulement (DB persisté mais agent vocal ne les consomme pas).
+// creativite is disabled: it mapped to temperature, which OpenAI Realtime GA
+// rejects (`Unknown parameter: 'session.temperature'`), so it had no effect.
 //
 // Module-level : SEULEMENT les icons/anim/enabled/badge. Les labels sont
 // construits dynamiquement via t() dans le composant (voir `sliderDefs`).
@@ -24,7 +25,7 @@ export const PERSONALITY_SLIDER_META = [
       <polygon points="2 19 11 12 2 5 2 19" />
     </>
   ) },
-  { key: "creativite", anim: "anim-sparkle", enabled: true, badge: undefined as string | undefined, icon: (
+  { key: "creativite", anim: "anim-sparkle", enabled: false, badge: undefined as string | undefined, icon: (
     <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
   ) },
   { key: "reactivite", anim: "anim-pulse-quick", enabled: true, badge: "VAD", icon: (

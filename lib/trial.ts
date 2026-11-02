@@ -4,6 +4,27 @@
 
 export const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000; // 1 jour
 export const TRIAL_WARNING_BEFORE_END_MS = 2 * 60 * 60 * 1000; // 2 heures
+// Minimum time between the warning email and the account deletion. The
+// trial-cleanup cron runs DAILY, so an "H-2" warning always landed in the same
+// run as the deletion ("expire dans 0 min"): 5 prospects deleted with no usable
+// warning (28/07 and 26/10/2026). The service itself is still cut at
+// trialEndsAt by /api/agent/config; only the destructive step waits.
+export const TRIAL_DELETION_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * An expired trial may be deleted only once its warning went out at least
+ * TRIAL_DELETION_GRACE_MS ago. No warning, no deletion.
+ */
+export function isTrialDeletionDue(args: {
+  trialEndsAt: Date | null;
+  trialWarningSentAt: Date | null;
+  now: Date;
+}): boolean {
+  const { trialEndsAt, trialWarningSentAt, now } = args;
+  if (!trialEndsAt || trialEndsAt.getTime() > now.getTime()) return false;
+  if (!trialWarningSentAt) return false;
+  return now.getTime() - trialWarningSentAt.getTime() >= TRIAL_DELETION_GRACE_MS;
+}
 
 // Quota de minutes d'appels pour l'essai gratuit. Le service est coupé au
 // PREMIER atteint : 60 min d'appels consommées OU 24h écoulées.
@@ -26,8 +47,11 @@ export function isTrialExhausted(args: {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
   trialSecondsUsed: number;
+  /** Admins never run out: the admin account is `trialing` in prod. */
+  role?: string | null;
   now?: Date;
 }): boolean {
+  if (args.role === "admin") return false;
   if (args.subscriptionStatus !== "trialing") return false;
   const now = args.now ?? new Date();
   const timeUp = args.trialEndsAt

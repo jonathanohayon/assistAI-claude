@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 
@@ -16,6 +17,10 @@ export async function POST(req: NextRequest) {
       { error: "Google Calendar non connecté pour ce compte." },
       { status: 409 },
     );
+  }
+  if (caller.mode === "demo") {
+    // Anonymous caller: never read or delete real events (lib/demo-sandbox).
+    return NextResponse.json(DEMO_DENIED_BODY, { status: 401 });
   }
   if (caller.mode === "unknown_tenant") {
     return NextResponse.json(

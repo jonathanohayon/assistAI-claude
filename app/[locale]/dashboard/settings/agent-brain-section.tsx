@@ -20,6 +20,8 @@ export function AgentBrainSection() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [probe, setProbe] = useState<string | null>(null);
+  const [showSecret, setShowSecret] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/dashboard/agent-brain")
@@ -51,6 +53,19 @@ export function AgentBrainSection() {
       setTimeout(() => setSaved(false), 2500);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copySecret = async () => {
+    if (!brain.secret) return;
+    try {
+      await navigator.clipboard.writeText(brain.secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard can be refused (insecure context, permissions): reveal the
+      // value instead so it can be selected by hand.
+      setShowSecret(true);
     }
   };
 
@@ -161,6 +176,51 @@ export function AgentBrainSection() {
               </button>
             </div>
           </div>
+
+          {brain.secret && (
+            <div className="mt-4">
+              <label
+                htmlFor="brain-secret"
+                className="block text-xs font-medium text-[var(--color-foreground)]"
+              >
+                Secret de signature
+              </label>
+              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="brain-secret"
+                  readOnly
+                  dir="ltr"
+                  type={showSecret ? "text" : "password"}
+                  value={brain.secret}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-2 font-mono text-xs"
+                />
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret((v) => !v)}
+                    className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[var(--color-muted)]"
+                  >
+                    {showSecret ? "Masquer" : "Afficher"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copySecret}
+                    className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[var(--color-muted)]"
+                  >
+                    {copied ? "Copié" : "Copier"}
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
+                Vérifiez{" "}
+                <span dir="ltr" className="font-mono text-[var(--color-foreground)]">
+                  X-Tamara-Signature = HMAC-SHA256(corps brut de la requête, ce secret)
+                </span>{" "}
+                avant de traiter la requête.
+              </p>
+            </div>
+          )}
 
           {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
           {probe && (

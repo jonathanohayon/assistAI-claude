@@ -10,15 +10,24 @@ import { logEvent } from "@/lib/logger";
 // tokens. Tant que le worker n'appelle pas cet endpoint, le coût OpenAI est
 // estimé depuis les minutes d'appel (rate card).
 //
-// Body JSON: { userId?, callId?, inputTokens, outputTokens, cachedTokens?, model? }
+// Body JSON: { userId?, toNumber?, callId?, inputTokens, outputTokens,
+//              cachedTokens?, model?, costUsd?, durationSeconds? }
+// `inputTokens` is the UNCACHED input: lib/finance/cost.ts bills it and
+// `cachedTokens` separately. `toNumber` (dialed number) lets lib/logger
+// resolve the tenant on SIP calls, where the worker has no userId.
+// `durationSeconds` is the call time these tokens cover: lib/finance prices it
+// by token and only estimates the call time left uncovered.
 
 interface UsageBody {
   userId?: string;
+  toNumber?: string;
   callId?: string;
   inputTokens?: number;
   outputTokens?: number;
   cachedTokens?: number;
   model?: string;
+  costUsd?: number;
+  durationSeconds?: number;
 }
 
 function toInt(v: unknown): number {
@@ -58,6 +67,15 @@ export async function POST(req: NextRequest) {
       outputTokens,
       cachedTokens,
       model: body.model ?? null,
+      durationSeconds: toInt(body.durationSeconds),
+      // Worker-side exact cost, kept for reconciliation with the rate card.
+      costUsd:
+        typeof body.costUsd === "number" && Number.isFinite(body.costUsd)
+          ? body.costUsd
+          : null,
+      ...(typeof body.toNumber === "string" && body.toNumber
+        ? { toNumber: body.toNumber }
+        : {}),
     },
   });
 

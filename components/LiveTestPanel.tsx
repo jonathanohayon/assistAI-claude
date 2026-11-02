@@ -752,8 +752,7 @@ export function LiveTestPanel({
               les valeurs in-progress du form (pas la persistée). */}
           <p className="mt-3 text-center text-[11px] text-[#0e7490]/80">
             <span className="font-mono">{model}</span> ·{" "}
-            <span className="font-mono">{voice}</span> · t°
-            <span className="font-mono">{temperature.toFixed(2)}</span> ·{" "}
+            <span className="font-mono">{voice}</span> ·{" "}
             <span className="font-mono">{speed.toFixed(2)}×</span>
           </p>
         </div>

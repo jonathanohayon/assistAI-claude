@@ -49,14 +49,15 @@ export async function POST(req: NextRequest) {
       { status: 404 },
     );
   }
+  if (caller.mode === "demo") {
+    // Public landing demo: acknowledge, store nothing (lib/demo-sandbox).
+    return NextResponse.json({ success: true, simulated: true });
+  }
   if (!caller.sheetId) {
     await logEvent({
       source: "sheets",
       event: "contact_misconfigured",
-      message:
-        caller.mode === "demo"
-          ? "GOOGLE_SHEET_ID non configuré"
-          : "Sheet ID manquant pour ce compte",
+      message: "Sheet ID manquant pour ce compte",
       level: "error",
     });
     return NextResponse.json(

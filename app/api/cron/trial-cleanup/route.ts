@@ -7,7 +7,11 @@ import { phoneNumbers, users } from "@/lib/db/schema";
 import { sendTrialDeletedEmail, sendTrialWarningEmail } from "@/lib/email";
 import { logEvent } from "@/lib/logger";
 import { fullyDeleteUser } from "@/lib/release-user";
-import { TRIAL_WARNING_BEFORE_END_MS } from "@/lib/trial";
+import {
+  isTrialDeletionDue,
+  TRIAL_DELETION_GRACE_MS,
+  TRIAL_WARNING_BEFORE_END_MS,
+} from "@/lib/trial";
 
 // Cron : gère la fin de free trial pour tous les tenants en `trialing`.
 //
@@ -16,7 +20,9 @@ import { TRIAL_WARNING_BEFORE_END_MS } from "@/lib/trial";
 //      n'a pas encore reçu de warning (trial_warning_sent_at NULL), envoie
 //      un email d'alerte puis stamp trial_warning_sent_at. Idempotent —
 //      un seul email par trial même si le cron tick toutes les 5 min.
-//   2) Suppression : pour chaque user dont trial_ends_at ≤ now, libère
+//   2) Suppression : pour chaque user dont trial_ends_at ≤ now ET dont le
+//      warning est parti il y a au moins 24 h (TRIAL_DELETION_GRACE_MS),
+//      jamais dans le même run que le warning. Libère
 //      ses numéros Twilio (release-user) puis cascade delete DB et envoie
 //      un dernier email de confirmation. Robuste : une erreur sur un
 //      tenant ne bloque pas les autres.
@@ -110,12 +116,15 @@ export async function GET(req: NextRequest) {
   // ─── Phase 2 : suppressions ─────────────────────────────────────────
   // Sélectionne les trialing dont trial_ends_at est strictement passé.
   // On garde les admins hors-scope par sécurité (cf. doc top).
+  const deletionWarnedBefore = new Date(now.getTime() - TRIAL_DELETION_GRACE_MS);
   const toDelete = await db
     .select({
       id: users.id,
       email: users.email,
       role: users.role,
       locale: users.locale,
+      trialEndsAt: users.trialEndsAt,
+      trialWarningSentAt: users.trialWarningSentAt,
     })
     .from(users)
     .where(
@@ -123,6 +132,9 @@ export async function GET(req: NextRequest) {
         eq(users.subscriptionStatus, "trialing"),
         isNotNull(users.trialEndsAt),
         lte(users.trialEndsAt, now),
+        // Warned at least 24 h ago: never warn and delete in the same run.
+        isNotNull(users.trialWarningSentAt),
+        lte(users.trialWarningSentAt, deletionWarnedBefore),
         // On saute les comptes dont deletion_locked_until est dans le futur =
         // paiement HYP en cours : ne jamais supprimer un tenant en train de payer.
         or(isNull(users.deletionLockedUntil), lte(users.deletionLockedUntil, now)),
@@ -138,6 +150,8 @@ export async function GET(req: NextRequest) {
   }> = [];
 
   for (const u of toDelete) {
+    // Same rule as the SQL above, re-checked in code (unit-tested helper).
+    if (!isTrialDeletionDue({ ...u, now })) continue;
     if (u.role === "admin") {
       deleted.push({ email: u.email, ok: false, reason: "admin_skipped" });
       await logEvent({

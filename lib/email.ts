@@ -145,16 +145,22 @@ export async function sendTrialWarningEmail(
   const client = getResend();
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const minutes = Math.max(1, opts.minutesLeft);
-  const subject =
-    minutes < 120
-      ? t("subjectMinutes", { minutes })
-      : t("subjectHours");
+  // Deletion now happens 24 h after this email (TRIAL_DELETION_GRACE_MS), so
+  // the subject announces that, whatever is left of the trial itself.
+  const subject = t("subjectHours");
+  // Messages with <strong> are rich text: plain t() throws FORMATTING_ERROR
+  // as soon as values are passed (seen in prod on warningBoxHtml), so every
+  // HTML message goes through t.markup with explicit tag renderers.
+  const tags = {
+    strong: (chunks: string) => `<strong>${chunks}</strong>`,
+    em: (chunks: string) => `<em>${chunks}</em>`,
+  };
 
   const phoneLineText = opts.phoneNumber
     ? t("phoneLineWithPhone", { phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneLineGeneric");
   const phoneSpecificHtml = opts.phoneNumber
-    ? t("phoneSpecific", { phone: ltrIsolate(opts.phoneNumber) })
+    ? t.markup("phoneSpecific", { ...tags, phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneGeneric");
 
   if (!client) {
@@ -181,10 +187,10 @@ export async function sendTrialWarningEmail(
     <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1a1a1a;">
       <h1 style="font-size:22px;margin:0 0 12px;">${t("heading")}</h1>
       <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#555;">
-        ${t("introHtml")}
+        ${t.markup("introHtml", tags)}
       </p>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.6;color:#9a3412;margin:0 0 20px;">
-        ${t("warningBoxHtml", { phoneLine: phoneSpecificHtml })}
+        ${t.markup("warningBoxHtml", { ...tags, phoneLine: phoneSpecificHtml })}
       </div>
       <p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#555;">
         ${t("actionLineHtml")}
@@ -628,6 +634,40 @@ export async function sendNotificationTestEmail(
 
   try {
     const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Internal ops alert to admins (lib/alerts.ts). Plain text, not
+//   localized: it goes to us, not to customers.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendAdminAlertEmail(
+  to: string,
+  opts: { subject: string; body: string },
+): Promise<SendResult> {
+  const client = getResend();
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const subject = `🚨 [Tamara prod] ${opts.subject}`;
+
+  if (!client) {
+    console.warn(
+      `\n=================== ADMIN ALERT FALLBACK (no RESEND_API_KEY) ===================` +
+        `\nTo:      ${to}` +
+        `\nSubject: ${subject}` +
+        `\n${opts.body}` +
+        `\n================================================================================\n`,
+    );
+    return { ok: true, fallback: "console_log" };
+  }
+
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text: opts.body });
     if (res.error) {
       return { ok: false, error: `${res.error.name}: ${res.error.message}` };
     }
