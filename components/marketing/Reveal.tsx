@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { motion, type Variants } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import type { ReactNode } from "react";
 
 /**
@@ -32,7 +33,7 @@ export function Reveal({
   y?: number;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
   return (
     <motion.div
       className={className}
@@ -101,7 +102,7 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
   return (
     <motion.div
       className={className}

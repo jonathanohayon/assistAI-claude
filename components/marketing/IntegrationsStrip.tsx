@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 
 import { EASE } from "./Reveal";
@@ -21,7 +22,7 @@ const TOOLS = [
 
 export function IntegrationsStrip() {
   const t = useTranslations("Integrations");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
 
   const pop = (delay: number) => ({
     initial: reduce ? { opacity: 0 } : { opacity: 0, scale: 0.75, y: 16 },

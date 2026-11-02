@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { Reveal, EASE } from "./Reveal";
@@ -620,7 +621,7 @@ function Tile({
   accent = "magenta",
   children,
 }: TileProps) {
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useReducedMotionAfterMount() ?? false;
   const styles = ACCENT_STYLES[accent];
 
   return (
@@ -652,7 +653,7 @@ function Tile({
 
 export function FeatureBento() {
   const t = useTranslations("Features");
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useReducedMotionAfterMount() ?? false;
 
   return (
     <section id="features" className="relative py-24 sm:py-32">

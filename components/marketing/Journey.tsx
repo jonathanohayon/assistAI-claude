@@ -2,12 +2,12 @@
 
 import {
   motion,
-  useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
   type MotionValue,
 } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useRef, type ReactNode } from "react";
 import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
@@ -137,7 +137,7 @@ function JourneyStep({
   progress: MotionValue<number>;
 }) {
   const t = useTranslations("TwoMinutes");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
 
   // Seuil d'activation : réparti le long de la ligne, légèrement en avance
   // sur le centre de l'étape pour que l'allumage paraisse « atteint ».
@@ -195,7 +195,7 @@ function JourneyStep({
 /** Phone mockup — l'agent répond déjà pendant l'onboarding (climax sticky). */
 function PhoneMockup() {
   const t = useTranslations("TwoMinutes");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
 
   return (
     <div className="relative overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 p-6 shadow-[0_20px_60px_-20px_rgba(190,24,93,0.25)] backdrop-blur-xl sm:p-8">
@@ -276,7 +276,7 @@ function PhoneMockup() {
 
 export function Journey() {
   const t = useTranslations("TwoMinutes");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
 
   const stepsRef = useRef<HTMLOListElement>(null);
   // La ligne se dessine quand chaque étape franchit 70% du viewport.

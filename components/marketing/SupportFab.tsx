@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 
 /**
@@ -19,7 +20,7 @@ import { useTranslations } from "next-intl";
  */
 export function SupportFab() {
   const t = useTranslations("Support");
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionAfterMount();
 
   const rawPhone =
     process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "972585001007";

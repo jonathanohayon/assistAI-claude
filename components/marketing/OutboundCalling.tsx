@@ -2,10 +2,10 @@
 
 import {
   motion,
-  useReducedMotion,
   useSpring,
   useTransform,
 } from "motion/react";
+import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Reveal, Stagger, StaggerItem, EASE } from "./Reveal";
@@ -62,7 +62,7 @@ const PHONE_ICON = (
 
 export function OutboundCalling() {
   const t = useTranslations("OutboundCalling");
-  const reduce = useReducedMotion() ?? false;
+  const reduce = useReducedMotionAfterMount() ?? false;
 
   // Index de l'appel « en cours » qui descend la liste (effet live).
   // Init 0 = SSR stable. Le mode statique (reduced-motion) ne s'applique
