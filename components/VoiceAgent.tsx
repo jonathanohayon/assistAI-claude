@@ -394,9 +394,12 @@ export default function VoiceAgent() {
         setSecondsLeft(DEMO_SESSION_SECONDS);
         // Un SEUL response.create d'accueil. Micro coupé (cf. plus haut) → pas
         // d'auto-réponse VAD concurrente.
-        if (demo?.instructions) {
-          // Persona + consigne d'accueil + langue déjà dans les instructions de
-          // session → response.create nu : accueil cohérent avec la persona.
+        if (demo?.instructions || tokenData.server_instructions) {
+          // Persona + greeting rule + language already in the session
+          // instructions (always the case for anonymous visitors, even with no
+          // demo account) → bare response.create. Sending instructions here
+          // would REPLACE the session prompt for the greeting: no name, no
+          // register, and the agent recited the language rule.
           dc.send(JSON.stringify({ type: "response.create" }));
         } else {
           // Fallback agent anonyme : pas de persona en session → on force la

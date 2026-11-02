@@ -17,13 +17,8 @@ const langLabel: Record<string, string> = {
   en: "anglais (US)",
 };
 
-/**
- * Appended to the demo instructions for a session: greet first. Was added by
- * the browser (components/VoiceAgent.tsx); anonymous instructions are now
- * server-side only, so the server adds it.
- */
-export const DEMO_SESSION_OPENING =
-  "\n\nDÉBUT D'APPEL : dès le début, accueille proactivement l'appelant — présente-toi brièvement selon ta persona puis demande comment tu peux aider.";
+// Re-exported for callers that imported it from here.
+export { DEMO_SESSION_OPENING } from "@/lib/demo-instructions";
 
 export interface DemoAgent {
   instructions: string;
