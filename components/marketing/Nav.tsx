@@ -64,11 +64,11 @@ export function Nav() {
           : "border-b border-transparent bg-transparent"
       }`}
     >
-      {/* Scroll progress bar — gradient cyan → magenta → cyan en bas de la nav */}
+      {/* Scroll progress bar — gradient magenta → rose en bas de la nav */}
       <motion.div
         aria-hidden
         style={{ scaleX: progressScaleX, transformOrigin: "0% 50%" }}
-        className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#22d3ee] via-[#ec4899] to-[#22d3ee]"
+        className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6]"
       />
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export function Nav() {
           </Link>
           <Link
             href="/signup"
-            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] md:inline-flex"
+            className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] md:inline-flex"
             style={{
               boxShadow:
                 "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",
@@ -215,7 +215,7 @@ export function Nav() {
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee] px-4 py-3 text-base font-bold text-white"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6] px-4 py-3 text-base font-bold text-white"
                   style={{
                     boxShadow:
                       "0 8px 20px -6px rgba(236,72,153,0.55), 0 0 0 1px rgba(255,255,255,0.4) inset",

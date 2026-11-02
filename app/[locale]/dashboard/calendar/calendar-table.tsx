@@ -224,7 +224,7 @@ export function CalendarTable({
                   <button
                     onClick={() => saveEdit(e.id)}
                     disabled={isPending}
-                    className="rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-white shadow-sm disabled:opacity-50"
+                    className="rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-1.5 text-xs font-medium text-white shadow-sm disabled:opacity-50"
                   >
                     {isPending ? t("savingButton") : t("saveButton")}
                   </button>

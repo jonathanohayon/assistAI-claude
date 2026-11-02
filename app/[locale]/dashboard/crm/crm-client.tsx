@@ -79,7 +79,7 @@ function AgentToggle({
         onClick={() => onChange(!on)}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:opacity-50 ${
           on
-            ? "bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)]"
+            ? "bg-gradient-to-r from-[var(--color-primary)] to-[#f472b6]"
             : "bg-[#cbd5e1]"
         }`}
       >

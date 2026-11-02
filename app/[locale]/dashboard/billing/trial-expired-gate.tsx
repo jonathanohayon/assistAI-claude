@@ -149,7 +149,7 @@ export function TrialExpiredGate({
                       type="button"
                       onClick={() => startPayment(p.key)}
                       disabled={loadingPlan != null}
-                      className="mt-4 inline-flex items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] disabled:opacity-60"
+                      className="mt-4 inline-flex items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] disabled:opacity-60"
                     >
                       {loadingPlan === p.key ? t("processing") : t("gateSelect")}
                     </button>

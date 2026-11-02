@@ -270,7 +270,7 @@ function HeadsetIcon() {
         className="absolute -inset-[3px] rounded-[20px] opacity-70"
         style={{
           background:
-            "conic-gradient(from 0deg, #22d3ee, #ec4899, #be185d, #f472b6, #22d3ee)",
+            "conic-gradient(from 0deg, #be185d, #ec4899, #f472b6, #ec4899, #be185d)",
           maskImage:
             "radial-gradient(circle at center, transparent 56%, black 60%)",
           WebkitMaskImage:
@@ -519,7 +519,7 @@ export function PlanCard({
               {localized.name}
             </h3>
             {isCurrent && currentBadgeLabel ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[#f472b6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
                 {currentBadgeLabel}
               </span>
             ) : plan.popular ? (

@@ -35,7 +35,7 @@ export function AdminTenantTabs({ userId }: { userId: string }) {
                 href={href}
                 className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
                   active
-                    ? "bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white shadow-sm"
+                    ? "bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-white shadow-sm"
                     : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                 }`}
               >

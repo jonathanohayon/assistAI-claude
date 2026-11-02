@@ -1,7 +1,7 @@
 /**
  * Aurora mesh background — animé en continu (20s loop), respecte
- * `prefers-reduced-motion`. Composition rose + cyan + magenta + teal qui
- * matérialise la signature marque Tamara (chaleur + voice tech).
+ * `prefers-reduced-motion`. Composition magenta + rose + pêche : cyan and
+ * pink must not blend (the mix greys out), so cyan stays a ring/accent only.
  *
  * Positionné en `fixed inset-0 -z-10` : reste visible pendant tout le scroll
  * sans faire partie du flow document. Pour scope local (e.g. derrière une
@@ -27,14 +27,14 @@ export function AuroraBackground({
           // se mélange par dessus. Séparer backgroundColor et backgroundImage
           // évite que le shorthand `background:` override le color base.
           backgroundColor: "#FAF7F2",
-          // 5 radials : rose top-left, cyan top-right, magenta center-bottom,
-          // cyan bottom-right, teal bottom-left. Aligné sur la preview wow.
+          // 5 radials, magenta → rose → peach only: overlapping pink and cyan
+          // radials produced the grey wash the brand rules forbid.
           backgroundImage: `
             radial-gradient(at 15% 20%, rgba(236, 72, 153, 0.35) 0px, transparent 50%),
-            radial-gradient(at 85% 12%, rgba(34, 211, 238, 0.32) 0px, transparent 55%),
+            radial-gradient(at 85% 12%, rgba(244, 114, 182, 0.28) 0px, transparent 55%),
             radial-gradient(at 50% 85%, rgba(190, 24, 93, 0.25) 0px, transparent 60%),
-            radial-gradient(at 90% 70%, rgba(34, 211, 238, 0.22) 0px, transparent 50%),
-            radial-gradient(at 10% 75%, rgba(14, 116, 144, 0.18) 0px, transparent 55%)
+            radial-gradient(at 90% 70%, rgba(251, 113, 133, 0.18) 0px, transparent 50%),
+            radial-gradient(at 10% 75%, rgba(253, 186, 116, 0.16) 0px, transparent 55%)
           `,
         }}
       />

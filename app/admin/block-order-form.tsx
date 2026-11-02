@@ -200,7 +200,7 @@ export function BlockOrderForm({
               {isDropTarget && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#22d3ee]"
+                  className="pointer-events-none absolute -top-1 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-[#be185d] via-[#ec4899] to-[#f472b6]"
                 />
               )}
 
@@ -286,7 +286,7 @@ export function BlockOrderForm({
           <button
             type="submit"
             disabled={isPending || !dirty}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? "Sauvegarde…" : "Sauvegarder l'ordre"}
           </button>
