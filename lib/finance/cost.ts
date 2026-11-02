@@ -21,6 +21,7 @@ import {
   phoneNumbers,
   users,
 } from "@/lib/db/schema";
+import { openaiCostUsd } from "@/lib/finance/openai-cost";
 import { type CostRates } from "@/lib/finance/rates";
 
 export type Granularity = "day" | "month" | "year";
@@ -135,6 +136,8 @@ interface RawUsage {
   openaiOutputTokens: number;
   openaiCachedTokens: number;
   openaiUsageRows: number;
+  /** Call seconds already priced by real tokens (usage events' durationSeconds). */
+  openaiCoveredSeconds: number;
   numbersActive: number;
 }
 
@@ -146,6 +149,7 @@ const ZERO_USAGE: RawUsage = {
   openaiOutputTokens: 0,
   openaiCachedTokens: 0,
   openaiUsageRows: 0,
+  openaiCoveredSeconds: 0,
   numbersActive: 0,
 };
 
@@ -163,12 +167,7 @@ function costFromUsage(
   const inboundMin = u.inboundSeconds / 60;
   const outboundMin = u.outboundSeconds / 60;
 
-  const openai =
-    u.openaiUsageRows > 0
-      ? u.openaiInputTokens * rates.openaiUsdPerInputToken +
-        u.openaiOutputTokens * rates.openaiUsdPerOutputToken +
-        u.openaiCachedTokens * rates.openaiUsdPerCachedInputToken
-      : (inboundMin + outboundMin) * rates.openaiUsdPerMinute;
+  const openai = openaiCostUsd(u, rates);
 
   const twilioVoice =
     inboundMin * rates.twilioInboundUsdPerMinute +
@@ -274,6 +273,7 @@ export async function computeFinanceStats(args: {
         inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric),0)::bigint`,
         outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric),0)::bigint`,
         cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric),0)::bigint`,
+        coveredSec: sql<number>`coalesce(sum((${events.metadata}->>'durationSeconds')::numeric),0)::bigint`,
       })
       .from(events)
       .where(and(...usageConds))
@@ -324,6 +324,7 @@ export async function computeFinanceStats(args: {
     u.openaiInputTokens += Number(r.inTok);
     u.openaiOutputTokens += Number(r.outTok);
     u.openaiCachedTokens += Number(r.cachedTok);
+    u.openaiCoveredSeconds += Number(r.coveredSec);
   }
 
   const months = monthsForGranularity(granularity);
@@ -393,11 +394,16 @@ export async function computeFinanceStats(args: {
       acc.openaiInputTokens += u.openaiInputTokens;
       acc.openaiOutputTokens += u.openaiOutputTokens;
       acc.openaiUsageRows += u.openaiUsageRows;
+      acc.openaiCoveredSeconds += u.openaiCoveredSeconds;
       return acc;
     },
     { ...ZERO_USAGE },
   );
   const tokensTracked = usageAgg.openaiUsageRows > 0;
+  // Estimated as long as some call time is not covered by real usage.
+  const openaiEstimated =
+    usageAgg.inboundSeconds + usageAgg.outboundSeconds >
+    usageAgg.openaiCoveredSeconds;
 
   // Breakdown par tenant (scope global uniquement).
   const tenants = userId
@@ -418,7 +424,7 @@ export async function computeFinanceStats(args: {
     currency: "USD",
     range: { from: from.toISOString(), to: to.toISOString() },
     granularity,
-    estimated: !tokensTracked,
+    estimated: openaiEstimated,
     totals,
     revenueUsd: round2(revenueTotal),
     marginUsd: round2(revenueTotal - totals.total),
@@ -523,6 +529,7 @@ async function computeTenantBreakdown(args: {
         inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric),0)::bigint`,
         outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric),0)::bigint`,
         cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric),0)::bigint`,
+        coveredSec: sql<number>`coalesce(sum((${events.metadata}->>'durationSeconds')::numeric),0)::bigint`,
       })
       .from(events)
       .where(
@@ -578,6 +585,7 @@ async function computeTenantBreakdown(args: {
     u.openaiInputTokens += Number(r.inTok);
     u.openaiOutputTokens += Number(r.outTok);
     u.openaiCachedTokens += Number(r.cachedTok);
+    u.openaiCoveredSeconds += Number(r.coveredSec);
   }
   for (const r of numbersByUser)
     if (r.userId) ensure(r.userId).numbersActive += Number(r.count);
