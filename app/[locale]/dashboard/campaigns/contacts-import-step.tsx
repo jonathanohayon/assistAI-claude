@@ -333,7 +333,7 @@ export function ContactsImportStep({
               type="button"
               onClick={loadSheet}
               disabled={parsing || !sheetUrl.trim()}
-              className="rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
             >
               {parsing ? t("fileParsing") : t("sheetsLoad")}
             </button>
@@ -440,7 +440,7 @@ export function ContactsImportStep({
         type="button"
         onClick={submit}
         disabled={!accepted.length || busy}
-        className="mt-4 rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? t("importing") : t("addContactsCta")}
       </button>

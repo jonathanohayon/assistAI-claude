@@ -16,7 +16,7 @@ import { planByKey } from "@/lib/plans";
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5">
-      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f97316] to-[#db2777] text-white">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c2410c] to-[#db2777] text-white">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
           <path d="M20 6 9 17l-5-5" />
         </svg>
@@ -58,7 +58,7 @@ export function UpsellModal({
             className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
           >
             {/* Header dégradé chaud */}
-            <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#f97316] via-[#ef4444] to-[#db2777] px-6 py-6 text-white">
+            <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#c2410c] via-[#dc2626] to-[#db2777] px-6 py-6 text-white">
               <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
               <div className="absolute -left-8 bottom-0 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
               <div className="relative flex items-start justify-between gap-3">
@@ -128,7 +128,7 @@ export function UpsellModal({
               </button>
               <Link
                 href={`/${locale}/dashboard/billing`}
-                className="rounded-xl bg-gradient-to-br from-[#f97316] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+                className="rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
               >
                 {t("upsellCta", { plan: premium.name })}
               </Link>

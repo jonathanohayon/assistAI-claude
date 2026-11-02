@@ -92,7 +92,7 @@ export function HeroSection({
             {!asUserId && (
               <Link
                 href="/onboarding"
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#be185d] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
               >
                 {t("heroGetNumber")}
                 <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:-scale-x-100">
@@ -163,7 +163,7 @@ export function HeroSection({
 
       {/* Statut card cyan */}
       <div
-        className="card-hover anim-fade-up relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-white/40 bg-gradient-to-br from-[#0891b2] via-[#0e7490] to-[#155e75] p-7 text-white shadow-[0_8px_40px_-12px_rgba(14,116,144,0.4)] lg:col-span-4"
+        className="card-hover anim-fade-up relative flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-white/40 bg-gradient-to-br from-[#0e7490] via-[#0e7490] to-[#155e75] p-7 text-white shadow-[0_8px_40px_-12px_rgba(14,116,144,0.4)] lg:col-span-4"
         style={{ animationDelay: "140ms" }}
       >
         <div

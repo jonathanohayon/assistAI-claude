@@ -490,7 +490,7 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                         {group.warnCount} warn
                       </span>
                     )}
-                    <span className="text-[#94a3b8]">
+                    <span className="text-[#64748b]">
                       {isCollapsed ? "▶" : "▼"}
                     </span>
                   </div>

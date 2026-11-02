@@ -84,7 +84,7 @@ export function OutboundHome({ asUserId }: { asUserId?: string }) {
           <HubCard
             index={0}
             onClick={() => setView("agents")}
-            accent="from-[#6366f1] to-[#8b5cf6]"
+            accent="from-[#4f46e5] to-[#7c3aed]"
             soft="bg-[#ede9fe] text-[#6d28d9]"
             kicker={t("agentsBoxStep")}
             title={t("agentsBoxTitle")}
@@ -101,7 +101,7 @@ export function OutboundHome({ asUserId }: { asUserId?: string }) {
           <HubCard
             index={1}
             onClick={() => setView("campaigns")}
-            accent="from-[#f97316] to-[#db2777]"
+            accent="from-[#c2410c] to-[#db2777]"
             soft="bg-[#ffedd5] text-[#c2410c]"
             kicker={t("campaignsBoxStep")}
             title={t("campaignsBoxTitle")}

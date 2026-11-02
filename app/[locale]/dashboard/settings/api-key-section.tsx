@@ -99,7 +99,7 @@ export function ApiKeySection() {
             type="button"
             onClick={generate}
             disabled={busy}
-            className="rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] px-4 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+            className="rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-4 py-1.5 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
           >
             {t("apiGenerate")}
           </button>

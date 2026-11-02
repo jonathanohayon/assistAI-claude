@@ -397,7 +397,7 @@ export function BillingClient({
           <SectionTitle title={t("sectionPaymentMethod")} />
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-12 items-center justify-center rounded-md bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] text-[10px] font-bold text-white">
+              <span className="flex h-9 w-12 items-center justify-center rounded-md bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] text-[10px] font-bold text-white">
                 CARD
               </span>
               <p className="text-sm text-[var(--color-foreground)]">
