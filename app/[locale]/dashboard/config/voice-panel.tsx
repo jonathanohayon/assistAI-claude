@@ -11,10 +11,10 @@
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-import { currentProvider, EnginePicker } from "./engine-picker";
+import { EnginePicker } from "./engine-picker";
 import { cap } from "./formatting";
 import { PERSONALITY_SLIDER_META } from "./personality-constants";
-import { AdminBadge, PersonalitySlider } from "./shared-ui";
+import { PersonalitySlider } from "./shared-ui";
 import type { FormState, FormUpdater } from "./types";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
@@ -94,32 +94,9 @@ export function VoicePanel({
       {/* Modèle — picker dropdown réservé admin. The model id is supplier
        *  detail, so tenants see nothing here. Badge ADMIN pour signaler que
        *  ce contrôle n'apparaît PAS sur /dashboard du tenant. */}
-      {isAdmin && <EnginePicker form={form} update={update} />}
-
-      {/* The OpenAI model only applies to the OpenAI engine; Gemini/Grok show
-       *  their fixed model read-only in the engine picker. */}
-      {isAdmin && currentProvider(form) === "openai" && (
-        <div>
-          <div className="mb-1.5 flex items-baseline gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-              {t("modelLabel")}
-            </p>
-            <AdminBadge size="xs" />
-          </div>
-          <select
-            value={form.model}
-            onChange={(e) => update("model", e.target.value)}
-            className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2.5 text-sm text-[#18181b] shadow-xs transition-colors focus:border-[#0e7490] focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
-          >
-            {catalogModels.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.id} · {m.provider}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-[11px] text-[#0e7490]">{t("modelHint")}</p>
-        </div>
-      )}
+      {/* Admin-only: engine (OpenAI 2 / 2.1, Gemini, Grok) + advanced OpenAI
+       *  model. Never shown to tenants; it names suppliers. */}
+      {isAdmin && <EnginePicker form={form} update={update} catalogModels={catalogModels} />}
 
       {/* Voice picker avec gender */}
       <div>
