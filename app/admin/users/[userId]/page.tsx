@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { VoiceProfile } from "@/lib/voice-profile";
 import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { redirect } from "next/navigation";
 
@@ -151,8 +152,8 @@ export default async function AdminTenantPage({
           greetingInstructions: config.greetingInstructions,
           model: config.model,
           realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider),
-          // TODO(rebase on the voice-profile schema PR): config.voiceProfile
-          voiceProfile: (config as { voiceProfile?: Record<string, unknown> | null }).voiceProfile ?? null,
+          // Stored JSONB, validated by voiceProfileSchema on write.
+          voiceProfile: (config.voiceProfile ?? null) as Partial<VoiceProfile> | null,
           voice: config.voice,
           temperature: config.temperature,
           speed: config.speed,

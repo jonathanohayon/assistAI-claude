@@ -50,15 +50,20 @@ export function VoiceProfileCard({
   const t = useTranslations("AdminVoiceProfile");
   const locale = useLocale();
   const provider = effectiveRealtimeProvider(form.realtimeProvider);
-  const values: Values = (form.voiceProfile as Values | null | undefined) ?? {};
+  const values: Values = (form.voiceProfile ?? {}) as Values;
 
   const get = (f: VoiceProfileField) => (f.key in values ? values[f.key] : f.default);
   const set = (key: string, v: unknown) => update("voiceProfile", { ...values, [key]: v });
   const isDefault = (f: VoiceProfileField) =>
     JSON.stringify(get(f)) === JSON.stringify(f.default);
 
-  const num = (n: number) => iso(n.toLocaleString(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR"));
+  const fmt = (n: number) => n.toLocaleString(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR");
+  const num = (n: number) => iso(fmt(n));
   const unit = (f: VoiceProfileField) => (f.unit ? t(`unit.${f.unit}`) : "");
+  // One isolated LTR run for the whole range: isolating each number on its
+  // own made "1–5" display as "5–1" in Hebrew.
+  const range = (min: number, max: number, u: string) =>
+    iso(`${fmt(min)}–${fmt(max)}${u ? ` ${u}` : ""}`);
   const valueLabel = (f: VoiceProfileField, v: unknown): string => {
     if (typeof v === "boolean") return v ? t("on") : t("off");
     if (typeof v === "number") return `${num(v)}${unit(f) ? ` ${unit(f)}` : ""}`;
@@ -71,7 +76,7 @@ export function VoiceProfileCard({
   const meta = (f: VoiceProfileField) =>
     [
       f.min !== undefined && f.max !== undefined
-        ? t("metaRange", { min: num(f.min), max: num(f.max), unit: unit(f) }).trim()
+        ? t("metaRange", { range: range(f.min, f.max, unit(f)) })
         : null,
       t("metaDefault", { value: valueLabel(f, f.default) }),
       t("metaEngines", { engines: engineNames(f.engines) }),
@@ -113,7 +118,7 @@ export function VoiceProfileCard({
           </legend>
 
           {s.id === "ours" && (
-            <NoiseReductionRow form={form} update={update} t={t} num={num} />
+            <NoiseReductionRow form={form} update={update} t={t} num={num} range={range} />
           )}
 
           {s.fields.length === 0 && s.id === "engine" && (
@@ -289,6 +294,36 @@ function FieldRow({
             </option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  if (f.kind === "text" && f.default !== null && typeof f.default === "object") {
+    // Per-engine values (voiceOverrides): one optional input per engine.
+    const v = (value && typeof value === "object" ? value : {}) as Record<string, string | undefined>;
+    return (
+      <div>
+        <Label {...labelProps} />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {f.engines.map((e) => (
+            <label key={e} className="block">
+              <span className="mb-0.5 block text-[11px] text-[#64748b]">{t(`engine.${e}`)}</span>
+              <input
+                value={v[e] ?? ""}
+                maxLength={f.maxLength ?? 40}
+                onChange={(ev) => {
+                  const next = { ...v, [e]: ev.target.value };
+                  if (!ev.target.value.trim()) delete next[e];
+                  onChange(next);
+                }}
+                aria-describedby={tipId}
+                placeholder={t(`fields.${f.key}.placeholder`)}
+                dir="ltr"
+                className={INPUT}
+              />
+            </label>
+          ))}
+        </div>
       </div>
     );
   }
@@ -524,11 +559,13 @@ function NoiseReductionRow({
   update,
   t,
   num,
+  range,
 }: {
   form: FormState;
   update: FormUpdater;
   t: T;
   num: (n: number) => string;
+  range: (min: number, max: number, unit: string) => string;
 }) {
   const base = useId();
   const controlId = `${base}-c`;
@@ -545,7 +582,7 @@ function NoiseReductionRow({
             what: t("fields.noiseReduction.what"),
             tip: t("fields.noiseReduction.tip"),
             meta: [
-              t("metaRange", { min: num(1), max: num(10), unit: "" }).trim(),
+              t("metaRange", { range: range(1, 10, "") }),
               t("metaDefault", { value: num(8) }),
               t("metaEngines", { engines: t("allEngines") }),
             ].join(" · "),

@@ -1864,7 +1864,7 @@
     "pronouncedAs": "se prononce",
     "allEngines": "tous les moteurs",
     "engineNone": "Aucun réglage spécifique pour {engine}.",
-    "metaRange": "Plage : {min}–{max} {unit}",
+    "metaRange": "Plage : {range}",
     "metaDefault": "Défaut : {value}",
     "metaEngines": "Moteurs : {engines}",
     "unit": {
@@ -1892,18 +1892,18 @@
       "bargeIn": {
         "label": "Interruption par l'appelant",
         "what": "L'appelant peut couper Tamara en parlant : elle s'arrête et écoute.",
-        "tip": "Laissez activé pour une conversation naturelle ; désactivez seulement si des bruits de fond l'interrompent sans cesse."
+        "tip": "Laissez activé pour une conversation naturelle. Désactivé, Tamara finit toujours sa phrase avant d'écouter."
       },
       "keyTerms": {
         "label": "Termes clés",
-        "what": "Noms, marques ou mots rares que la transcription doit reconnaître (noms de soins, de rues, de produits).",
+        "what": "Noms, marques ou mots rares que Tamara doit reconnaître et écrire correctement (soins, rues, produits). Aide la reconnaissance vocale ; ne change pas ce qu'elle dit.",
         "tip": "Ajoutez les mots que Tamara comprend mal dans les transcriptions, un par entrée.",
         "placeholder": "ex. kératine"
       },
       "languageHint": {
         "label": "Indice de langue",
-        "what": "Langue attendue de l'appelant, pour aider la reconnaissance vocale.",
-        "tip": "Gardez « Automatique » si vos clients parlent plusieurs langues ; fixez-la si presque tous parlent la même."
+        "what": "Langue attendue au début de l'appel. « Automatique » = la langue de l'entreprise. L'appelant peut changer de langue, sauf si la langue est verrouillée.",
+        "tip": "Gardez « Automatique » sauf si vos appelants commencent presque tous dans une autre langue que celle de l'entreprise."
       },
       "minInterruptionMs": {
         "label": "Durée minimale d'interruption",
@@ -1912,18 +1912,18 @@
       },
       "idleHangupSec": {
         "label": "Raccrocher après un silence",
-        "what": "Tamara raccroche poliment si personne ne parle pendant cette durée.",
-        "tip": "Mettez 0 pour ne jamais raccrocher ; 30 à 60 s évite les lignes ouvertes oubliées."
+        "what": "Tamara raccroche après ce silence total sur la ligne. Les 10 premières secondes de l'appel ne comptent jamais.",
+        "tip": "Baissez-le pour libérer vite les lignes oubliées ; augmentez-le si vos clients prennent le temps de chercher une information."
       },
       "maxDurationMin": {
         "label": "Durée maximale d'appel",
-        "what": "Au-delà, Tamara conclut l'appel poliment.",
-        "tip": "Protège votre forfait de minutes : choisissez un peu plus que votre appel type le plus long."
+        "what": "Limite stricte de durée : l'appel se termine quand elle est atteinte.",
+        "tip": "Protège contre les lignes bloquées : choisissez nettement plus que votre appel type le plus long."
       },
       "pace": {
         "label": "Débit de parole",
-        "what": "Vitesse à laquelle Tamara parle.",
-        "tip": "Ralentissez pour un public âgé ou des lignes de mauvaise qualité ; accélérez pour des échanges très courts."
+        "what": "Débit de parole de Tamara. OpenAI l'applique comme réglage de vitesse ; Gemini et Grok le suivent comme consigne de parole.",
+        "tip": "« Lent » pour un public âgé ou des lignes de mauvaise qualité ; « Rapide » pour des échanges très courts."
       },
       "pronunciations": {
         "label": "Prononciations",
@@ -1932,8 +1932,8 @@
       },
       "fillers": {
         "label": "Mots de remplissage",
-        "what": "Tamara dit de courts « hmm », « d'accord » pendant qu'elle cherche une réponse.",
-        "tip": "Activez si les silences pendant une recherche d'agenda paraissent longs ; désactivez pour un ton plus formel."
+        "what": "Autorise de courtes phrases comme « je regarde » pendant que Tamara cherche une information.",
+        "tip": "Laissez activé pour éviter les silences pendant une recherche d'agenda ; désactivé, elle reste silencieuse jusqu'à avoir la réponse."
       },
       "speakingStyle": {
         "label": "Style de parole",
@@ -1963,13 +1963,24 @@
       },
       "openaiReasoning": {
         "label": "Raisonnement",
-        "what": "Temps de réflexion avant chaque réponse.",
-        "tip": "Plus haut = réponses plus réfléchies mais plus lentes ; gardez bas pour la prise de rendez-vous."
+        "what": "Effort de réflexion d'OpenAI avant chaque réponse. « Selon le modèle » = aucun sur gpt-realtime-2, bas sur 2.1.",
+        "tip": "Plus haut = meilleur sur les demandes complexes mais réponses plus lentes ; gardez « Selon le modèle » pour la prise de rendez-vous."
       },
       "noiseReduction": {
         "label": "Réduction de bruit",
         "what": "Filtre le bruit de fond de l'appelant avant que Tamara l'entende.",
         "tip": "Montez-la pour des appels depuis la rue ou une voiture ; baissez-la si des syllabes sont coupées."
+      },
+      "voiceOverrides": {
+        "label": "Voix exacte par moteur",
+        "what": "Identifiant de voix précis à utiliser sur chaque moteur. Vide = la voix la plus proche du même genre est choisie automatiquement.",
+        "tip": "Laissez vide sauf si la voix automatique ne convient pas ; collez l'identifiant exact donné par le fournisseur.",
+        "placeholder": "automatique"
+      },
+      "grokReasoning": {
+        "label": "Raisonnement Grok",
+        "what": "Grok uniquement. « Haut » (défaut xAI) réfléchit avant de répondre ; « Aucun » répond directement.",
+        "tip": "Essayez « Aucun » si les réponses de Grok semblent lentes ; l'effet sur la latence est encore en mesure."
       }
     },
     "options": {
@@ -1998,7 +2009,17 @@
         "none": "Aucun",
         "low": "Bas",
         "medium": "Moyen",
-        "high": "Haut"
+        "high": "Haut",
+        "default": "Selon le modèle"
+      },
+      "pace": {
+        "slow": "Lent",
+        "normal": "Normal",
+        "fast": "Rapide"
+      },
+      "grokReasoning": {
+        "high": "Haut",
+        "none": "Aucun"
       }
     }
   }

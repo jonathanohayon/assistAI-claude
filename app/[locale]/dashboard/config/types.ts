@@ -1,4 +1,5 @@
 import type { RealtimeProvider } from "@/lib/realtime-provider";
+import type { VoiceProfile } from "@/lib/voice-profile";
 /**
  * Types & constantes partagés du formulaire de configuration (/dashboard).
  *
@@ -34,7 +35,7 @@ export type FormState = {
   realtimeProvider?: RealtimeProvider | null;
   /** Admin-only voice profile (lib/voice-profile). Absent for tenants;
    *  absent keys = field defaults; null = reset everything to defaults. */
-  voiceProfile?: Record<string, unknown> | null;
+  voiceProfile?: Partial<VoiceProfile> | null;
   voice: string;
   temperature: number;
   speed: number;

@@ -45,9 +45,7 @@ import {
   PERSONALITY_DEFAULT,
   clamp10,
   speedFromUI,
-  tempFromUI,
   uiFromSpeed,
-  uiFromTemp,
 } from "./config/personality-constants";
 import { AddTile, AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
