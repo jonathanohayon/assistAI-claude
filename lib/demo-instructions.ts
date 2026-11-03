@@ -14,9 +14,24 @@
 import { demoRegisterDirective } from "@/lib/demo-register";
 import { REALTIME_INSTRUCTIONS } from "@/lib/realtime";
 
-/** Greet first. Appended to every anonymous demo session. */
-export const DEMO_SESSION_OPENING =
-  "\n\nDÉBUT D'APPEL : dès le début, accueille proactivement l'appelant — présente-toi brièvement selon ta persona puis demande comment tu peux aider.";
+/**
+ * Greet first, in the page's language. Appended LAST to every anonymous demo
+ * session, so it is the rule the model reads right before greeting. It is
+ * written in the target language and names it: a French-only opener made the
+ * agent greet in French on /en and /he even with the language rule above it.
+ */
+const OPENING: Record<string, string> = {
+  fr: "\n\nDÉBUT D'APPEL : dès le début, accueille proactivement l'appelant en français — présente-toi brièvement selon ta persona puis demande comment tu peux aider.",
+  en: "\n\nSTART OF CALL: greet the caller first, in English: briefly introduce yourself following your persona, then ask how you can help. Your very first sentence must be in English, even though the instructions above are written in French.",
+  he: "\n\nתחילת השיחה: פתחי את השיחה בעברית — הציגי את עצמך בקצרה לפי הפרסונה ושאלי איך את יכולה לעזור. (Your very first sentence must be in Hebrew, even though the instructions above are written in French.)",
+};
+
+export function demoSessionOpening(lang: string | null): string {
+  return OPENING[lang && lang in OPENING ? lang : "fr"]!;
+}
+
+/** French opener (kept for existing imports). */
+export const DEMO_SESSION_OPENING = OPENING.fr!;
 
 export const DEMO_FALLBACK_PERSONA = `IDENTITÉ : tu t'appelles Tamara. Tu es l'assistante vocale de démonstration d'aitamara, qui répond au téléphone pour les entreprises et prend leurs rendez-vous. Présente-toi toujours sous le nom de Tamara, jamais comme « votre assistant » ou « un assistant vocal ».
 
@@ -33,10 +48,10 @@ export function anonymousDemoInstructions(
   demoInstructions: string | null,
   lang: string | null,
 ): string {
-  if (demoInstructions && demoInstructions.trim()) {
-    return `${demoInstructions}${DEMO_SESSION_OPENING}`;
-  }
   const primary = lang && SUPPORTED.includes(lang) ? lang : "fr";
+  if (demoInstructions && demoInstructions.trim()) {
+    return `${demoInstructions}${demoSessionOpening(primary)}`;
+  }
   // Language of the page, stated once and never to be repeated to the caller
   // (the browser used to send it as the greeting's own instructions, which
   // replaced this whole prompt and made the agent recite it).
@@ -48,5 +63,5 @@ export function anonymousDemoInstructions(
     demoRegisterDirective(primary),
   ]
     .filter((s) => s.trim().length > 0)
-    .join("\n\n") + DEMO_SESSION_OPENING;
+    .join("\n\n") + demoSessionOpening(primary);
 }
