@@ -1,4 +1,9 @@
+import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 
 import { LogsView } from "./logs-view";
 
@@ -9,6 +14,13 @@ export default async function LogsPage(props: {
 }) {
   const { locale } = await props.params;
   const t = await getTranslations({ locale, namespace: "DashboardLogs" });
+  // Engine/model per call is admin-only (supplier names never reach tenants;
+  // the events API strips that data for them too).
+  const session = await auth();
+  const [me] = session?.user?.id
+    ? await db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id)).limit(1)
+    : [];
+  const isAdmin = me?.role === "admin";
 
   return (
     <main>
@@ -25,7 +37,7 @@ export default async function LogsPage(props: {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 py-8 pb-20">
-        <LogsView />
+        <LogsView showEngine={isAdmin} />
       </section>
     </main>
   );

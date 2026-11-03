@@ -1588,6 +1588,8 @@
     "groupEvents": "{count, plural, one {אירוע אחד} other {# אירועים}}",
     "groupDuration": "משך ~{seconds} שניות",
     "groupTokens": "{tokens} טוקנים",
+    "engineAria": "המודל ששימש בשיחה",
+    "pricingPerMinute": "(≈ לפי דקה)",
     "latency": {
       "eyebrow": "ניטור · {metric}",
       "title": "השהיה לכל שיחה (ms)",
