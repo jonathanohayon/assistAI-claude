@@ -9,6 +9,7 @@ import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
+import { parseRealtimeProvider } from "@/lib/realtime-provider";
 
 interface Ctx {
   params: Promise<{ userId: string }>;
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     inheritAdminGlobals: boolean;
     personality: Record<string, number>;
     agentName: string;
+    realtimeProvider: string | null;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -122,6 +124,11 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   }
   if (body.agentName != null) {
     updates.agentName = String(body.agentName).trim().slice(0, 80);
+  }
+  if ("realtimeProvider" in body) {
+    const rp = parseRealtimeProvider(body.realtimeProvider);
+    if (!rp.ok) return NextResponse.json({ error: rp.error }, { status: 400 });
+    updates.realtimeProvider = rp.value;
   }
 
   const [updated] = await db
