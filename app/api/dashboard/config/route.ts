@@ -10,16 +10,24 @@ import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
+import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-provider";
 
 export async function GET() {
   const guard = await requireSession();
   if (!guard.ok) return guard.response;
 
-  const [config] = await db
-    .select()
+  const [row] = await db
+    .select({ config: agentConfigs, role: users.role })
     .from(agentConfigs)
+    .innerJoin(users, eq(users.id, agentConfigs.userId))
     .where(eq(agentConfigs.userId, guard.userId))
     .limit(1);
+  // The speech engine is admin-only: tenants never see it, even in the API.
+  const config = row
+    ? row.role === "admin"
+      ? row.config
+      : withoutAdminOnlyFields(row.config)
+    : undefined;
 
   if (!config) {
     return NextResponse.json({ error: "No config" }, { status: 404 });
@@ -149,6 +157,11 @@ export async function PUT(req: NextRequest) {
     // pour permettre les noms internationalisés (Sarah, יוהנה, محمد, etc.).
     updates.agentName = String(body.agentName).trim().slice(0, 80);
   }
+  const providerUpdate = adminOnlyProviderUpdate(body as Record<string, unknown>, isAdmin);
+  if ("error" in providerUpdate) {
+    return NextResponse.json({ error: providerUpdate.error }, { status: 400 });
+  }
+  Object.assign(updates, providerUpdate.update);
   if (body.noiseReductionLevel != null) {
     // Slider 1-10 → enhancementLevel 0.1-1.0 côté worker. On stocke 1-10
     // pour rester user-friendly côté UI/admin lectures.

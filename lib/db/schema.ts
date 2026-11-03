@@ -171,6 +171,10 @@ export const agentConfigs = pgTable("agent_configs", {
   // Appliqué SUR LE CHEMIN TÉLÉPHONE (Twilio worker) et SUR LE CHEMIN WEB
   // (LiveTest via LiveKit, une fois Phase 2 shippée).
   noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
+  // Speech-to-speech engine for this tenant: "openai" | "gemini" | "xai".
+  // NULL = openai. Admin-only (lib/realtime-provider.ts): never shown to or
+  // writable by tenants.
+  realtimeProvider: text("realtime_provider"),
 
   // Base de connaissances tenant — array de "business" que l'agent peut
   // référencer. Legacy (deprecated 2026-05-28) : remplacé par `business`
