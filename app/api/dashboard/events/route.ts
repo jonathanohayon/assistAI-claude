@@ -1,7 +1,8 @@
 import { and, desc, eq, gt, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveTargetUserId } from "@/lib/api/auth-guards";
+import { requireAdmin, resolveTargetUserId } from "@/lib/api/auth-guards";
+import { eventsForViewer } from "@/lib/engine-visibility";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
@@ -52,8 +53,11 @@ export async function GET(req: NextRequest) {
     .filter((r) => !sources || sources.has(r.source))
     .filter((r) => !levels || levels.has(r.level));
 
+  // The engine / AI supplier of a call is admin-only (lib/engine-visibility).
+  const viewerIsAdmin = (await requireAdmin()).ok;
+
   return NextResponse.json({
-    events: filtered,
+    events: eventsForViewer(filtered, viewerIsAdmin),
     serverTime: new Date().toISOString(),
   });
 }

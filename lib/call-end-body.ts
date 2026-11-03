@@ -14,6 +14,9 @@ export interface CallEndInput {
   channel: "pstn" | "whatsapp";
   transcript: TranscriptEntry[];
   durationSeconds: number;
+  /** Engine that took the call and its model (worker >= 2026-11-03), else null. */
+  realtimeProvider: "openai" | "gemini" | "xai" | null;
+  realtimeModel: string | null;
 }
 
 export function parseCallEndBody(raw: unknown): CallEndInput {
@@ -27,5 +30,10 @@ export function parseCallEndBody(raw: unknown): CallEndInput {
     transcript: Array.isArray(b.transcript) ? (b.transcript as TranscriptEntry[]) : [],
     // Persisted for billing usage charts: integer >= 0, 0 when missing/invalid.
     durationSeconds: Math.max(0, Math.round(Number(b.durationSeconds)) || 0),
+    realtimeProvider:
+      b.realtimeProvider === "openai" || b.realtimeProvider === "gemini" || b.realtimeProvider === "xai"
+        ? b.realtimeProvider
+        : null,
+    realtimeModel: str(b.realtimeModel).slice(0, 80) || null,
   };
 }

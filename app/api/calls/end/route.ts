@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     return auth.response;
   }
 
-  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds } =
+  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds, realtimeProvider, realtimeModel } =
     parseCallEndBody(await req.json().catch(() => ({})));
 
   // userId prioritaire (chemin web LiveTest Phase 2) → exact match par PK.
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
 
   const [callRow] = await db
     .insert(calls)
-    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds })
+    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds, realtimeProvider, realtimeModel })
     .returning();
 
   await logEvent({

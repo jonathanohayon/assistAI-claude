@@ -22,6 +22,8 @@ export function openaiCostUsd(
     openaiOutputTokens: number;
     openaiCachedTokens: number;
     openaiCoveredSeconds: number;
+    /** Gemini / Grok cost as reported by the worker (already in USD). */
+    otherEngineCostUsd?: number;
   },
   rates: Pick<
     CostRates,
@@ -34,7 +36,8 @@ export function openaiCostUsd(
   const real =
     u.openaiInputTokens * rates.openaiUsdPerInputToken +
     u.openaiOutputTokens * rates.openaiUsdPerOutputToken +
-    u.openaiCachedTokens * rates.openaiUsdPerCachedInputToken;
+    u.openaiCachedTokens * rates.openaiUsdPerCachedInputToken +
+    (u.otherEngineCostUsd ?? 0);
   const uncoveredSeconds = Math.max(
     0,
     u.inboundSeconds + u.outboundSeconds - u.openaiCoveredSeconds,
