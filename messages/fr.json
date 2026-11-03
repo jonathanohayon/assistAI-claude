@@ -1588,6 +1588,8 @@
     "groupEvents": "{count, plural, one {# événement} other {# événements}}",
     "groupDuration": "durée ~{seconds} s",
     "groupTokens": "{tokens} tokens",
+    "engineAria": "Modèle utilisé pour l'appel",
+    "pricingPerMinute": "(≈ à la minute)",
     "latency": {
       "eyebrow": "Monitoring · {metric}",
       "title": "Latence par appel (ms)",

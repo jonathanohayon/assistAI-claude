@@ -1,6 +1,13 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+
+import {
+  callPricing,
+  engineDisplayName,
+  resolveCallEngine,
+  type CallEngine,
+} from "@/lib/call-engine";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LatencyChart } from "./latency-chart";
@@ -37,6 +44,11 @@ interface CallGroup {
   /** Tokens + coût USD de l'appel, extraits de l'event call_metrics. */
   totalTokens?: number;
   costUsd?: number;
+  /** Engine/model that handled the call (admin-only data: the events API
+   *  strips it for tenants). null = unknown, shown as "—". */
+  engine?: CallEngine | null;
+  /** "per_minute" when the provider bills by the minute (no tokens). */
+  pricing?: "tokens" | "per_minute" | null;
 }
 
 /**
@@ -139,6 +151,11 @@ function groupEventsByCall(events: EventRow[]): CallGroup[] {
   }
 
   // Order DESC (newest first) pour l'affichage
+  for (const g of groups) {
+    if (g.kind !== "call") continue;
+    g.engine = resolveCallEngine(g.events);
+    g.pricing = callPricing(g.events);
+  }
   return groups.reverse();
 }
 
@@ -163,7 +180,14 @@ const LEVEL_BADGE: Record<string, string> = {
   error: "text-red-600 font-semibold",
 };
 
-export function LogsView({ asUserId }: { asUserId?: string } = {}) {
+export function LogsView({
+  asUserId,
+  showEngine = false,
+}: {
+  asUserId?: string;
+  /** Admins only: show which engine/model handled each call. */
+  showEngine?: boolean;
+} = {}) {
   const t = useTranslations("DashboardLogs");
   const locale = useLocale();
   const timeLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
@@ -453,6 +477,18 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                       <p className="truncate text-sm font-semibold text-[#18181b]">
                         {group.kind === "other" ? t("offCallActivity") : group.label}
                       </p>
+                      {showEngine && group.kind === "call" && (
+                        <p className="mt-0.5 flex items-center gap-2" aria-label={t("engineAria")}>
+                          <span dir="ltr" className="truncate font-mono text-base font-bold text-[#0f172a]">
+                            {group.engine ? engineDisplayName(group.engine) : "—"}
+                          </span>
+                          {group.engine && (
+                            <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+                              {group.engine.provider}
+                            </span>
+                          )}
+                        </p>
+                      )}
                       <p className="text-[11px] text-[#475569]">
                         {new Date(group.startedAt).toLocaleTimeString(timeLocale, {
                           hour: "2-digit",
@@ -464,15 +500,19 @@ export function LogsView({ asUserId }: { asUserId?: string } = {}) {
                           <> · <bdi>{t("groupDuration", { seconds: durationS })}</bdi></>
                         )}
                         {group.kind === "call" &&
-                          typeof group.totalTokens === "number" && (
+                          (typeof group.totalTokens === "number" || typeof group.costUsd === "number") && (
                             <>
                               {" "}
                               ·{" "}
                               <span className="font-medium text-[#0e7490]">
-                                {t("groupTokens", { tokens: group.totalTokens.toLocaleString(timeLocale) })}
+                                {typeof group.totalTokens === "number" &&
+                                  t("groupTokens", { tokens: group.totalTokens.toLocaleString(timeLocale) })}
                                 {typeof group.costUsd === "number" && (
-                                  <> ~${group.costUsd.toFixed(4)}</>
+                                  <bdi dir="ltr">
+                                    {typeof group.totalTokens === "number" ? " " : ""}~${group.costUsd.toFixed(4)}
+                                  </bdi>
                                 )}
+                                {group.pricing === "per_minute" && <> {t("pricingPerMinute")}</>}
                               </span>
                             </>
                           )}

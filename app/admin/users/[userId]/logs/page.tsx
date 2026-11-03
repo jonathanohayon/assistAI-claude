@@ -29,7 +29,7 @@ export default async function AdminTenantLogsPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
-      <LogsView asUserId={target.id} />
+      <LogsView asUserId={target.id} showEngine />
     </main>
   );
 }
