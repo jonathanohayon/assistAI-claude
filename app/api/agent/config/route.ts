@@ -9,6 +9,7 @@ import { logEvent } from "@/lib/logger";
 import { decideTenantResolution } from "@/lib/tenant-resolution";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
+import { effectiveVoiceProfile } from "@/lib/voice-profile";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { isTrialExhausted } from "@/lib/trial";
 import { getTileToggles } from "@/lib/tile-toggles";
@@ -337,6 +338,8 @@ export async function GET(req: NextRequest) {
     instructions: mergedInstructions,
     // Speech-to-speech engine (admin-only setting). "openai" when unset.
     realtimeProvider: effectiveRealtimeProvider(tenant.config.realtimeProvider),
+    // Voice profile (admin-only setting), always complete: defaults = today.
+    voiceProfile: effectiveVoiceProfile(tenant.config.voiceProfile),
     features,
     ordersEnabled,
     updatedAt,

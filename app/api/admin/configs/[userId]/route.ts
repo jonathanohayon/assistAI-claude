@@ -10,6 +10,7 @@ import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
+import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 interface Ctx {
   params: Promise<{ userId: string }>;
@@ -59,6 +60,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     personality: Record<string, number>;
     agentName: string;
     realtimeProvider: string | null;
+    voiceProfile: unknown;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -82,8 +84,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     updates.greetingInstructions = body.greetingInstructions;
   if (body.model != null) updates.model = body.model;
   if (body.voice != null) updates.voice = body.voice;
-  if (body.temperature != null)
-    updates.temperature = clamp(body.temperature, 0, 1.5);
+  // temperature is no longer written: OpenAI Realtime GA rejects it and the
+  // worker never sent it. The column stays (read by nothing) until dropped.
   if (body.speed != null) updates.speed = clamp(body.speed, 0.5, 1.5);
   if (body.maxResponseTokens != null)
     updates.maxResponseTokens = Math.round(
@@ -124,6 +126,16 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   }
   if (body.agentName != null) {
     updates.agentName = String(body.agentName).trim().slice(0, 80);
+  }
+  if ("voiceProfile" in body) {
+    const [current] = await db
+      .select({ voiceProfile: agentConfigs.voiceProfile })
+      .from(agentConfigs)
+      .where(eq(agentConfigs.userId, userId))
+      .limit(1);
+    const vp = mergeVoiceProfile(current?.voiceProfile ?? null, body.voiceProfile);
+    if (!vp.ok) return NextResponse.json({ error: vp.error }, { status: 400 });
+    updates.voiceProfile = vp.value;
   }
   if ("realtimeProvider" in body) {
     const rp = parseRealtimeProvider(body.realtimeProvider);

@@ -211,6 +211,13 @@
       "when": 1793716179048,
       "tag": "0029_call_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793717255853,
+      "tag": "0030_voice_profile",
+      "breakpoints": true
     }
   ]
 }
