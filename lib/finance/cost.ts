@@ -31,6 +31,12 @@ const WHATSAPP_SENT_EVENTS = [
   "whatsapp_sent_owner",
 ] as const;
 const OPENAI_USAGE_EVENT = "openai_usage";
+// Usage rows are posted by the worker for every engine (event name kept for
+// history). OpenAI rows (no provider, or "openai") are priced from their
+// tokens at the OpenAI rate card; Gemini / Grok rows carry their own costUsd
+// (their pricing differs: Gemini per token at Google's rates, Grok per
+// minute) and are added as-is, never re-priced with OpenAI rates.
+const OPENAI_ROW = sql`coalesce(${events.metadata}->>'provider', 'openai') = 'openai'`;
 
 export interface CategoryCost {
   openai: number;
@@ -138,6 +144,8 @@ interface RawUsage {
   openaiUsageRows: number;
   /** Call seconds already priced by real tokens (usage events' durationSeconds). */
   openaiCoveredSeconds: number;
+  /** Cost reported by the worker for non-OpenAI engines (Gemini, Grok), USD. */
+  otherEngineCostUsd: number;
   numbersActive: number;
 }
 
@@ -150,6 +158,7 @@ const ZERO_USAGE: RawUsage = {
   openaiCachedTokens: 0,
   openaiUsageRows: 0,
   openaiCoveredSeconds: 0,
+  otherEngineCostUsd: 0,
   numbersActive: 0,
 };
 
@@ -270,9 +279,10 @@ export async function computeFinanceStats(args: {
       .select({
         period: truncExpr(events.createdAt),
         rows: sql<number>`count(*)::int`,
-        inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric),0)::bigint`,
-        outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric),0)::bigint`,
-        cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric),0)::bigint`,
+        inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        otherCost: sql<number>`coalesce(sum((${events.metadata}->>'costUsd')::numeric) filter (where not ${OPENAI_ROW}),0)::float8`,
         coveredSec: sql<number>`coalesce(sum((${events.metadata}->>'durationSeconds')::numeric),0)::bigint`,
       })
       .from(events)
@@ -325,6 +335,7 @@ export async function computeFinanceStats(args: {
     u.openaiOutputTokens += Number(r.outTok);
     u.openaiCachedTokens += Number(r.cachedTok);
     u.openaiCoveredSeconds += Number(r.coveredSec);
+    u.otherEngineCostUsd += Number(r.otherCost);
   }
 
   const months = monthsForGranularity(granularity);
@@ -395,6 +406,7 @@ export async function computeFinanceStats(args: {
       acc.openaiOutputTokens += u.openaiOutputTokens;
       acc.openaiUsageRows += u.openaiUsageRows;
       acc.openaiCoveredSeconds += u.openaiCoveredSeconds;
+      acc.otherEngineCostUsd += u.otherEngineCostUsd;
       return acc;
     },
     { ...ZERO_USAGE },
@@ -526,9 +538,10 @@ async function computeTenantBreakdown(args: {
       .select({
         userId: events.userId,
         rows: sql<number>`count(*)::int`,
-        inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric),0)::bigint`,
-        outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric),0)::bigint`,
-        cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric),0)::bigint`,
+        inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric) filter (where ${OPENAI_ROW}),0)::bigint`,
+        otherCost: sql<number>`coalesce(sum((${events.metadata}->>'costUsd')::numeric) filter (where not ${OPENAI_ROW}),0)::float8`,
         coveredSec: sql<number>`coalesce(sum((${events.metadata}->>'durationSeconds')::numeric),0)::bigint`,
       })
       .from(events)
@@ -586,6 +599,7 @@ async function computeTenantBreakdown(args: {
     u.openaiOutputTokens += Number(r.outTok);
     u.openaiCachedTokens += Number(r.cachedTok);
     u.openaiCoveredSeconds += Number(r.coveredSec);
+    u.otherEngineCostUsd += Number(r.otherCost);
   }
   for (const r of numbersByUser)
     if (r.userId) ensure(r.userId).numbersActive += Number(r.count);

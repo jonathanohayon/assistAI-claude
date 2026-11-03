@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveTargetUserId } from "@/lib/api/auth-guards";
+import { requireAdmin, resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 
@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
     .orderBy(desc(events.createdAt))
     .limit(500);
 
+  const viewerIsAdmin = (await requireAdmin()).ok;
   const points = rows.map((row) => {
     const m = (row.metadata ?? {}) as CallMetricsMetadata;
     const setup = m.setupMs ?? {};
@@ -168,7 +169,8 @@ export async function GET(req: NextRequest) {
       // Topologie infra — où tourne chaque composant. Fallback sur les
       // env vars locales si l'event n'a pas été emis avec topology
       // (anciens appels pré-2026-05-18).
-      topology: m.topology ?? {
+      // Infra topology names the AI supplier: admin-only.
+      topology: !viewerIsAdmin ? undefined : m.topology ?? {
         twilio: process.env.INFRA_TWILIO_EDGE ?? "unknown",
         worker: process.env.INFRA_WORKER_REGION ?? "unknown",
         web: process.env.INFRA_WEB_REGION ?? "unknown",

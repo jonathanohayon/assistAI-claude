@@ -43,4 +43,14 @@ assert.equal(odd.fromNumber, "");
 assert.equal(odd.userId, "");
 assert.deepEqual(odd.transcript, []);
 
+// engine that took the call (worker >= 2026-11-03)
+const grok = parseCallEndBody({ realtimeProvider: "xai", realtimeModel: "grok-voice-3.0" });
+assert.equal(grok.realtimeProvider, "xai");
+assert.equal(grok.realtimeModel, "grok-voice-3.0");
+// older workers send nothing; unknown providers are not stored
+assert.equal(parseCallEndBody({}).realtimeProvider, null);
+assert.equal(parseCallEndBody({}).realtimeModel, null);
+assert.equal(parseCallEndBody({ realtimeProvider: "anthropic" }).realtimeProvider, null);
+assert.equal(parseCallEndBody({ realtimeModel: "x".repeat(200) }).realtimeModel?.length, 80);
+
 console.log("ALL CALL-END-BODY TESTS PASSED");

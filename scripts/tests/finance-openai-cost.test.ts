@@ -58,4 +58,16 @@ close(
   0.0008,
 );
 
+// Gemini / Grok cost reported by the worker is added as-is, never re-priced
+// with the OpenAI rate card, and covers its call seconds (no estimate on top)
+close(
+  openaiCostUsd(
+    { inboundSeconds: 90, outboundSeconds: 0, ...none, openaiCoveredSeconds: 90, otherEngineCostUsd: 0.12 },
+    rates,
+  ),
+  0.12,
+);
+// omitted -> same as before (OpenAI-only callers unchanged)
+close(openaiCostUsd({ inboundSeconds: 0, outboundSeconds: 0, ...none }, rates), 0);
+
 console.log("ALL FINANCE-OPENAI-COST TESTS PASSED");

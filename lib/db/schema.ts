@@ -251,6 +251,10 @@ export const calls = pgTable("calls", {
   // Durée de l'appel en secondes (déjà présente en DB via migration 0021 ;
   // ajoutée au schéma pour aligner le code — utilisée par le moteur Finance).
   durationSeconds: integer("duration_seconds").notNull().default(0),
+  // Engine that took the call ("openai" | "gemini" | "xai") and its real model
+  // id, as reported by the worker. NULL for calls before 2026-11-03. Admin-only.
+  realtimeProvider: text("realtime_provider"),
+  realtimeModel: text("realtime_model"),
 
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),
