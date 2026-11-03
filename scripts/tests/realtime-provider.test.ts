@@ -73,5 +73,8 @@ assert.equal(currentEngineOption({}), "openai-2");
 assert.equal(currentEngineOption({ realtimeProvider: null, model: "gpt-realtime-2.1" }), "openai-2.1");
 assert.equal(currentEngineOption({ realtimeProvider: "gemini", model: "gpt-realtime-2.1" }), "gemini");
 assert.equal(currentEngineOption({ realtimeProvider: "xai", model: "gpt-realtime-2" }), "xai");
+// a model picked through the admin raw select is never shown as the default
+assert.equal(currentEngineOption({ realtimeProvider: null, model: "gpt-realtime-mini" }), "custom");
+assert.equal(currentEngineOption({ realtimeProvider: null, model: "  " }), "openai-2");
 
 console.log("ALL REALTIME-PROVIDER TESTS PASSED");

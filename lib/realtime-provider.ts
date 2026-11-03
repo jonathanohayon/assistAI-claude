@@ -91,12 +91,19 @@ export const ADMIN_ENGINE_OPTIONS = [
 
 export type AdminEngineOptionId = (typeof ADMIN_ENGINE_OPTIONS)[number]["id"];
 
-/** Which picker entry a tenant config currently corresponds to. */
+/**
+ * Which picker entry a tenant config corresponds to. "custom" = OpenAI with
+ * a model set through the admin's raw model select (e.g. gpt-realtime-mini):
+ * the picker must not present it as the default.
+ */
 export function currentEngineOption(config: {
   realtimeProvider?: string | null;
   model?: string | null;
-}): AdminEngineOptionId {
+}): AdminEngineOptionId | "custom" {
   const p = effectiveRealtimeProvider(config.realtimeProvider);
   if (p === "gemini" || p === "xai") return p;
-  return config.model === "gpt-realtime-2.1" ? "openai-2.1" : "openai-2";
+  const model = config.model?.trim() || "gpt-realtime-2";
+  if (model === "gpt-realtime-2") return "openai-2";
+  if (model === "gpt-realtime-2.1") return "openai-2.1";
+  return "custom";
 }
