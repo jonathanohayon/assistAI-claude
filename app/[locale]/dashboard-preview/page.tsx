@@ -66,7 +66,9 @@ export default async function DashboardPreviewPage(props: {
           noiseReductionLevel: 8,
           business: DEFAULT_BUSINESS,
         }}
-        isAdmin={true}
+        // Public page: render exactly what a tenant sees. Admin-only controls
+        // (model ids, engine picker, ADMIN badges) must never appear here.
+        isAdmin={false}
         adminInheritablePreview="═══ Directive admin pour le plan Pro ═══\n\nL'agent doit toujours confirmer le créneau exact avant de raccrocher.\nNe jamais promettre une plage horaire sans avoir vérifié la dispo réelle.\n\n═══ Heure parlée ═══\n\nQuand tu prononces une heure, dis « quatorze heures trente » et pas « 14h30 »."
         planLabel="Pro"
         primaryPhone="+33 1 23 45 67 89"
