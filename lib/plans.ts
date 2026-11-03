@@ -38,7 +38,7 @@ export interface Plan {
  * Tarif d'overage (minutes hors forfait) en shekel — source de vérité.
  * Converti dans la devise affichée côté pricing card via le fx rate ILS.
  */
-export const OVERAGE_RATE_ILS_PER_MIN = 0.6;
+export const OVERAGE_RATE_ILS_PER_MIN = 1;
 
 /**
  * Feature copy (here and in messages/*.json) writes the included minutes as
