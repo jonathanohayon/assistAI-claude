@@ -1,3 +1,4 @@
+import type { RealtimeProvider } from "@/lib/realtime-provider";
 /**
  * Types & constantes partagés du formulaire de configuration (/dashboard).
  *
@@ -28,6 +29,9 @@ export type FormState = {
   instructions: string;
   greetingInstructions: string;
   model: string;
+  /** Admin-only voice engine. Absent for tenants (the tenant GET strips it);
+   *  absent or null = OpenAI. See config/engine-picker.tsx. */
+  realtimeProvider?: RealtimeProvider | null;
   voice: string;
   temperature: number;
   speed: number;

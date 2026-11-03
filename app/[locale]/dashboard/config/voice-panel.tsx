@@ -11,6 +11,7 @@
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
+import { currentProvider, EnginePicker } from "./engine-picker";
 import { cap } from "./formatting";
 import { PERSONALITY_SLIDER_META } from "./personality-constants";
 import { AdminBadge, PersonalitySlider } from "./shared-ui";
@@ -93,7 +94,11 @@ export function VoicePanel({
       {/* Modèle — picker dropdown réservé admin. The model id is supplier
        *  detail, so tenants see nothing here. Badge ADMIN pour signaler que
        *  ce contrôle n'apparaît PAS sur /dashboard du tenant. */}
-      {isAdmin && (
+      {isAdmin && <EnginePicker form={form} update={update} />}
+
+      {/* The OpenAI model only applies to the OpenAI engine; Gemini/Grok show
+       *  their fixed model read-only in the engine picker. */}
+      {isAdmin && currentProvider(form) === "openai" && (
         <div>
           <div className="mb-1.5 flex items-baseline gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
