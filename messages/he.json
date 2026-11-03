@@ -1829,5 +1829,20 @@
     "errorStart": "לא ניתן להפעיל את ההדגמה. נסו שוב בעוד רגע.",
     "errorConnectionLost": "החיבור נותק. לחצו על המיקרופון כדי להתחיל מחדש.",
     "errorGeneric": "משהו השתבש במהלך השיחה. נסו שוב בעוד רגע."
+  },
+  "AdminEngine": {
+    "label": "מנוע קולי",
+    "optionOpenai2": "OpenAI gpt-realtime-2 (ברירת מחדל)",
+    "optionOpenai21": "OpenAI gpt-realtime-2.1",
+    "optionGemini": "Gemini 3.8 Live (ניסיוני)",
+    "optionXai": "Grok Voice 3.0 (ללא עברית)",
+    "optionCustom": "מותאם אישית: {model}",
+    "advancedModel": "מתקדם: מודל OpenAI אחר",
+    "advancedModelHint": "לבדיקות בין מודלים. מודל שאינו ברשימה מוצג כ\"מותאם אישית\" למעלה.",
+    "geminiHint": "ניסיוני: בעיות ידועות אצל הספק (תשובות שקטות, תשובה ראשונה איטית).",
+    "xaiHint": "Grok לא תומך רשמית בעברית (היא לא ברשימת השפות שלו).",
+    "xaiHebrewWarning": "שימו לב: הלקוח מוגדר לעברית, ש-Grok לא תומך בה. השיחות עלולות להיכשל.",
+    "modelReadOnly": "מודל בשימוש:",
+    "voiceApprox": "קול מקורב: הקול שנבחר למטה מוחלף בקול הקרוב ביותר מאותו מגדר במנוע זה."
   }
 }

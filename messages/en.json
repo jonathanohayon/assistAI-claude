@@ -1829,5 +1829,20 @@
     "errorStart": "The demo couldn't start. Please try again in a moment.",
     "errorConnectionLost": "Connection lost. Click the mic to start again.",
     "errorGeneric": "Something went wrong during the call. Please try again in a moment."
+  },
+  "AdminEngine": {
+    "label": "Voice engine",
+    "optionOpenai2": "OpenAI gpt-realtime-2 (default)",
+    "optionOpenai21": "OpenAI gpt-realtime-2.1",
+    "optionGemini": "Gemini 3.8 Live (experimental)",
+    "optionXai": "Grok Voice 3.0 (no Hebrew)",
+    "optionCustom": "Custom: {model}",
+    "advancedModel": "Advanced: other OpenAI model",
+    "advancedModelHint": "For cross-model testing. A model outside the list shows as \"Custom\" above.",
+    "geminiHint": "Experimental: known upstream issues (silent replies, slow first answer).",
+    "xaiHint": "Hebrew is not officially supported by Grok (not in its language list).",
+    "xaiHebrewWarning": "Warning: this tenant is set to Hebrew, which Grok does not support. Calls may fail.",
+    "modelReadOnly": "Model used:",
+    "voiceApprox": "Approximated voice: the voice picked below is replaced by the closest one of the same gender on this engine."
   }
 }

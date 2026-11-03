@@ -1829,5 +1829,20 @@
     "errorStart": "Impossible de démarrer la démo. Réessayez dans un instant.",
     "errorConnectionLost": "Connexion perdue. Cliquez sur le micro pour relancer.",
     "errorGeneric": "Un problème est survenu pendant l'appel. Réessayez dans un instant."
+  },
+  "AdminEngine": {
+    "label": "Moteur vocal",
+    "optionOpenai2": "OpenAI gpt-realtime-2 (par défaut)",
+    "optionOpenai21": "OpenAI gpt-realtime-2.1",
+    "optionGemini": "Gemini 3.8 Live (expérimental)",
+    "optionXai": "Grok Voice 3.0 (pas d'hébreu)",
+    "optionCustom": "Personnalisé : {model}",
+    "advancedModel": "Avancé : autre modèle OpenAI",
+    "advancedModelHint": "Pour les tests entre modèles. Un modèle hors liste s'affiche « Personnalisé » ci-dessus.",
+    "geminiHint": "Expérimental : problèmes connus en amont (réponses silencieuses, première réponse lente).",
+    "xaiHint": "Grok ne prend pas officiellement en charge l'hébreu (absent de sa liste de langues).",
+    "xaiHebrewWarning": "Attention : ce client est configuré en hébreu, que Grok ne prend pas en charge. Les appels risquent d'échouer.",
+    "modelReadOnly": "Modèle utilisé :",
+    "voiceApprox": "Voix approchée : la voix choisie ci-dessous est remplacée par la plus proche du même genre sur ce moteur."
   }
 }
