@@ -175,6 +175,9 @@ export const agentConfigs = pgTable("agent_configs", {
   // NULL = openai. Admin-only (lib/realtime-provider.ts): never shown to or
   // writable by tenants.
   realtimeProvider: text("realtime_provider"),
+  // Voice profile (lib/voice-profile.ts): listening / interruption / speaking
+  // settings. NULL = all defaults (today's behaviour). Admin-only.
+  voiceProfile: jsonb("voice_profile"),
 
   // Base de connaissances tenant — array de "business" que l'agent peut
   // référencer. Legacy (deprecated 2026-05-28) : remplacé par `business`

@@ -46,12 +46,14 @@ export function effectiveRealtimeProvider(stored: string | null | undefined): Re
   return stored === "gemini" || stored === "xai" ? stored : "openai";
 }
 
-/** Tenant-facing config: the admin-only field removed. */
+/** Tenant-facing config: the admin-only fields removed. */
 export function withoutAdminOnlyFields<T extends Record<string, unknown>>(
   config: T,
-): Omit<T, "realtimeProvider"> {
-  const { realtimeProvider: _omit, ...rest } = config;
-  void _omit;
+): Omit<T, "realtimeProvider" | "voiceProfile" | "temperature"> {
+  const { realtimeProvider: _rp, voiceProfile: _vp, temperature: _t, ...rest } = config;
+  void _rp;
+  void _vp;
+  void _t;
   return rest;
 }
 

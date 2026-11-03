@@ -11,6 +11,7 @@ import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-provider";
+import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 export async function GET() {
   const guard = await requireSession();
@@ -115,8 +116,7 @@ export async function PUT(req: NextRequest) {
     updates.greetingInstructions = body.greetingInstructions;
   if (isAdmin && nextModel !== current.model) updates.model = nextModel;
   if (body.voice != null) updates.voice = body.voice;
-  if (isAdmin && body.temperature != null)
-    updates.temperature = clamp(body.temperature, 0, 1.5);
+  // temperature: no longer written (OpenAI Realtime GA rejects it).
   if (body.speed != null) updates.speed = clamp(body.speed, 0.5, 1.5);
   if (isAdmin && body.maxResponseTokens != null)
     updates.maxResponseTokens = Math.round(
@@ -162,6 +162,17 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: providerUpdate.error }, { status: 400 });
   }
   Object.assign(updates, providerUpdate.update);
+  // Voice profile: admin-only, silently ignored for tenants (like the engine).
+  if (isAdmin && "voiceProfile" in (body as Record<string, unknown>)) {
+    const [cur] = await db
+      .select({ voiceProfile: agentConfigs.voiceProfile })
+      .from(agentConfigs)
+      .where(eq(agentConfigs.userId, guard.userId))
+      .limit(1);
+    const vp = mergeVoiceProfile(cur?.voiceProfile ?? null, (body as Record<string, unknown>).voiceProfile);
+    if (!vp.ok) return NextResponse.json({ error: vp.error }, { status: 400 });
+    updates.voiceProfile = vp.value;
+  }
   if (body.noiseReductionLevel != null) {
     // Slider 1-10 → enhancementLevel 0.1-1.0 côté worker. On stocke 1-10
     // pour rester user-friendly côté UI/admin lectures.
