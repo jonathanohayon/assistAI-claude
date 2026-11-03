@@ -1,4 +1,5 @@
 import type { RealtimeProvider } from "@/lib/realtime-provider";
+import type { VoiceProfile } from "@/lib/voice-profile";
 /**
  * Types & constantes partagés du formulaire de configuration (/dashboard).
  *
@@ -32,6 +33,9 @@ export type FormState = {
   /** Admin-only voice engine. Absent for tenants (the tenant GET strips it);
    *  absent or null = OpenAI. See config/engine-picker.tsx. */
   realtimeProvider?: RealtimeProvider | null;
+  /** Admin-only voice profile (lib/voice-profile). Absent for tenants;
+   *  absent keys = field defaults; null = reset everything to defaults. */
+  voiceProfile?: Partial<VoiceProfile> | null;
   voice: string;
   temperature: number;
   speed: number;

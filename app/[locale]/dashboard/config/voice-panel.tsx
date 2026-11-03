@@ -18,6 +18,10 @@ const EnginePicker = dynamic(
   () => import("./engine-picker").then((m) => m.EnginePicker),
   { ssr: false, loading: () => null },
 );
+const VoiceProfileCard = dynamic(
+  () => import("./voice-profile-card").then((m) => m.VoiceProfileCard),
+  { ssr: false, loading: () => null },
+);
 import { cap } from "./formatting";
 import { PERSONALITY_SLIDER_META } from "./personality-constants";
 import { PersonalitySlider } from "./shared-ui";
@@ -104,6 +108,10 @@ export function VoicePanel({
        *  model. Never shown to tenants; it names suppliers. */}
       {isAdmin && <EnginePicker form={form} update={update} catalogModels={catalogModels} />}
 
+      {/* Admin-only voice profile: every setting with its "i". Noise
+       *  reduction lives inside it for admins (tenants keep the slider below). */}
+      {isAdmin && <VoiceProfileCard form={form} update={update} />}
+
       {/* Voice picker avec gender */}
       <div>
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
@@ -186,7 +194,9 @@ export function VoicePanel({
         </div>
       </div>
 
-      {/* Réduction de bruit — Quail Voice Focus 2.1 L (ai-coustics), 1-10 */}
+      {/* Réduction de bruit — Quail Voice Focus 2.1 L (ai-coustics), 1-10.
+       *  Tenants only: admins get it in the Voice profile card (with its "i"). */}
+      {!isAdmin && (
       <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#fdf2f8]/40 to-white/60 p-5 sm:p-6">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[#be185d]">
@@ -233,6 +243,7 @@ export function VoicePanel({
           />
         </div>
       </div>
+      )}
 
       {/* Personnalité — 9 sliders, 3 enabled (vitesse/créativité/réactivité) */}
       <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/40 to-white/60 p-5 sm:p-6">

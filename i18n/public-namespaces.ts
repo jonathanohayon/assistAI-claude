@@ -45,4 +45,4 @@ export function pickNamespaces<M extends Record<string, unknown>>(
 
 // Namespaces only admins may receive (they name suppliers). Never public,
 // and FullMessagesProvider drops them for non-admin dashboard users.
-export const ADMIN_ONLY_NAMESPACES: readonly string[] = ["AdminEngine"];
+export const ADMIN_ONLY_NAMESPACES: readonly string[] = ["AdminEngine", "AdminVoiceProfile"];
