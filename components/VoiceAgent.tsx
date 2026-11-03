@@ -3,6 +3,12 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/i18n/navigation";
+import {
+  applyTranscriptEvent,
+  awaitingAfterEvent,
+  visibleEntries,
+  type DemoTranscriptEntry,
+} from "@/lib/realtime-transcript";
 import { transportFor } from "@/lib/realtime";
 import {
   defaultVoiceForCatalog,
@@ -12,10 +18,7 @@ import {
 
 type Status = "idle" | "connecting" | "connected" | "error";
 
-interface TranscriptEntry {
-  role: "user" | "assistant";
-  text: string;
-}
+type TranscriptEntry = DemoTranscriptEntry;
 
 // Public landing demo : capped session duration so anonymous visitors can
 // try the agent but can't burn unlimited Realtime API budget. After this
@@ -235,28 +238,12 @@ export default function VoiceAgent() {
         executeTool(funcName, args, callId);
       }
 
-      // Transcript: assistant text
-      // GA Realtime emits `response.output_audio_transcript.done`; the beta
-      // name is kept so an older model/session shape keeps working.
-      if (
-        type === "response.output_audio_transcript.done" ||
-        type === "response.audio_transcript.done"
-      ) {
-        const text = event.transcript as string;
-        if (text) {
-          setTranscript((prev) => [...prev, { role: "assistant", text }]);
-        }
-        setAwaitingResponse(false);
-      }
-
-      // Transcript: user speech
-      if (type === "conversation.item.input_audio_transcription.completed") {
-        const text = event.transcript as string;
-        if (text) {
-          setTranscript((prev) => [...prev, { role: "user", text }]);
-        }
-        setAwaitingResponse(true);
-      }
+      // Transcript (Tamara's and the caller's lines): pure, tested mapping in
+      // lib/realtime-transcript. Tamara's bubble streams from the deltas, so
+      // it shows even if a `.done` never arrives.
+      setTranscript((prev) => applyTranscriptEvent(prev, event).entries);
+      const awaiting = awaitingAfterEvent(event);
+      if (awaiting !== undefined) setAwaitingResponse(awaiting);
     },
     [executeTool, t]
   );
@@ -766,16 +753,16 @@ export default function VoiceAgent() {
               </p>
             )}
 
-            {transcript.length === 0 && !error && !demoEnded ? (
+            {visibleEntries(transcript).length === 0 && !error && !demoEnded ? (
               <p className="m-auto text-center text-xs leading-snug text-[#94a3b8]">
                 {isLive
                   ? t("emptyLive")
                   : t("emptyIdle")}
               </p>
             ) : (
-              transcript.map((entry, i) => (
+              visibleEntries(transcript).map((entry) => (
                 <BubbleV2
-                  key={i}
+                  key={`${entry.role}-${entry.id}`}
                   who={entry.role}
                   text={entry.text}
                   time={nowHHMM()}

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   DEMO_SESSION_OPENING,
   anonymousDemoInstructions,
+  demoSessionOpening,
 } from "../../lib/demo-instructions";
 
 // configured:false (no demo account): named persona, no self-description,
@@ -37,5 +38,24 @@ assert.match(anonymousDemoInstructions("   ", "fr"), /Tamara/);
 const configured = anonymousDemoInstructions("PERSONA DU COMPTE DEMO", "fr");
 assert.equal(configured, `PERSONA DU COMPTE DEMO${DEMO_SESSION_OPENING}`);
 assert.doesNotMatch(configured, /Tamara/);
+
+// The opener (the last rule before the greeting) follows the page locale,
+// on both paths. A French-only opener made the agent greet in French on /en.
+const en = anonymousDemoInstructions(null, "en");
+assert.ok(en.endsWith(demoSessionOpening("en")));
+assert.match(demoSessionOpening("en"), /^\n\nSTART OF CALL: .*in English/);
+assert.doesNotMatch(demoSessionOpening("en"), /DÉBUT D'APPEL/);
+assert.match(en, /tu parles anglais/);
+const heOpen = demoSessionOpening("he");
+assert.ok(he.endsWith(heOpen));
+assert.match(heOpen, /בעברית/);
+assert.match(heOpen, /very first sentence must be in Hebrew/);
+assert.doesNotMatch(heOpen, /DÉBUT D'APPEL/);
+assert.match(demoSessionOpening("fr"), /en français/);
+assert.equal(demoSessionOpening(null), DEMO_SESSION_OPENING);
+assert.equal(demoSessionOpening("xx"), DEMO_SESSION_OPENING);
+// configured demo account: same per-locale opener
+assert.equal(anonymousDemoInstructions("PERSONA", "en"), `PERSONA${demoSessionOpening("en")}`);
+assert.equal(anonymousDemoInstructions("PERSONA", "he"), `PERSONA${demoSessionOpening("he")}`);
 
 console.log("ALL DEMO-INSTRUCTIONS TESTS PASSED");
