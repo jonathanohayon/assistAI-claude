@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 /**
  * Tuile "Voix" : picker du modèle (admin only), picker de voix OpenAI
  * Realtime (avec genre F/M et descriptions traduites), slider de réduction
@@ -11,7 +12,12 @@
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-import { EnginePicker } from "./engine-picker";
+// Loaded on demand: the picker and its options name suppliers (Gemini, Grok),
+// so its code must only reach an admin's browser, never a tenant's bundle.
+const EnginePicker = dynamic(
+  () => import("./engine-picker").then((m) => m.EnginePicker),
+  { ssr: false, loading: () => null },
+);
 import { cap } from "./formatting";
 import { PERSONALITY_SLIDER_META } from "./personality-constants";
 import { PersonalitySlider } from "./shared-ui";
