@@ -5,7 +5,9 @@
  *
  * Never rendered for tenants: the parent only mounts it when `isAdmin`, the
  * public /dashboard-preview renders the tenant view, and the tenant GET
- * strips `realtimeProvider` server-side. Absent or null means OpenAI.
+ * strips `realtimeProvider` server-side. Absent or null means OpenAI. Its copy
+ * lives in the admin-only "AdminEngine" namespace, which FullMessagesProvider
+ * never ships to tenants (it names suppliers).
  *
  * The tenant's voice stays an OpenAI voice name; on Gemini/Grok the worker
  * maps it to the closest voice of the same gender. So switching engines never
@@ -17,7 +19,7 @@ import { useTranslations } from "next-intl";
 import {
   REALTIME_PROVIDERS,
   REALTIME_PROVIDER_MODEL,
-  parseRealtimeProvider,
+  effectiveRealtimeProvider,
   type RealtimeProvider,
 } from "@/lib/realtime-provider";
 
@@ -25,18 +27,18 @@ import { AdminBadge } from "./shared-ui";
 import type { FormState, FormUpdater } from "./types";
 
 export function currentProvider(form: FormState): RealtimeProvider {
-  return parseRealtimeProvider(form.realtimeProvider) ?? "openai";
+  return effectiveRealtimeProvider(form.realtimeProvider);
 }
 
 export function EnginePicker({ form, update }: { form: FormState; update: FormUpdater }) {
-  const t = useTranslations("DashboardConfig");
+  const t = useTranslations("AdminEngine");
   const provider = currentProvider(form);
   const hebrew = form.primaryLanguage === "he";
 
   const label: Record<RealtimeProvider, string> = {
-    openai: t("engineOpenai"),
-    gemini: t("engineGemini"),
-    xai: t("engineXai"),
+    openai: t("openai"),
+    gemini: t("gemini"),
+    xai: t("xai"),
   };
 
   return (
@@ -46,7 +48,7 @@ export function EnginePicker({ form, update }: { form: FormState; update: FormUp
           htmlFor="engine-picker"
           className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]"
         >
-          {t("engineLabel")}
+          {t("label")}
         </label>
         <AdminBadge size="xs" />
       </div>
@@ -65,21 +67,21 @@ export function EnginePicker({ form, update }: { form: FormState; update: FormUp
       </select>
 
       <div id="engine-picker-hint" className="mt-1.5 space-y-1 text-[11px] leading-snug">
-        {provider === "gemini" && <p className="text-[#92400e]">{t("engineGeminiHint")}</p>}
+        {provider === "gemini" && <p className="text-[#92400e]">{t("geminiHint")}</p>}
         {provider === "xai" && (
           <p className={hebrew ? "font-semibold text-[#b91c1c]" : "text-[#92400e]"} role={hebrew ? "alert" : undefined}>
-            {hebrew ? t("engineXaiHebrewWarning") : t("engineXaiHint")}
+            {hebrew ? t("xaiHebrewWarning") : t("xaiHint")}
           </p>
         )}
         {provider !== "openai" && (
           <>
             <p className="text-[#475569]">
-              {t("engineModelReadOnly")}{" "}
+              {t("modelReadOnly")}{" "}
               <code dir="ltr" className="rounded bg-[#f1f5f9] px-1 py-0.5 text-[#0f172a]">
                 {REALTIME_PROVIDER_MODEL[provider]}
               </code>
             </p>
-            <p className="text-[#475569]">{t("engineVoiceApprox")}</p>
+            <p className="text-[#475569]">{t("voiceApprox")}</p>
           </>
         )}
       </div>

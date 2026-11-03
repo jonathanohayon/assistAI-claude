@@ -42,3 +42,7 @@ export function pickNamespaces<M extends Record<string, unknown>>(
   for (const ns of namespaces) if (ns in messages) out[ns] = messages[ns];
   return out as Partial<M>;
 }
+
+// Namespaces only admins may receive (they name suppliers). Never public,
+// and FullMessagesProvider drops them for non-admin dashboard users.
+export const ADMIN_ONLY_NAMESPACES: readonly string[] = ["AdminEngine"];

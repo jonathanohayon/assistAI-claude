@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { redirect } from "next/navigation";
 
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
@@ -149,6 +150,7 @@ export default async function AdminTenantPage({
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
           model: config.model,
+          realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider),
           voice: config.voice,
           temperature: config.temperature,
           speed: config.speed,

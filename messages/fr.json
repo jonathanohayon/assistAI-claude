@@ -769,15 +769,6 @@
     "voiceSubtitleUser": "Choisissez la voix de votre agent et sa vitesse de parole.",
     "modelLabel": "Modèle",
     "modelHint": "Visible uniquement pour l'admin · sert au testing cross-modèles.",
-    "engineLabel": "Moteur vocal",
-    "engineOpenai": "OpenAI Realtime (par défaut)",
-    "engineGemini": "Gemini Live (expérimental)",
-    "engineXai": "Grok voice (pas d'hébreu)",
-    "engineGeminiHint": "Expérimental : problèmes connus en amont (réponses silencieuses, première réponse lente).",
-    "engineXaiHint": "Grok ne prend pas officiellement en charge l'hébreu (absent de sa liste de langues).",
-    "engineXaiHebrewWarning": "Attention : ce client est configuré en hébreu, que Grok ne prend pas en charge. Les appels risquent d'échouer.",
-    "engineModelReadOnly": "Modèle utilisé :",
-    "engineVoiceApprox": "Voix approchée : la voix choisie ci-dessous est remplacée par la plus proche du même genre sur ce moteur.",
     "voiceLabel": "Voix",
     "speedLabel": "Vitesse de parole",
     "speedHint": "1.0 = naturel · 1.2 = plus rapide",
@@ -1838,5 +1829,16 @@
     "errorStart": "Impossible de démarrer la démo. Réessayez dans un instant.",
     "errorConnectionLost": "Connexion perdue. Cliquez sur le micro pour relancer.",
     "errorGeneric": "Un problème est survenu pendant l'appel. Réessayez dans un instant."
+  },
+  "AdminEngine": {
+    "label": "Moteur vocal",
+    "openai": "OpenAI Realtime (par défaut)",
+    "gemini": "Gemini Live (expérimental)",
+    "xai": "Grok voice (pas d'hébreu)",
+    "geminiHint": "Expérimental : problèmes connus en amont (réponses silencieuses, première réponse lente).",
+    "xaiHint": "Grok ne prend pas officiellement en charge l'hébreu (absent de sa liste de langues).",
+    "xaiHebrewWarning": "Attention : ce client est configuré en hébreu, que Grok ne prend pas en charge. Les appels risquent d'échouer.",
+    "modelReadOnly": "Modèle utilisé :",
+    "voiceApprox": "Voix approchée : la voix choisie ci-dessous est remplacée par la plus proche du même genre sur ce moteur."
   }
 }

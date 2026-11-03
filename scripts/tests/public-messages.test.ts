@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { PUBLIC_NAMESPACES } from "../../i18n/public-namespaces";
+import { ADMIN_ONLY_NAMESPACES, PUBLIC_NAMESPACES } from "../../i18n/public-namespaces";
 import { clientNamespaces } from "./client-namespaces";
 
 let passed = 0;
@@ -62,6 +62,11 @@ for (const locale of ["fr", "en", "he"]) {
     assert.deepStrictEqual(absent, []);
   });
 }
+
+group("admin-only namespaces are never public", () => {
+  const leaked = ADMIN_ONLY_NAMESPACES.filter((ns) => allowed.has(ns) || walk.namespaces.has(ns));
+  assert.deepStrictEqual(leaked, []);
+});
 
 group("the dashboard trees re-provide the full set", () => {
   for (const sub of FULL_SUBTREES) {

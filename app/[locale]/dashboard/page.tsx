@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -202,6 +203,8 @@ export default async function DashboardPage(props: {
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
           model: config.model,
+          // Admin-only field, never part of a tenant form state.
+          ...(isAdmin ? { realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider) } : {}),
           voice: config.voice,
           temperature: config.temperature,
           speed: config.speed,
