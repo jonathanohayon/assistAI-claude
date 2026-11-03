@@ -4,7 +4,9 @@
 import assert from "node:assert/strict";
 
 import {
+  ADMIN_ENGINE_OPTIONS,
   REALTIME_PROVIDER_MODEL,
+  currentEngineOption,
   adminOnlyProviderUpdate,
   effectiveRealtimeProvider,
   parseRealtimeProvider,
@@ -52,5 +54,24 @@ assert.deepEqual(REALTIME_PROVIDER_MODEL, {
   gemini: "gemini-3.8-live",
   xai: "grok-voice-3.0",
 });
+
+// admin picker entries (labels agreed with tamaraAlbert / Jonathan)
+assert.deepEqual(
+  ADMIN_ENGINE_OPTIONS.map((o) => o.label),
+  [
+    "OpenAI gpt-realtime-2 (default)",
+    "OpenAI gpt-realtime-2.1",
+    "Gemini 3.8 Live (experimental)",
+    "Grok Voice 3.0 (no Hebrew)",
+  ],
+);
+// every entry's provider passes the admin validation
+for (const o of ADMIN_ENGINE_OPTIONS) assert.equal(parseRealtimeProvider(o.realtimeProvider).ok, true);
+// tenants as they are today map to the default entry
+assert.equal(currentEngineOption({ realtimeProvider: null, model: "gpt-realtime-2" }), "openai-2");
+assert.equal(currentEngineOption({}), "openai-2");
+assert.equal(currentEngineOption({ realtimeProvider: null, model: "gpt-realtime-2.1" }), "openai-2.1");
+assert.equal(currentEngineOption({ realtimeProvider: "gemini", model: "gpt-realtime-2.1" }), "gemini");
+assert.equal(currentEngineOption({ realtimeProvider: "xai", model: "gpt-realtime-2" }), "xai");
 
 console.log("ALL REALTIME-PROVIDER TESTS PASSED");

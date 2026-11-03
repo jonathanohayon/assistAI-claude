@@ -9,6 +9,8 @@ export type RealtimeProvider = (typeof REALTIME_PROVIDERS)[number];
 
 /** Model each engine runs on the phone (the worker's defaults), for display. */
 export const REALTIME_PROVIDER_MODEL: Record<RealtimeProvider, string> = {
+  // OpenAI uses the tenant's own `model` (gpt-realtime-2 by default; the
+  // admin can pick gpt-realtime-2.1, see ADMIN_ENGINE_OPTIONS).
   openai: "gpt-realtime-2",
   // https://ai.google.dev/gemini-api/docs/models/gemini-3.8-live
   gemini: "gemini-3.8-live",
@@ -66,4 +68,35 @@ export function adminOnlyProviderUpdate(
   if (!isAdmin || !("realtimeProvider" in body)) return { update: {} };
   const rp = parseRealtimeProvider(body.realtimeProvider);
   return rp.ok ? { update: { realtimeProvider: rp.value } } : { error: rp.error };
+}
+
+/**
+ * The admin picker's entries, as the (realtimeProvider, model) pair each one
+ * writes through PUT /api/admin/configs/:userId. Tenants stay on the default
+ * (gpt-realtime-2); the newer models exist only as admin options. `model:
+ * undefined` = leave the tenant's OpenAI model untouched (it is unused while
+ * another engine is selected, and comes back if the admin switches back).
+ */
+export const ADMIN_ENGINE_OPTIONS = [
+  { id: "openai-2", label: "OpenAI gpt-realtime-2 (default)", realtimeProvider: null, model: "gpt-realtime-2" },
+  { id: "openai-2.1", label: "OpenAI gpt-realtime-2.1", realtimeProvider: null, model: "gpt-realtime-2.1" },
+  { id: "gemini", label: "Gemini 3.8 Live (experimental)", realtimeProvider: "gemini", model: undefined },
+  { id: "xai", label: "Grok Voice 3.0 (no Hebrew)", realtimeProvider: "xai", model: undefined },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  realtimeProvider: RealtimeProvider | null;
+  model: string | undefined;
+}>;
+
+export type AdminEngineOptionId = (typeof ADMIN_ENGINE_OPTIONS)[number]["id"];
+
+/** Which picker entry a tenant config currently corresponds to. */
+export function currentEngineOption(config: {
+  realtimeProvider?: string | null;
+  model?: string | null;
+}): AdminEngineOptionId {
+  const p = effectiveRealtimeProvider(config.realtimeProvider);
+  if (p === "gemini" || p === "xai") return p;
+  return config.model === "gpt-realtime-2.1" ? "openai-2.1" : "openai-2";
 }
