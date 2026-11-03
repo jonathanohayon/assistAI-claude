@@ -204,7 +204,14 @@ export default async function DashboardPage(props: {
           greetingInstructions: config.greetingInstructions,
           model: config.model,
           // Admin-only field, never part of a tenant form state.
-          ...(isAdmin ? { realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider) } : {}),
+          ...(isAdmin
+            ? {
+                realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider),
+                // TODO(rebase on the voice-profile schema PR): config.voiceProfile
+                voiceProfile:
+                  ((config as { voiceProfile?: Record<string, unknown> | null }).voiceProfile ?? null),
+              }
+            : {}),
           voice: config.voice,
           temperature: config.temperature,
           speed: config.speed,

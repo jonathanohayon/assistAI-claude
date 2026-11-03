@@ -32,6 +32,9 @@ export type FormState = {
   /** Admin-only voice engine. Absent for tenants (the tenant GET strips it);
    *  absent or null = OpenAI. See config/engine-picker.tsx. */
   realtimeProvider?: RealtimeProvider | null;
+  /** Admin-only voice profile (lib/voice-profile). Absent for tenants;
+   *  absent keys = field defaults; null = reset everything to defaults. */
+  voiceProfile?: Record<string, unknown> | null;
   voice: string;
   temperature: number;
   speed: number;

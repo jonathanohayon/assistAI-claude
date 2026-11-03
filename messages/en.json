@@ -1846,5 +1846,160 @@
     "xaiHebrewWarning": "Warning: this tenant is set to Hebrew, which Grok does not support. Calls may fail.",
     "modelReadOnly": "Model used:",
     "voiceApprox": "Approximated voice: the voice picked below is replaced by the closest one of the same gender on this engine."
+  },
+  "AdminVoiceProfile": {
+    "title": "Voice profile",
+    "resetAll": "Reset all to defaults",
+    "on": "On",
+    "off": "Off",
+    "none": "none",
+    "add": "Add",
+    "remove": "Remove {item}",
+    "about": "About: {setting}",
+    "modified": "Changed (differs from default)",
+    "termLabel": "Word or name",
+    "termPlaceholder": "e.g. Ashdod",
+    "sayAsLabel": "Pronounced",
+    "sayAsPlaceholder": "e.g. Ash-dod",
+    "pronouncedAs": "pronounced",
+    "allEngines": "all engines",
+    "engineNone": "No specific settings for {engine}.",
+    "metaRange": "Range: {min}–{max} {unit}",
+    "metaDefault": "Default: {value}",
+    "metaEngines": "Engines: {engines}",
+    "unit": {
+      "ms": "ms",
+      "s": "s",
+      "min": "min",
+      "x": "×"
+    },
+    "engine": {
+      "openai": "OpenAI",
+      "gemini": "Gemini",
+      "xai": "Grok"
+    },
+    "section": {
+      "all": "All engines",
+      "ours": "Our controls",
+      "engine": "{engine} only"
+    },
+    "fields": {
+      "turnSensitivity": {
+        "label": "End-of-turn sensitivity",
+        "what": "How quickly Tamara decides the caller has finished speaking.",
+        "tip": "Raise it if Tamara leaves gaps before answering; lower it if she cuts callers off mid-sentence."
+      },
+      "bargeIn": {
+        "label": "Caller can interrupt",
+        "what": "The caller can talk over Tamara: she stops and listens.",
+        "tip": "Keep it on for natural conversation; turn it off only if background noise keeps interrupting her."
+      },
+      "keyTerms": {
+        "label": "Key terms",
+        "what": "Names, brands or rare words speech recognition should catch (treatments, streets, products).",
+        "tip": "Add the words Tamara mishears in transcripts, one per entry.",
+        "placeholder": "e.g. keratin"
+      },
+      "languageHint": {
+        "label": "Language hint",
+        "what": "The caller's expected language, to help speech recognition.",
+        "tip": "Keep \"Automatic\" if your customers speak several languages; set it if nearly all speak the same one."
+      },
+      "minInterruptionMs": {
+        "label": "Minimum interruption",
+        "what": "How long the caller must speak before Tamara lets herself be interrupted.",
+        "tip": "Raise it if a cough or \"hmm\" cuts Tamara off; lower it if callers struggle to interrupt her."
+      },
+      "idleHangupSec": {
+        "label": "Hang up after silence",
+        "what": "Tamara politely hangs up if nobody speaks for this long.",
+        "tip": "Set 0 to never hang up; 30–60 s avoids forgotten open lines."
+      },
+      "maxDurationMin": {
+        "label": "Maximum call length",
+        "what": "Past this, Tamara politely wraps the call up.",
+        "tip": "Protects your minutes: pick a bit more than your longest typical call."
+      },
+      "pace": {
+        "label": "Speaking pace",
+        "what": "How fast Tamara speaks.",
+        "tip": "Slow down for older callers or poor lines; speed up for very short exchanges."
+      },
+      "pronunciations": {
+        "label": "Pronunciations",
+        "what": "How Tamara should say specific words (names, acronyms, brands).",
+        "tip": "Spell it as it sounds: \"SPA\" → \"spa\", \"Dr Levy\" → \"doctor Levy\"."
+      },
+      "fillers": {
+        "label": "Filler words",
+        "what": "Tamara says short \"hmm\", \"okay\" while looking something up.",
+        "tip": "Turn on if silences during a calendar lookup feel long; off for a more formal tone."
+      },
+      "speakingStyle": {
+        "label": "Speaking style",
+        "what": "Free-form guidance on tone: warm, sober, upbeat…",
+        "tip": "One or two sentences is enough, e.g. \"Warm and smiling, short sentences\".",
+        "placeholder": "e.g. Warm and smiling, short sentences."
+      },
+      "languageLock": {
+        "label": "Lock language",
+        "what": "Tamara stays in the account's language even if the caller switches.",
+        "tip": "Turn on if Tamara wrongly switches language on a foreign word; leave off for multilingual customers."
+      },
+      "openaiTurnMode": {
+        "label": "Turn detection",
+        "what": "How OpenAI decides the caller is done: by silence, or by what the sentence means.",
+        "tip": "\"Semantic\" cuts hesitant speakers off less; \"Silence\" reacts faster."
+      },
+      "openaiEagerness": {
+        "label": "Eagerness",
+        "what": "In semantic mode, how early Tamara takes her turn.",
+        "tip": "\"Low\" lets people who think out loud finish; \"High\" for quick exchanges."
+      },
+      "openaiNoiseReduction": {
+        "label": "OpenAI noise reduction",
+        "what": "OpenAI-side noise filter, on top of our own noise reduction.",
+        "tip": "Keep \"Off\" (our filter is enough); \"Far field\" helps with speakerphones and cars."
+      },
+      "openaiReasoning": {
+        "label": "Reasoning",
+        "what": "Thinking time before each answer.",
+        "tip": "Higher = more considered but slower answers; keep it low for booking appointments."
+      },
+      "noiseReduction": {
+        "label": "Noise reduction",
+        "what": "Filters the caller's background noise before Tamara hears it.",
+        "tip": "Raise it for calls from the street or a car; lower it if syllables get clipped."
+      }
+    },
+    "options": {
+      "languageHint": {
+        "auto": "Automatic",
+        "fr": "French",
+        "he": "Hebrew",
+        "en": "English"
+      },
+      "openaiTurnMode": {
+        "server_vad": "Silence (default)",
+        "semantic_vad": "Semantic"
+      },
+      "openaiEagerness": {
+        "auto": "Automatic",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "openaiNoiseReduction": {
+        "off": "Off",
+        "near_field": "Near field (phone at the ear)",
+        "far_field": "Far field (speakerphone, car)"
+      },
+      "openaiReasoning": {
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    }
   }
 }

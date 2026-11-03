@@ -1846,5 +1846,160 @@
     "xaiHebrewWarning": "Attention : ce client est configuré en hébreu, que Grok ne prend pas en charge. Les appels risquent d'échouer.",
     "modelReadOnly": "Modèle utilisé :",
     "voiceApprox": "Voix approchée : la voix choisie ci-dessous est remplacée par la plus proche du même genre sur ce moteur."
+  },
+  "AdminVoiceProfile": {
+    "title": "Profil vocal",
+    "resetAll": "Tout remettre par défaut",
+    "on": "Activé",
+    "off": "Désactivé",
+    "none": "aucun",
+    "add": "Ajouter",
+    "remove": "Retirer {item}",
+    "about": "À propos : {setting}",
+    "modified": "Modifié (différent du défaut)",
+    "termLabel": "Mot ou nom",
+    "termPlaceholder": "ex. Ashdod",
+    "sayAsLabel": "Se prononce",
+    "sayAsPlaceholder": "ex. Ach-dod",
+    "pronouncedAs": "se prononce",
+    "allEngines": "tous les moteurs",
+    "engineNone": "Aucun réglage spécifique pour {engine}.",
+    "metaRange": "Plage : {min}–{max} {unit}",
+    "metaDefault": "Défaut : {value}",
+    "metaEngines": "Moteurs : {engines}",
+    "unit": {
+      "ms": "ms",
+      "s": "s",
+      "min": "min",
+      "x": "×"
+    },
+    "engine": {
+      "openai": "OpenAI",
+      "gemini": "Gemini",
+      "xai": "Grok"
+    },
+    "section": {
+      "all": "Tous les moteurs",
+      "ours": "Nos réglages",
+      "engine": "Spécifique à {engine}"
+    },
+    "fields": {
+      "turnSensitivity": {
+        "label": "Sensibilité de fin de tour",
+        "what": "À quelle vitesse Tamara considère que l'appelant a fini de parler.",
+        "tip": "Augmentez-la si Tamara laisse des blancs avant de répondre ; baissez-la si elle coupe l'appelant au milieu d'une phrase."
+      },
+      "bargeIn": {
+        "label": "Interruption par l'appelant",
+        "what": "L'appelant peut couper Tamara en parlant : elle s'arrête et écoute.",
+        "tip": "Laissez activé pour une conversation naturelle ; désactivez seulement si des bruits de fond l'interrompent sans cesse."
+      },
+      "keyTerms": {
+        "label": "Termes clés",
+        "what": "Noms, marques ou mots rares que la transcription doit reconnaître (noms de soins, de rues, de produits).",
+        "tip": "Ajoutez les mots que Tamara comprend mal dans les transcriptions, un par entrée.",
+        "placeholder": "ex. kératine"
+      },
+      "languageHint": {
+        "label": "Indice de langue",
+        "what": "Langue attendue de l'appelant, pour aider la reconnaissance vocale.",
+        "tip": "Gardez « Automatique » si vos clients parlent plusieurs langues ; fixez-la si presque tous parlent la même."
+      },
+      "minInterruptionMs": {
+        "label": "Durée minimale d'interruption",
+        "what": "Durée de parole de l'appelant avant que Tamara accepte d'être coupée.",
+        "tip": "Augmentez-la si une toux ou un « hmm » coupe Tamara ; baissez-la si l'appelant a du mal à l'interrompre."
+      },
+      "idleHangupSec": {
+        "label": "Raccrocher après un silence",
+        "what": "Tamara raccroche poliment si personne ne parle pendant cette durée.",
+        "tip": "Mettez 0 pour ne jamais raccrocher ; 30 à 60 s évite les lignes ouvertes oubliées."
+      },
+      "maxDurationMin": {
+        "label": "Durée maximale d'appel",
+        "what": "Au-delà, Tamara conclut l'appel poliment.",
+        "tip": "Protège votre forfait de minutes : choisissez un peu plus que votre appel type le plus long."
+      },
+      "pace": {
+        "label": "Débit de parole",
+        "what": "Vitesse à laquelle Tamara parle.",
+        "tip": "Ralentissez pour un public âgé ou des lignes de mauvaise qualité ; accélérez pour des échanges très courts."
+      },
+      "pronunciations": {
+        "label": "Prononciations",
+        "what": "Comment Tamara doit dire certains mots (noms propres, sigles, marques).",
+        "tip": "Écrivez la prononciation comme elle se lit : « SPA » → « spa », « Dr Lévy » → « docteur Lévy »."
+      },
+      "fillers": {
+        "label": "Mots de remplissage",
+        "what": "Tamara dit de courts « hmm », « d'accord » pendant qu'elle cherche une réponse.",
+        "tip": "Activez si les silences pendant une recherche d'agenda paraissent longs ; désactivez pour un ton plus formel."
+      },
+      "speakingStyle": {
+        "label": "Style de parole",
+        "what": "Consigne libre sur le ton : chaleureux, sobre, enjoué…",
+        "tip": "Une ou deux phrases suffisent, ex. « Chaleureuse et souriante, phrases courtes ».",
+        "placeholder": "ex. Chaleureuse et souriante, phrases courtes."
+      },
+      "languageLock": {
+        "label": "Verrouiller la langue",
+        "what": "Tamara reste dans la langue du compte même si l'appelant en change.",
+        "tip": "Activez si Tamara bascule à tort de langue sur un mot étranger ; laissez désactivé pour une clientèle multilingue."
+      },
+      "openaiTurnMode": {
+        "label": "Détection de fin de tour",
+        "what": "Comment OpenAI décide que l'appelant a fini : par le silence ou par le sens de la phrase.",
+        "tip": "« Sémantique » coupe moins les phrases hésitantes ; « Silence » réagit plus vite."
+      },
+      "openaiEagerness": {
+        "label": "Empressement",
+        "what": "En mode sémantique, à quel point Tamara prend la parole tôt.",
+        "tip": "« Bas » laisse finir les gens qui réfléchissent à voix haute ; « Haut » pour des échanges rapides."
+      },
+      "openaiNoiseReduction": {
+        "label": "Réduction de bruit OpenAI",
+        "what": "Filtre de bruit côté OpenAI, en plus de notre réduction de bruit.",
+        "tip": "Laissez « Désactivé » (notre filtre suffit) ; « Champ lointain » aide pour les haut-parleurs et voitures."
+      },
+      "openaiReasoning": {
+        "label": "Raisonnement",
+        "what": "Temps de réflexion avant chaque réponse.",
+        "tip": "Plus haut = réponses plus réfléchies mais plus lentes ; gardez bas pour la prise de rendez-vous."
+      },
+      "noiseReduction": {
+        "label": "Réduction de bruit",
+        "what": "Filtre le bruit de fond de l'appelant avant que Tamara l'entende.",
+        "tip": "Montez-la pour des appels depuis la rue ou une voiture ; baissez-la si des syllabes sont coupées."
+      }
+    },
+    "options": {
+      "languageHint": {
+        "auto": "Automatique",
+        "fr": "Français",
+        "he": "Hébreu",
+        "en": "Anglais"
+      },
+      "openaiTurnMode": {
+        "server_vad": "Silence (par défaut)",
+        "semantic_vad": "Sémantique"
+      },
+      "openaiEagerness": {
+        "auto": "Automatique",
+        "low": "Bas",
+        "medium": "Moyen",
+        "high": "Haut"
+      },
+      "openaiNoiseReduction": {
+        "off": "Désactivé",
+        "near_field": "Champ proche (téléphone à l'oreille)",
+        "far_field": "Champ lointain (haut-parleur, voiture)"
+      },
+      "openaiReasoning": {
+        "none": "Aucun",
+        "low": "Bas",
+        "medium": "Moyen",
+        "high": "Haut"
+      }
+    }
   }
 }

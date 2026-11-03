@@ -245,10 +245,9 @@ export function ConfigForm({
     primaryLanguages.find((l) => l.value === form.primaryLanguage)?.flag ?? "—";
 
   // Récupère valeur UI 1-10 pour un slider personality (avec mappings spéciaux
-  // pour vitesse/créativité qui sont stockés dans form.speed/form.temperature).
+  // pour vitesse, stockée dans form.speed).
   const getPersonalityValue = (key: string): number => {
     if (key === "vitesse") return clamp10(uiFromSpeed(form.speed));
-    if (key === "creativite") return clamp10(uiFromTemp(form.temperature));
     return clamp10(form.personality[key as keyof Personality] ?? 5);
   };
 
@@ -258,9 +257,6 @@ export function ConfigForm({
       const ui10 = clamp10(ui);
       if (key === "vitesse") {
         return { ...prev, speed: speedFromUI(ui10) };
-      }
-      if (key === "creativite") {
-        return { ...prev, temperature: tempFromUI(ui10) };
       }
       return {
         ...prev,
@@ -274,7 +270,6 @@ export function ConfigForm({
     setForm((prev) => ({
       ...prev,
       speed: speedFromUI(PERSONALITY_DEFAULT.vitesse!),
-      temperature: tempFromUI(PERSONALITY_DEFAULT.creativite!),
       personality: { ...PERSONALITY_DEFAULT },
     }));
   };
