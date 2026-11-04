@@ -2021,6 +2021,9 @@
         "high": "Haut",
         "none": "Aucun"
       }
-    }
+    },
+    "unsaved": "Modifications non enregistrées : elles ne s'appliquent aux appels qu'après l'enregistrement.",
+    "saveNow": "Enregistrer",
+    "saving": "Enregistrement…"
   }
 }

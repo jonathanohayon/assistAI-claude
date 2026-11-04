@@ -61,6 +61,8 @@ export function VoicePanel({
   availableVoices,
   isAdmin,
   catalogModels,
+  dirty = false,
+  saving = false,
   getPersonalityValue,
   setPersonalityValue,
   resetPersonality,
@@ -70,6 +72,9 @@ export function VoicePanel({
   availableVoices: ReadonlyArray<string>;
   isAdmin: boolean;
   catalogModels: ReadonlyArray<{ id: string; provider: string }>;
+  /** Form has unsaved changes / is saving (drives the card's save cue). */
+  dirty?: boolean;
+  saving?: boolean;
   getPersonalityValue: (key: string) => number;
   setPersonalityValue: (key: string, ui: number) => void;
   resetPersonality: () => void;
@@ -110,7 +115,7 @@ export function VoicePanel({
 
       {/* Admin-only voice profile: every setting with its "i". Noise
        *  reduction lives inside it for admins (tenants keep the slider below). */}
-      {isAdmin && <VoiceProfileCard form={form} update={update} />}
+      {isAdmin && <VoiceProfileCard form={form} update={update} dirty={dirty} saving={saving} />}
 
       {/* Voice picker avec gender */}
       <div>

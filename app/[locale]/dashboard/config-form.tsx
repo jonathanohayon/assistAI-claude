@@ -119,6 +119,20 @@ export function ConfigForm({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+
+  // Unsaved settings are lost on a reload, tab close or full navigation:
+  // ask first. (On 2026-11-04 a voice profile change was lost that way.)
+  // The idle auto-logout sets __idleLogout and is never blocked.
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if ((window as Window & { __idleLogout?: boolean }).__idleLogout) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
   const [isPending, startTransition] = useTransition();
   const [activeTile, setActiveTile] = useState<string | null>(null);
   // On phones the tile grid fills the screen, so the panel opens below the
@@ -604,6 +618,8 @@ export function ConfigForm({
                     availableVoices={availableVoices}
                     isAdmin={isAdmin}
                     catalogModels={catalog.models}
+                    dirty={dirty}
+                    saving={isPending}
                     getPersonalityValue={getPersonalityValue}
                     setPersonalityValue={setPersonalityValue}
                     resetPersonality={resetPersonality}
