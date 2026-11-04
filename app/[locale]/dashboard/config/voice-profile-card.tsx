@@ -43,9 +43,14 @@ function isVisible(field: VoiceProfileField, values: Values): boolean {
 export function VoiceProfileCard({
   form,
   update,
+  dirty = false,
+  saving = false,
 }: {
   form: FormState;
   update: FormUpdater;
+  /** The settings form has unsaved changes / is saving. */
+  dirty?: boolean;
+  saving?: boolean;
 }) {
   const t = useTranslations("AdminVoiceProfile");
   const locale = useLocale();
@@ -111,6 +116,8 @@ export function VoiceProfileCard({
         </button>
       </div>
 
+      {dirty && <UnsavedBanner saving={saving} t={t} />}
+
       {sections.map((s) => (
         <fieldset key={s.id} className="mt-4 first-of-type:mt-0">
           <legend className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
@@ -146,7 +153,32 @@ export function VoiceProfileCard({
           </div>
         </fieldset>
       ))}
+
+      {dirty && <UnsavedBanner saving={saving} t={t} bottom />}
     </section>
+  );
+}
+
+/**
+ * The card's controls look live, but nothing reaches calls until the
+ * settings form is saved (a change made on 2026-11-04 was lost that way).
+ * Same submit as the floating Save bar: one save path.
+ */
+function UnsavedBanner({ saving, t, bottom = false }: { saving: boolean; t: T; bottom?: boolean }) {
+  return (
+    <div
+      role={bottom ? undefined : "status"}
+      className={`${bottom ? "mt-4" : "mb-3"} flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#f59e0b]/50 bg-[#fffbeb] px-3 py-2 text-[12px] text-[#92400e]`}
+    >
+      <span className="font-semibold">{t("unsaved")}</span>
+      <button
+        type="submit"
+        disabled={saving}
+        className="rounded-full bg-[#b45309] px-4 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60"
+      >
+        {saving ? t("saving") : t("saveNow")}
+      </button>
+    </div>
   );
 }
 

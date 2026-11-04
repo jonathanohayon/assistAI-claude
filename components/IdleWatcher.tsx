@@ -56,6 +56,9 @@ export function IdleWatcher() {
         // POST direct au lieu d'importer next-auth/react pour éviter une
         // dep côté client lourde si pas déjà bundlée. Redirige vers la page
         // d'accueil (et pas /login) à l'expiration de session.
+        // Let pages with unsaved-changes guards know this navigation is the
+        // security logout, which must never be held back by a prompt.
+        (window as Window & { __idleLogout?: boolean }).__idleLogout = true;
         fetch("/api/admin/auth/signout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

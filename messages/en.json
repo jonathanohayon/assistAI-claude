@@ -2021,6 +2021,9 @@
         "high": "High",
         "none": "None"
       }
-    }
+    },
+    "unsaved": "Unsaved changes: they only apply to calls once you save.",
+    "saveNow": "Save",
+    "saving": "Saving…"
   }
 }
