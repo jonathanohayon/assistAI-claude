@@ -319,7 +319,9 @@ export function ConfigForm({
             ? t("aiDisclosureMustMentionAi")
             : data?.error === "invalid_ai_disclosure_text"
               ? t("aiDisclosureTooLong", { max: 200 })
-              : (data?.error ?? t("errSaveFailed")),
+              : data?.error === "invalid_transfer_number"
+                ? t("transferInvalid")
+                : (data?.error ?? t("errSaveFailed")),
         );
         return;
       }

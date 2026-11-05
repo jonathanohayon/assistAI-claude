@@ -217,6 +217,7 @@ export default async function DashboardPage(props: {
           speed: config.speed,
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
+          transferNumber: config.transferNumber ?? "",
           primaryLanguage: config.primaryLanguage ?? "fr",
           reminderEnabled: config.reminderEnabled ?? false,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
