@@ -1035,7 +1035,14 @@
     "statAvgDuration": "משך ממוצע",
     "statBookings": "תורים שנקבעו",
     "statBookingsSince": "מאז {date}",
-    "statBookingsTrackedFromNow": "נספרים מעכשיו"
+    "statBookingsTrackedFromNow": "נספרים מעכשיו",
+    "transferTitle": "מספר להעברת שיחה",
+    "transferPrefixAria": "קידומת מדינה",
+    "transferPlaceholder": "050 123 4567",
+    "transferNormalized": "החיוג יהיה אל:",
+    "transferNone": "אין העברה: תמרה רושמת הודעה.",
+    "transferInvalid": "מספר לא תקין. לדוגמה: 050 123 4567 או ‎+972 50 123 4567.",
+    "transferHint": "המספר שאליו הסוכנת מעבירה את השיחה כשמתקשר מבקש לדבר עם אדם. שיחות טלפון בלבד, לא וואטסאפ."
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",

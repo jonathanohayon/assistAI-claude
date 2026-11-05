@@ -58,6 +58,7 @@ export default async function DashboardPreviewPage(props: {
           speed: 1,
           maxResponseTokens: 220,
           ownerWhatsapp: "+972585001007",
+          transferNumber: "+972501234567",
           primaryLanguage: locale,
           reminderEnabled: false,
           inheritAdminGlobals: true,
