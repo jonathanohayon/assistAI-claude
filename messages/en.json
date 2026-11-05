@@ -30,36 +30,34 @@
       "tagline": "Your appointments booked automatically, 24/7.",
       "features": [
         "{minutes} minutes included",
-        "Everything included in Business Answering Service",
-        "CRM & connected calendar integration",
-        "Caller qualification and automatic appointment booking",
+        "Automatic call answering and booking, 24/7",
+        "Connected calendar & CRM",
+        "WhatsApp recap of every call",
         "Answers to frequently asked questions",
-        "Natural and professional voice"
+        "Natural voice in French, Hebrew and English"
       ],
       "excludedFeatures": [],
-      "bestFor": "practices, clinics, agencies and B2B services",
+      "bestFor": "salons, practices and single-location businesses",
       "onboardingNotes": [
-        "Connect up to 3 separate branches / calendars.",
-        "The Google Sheet CRM will be created and shared with you during Google connection."
+        "The Google Sheet CRM will be created and shared with you during Google connection.",
+        "Add your WhatsApp number to receive call recaps."
       ]
     },
     "premium": {
-      "name": "Business Call Center",
-      "tagline": "Your inbound & outbound call center, powered by AI.",
+      "name": "Clinic / Multi-site",
+      "tagline": "Several locations, one phone reception.",
       "features": [
-        "Outbound call center: AI campaigns (prospecting, follow-ups, no-show reminders)",
-        "Inbound & outbound calls in parallel",
         "{minutes} minutes included",
+        "Everything in Receptionist",
+        "Up to 3 locations / calendars",
         "Real-time analytics dashboard",
-        "Advanced routing and complex scenarios",
-        "Everything included in Receptionist",
         "Priority support"
       ],
       "excludedFeatures": [],
-      "bestFor": "call centers, sales teams and high-volume support",
+      "bestFor": "clinics and multi-site businesses",
       "onboardingNotes": [
-        "Our team will contact you within 24h for custom configuration (persona, voice, workflows).",
-        "gpt-realtime model activated automatically after onboarding."
+        "You can connect up to 3 separate locations / calendars.",
+        "Our team will contact you within 24h to set things up (persona, voice, locations)."
       ]
     }
   },
@@ -292,13 +290,13 @@
   },
   "Pricing": {
     "kicker": "Pricing",
-    "title": "A plan for every team.",
-    "subtitle": "Every plan includes premium voice and technical support. No commitment, cancel anytime.",
+    "title": "Two plans, no commitment.",
+    "subtitle": "Tamara answers, books the appointment and sends you the recap on WhatsApp. Cancel anytime.",
     "billing": {
       "monthly": "Monthly",
       "annual": "Annual",
-      "save": "Save 20% with the annual plan.",
-      "discount": "−20%"
+      "save": "2 months free with the annual plan.",
+      "discount": "2 months free"
     },
     "card": {
       "popular": "Recommended",
@@ -313,14 +311,14 @@
       "ctaAria": "Choose the {name} plan",
       "model": "Model"
     },
-    "footer": "Prices include VAT. High volume or custom needs? Let's talk."
+    "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
+    "trial": "Free 14-day or 100-minute trial, no credit card. The founder calls you to set Tamara up with you."
   },
   "PricingComparison": {
     "title": "Compare in detail",
     "forWho": "Best for",
-    "forWhoWhatsapp": "Solopreneurs & local businesses",
-    "forWhoGlobal": "Practices & agencies",
-    "forWhoPremium": "Call centers & sales",
+    "forWhoGlobal": "Salons & practices",
+    "forWhoPremium": "Clinics & multi-site",
     "yes": "Included",
     "no": "Not included",
     "rowMinutes": "Minutes included / month",
@@ -328,12 +326,14 @@
     "rowMessages": "WhatsApp messages & recap",
     "rowCalendar": "Connected calendar & booking",
     "rowCrm": "CRM / contacts",
-    "rowOutbound": "Outbound calls & AI campaigns",
     "rowMulticall": "Simultaneous parallel calls",
     "rowAnalytics": "Real-time analytics",
-    "rowSupport": "Priority support",
+    "rowSupport": "Support",
     "supportStandard": "Standard",
-    "supportPriority": "Priority"
+    "supportPriority": "Priority",
+    "rowLocations": "Locations / calendars",
+    "locationsOne": "1",
+    "locationsUpTo3": "Up to 3"
   },
   "DashboardSetup": {
     "title": "Set up your agent",

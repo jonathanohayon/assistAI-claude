@@ -12,7 +12,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { PLANS, type PlanKey } from "@/lib/plans";
+import { PUBLIC_PLANS, type PlanKey } from "@/lib/plans";
 
 /** "Oui" — coche dans un cercle teinté primaire. */
 function YesIcon({ label }: { label: string }) {
@@ -62,9 +62,9 @@ type Cell = boolean | string;
 type Row = {
   /** Clé i18n du libellé de ligne (namespace PricingComparison). */
   labelKey: string;
-  /** Valeurs par plan, dans l'ordre de PLANS (whatsapp, global, premium). */
-  values: [Cell, Cell, Cell];
-  /** Ligne différenciante mise en évidence (appels sortants). */
+  /** One value per plan key; only PUBLIC_PLANS are shown (2026-11 grid). */
+  values: Partial<Record<PlanKey, Cell>>;
+  /** Differentiating row, highlighted. */
   highlight?: boolean;
 };
 
@@ -80,17 +80,26 @@ export function PricingComparison() {
     }
   };
 
+  // Only what is built (2026-11): no outbound, no transfer until it ships.
   const rows: Row[] = [
-    { labelKey: "rowMinutes", values: PLANS.map((p) => String(p.minutesIncluded)) as Row["values"] },
-    { labelKey: "rowInbound", values: [true, true, true] },
-    { labelKey: "rowMessages", values: [true, true, true] },
-    { labelKey: "rowCalendar", values: [false, true, true] },
-    { labelKey: "rowCrm", values: [false, true, true] },
-    { labelKey: "rowMulticall", values: [false, false, true] },
-    { labelKey: "rowAnalytics", values: [false, false, true] },
+    {
+      labelKey: "rowMinutes",
+      values: Object.fromEntries(PUBLIC_PLANS.map((p) => [p.key, String(p.minutesIncluded)])),
+    },
+    { labelKey: "rowInbound", values: { global: true, premium: true } },
+    { labelKey: "rowMessages", values: { global: true, premium: true } },
+    { labelKey: "rowCalendar", values: { global: true, premium: true } },
+    { labelKey: "rowCrm", values: { global: true, premium: true } },
+    {
+      labelKey: "rowLocations",
+      values: { global: t("locationsOne"), premium: t("locationsUpTo3") },
+      highlight: true,
+    },
+    { labelKey: "rowMulticall", values: { global: true, premium: true } },
+    { labelKey: "rowAnalytics", values: { global: false, premium: true } },
     {
       labelKey: "rowSupport",
-      values: [false, t("supportStandard"), t("supportPriority")],
+      values: { global: t("supportStandard"), premium: t("supportPriority") },
     },
   ];
 
@@ -105,11 +114,11 @@ export function PricingComparison() {
     );
   };
 
-  // Index de la colonne Premium pour la mise en avant (dernière de PLANS).
-  const premiumIndex = PLANS.findIndex((p) => p.key === "premium");
+  // Highlighted column: the multi-site plan.
+  const premiumIndex = PUBLIC_PLANS.findIndex((p) => p.key === "premium");
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-3xl">
       <h3 className="text-center font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">
         {t("title")}
       </h3>
@@ -118,7 +127,7 @@ export function PricingComparison() {
           minimale lisible, mais le débordement reste confiné à ce conteneur
           (pas de scroll horizontal sur toute la page). */}
       <div className="mt-8 overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-white/80 shadow-sm backdrop-blur">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full min-w-[480px] border-collapse text-left">
           <caption className="sr-only">{t("title")}</caption>
           <thead>
             <tr className="border-b border-[var(--color-border)]">
@@ -128,7 +137,7 @@ export function PricingComparison() {
               >
                 {t("forWho")}
               </th>
-              {PLANS.map((plan, i) => {
+              {PUBLIC_PLANS.map((plan, i) => {
                 const isPremium = i === premiumIndex;
                 return (
                   <th
@@ -144,11 +153,7 @@ export function PricingComparison() {
                       {planName(plan.key)}
                     </span>
                     <span className="mt-1 block text-[11px] font-normal leading-snug text-[var(--color-muted-foreground)]">
-                      {i === 0
-                        ? t("forWhoWhatsapp")
-                        : i === 1
-                          ? t("forWhoGlobal")
-                          : t("forWhoPremium")}
+                      {plan.key === "premium" ? t("forWhoPremium") : t("forWhoGlobal")}
                     </span>
                   </th>
                 );
@@ -173,7 +178,8 @@ export function PricingComparison() {
                 >
                   {t(row.labelKey)}
                 </th>
-                {row.values.map((value, i) => {
+                {PUBLIC_PLANS.map((plan, i) => {
+                  const value = row.values[plan.key] ?? false;
                   const isPremium = i === premiumIndex;
                   return (
                     <td

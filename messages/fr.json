@@ -30,36 +30,34 @@
       "tagline": "Vos rendez-vous pris automatiquement, 24/7.",
       "features": [
         "{minutes} minutes incluses",
-        "Tout ce qui est inclus dans Permanence téléphonique",
-        "Intégration CRM & calendrier connecté",
-        "Qualification des appelants et prise de rendez-vous automatique",
+        "Prise d'appels et de rendez-vous automatique, 24/7",
+        "Calendrier connecté & CRM",
+        "Récap de chaque appel sur WhatsApp",
         "Réponses aux questions fréquentes",
-        "Voix naturelle et professionnelle"
+        "Voix naturelle, en français, hébreu et anglais"
       ],
       "excludedFeatures": [],
-      "bestFor": "cabinets, cliniques, agences et services B2B",
+      "bestFor": "salons, cabinets et commerces avec un seul établissement",
       "onboardingNotes": [
-        "Vous pouvez rattacher jusqu'à 3 centres / calendriers distincts.",
-        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google."
+        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google.",
+        "Renseignez votre numéro WhatsApp pour recevoir les récaps d'appels."
       ]
     },
     "premium": {
-      "name": "Centre d'appels pro",
-      "tagline": "Votre centre d'appels entrants & sortants, propulsé par l'IA.",
+      "name": "Clinique / Multi-sites",
+      "tagline": "Plusieurs établissements, un seul accueil téléphonique.",
       "features": [
-        "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
-        "Appels entrants & sortants en parallèle",
         "{minutes} minutes incluses",
-        "Tableau de bord analytics en temps réel",
-        "Routage avancé et scénarios complexes",
         "Tout ce qui est inclus dans Réceptionniste",
+        "Jusqu'à 3 établissements / calendriers",
+        "Tableau de bord analytics en temps réel",
         "Support prioritaire"
       ],
       "excludedFeatures": [],
-      "bestFor": "centres d'appels, équipes sales et support à fort volume",
+      "bestFor": "cliniques et entreprises multi-sites",
       "onboardingNotes": [
-        "Notre équipe vous contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
-        "Modèle gpt-realtime activé automatiquement après l'onboarding."
+        "Vous pouvez rattacher jusqu'à 3 établissements / calendriers distincts.",
+        "Notre équipe vous contactera sous 24h pour la configuration (persona, voix, établissements)."
       ]
     }
   },
@@ -292,13 +290,13 @@
   },
   "Pricing": {
     "kicker": "Tarifs",
-    "title": "Une formule pour chaque équipe.",
-    "subtitle": "Tous les plans incluent la voix premium et le support technique. Sans engagement, annulable à tout moment.",
+    "title": "Deux formules, sans engagement.",
+    "subtitle": "Tamara répond, prend les rendez-vous et vous envoie le récap sur WhatsApp. Annulable à tout moment.",
     "billing": {
       "monthly": "Mensuel",
       "annual": "Annuel",
-      "save": "Économisez 20% avec l'abonnement annuel.",
-      "discount": "−20%"
+      "save": "2 mois offerts avec l'abonnement annuel.",
+      "discount": "2 mois offerts"
     },
     "card": {
       "popular": "Recommandé",
@@ -313,14 +311,14 @@
       "ctaAria": "Choisir la formule {name}",
       "model": "Modèle"
     },
-    "footer": "Prix TTC en euros. Gros volume ou besoin sur mesure ? Parlons-en."
+    "footer": "Prix TTC. Plusieurs établissements ou gros volume ? Parlons-en.",
+    "trial": "Essai gratuit 14 jours ou 100 minutes, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous."
   },
   "PricingComparison": {
     "title": "Comparer en détail",
     "forWho": "Pour qui",
-    "forWhoWhatsapp": "Indépendants & commerces",
-    "forWhoGlobal": "Cabinets & agences",
-    "forWhoPremium": "Call centers & sales",
+    "forWhoGlobal": "Salons & cabinets",
+    "forWhoPremium": "Cliniques & multi-sites",
     "yes": "Inclus",
     "no": "Non inclus",
     "rowMinutes": "Minutes incluses / mois",
@@ -328,12 +326,14 @@
     "rowMessages": "Messages & recap WhatsApp",
     "rowCalendar": "Agenda connecté & prise de RDV",
     "rowCrm": "CRM / contacts",
-    "rowOutbound": "Appels sortants & campagnes IA",
     "rowMulticall": "Appels simultanés en parallèle",
     "rowAnalytics": "Analytics temps réel",
-    "rowSupport": "Support prioritaire",
+    "rowSupport": "Support",
     "supportStandard": "Standard",
-    "supportPriority": "Prioritaire"
+    "supportPriority": "Prioritaire",
+    "rowLocations": "Établissements / calendriers",
+    "locationsOne": "1",
+    "locationsUpTo3": "Jusqu'à 3"
   },
   "DashboardSetup": {
     "title": "Configurez votre agent",
