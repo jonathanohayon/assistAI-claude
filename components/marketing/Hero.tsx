@@ -268,6 +268,14 @@ export function Hero() {
                         }}
                       >
                         {tok.text}
+                        {/* Trailing "." inside the box, not highlighted: when the
+                         *  phrase wraps (Hebrew on mobile) it stays on the last
+                         *  line instead of falling onto a line of its own. */}
+                        {tok.trailing ? (
+                          <span className="text-white" style={{ textShadow: "none" }}>
+                            {tok.trailing}
+                          </span>
+                        ) : null}
                         {/* Underline scroll-driven : scaleX 0 → 1 quand l'user
                          *  commence à scroller en bas du hero. Brush stroke
                          *  brand-gradient ancré au centre (RTL-safe). */}
@@ -283,7 +291,6 @@ export function Hero() {
                           }}
                         />
                       </span>
-                      {tok.trailing}
                     </>
                   ) : (
                     tok.text
