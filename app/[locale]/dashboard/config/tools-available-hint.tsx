@@ -45,7 +45,7 @@ const BUILTIN_TOOLS: ToolSpec[] = [
     name: "save_contact",
     description:
       "Enregistre les coordonnées d'une cliente sans réserver. Utile si elle ne sait pas encore quand venir.",
-    example: "save_contact(name='Sarah', phone='0501234567', note='intéressée par massage')",
+    example: "save_contact(name='Sarah', phone='0500000000', note='intéressée par massage')",
     category: "calendar",
   },
   {
