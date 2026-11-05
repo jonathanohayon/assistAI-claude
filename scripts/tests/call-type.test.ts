@@ -3,7 +3,8 @@
 
 import assert from "node:assert/strict";
 
-import { inferCallType } from "../../lib/call-type";
+import { callTypeFromEvents, inferCallType, resolveCallType } from "../../lib/call-type";
+import { readFileSync } from "node:fs";
 
 const cases: Array<[string, string, ReturnType<typeof inferCallType>]> = [
   // French (behaviour unchanged)
@@ -39,3 +40,26 @@ assert.equal(inferCallType("", ["assistant: cancel_appointment ok"]), "Annulatio
 assert.equal(inferCallType("", ["user: אפשר לקבוע תור למחר?"]), "RDV");
 
 console.log(`call-type: ${cases.length + 2} passed`);
+
+// ── call type from deterministic tool events (keywords only as fallback) ──
+{
+  assert.equal(callTypeFromEvents([]), null);
+  assert.equal(callTypeFromEvents([{ event: "book_success" }]), "RDV");
+  assert.equal(callTypeFromEvents([{ event: "book_success" }, { event: "cancel_success" }]), "Annulation");
+  assert.equal(callTypeFromEvents([{ event: "book_success" }, { event: "reschedule_success" }]), "Modification");
+  assert.equal(callTypeFromEvents([{ event: "call_transfer", metadata: { ok: true } }]), "Transfert");
+  assert.equal(callTypeFromEvents([{ event: "call_transfer", metadata: { ok: false } }]), null);
+  assert.equal(callTypeFromEvents([{ event: "book_success" }, { event: "call_transfer", metadata: { ok: true } }]), "RDV");
+  // the tool event wins over misleading words …
+  assert.equal(resolveCallType([{ event: "book_success" }], "elle voulait annuler puis a repris un RDV", []), "RDV");
+  // … and keywords decide when no tool fired (message has no tool since take_message was removed)
+  assert.equal(resolveCallType([], "דנה השאירה הודעה", []), "Message");
+  console.log("call-type events: 9 passed");
+}
+
+// migration is idempotent, no backfill
+{
+  const sql = readFileSync(new URL("../../drizzle/0038_call_type.sql", import.meta.url), "utf8");
+  assert.match(sql, /ALTER TABLE "calls" ADD COLUMN IF NOT EXISTS "call_type" text DEFAULT '' NOT NULL/);
+  assert.doesNotMatch(sql, /UPDATE/);
+}

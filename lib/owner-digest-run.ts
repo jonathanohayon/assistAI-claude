@@ -28,7 +28,12 @@ export interface OwnerDigestRunResult {
 
 export async function statsFor(userId: string, start: Date, end: Date): Promise<DigestStats> {
   const callRows = await db
-    .select({ summary: calls.summary, transcript: calls.transcript, durationSeconds: calls.durationSeconds })
+    .select({
+      summary: calls.summary,
+      transcript: calls.transcript,
+      durationSeconds: calls.durationSeconds,
+      callType: calls.callType,
+    })
     .from(calls)
     .where(and(eq(calls.userId, userId), gte(calls.createdAt, start), lt(calls.createdAt, end)));
 
@@ -41,12 +46,15 @@ export async function statsFor(userId: string, start: Date, end: Date): Promise<
     .where(and(eq(events.userId, userId), gte(events.createdAt, start), lt(events.createdAt, end)));
 
   const seconds = callRows.reduce((n, c) => n + (c.durationSeconds ?? 0), 0);
+  // calls.call_type is set at call end (tool events, then keywords); rows
+  // from before that column existed fall back to the keyword classifier.
   const messages = callRows.filter(
     (c) =>
-      inferCallType(
-        c.summary ?? "",
-        (Array.isArray(c.transcript) ? c.transcript : []).map((t) => String((t as { text?: unknown }).text ?? "")),
-      ) === "Message",
+      (c.callType ||
+        inferCallType(
+          c.summary ?? "",
+          (Array.isArray(c.transcript) ? c.transcript : []).map((t) => String((t as { text?: unknown }).text ?? "")),
+        )) === "Message",
   ).length;
   return {
     calls: callRows.length,

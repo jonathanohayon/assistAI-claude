@@ -1,0 +1,1 @@
+ALTER TABLE "calls" ADD COLUMN IF NOT EXISTS "call_type" text DEFAULT '' NOT NULL;

@@ -10,7 +10,7 @@
 // prefixes (ל/ב/ה/ו/ש) to words, so Hebrew patterns are stems or
 // multi-word phrases chosen not to occur inside unrelated words.
 
-export type CallType = "Annulation" | "Modification" | "Message" | "RDV" | "Info";
+export type CallType = "Annulation" | "Modification" | "Message" | "RDV" | "Transfert" | "Info";
 
 const CANCEL = [
   /annul/, // fr
@@ -46,3 +46,33 @@ export const inferCallType = (summary: string, transcript: string[]): CallType =
   if (any(BOOKING, all)) return "RDV";
   return "Info";
 };
+
+/** A tool event recorded during the call (events table). */
+export interface CallToolEvent {
+  event: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+/**
+ * Call type from the deterministic tool events of the call (agent-reliability
+ * rule: what the tools DID beats what the words say). null = no decisive
+ * event, use the keyword classifier. Priority: cancel > reschedule > booking
+ * > successful transfer.
+ */
+export function callTypeFromEvents(events: CallToolEvent[]): CallType | null {
+  const has = (name: string) => events.some((e) => e.event === name);
+  if (has("cancel_success")) return "Annulation";
+  if (has("reschedule_success")) return "Modification";
+  if (has("book_success")) return "RDV";
+  if (events.some((e) => e.event === "call_transfer" && e.metadata?.ok === true)) return "Transfert";
+  return null;
+}
+
+/** Events first, keywords as fallback. */
+export function resolveCallType(
+  events: CallToolEvent[],
+  summary: string,
+  transcript: string[],
+): CallType {
+  return callTypeFromEvents(events) ?? inferCallType(summary, transcript);
+}
