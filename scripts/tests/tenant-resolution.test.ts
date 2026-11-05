@@ -7,13 +7,13 @@ import { decideTenantResolution, resolveTenantWith } from "../../lib/tenant-reso
 
 // THE BUG: an unknown dialed number is refused, never served the default tenant
 assert.equal(
-  decideTenantResolution({ phone: "+97233820485", userId: null, matched: false }),
+  decideTenantResolution({ phone: "+97230000000", userId: null, matched: false }),
   "unknown_number",
 );
 
 // a known dialed number routes to its tenant
 assert.equal(
-  decideTenantResolution({ phone: "+97223764700", userId: null, matched: true }),
+  decideTenantResolution({ phone: "+97220000000", userId: null, matched: true }),
   "phone_match",
 );
 
