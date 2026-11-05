@@ -1,2 +1,2 @@
-ALTER TABLE "agent_configs" ADD COLUMN "ai_disclosure_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
-ALTER TABLE "agent_configs" ADD COLUMN "ai_disclosure_text" text DEFAULT '' NOT NULL;
+ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "ai_disclosure_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "ai_disclosure_text" text DEFAULT '' NOT NULL;

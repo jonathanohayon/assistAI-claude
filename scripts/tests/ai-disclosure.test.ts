@@ -26,7 +26,8 @@ const cfg = (over: Partial<Parameters<typeof effectiveGreeting>[0]> = {}) => ({
 // ON by default for every tenant
 assert.equal(agentConfigs.aiDisclosureEnabled.default, true);
 const sql = readFileSync(new URL("../../drizzle/0035_ai_disclosure.sql", import.meta.url), "utf8");
-assert.match(sql, /"ai_disclosure_enabled" boolean DEFAULT true NOT NULL/);
+assert.match(sql, /ADD COLUMN IF NOT EXISTS "ai_disclosure_enabled" boolean DEFAULT true NOT NULL/);
+assert.match(sql, /ADD COLUMN IF NOT EXISTS "ai_disclosure_text" text DEFAULT '' NOT NULL/);
 
 // inserted after the first sentence, question stays last (hands the turn over)
 assert.equal(
