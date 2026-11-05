@@ -34,7 +34,6 @@
         "CRM & connected calendar integration",
         "Caller qualification and automatic appointment booking",
         "Answers to frequently asked questions",
-        "Smart call transfer to you or your team",
         "Natural and professional voice"
       ],
       "excludedFeatures": [],
@@ -80,10 +79,10 @@
     "menuClose": "Close menu"
   },
   "Hero": {
-    "badge": "Real-time voice concierge · Live",
-    "title": "Speak {emphasis} to every customer.",
-    "titleEmphasis": "human",
-    "subtitle": "For medical practices, salons, SMBs and call centers. A voice AI that picks up 24/7, books appointments, runs your outbound call campaigns and syncs your calendar — in French, Hebrew and English.",
+    "badge": "AI receptionist · Live",
+    "title": "Never lose a client to an {emphasis}.",
+    "titleEmphasis": "unanswered call",
+    "subtitle": "Tamara answers your phone 24/7 in Hebrew, French and English, books straight into your calendar, and sends you the recap on WhatsApp.",
     "ctaDemo": "Get started free",
     "ctaConfigure": "See how it works",
     "ctaLiveDemo": "Talk to Tamara now",
@@ -129,17 +128,17 @@
     "subtitle": "One platform, configurable in minutes for the tone and workflows specific to your industry.",
     "medical": {
       "title": "Medical practices",
-      "desc": "Booking, reminders, cancellations, emergency triage. Compliant with medical confidentiality.",
+      "desc": "Booking, cancellations and rescheduling, WhatsApp confirmation to the patient. In Hebrew, French and English.",
       "f1": "Google Calendar sync",
-      "f2": "Automatic SMS reminders",
-      "f3": "Emergency filtering"
+      "f2": "WhatsApp confirmation",
+      "f3": "Cancellations & rescheduling"
     },
     "beauty": {
       "title": "Beauty salons",
       "desc": "Care services, variable duration, choice of practitioner. Multi-location native.",
       "f1": "Multi-location",
       "f2": "Per-service duration",
-      "f3": "Automatic loyalty tracking"
+      "f3": "WhatsApp recap to the salon"
     },
     "barber": {
       "title": "Barbershops",
@@ -402,7 +401,7 @@
     "subtitle": "Clear answers to the questions we hear most often — from pricing to security, and everything in between.",
     "q1": {
       "question": "How much does Tamara cost?",
-      "answer": "Tamara starts with the Answering Service plan; current pricing is in the grid above. The Receptionist and Call Center plans unlock booking, multi-location and advanced routing. All plans have no commitment and can be cancelled anytime from the dashboard."
+      "answer": "Current pricing is in the grid above, with the minutes included and the price per extra minute. All plans have no commitment and can be cancelled anytime from the dashboard."
     },
     "q2": {
       "question": "How does the AI talk to my clients?",
@@ -414,7 +413,7 @@
     },
     "q4": {
       "question": "What happens for complex appointments?",
-      "answer": "If the situation goes beyond the configured workflows (medical emergency, unusual request, difficult caller), the agent can transfer the call to you or your team, or collect all the useful info and send you an instant WhatsApp recap. You stay in control."
+      "answer": "If a request goes beyond what Tamara can handle (an unusual request, a difficult caller), she takes down every useful detail and sends you an instant WhatsApp recap. You call the client back already knowing everything."
     },
     "q5": {
       "question": "How do I install Tamara on my line?",
@@ -468,7 +467,7 @@
     "waGreeting": "Hi, I have a question about Tamara."
   },
   "Footer": {
-    "tagline": "Real-time voice concierge for medical practices, salons and barbershops. Native Hebrew, French and English.",
+    "tagline": "AI receptionist for salons and clinics. Hebrew, French and English.",
     "categories": {
       "product": "Product",
       "account": "Account",
@@ -484,7 +483,7 @@
       "beauty": "Beauty salons",
       "barbers": "Barbershops"
     },
-    "copyright": "© {year} Tamara · Voice AI concierge",
+    "copyright": "© {year} Tamara · AI receptionist",
     "status": "All services online"
   },
   "LocaleSwitcher": {
