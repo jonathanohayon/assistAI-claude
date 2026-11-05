@@ -145,7 +145,9 @@ export const agentConfigs = pgTable("agent_configs", {
   // (on ne capture que le téléphone du client, pas son email) : template Twilio
   // Content avec fallback sur le template client approuvé. Le téléphone est lu
   // depuis l'event Google Calendar (ligne "Tel :" de la description).
-  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+  // J-1 WhatsApp reminder. ON by default since 2026-11 (migration 0032 also
+  // switched it on for existing tenants with Google Calendar connected).
+  reminderEnabled: boolean("reminder_enabled").notNull().default(true),
 
   // Si false, le tenant n'hérite pas des blocs admin (spoken_time,
   // spoken_phone, hangup, per_call_context, config_blocks, admin_global)
