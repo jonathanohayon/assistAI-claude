@@ -1427,7 +1427,14 @@
     "colActions": "Actions",
     "editButton": "Éditer",
     "confirmDelete": "Supprimer ce contact ?",
-    "errSave": "Erreur"
+    "errSave": "Erreur",
+    "colVisits": "Visites",
+    "colLastVisit": "Dernière visite",
+    "nextVisit": "Prochaine : {date}",
+    "regularBadge": "Habitué·e",
+    "filterRegulars": "Habitué·es seulement ({n})",
+    "regularRule": "Habitué·e = {n} visites passées ou plus (agenda)",
+    "noRegulars": "Pas encore d'habitué·e."
   },
   "DashboardSettings": {
     "header": "Paramètres",
