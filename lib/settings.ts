@@ -50,7 +50,9 @@ export const SETTING_KEYS = {
   // JSON map plan → { eurMonthly, eurAnnual, ilsMonthly, ilsAnnual }. Grille
   // tarifaire éditable depuis /admin. Vide → DEFAULT_PLAN_PRICING hardcodé
   // (lib/plan-pricing.ts). Lu côté serveur pour le montant facturé HYP.
-  PLAN_PRICING: "plan_pricing",
+  // v2 (2026-11 grid): a new key so an older admin override (e.g. the 1 €
+  // test price) can't mask the new defaults. Admin edits go to v2.
+  PLAN_PRICING: "plan_pricing_v2",
   // JSON map plan → system prompt utilisé pour générer le résumé WhatsApp
   // post-appel (lib/summarize.ts). Permet d'avoir un ton/contenu/format
   // différents par plan (ex. basique = simple confirm message · global =
