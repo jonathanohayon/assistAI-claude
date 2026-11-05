@@ -86,7 +86,6 @@ export function PricingComparison() {
     { labelKey: "rowMessages", values: [true, true, true] },
     { labelKey: "rowCalendar", values: [false, true, true] },
     { labelKey: "rowCrm", values: [false, true, true] },
-    { labelKey: "rowOutbound", values: [false, false, true], highlight: true },
     { labelKey: "rowMulticall", values: [false, false, true] },
     { labelKey: "rowAnalytics", values: [false, false, true] },
     {
