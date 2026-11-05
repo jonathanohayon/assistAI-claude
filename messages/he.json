@@ -1035,7 +1035,14 @@
     "statAvgDuration": "משך ממוצע",
     "statBookings": "תורים שנקבעו",
     "statBookingsSince": "מאז {date}",
-    "statBookingsTrackedFromNow": "נספרים מעכשיו"
+    "statBookingsTrackedFromNow": "נספרים מעכשיו",
+    "aiDisclosureLabel": "להודיע למתקשרים שהם מדברים עם בינה מלאכותית",
+    "aiDisclosureHint": "מומלץ, וחובה באיחוד האירופי. תמרה אומרת זאת בברכת הפתיחה.",
+    "aiDisclosureTextLabel": "משפט משלכם",
+    "aiDisclosureMustMentionAi": "המשפט חייב לציין שמדובר בבינה מלאכותית (למשל \"בינה מלאכותית\", \"AI\").",
+    "aiDisclosureTooLong": "עד {max} תווים.",
+    "aiDisclosureOffNote": "כבוי: המתקשרים שומעים את ברכת הפתיחה בדיוק כפי שנכתבה, בלי לציין שמדובר בבינה מלאכותית. לא מומלץ: זו חובה למתקשרים מהאיחוד האירופי.",
+    "aiDisclosurePreview": "המתקשרים ישמעו"
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",

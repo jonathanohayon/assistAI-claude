@@ -164,6 +164,8 @@ export default async function AdminTenantPage({
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
+          aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
+          aiDisclosureText: config.aiDisclosureText ?? "",
           noiseReductionLevel: config.noiseReductionLevel ?? 8,
           business: (() => {
             const maybe = (config as unknown as { business?: unknown })

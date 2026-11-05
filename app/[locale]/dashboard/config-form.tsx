@@ -314,7 +314,13 @@ export function ConfigForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? t("errSaveFailed"));
+        setError(
+          data?.error === "ai_disclosure_must_mention_ai"
+            ? t("aiDisclosureMustMentionAi")
+            : data?.error === "invalid_ai_disclosure_text"
+              ? t("aiDisclosureTooLong", { max: 200 })
+              : (data?.error ?? t("errSaveFailed")),
+        );
         return;
       }
       const timeLocale =
