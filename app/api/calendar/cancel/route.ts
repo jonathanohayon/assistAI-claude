@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       source: "calendar",
       event: "cancel_success",
       message: `RDV annulé`,
+      // Attributed to the tenant (like book_success): the call type and the
+      // dashboard read tool events by user_id.
+      ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: { eventId },
     });
     return NextResponse.json({ success: true, message: "RDV annulé." });

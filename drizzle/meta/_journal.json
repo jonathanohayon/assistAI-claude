@@ -267,6 +267,13 @@
       "when": 1793880397415,
       "tag": "0037_forwarding_test",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793880693851,
+      "tag": "0038_call_type",
+      "breakpoints": true
     }
   ]
 }

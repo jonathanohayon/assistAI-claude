@@ -174,6 +174,9 @@ export async function POST(req: NextRequest) {
       source: "calendar",
       event: "reschedule_success",
       message: `RDV déplacé : ${newDate} ${newTime} · ${resolved.label}`,
+      // Attributed to the tenant (like book_success): the call type and the
+      // dashboard read tool events by user_id.
+      ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: {
         eventId,
         newDate,
