@@ -159,12 +159,15 @@ export default async function AdminTenantPage({
           speed: config.speed,
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
+          transferNumber: config.transferNumber ?? "",
           primaryLanguage: config.primaryLanguage ?? "fr",
           reminderEnabled: config.reminderEnabled ?? false,
           ownerDigestEnabled: config.ownerDigestEnabled ?? true,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
+          aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
+          aiDisclosureText: config.aiDisclosureText ?? "",
           noiseReductionLevel: config.noiseReductionLevel ?? 8,
           business: (() => {
             const maybe = (config as unknown as { business?: unknown })

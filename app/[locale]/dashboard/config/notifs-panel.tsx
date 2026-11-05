@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import { NotifChannelCard } from "./notif-channel-card";
 import { OwnerDigestCard } from "./owner-digest-card";
+import { TransferNumberField } from "./transfer-number-field";
 import type { FormState, FormUpdater, Translator } from "./types";
 
 export function NotifsPanel({
@@ -57,6 +58,7 @@ export function NotifsPanel({
         hint={t("ownerWhatsappHint")}
         testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
+      <TransferNumberField form={form} update={update} t={t} />
       <NotifChannelCard
         label="Email"
         color="#0e7490"
