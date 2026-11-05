@@ -14,6 +14,7 @@ import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { isTrialExhausted } from "@/lib/trial";
 import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
+import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -316,6 +317,15 @@ export async function GET(req: NextRequest) {
     tenant.user.id,
     req.nextUrl.searchParams.get("caller"),
   );
+  // Forwarding setup check: an inbound PHONE call (?phone=, not the web
+  // LiveTest) during the tenant's test window verifies forwarding.
+  // Fire-and-forget, never delays the config.
+  if (phone && !userId) {
+    void markForwardingTestCall(tenant.user.id, {
+      forwardedFrom: req.nextUrl.searchParams.get("forwardedFrom"),
+      via: "call_start",
+    });
+  }
   const brain = await getAgentBrain(tenant.user.id);
   const envOverride = process.env.AGENT_WEBHOOK_URL;
   const agentWebhook =
