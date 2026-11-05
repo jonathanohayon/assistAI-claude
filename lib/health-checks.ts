@@ -71,6 +71,7 @@ export async function runHealthChecks(): Promise<{
         `Top events:\n${top.map((t) => `  ${t.n}  ${t.event}`).join("\n")}\n\n` +
         `Details: /admin logs, or the events table.`,
       dedupMs: 6 * HOUR,
+      severity: "warning",
     });
   }
 
