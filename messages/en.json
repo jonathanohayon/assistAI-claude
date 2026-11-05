@@ -30,37 +30,34 @@
       "tagline": "Your appointments booked automatically, 24/7.",
       "features": [
         "{minutes} minutes included",
-        "Everything included in Business Answering Service",
-        "CRM & connected calendar integration",
-        "Caller qualification and automatic appointment booking",
+        "Automatic call answering and booking, 24/7",
+        "Connected calendar & CRM",
+        "WhatsApp recap of every call",
         "Answers to frequently asked questions",
-        "Smart call transfer to you or your team",
-        "Natural and professional voice"
+        "Natural voice in French, Hebrew and English"
       ],
       "excludedFeatures": [],
-      "bestFor": "practices, clinics, agencies and B2B services",
+      "bestFor": "salons, practices and single-location businesses",
       "onboardingNotes": [
-        "Connect up to 3 separate branches / calendars.",
-        "The Google Sheet CRM will be created and shared with you during Google connection."
+        "The Google Sheet CRM will be created and shared with you during Google connection.",
+        "Add your WhatsApp number to receive call recaps."
       ]
     },
     "premium": {
-      "name": "Business Call Center",
-      "tagline": "Your inbound & outbound call center, powered by AI.",
+      "name": "Clinic / Multi-site",
+      "tagline": "Several locations, one phone reception.",
       "features": [
-        "Outbound call center: AI campaigns (prospecting, follow-ups, no-show reminders)",
-        "Inbound & outbound calls in parallel",
         "{minutes} minutes included",
+        "Everything in Receptionist",
+        "Up to 3 locations / calendars",
         "Real-time analytics dashboard",
-        "Advanced routing and complex scenarios",
-        "Everything included in Receptionist",
         "Priority support"
       ],
       "excludedFeatures": [],
-      "bestFor": "call centers, sales teams and high-volume support",
+      "bestFor": "clinics and multi-site businesses",
       "onboardingNotes": [
-        "Our team will contact you within 24h for custom configuration (persona, voice, workflows).",
-        "gpt-realtime model activated automatically after onboarding."
+        "You can connect up to 3 separate locations / calendars.",
+        "Our team will contact you within 24h to set things up (persona, voice, locations)."
       ]
     }
   },
@@ -80,10 +77,10 @@
     "menuClose": "Close menu"
   },
   "Hero": {
-    "badge": "Real-time voice concierge · Live",
-    "title": "Speak {emphasis} to every customer.",
-    "titleEmphasis": "human",
-    "subtitle": "For medical practices, salons, SMBs and call centers. A voice AI that picks up 24/7, books appointments, runs your outbound call campaigns and syncs your calendar — in French, Hebrew and English.",
+    "badge": "AI receptionist · Live",
+    "title": "Never lose a client to an {emphasis}.",
+    "titleEmphasis": "unanswered call",
+    "subtitle": "Tamara answers your phone 24/7 in Hebrew, French and English, books straight into your calendar, and sends you the recap on WhatsApp.",
     "ctaDemo": "Get started free",
     "ctaConfigure": "See how it works",
     "ctaLiveDemo": "Talk to Tamara now",
@@ -129,17 +126,17 @@
     "subtitle": "One platform, configurable in minutes for the tone and workflows specific to your industry.",
     "medical": {
       "title": "Medical practices",
-      "desc": "Booking, reminders, cancellations, emergency triage. Compliant with medical confidentiality.",
+      "desc": "Booking, cancellations and rescheduling, WhatsApp confirmation to the patient. In Hebrew, French and English.",
       "f1": "Google Calendar sync",
-      "f2": "Automatic SMS reminders",
-      "f3": "Emergency filtering"
+      "f2": "WhatsApp confirmation",
+      "f3": "Cancellations & rescheduling"
     },
     "beauty": {
       "title": "Beauty salons",
       "desc": "Care services, variable duration, choice of practitioner. Multi-location native.",
       "f1": "Multi-location",
       "f2": "Per-service duration",
-      "f3": "Automatic loyalty tracking"
+      "f3": "WhatsApp recap to the salon"
     },
     "barber": {
       "title": "Barbershops",
@@ -293,13 +290,13 @@
   },
   "Pricing": {
     "kicker": "Pricing",
-    "title": "A plan for every team.",
-    "subtitle": "Every plan includes premium voice and technical support. No commitment, cancel anytime.",
+    "title": "Two plans, no commitment.",
+    "subtitle": "Tamara answers, books the appointment and sends you the recap on WhatsApp. Cancel anytime.",
     "billing": {
       "monthly": "Monthly",
       "annual": "Annual",
-      "save": "Save 20% with the annual plan.",
-      "discount": "−20%"
+      "save": "2 months free with the annual plan.",
+      "discount": "2 months free"
     },
     "card": {
       "popular": "Recommended",
@@ -314,14 +311,14 @@
       "ctaAria": "Choose the {name} plan",
       "model": "Model"
     },
-    "footer": "Prices include VAT. High volume or custom needs? Let's talk."
+    "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
+    "trial": "Free 14-day or 100-minute trial, no credit card. The founder calls you to set Tamara up with you."
   },
   "PricingComparison": {
     "title": "Compare in detail",
     "forWho": "Best for",
-    "forWhoWhatsapp": "Solopreneurs & local businesses",
-    "forWhoGlobal": "Practices & agencies",
-    "forWhoPremium": "Call centers & sales",
+    "forWhoGlobal": "Salons & practices",
+    "forWhoPremium": "Clinics & multi-site",
     "yes": "Included",
     "no": "Not included",
     "rowMinutes": "Minutes included / month",
@@ -329,12 +326,14 @@
     "rowMessages": "WhatsApp messages & recap",
     "rowCalendar": "Connected calendar & booking",
     "rowCrm": "CRM / contacts",
-    "rowOutbound": "Outbound calls & AI campaigns",
     "rowMulticall": "Simultaneous parallel calls",
     "rowAnalytics": "Real-time analytics",
-    "rowSupport": "Priority support",
+    "rowSupport": "Support",
     "supportStandard": "Standard",
-    "supportPriority": "Priority"
+    "supportPriority": "Priority",
+    "rowLocations": "Locations / calendars",
+    "locationsOne": "1",
+    "locationsUpTo3": "Up to 3"
   },
   "DashboardSetup": {
     "title": "Set up your agent",
@@ -402,7 +401,7 @@
     "subtitle": "Clear answers to the questions we hear most often — from pricing to security, and everything in between.",
     "q1": {
       "question": "How much does Tamara cost?",
-      "answer": "Tamara starts with the Answering Service plan; current pricing is in the grid above. The Receptionist and Call Center plans unlock booking, multi-location and advanced routing. All plans have no commitment and can be cancelled anytime from the dashboard."
+      "answer": "Current pricing is in the grid above, with the minutes included and the price per extra minute. All plans have no commitment and can be cancelled anytime from the dashboard."
     },
     "q2": {
       "question": "How does the AI talk to my clients?",
@@ -414,7 +413,7 @@
     },
     "q4": {
       "question": "What happens for complex appointments?",
-      "answer": "If the situation goes beyond the configured workflows (medical emergency, unusual request, difficult caller), the agent can transfer the call to you or your team, or collect all the useful info and send you an instant WhatsApp recap. You stay in control."
+      "answer": "If a request goes beyond what Tamara can handle (an unusual request, a difficult caller), she takes down every useful detail and sends you an instant WhatsApp recap. You call the client back already knowing everything."
     },
     "q5": {
       "question": "How do I install Tamara on my line?",
@@ -430,7 +429,7 @@
     },
     "q8": {
       "question": "What if the AI makes a mistake?",
-      "answer": "Every call generates a complete timestamped transcript, accessible from the dashboard. You see exactly what the agent said and did — appointment created, contact added, call transferred. If there's an error, fix it in one click and the behaviour adjusts for the next calls."
+      "answer": "Every call generates a complete timestamped transcript, accessible from the dashboard. You see exactly what the agent said and did: appointment created, contact added, WhatsApp recap sent. If something goes wrong, you adjust Tamara's instructions from the dashboard; they apply from the next call."
     }
   },
   "Security": {
@@ -468,7 +467,7 @@
     "waGreeting": "Hi, I have a question about Tamara."
   },
   "Footer": {
-    "tagline": "Real-time voice concierge for medical practices, salons and barbershops. Native Hebrew, French and English.",
+    "tagline": "AI receptionist for salons and clinics. Hebrew, French and English.",
     "categories": {
       "product": "Product",
       "account": "Account",
@@ -484,7 +483,7 @@
       "beauty": "Beauty salons",
       "barbers": "Barbershops"
     },
-    "copyright": "© {year} Tamara · Voice AI concierge",
+    "copyright": "© {year} Tamara · AI receptionist",
     "status": "All services online"
   },
   "LocaleSwitcher": {
@@ -497,7 +496,7 @@
     "formuleChoisie": "Selected plan",
     "recommendBadge": "★ Recommended",
     "pricePerMonth": "VAT incl. / month",
-    "annualDiscount": "−20% annual",
+    "annualDiscount": "2 months free yearly",
     "freeTrialNoticeStart": "24h free trial. No commitment, switchable from the dashboard.",
     "comparePlans": "Compare plans",
     "freeBadge": "Free trial — all features",
@@ -1498,7 +1497,7 @@
     "billingToggleAria": "Billing period",
     "monthly": "Monthly",
     "annual": "Annual",
-    "annualSavings": "Save 20% with annual billing.",
+    "annualSavings": "2 months free with annual billing.",
     "popularBadge": "★ Popular",
     "currentBadge": "✓ Current plan",
     "bestFor": "Best for:",
