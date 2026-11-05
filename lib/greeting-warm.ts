@@ -6,7 +6,8 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { agentConfigs } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
+import { effectiveGreeting } from "@/lib/ai-disclosure";
 import {
   getGreetingAudio,
   putGreetingAudio,
@@ -22,14 +23,31 @@ export async function warmGreetingAudioForUser(userId: string): Promise<void> {
         voice: agentConfigs.voice,
         language: agentConfigs.primaryLanguage,
         model: agentConfigs.model,
+        agentName: agentConfigs.agentName,
+        aiDisclosureEnabled: agentConfigs.aiDisclosureEnabled,
+        aiDisclosureText: agentConfigs.aiDisclosureText,
+        businessName: users.displayName,
       })
       .from(agentConfigs)
+      .innerJoin(users, eq(users.id, agentConfigs.userId))
       .where(eq(agentConfigs.userId, userId))
       .limit(1);
     if (!cfg) return;
 
     const language = cfg.language ?? "fr";
-    const text = buildOpenerText(cfg.greeting ?? "", language);
+    const text = buildOpenerText(
+      effectiveGreeting(
+        {
+          greetingInstructions: cfg.greeting,
+          agentName: cfg.agentName,
+          primaryLanguage: cfg.language,
+          aiDisclosureEnabled: cfg.aiDisclosureEnabled,
+          aiDisclosureText: cfg.aiDisclosureText,
+        },
+        cfg.businessName ?? "",
+      ),
+      language,
+    );
     if (!text) return;
 
     const key = {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { buildOpenerText, openerHash } from "@/lib/opener";
+import { effectiveGreeting } from "@/lib/ai-disclosure";
 import {
   getGreetingAudio,
   putGreetingAudio,
@@ -36,9 +37,10 @@ export async function GET(req: NextRequest) {
 
   const { user, config } = tenant;
   const language = config.primaryLanguage ?? "fr";
-  // v1 : on pré-render uniquement le greeting EXPLICITE du tenant. Vide →
-  // 204, le modèle gère (y compris le fallback admin per-plan).
-  const text = buildOpenerText(config.greetingInstructions ?? "", language);
+  // The greeting the caller hears, AI disclosure included (same function as
+  // /api/agent/config). Empty (no greeting, disclosure off) → 204, the model
+  // handles it (admin per-plan fallback included).
+  const text = buildOpenerText(effectiveGreeting(config, user.displayName ?? ""), language);
   if (!text) return new NextResponse(null, { status: 204 });
 
   const key = {
