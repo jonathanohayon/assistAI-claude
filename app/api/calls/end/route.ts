@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { inferCallType } from "@/lib/call-type";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseCallEndBody } from "@/lib/call-end-body";
@@ -70,16 +71,6 @@ async function verifyDelivery(
  * Heuristique pour déduire le TYPE d'appel à partir du résumé / transcript :
  * RDV, Annulation, Modification, Message, ou Info. Affichage Sheets only.
  */
-const inferCallType = (summary: string, transcript: string[]): string => {
-  const all = (summary + " " + transcript.join(" ")).toLowerCase();
-  if (/annul|cancel/.test(all)) return "Annulation";
-  if (/déplac|report|reschedule|chang.*heure|chang.*date/.test(all))
-    return "Modification";
-  if (/take_message|laisse.*message|transmettre|rappelle/.test(all))
-    return "Message";
-  if (/réserv|book_appointment|rendez-vous|RDV/i.test(all)) return "RDV";
-  return "Info";
-};
 
 export async function POST(req: NextRequest) {
   const auth = requireInternalSecret(req);

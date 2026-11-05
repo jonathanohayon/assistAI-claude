@@ -38,11 +38,26 @@ async function main() {
     assert.equal(wrong.status, 401);
   }
 
+  // owner's morning digest cron
+  {
+    const { GET } = await import("../../app/api/cron/owner-digest/route");
+    const res = await GET(req({ "x-internal-secret": "wrong" }));
+    assert.equal(res.status, 401, "owner-digest cron must require the internal secret");
+  }
+
   // worker → web campaign progress webhook (live console)
   {
     const { POST } = await import("../../app/api/agent/campaign-progress/route");
     const res = await POST(req({ "x-internal-secret": "wrong" }));
     assert.equal(res.status, 401, "campaign-progress must require the internal secret");
+  }
+
+  // monitoring endpoints are worker/cron-only
+  const hb = await import("../../app/api/agent/heartbeat/route");
+  assert.equal((await hb.POST(new NextRequest("https://example.test/api/agent/heartbeat", { method: "POST", body: "{}" }))).status, 401);
+  for (const path of ["../../app/api/cron/monitor/route", "../../app/api/cron/daily-digest/route"]) {
+    const { GET } = await import(path);
+    assert.equal((await GET(req())).status, 401, `${path} must require the secret`);
   }
 
   console.log("ALL INTERNAL-SECRET TESTS PASSED");

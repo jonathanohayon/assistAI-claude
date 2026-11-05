@@ -66,6 +66,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     transferNumber: string | null;
     aiDisclosureEnabled: boolean;
     aiDisclosureText: string | null;
+    ownerDigestEnabled: boolean;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -144,6 +145,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const dt = parseDisclosureText(body.aiDisclosureText);
     if (!dt.ok) return NextResponse.json({ error: dt.error }, { status: 400 });
     updates.aiDisclosureText = dt.value;
+  }
+  if ("ownerDigestEnabled" in body) {
+    updates.ownerDigestEnabled = body.ownerDigestEnabled !== false;
   }
   if ("voiceProfile" in body) {
     const [current] = await db

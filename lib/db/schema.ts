@@ -142,6 +142,9 @@ export const agentConfigs = pgTable("agent_configs", {
   // ('' = localized default). See lib/ai-disclosure.ts.
   aiDisclosureEnabled: boolean("ai_disclosure_enabled").notNull().default(true),
   aiDisclosureText: text("ai_disclosure_text").notNull().default(""),
+  // Owner's morning WhatsApp digest (yesterday's calls, bookings, messages,
+  // transfers). ON by default; never sent for a day with zero calls.
+  ownerDigestEnabled: boolean("owner_digest_enabled").notNull().default(true),
 
   // Default greeting language. The agent will use this for the very first
   // message of each call, then auto-detect and adapt to the caller. Values:
