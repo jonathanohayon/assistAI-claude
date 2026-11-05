@@ -1,6 +1,8 @@
 // Parsing of the worker's POST /api/calls/end body, kept pure so it is
 // unit-tested (scripts/tests/call-end-body.test.ts).
 
+import { parseCallId } from "./call-id";
+
 export type TranscriptEntry = { role: "user" | "assistant"; text: string };
 
 export interface CallEndInput {
@@ -17,6 +19,8 @@ export interface CallEndInput {
   /** Engine that took the call and its model (worker >= 2026-11-03), else null. */
   realtimeProvider: "openai" | "gemini" | "xai" | null;
   realtimeModel: string | null;
+  /** LiveKit room name (lib/call-id.ts); null for older workers. */
+  callId: string | null;
 }
 
 export function parseCallEndBody(raw: unknown): CallEndInput {
@@ -35,5 +39,6 @@ export function parseCallEndBody(raw: unknown): CallEndInput {
         ? b.realtimeProvider
         : null,
     realtimeModel: str(b.realtimeModel).slice(0, 80) || null,
+    callId: parseCallId(b.callId),
   };
 }
