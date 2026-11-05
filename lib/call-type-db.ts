@@ -2,12 +2,13 @@
 // call's time span, then lib/call-type.ts decides.
 //
 // With a call id (current workers: LiveKit room name on every request, see
-// lib/call-id.ts) a call's events are exactly those stamped with its id —
-// overlapping calls on a busy line stay separate. Without one (older
-// workers), fall back to the tenant's tool events in the call's time span
+// lib/call-id.ts) a call's events are those stamped with its id, plus
+// unstamped ones in its time span — events stamped with another call's id
+// are excluded, so overlapping calls on a busy line stay separate. Without
+// one (older workers), the tenant's tool events in the call's time span
 // (end - duration - slack … end).
 
-import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
@@ -38,10 +39,14 @@ export async function callTypeForCall(opts: {
         and(
           eq(events.userId, opts.userId),
           inArray(events.event, CALL_TOOL_EVENTS),
-          // A call id is authoritative: no time-span guess, so another
-          // overlapping call's tool events can never leak in.
+          // With a call id: events stamped with THIS id, plus unstamped events
+          // in the time span (an event path that didn't carry the id). Events
+          // stamped with ANOTHER call's id never leak in — the overlap case.
           opts.callId
-            ? sql`${events.metadata} ? 'callId' AND (${events.metadata}->>'callId') = ${opts.callId}`
+            ? or(
+                sql`${events.metadata} ? 'callId' AND (${events.metadata}->>'callId') = ${opts.callId}`,
+                and(sql`NOT (${events.metadata} ? 'callId')`, byWindow()),
+              )
             : byWindow(),
         ),
       );
