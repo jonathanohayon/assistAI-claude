@@ -1035,7 +1035,14 @@
     "statAvgDuration": "Avg. duration",
     "statBookings": "Bookings",
     "statBookingsSince": "since {date}",
-    "statBookingsTrackedFromNow": "counted from now on"
+    "statBookingsTrackedFromNow": "counted from now on",
+    "transferTitle": "Call transfer number",
+    "transferPrefixAria": "Country code",
+    "transferPlaceholder": "050 000 0000",
+    "transferNormalized": "Will be dialled as:",
+    "transferNone": "No transfer: Tamara takes a message.",
+    "transferInvalid": "Invalid number. Example: 050 000 0000 or +972 50 000 0000.",
+    "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
