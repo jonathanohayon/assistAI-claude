@@ -38,6 +38,13 @@ async function main() {
     assert.equal(wrong.status, 401);
   }
 
+  // worker → web campaign progress webhook (live console)
+  {
+    const { POST } = await import("../../app/api/agent/campaign-progress/route");
+    const res = await POST(req({ "x-internal-secret": "wrong" }));
+    assert.equal(res.status, 401, "campaign-progress must require the internal secret");
+  }
+
   console.log("ALL INTERNAL-SECRET TESTS PASSED");
 }
 
