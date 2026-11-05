@@ -5,8 +5,10 @@
  * their Tamara number, then proves it with a test call.
  *   1. Carrier (codes only where the carrier's official page gives them).
  *   2. The code to dial (copy / tap-to-dial) and how to cancel.
- *   3. Test call: POST /api/dashboard/forwarding-test starts a 10-min window,
- *      GET is polled every 2.5 s until the call is detected or the window ends.
+ *   3. Test call FROM ANOTHER PHONE (calling a line from itself never triggers
+ *      forwarding): POST /api/dashboard/forwarding-test starts a 10-min window,
+ *      any inbound call to the Tamara number counts; GET is polled every
+ *      2.5 s until the call is detected or the window ends.
  */
 
 import { useLocale, useTranslations } from "next-intl";
@@ -34,13 +36,10 @@ const POLL_MS = 2500;
 
 export function ForwardingWizard({
   tenantNumber,
-  defaultOwnerPhone,
   asUserId,
 }: {
   /** The tenant's Tamara number (E.164). Null = no number provisioned yet. */
   tenantNumber: string | null;
-  /** Prefill for the owner's mobile (owner WhatsApp). */
-  defaultOwnerPhone: string;
   asUserId?: string;
 }) {
   const t = useTranslations("DashboardForwarding");
@@ -48,7 +47,6 @@ export function ForwardingWizard({
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
   const [carrier, setCarrier] = useState<CarrierId | null>(null);
-  const [ownerPhone, setOwnerPhone] = useState(defaultOwnerPhone);
   const [test, setTest] = useState<ForwardingTest | null>(null);
   const [startError, setStartError] = useState<ForwardingTestError | "network" | null>(null);
   const [starting, setStarting] = useState(false);
@@ -123,7 +121,7 @@ export function ForwardingWizard({
       const res = await fetch(`/api/dashboard/forwarding-test${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ownerPhone.trim() ? { ownerPhone: ownerPhone.trim() } : {}),
+        body: JSON.stringify({}),
       });
       const data = (await res.json().catch(() => ({}))) as Partial<ForwardingTest> & { error?: ForwardingTestError };
       if (!res.ok) {
@@ -290,15 +288,7 @@ export function ForwardingWizard({
                   {formatCountdown(secondsLeft(test, now))}
                 </span>
               </p>
-              <p className="mt-2 text-[13px] text-[#155e75]">
-                {t.rich("waitingBody", {
-                  phone: () => (
-                    <span dir="ltr" className="whitespace-nowrap font-mono font-semibold">
-                      {test.ownerPhone ? toIsraeliLocal(test.ownerPhone) : ""}
-                    </span>
-                  ),
-                })}
-              </p>
+              <p className="mt-2 text-[13px] text-[#155e75]">{t("waitingBody")}</p>
               <p className="mt-1 text-[12px] text-[#64748b]">{t("waitingHangUp")}</p>
             </div>
           ) : (
@@ -310,32 +300,15 @@ export function ForwardingWizard({
                 </div>
               )}
               <p className="mt-2 text-[13px] text-[#475569]">{t("step3Body")}</p>
-              <label className="mt-3 block text-[12px] font-semibold text-[#334155]" htmlFor="fwd-owner-phone">
-                {t("ownerPhoneLabel")}
-              </label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <input
-                  id="fwd-owner-phone"
-                  type="tel"
-                  inputMode="tel"
-                  dir="ltr"
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value)}
-                  placeholder="050-000-0000"
-                  aria-invalid={startError === "invalid_owner_phone" || startError === "no_owner_phone"}
-                  aria-describedby="fwd-owner-phone-error"
-                  className="min-w-0 flex-1 rounded-xl border border-[#e2e8f0] px-3 py-2 text-sm tabular-nums"
-                />
-                <button
-                  type="button"
-                  onClick={startTest}
-                  disabled={starting}
-                  className="rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
-                >
-                  {status === "expired" ? t("retryTest") : t("startTest")}
-                </button>
-              </div>
-              <p id="fwd-owner-phone-error" className="mt-1 min-h-[1rem] text-[12px] text-[#dc2626]">
+              <button
+                type="button"
+                onClick={startTest}
+                disabled={starting}
+                className="mt-3 rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+              >
+                {status === "expired" ? t("retryTest") : t("startTest")}
+              </button>
+              <p role="alert" className="mt-1 min-h-[1rem] text-[12px] text-[#dc2626]">
                 {startError ? t(`err_${startError}`) : ""}
               </p>
             </>
