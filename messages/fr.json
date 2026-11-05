@@ -34,7 +34,6 @@
         "Intégration CRM & calendrier connecté",
         "Qualification des appelants et prise de rendez-vous automatique",
         "Réponses aux questions fréquentes",
-        "Transfert d'appel intelligent vers vous ou votre équipe",
         "Voix naturelle et professionnelle"
       ],
       "excludedFeatures": [],
@@ -80,10 +79,10 @@
     "menuClose": "Fermer le menu"
   },
   "Hero": {
-    "badge": "Conciergerie vocale temps réel · Live",
-    "title": "Parlez {emphasis} à chaque client.",
-    "titleEmphasis": "humainement",
-    "subtitle": "Pour les cabinets, salons, PME et centres d'appels. Une IA vocale qui décroche 24/7, prend les rendez-vous, lance vos campagnes d'appels sortants et synchronise votre agenda — en français, en hébreu et en anglais.",
+    "badge": "Réceptionniste IA · Live",
+    "title": "Ne perdez plus un client parce que {emphasis}.",
+    "titleEmphasis": "personne n'a décroché",
+    "subtitle": "Tamara répond 24h/24 en hébreu, français et anglais, prend le rendez-vous dans votre agenda et vous envoie le récap sur WhatsApp.",
     "ctaDemo": "Commencer gratuitement",
     "ctaConfigure": "Voir comment ça marche",
     "ctaLiveDemo": "Parler à Tamara maintenant",
@@ -129,17 +128,17 @@
     "subtitle": "Une seule plateforme, configurable en quelques minutes pour le ton et les workflows propres à votre métier.",
     "medical": {
       "title": "Cabinets médicaux",
-      "desc": "Prise de RDV, rappels, annulations, triage des urgences. Conforme au secret médical.",
+      "desc": "Prise de rendez-vous, annulations et reports, confirmation WhatsApp au patient. En hébreu, français et anglais.",
       "f1": "Synchro Google Agenda",
-      "f2": "Rappels SMS automatiques",
-      "f3": "Filtre les urgences"
+      "f2": "Confirmation WhatsApp",
+      "f3": "Annulations et reports"
     },
     "beauty": {
       "title": "Salons de beauté",
       "desc": "Prestations soin, durée variable, choix des praticiennes. Multi-centres natif.",
       "f1": "Multi-centres",
       "f2": "Durée par prestation",
-      "f3": "Fidélité automatique"
+      "f3": "Récap WhatsApp au salon"
     },
     "barber": {
       "title": "Coiffeurs",
@@ -402,7 +401,7 @@
     "subtitle": "Les réponses claires aux questions qu'on nous pose le plus souvent — du prix à la sécurité, en passant par l'installation.",
     "q1": {
       "question": "Combien coûte Tamara ?",
-      "answer": "Tamara démarre avec la formule Permanence téléphonique ; le tarif à jour est dans la grille ci-dessus. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
+      "answer": "Le tarif à jour est dans la grille ci-dessus, avec les minutes incluses et le prix de la minute supplémentaire. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
     },
     "q2": {
       "question": "Comment l'IA parle-t-elle avec mes clientes ?",
@@ -414,7 +413,7 @@
     },
     "q4": {
       "question": "Que se passe-t-il pour les RDV complexes ?",
-      "answer": "Si la situation dépasse les workflows configurés (urgence médicale, demande inhabituelle, cliente difficile), l'agent peut transférer l'appel vers vous ou votre équipe, ou collecter toutes les informations utiles et vous envoyer un récap WhatsApp immédiat. Vous gardez la main."
+      "answer": "Si la situation dépasse ce que Tamara sait faire (demande inhabituelle, client difficile), elle note toutes les informations utiles et vous envoie immédiatement un récap sur WhatsApp. Vous rappelez le client en sachant déjà tout."
     },
     "q5": {
       "question": "Comment installer Tamara sur ma ligne ?",
@@ -430,7 +429,7 @@
     },
     "q8": {
       "question": "Et si l'IA fait une erreur ?",
-      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait — RDV créé, contact ajouté, transfert effectué. En cas d'erreur, vous corrigez en un clic et le comportement s'ajuste pour les appels suivants."
+      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait : RDV créé, contact ajouté, récap WhatsApp envoyé. En cas d'erreur, vous ajustez les consignes de Tamara depuis le dashboard ; elles s'appliquent dès l'appel suivant."
     }
   },
   "Security": {
@@ -468,7 +467,7 @@
     "waGreeting": "Bonjour, j'ai une question concernant Tamara."
   },
   "Footer": {
-    "tagline": "Conciergerie vocale temps réel pour cabinets médicaux, salons et coiffeurs. Hébreu, français et anglais natifs.",
+    "tagline": "Réceptionniste IA pour salons et cliniques. Hébreu, français et anglais.",
     "categories": {
       "product": "Produit",
       "account": "Compte",
@@ -484,7 +483,7 @@
       "beauty": "Salons de beauté",
       "barbers": "Coiffeurs"
     },
-    "copyright": "© {year} Tamara · Conciergerie vocale IA",
+    "copyright": "© {year} Tamara · Réceptionniste IA",
     "status": "Tous les services en ligne"
   },
   "LocaleSwitcher": {

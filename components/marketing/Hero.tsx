@@ -10,6 +10,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
+import { EMPHASIS_SLOT, heroTitleTokens } from "@/lib/hero-title";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
@@ -42,8 +43,7 @@ export function Hero() {
   const reduce = useReducedMotionAfterMount();
 
   const emphasis = t("titleEmphasis");
-  const titleTemplate = t("title", { emphasis: ` ${emphasis} ` });
-  const titleParts = titleTemplate.split(" ");
+  const titleTokens = heroTitleTokens(t("title", { emphasis: EMPHASIS_SLOT }), emphasis);
 
   const fadeUp = (delay: number) =>
     reduce
@@ -252,16 +252,14 @@ export function Hero() {
              *  so they paint at full opacity on first paint, before hydration.
              *  (A JS fade from opacity 0 held LCP back ~3 s.) */}
             <span className="inline">
-              {titleParts.map((w, i) => {
-                const trimmed = w.trim();
-                if (!trimmed) return null;
-                return (
-                  <span
-                    key={i}
-                    className="hero-rise me-[0.22em] inline-block"
-                    style={{ animationDelay: `${0.25 + i * 0.05}s` }}
-                  >
-                    {trimmed === emphasis ? (
+              {titleTokens.map((tok, i) => (
+                <span
+                  key={i}
+                  className="hero-rise me-[0.22em] inline-block"
+                  style={{ animationDelay: `${0.25 + i * 0.05}s` }}
+                >
+                  {tok.emphasis ? (
+                    <>
                       <span
                         className="relative inline-block text-[#ff4d8d]"
                         style={{
@@ -269,7 +267,15 @@ export function Hero() {
                             "0 2px 18px rgba(255,77,141,0.45), 0 1px 4px rgba(0,0,0,0.35)",
                         }}
                       >
-                        {trimmed}
+                        {tok.text}
+                        {/* Trailing "." inside the box, not highlighted: when the
+                         *  phrase wraps (Hebrew on mobile) it stays on the last
+                         *  line instead of falling onto a line of its own. */}
+                        {tok.trailing ? (
+                          <span className="text-white" style={{ textShadow: "none" }}>
+                            {tok.trailing}
+                          </span>
+                        ) : null}
                         {/* Underline scroll-driven : scaleX 0 → 1 quand l'user
                          *  commence à scroller en bas du hero. Brush stroke
                          *  brand-gradient ancré au centre (RTL-safe). */}
@@ -285,12 +291,12 @@ export function Hero() {
                           }}
                         />
                       </span>
-                    ) : (
-                      trimmed
-                    )}
-                  </span>
-                );
-              })}
+                    </>
+                  ) : (
+                    tok.text
+                  )}
+                </span>
+              ))}
             </span>
           </h1>
         </div>
