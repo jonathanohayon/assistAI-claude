@@ -646,9 +646,8 @@
     "whatsappPlanLabel": "תוכנית WhatsApp.",
     "whatsappPlanDesc": "חיבור ל-Google Calendar/Sheets שלך נעול.",
     "upgradeLink": "שדרוג ל-Globale או Premium →",
-    "trialExpired": "הניסיון שלך הסתיים. החשבון יימחק בקרוב.",
-    "trialRemainingMessage": "ניסיון חינם — נותרו {label}",
-    "trialAccountDeletion": "החשבון יימחק עם תום הניסיון",
+    "trialExpired": "תקופת הניסיון הסתיימה: תמרה מושהית. הצטרפו לתוכנית כדי להפעיל אותה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום.",
+    "trialRemainingMessage": "תקופת ניסיון: נותרו {label}",
     "trialSubscribeButton": "הצטרפות",
     "tabConfiguration": "שיחות נכנסות",
     "tabOutbound": "שיחות יוצאות",
@@ -661,7 +660,10 @@
     "loggedInAs": "מחובר בתור",
     "settingsLink": "הגדרות",
     "logoutButton": "התנתקות",
-    "trialCallMinutesLeft": "{min} דקות שיחה נותרו"
+    "trialCallMinutesLeft": "{min} דקות שיחה נותרו",
+    "trialDaysLabel": "{days, plural, one {יום אחד} two {יומיים} other {# ימים}}",
+    "trialFounderCall": "המייסד יתקשר אליכם כדי להגדיר את תמרה",
+    "trialPauseNotice": "לאחר מכן תמרה תושהה, שום דבר לא נמחק"
   },
   "DashboardCrm": {
     "header": "מרחב לקוחות",
@@ -1552,7 +1554,11 @@
     "cancelSubscription": "ביטול המנוי",
     "cancelConfirm": "לבטל את המנוי? הגישה תישמר עד סוף התקופה ששולמה.",
     "resumeSubscription": "חידוש המנוי",
-    "deleteAccountTitle": "מחיקת החשבון"
+    "deleteAccountTitle": "מחיקת החשבון",
+    "statusPaused": "מושהה",
+    "pausedSince": "מושהה מאז {date}",
+    "gatePausedHeading": "תקופת הניסיון שלכם הסתיימה",
+    "gatePausedSubtitle": "הצטרפו לתוכנית כדי להפעיל את תמרה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום לאחר ההשהיה."
   },
   "DashboardLogs": {
     "header": "מעקב",
