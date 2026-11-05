@@ -11,6 +11,7 @@
 import { useState } from "react";
 
 import { NotifChannelCard } from "./notif-channel-card";
+import { OwnerDigestCard } from "./owner-digest-card";
 import type { FormState, FormUpdater, Translator } from "./types";
 
 export function NotifsPanel({
@@ -164,6 +165,8 @@ export function NotifsPanel({
           {t("reminderHint")}
         </p>
       </div>
+
+      <OwnerDigestCard form={form} update={update} t={t} />
 
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}

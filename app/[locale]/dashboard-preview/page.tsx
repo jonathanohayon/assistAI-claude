@@ -60,6 +60,7 @@ export default async function DashboardPreviewPage(props: {
           ownerWhatsapp: "+972585001007",
           primaryLanguage: locale,
           reminderEnabled: false,
+          ownerDigestEnabled: true,
           inheritAdminGlobals: true,
           personality: {},
           agentName: "Sarah",

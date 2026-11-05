@@ -219,6 +219,7 @@ export default async function DashboardPage(props: {
           ownerWhatsapp: config.ownerWhatsapp,
           primaryLanguage: config.primaryLanguage ?? "fr",
           reminderEnabled: config.reminderEnabled ?? false,
+          ownerDigestEnabled: config.ownerDigestEnabled ?? true,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",

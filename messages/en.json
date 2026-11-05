@@ -1035,7 +1035,11 @@
     "statAvgDuration": "Avg. duration",
     "statBookings": "Bookings",
     "statBookingsSince": "since {date}",
-    "statBookingsTrackedFromNow": "counted from now on"
+    "statBookingsTrackedFromNow": "counted from now on",
+    "digestTitle": "Daily summary",
+    "digestHint": "Every morning on WhatsApp: yesterday's calls, bookings, messages and transfers. Nothing is sent on days with no calls.",
+    "digestSentTo": "Sent to",
+    "digestNoNumber": "Add your WhatsApp number above to receive it."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",

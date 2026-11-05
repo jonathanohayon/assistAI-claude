@@ -1035,7 +1035,11 @@
     "statAvgDuration": "Durée moy.",
     "statBookings": "RDV pris",
     "statBookingsSince": "depuis le {date}",
-    "statBookingsTrackedFromNow": "comptés à partir de maintenant"
+    "statBookingsTrackedFromNow": "comptés à partir de maintenant",
+    "digestTitle": "Résumé quotidien",
+    "digestHint": "Chaque matin sur WhatsApp : les appels, rendez-vous, messages et transferts de la veille. Rien n'est envoyé les jours sans appel.",
+    "digestSentTo": "Envoyé au",
+    "digestNoNumber": "Ajoutez votre numéro WhatsApp ci-dessus pour le recevoir."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",

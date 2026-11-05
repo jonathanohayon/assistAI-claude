@@ -44,6 +44,8 @@ export type FormState = {
   primaryLanguage: string;
   /** Rappel WhatsApp automatique au client la veille de son RDV (cron J-1). */
   reminderEnabled: boolean;
+  /** Morning WhatsApp digest of yesterday's activity to the owner. Default on. */
+  ownerDigestEnabled: boolean;
   inheritAdminGlobals: boolean;
   personality: Personality;
   agentName: string;
