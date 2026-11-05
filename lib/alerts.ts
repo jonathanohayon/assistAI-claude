@@ -91,7 +91,8 @@ export async function alertAdmins(args: {
 }): Promise<boolean> {
   try {
     const now = Date.now();
-    // Not recorded during quiet hours, so the next check after 07:00 sends it.
+    // Not recorded during quiet hours: a PERIODIC check (cron) re-detects and
+    // sends it after 07:00; a one-off event warning raised at night is dropped.
     if (!shouldDeliver(args.severity ?? "critical", new Date(now))) return false;
     const ledger = await readLedger();
     if (!shouldSendAlert(ledger, args.key, now, args.dedupMs)) return false;
