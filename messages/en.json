@@ -429,7 +429,7 @@
     },
     "q8": {
       "question": "What if the AI makes a mistake?",
-      "answer": "Every call generates a complete timestamped transcript, accessible from the dashboard. You see exactly what the agent said and did — appointment created, contact added, call transferred. If there's an error, fix it in one click and the behaviour adjusts for the next calls."
+      "answer": "Every call generates a complete timestamped transcript, accessible from the dashboard. You see exactly what the agent said and did: appointment created, contact added, WhatsApp recap sent. If something goes wrong, you adjust Tamara's instructions from the dashboard; they apply from the next call."
     }
   },
   "Security": {

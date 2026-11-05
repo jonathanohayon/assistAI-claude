@@ -429,7 +429,7 @@
     },
     "q8": {
       "question": "Et si l'IA fait une erreur ?",
-      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait — RDV créé, contact ajouté, transfert effectué. En cas d'erreur, vous corrigez en un clic et le comportement s'ajuste pour les appels suivants."
+      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait : RDV créé, contact ajouté, récap WhatsApp envoyé. En cas d'erreur, vous ajustez les consignes de Tamara depuis le dashboard ; elles s'appliquent dès l'appel suivant."
     }
   },
   "Security": {
