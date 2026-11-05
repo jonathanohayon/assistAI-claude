@@ -11,11 +11,14 @@ export interface ForwardingTest {
   detectedAt: string | null;
   /** Persists after the window: forwarding was verified once. */
   verifiedAt: string | null;
+  /** "diversion" = the call carried a forward header from the business number. */
+  verifiedMethod: "window" | "diversion" | null;
   tenantNumber: string | null;
-  ownerPhone: string | null;
+  /** The salon's usual number, if given (used to recognise a forward header). */
+  businessPhone: string | null;
 }
 
-export type ForwardingTestError = "no_owner_phone" | "invalid_owner_phone" | "no_tenant_number";
+export type ForwardingTestError = "invalid_business_phone" | "no_tenant_number";
 
 /** Seconds left in the test window (0 when over or unknown). */
 export function secondsLeft(test: Pick<ForwardingTest, "expiresAt">, now: Date): number {

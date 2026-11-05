@@ -2061,16 +2061,19 @@
     "startTest": "Start the test",
     "retryTest": "Try again",
     "waitingTitle": "Waiting for your call…",
-    "waitingBody": "From another phone (a colleague's or family member's), call your business number and don't answer it. Within ~20 s Tamara should pick up.",
+    "waitingBody": "Ask someone to call your usual number now, from another phone. Don't answer: if forwarding works, Tamara picks up and this screen turns green.",
     "waitingHangUp": "It can take until you hang up for the call to show here.",
     "detectedTitle": "Forwarding works",
     "detectedBody": "Your call reached Tamara. Your clients' calls will too.",
     "expiredTitle": "No call detected",
     "expiredBody": "Check that the code was accepted (or ask your carrier), and that you called from another phone, then try again.",
-    "err_no_owner_phone": "Enter the mobile you'll call from.",
-    "err_invalid_owner_phone": "This number doesn't look valid. Example: 050-000-0000.",
     "err_no_tenant_number": "You don't have a Tamara number yet.",
     "err_network": "Something went wrong. Try again.",
-    "costNote": "Your carrier may bill forwarded calls like regular outgoing calls from your line."
+    "costNote": "Your carrier may bill forwarded calls like regular outgoing calls from your line.",
+    "waitingBodyWithNumber": "Ask someone to call your usual number (<phone></phone>) now, from another phone. Don't answer: if forwarding works, Tamara picks up and this screen turns green.",
+    "businessPhoneLabel": "Your usual business number",
+    "optional": "(optional)",
+    "viaForwarding": "(confirmed via forwarding)",
+    "err_invalid_business_phone": "This number doesn't look valid. Example: 03-000-0000 or 050-000-0000."
   }
 }

@@ -2061,16 +2061,19 @@
     "startTest": "Lancer le test",
     "retryTest": "Réessayer",
     "waitingTitle": "En attente de votre appel…",
-    "waitingBody": "Depuis un autre téléphone (celui d'un collègue ou d'un proche), appelez votre numéro pro et ne décrochez pas. En ~20 s, Tamara devrait répondre.",
+    "waitingBody": "Demandez à quelqu'un d'appeler votre numéro habituel maintenant, depuis un autre téléphone. Ne décrochez pas : si le renvoi fonctionne, Tamara répond et cet écran passe au vert.",
     "waitingHangUp": "L'appel peut n'apparaître ici qu'une fois raccroché.",
     "detectedTitle": "Le renvoi fonctionne",
     "detectedBody": "Votre appel est arrivé chez Tamara. Ceux de vos clients aussi.",
     "expiredTitle": "Aucun appel détecté",
     "expiredBody": "Vérifiez que le code a été accepté (ou demandez à votre opérateur) et que vous avez appelé depuis un autre téléphone, puis réessayez.",
-    "err_no_owner_phone": "Indiquez le mobile depuis lequel vous appellerez.",
-    "err_invalid_owner_phone": "Ce numéro ne semble pas valide. Exemple : 050-000-0000.",
     "err_no_tenant_number": "Vous n'avez pas encore de numéro Tamara.",
     "err_network": "Une erreur est survenue. Réessayez.",
-    "costNote": "Votre opérateur peut facturer les appels renvoyés comme des appels sortants normaux depuis votre ligne."
+    "costNote": "Votre opérateur peut facturer les appels renvoyés comme des appels sortants normaux depuis votre ligne.",
+    "waitingBodyWithNumber": "Demandez à quelqu'un d'appeler votre numéro habituel (<phone></phone>) maintenant, depuis un autre téléphone. Ne décrochez pas : si le renvoi fonctionne, Tamara répond et cet écran passe au vert.",
+    "businessPhoneLabel": "Votre numéro pro habituel",
+    "optional": "(facultatif)",
+    "viaForwarding": "(confirmé via le renvoi)",
+    "err_invalid_business_phone": "Ce numéro ne semble pas valide. Exemple : 03-000-0000 ou 050-000-0000."
   }
 }

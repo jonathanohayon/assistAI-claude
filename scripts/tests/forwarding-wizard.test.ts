@@ -23,7 +23,7 @@ import {
 const now = new Date("2026-11-05T10:00:00Z");
 const base: ForwardingTest = {
   status: "waiting", startedAt: "2026-11-05T09:55:00Z", expiresAt: "2026-11-05T10:05:00Z",
-  detectedAt: null, verifiedAt: null, tenantNumber: "+972500000000", ownerPhone: "+972500000001",
+  detectedAt: null, verifiedAt: null, verifiedMethod: null, tenantNumber: "+972500000000", businessPhone: null,
 };
 assert.equal(secondsLeft(base, now), 300);
 assert.equal(displayStatus(base, now), "waiting");

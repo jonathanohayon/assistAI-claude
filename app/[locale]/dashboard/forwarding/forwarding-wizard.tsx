@@ -47,6 +47,7 @@ export function ForwardingWizard({
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
   const [carrier, setCarrier] = useState<CarrierId | null>(null);
+  const [businessPhone, setBusinessPhone] = useState("");
   const [test, setTest] = useState<ForwardingTest | null>(null);
   const [startError, setStartError] = useState<ForwardingTestError | "network" | null>(null);
   const [starting, setStarting] = useState(false);
@@ -121,23 +122,16 @@ export function ForwardingWizard({
       const res = await fetch(`/api/dashboard/forwarding-test${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify(businessPhone.trim() ? { businessPhone: businessPhone.trim() } : {}),
       });
       const data = (await res.json().catch(() => ({}))) as Partial<ForwardingTest> & { error?: ForwardingTestError };
       if (!res.ok) {
-        setStartError(data.error ?? "network");
+        setStartError(data.error === "invalid_business_phone" || data.error === "no_tenant_number" ? data.error : "network");
         return;
       }
+      // POST answers with the GET shape.
       setClock(Date.now());
-      setTest((prev) => ({
-        status: "waiting",
-        startedAt: data.startedAt ?? null,
-        expiresAt: data.expiresAt ?? null,
-        detectedAt: null,
-        verifiedAt: prev?.verifiedAt ?? null,
-        tenantNumber: data.tenantNumber ?? tenantNumber,
-        ownerPhone: data.ownerPhone ?? null,
-      }));
+      setTest(data as ForwardingTest);
     } catch {
       setStartError("network");
     } finally {
@@ -174,7 +168,10 @@ export function ForwardingWizard({
       {verifiedAt && status !== "detected" && (
         <div className="flex items-center gap-3 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#166534]">
           <CheckIcon className="h-5 w-5 shrink-0" />
-          <span>{t("verifiedOn", { date: dateFmt.format(new Date(verifiedAt)) })}</span>
+          <span>
+            {t("verifiedOn", { date: dateFmt.format(new Date(verifiedAt)) })}
+            {test?.verifiedMethod === "diversion" && <> {t("viaForwarding")}</>}
+          </span>
         </div>
       )}
 
@@ -288,7 +285,17 @@ export function ForwardingWizard({
                   {formatCountdown(secondsLeft(test, now))}
                 </span>
               </p>
-              <p className="mt-2 text-[13px] text-[#155e75]">{t("waitingBody")}</p>
+              <p className="mt-2 text-[13px] text-[#155e75]">
+                {test.businessPhone
+                  ? t.rich("waitingBodyWithNumber", {
+                      phone: () => (
+                        <span dir="ltr" className="whitespace-nowrap font-mono font-semibold">
+                          {toIsraeliLocal(test.businessPhone ?? "")}
+                        </span>
+                      ),
+                    })
+                  : t("waitingBody")}
+              </p>
               <p className="mt-1 text-[12px] text-[#64748b]">{t("waitingHangUp")}</p>
             </div>
           ) : (
@@ -300,11 +307,25 @@ export function ForwardingWizard({
                 </div>
               )}
               <p className="mt-2 text-[13px] text-[#475569]">{t("step3Body")}</p>
+              <label className="mt-3 block text-[12px] font-semibold text-[#334155]" htmlFor="fwd-business-phone">
+                {t("businessPhoneLabel")} <span className="font-normal text-[#94a3b8]">{t("optional")}</span>
+              </label>
+              <input
+                id="fwd-business-phone"
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
+                value={businessPhone}
+                onChange={(e) => setBusinessPhone(e.target.value)}
+                placeholder="03-000-0000"
+                aria-invalid={startError === "invalid_business_phone"}
+                className="mt-1 w-full max-w-xs rounded-xl border border-[#e2e8f0] px-3 py-2 text-sm tabular-nums"
+              />
               <button
                 type="button"
                 onClick={startTest}
                 disabled={starting}
-                className="mt-3 rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+                className="mt-3 block rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
               >
                 {status === "expired" ? t("retryTest") : t("startTest")}
               </button>
