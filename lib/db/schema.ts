@@ -434,6 +434,11 @@ export const campaignContacts = pgTable(
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
     // Lease anti-double-dial : posé au claim, reset par le reaper si périmé.
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    // Live call progress reported by the worker while the call happens:
+    // '' | 'dialing' | 'ringing' | 'in_call' | 'ended'. Drives the admin live
+    // console; the terminal result still lands in `status` via campaign-result.
+    callState: text("call_state").notNull().default(""),
+    callStateAt: timestamp("call_state_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .default(sql`now()`),
@@ -622,7 +627,13 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-});
+}, (t) => ({
+  // Campaign live console polls the latest events of one campaign every few
+  // seconds: partial expression index so that stays an index scan.
+  byCampaign: index("events_campaign_created_idx")
+    .on(sql`(${t.metadata}->>'campaignId')`, t.createdAt)
+    .where(sql`${t.metadata} ? 'campaignId'`),
+}));
 
 // Singleton key-value store for app-wide settings (system prompt that
 // every tenant inherits, default Twilio config, etc.). Read-mostly so a
