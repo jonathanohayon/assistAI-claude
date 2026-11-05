@@ -340,6 +340,8 @@ export async function GET(req: NextRequest) {
     realtimeProvider: effectiveRealtimeProvider(tenant.config.realtimeProvider),
     // Voice profile (admin-only setting), always complete: defaults = today.
     voiceProfile: effectiveVoiceProfile(tenant.config.voiceProfile),
+    // Call transfer target ('' = none): the worker registers transfer_call only if set.
+    transferNumber: tenant.config.transferNumber ?? "",
     features,
     ordersEnabled,
     updatedAt,

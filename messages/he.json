@@ -1035,7 +1035,14 @@
     "statAvgDuration": "משך ממוצע",
     "statBookings": "תורים שנקבעו",
     "statBookingsSince": "מאז {date}",
-    "statBookingsTrackedFromNow": "נספרים מעכשיו"
+    "statBookingsTrackedFromNow": "נספרים מעכשיו",
+    "transferTitle": "מספר להעברת שיחה",
+    "transferPrefixAria": "קידומת מדינה",
+    "transferPlaceholder": "050 000 0000",
+    "transferNormalized": "החיוג יהיה אל:",
+    "transferNone": "אין העברה: תמרה רושמת הודעה.",
+    "transferInvalid": "מספר לא תקין. לדוגמה: 050 000 0000 או ‎+972 50 000 0000.",
+    "transferHint": "המספר שאליו הסוכנת מעבירה את השיחה כשמתקשר מבקש לדבר עם אדם. שיחות טלפון בלבד, לא וואטסאפ."
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",
@@ -1270,7 +1277,7 @@
     "tabFile": "CSV / Excel",
     "tabSheets": "Google Sheets",
     "pasteLabel": "מספרי טלפון",
-    "pastePlaceholder": "+972501234567, שרה\n+33612345678, Marc\nשורה אחת לכל מספר — מספר קודם, שם אופציונלי אחרי פסיק.",
+    "pastePlaceholder": "+972500000000, שרה\n+33612345678, Marc\nשורה אחת לכל מספר — מספר קודם, שם אופציונלי אחרי פסיק.",
     "pasteHint": "פורמט בינלאומי (+קידומת מדינה). שורה אחת לכל מספר.",
     "addContactsCta": "הוספת אנשי קשר",
     "importing": "מייבא…",
