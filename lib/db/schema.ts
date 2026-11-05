@@ -72,6 +72,9 @@ export const users = pgTable("users", {
   // Sheets share the same OAuth scopes so one refresh_token covers both.
   googleRefreshToken: text("google_refresh_token"),
   googleCalendarId: text("google_calendar_id").notNull().default("primary"),
+  // Loyalty Calendar sync cursor: null = never synced (next run backfills
+  // 12 months), else incremental from this instant (Google updatedMin).
+  visitsSyncedAt: timestamp("visits_synced_at", { withTimezone: true }),
   googleSheetId: text("google_sheet_id").notNull().default(""),
 
   // Email verification gate : false jusqu'à ce que le user entre le code
@@ -128,8 +131,30 @@ export const agentConfigs = pgTable("agent_configs", {
   maxResponseTokens: integer("max_response_tokens").notNull().default(220),
 
   // WhatsApp number of the salon owner — receives a recap after every call.
-  // Stored E.164 (e.g. +972585001007); empty = WhatsApp recap disabled.
+  // Stored E.164 (e.g. +972500000000); empty = WhatsApp recap disabled.
   ownerWhatsapp: text("owner_whatsapp").notNull().default(""),
+  // Call transfer (lib/transfer-number.ts): E.164 number the phone agent
+  // transfers a caller to when they ask for a person. '' = no transfer.
+  // Editable by the tenant and the admin.
+  transferNumber: text("transfer_number").notNull().default(""),
+  // AI disclosure (EU AI Act art. 50): the greeting tells callers they talk
+  // to an AI. ON by default; `aiDisclosureText` = tenant's own sentence
+  // ('' = localized default). See lib/ai-disclosure.ts.
+  aiDisclosureEnabled: boolean("ai_disclosure_enabled").notNull().default(true),
+  aiDisclosureText: text("ai_disclosure_text").notNull().default(""),
+  // Owner's morning WhatsApp digest (yesterday's calls, bookings, messages,
+  // transfers). ON by default; never sent for a day with zero calls.
+  ownerDigestEnabled: boolean("owner_digest_enabled").notNull().default(true),
+  // Call-forwarding setup check (onboarding wizard): the owner starts a
+  // 10-min test window, then has someone call the usual business number.
+  // The first inbound call to the tenant's number inside the window sets
+  // detected_at / verified_at (method 'window'); a forward header matching
+  // `forwardingBusinessPhone` is stronger proof (method 'diversion').
+  forwardingTestStartedAt: timestamp("forwarding_test_started_at", { withTimezone: true }),
+  forwardingBusinessPhone: text("forwarding_business_phone").notNull().default(""),
+  forwardingDetectedAt: timestamp("forwarding_detected_at", { withTimezone: true }),
+  forwardingVerifiedMethod: text("forwarding_verified_method").notNull().default(""),
+  forwardingVerifiedAt: timestamp("forwarding_verified_at", { withTimezone: true }),
 
   // Default greeting language. The agent will use this for the very first
   // message of each call, then auto-detect and adapt to the caller. Values:
@@ -141,7 +166,9 @@ export const agentConfigs = pgTable("agent_configs", {
   // (on ne capture que le téléphone du client, pas son email) : template Twilio
   // Content avec fallback sur le template client approuvé. Le téléphone est lu
   // depuis l'event Google Calendar (ligne "Tel :" de la description).
-  reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+  // J-1 WhatsApp reminder. ON by default since 2026-11 (migration 0032 also
+  // switched it on for existing tenants with Google Calendar connected).
+  reminderEnabled: boolean("reminder_enabled").notNull().default(true),
 
   // Si false, le tenant n'hérite pas des blocs admin (spoken_time,
   // spoken_phone, hangup, per_call_context, config_blocks, admin_global)
@@ -428,6 +455,11 @@ export const campaignContacts = pgTable(
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
     // Lease anti-double-dial : posé au claim, reset par le reaper si périmé.
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    // Live call progress reported by the worker while the call happens:
+    // '' | 'dialing' | 'ringing' | 'in_call' | 'ended'. Drives the admin live
+    // console; the terminal result still lands in `status` via campaign-result.
+    callState: text("call_state").notNull().default(""),
+    callStateAt: timestamp("call_state_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .default(sql`now()`),
@@ -598,6 +630,33 @@ export const appointmentReminders = pgTable(
   }),
 );
 
+// Loyalty (v1 = count only): one row per Google Calendar booking that carries
+// a client phone. Filled by the Calendar sync (lib/loyalty-sync.ts); a visit
+// counts once its start is past and it was not cancelled.
+export const clientVisits = pgTable(
+  "client_visits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventId: text("event_id").notNull(),
+    clientPhone: text("client_phone").notNull(), // E.164
+    clientName: text("client_name").notNull().default(""),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    cancelled: boolean("cancelled").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    uniq: unique("client_visits_user_event").on(t.userId, t.eventId),
+    byClient: index("client_visits_user_phone_idx").on(t.userId, t.clientPhone),
+  }),
+);
+
+export type ClientVisit = typeof clientVisits.$inferSelect;
+
 // Append-only event log. Surfaced live in /dashboard/logs so the operator
 // can see end-to-end call/tool/whatsapp activity without grepping Railway logs.
 export const events = pgTable("events", {
@@ -616,7 +675,13 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-});
+}, (t) => ({
+  // Campaign live console polls the latest events of one campaign every few
+  // seconds: partial expression index so that stays an index scan.
+  byCampaign: index("events_campaign_created_idx")
+    .on(sql`(${t.metadata}->>'campaignId')`, t.createdAt)
+    .where(sql`${t.metadata} ? 'campaignId'`),
+}));
 
 // Singleton key-value store for app-wide settings (system prompt that
 // every tenant inherits, default Twilio config, etc.). Read-mostly so a

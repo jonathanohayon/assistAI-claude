@@ -90,12 +90,19 @@ export async function POST(req: NextRequest) {
         status: "queued",
         claimedAt: null,
         nextAttemptAt: sql`now() + (${rules.backoffMinutes ?? 30} || ' minutes')::interval`,
+        callState: "ended",
+        callStateAt: sql`now()`,
       })
       .where(eq(campaignContacts.id, contactId));
   } else {
     await db
       .update(campaignContacts)
-      .set({ status: OUTCOME_TO_STATUS[outcome], claimedAt: null })
+      .set({
+        status: OUTCOME_TO_STATUS[outcome],
+        claimedAt: null,
+        callState: "ended",
+        callStateAt: sql`now()`,
+      })
       .where(eq(campaignContacts.id, contactId));
   }
 
@@ -121,7 +128,13 @@ export async function POST(req: NextRequest) {
     event: "campaign_call_done",
     message: `Appel campagne ${outcome} — ${contact.phoneNumber}`,
     userId: campaign.userId,
-    metadata: { campaignId, contactId, outcome, durationSeconds },
+    metadata: {
+      campaignId,
+      contactId,
+      outcome,
+      durationSeconds,
+      retry: shouldRetry ? { inMinutes: rules.backoffMinutes ?? 30 } : null,
+    },
   });
 
   return NextResponse.json({ ok: true });

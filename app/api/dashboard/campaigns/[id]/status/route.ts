@@ -99,7 +99,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (rule.to === "running") {
     try {
       const limit = Math.min(Math.max(campaign.concurrency || 3, 1), 50);
-      dispatch = await dispatchDueJobs(limit);
+      dispatch = await dispatchDueJobs(limit, "start");
     } catch (e) {
       dispatch = { error: e instanceof Error ? e.message : "dispatch_failed" };
     }
