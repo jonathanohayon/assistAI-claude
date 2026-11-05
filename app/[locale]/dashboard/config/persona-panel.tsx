@@ -11,6 +11,7 @@
 import { RadioCard } from "./shared-ui";
 import { ToolsAvailableHint } from "./tools-available-hint";
 import type { FormState, FormUpdater, Translator } from "./types";
+import { AiDisclosureField } from "./ai-disclosure-field";
 
 export function PersonaPanel({
   form,
@@ -129,6 +130,8 @@ export function PersonaPanel({
         />
         <p className="mt-1.5 text-[11px] text-[#475569]">{t("greetingHint")}</p>
       </div>
+
+      <AiDisclosureField form={form} update={update} t={t} />
 
       {/* Tools disponibles — built-in + knowledge */}
       <ToolsAvailableHint form={form} update={update} />
