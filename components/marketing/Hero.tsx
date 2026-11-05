@@ -339,6 +339,9 @@ export function Hero() {
               : { delay: 1.15, type: "spring", stiffness: 240, damping: 20 }
           }
           className="mt-10 flex flex-wrap items-center justify-center gap-3"
+          // The WhatsApp FAB hides while this row is on screen on mobile,
+          // where it would cover the second CTA (components/marketing/SupportFab).
+          data-fab-avoid=""
         >
           <motion.div
             style={reduce ? undefined : { x: springX, y: springY }}
