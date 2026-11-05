@@ -72,6 +72,9 @@ export const users = pgTable("users", {
   // Sheets share the same OAuth scopes so one refresh_token covers both.
   googleRefreshToken: text("google_refresh_token"),
   googleCalendarId: text("google_calendar_id").notNull().default("primary"),
+  // Loyalty Calendar sync cursor: null = never synced (next run backfills
+  // 12 months), else incremental from this instant (Google updatedMin).
+  visitsSyncedAt: timestamp("visits_synced_at", { withTimezone: true }),
   googleSheetId: text("google_sheet_id").notNull().default(""),
 
   // Email verification gate : false jusqu'à ce que le user entre le code
@@ -608,6 +611,33 @@ export const appointmentReminders = pgTable(
     uniq: unique("appointment_reminders_user_event").on(t.userId, t.eventId),
   }),
 );
+
+// Loyalty (v1 = count only): one row per Google Calendar booking that carries
+// a client phone. Filled by the Calendar sync (lib/loyalty-sync.ts); a visit
+// counts once its start is past and it was not cancelled.
+export const clientVisits = pgTable(
+  "client_visits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventId: text("event_id").notNull(),
+    clientPhone: text("client_phone").notNull(), // E.164
+    clientName: text("client_name").notNull().default(""),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    cancelled: boolean("cancelled").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    uniq: unique("client_visits_user_event").on(t.userId, t.eventId),
+    byClient: index("client_visits_user_phone_idx").on(t.userId, t.clientPhone),
+  }),
+);
+
+export type ClientVisit = typeof clientVisits.$inferSelect;
 
 // Append-only event log. Surfaced live in /dashboard/logs so the operator
 // can see end-to-end call/tool/whatsapp activity without grepping Railway logs.
