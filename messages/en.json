@@ -1035,7 +1035,14 @@
     "statAvgDuration": "Avg. duration",
     "statBookings": "Bookings",
     "statBookingsSince": "since {date}",
-    "statBookingsTrackedFromNow": "counted from now on"
+    "statBookingsTrackedFromNow": "counted from now on",
+    "transferTitle": "Call transfer number",
+    "transferPrefixAria": "Country code",
+    "transferPlaceholder": "050 000 0000",
+    "transferNormalized": "Will be dialled as:",
+    "transferNone": "No transfer: Tamara takes a message.",
+    "transferInvalid": "Invalid number. Example: 050 000 0000 or +972 50 000 0000.",
+    "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
@@ -1270,7 +1277,7 @@
     "tabFile": "CSV / Excel",
     "tabSheets": "Google Sheets",
     "pasteLabel": "Phone numbers",
-    "pastePlaceholder": "+972501234567, Sarah\n+33612345678, Marc\nOne per line — number first, optional name after a comma.",
+    "pastePlaceholder": "+972500000000, Sarah\n+33612345678, Marc\nOne per line — number first, optional name after a comma.",
     "pasteHint": "International format (+country code). One per line.",
     "addContactsCta": "Add contacts",
     "importing": "Importing…",
