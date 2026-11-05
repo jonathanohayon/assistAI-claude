@@ -1,6 +1,10 @@
 // AI disclosure in the greeting (EU AI Act art. 50; good practice under the
 // Israeli privacy rules). Pure: no I/O.
 //
+// SHARED WITH THE CLIENT: the dashboard imports this module for inline
+// validation and the "Callers will hear" preview. Keep it import-free —
+// no DB, env, node: or server-only modules here.
+//
 // One function, `effectiveGreeting`, gives the greeting the caller hears.
 // It feeds BOTH the pre-rendered opener (greeting-audio, warm-up) and the
 // model greeting (/api/agent/config → worker speaks it verbatim), so the two
