@@ -253,6 +253,13 @@
       "when": 1793879897579,
       "tag": "0035_ai_disclosure",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793880137666,
+      "tag": "0036_owner_digest",
+      "breakpoints": true
     }
   ]
 }

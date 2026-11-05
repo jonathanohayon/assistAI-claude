@@ -62,6 +62,7 @@ export async function PUT(req: NextRequest) {
     transferNumber: string | null;
     aiDisclosureEnabled: boolean;
     aiDisclosureText: string | null;
+    ownerDigestEnabled: boolean;
     noiseReductionLevel: number;
     knowledge: Array<{
       id?: string;
@@ -175,6 +176,9 @@ export async function PUT(req: NextRequest) {
     const dt = parseDisclosureText(body.aiDisclosureText);
     if (!dt.ok) return NextResponse.json({ error: dt.error }, { status: 400 });
     updates.aiDisclosureText = dt.value;
+  }
+  if ("ownerDigestEnabled" in body) {
+    updates.ownerDigestEnabled = body.ownerDigestEnabled !== false;
   }
   const providerUpdate = adminOnlyProviderUpdate(body as Record<string, unknown>, isAdmin);
   if ("error" in providerUpdate) {
