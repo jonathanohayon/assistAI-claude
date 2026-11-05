@@ -646,9 +646,8 @@
     "whatsappPlanLabel": "WhatsApp plan.",
     "whatsappPlanDesc": "Connecting your own Google Calendar/Sheets is locked.",
     "upgradeLink": "Upgrade to Global or Premium →",
-    "trialExpired": "Your trial is over. Your account will be deleted shortly.",
-    "trialRemainingMessage": "Free trial — {label} remaining",
-    "trialAccountDeletion": "account deleted on expiration",
+    "trialExpired": "Your trial has ended: Tamara is paused. Subscribe to reactivate her. Your settings stay, and your number is kept for 30 days.",
+    "trialRemainingMessage": "Free trial: {label} left",
     "trialSubscribeButton": "Subscribe",
     "tabConfiguration": "Inbound calls",
     "tabOutbound": "Outbound calls",
@@ -661,7 +660,10 @@
     "loggedInAs": "Signed in as",
     "settingsLink": "Settings",
     "logoutButton": "Sign out",
-    "trialCallMinutesLeft": "{min} call min left"
+    "trialCallMinutesLeft": "{min} call min left",
+    "trialDaysLabel": "{days, plural, one {# day} other {# days}}",
+    "trialFounderCall": "the founder will call you to set Tamara up",
+    "trialPauseNotice": "then Tamara is paused, nothing is deleted"
   },
   "DashboardCrm": {
     "header": "Customer space",
@@ -1552,7 +1554,11 @@
     "cancelSubscription": "Cancel subscription",
     "cancelConfirm": "Cancel subscription? You keep access until the end of the paid period.",
     "resumeSubscription": "Resume subscription",
-    "deleteAccountTitle": "Delete account"
+    "deleteAccountTitle": "Delete account",
+    "statusPaused": "Paused",
+    "pausedSince": "Paused since {date}",
+    "gatePausedHeading": "Your trial has ended",
+    "gatePausedSubtitle": "Subscribe to reactivate Tamara. Your settings stay, and your number is kept for 30 days after the pause."
   },
   "DashboardLogs": {
     "header": "Monitoring",

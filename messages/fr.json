@@ -646,9 +646,8 @@
     "whatsappPlanLabel": "Formule WhatsApp.",
     "whatsappPlanDesc": "Connexion à votre propre Google Calendar/Sheets verrouillée.",
     "upgradeLink": "Passer à Globale ou Premium →",
-    "trialExpired": "Votre essai est terminé. Votre compte va être supprimé sous peu.",
-    "trialRemainingMessage": "Essai gratuit — {label} restant",
-    "trialAccountDeletion": "compte supprimé à expiration",
+    "trialExpired": "Votre essai est terminé : Tamara est en pause. Souscrivez pour la réactiver. Vos réglages restent, et votre numéro est conservé 30 jours.",
+    "trialRemainingMessage": "Essai gratuit : {label} restants",
     "trialSubscribeButton": "Souscrire",
     "tabConfiguration": "Appels entrants",
     "tabOutbound": "Appels sortants",
@@ -661,7 +660,10 @@
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
     "logoutButton": "Se déconnecter",
-    "trialCallMinutesLeft": "{min} min d'appels restantes"
+    "trialCallMinutesLeft": "{min} min d'appels restantes",
+    "trialDaysLabel": "{days, plural, one {# jour} other {# jours}}",
+    "trialFounderCall": "le fondateur vous appelle pour configurer Tamara",
+    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé"
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -1552,7 +1554,11 @@
     "cancelSubscription": "Annuler l'abonnement",
     "cancelConfirm": "Annuler l'abonnement ? Vous gardez l'accès jusqu'à la fin de la période payée.",
     "resumeSubscription": "Reprendre l'abonnement",
-    "deleteAccountTitle": "Supprimer le compte"
+    "deleteAccountTitle": "Supprimer le compte",
+    "statusPaused": "En pause",
+    "pausedSince": "En pause depuis le {date}",
+    "gatePausedHeading": "Votre essai est terminé",
+    "gatePausedSubtitle": "Souscrivez pour réactiver Tamara. Vos réglages restent, et votre numéro est conservé 30 jours après la pause."
   },
   "DashboardLogs": {
     "header": "Monitoring",
