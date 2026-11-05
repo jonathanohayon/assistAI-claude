@@ -12,6 +12,8 @@ type SetupChecklistProps = {
   googleConnected: boolean;
   businessFilled: boolean;
   whatsappSet: boolean;
+  /** Forwarding test passed once (forwarding_verified_at). */
+  forwardingVerified?: boolean;
 };
 
 type SvgProps = { className?: string };
@@ -160,6 +162,7 @@ export function SetupChecklist({
   googleConnected,
   businessFilled,
   whatsappSet,
+  forwardingVerified = false,
 }: SetupChecklistProps) {
   const t = useTranslations("DashboardSetup");
 
@@ -181,6 +184,15 @@ export function SetupChecklist({
       desc: t("testCallDesc"),
       ctaLabel: t("testCallCta"),
       href: "/onboarding",
+    },
+    {
+      id: "forwarding",
+      done: forwardingVerified,
+      icon: PhoneIcon,
+      title: t("forwardingTitle"),
+      desc: t("forwardingDesc"),
+      ctaLabel: t("forwardingCta"),
+      href: "/dashboard/forwarding",
     },
     {
       id: "scan",
