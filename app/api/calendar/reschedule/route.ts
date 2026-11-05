@@ -3,6 +3,7 @@ import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callIdMeta } from "@/lib/call-id";
 import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
@@ -178,6 +179,7 @@ export async function POST(req: NextRequest) {
       // dashboard read tool events by user_id.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: {
+        ...callIdMeta(req),
         eventId,
         newDate,
         newTime,

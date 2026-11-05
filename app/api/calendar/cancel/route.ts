@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callIdMeta } from "@/lib/call-id";
 
 export async function POST(req: NextRequest) {
   const { eventId } = await req.json();
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
       // Attributed to the tenant (like book_success): the call type and the
       // dashboard read tool events by user_id.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
-      metadata: { eventId },
+      metadata: { ...callIdMeta(req), eventId },
     });
     return NextResponse.json({ success: true, message: "RDV annulé." });
   } catch (err) {
