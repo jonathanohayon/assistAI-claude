@@ -10,6 +10,7 @@ import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
+import { parseTransferNumber } from "@/lib/transfer-number";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 interface Ctx {
@@ -61,6 +62,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     agentName: string;
     realtimeProvider: string | null;
     voiceProfile: unknown;
+    transferNumber: string | null;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -126,6 +128,11 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   }
   if (body.agentName != null) {
     updates.agentName = String(body.agentName).trim().slice(0, 80);
+  }
+  if ("transferNumber" in body) {
+    const tn = parseTransferNumber(body.transferNumber);
+    if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
+    updates.transferNumber = tn.value;
   }
   if ("voiceProfile" in body) {
     const [current] = await db
