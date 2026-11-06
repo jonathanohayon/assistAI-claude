@@ -145,6 +145,16 @@ export const agentConfigs = pgTable("agent_configs", {
   // Owner's morning WhatsApp digest (yesterday's calls, bookings, messages,
   // transfers). ON by default; never sent for a day with zero calls.
   ownerDigestEnabled: boolean("owner_digest_enabled").notNull().default(true),
+  // Call-forwarding setup check (onboarding wizard): the owner starts a
+  // 10-min test window, then has someone call the usual business number.
+  // The first inbound call to the tenant's number inside the window sets
+  // detected_at / verified_at (method 'window'); a forward header matching
+  // `forwardingBusinessPhone` is stronger proof (method 'diversion').
+  forwardingTestStartedAt: timestamp("forwarding_test_started_at", { withTimezone: true }),
+  forwardingBusinessPhone: text("forwarding_business_phone").notNull().default(""),
+  forwardingDetectedAt: timestamp("forwarding_detected_at", { withTimezone: true }),
+  forwardingVerifiedMethod: text("forwarding_verified_method").notNull().default(""),
+  forwardingVerifiedAt: timestamp("forwarding_verified_at", { withTimezone: true }),
 
   // Default greeting language. The agent will use this for the very first
   // message of each call, then auto-detect and adapt to the caller. Values:
