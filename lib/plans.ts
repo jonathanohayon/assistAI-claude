@@ -19,6 +19,11 @@ export interface Plan {
   popular?: boolean;
   /** Minutes vocales incluses par mois. Utilisé pour le calcul d'overage. */
   minutesIncluded: number;
+  /**
+   * Offered on the public pricing / signup (2026-11 grid: Réceptionniste and
+   * Clinique). false = legacy plan kept only for existing subscribers.
+   */
+  public: boolean;
   features: string[];
   /**
    * Features volontairement exclues du plan, affichées avec ✗ pour rendre
@@ -38,7 +43,7 @@ export interface Plan {
  * Tarif d'overage (minutes hors forfait) en shekel — source de vérité.
  * Converti dans la devise affichée côté pricing card via le fx rate ILS.
  */
-export const OVERAGE_RATE_ILS_PER_MIN = 1;
+export const OVERAGE_RATE_ILS_PER_MIN = 0.9;
 
 /**
  * Feature copy (here and in messages/*.json) writes the included minutes as
@@ -51,6 +56,58 @@ export function fillPlanFeatures(plan: Pick<Plan, "minutesIncluded">, features: 
 
 export const PLANS: readonly Plan[] = [
   {
+    key: "global",
+    name: "Réceptionniste",
+    tagline: "Vos rendez-vous pris automatiquement, 24/7.",
+    // EUR shown abroad; ILS (₪349) in lib/plan-pricing.ts. 2026-11 grid.
+    monthly: 89,
+    annualTotal: 890,
+    annualMonthly: 74,
+    model: "gpt-realtime",
+    popular: true,
+    minutesIncluded: 300,
+    public: true,
+    features: [
+      "{minutes} minutes incluses",
+      "Prise d'appels et de rendez-vous automatique, 24/7",
+      "Calendrier connecté & CRM",
+      "Récap de chaque appel sur WhatsApp",
+      "Réponses aux questions fréquentes",
+      "Voix naturelle, en français, hébreu et anglais",
+    ],
+    excludedFeatures: [],
+    bestFor: "salons, cabinets et commerces avec un seul établissement",
+    onboardingNotes: [
+      "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google.",
+      "Renseigne ton numéro WhatsApp pour recevoir les récaps d'appels.",
+    ],
+  },
+  {
+    key: "premium",
+    name: "Clinique / Multi-sites",
+    tagline: "Plusieurs établissements, un seul accueil téléphonique.",
+    // EUR shown abroad; ILS (₪649) in lib/plan-pricing.ts. 2026-11 grid.
+    monthly: 169,
+    annualTotal: 1690,
+    annualMonthly: 141,
+    model: "gpt-realtime",
+    minutesIncluded: 800,
+    public: true,
+    features: [
+      "{minutes} minutes incluses",
+      "Tout ce qui est inclus dans Réceptionniste",
+      "Jusqu'à 3 établissements / calendriers",
+      "Tableau de bord analytics en temps réel",
+      "Support prioritaire",
+    ],
+    excludedFeatures: [],
+    bestFor: "cliniques et entreprises multi-sites",
+    onboardingNotes: [
+      "Tu peux rattacher jusqu'à 3 établissements / calendriers distincts.",
+      "Notre équipe te contactera sous 24h pour la configuration (persona, voix, centres).",
+    ],
+  },
+  {
     key: "whatsapp",
     name: "Permanence téléphonique",
     tagline: "Ne ratez plus jamais un appel.",
@@ -59,6 +116,8 @@ export const PLANS: readonly Plan[] = [
     annualMonthly: 49,
     model: "gpt-realtime",
     minutesIncluded: 300,
+    // Legacy (2026-11): no longer offered; existing subscribers keep it.
+    public: false,
     features: [
       "{minutes} minutes incluses",
       "Prise d'appels automatisée 24/7",
@@ -77,60 +136,26 @@ export const PLANS: readonly Plan[] = [
       "Renseigne ton numéro WhatsApp owner pour recevoir les recaps d'appels.",
     ],
   },
-  {
-    key: "global",
-    name: "Réceptionniste",
-    tagline: "Vos rendez-vous pris automatiquement, 24/7.",
-    monthly: 129,
-    annualTotal: 1284,
-    annualMonthly: 107,
-    model: "gpt-realtime",
-    popular: true,
-    minutesIncluded: 500,
-    features: [
-      "{minutes} minutes incluses",
-      "Tout ce qui est inclus dans Permanence téléphonique",
-      "Intégration CRM & calendrier connecté",
-      "Qualification des appelants et prise de rendez-vous automatique",
-      "Réponses aux questions fréquentes",
-      "Transfert d'appel intelligent vers toi ou ton équipe",
-      "Voix naturelle et professionnelle",
-    ],
-    excludedFeatures: [],
-    bestFor: "cabinets, cliniques, agences et services B2B",
-    onboardingNotes: [
-      "Tu peux rattacher jusqu'à 3 centres / calendriers distincts.",
-      "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google.",
-    ],
-  },
-  {
-    key: "premium",
-    name: "Centre d'appels pro",
-    tagline: "Votre centre d'appels entrants & sortants, propulsé par l'IA.",
-    monthly: 299,
-    annualTotal: 2988,
-    annualMonthly: 249,
-    model: "gpt-realtime",
-    minutesIncluded: 1500,
-    features: [
-      "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
-      "Appels entrants & sortants en parallèle",
-      "{minutes} minutes incluses",
-      "Tableau de bord analytics en temps réel",
-      "Routage avancé et scénarios complexes",
-      "Tout ce qui est inclus dans Réceptionniste",
-      "Support prioritaire",
-    ],
-    excludedFeatures: [],
-    bestFor: "centres d'appels, équipes sales et support à fort volume",
-    onboardingNotes: [
-      "Notre équipe te contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
-      "Modèle gpt-realtime activé automatiquement après l'onboarding.",
-    ],
-  },
 ] as const;
 
-export const DEFAULT_PLAN_KEY: PlanKey = "whatsapp";
+/** Plans offered on the public pricing and at signup (2026-11 grid). */
+export const PUBLIC_PLANS: readonly Plan[] = PLANS.filter((p) => p.public);
+
+/**
+ * A plan this customer may pay for: any public plan, or their current legacy
+ * plan (a Permanence subscriber can renew it; nobody else can buy it).
+ */
+export function canPurchasePlan(key: string | null | undefined, currentPlan: string | null | undefined): boolean {
+  if (!isValidPlanKey(key)) return false;
+  return isPublicPlanKey(key) || key === currentPlan;
+}
+
+/** A plan a NEW customer may pick (legacy plans stay valid for existing ones). */
+export function isPublicPlanKey(key: string | null | undefined): key is PlanKey {
+  return PUBLIC_PLANS.some((p) => p.key === key);
+}
+
+export const DEFAULT_PLAN_KEY: PlanKey = "global";
 
 /**
  * Plan sur lequel tout compte en essai gratuit est provisionné.

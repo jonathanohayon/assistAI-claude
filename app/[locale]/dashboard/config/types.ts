@@ -41,12 +41,18 @@ export type FormState = {
   speed: number;
   maxResponseTokens: number;
   ownerWhatsapp: string;
+  /** Call-transfer number, E.164; '' = no transfer (lib/transfer-number). */
+  transferNumber: string;
   primaryLanguage: string;
   /** Rappel WhatsApp automatique au client la veille de son RDV (cron J-1). */
   reminderEnabled: boolean;
   inheritAdminGlobals: boolean;
   personality: Personality;
   agentName: string;
+  /** AI disclosure in the greeting (lib/ai-disclosure). Default on. */
+  aiDisclosureEnabled: boolean;
+  /** Custom disclosure line; '' = localized default. Must mention AI. */
+  aiDisclosureText: string;
   /** Slider 1-10 piloté ici, envoyé tel quel au PUT puis exposé à
    *  /api/agent/config pour le worker qui le mappe en enhancementLevel 0.1-1.0
    *  du QVF 2.1 L (ai-coustics). 1 = passthrough, 8 = équilibré, 10 = agressif. */

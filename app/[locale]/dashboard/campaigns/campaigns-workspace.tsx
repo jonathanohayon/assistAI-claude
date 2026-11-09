@@ -31,6 +31,7 @@ import { CampaignSetupStep } from "./campaign-setup-step";
 import { ContactsImportStep } from "./contacts-import-step";
 import { CampaignContactsList } from "./campaign-contacts-list";
 import { CampaignLaunch } from "./campaign-launch";
+import { CampaignLiveConsole } from "./campaign-live-console";
 import { StatusPill } from "./_ui";
 
 type View = "list" | "editor";
@@ -496,6 +497,21 @@ export function CampaignsWorkspace({
                   void loadList();
                 }}
               />
+            )}
+
+            {/* Admin-only live console: renders nothing on 403 (tenants). */}
+            {view === "editor" && tab === "launch" && draft.id && activeStatus !== "draft" && (
+              <div className="mt-4">
+                <CampaignLiveConsole
+                  key={draft.id}
+                  campaignId={draft.id}
+                  asUserId={asUserId}
+                  onStatusChanged={(status) => {
+                    setActiveStatus(status);
+                    void loadList();
+                  }}
+                />
+              </div>
             )}
           </div>
 

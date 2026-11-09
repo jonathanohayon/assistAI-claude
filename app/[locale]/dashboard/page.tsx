@@ -217,11 +217,14 @@ export default async function DashboardPage(props: {
           speed: config.speed,
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
+          transferNumber: config.transferNumber ?? "",
           primaryLanguage: config.primaryLanguage ?? "fr",
           reminderEnabled: config.reminderEnabled ?? false,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",
+          aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
+          aiDisclosureText: config.aiDisclosureText ?? "",
           noiseReductionLevel: config.noiseReductionLevel ?? 8,
           // Champ `business` ajouté en parallèle par la migration schema
           // (jsonb). Tant que la colonne n'est pas en place, on retombe sur

@@ -56,10 +56,11 @@ group("pageLangFor", () => {
 group("priceFor EUR", () => {
   assert.strictEqual(priceFor("whatsapp", "monthly", "EUR"), 59);
   assert.strictEqual(priceFor("whatsapp", "annual", "EUR"), 588);
-  assert.strictEqual(priceFor("global", "monthly", "EUR"), 129);
-  assert.strictEqual(priceFor("global", "annual", "EUR"), 1284);
-  assert.strictEqual(priceFor("premium", "monthly", "EUR"), 299);
-  assert.strictEqual(priceFor("premium", "annual", "EUR"), 2988);
+  // 2026-11 grid: Réceptionniste 89 € / Clinique 169 € abroad
+  assert.strictEqual(priceFor("global", "monthly", "EUR"), 89);
+  assert.strictEqual(priceFor("global", "annual", "EUR"), 890);
+  assert.strictEqual(priceFor("premium", "monthly", "EUR"), 169);
+  assert.strictEqual(priceFor("premium", "annual", "EUR"), 1690);
 });
 
 // 4) priceFor ILS — positive finite, monthly < annual for every plan

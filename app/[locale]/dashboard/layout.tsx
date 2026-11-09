@@ -17,7 +17,11 @@ import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { PLANS } from "@/lib/plans";
 import { currentPeriodWindow } from "@/lib/subscription";
-import { TRIAL_SECONDS_LIMIT } from "@/lib/trial";
+import {
+  TRIAL_PAUSED_STATUS,
+  TRIAL_SECONDS_LIMIT,
+  TRIAL_WARNING_BEFORE_END_MS,
+} from "@/lib/trial";
 
 import { DashboardTabs } from "./_nav";
 import { UserMenu } from "./user-menu";
@@ -48,10 +52,10 @@ function getInitials(
 }
 
 /**
- * Calcule le bandeau de compte à rebours d'essai gratuit.
- * Retourne null si l'utilisateur n'est pas en période d'essai, sinon un label
- * humain ("3h 20min" / "45 min" / "expired") + un niveau d'urgence (critical
- * sous 2h) pour la couleur du bandeau.
+ * Trial countdown banner data. Null when the user is not trialing. Returns
+ * whole days left (when at least one) or an "Xh Ymin" label for the last day,
+ * the call minutes left, and an urgency level: critical in the last 2 days
+ * (when the warning email goes out) or under 10 call minutes.
  */
 function computeTrialCountdown(
   me:
@@ -64,6 +68,7 @@ function computeTrialCountdown(
 ):
   | {
       expired: boolean;
+      daysLeft: number;
       timeLabel: string;
       callMinutesLeft: number;
       urgency: "normal" | "critical";
@@ -72,7 +77,7 @@ function computeTrialCountdown(
   if (!me?.trialEndsAt) return null;
   if (me.subscriptionStatus !== "trialing") return null;
   const ms = new Date(me.trialEndsAt).getTime() - Date.now();
-  // Minutes d'appels restantes sur le quota essai (60 min). On arrondit au
+  // Call minutes left on the trial quota. On arrondit au
   // supérieur pour ne pas afficher "0 min" tant qu'il reste des secondes.
   const callMinutesLeft = Math.max(
     0,
@@ -81,7 +86,7 @@ function computeTrialCountdown(
   // Épuisé au PREMIER atteint : temps OU minutes (cohérent avec
   // isTrialExhausted côté api/agent/config).
   if (ms <= 0 || trialSecondsUsed >= TRIAL_SECONDS_LIMIT) {
-    return { expired: true, timeLabel: "", callMinutesLeft: 0, urgency: "critical" };
+    return { expired: true, daysLeft: 0, timeLabel: "", callMinutesLeft: 0, urgency: "critical" };
   }
   const totalMinutes = Math.floor(ms / 60000);
   const hours = Math.floor(totalMinutes / 60);
@@ -90,9 +95,10 @@ function computeTrialCountdown(
     hours > 0
       ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ""}`
       : `${minutes} min`;
+  const daysLeft = Math.floor(ms / (24 * 60 * 60 * 1000));
   const urgency =
-    ms <= 2 * 60 * 60 * 1000 || callMinutesLeft <= 10 ? "critical" : "normal";
-  return { expired: false, timeLabel, callMinutesLeft, urgency };
+    ms <= TRIAL_WARNING_BEFORE_END_MS || callMinutesLeft <= 10 ? "critical" : "normal";
+  return { expired: false, daysLeft, timeLabel, callMinutesLeft, urgency };
 }
 
 type DashboardLayoutProps = {
@@ -190,6 +196,7 @@ async function DashboardShell({
       {trialOver && gatePricing && (
         <TrialExpiredGate
           plans={[...PLANS]}
+          paused={me?.subscriptionStatus === TRIAL_PAUSED_STATUS}
           pricing={gatePricing}
           logoutAction={handleLogout}
         />
@@ -281,12 +288,18 @@ async function DashboardShell({
                 t("trialExpired")
               ) : (
                 <>
-                  {t("trialRemainingMessage", { label: trial.timeLabel })}
+                  {t("trialRemainingMessage", {
+                    label:
+                      trial.daysLeft >= 1
+                        ? t("trialDaysLabel", { days: trial.daysLeft })
+                        : trial.timeLabel,
+                  })}
                   {" · "}
                   {t("trialCallMinutesLeft", { min: trial.callMinutesLeft })}
-                  {trial.urgency === "critical" && (
-                    <> · {t("trialAccountDeletion")}</>
-                  )}
+                  {" · "}
+                  {trial.urgency === "critical"
+                    ? t("trialPauseNotice")
+                    : t("trialFounderCall")}
                 </>
               )}
             </span>

@@ -145,8 +145,8 @@ export async function sendTrialWarningEmail(
   const client = getResend();
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const minutes = Math.max(1, opts.minutesLeft);
-  // Deletion now happens 24 h after this email (TRIAL_DELETION_GRACE_MS), so
-  // the subject announces that, whatever is left of the trial itself.
+  // Sent 2 days before the trial ends (2026-11: the account is then PAUSED,
+  // not deleted). The copy (Email.trialWarning) is updated in messages/*.
   const subject = t("subjectHours");
   // Messages with <strong> are rich text: plain t() throws FORMATTING_ERROR
   // as soon as values are passed (seen in prod on warningBoxHtml), so every

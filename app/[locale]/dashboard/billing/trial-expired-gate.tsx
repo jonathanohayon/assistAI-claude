@@ -18,10 +18,13 @@ type Period = "monthly" | "annual";
  */
 export function TrialExpiredGate({
   plans,
+  paused = false,
   pricing,
   logoutAction,
 }: {
   plans: Plan[];
+  /** Trial ended and the account is paused (number kept, never deleted). */
+  paused?: boolean;
   pricing: PlanPricingMap;
   logoutAction: () => Promise<void>;
 }) {
@@ -95,13 +98,13 @@ export function TrialExpiredGate({
           <>
             <div className="text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                {t("statusExpired")}
+                {paused ? t("statusPaused") : t("statusExpired")}
               </span>
               <h2 className="mt-3 font-display text-2xl tracking-tight text-[var(--color-foreground)]">
-                {t("gateHeading")}
+                {paused ? t("gatePausedHeading") : t("gateHeading")}
               </h2>
               <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-                {t("gateSubtitle")}
+                {paused ? t("gatePausedSubtitle") : t("gateSubtitle")}
               </p>
             </div>
 
