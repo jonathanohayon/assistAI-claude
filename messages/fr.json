@@ -30,37 +30,34 @@
       "tagline": "Vos rendez-vous pris automatiquement, 24/7.",
       "features": [
         "{minutes} minutes incluses",
-        "Tout ce qui est inclus dans Permanence téléphonique",
-        "Intégration CRM & calendrier connecté",
-        "Qualification des appelants et prise de rendez-vous automatique",
+        "Prise d'appels et de rendez-vous automatique, 24/7",
+        "Calendrier connecté & CRM",
+        "Récap de chaque appel sur WhatsApp",
         "Réponses aux questions fréquentes",
-        "Transfert d'appel intelligent vers vous ou votre équipe",
-        "Voix naturelle et professionnelle"
+        "Voix naturelle, en français, hébreu et anglais"
       ],
       "excludedFeatures": [],
-      "bestFor": "cabinets, cliniques, agences et services B2B",
+      "bestFor": "salons, cabinets et commerces avec un seul établissement",
       "onboardingNotes": [
-        "Vous pouvez rattacher jusqu'à 3 centres / calendriers distincts.",
-        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google."
+        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google.",
+        "Renseignez votre numéro WhatsApp pour recevoir les récaps d'appels."
       ]
     },
     "premium": {
-      "name": "Centre d'appels pro",
-      "tagline": "Votre centre d'appels entrants & sortants, propulsé par l'IA.",
+      "name": "Clinique / Multi-sites",
+      "tagline": "Plusieurs établissements, un seul accueil téléphonique.",
       "features": [
-        "Centre d'appels sortant : campagnes IA (prospection, relances, rappels no-show)",
-        "Appels entrants & sortants en parallèle",
         "{minutes} minutes incluses",
-        "Tableau de bord analytics en temps réel",
-        "Routage avancé et scénarios complexes",
         "Tout ce qui est inclus dans Réceptionniste",
+        "Jusqu'à 3 établissements / calendriers",
+        "Tableau de bord analytics en temps réel",
         "Support prioritaire"
       ],
       "excludedFeatures": [],
-      "bestFor": "centres d'appels, équipes sales et support à fort volume",
+      "bestFor": "cliniques et entreprises multi-sites",
       "onboardingNotes": [
-        "Notre équipe vous contactera sous 24h pour la configuration sur mesure (persona, voix, workflows).",
-        "Modèle gpt-realtime activé automatiquement après l'onboarding."
+        "Vous pouvez rattacher jusqu'à 3 établissements / calendriers distincts.",
+        "Notre équipe vous contactera sous 24h pour la configuration (persona, voix, établissements)."
       ]
     }
   },
@@ -80,10 +77,10 @@
     "menuClose": "Fermer le menu"
   },
   "Hero": {
-    "badge": "Conciergerie vocale temps réel · Live",
-    "title": "Parlez {emphasis} à chaque client.",
-    "titleEmphasis": "humainement",
-    "subtitle": "Pour les cabinets, salons, PME et centres d'appels. Une IA vocale qui décroche 24/7, prend les rendez-vous, lance vos campagnes d'appels sortants et synchronise votre agenda — en français, en hébreu et en anglais.",
+    "badge": "Réceptionniste IA · Live",
+    "title": "Ne perdez plus un client parce que {emphasis}.",
+    "titleEmphasis": "personne n'a décroché",
+    "subtitle": "Tamara répond 24h/24 en hébreu, français et anglais, prend le rendez-vous dans votre agenda et vous envoie le récap sur WhatsApp.",
     "ctaDemo": "Commencer gratuitement",
     "ctaConfigure": "Voir comment ça marche",
     "ctaLiveDemo": "Parler à Tamara maintenant",
@@ -129,17 +126,17 @@
     "subtitle": "Une seule plateforme, configurable en quelques minutes pour le ton et les workflows propres à votre métier.",
     "medical": {
       "title": "Cabinets médicaux",
-      "desc": "Prise de RDV, rappels, annulations, triage des urgences. Conforme au secret médical.",
+      "desc": "Prise de rendez-vous, annulations et reports, confirmation WhatsApp au patient. En hébreu, français et anglais.",
       "f1": "Synchro Google Agenda",
-      "f2": "Rappels SMS automatiques",
-      "f3": "Filtre les urgences"
+      "f2": "Confirmation WhatsApp",
+      "f3": "Annulations et reports"
     },
     "beauty": {
       "title": "Salons de beauté",
       "desc": "Prestations soin, durée variable, choix des praticiennes. Multi-centres natif.",
       "f1": "Multi-centres",
       "f2": "Durée par prestation",
-      "f3": "Fidélité automatique"
+      "f3": "Récap WhatsApp au salon"
     },
     "barber": {
       "title": "Coiffeurs",
@@ -293,13 +290,13 @@
   },
   "Pricing": {
     "kicker": "Tarifs",
-    "title": "Une formule pour chaque équipe.",
-    "subtitle": "Tous les plans incluent la voix premium et le support technique. Sans engagement, annulable à tout moment.",
+    "title": "Deux formules, sans engagement.",
+    "subtitle": "Tamara répond, prend les rendez-vous et vous envoie le récap sur WhatsApp. Annulable à tout moment.",
     "billing": {
       "monthly": "Mensuel",
       "annual": "Annuel",
-      "save": "Économisez 20% avec l'abonnement annuel.",
-      "discount": "−20%"
+      "save": "2 mois offerts avec l'abonnement annuel.",
+      "discount": "2 mois offerts"
     },
     "card": {
       "popular": "Recommandé",
@@ -314,14 +311,14 @@
       "ctaAria": "Choisir la formule {name}",
       "model": "Modèle"
     },
-    "footer": "Prix TTC en euros. Gros volume ou besoin sur mesure ? Parlons-en."
+    "footer": "Prix TTC. Plusieurs établissements ou gros volume ? Parlons-en.",
+    "trial": "Essai gratuit 14 jours ou 100 minutes, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous."
   },
   "PricingComparison": {
     "title": "Comparer en détail",
     "forWho": "Pour qui",
-    "forWhoWhatsapp": "Indépendants & commerces",
-    "forWhoGlobal": "Cabinets & agences",
-    "forWhoPremium": "Call centers & sales",
+    "forWhoGlobal": "Salons & cabinets",
+    "forWhoPremium": "Cliniques & multi-sites",
     "yes": "Inclus",
     "no": "Non inclus",
     "rowMinutes": "Minutes incluses / mois",
@@ -329,12 +326,14 @@
     "rowMessages": "Messages & recap WhatsApp",
     "rowCalendar": "Agenda connecté & prise de RDV",
     "rowCrm": "CRM / contacts",
-    "rowOutbound": "Appels sortants & campagnes IA",
     "rowMulticall": "Appels simultanés en parallèle",
     "rowAnalytics": "Analytics temps réel",
-    "rowSupport": "Support prioritaire",
+    "rowSupport": "Support",
     "supportStandard": "Standard",
-    "supportPriority": "Prioritaire"
+    "supportPriority": "Prioritaire",
+    "rowLocations": "Établissements / calendriers",
+    "locationsOne": "1",
+    "locationsUpTo3": "Jusqu'à 3"
   },
   "DashboardSetup": {
     "title": "Configurez votre agent",
@@ -402,7 +401,7 @@
     "subtitle": "Les réponses claires aux questions qu'on nous pose le plus souvent — du prix à la sécurité, en passant par l'installation.",
     "q1": {
       "question": "Combien coûte Tamara ?",
-      "answer": "Tamara démarre avec la formule Permanence téléphonique ; le tarif à jour est dans la grille ci-dessus. Les formules Réceptionniste et Centre d'appels pro débloquent la prise de RDV, le multi-centres et le routage avancé. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
+      "answer": "Le tarif à jour est dans la grille ci-dessus, avec les minutes incluses et le prix de la minute supplémentaire. Tous les plans sont sans engagement et annulables à tout moment depuis le dashboard."
     },
     "q2": {
       "question": "Comment l'IA parle-t-elle avec mes clientes ?",
@@ -414,7 +413,7 @@
     },
     "q4": {
       "question": "Que se passe-t-il pour les RDV complexes ?",
-      "answer": "Si la situation dépasse les workflows configurés (urgence médicale, demande inhabituelle, cliente difficile), l'agent peut transférer l'appel vers vous ou votre équipe, ou collecter toutes les informations utiles et vous envoyer un récap WhatsApp immédiat. Vous gardez la main."
+      "answer": "Si la situation dépasse ce que Tamara sait faire (demande inhabituelle, client difficile), elle note toutes les informations utiles et vous envoie immédiatement un récap sur WhatsApp. Vous rappelez le client en sachant déjà tout."
     },
     "q5": {
       "question": "Comment installer Tamara sur ma ligne ?",
@@ -430,7 +429,7 @@
     },
     "q8": {
       "question": "Et si l'IA fait une erreur ?",
-      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait — RDV créé, contact ajouté, transfert effectué. En cas d'erreur, vous corrigez en un clic et le comportement s'ajuste pour les appels suivants."
+      "answer": "Chaque appel génère un transcript complet horodaté, accessible depuis le dashboard. Vous voyez exactement ce que l'agent a dit et fait : RDV créé, contact ajouté, récap WhatsApp envoyé. En cas d'erreur, vous ajustez les consignes de Tamara depuis le dashboard ; elles s'appliquent dès l'appel suivant."
     }
   },
   "Security": {
@@ -468,7 +467,7 @@
     "waGreeting": "Bonjour, j'ai une question concernant Tamara."
   },
   "Footer": {
-    "tagline": "Conciergerie vocale temps réel pour cabinets médicaux, salons et coiffeurs. Hébreu, français et anglais natifs.",
+    "tagline": "Réceptionniste IA pour salons et cliniques. Hébreu, français et anglais.",
     "categories": {
       "product": "Produit",
       "account": "Compte",
@@ -484,7 +483,7 @@
       "beauty": "Salons de beauté",
       "barbers": "Coiffeurs"
     },
-    "copyright": "© {year} Tamara · Conciergerie vocale IA",
+    "copyright": "© {year} Tamara · Réceptionniste IA",
     "status": "Tous les services en ligne"
   },
   "LocaleSwitcher": {
@@ -497,7 +496,7 @@
     "formuleChoisie": "Formule choisie",
     "recommendBadge": "★ Recommandé",
     "pricePerMonth": "TTC / mois",
-    "annualDiscount": "−20% annuel",
+    "annualDiscount": "2 mois offerts en annuel",
     "freeTrialNoticeStart": "24 h d'essai gratuit. Sans engagement, changeable depuis le dashboard.",
     "comparePlans": "Comparer les formules",
     "freeBadge": "Essai gratuit — toutes les fonctionnalités",
@@ -646,9 +645,8 @@
     "whatsappPlanLabel": "Formule WhatsApp.",
     "whatsappPlanDesc": "Connexion à votre propre Google Calendar/Sheets verrouillée.",
     "upgradeLink": "Passer à Globale ou Premium →",
-    "trialExpired": "Votre essai est terminé. Votre compte va être supprimé sous peu.",
-    "trialRemainingMessage": "Essai gratuit — {label} restant",
-    "trialAccountDeletion": "compte supprimé à expiration",
+    "trialExpired": "Votre essai est terminé : Tamara est en pause. Souscrivez pour la réactiver. Vos réglages restent, et votre numéro est conservé 30 jours.",
+    "trialRemainingMessage": "Essai gratuit : {label} restants",
     "trialSubscribeButton": "Souscrire",
     "tabConfiguration": "Appels entrants",
     "tabOutbound": "Appels sortants",
@@ -661,7 +659,10 @@
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
     "logoutButton": "Se déconnecter",
-    "trialCallMinutesLeft": "{min} min d'appels restantes"
+    "trialCallMinutesLeft": "{min} min d'appels restantes",
+    "trialDaysLabel": "{days, plural, one {# jour} other {# jours}}",
+    "trialFounderCall": "le fondateur vous appelle pour configurer Tamara",
+    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé"
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -1035,7 +1036,14 @@
     "statAvgDuration": "Durée moy.",
     "statBookings": "RDV pris",
     "statBookingsSince": "depuis le {date}",
-    "statBookingsTrackedFromNow": "comptés à partir de maintenant"
+    "statBookingsTrackedFromNow": "comptés à partir de maintenant",
+    "transferTitle": "Numéro de transfert d'appel",
+    "transferPrefixAria": "Indicatif pays",
+    "transferPlaceholder": "050 000 0000",
+    "transferNormalized": "Sera composé :",
+    "transferNone": "Aucun transfert : Tamara prend un message.",
+    "transferInvalid": "Numéro invalide. Exemple : 050 000 0000 ou +972 50 000 0000.",
+    "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",
@@ -1270,7 +1278,7 @@
     "tabFile": "CSV / Excel",
     "tabSheets": "Google Sheets",
     "pasteLabel": "Numéros de téléphone",
-    "pastePlaceholder": "+972501234567, Sarah\n+33612345678, Marc\nUn par ligne — numéro en premier, nom optionnel après une virgule.",
+    "pastePlaceholder": "+972500000000, Sarah\n+33612345678, Marc\nUn par ligne — numéro en premier, nom optionnel après une virgule.",
     "pasteHint": "Format international (+indicatif pays). Un par ligne.",
     "addContactsCta": "Ajouter les contacts",
     "importing": "Importation…",
@@ -1498,7 +1506,7 @@
     "billingToggleAria": "Période de facturation",
     "monthly": "Mensuel",
     "annual": "Annuel",
-    "annualSavings": "Économisez 20% avec l'abonnement annuel.",
+    "annualSavings": "2 mois offerts avec l'abonnement annuel.",
     "popularBadge": "★ Populaire",
     "currentBadge": "✓ Plan actuel",
     "bestFor": "Idéal pour :",
@@ -1552,7 +1560,11 @@
     "cancelSubscription": "Annuler l'abonnement",
     "cancelConfirm": "Annuler l'abonnement ? Vous gardez l'accès jusqu'à la fin de la période payée.",
     "resumeSubscription": "Reprendre l'abonnement",
-    "deleteAccountTitle": "Supprimer le compte"
+    "deleteAccountTitle": "Supprimer le compte",
+    "statusPaused": "En pause",
+    "pausedSince": "En pause depuis le {date}",
+    "gatePausedHeading": "Votre essai est terminé",
+    "gatePausedSubtitle": "Souscrivez pour réactiver Tamara. Vos réglages restent, et votre numéro est conservé 30 jours après la pause."
   },
   "DashboardLogs": {
     "header": "Monitoring",
@@ -1724,23 +1736,23 @@
       "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est purement transactionnel."
     },
     "trialWarning": {
-      "subjectMinutes": "⏰ Votre essai Tamara expire dans {minutes} minutes",
-      "subjectHours": "⏰ Votre compte Tamara sera supprimé dans 24 heures",
-      "heading": "⏰ Votre essai se termine",
-      "introHtml": "Votre essai gratuit <strong>Tamara</strong> se termine. Sans plan activé, votre compte sera supprimé dans <strong>24 heures</strong>.",
-      "introText": "Votre essai gratuit Tamara se termine. Sans plan activé, votre compte sera supprimé dans 24 heures.",
-      "warningBoxHtml": "Dans 24 heures, votre compte sera <strong>supprimé</strong> et {phoneLine} sera <strong>libéré</strong>.",
+      "subjectMinutes": "⏰ Il vous reste {minutes} minutes d'essai Tamara",
+      "subjectHours": "⏰ Votre essai Tamara se termine dans 2 jours",
+      "heading": "⏰ Votre essai se termine bientôt",
+      "introHtml": "Votre essai gratuit <strong>Tamara</strong> se termine dans <strong>2 jours</strong>. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
+      "introText": "Votre essai gratuit Tamara se termine dans 2 jours. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
+      "warningBoxHtml": "Rien n'est supprimé : vos réglages restent, et {phoneLine} est <strong>conservé pendant 30 jours</strong> après la pause.",
       "phoneSpecific": "le numéro <strong>{phone}</strong>",
       "phoneGeneric": "votre numéro",
-      "actionLineText": "Pour conserver votre numéro et votre configuration, activez un plan depuis votre tableau de bord d'ici là :",
-      "actionLineHtml": "Pour conserver votre numéro et votre configuration, activez un plan depuis votre tableau de bord :",
+      "actionLineText": "Pour que Tamara continue de répondre sans interruption, activez un plan depuis votre tableau de bord :",
+      "actionLineHtml": "Pour que Tamara continue de répondre sans interruption, activez un plan depuis votre tableau de bord :",
       "ctaButton": "Activer mon plan →",
-      "footerText": "Si vous ne souhaitez pas continuer, vous n'avez rien à faire — tout sera nettoyé automatiquement.",
-      "footerHtml": "Si vous ne souhaitez pas continuer, ignorez ce message — tout sera nettoyé automatiquement.",
-      "phoneLineWithPhone": "Votre numéro {phone} sera libéré.",
-      "phoneLineGeneric": "Votre numéro sera libéré.",
+      "footerText": "Vous pouvez aussi réactiver Tamara à tout moment après la pause, depuis votre tableau de bord.",
+      "footerHtml": "Vous pouvez aussi réactiver Tamara à tout moment après la pause, depuis votre tableau de bord.",
+      "phoneLineWithPhone": "Rien n'est supprimé : vos réglages restent, et votre numéro {phone} est conservé 30 jours après la pause.",
+      "phoneLineGeneric": "Rien n'est supprimé : vos réglages restent, et votre numéro est conservé 30 jours après la pause.",
       "signature": "— L'équipe Tamara",
-      "textBullet": "Dans 24 heures :"
+      "textBullet": "Dans 2 jours :"
     },
     "trialDeleted": {
       "subject": "Votre compte Tamara a été supprimé",

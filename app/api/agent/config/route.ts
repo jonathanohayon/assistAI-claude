@@ -11,7 +11,7 @@ import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { effectiveVoiceProfile } from "@/lib/voice-profile";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
-import { isTrialExhausted } from "@/lib/trial";
+import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -89,8 +89,11 @@ export async function GET(req: NextRequest) {
   // atteintes avant la fin des 24h.
   // Admins are exempt: the prod admin is `trialing` with no end date, and the
   // 60-min cap would cut their own number once call durations are recorded.
+  // Trialing OR paused (trial ended, not paid): a paused account must be
+  // refused too, so it can't skip this block on its status.
   if (
-    tenant.user.subscriptionStatus === "trialing" &&
+    (tenant.user.subscriptionStatus === "trialing" ||
+      tenant.user.subscriptionStatus === TRIAL_PAUSED_STATUS) &&
     tenant.user.role !== "admin"
   ) {
     const [usage] = await db

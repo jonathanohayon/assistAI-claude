@@ -314,7 +314,11 @@ export function ConfigForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? t("errSaveFailed"));
+        setError(
+          data?.error === "invalid_transfer_number"
+            ? t("transferInvalid")
+            : (data?.error ?? t("errSaveFailed")),
+        );
         return;
       }
       const timeLocale =

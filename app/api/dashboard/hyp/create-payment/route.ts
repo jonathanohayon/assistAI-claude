@@ -14,7 +14,7 @@ import {
 import { logEvent } from "@/lib/logger";
 import { resolvePrice } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
-import { isValidPlanKey, planByKey } from "@/lib/plans";
+import { canPurchasePlan, isValidPlanKey, planByKey } from "@/lib/plans";
 
 // Crée une commande HYP pour le tenant courant et renvoie l'URL de paiement
 // hébergée. On verrouille la suppression auto (deletionLockedUntil) 2h pour
@@ -45,12 +45,17 @@ export async function POST(req: NextRequest) {
         locale: users.locale,
         email: users.email,
         displayName: users.displayName,
+        subscriptionPlan: users.subscriptionPlan,
       })
       .from(users)
       .where(eq(users.id, guard.userId))
       .limit(1);
     if (!user) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
+    // Legacy plans (Permanence) can only be renewed by their subscribers.
+    if (!canPurchasePlan(plan, user.subscriptionPlan)) {
+      return NextResponse.json({ error: "plan_not_offered" }, { status: 400 });
     }
 
     // Nom client envoyé à HYP — la société de crédit refuse sans prénom NI nom.
