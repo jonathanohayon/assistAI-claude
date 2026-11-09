@@ -19,6 +19,13 @@ export interface CostRates {
   twilioInboundUsdPerMinute: number;
   twilioOutboundUsdPerMinute: number;
   twilioNumberUsdPerMonth: number;
+  /**
+   * Transferred calls (SIP REFER): Twilio bridges the caller to the business
+   * on a new OUTBOUND leg and keeps the inbound leg up meanwhile. We never
+   * see that conversation, so its length is this assumed average (minutes)
+   * — an ESTIMATE, priced at inbound + outbound rates.
+   */
+  transferAvgMinutes: number;
 
   // ── WhatsApp ─────────────────────────────────────────────────────
   whatsappUsdPerMessage: number;
@@ -41,6 +48,7 @@ export const DEFAULT_COST_RATES: CostRates = {
   twilioInboundUsdPerMinute: 0.0085,
   twilioOutboundUsdPerMinute: 0.14,
   twilioNumberUsdPerMonth: 1.15,
+  transferAvgMinutes: 3,
   whatsappUsdPerMessage: 0.02,
   infraUsdPerMonth: 0,
   eurToUsd: 1.08,

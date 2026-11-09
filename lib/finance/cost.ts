@@ -37,6 +37,15 @@ const OPENAI_USAGE_EVENT = "openai_usage";
 // (their pricing differs: Gemini per token at Google's rates, Grok per
 // minute) and are added as-is, never re-priced with OpenAI rates.
 const OPENAI_ROW = sql`coalesce(${events.metadata}->>'provider', 'openai') = 'openai'`;
+// Inbound seconds: the real call duration (calls.duration_seconds, set by the
+// worker since the billing work) when present; the old transcript-length
+// estimate (6 s per turn) only for older rows without it.
+const INBOUND_SECONDS_SQL = sql<number>`coalesce(sum(case when ${calls.durationSeconds} > 0 then ${calls.durationSeconds} else jsonb_array_length(${calls.transcript}) * 6 end),0)::int`;
+// Successful call transfers (worker event, metadata.ok = true).
+const TRANSFER_OK = and(
+  eq(events.event, "call_transfer"),
+  sql`${events.metadata}->>'ok' = 'true'`,
+);
 
 export interface CategoryCost {
   openai: number;
@@ -147,6 +156,8 @@ interface RawUsage {
   /** Cost reported by the worker for non-OpenAI engines (Gemini, Grok), USD. */
   otherEngineCostUsd: number;
   numbersActive: number;
+  /** Successful call transfers (each adds an estimated bridged leg). */
+  transfers: number;
 }
 
 const ZERO_USAGE: RawUsage = {
@@ -160,6 +171,7 @@ const ZERO_USAGE: RawUsage = {
   openaiCoveredSeconds: 0,
   otherEngineCostUsd: 0,
   numbersActive: 0,
+  transfers: 0,
 };
 
 function round2(n: number): number {
@@ -167,7 +179,7 @@ function round2(n: number): number {
 }
 
 /** Coût par catégorie pour un usage donné sur `months` mois. */
-function costFromUsage(
+export function costFromUsage(
   u: RawUsage,
   rates: CostRates,
   months: number,
@@ -178,9 +190,13 @@ function costFromUsage(
 
   const openai = openaiCostUsd(u, rates);
 
+  // Transferred calls: estimated bridged time, billed on BOTH legs (the
+  // inbound leg stays up while Twilio's new outbound leg rings the business).
+  const transferMin = u.transfers * rates.transferAvgMinutes;
   const twilioVoice =
     inboundMin * rates.twilioInboundUsdPerMinute +
-    outboundMin * rates.twilioOutboundUsdPerMinute;
+    outboundMin * rates.twilioOutboundUsdPerMinute +
+    transferMin * (rates.twilioInboundUsdPerMinute + rates.twilioOutboundUsdPerMinute);
   const twilioNumbers = u.numbersActive * rates.twilioNumberUsdPerMonth * months;
   const whatsapp = u.whatsappMessages * rates.whatsappUsdPerMessage;
   const infra = opts.includeInfra ? rates.infraUsdPerMonth * months : 0;
@@ -250,11 +266,12 @@ export async function computeFinanceStats(args: {
     usageRows,
     numberRows,
     paymentRows,
+    transferRows,
   ] = await Promise.all([
     db
       .select({
         period: truncExpr(calls.createdAt),
-        seconds: sql<number>`coalesce(sum(jsonb_array_length(${calls.transcript}) * 6),0)::int`,
+        seconds: INBOUND_SECONDS_SQL,
       })
       .from(calls)
       .where(and(...callConds))
@@ -312,6 +329,21 @@ export async function computeFinanceStats(args: {
           ...(userId ? [eq(paymentOrders.userId, userId)] : []),
         ),
       ),
+    db
+      .select({
+        period: truncExpr(events.createdAt),
+        count: sql<number>`count(*)::int`,
+      })
+      .from(events)
+      .where(
+        and(
+          gte(events.createdAt, from),
+          lt(events.createdAt, to),
+          TRANSFER_OK,
+          ...(userId ? [eq(events.userId, userId)] : []),
+        ),
+      )
+      .groupBy(sql`1`),
   ]);
 
   // Index par bucket.
@@ -328,6 +360,7 @@ export async function computeFinanceStats(args: {
   for (const r of outboundRows)
     ensure(r.period).outboundSeconds += Number(r.seconds);
   for (const r of waRows) ensure(r.period).whatsappMessages += Number(r.count);
+  for (const r of transferRows) ensure(r.period).transfers += Number(r.count);
   for (const r of usageRows) {
     const u = ensure(r.period);
     u.openaiUsageRows += Number(r.rows);
@@ -493,6 +526,7 @@ async function computeTenantBreakdown(args: {
     usageByUser,
     numbersByUser,
     revenueByUser,
+    transfersByUser,
   ] = await Promise.all([
     db
       .select({
@@ -505,7 +539,7 @@ async function computeTenantBreakdown(args: {
     db
       .select({
         userId: calls.userId,
-        seconds: sql<number>`coalesce(sum(jsonb_array_length(${calls.transcript}) * 6),0)::int`,
+        seconds: INBOUND_SECONDS_SQL,
       })
       .from(calls)
       .where(and(gte(calls.createdAt, from), lt(calls.createdAt, to)))
@@ -574,6 +608,14 @@ async function computeTenantBreakdown(args: {
           lt(paymentOrders.paidAt, to),
         ),
       ),
+    db
+      .select({
+        userId: events.userId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(events)
+      .where(and(gte(events.createdAt, from), lt(events.createdAt, to), TRANSFER_OK))
+      .groupBy(events.userId),
   ]);
 
   const byUser = new Map<string, RawUsage>();
@@ -591,6 +633,8 @@ async function computeTenantBreakdown(args: {
     if (r.userId) ensure(r.userId).outboundSeconds += Number(r.seconds);
   for (const r of waByUser)
     if (r.userId) ensure(r.userId).whatsappMessages += Number(r.count);
+  for (const r of transfersByUser)
+    if (r.userId) ensure(r.userId).transfers += Number(r.count);
   for (const r of usageByUser) {
     if (!r.userId) continue;
     const u = ensure(r.userId);
