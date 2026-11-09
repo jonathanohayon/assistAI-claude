@@ -220,6 +220,7 @@ export default async function DashboardPage(props: {
           transferNumber: config.transferNumber ?? "",
           primaryLanguage: config.primaryLanguage ?? "fr",
           reminderEnabled: config.reminderEnabled ?? false,
+          ownerDigestEnabled: config.ownerDigestEnabled ?? true,
           inheritAdminGlobals: config.inheritAdminGlobals ?? true,
           personality: config.personality ?? {},
           agentName: config.agentName ?? "",

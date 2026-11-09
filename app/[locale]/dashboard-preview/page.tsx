@@ -61,6 +61,7 @@ export default async function DashboardPreviewPage(props: {
           transferNumber: "+972500000000",
           primaryLanguage: locale,
           reminderEnabled: false,
+          ownerDigestEnabled: true,
           inheritAdminGlobals: true,
           personality: {},
           agentName: "Sarah",
