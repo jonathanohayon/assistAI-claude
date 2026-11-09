@@ -1,6 +1,7 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { inferCallType } from "@/lib/call-type";
+import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseCallEndBody } from "@/lib/call-end-body";
@@ -103,6 +104,11 @@ export async function POST(req: NextRequest) {
       metadata: { userId, toNumber },
     });
     return NextResponse.json({ error: "no tenant" }, { status: 500 });
+  }
+  // Forwarding setup check, fallback path (call start may have caught it
+  // already). Phone calls only: not the web LiveTest, not WhatsApp calls.
+  if (!userId && channel !== "whatsapp") {
+    await markForwardingTestCall(tenant.user.id, { via: "call_end" });
   }
   const { user, config: cfg } = tenant;
 
