@@ -13,6 +13,7 @@ import { effectiveVoiceProfile } from "@/lib/voice-profile";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
 import { getClientProfile } from "@/lib/loyalty-profile";
+import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -352,6 +353,9 @@ export async function GET(req: NextRequest) {
     voiceProfile: effectiveVoiceProfile(tenant.config.voiceProfile),
     // Call transfer target ('' = none): the worker registers transfer_call only if set.
     transferNumber: tenant.config.transferNumber ?? "",
+    // Greeting the worker speaks verbatim, AI disclosure included — the SAME
+    // text as the pre-rendered opener (lib/ai-disclosure.ts effectiveGreeting).
+    greetingInstructions: effectiveGreeting(tenant.config, tenant.user.displayName ?? ""),
     // Caller's visit history with this tenant (null = unknown / first call).
     clientProfile: await clientProfilePromise,
     features,

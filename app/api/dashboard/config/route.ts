@@ -6,6 +6,7 @@ import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
+import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
@@ -59,6 +60,8 @@ export async function PUT(req: NextRequest) {
     personality: Record<string, number>;
     agentName: string;
     transferNumber: string | null;
+    aiDisclosureEnabled: boolean;
+    aiDisclosureText: string | null;
     noiseReductionLevel: number;
     knowledge: Array<{
       id?: string;
@@ -164,6 +167,14 @@ export async function PUT(req: NextRequest) {
     const tn = parseTransferNumber(body.transferNumber);
     if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
     updates.transferNumber = tn.value;
+  }
+  if ("aiDisclosureEnabled" in body) {
+    updates.aiDisclosureEnabled = body.aiDisclosureEnabled !== false;
+  }
+  if ("aiDisclosureText" in body) {
+    const dt = parseDisclosureText(body.aiDisclosureText);
+    if (!dt.ok) return NextResponse.json({ error: dt.error }, { status: 400 });
+    updates.aiDisclosureText = dt.value;
   }
   const providerUpdate = adminOnlyProviderUpdate(body as Record<string, unknown>, isAdmin);
   if ("error" in providerUpdate) {

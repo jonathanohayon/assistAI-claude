@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
+import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
@@ -63,6 +64,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     realtimeProvider: string | null;
     voiceProfile: unknown;
     transferNumber: string | null;
+    aiDisclosureEnabled: boolean;
+    aiDisclosureText: string | null;
   }>;
 
   // Model accepted as-is — picker is fed by live OpenAI catalog
@@ -133,6 +136,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const tn = parseTransferNumber(body.transferNumber);
     if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
     updates.transferNumber = tn.value;
+  }
+  if ("aiDisclosureEnabled" in body) {
+    updates.aiDisclosureEnabled = body.aiDisclosureEnabled !== false;
+  }
+  if ("aiDisclosureText" in body) {
+    const dt = parseDisclosureText(body.aiDisclosureText);
+    if (!dt.ok) return NextResponse.json({ error: dt.error }, { status: 400 });
+    updates.aiDisclosureText = dt.value;
   }
   if ("voiceProfile" in body) {
     const [current] = await db

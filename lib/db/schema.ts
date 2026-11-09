@@ -131,12 +131,17 @@ export const agentConfigs = pgTable("agent_configs", {
   maxResponseTokens: integer("max_response_tokens").notNull().default(220),
 
   // WhatsApp number of the salon owner — receives a recap after every call.
-  // Stored E.164 (e.g. +972585001007); empty = WhatsApp recap disabled.
+  // Stored E.164 (e.g. +972500000000); empty = WhatsApp recap disabled.
   ownerWhatsapp: text("owner_whatsapp").notNull().default(""),
   // Call transfer (lib/transfer-number.ts): E.164 number the phone agent
   // transfers a caller to when they ask for a person. '' = no transfer.
   // Editable by the tenant and the admin.
   transferNumber: text("transfer_number").notNull().default(""),
+  // AI disclosure (EU AI Act art. 50): the greeting tells callers they talk
+  // to an AI. ON by default; `aiDisclosureText` = tenant's own sentence
+  // ('' = localized default). See lib/ai-disclosure.ts.
+  aiDisclosureEnabled: boolean("ai_disclosure_enabled").notNull().default(true),
+  aiDisclosureText: text("ai_disclosure_text").notNull().default(""),
 
   // Default greeting language. The agent will use this for the very first
   // message of each call, then auto-detect and adapt to the caller. Values:
