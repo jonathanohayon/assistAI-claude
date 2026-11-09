@@ -11,6 +11,7 @@ import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-provider";
+import { parseTransferNumber } from "@/lib/transfer-number";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 export async function GET() {
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest) {
     inheritAdminGlobals: boolean;
     personality: Record<string, number>;
     agentName: string;
+    transferNumber: string | null;
     noiseReductionLevel: number;
     knowledge: Array<{
       id?: string;
@@ -156,6 +158,12 @@ export async function PUT(req: NextRequest) {
     // Trim + clamp 80 chars. Vide accepté (facultatif). Pas de regex stricte
     // pour permettre les noms internationalisés (Sarah, יוהנה, محمد, etc.).
     updates.agentName = String(body.agentName).trim().slice(0, 80);
+  }
+  // Call-transfer number: the tenant's own setting (not admin-only).
+  if ("transferNumber" in body) {
+    const tn = parseTransferNumber(body.transferNumber);
+    if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
+    updates.transferNumber = tn.value;
   }
   const providerUpdate = adminOnlyProviderUpdate(body as Record<string, unknown>, isAdmin);
   if ("error" in providerUpdate) {
