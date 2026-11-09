@@ -315,9 +315,13 @@ export function ConfigForm({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(
-          data?.error === "invalid_transfer_number"
-            ? t("transferInvalid")
-            : (data?.error ?? t("errSaveFailed")),
+          data?.error === "ai_disclosure_must_mention_ai"
+            ? t("aiDisclosureMustMentionAi")
+            : data?.error === "invalid_ai_disclosure_text"
+              ? t("aiDisclosureTooLong", { max: 200 })
+              : data?.error === "invalid_transfer_number"
+                ? t("transferInvalid")
+                : (data?.error ?? t("errSaveFailed")),
         );
         return;
       }

@@ -64,6 +64,8 @@ export default async function DashboardPreviewPage(props: {
           inheritAdminGlobals: true,
           personality: {},
           agentName: "Sarah",
+          aiDisclosureEnabled: true,
+          aiDisclosureText: "",
           noiseReductionLevel: 8,
           business: DEFAULT_BUSINESS,
         }}
