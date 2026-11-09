@@ -78,7 +78,7 @@ for (const id of ["hot_mobile", "other"] as const) {
 {
   assert.deepEqual(conditionalCodes(CARRIERS.partner, "+972500000000"), [
     { kind: "busy", activate: "*67*0500000000#", cancel: "#67#" },
-    { kind: "noAnswer", activate: "*61*0500000000**25#", cancel: "#61#" },
+    { kind: "noAnswer", activate: "*61*0500000000**15#", cancel: "#61#" },
     { kind: "unreachable", activate: "*62*0500000000#", cancel: "#62#" },
   ]);
   assert.deepEqual(conditionalCodes(CARRIERS.cellcom, "+972500000000"), [

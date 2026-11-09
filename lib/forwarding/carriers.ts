@@ -29,7 +29,7 @@ export const CONDITIONAL_KINDS = ["busy", "noAnswer", "unreachable"] as const;
 export type ConditionalKind = (typeof CONDITIONAL_KINDS)[number];
 
 /** Seconds before an unanswered call is forwarded, where the code takes one. */
-export const NO_ANSWER_SECONDS = 25;
+export const NO_ANSWER_SECONDS = 15;
 
 export const CARRIERS: Record<CarrierId, CarrierForwarding> = {
   // Source (verified in a browser 2026-11-09), "הפניית כל השיחות (עקוב אחרי)":
