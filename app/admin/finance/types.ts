@@ -63,6 +63,7 @@ export interface CostRates {
   twilioInboundUsdPerMinute: number;
   twilioOutboundUsdPerMinute: number;
   twilioNumberUsdPerMonth: number;
+  transferAvgMinutes: number;
   whatsappUsdPerMessage: number;
   infraUsdPerMonth: number;
   eurToUsd: number;
