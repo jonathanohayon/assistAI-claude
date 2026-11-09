@@ -25,11 +25,21 @@ import { MinutesGauge } from "./charts/MinutesGauge";
 import OutcomeDonut from "./charts/OutcomeDonut";
 import SpendChart from "./charts/SpendChart";
 
+// Explicit map: a raw status like "trial_paused" must never become a missing
+// i18n key ("statusTrial_paused").
+const STATUS_LABEL_KEY = {
+  trialing: "statusTrialing",
+  trial_paused: "statusPaused",
+  active: "statusActive",
+  cancelled: "statusCancelled",
+  expired: "statusExpired",
+} as const;
+
 // ─── Types (mirror /api/dashboard/billing-stats) ────────────────────────────
 
 interface BillingStats {
   plan: PlanKey;
-  status: "trialing" | "active" | "cancelled" | "expired";
+  status: "trialing" | "trial_paused" | "active" | "cancelled" | "expired";
   period: "monthly" | "annual" | null;
   paidUntil: string | null;
   trialEndsAt: string | null;
@@ -282,11 +292,7 @@ export function BillingClient({
     void post("/api/dashboard/subscription/schedule-change", { plan: null });
 
   const payPlanObj = plans.find((p) => p.key === payPlan) ?? null;
-  const statusLabel = stats
-    ? t(
-        `status${stats.status.charAt(0).toUpperCase()}${stats.status.slice(1)}` as "statusActive",
-      )
-    : "";
+  const statusLabel = stats ? t(STATUS_LABEL_KEY[stats.status] ?? "statusExpired") : "";
 
   return (
     <div className="mt-8 flex flex-col gap-10">
@@ -572,7 +578,7 @@ function CurrentPlanCard({
       ? "bg-emerald-100 text-emerald-700"
       : stats.status === "trialing"
         ? "bg-blue-100 text-blue-700"
-        : stats.status === "cancelled"
+        : stats.status === "cancelled" || stats.status === "trial_paused"
           ? "bg-amber-100 text-amber-700"
           : "bg-red-100 text-red-700";
 
@@ -581,6 +587,10 @@ function CurrentPlanCard({
     if (stats.status === "trialing")
       return stats.trialEndsAt
         ? t("trialEndsOn", { date: fmtDate(stats.trialEndsAt) })
+        : null;
+    if (stats.status === "trial_paused")
+      return stats.trialEndsAt
+        ? t("pausedSince", { date: fmtDate(stats.trialEndsAt) })
         : null;
     if (!stats.paidUntil) return null;
     if (stats.status === "expired")
