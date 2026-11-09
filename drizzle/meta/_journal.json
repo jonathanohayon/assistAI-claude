@@ -232,6 +232,13 @@
       "when": 1793878460187,
       "tag": "0032_reminders_default_on",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793878930963,
+      "tag": "0033_campaign_live_feed",
+      "breakpoints": true
     }
   ]
 }
