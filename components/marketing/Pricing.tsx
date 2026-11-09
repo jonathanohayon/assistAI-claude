@@ -13,7 +13,7 @@ import {
   useExchangeRates,
 } from "@/components/plans/PlanCard";
 import { PricingComparison } from "@/components/marketing/PricingComparison";
-import { PLANS } from "@/lib/plans";
+import { PUBLIC_PLANS } from "@/lib/plans";
 import { type PlanPricingMap } from "@/lib/plan-pricing";
 
 function BillingToggle({
@@ -168,7 +168,7 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
   const tCard = useTranslations("Pricing.card");
   const locale = useLocale();
   const [billing, setBilling] = useState<Billing>("monthly");
-  // Devise par défaut selon la locale active (FR→EUR, HE→ILS, EN→USD).
+  // Default currency by locale (FR→ILS, HE→ILS, EN→USD).
   // L'utilisateur peut toujours changer via le dropdown.
   const [currency, setCurrency] = useState<Currency>(
     LOCALE_TO_CURRENCY[locale] ?? "EUR",
@@ -207,6 +207,10 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
           <p className="mt-4 text-base text-[var(--color-muted-foreground)] sm:text-lg">
             {t("subtitle")}
           </p>
+          <p className="mx-auto mt-5 inline-flex max-w-xl items-center gap-2 rounded-full border border-[#22d3ee]/40 bg-white/80 px-4 py-2 text-sm font-medium text-[#0e7490] shadow-sm">
+            <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#22d3ee]" />
+            {t("trial")}
+          </p>
         </motion.div>
 
         <motion.div
@@ -226,16 +230,11 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
         </motion.div>
 
         {/*
-          Responsive grid optimisée pour 3 plans :
-          - mobile (<640px) : 1 colonne pleine largeur, stack vertical
-          - tablette ≥640px : la card "popular" prend toute la ligne en haut,
-            les 2 autres se partagent 50/50 en dessous (visuellement la
-            popular reste mise en avant sans casser l'alignement)
-          - desktop ≥1024px : 3 colonnes égales, popular au centre légèrement
-            agrandie via `lg:scale-[1.03]`
+          2 public plans (2026-11): 1 column on mobile, 2 from 640px; the
+          popular card is slightly scaled on desktop.
         */}
-        <div className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-          {PLANS.map((plan, i) => (
+        <div className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-5">
+          {PUBLIC_PLANS.map((plan, i) => (
             <motion.div
               key={plan.key}
               initial={{ opacity: 0, y: 24 }}
@@ -246,11 +245,7 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
                 delay: i * 0.08,
                 ease: [0.16, 1, 0.3, 1],
               }}
-              className={
-                plan.popular
-                  ? "sm:col-span-2 lg:col-span-1 lg:scale-[1.03] lg:z-10"
-                  : ""
-              }
+              className={plan.popular ? "lg:z-10 lg:scale-[1.03]" : ""}
             >
               <PlanCard
                 plan={plan}
@@ -258,7 +253,6 @@ export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
                 currency={currency}
                 rates={rates}
                 pricing={pricing}
-                quote={plan.key === "premium"}
                 action={{
                   kind: "link",
                   href: `/signup?plan=${plan.key}&billing=${billing}`,

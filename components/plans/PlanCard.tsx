@@ -15,7 +15,7 @@
 // billing is locale-fixed since you pay in your billing currency.
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
@@ -111,15 +111,25 @@ function formatPlanMoney(
   ils: number,
   currency: Currency,
   rates: Record<Currency, number>,
+  displayLocale?: string,
 ): string {
   const amount =
     currency === "EUR" ? eur : currency === "ILS" ? ils : eur * rates.USD;
-  const { locale } = CURRENCY_META[currency];
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(numberLocale(currency, displayLocale), {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(Math.round(amount));
+}
+
+/**
+ * Number format of the PAGE language (fr-FR: "349 ₪", "0,90 ₪"), not of the
+ * currency's country: ILS is now the default for French visitors too, and
+ * the he-IL format put RTL marks and a decimal point into French prices.
+ */
+const PAGE_NUMBER_LOCALE: Record<string, string> = { fr: "fr-FR", he: "he-IL", en: "en-US" };
+function numberLocale(currency: Currency, displayLocale?: string): string {
+  return (displayLocale && PAGE_NUMBER_LOCALE[displayLocale]) || CURRENCY_META[currency].locale;
 }
 
 /**
@@ -131,11 +141,11 @@ function formatPricePerMinute(
   amountIls: number,
   currency: Currency,
   rates: Record<Currency, number>,
+  displayLocale?: string,
 ): string {
   const amountEur = amountIls / rates.ILS;
   const converted = amountEur * rates[currency];
-  const { locale } = CURRENCY_META[currency];
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(numberLocale(currency, displayLocale), {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
@@ -144,8 +154,10 @@ function formatPricePerMinute(
 }
 
 /** Mapping locale → devise par défaut. FR→EUR, HE→ILS, EN→USD. */
+// ILS for Israel-based visitors in Hebrew AND French (2026-11 grid: ILS-first);
+// English shows USD (abroad).
 export const LOCALE_TO_CURRENCY: Record<string, Currency> = {
-  fr: "EUR",
+  fr: "ILS",
   he: "ILS",
   en: "USD",
 };
@@ -438,16 +450,18 @@ export function PlanCard({
   const ilsAnnual = resolvePrice(pricing, plan.key, "annual", "ILS");
   const bigEur = billing === "monthly" ? eurMonthly : eurAnnual / 12;
   const bigIls = billing === "monthly" ? ilsMonthly : ilsAnnual / 12;
-  const formattedPrice = formatPlanMoney(bigEur, bigIls, currency, rates);
+  const pageLocale = useLocale();
+  const formattedPrice = formatPlanMoney(bigEur, bigIls, currency, rates, pageLocale);
   const overagePrice = formatPricePerMinute(
     OVERAGE_RATE_ILS_PER_MIN,
     currency,
     rates,
+    pageLocale,
   );
   const annualHint =
     billing === "annual"
       ? t("annualHint", {
-          total: formatPlanMoney(eurAnnual, ilsAnnual, currency, rates),
+          total: formatPlanMoney(eurAnnual, ilsAnnual, currency, rates, pageLocale),
         })
       : null;
 
