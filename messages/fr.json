@@ -2156,7 +2156,7 @@
     "cancelWith": "Pour arrêter le renvoi plus tard, composez",
     "officialSource": "Instructions officielles de {carrier}",
     "contactCarrierTitle": "Demandez à votre opérateur",
-    "contactCarrierBody": "Nous ne publions pas de code que nous ne pouvons pas confirmer chez votre opérateur. Appelez son service client et demandez de renvoyer tous les appels de votre ligne pro vers votre numéro Tamara :",
+    "contactCarrierBody": "Nous ne publions pas de code que nous ne pouvons pas confirmer auprès de votre opérateur. Appelez son service client et demandez-lui de renvoyer les appels auxquels vous ne répondez pas (occupé, sans réponse, injoignable) de votre ligne professionnelle vers votre numéro Tamara :",
     "step3Title": "Tester",
     "step3Body": "Lancez le test, puis appelez votre numéro pro depuis UN AUTRE téléphone (celui d'un collègue ou d'un proche). Une ligne qui s'appelle elle-même ne déclenche jamais le renvoi.",
     "startTest": "Lancer le test",
@@ -2175,6 +2175,16 @@
     "businessPhoneLabel": "Votre numéro pro habituel",
     "optional": "(facultatif)",
     "viaForwarding": "(confirmé via le renvoi)",
-    "err_invalid_business_phone": "Ce numéro ne semble pas valide. Exemple : 03-000-0000 ou 050-000-0000."
+    "err_invalid_business_phone": "Ce numéro ne semble pas valide. Exemple : 03-000-0000 ou 050-000-0000.",
+    "modeLabel": "Quels appels vont à Tamara ?",
+    "modeMissed": "Appels manqués seulement",
+    "modeMissedHint": "Vous continuez à répondre. Tamara décroche quand vous êtes en ligne, ne répondez pas ou n'avez pas de réseau.",
+    "modeAll": "Tous les appels",
+    "modeAllHint": "Tamara répond à chaque appel vers votre numéro professionnel.",
+    "recommended": "Recommandé",
+    "step2BodyMissed": "Depuis votre téléphone professionnel, composez ces trois codes l'un après l'autre (attendez la confirmation à chaque fois).",
+    "kind_busy": "Quand votre ligne est occupée",
+    "kind_noAnswer": "Quand vous ne répondez pas",
+    "kind_unreachable": "Quand votre téléphone est éteint ou sans réseau"
   }
 }

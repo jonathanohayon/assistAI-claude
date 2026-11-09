@@ -2156,7 +2156,7 @@
     "cancelWith": "To stop forwarding later, dial",
     "officialSource": "{carrier}'s official instructions",
     "contactCarrierTitle": "Ask your carrier to set it up",
-    "contactCarrierBody": "We don't publish a code we can't confirm with your carrier. Call their customer service and ask them to forward all calls on your business line to your Tamara number:",
+    "contactCarrierBody": "We don't publish a code we can't confirm with your carrier. Call their customer service and ask them to forward calls you don't answer (busy, no answer, unreachable) on your business line to your Tamara number:",
     "step3Title": "Test it",
     "step3Body": "Start the test, then call your business number from ANOTHER phone (a colleague's or family member's). A line calling itself never triggers forwarding.",
     "startTest": "Start the test",
@@ -2175,6 +2175,16 @@
     "businessPhoneLabel": "Your usual business number",
     "optional": "(optional)",
     "viaForwarding": "(confirmed via forwarding)",
-    "err_invalid_business_phone": "This number doesn't look valid. Example: 03-000-0000 or 050-000-0000."
+    "err_invalid_business_phone": "This number doesn't look valid. Example: 03-000-0000 or 050-000-0000.",
+    "modeLabel": "Which calls go to Tamara?",
+    "modeMissed": "Missed calls only",
+    "modeMissedHint": "You keep answering. Tamara picks up when you're busy, don't answer, or have no signal.",
+    "modeAll": "All calls",
+    "modeAllHint": "Tamara answers every call to your business number.",
+    "recommended": "Recommended",
+    "step2BodyMissed": "From your business phone, dial these three codes one after the other (wait for the confirmation each time).",
+    "kind_busy": "When your line is busy",
+    "kind_noAnswer": "When you don't answer",
+    "kind_unreachable": "When your phone is off or has no signal"
   }
 }
