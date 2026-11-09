@@ -41,6 +41,8 @@ export type FormState = {
   speed: number;
   maxResponseTokens: number;
   ownerWhatsapp: string;
+  /** Call-transfer number, E.164; '' = no transfer (lib/transfer-number). */
+  transferNumber: string;
   primaryLanguage: string;
   /** Rappel WhatsApp automatique au client la veille de son RDV (cron J-1). */
   reminderEnabled: boolean;
