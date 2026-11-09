@@ -66,7 +66,11 @@ assert.equal(activationCode(CARRIERS.pelephone, "+972500000000"), "*21*050000000
 assert.equal(cancelCode(CARRIERS.pelephone), "#21#");
 assert.equal(activationCode(CARRIERS.bezeq, "+972500000000"), "*720500000000");
 assert.equal(cancelCode(CARRIERS.bezeq), "#72");
-for (const id of ["partner", "cellcom", "hot_mobile", "other"] as const) {
+assert.equal(activationCode(CARRIERS.partner, "+972500000000"), "*21*0500000000#");
+assert.equal(cancelCode(CARRIERS.partner), "#21#");
+assert.equal(activationCode(CARRIERS.cellcom, "+972500000000"), "**21*0500000000#");
+assert.equal(cancelCode(CARRIERS.cellcom), "##21#");
+for (const id of ["hot_mobile", "other"] as const) {
   assert.equal(activationCode(CARRIERS[id], "+972500000000"), null, `${id} must say "contact your carrier"`);
 }
 console.log("ALL FORWARDING-CARRIER TESTS PASSED");

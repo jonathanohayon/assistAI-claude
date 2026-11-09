@@ -20,15 +20,31 @@ export interface CarrierForwarding {
 }
 
 export const CARRIERS: Record<CarrierId, CarrierForwarding> = {
-  // No official partner.co.il page with mobile forwarding codes found
-  // (2026-11-05). The *74 in partner's AudioCodes office-box PDF is NOT a
-  // mobile code. → contact your carrier.
-  partner: { id: "partner", line: "mobile", activate: null, cancel: null, numberFormat: "local", source: null },
-  // Candidate (UNVERIFIED, from search snippets of
-  // https://business.cellcom.co.il/support/cellular/services/item1/Follow_Me_s/120 ):
-  // "**21*<number>#" / "##21#". The page could not be read directly; a human
-  // must confirm it in a browser before it ships here.
-  cellcom: { id: "cellcom", line: "mobile", activate: null, cancel: null, numberFormat: "local", source: null },
+  // Source (verified in a browser 2026-11-09), "הפניית כל השיחות (עקוב אחרי)":
+  // "הפעלת השירות: * > 21 > * > (יעד נבחר) > # > מקש החיוג",
+  // "ביטול השירות: # > 21 > # > מקש החיוג". Same page also lists busy *67*,
+  // unreachable *62*, no answer *61*…**<seconds>#. Kosher lines can only
+  // forward to kosher numbers.
+  partner: {
+    id: "partner",
+    line: "mobile",
+    activate: "*21*{number}#",
+    cancel: "#21#",
+    numberFormat: "local",
+    source: "https://www.partner.co.il/n/partnerdigital/gsm_abbreviations",
+  },
+  // Source (verified in a browser 2026-11-09), "להפניית כל השיחות … יש לחייג:
+  // **21*<number>#", "לביטול חייגו: ##21#" (the page renders the code RTL-
+  // reversed as "031234567#*21**"). Also busy **67*, no answer **61*,
+  // unreachable **62*. GSM/UMTS subscribers only.
+  cellcom: {
+    id: "cellcom",
+    line: "mobile",
+    activate: "**21*{number}#",
+    cancel: "##21#",
+    numberFormat: "local",
+    source: "https://cellcom.co.il/production/Private/Cellular/Cellular_upgrades/follow_me/",
+  },
   // Source quote: "הקישו * > 21 > * > מספר היעד כולל קידומת (לדוגמה: 0507999888) > # > SEND"
   // and to cancel "הקישו # > 21 > # > SEND". Forwarding abroad is not possible.
   pelephone: {
@@ -40,7 +56,8 @@ export const CARRIERS: Record<CarrierId, CarrierForwarding> = {
     source: "https://www.pelephone.co.il/ds/heb/support/call-referral/",
   },
   // hotmobile.co.il only names the service ("עקוב אחריי — העברת שיחות",
-  // billed as airtime) without codes. → contact your carrier.
+  // billed as airtime) without codes; re-checked in a browser 2026-11-09,
+  // still no official page with codes. → contact your carrier.
   hot_mobile: { id: "hot_mobile", line: "mobile", activate: null, cancel: null, numberFormat: "local", source: null },
   // Source: dial *72, then "הקש את המספר שאליו אתה מעוניין להפנות את השיחות",
   // wait for the recorded confirmation; cancel "חייג #72 והמתן לקבלת צליל אישור".
