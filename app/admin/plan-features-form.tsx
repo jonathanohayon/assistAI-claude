@@ -9,6 +9,11 @@ import {
   type PlanFeatureMatrix,
 } from "@/lib/plan-features";
 
+// outbound_campaigns is forced off for every plan since the 2026-11 grid
+// (lib/plan-features: featuresForPlan); admins keep outbound through their
+// role. A toggle here would be a no-op, so it isn't shown.
+const EDITABLE_FEATURE_DEFS = FEATURE_DEFS.filter((f) => f.key !== "outbound_campaigns");
+
 export function PlanFeaturesForm({
   initialMatrix,
 }: {
@@ -85,7 +90,7 @@ export function PlanFeaturesForm({
               </tr>
             </thead>
             <tbody>
-              {FEATURE_DEFS.map((f) => (
+              {EDITABLE_FEATURE_DEFS.map((f) => (
                 <tr
                   key={f.key}
                   className="border-t border-[var(--color-border)]/60"

@@ -69,7 +69,7 @@ export const DEFAULT_MATRIX: PlanFeatureMatrix = {
     crm: true,
     whatsapp_confirm: true,
     whatsapp_recap: true,
-    outbound_campaigns: true,
+    outbound_campaigns: false,
   },
 };
 
@@ -97,6 +97,8 @@ export function featuresForPlan(
   matrix: PlanFeatureMatrix,
   plan: string | null | undefined,
 ): PlanFeatures {
-  if (plan && plan in matrix) return matrix[plan as PlanKey];
-  return matrix.premium;
+  const f = plan && plan in matrix ? matrix[plan as PlanKey] : matrix.premium;
+  // Outbound campaigns are admin-only since the 2026-11 grid: no plan grants
+  // them, whatever an older stored matrix says (admins bypass via isAdmin).
+  return { ...f, outbound_campaigns: false };
 }
