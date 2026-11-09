@@ -4,7 +4,10 @@
  * Call-forwarding wizard: the owner forwards the salon's usual number to
  * their Tamara number, then proves it with a test call.
  *   1. Carrier (codes only where the carrier's official page gives them).
- *   2. The code to dial (copy / tap-to-dial) and how to cancel.
+ *   2. The code(s) to dial (copy / tap-to-dial) and how to cancel. Where the
+ *      carrier's page gives them, "missed calls only" (busy + no answer +
+ *      unreachable) is the recommended default: the owner keeps answering
+ *      and Tamara catches what they miss. "All calls" stays an option.
  *   3. Test call FROM ANOTHER PHONE (calling a line from itself never triggers
  *      forwarding): POST /api/dashboard/forwarding-test starts a 10-min window,
  *      any inbound call to the Tamara number counts; GET is polled every
@@ -17,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   activationCode,
   cancelCode,
+  conditionalCodes,
   CARRIER_IDS,
   CARRIERS,
   type CarrierId,
@@ -47,6 +51,7 @@ export function ForwardingWizard({
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
   const [carrier, setCarrier] = useState<CarrierId | null>(null);
+  const [mode, setMode] = useState<"missed" | "all">("missed");
   const [businessPhone, setBusinessPhone] = useState("");
   const [test, setTest] = useState<ForwardingTest | null>(null);
   const [startError, setStartError] = useState<ForwardingTestError | "network" | null>(null);
@@ -160,6 +165,8 @@ export function ForwardingWizard({
   const c = carrier ? CARRIERS[carrier] : null;
   const code = c ? activationCode(c, tenantNumber) : null;
   const cancel = c ? cancelCode(c) : null;
+  const missed = c ? conditionalCodes(c, tenantNumber) : null;
+  const effectiveMode = missed ? mode : "all";
   const status = test ? displayStatus(test, now) : "idle";
   const verifiedAt = test?.verifiedAt ?? null;
 
@@ -208,37 +215,106 @@ export function ForwardingWizard({
           <StepTitle n={2} title={t("step2Title")} />
           {code ? (
             <>
-              <p className="mt-1 text-[13px] text-[#475569]">{t("step2Body")}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <code dir="ltr" className="rounded-xl bg-[#0f172a] px-4 py-3 font-mono text-lg font-semibold tracking-wide text-white">
-                  {code}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => copy(code)}
-                  className="rounded-full border border-[#e2e8f0] bg-white px-3 py-2 text-[12px] font-semibold hover:bg-[#f8fafc]"
-                >
-                  {copied === code ? t("copied") : t("copy")}
-                </button>
-                <a
-                  href={telHref(code)}
-                  className="rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-4 py-2 text-[12px] font-semibold text-white shadow-sm"
-                >
-                  {t("dialNow")}
-                </a>
-              </div>
+              {missed && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t("modeLabel")}>
+                  {(["missed", "all"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      role="radio"
+                      aria-checked={effectiveMode === m}
+                      onClick={() => setMode(m)}
+                      className={`rounded-xl border-2 px-3 py-2.5 text-start text-[13px] font-semibold transition ${
+                        effectiveMode === m
+                          ? "border-[#db2777] bg-[#fdf2f8] text-[#9d174d]"
+                          : "border-[#e2e8f0] bg-white text-[#18181b] hover:border-[#f9a8d4]"
+                      }`}
+                    >
+                      {t(m === "missed" ? "modeMissed" : "modeAll")}
+                      {m === "missed" && (
+                        <span className="ms-1.5 rounded-full bg-[#be185d] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {t("recommended")}
+                        </span>
+                      )}
+                      <span className="block text-[11px] font-normal text-[#64748b]">
+                        {t(m === "missed" ? "modeMissedHint" : "modeAllHint")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {effectiveMode === "missed" && missed ? (
+                <>
+                  <p className="mt-3 text-[13px] text-[#475569]">{t("step2BodyMissed")}</p>
+                  <ol className="mt-2 flex flex-col gap-2">
+                    {missed.map((m, i) => (
+                      <li key={m.kind} className="rounded-xl border border-[#e2e8f0] p-3">
+                        <p className="text-[12px] font-semibold text-[#18181b]">
+                          {i + 1}. {t(`kind_${m.kind}`)}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <code dir="ltr" className="rounded-lg bg-[#0f172a] px-3 py-2 font-mono text-[15px] font-semibold tracking-wide text-white">
+                            {m.activate}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copy(m.activate)}
+                            className="rounded-full border border-[#e2e8f0] bg-white px-3 py-1.5 text-[12px] font-semibold hover:bg-[#f8fafc]"
+                          >
+                            {copied === m.activate ? t("copied") : t("copy")}
+                          </button>
+                          <a
+                            href={telHref(m.activate)}
+                            className="rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm"
+                          >
+                            {t("dialNow")}
+                          </a>
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-[#64748b]">
+                          {t("cancelWith")}{" "}
+                          <code dir="ltr" className="rounded bg-[#f1f5f9] px-1 py-0.5 font-mono">
+                            {m.cancel}
+                          </code>
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-[13px] text-[#475569]">{t("step2Body")}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <code dir="ltr" className="rounded-xl bg-[#0f172a] px-4 py-3 font-mono text-lg font-semibold tracking-wide text-white">
+                      {code}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copy(code)}
+                      className="rounded-full border border-[#e2e8f0] bg-white px-3 py-2 text-[12px] font-semibold hover:bg-[#f8fafc]"
+                    >
+                      {copied === code ? t("copied") : t("copy")}
+                    </button>
+                    <a
+                      href={telHref(code)}
+                      className="rounded-full bg-gradient-to-br from-[#db2777] to-[#be185d] px-4 py-2 text-[12px] font-semibold text-white shadow-sm"
+                    >
+                      {t("dialNow")}
+                    </a>
+                  </div>
+                  {cancel && (
+                    <p className="mt-3 text-[12px] text-[#475569]">
+                      {t("cancelWith")}{" "}
+                      <code dir="ltr" className="rounded bg-[#f1f5f9] px-1.5 py-0.5 font-mono">
+                        {cancel}
+                      </code>
+                    </p>
+                  )}
+                </>
+              )}
               <p className="mt-2 text-[12px] text-[#64748b]">
                 {c.line === "landline" ? t("dialFromLandline") : t("dialFromMobile")}
               </p>
               <p className="mt-1 text-[12px] text-[#64748b]">{t("costNote")}</p>
-              {cancel && (
-                <p className="mt-3 text-[12px] text-[#475569]">
-                  {t("cancelWith")}{" "}
-                  <code dir="ltr" className="rounded bg-[#f1f5f9] px-1.5 py-0.5 font-mono">
-                    {cancel}
-                  </code>
-                </p>
-              )}
               {c.source && (
                 <a
                   href={c.source}

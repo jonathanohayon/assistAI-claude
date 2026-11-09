@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   activationCode,
   cancelCode,
+  conditionalCodes,
   CARRIERS,
   targetDigits,
   type CarrierForwarding,
@@ -72,5 +73,23 @@ assert.equal(activationCode(CARRIERS.cellcom, "+972500000000"), "**21*0500000000
 assert.equal(cancelCode(CARRIERS.cellcom), "##21#");
 for (const id of ["hot_mobile", "other"] as const) {
   assert.equal(activationCode(CARRIERS[id], "+972500000000"), null, `${id} must say "contact your carrier"`);
+}
+// Conditional forwarding ("missed calls only"), sourced carriers only.
+{
+  assert.deepEqual(conditionalCodes(CARRIERS.partner, "+972500000000"), [
+    { kind: "busy", activate: "*67*0500000000#", cancel: "#67#" },
+    { kind: "noAnswer", activate: "*61*0500000000**25#", cancel: "#61#" },
+    { kind: "unreachable", activate: "*62*0500000000#", cancel: "#62#" },
+  ]);
+  assert.deepEqual(conditionalCodes(CARRIERS.cellcom, "+972500000000"), [
+    { kind: "busy", activate: "**67*0500000000#", cancel: "##67#" },
+    { kind: "noAnswer", activate: "**61*0500000000#", cancel: "##61#" },
+    { kind: "unreachable", activate: "**62*0500000000#", cancel: "##62#" },
+  ]);
+  for (const id of ["pelephone", "bezeq", "hot_mobile", "other"] as const) {
+    assert.equal(conditionalCodes(CARRIERS[id], "+972500000000"), null, `${id}: no sourced conditional codes`);
+  }
+  // never without a source
+  assert.equal(conditionalCodes({ ...CARRIERS.partner, source: null }, "+972500000000"), null);
 }
 console.log("ALL FORWARDING-CARRIER TESTS PASSED");
