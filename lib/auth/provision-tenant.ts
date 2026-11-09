@@ -1,3 +1,4 @@
+import { alertAdmins } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { getInitialInstructionsForPlan } from "@/lib/initial-config";
@@ -78,5 +79,31 @@ export async function provisionTenant(input: ProvisionTenantInput) {
     greetingInstructions: seedGreeting,
   });
 
+  // The founder calls every new trial within 48 h (2026-11 plan): one
+  // WhatsApp per signup (and email when Resend is set). Best-effort, never
+  // blocks the signup; alertAdmins never throws.
+  await alertAdmins({
+    key: `trial_signup:${created.id}`,
+    subject: "New trial signup",
+    body: signupNotice({ email, displayName, plan, locale, trialEndsAt }),
+    dedupMs: 365 * 24 * 3600_000,
+  });
+
   return created;
+}
+
+/** Founder notification text for a new trial (internal, never shown to tenants). */
+export function signupNotice(u: {
+  email: string;
+  displayName?: string | null;
+  plan: string;
+  locale?: string | null;
+  trialEndsAt: Date;
+}): string {
+  return [
+    `${u.displayName?.trim() || "(no name)"} <${u.email}>`,
+    `Plan: ${u.plan} · language: ${u.locale ?? "?"}`,
+    `Trial ends: ${u.trialEndsAt.toISOString().slice(0, 10)} (14 days / 100 min)`,
+    "Call them within 48 h.",
+  ].join("\n");
 }

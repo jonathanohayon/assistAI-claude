@@ -1,35 +1,48 @@
 // Constantes du free trial. Source unique de vérité — importée par signup,
 // onboarding/provision (création / refresh du trial), le cron trial-cleanup
-// (warning + suppression), et le dashboard layout (affichage countdown).
+// (warning + pause + number release), et le dashboard layout (countdown).
 
-export const TRIAL_DURATION_MS = 24 * 60 * 60 * 1000; // 1 jour
-export const TRIAL_WARNING_BEFORE_END_MS = 2 * 60 * 60 * 1000; // 2 heures
-// Minimum time between the warning email and the account deletion. The
-// trial-cleanup cron runs DAILY, so an "H-2" warning always landed in the same
-// run as the deletion ("expire dans 0 min"): 5 prospects deleted with no usable
-// warning (28/07 and 26/10/2026). The service itself is still cut at
-// trialEndsAt by /api/agent/config; only the destructive step waits.
-export const TRIAL_DELETION_GRACE_MS = 24 * 60 * 60 * 1000;
+// 2026-11 (Jonathan, via Fable's business report): 14 days / 100 min, and at
+// the end the account is PAUSED, never deleted. A paused account keeps its
+// data and its number; calls are refused (/api/agent/config 403
+// trial_exhausted -> the worker hangs up). The number is released only after
+// TRIAL_NUMBER_RELEASE_AFTER_MS paused; the account itself is never
+// auto-deleted.
+export const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+export const TRIAL_WARNING_BEFORE_END_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+export const TRIAL_PAUSED_STATUS = "trial_paused";
+export const TRIAL_NUMBER_RELEASE_AFTER_MS = 30 * 24 * 60 * 60 * 1000; // 30 days paused
 
-/**
- * An expired trial may be deleted only once its warning went out at least
- * TRIAL_DELETION_GRACE_MS ago. No warning, no deletion.
- */
-export function isTrialDeletionDue(args: {
+/** An expired trial is paused (never deleted). Admins are never paused. */
+export function isTrialPauseDue(args: {
+  subscriptionStatus: string;
   trialEndsAt: Date | null;
-  trialWarningSentAt: Date | null;
+  role?: string | null;
   now: Date;
 }): boolean {
-  const { trialEndsAt, trialWarningSentAt, now } = args;
-  if (!trialEndsAt || trialEndsAt.getTime() > now.getTime()) return false;
-  if (!trialWarningSentAt) return false;
-  return now.getTime() - trialWarningSentAt.getTime() >= TRIAL_DELETION_GRACE_MS;
+  if (args.role === "admin" || args.subscriptionStatus !== "trialing") return false;
+  return !!args.trialEndsAt && args.trialEndsAt.getTime() <= args.now.getTime();
+}
+
+/**
+ * A paused trial's number is released 30 days after the trial ended (the
+ * pause starts then). The account stays; only the number goes back.
+ */
+export function isTrialNumberReleaseDue(args: {
+  subscriptionStatus: string;
+  trialEndsAt: Date | null;
+  role?: string | null;
+  now: Date;
+}): boolean {
+  if (args.role === "admin" || args.subscriptionStatus !== TRIAL_PAUSED_STATUS) return false;
+  if (!args.trialEndsAt) return false;
+  return args.now.getTime() - args.trialEndsAt.getTime() >= TRIAL_NUMBER_RELEASE_AFTER_MS;
 }
 
 // Quota de minutes d'appels pour l'essai gratuit. Le service est coupé au
-// PREMIER atteint : 60 min d'appels consommées OU 24h écoulées.
-export const TRIAL_MINUTES_INCLUDED = 60;
-export const TRIAL_SECONDS_LIMIT = TRIAL_MINUTES_INCLUDED * 60; // 3600
+// PREMIER atteint : 100 min d'appels consommées OU 14 jours écoulés.
+export const TRIAL_MINUTES_INCLUDED = 100;
+export const TRIAL_SECONDS_LIMIT = TRIAL_MINUTES_INCLUDED * 60; // 6000
 
 export function computeTrialEndsAt(from: Date = new Date()): Date {
   return new Date(from.getTime() + TRIAL_DURATION_MS);
@@ -52,6 +65,8 @@ export function isTrialExhausted(args: {
   now?: Date;
 }): boolean {
   if (args.role === "admin") return false;
+  // A paused trial (ended, not paid) refuses calls like an exhausted one.
+  if (args.subscriptionStatus === TRIAL_PAUSED_STATUS) return true;
   if (args.subscriptionStatus !== "trialing") return false;
   const now = args.now ?? new Date();
   const timeUp = args.trialEndsAt

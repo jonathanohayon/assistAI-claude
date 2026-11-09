@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { motion } from "motion/react";
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
@@ -27,6 +29,7 @@ export function SupportFab() {
   const phone = rawPhone.replace(/[^\d]/g, "");
   const greeting = t("waGreeting");
   const href = `https://wa.me/${phone}?text=${encodeURIComponent(greeting)}`;
+  const hidden = useHiddenOverFabAvoidZones();
 
   return (
     <a
@@ -34,7 +37,11 @@ export function SupportFab() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={t("waLabel")}
-      className="group fixed z-40 inline-flex items-center justify-center"
+      aria-hidden={hidden || undefined}
+      tabIndex={hidden ? -1 : undefined}
+      className={`group fixed z-40 inline-flex items-center justify-center ${
+        reduce ? "" : "transition-[opacity,transform] duration-200 ease-out"
+      } ${hidden ? "pointer-events-none translate-y-2 opacity-0" : "opacity-100"}`}
       style={{
         right: "max(1.25rem, env(safe-area-inset-right))",
         bottom: "max(1.25rem, env(safe-area-inset-bottom))",
@@ -82,4 +89,36 @@ export function SupportFab() {
       </span>
     </a>
   );
+}
+
+/**
+ * True while an element marked `data-fab-avoid` (the hero CTA row) is on
+ * screen on a narrow viewport: there the bottom-right FAB would cover it
+ * (390 px, second CTA). On wider screens the CTAs are centred and never meet
+ * the FAB, so it stays visible. The FAB is position:fixed, so hiding it
+ * causes no layout shift.
+ */
+function useHiddenOverFabAvoidZones(): boolean {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const targets = Array.from(document.querySelectorAll("[data-fab-avoid]"));
+    if (targets.length === 0 || typeof IntersectionObserver === "undefined") return;
+    const narrow = window.matchMedia("(max-width: 767px)");
+    const visible = new Set<Element>();
+    const update = () => setHidden(narrow.matches && visible.size > 0);
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) visible.add(e.target);
+        else visible.delete(e.target);
+      }
+      update();
+    });
+    targets.forEach((el) => io.observe(el));
+    narrow.addEventListener("change", update);
+    return () => {
+      io.disconnect();
+      narrow.removeEventListener("change", update);
+    };
+  }, []);
+  return hidden;
 }

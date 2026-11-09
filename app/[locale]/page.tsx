@@ -12,7 +12,6 @@ import { Industries } from "@/components/marketing/Industries";
 import { IntegrationsStrip } from "@/components/marketing/IntegrationsStrip";
 import { Journey } from "@/components/marketing/Journey";
 import { Nav } from "@/components/marketing/Nav";
-import { OutboundCalling } from "@/components/marketing/OutboundCalling";
 import { Pricing } from "@/components/marketing/Pricing";
 import { Proof } from "@/components/marketing/Proof";
 import { SupportFab } from "@/components/marketing/SupportFab";
@@ -26,8 +25,8 @@ export const revalidate = 600;
 // Redesign 2026-06 : 16 → 12 sections. Les fusions (Journey = TwoMinutesToLive
 // +HowItWorks, FeatureBento = Features+VoiceConfigShowcase, Proof =
 // PerformanceShowcase+SocialProof, TrustStrip = Security compressée) suppriment
-// les répétitions, pas les arguments. OutboundCalling remonte juste après la
-// démo : la cible prioritaire est PME / centres d'appels / équipes de vente.
+// les répétitions, pas les arguments. 2026-11-05: OutboundCalling removed
+// from the public page (salons and clinics only; outbound stays in the app).
 export default async function Home({
   params,
 }: {
@@ -50,7 +49,6 @@ export default async function Home({
         <Hero />
         <IntegrationsStrip />
         <TryDemo />
-        <OutboundCalling />
         <Journey />
         <FeatureBento />
         <Industries />
