@@ -198,6 +198,7 @@ export default async function DashboardPage(props: {
         googleConnected={googleConnected}
         businessFilled={businessFilled}
         whatsappSet={whatsappSet}
+        forwardingVerified={Boolean(config?.forwardingVerifiedAt)}
       />
       <ConfigForm
         initial={{
