@@ -4,6 +4,7 @@ import { parseBookingRequest } from "@/lib/booking-request";
 import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callIdMeta } from "@/lib/call-id";
 import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
@@ -206,6 +207,7 @@ export async function POST(req: NextRequest) {
       // Attributed to the tenant: the dashboard counts real bookings from it.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: {
+        ...callIdMeta(req),
         eventId: event.data.id,
         name,
         phone,

@@ -289,6 +289,8 @@ export const calls = pgTable("calls", {
   // ('' = before this column existed). From the call's deterministic tool
   // events first, keyword classifier as fallback — lib/call-type.ts.
   callType: text("call_type").notNull().default(""),
+  // LiveKit room name of the call (lib/call-id.ts); '' for older workers.
+  callId: text("call_id").notNull().default(""),
 
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),
@@ -685,6 +687,10 @@ export const events = pgTable("events", {
   byCampaign: index("events_campaign_created_idx")
     .on(sql`(${t.metadata}->>'campaignId')`, t.createdAt)
     .where(sql`${t.metadata} ? 'campaignId'`),
+  // Call type at call end looks up the call's tool events by call id.
+  byCallId: index("events_call_id_idx")
+    .on(sql`(${t.metadata}->>'callId')`)
+    .where(sql`${t.metadata} ? 'callId'`),
 }));
 
 // Singleton key-value store for app-wide settings (system prompt that

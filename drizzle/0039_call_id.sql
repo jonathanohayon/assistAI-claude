@@ -1,0 +1,2 @@
+ALTER TABLE "calls" ADD COLUMN IF NOT EXISTS "call_id" text DEFAULT '' NOT NULL;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "events_call_id_idx" ON "events" USING btree (("metadata"->>'callId')) WHERE "events"."metadata" ? 'callId';

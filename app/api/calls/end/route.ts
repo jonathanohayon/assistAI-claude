@@ -1,6 +1,7 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { callTypeForCall } from "@/lib/call-type-db";
+import { callIdFromRequest } from "@/lib/call-id";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
@@ -85,8 +86,11 @@ export async function POST(req: NextRequest) {
     return auth.response;
   }
 
-  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds, realtimeProvider, realtimeModel } =
+  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds, realtimeProvider, realtimeModel, callId: bodyCallId } =
     parseCallEndBody(await req.json().catch(() => ({})));
+  // Call id (LiveKit room name): body field or the x-call-id header the worker
+  // sends with every request. Ties this call to its own tool events.
+  const callId = bodyCallId ?? callIdFromRequest(req);
 
   // userId prioritaire (chemin web LiveTest Phase 2) → exact match par PK.
   // Sinon, toNumber (chemin SIP Twilio) → phone_numbers → tenant.
@@ -114,7 +118,7 @@ export async function POST(req: NextRequest) {
 
   const [callRow] = await db
     .insert(calls)
-    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds, realtimeProvider, realtimeModel })
+    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds, realtimeProvider, realtimeModel, callId: callId ?? "" })
     .returning();
 
   await logEvent({
@@ -176,6 +180,7 @@ export async function POST(req: NextRequest) {
         callType: await callTypeForCall({
           userId: user.id,
           endedAt: callRow.createdAt,
+          callId,
           durationSeconds: durationSeconds ?? 0,
           summary: "",
           transcript: transcript.map((t) => t.text),
@@ -197,6 +202,7 @@ export async function POST(req: NextRequest) {
   const callType = await callTypeForCall({
     userId: user.id,
     endedAt: callRow.createdAt,
+    callId,
     durationSeconds: durationSeconds ?? 0,
     summary: summary.raw,
     transcript: transcript.map((t) => t.text),
