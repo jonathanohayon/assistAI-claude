@@ -27,11 +27,13 @@ export const PRICE_FIELDS: readonly (keyof PlanPrice)[] = [
   "ilsAnnual",
 ] as const;
 
-// ILS par défaut (validés owner 2026-06-03).
+// ILS defaults, 2026-11 grid (Jonathan): Réceptionniste ₪349, Clinique /
+// Multi-sites ₪649. Annual = 10 x monthly (two months free), as before.
+// whatsapp (Permanence) is legacy: kept for existing subscribers.
 const DEFAULT_ILS: Record<PlanKey, { monthly: number; annual: number }> = {
   whatsapp: { monthly: 199, annual: 1990 },
-  global: { monthly: 449, annual: 4490 },
-  premium: { monthly: 999, annual: 9990 },
+  global: { monthly: 349, annual: 3490 },
+  premium: { monthly: 649, annual: 6490 },
 };
 
 export const DEFAULT_PLAN_PRICING: PlanPricingMap = Object.fromEntries(

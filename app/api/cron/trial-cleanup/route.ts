@@ -4,36 +4,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
-import { sendTrialDeletedEmail, sendTrialWarningEmail } from "@/lib/email";
+import { sendTrialWarningEmail } from "@/lib/email";
 import { logEvent } from "@/lib/logger";
-import { fullyDeleteUser } from "@/lib/release-user";
+import { releaseAllTwilioNumbersFor } from "@/lib/release-user";
 import {
-  isTrialDeletionDue,
-  TRIAL_DELETION_GRACE_MS,
+  isTrialNumberReleaseDue,
+  isTrialPauseDue,
+  TRIAL_NUMBER_RELEASE_AFTER_MS,
+  TRIAL_PAUSED_STATUS,
   TRIAL_WARNING_BEFORE_END_MS,
 } from "@/lib/trial";
 
 // Cron : gère la fin de free trial pour tous les tenants en `trialing`.
 //
-// Deux phases sur le même tick :
-//   1) Warning : pour chaque user dont trial_ends_at ≤ now + 2h et qui
-//      n'a pas encore reçu de warning (trial_warning_sent_at NULL), envoie
-//      un email d'alerte puis stamp trial_warning_sent_at. Idempotent —
-//      un seul email par trial même si le cron tick toutes les 5 min.
-//   2) Suppression : pour chaque user dont trial_ends_at ≤ now ET dont le
-//      warning est parti il y a au moins 24 h (TRIAL_DELETION_GRACE_MS),
-//      jamais dans le même run que le warning. Libère
-//      ses numéros Twilio (release-user) puis cascade delete DB et envoie
-//      un dernier email de confirmation. Robuste : une erreur sur un
-//      tenant ne bloque pas les autres.
-//
-// Auth : INTERNAL_SECRET via header x-internal-secret. Pareil que
-// /api/cron/sync-tenants pour cohérence — hook sur le scheduler Railway.
-// Fréquence recommandée : 10–15 min. Plus rapide n'apporte rien.
-//
-// Admins exclus : on filtre role != 'admin' pour ne JAMAIS supprimer un
-// compte admin automatiquement (failsafe — la politique métier veut que
-// les admins n'ont pas de trial qui expire).
+// 2026-11 (14 days / 100 min, pause instead of delete):
+//   1) Warning: trial_ends_at within 2 days and not yet warned -> email,
+//      stamp trial_warning_sent_at (idempotent).
+//   2) Pause: trial_ends_at passed -> subscription_status = trial_paused.
+//      NEVER deleted: data and number kept, calls refused until payment.
+//   3) Number release: paused for 30 days -> Twilio number(s) released and
+//      unmapped; the account stays.
+// Admins and tenants with a HYP payment in progress are skipped.
+// Auth : INTERNAL_SECRET via header x-internal-secret (Railway scheduler).
 
 export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
@@ -113,107 +105,84 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ─── Phase 2 : suppressions ─────────────────────────────────────────
-  // Sélectionne les trialing dont trial_ends_at est strictement passé.
-  // On garde les admins hors-scope par sécurité (cf. doc top).
-  const deletionWarnedBefore = new Date(now.getTime() - TRIAL_DELETION_GRACE_MS);
-  const toDelete = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-      locale: users.locale,
-      trialEndsAt: users.trialEndsAt,
-      trialWarningSentAt: users.trialWarningSentAt,
-    })
+  // ─── Phase 2 : pause (never delete) ──────────────────────────────────
+  // 2026-11: an ended trial is PAUSED. Data and number are kept; calls are
+  // refused (isTrialExhausted -> /api/agent/config 403 trial_exhausted). The
+  // customer can pay any time and the same agent comes back.
+  const toPause = await db
+    .select({ id: users.id, email: users.email, role: users.role, trialEndsAt: users.trialEndsAt, subscriptionStatus: users.subscriptionStatus })
     .from(users)
     .where(
       and(
         eq(users.subscriptionStatus, "trialing"),
         isNotNull(users.trialEndsAt),
         lte(users.trialEndsAt, now),
-        // Warned at least 24 h ago: never warn and delete in the same run.
-        isNotNull(users.trialWarningSentAt),
-        lte(users.trialWarningSentAt, deletionWarnedBefore),
-        // On saute les comptes dont deletion_locked_until est dans le futur =
-        // paiement HYP en cours : ne jamais supprimer un tenant en train de payer.
+        // A HYP payment in progress: never pause a tenant that is paying.
         or(isNull(users.deletionLockedUntil), lte(users.deletionLockedUntil, now)),
       ),
     );
+  const paused: string[] = [];
+  for (const u of toPause) {
+    if (!isTrialPauseDue({ ...u, now })) continue; // admins, re-checked in code
+    await db
+      .update(users)
+      .set({ subscriptionStatus: TRIAL_PAUSED_STATUS })
+      .where(and(eq(users.id, u.id), eq(users.subscriptionStatus, "trialing")));
+    paused.push(u.email);
+    await logEvent({
+      source: "auth",
+      event: "trial_paused",
+      message: `Essai terminé : compte ${u.email} mis en pause (données et numéro conservés)`,
+      userId: u.id,
+      metadata: { trialEndsAt: u.trialEndsAt },
+    });
+  }
 
-  const deleted: Array<{
-    email: string;
-    ok: boolean;
-    twilioReleased?: number;
-    twilioFailed?: number;
-    reason?: string;
-  }> = [];
-
-  for (const u of toDelete) {
-    // Same rule as the SQL above, re-checked in code (unit-tested helper).
-    if (!isTrialDeletionDue({ ...u, now })) continue;
-    if (u.role === "admin") {
-      deleted.push({ email: u.email, ok: false, reason: "admin_skipped" });
-      await logEvent({
-        source: "auth",
-        event: "trial_delete_skipped",
-        message: `Trial expiré pour admin ${u.email} — suppression auto SKIPPÉE`,
-        level: "warn",
-        userId: u.id,
-        metadata: { reason: "admin role" },
-      });
-      continue;
-    }
-
-    // Snapshot du premier numéro AVANT delete pour le mettre dans l'email
-    // de confirmation. Lecture best-effort, l'email part même sans.
-    const [pn] = await db
-      .select({ phoneNumber: phoneNumbers.phoneNumber })
+  // ─── Phase 3 : number release after 30 days paused ───────────────────
+  // The number costs money every month: after TRIAL_NUMBER_RELEASE_AFTER_MS
+  // paused it goes back to Twilio (and leaves the LiveKit trunk). The account
+  // and its data stay; if the customer pays later, a new number is provisioned.
+  const releaseBefore = new Date(now.getTime() - TRIAL_NUMBER_RELEASE_AFTER_MS);
+  const toRelease = await db
+    .select({ id: users.id, email: users.email, role: users.role, trialEndsAt: users.trialEndsAt, subscriptionStatus: users.subscriptionStatus })
+    .from(users)
+    .where(
+      and(
+        eq(users.subscriptionStatus, TRIAL_PAUSED_STATUS),
+        isNotNull(users.trialEndsAt),
+        lte(users.trialEndsAt, releaseBefore),
+        or(isNull(users.deletionLockedUntil), lte(users.deletionLockedUntil, now)),
+      ),
+    );
+  const released: Array<{ email: string; released: number; failed: number }> = [];
+  for (const u of toRelease) {
+    if (!isTrialNumberReleaseDue({ ...u, now })) continue;
+    const [hasNumber] = await db
+      .select({ id: phoneNumbers.id })
       .from(phoneNumbers)
       .where(eq(phoneNumbers.userId, u.id))
       .limit(1);
-
+    if (!hasNumber) continue; // already released
     try {
-      const { release } = await fullyDeleteUser(u.id);
-      deleted.push({
-        email: u.email,
-        ok: true,
-        twilioReleased: release.releasedCount,
-        twilioFailed: release.failedCount,
-      });
-      await logEvent({
-        source: "auth",
-        event: "trial_account_deleted",
-        message: `Compte ${u.email} supprimé (fin trial) · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
-        metadata: {
-          email: u.email,
-          twilioReleased: release.releasedCount,
-          twilioFailed: release.failedCount,
-          twilioErrors: release.errors,
-        },
-      });
-      // Email post-suppression — best-effort, on n'échoue pas la phase si
-      // Resend down (le compte est déjà supprimé de toute façon).
-      const mailRes = await sendTrialDeletedEmail(u.email, {
-        phoneNumber: pn?.phoneNumber ?? null,
-        locale: u.locale,
-      });
-      if (!mailRes.ok) {
-        await logEvent({
-          source: "auth",
-          event: "trial_deleted_email_failed",
-          message: `Échec envoi email post-delete à ${u.email} : ${mailRes.error?.slice(0, 200) ?? "?"}`,
-          level: "warn",
-          metadata: { error: mailRes.error },
-        });
+      const r = await releaseAllTwilioNumbersFor(u.id);
+      if (r.failedCount === 0) {
+        await db.delete(phoneNumbers).where(eq(phoneNumbers.userId, u.id));
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "delete failed";
-      deleted.push({ email: u.email, ok: false, reason: msg });
+      released.push({ email: u.email, released: r.releasedCount, failed: r.failedCount });
       await logEvent({
         source: "auth",
-        event: "trial_delete_failed",
-        message: `Suppression trial ${u.email} crashed : ${msg.slice(0, 200)}`,
+        event: "trial_number_released",
+        message: `Essai en pause depuis 30 j : numéro(s) de ${u.email} libéré(s) · ${r.releasedCount} ok, ${r.failedCount} échec(s) — compte conservé`,
+        level: r.failedCount ? "warn" : "info",
+        userId: u.id,
+        metadata: { released: r.releasedCount, failed: r.failedCount, errors: r.errors },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "release failed";
+      await logEvent({
+        source: "auth",
+        event: "trial_number_release_failed",
+        message: `Libération numéro ${u.email} crashed : ${msg.slice(0, 200)}`,
         level: "error",
         userId: u.id,
         metadata: { error: msg },
@@ -224,10 +193,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     warnedCount: warned.length,
-    deletedCount: deleted.filter((d) => d.ok).length,
-    deletedFailedCount: deleted.filter((d) => !d.ok).length,
+    pausedCount: paused.length,
+    numbersReleasedCount: released.length,
     elapsedMs: Date.now() - startedAt,
     warned,
-    deleted,
+    paused,
+    released,
   });
 }
