@@ -180,9 +180,9 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
     email: true,
   });
   const [notifValues, setNotifValues] = useState({
-    whatsapp: "+972 58 500 1007",
-    sms: "+972 58 500 1007",
-    email: "sarah@prestige.com",
+    whatsapp: "+972 50 000 0000",
+    sms: "+972 50 000 0000",
+    email: "sarah@example.com",
   });
   const [activeTile, setActiveTile] = useState<string | null>(null);
 
@@ -506,7 +506,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
                 animation: "shimmer 8s linear infinite",
               }}
             >
-              +33 1 23 45 67 89
+              +33 1 00 00 00 00
             </p>
 
             <p className="mt-6 max-w-md text-sm leading-relaxed text-[#831843]/70">

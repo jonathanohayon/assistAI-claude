@@ -57,7 +57,7 @@ export default async function DashboardPreviewPage(props: {
           temperature: 0.6,
           speed: 1,
           maxResponseTokens: 220,
-          ownerWhatsapp: "+972585001007",
+          ownerWhatsapp: "+972500000000",
           transferNumber: "+972500000000",
           primaryLanguage: locale,
           reminderEnabled: false,
@@ -75,7 +75,7 @@ export default async function DashboardPreviewPage(props: {
         isAdmin={false}
         adminInheritablePreview="═══ Directive admin pour le plan Pro ═══\n\nL'agent doit toujours confirmer le créneau exact avant de raccrocher.\nNe jamais promettre une plage horaire sans avoir vérifié la dispo réelle.\n\n═══ Heure parlée ═══\n\nQuand tu prononces une heure, dis « quatorze heures trente » et pas « 14h30 »."
         planLabel="Pro"
-        primaryPhone="+33 1 23 45 67 89"
+        primaryPhone="+33 1 00 00 00 00"
         lastUpdatedLabel={lastUpdated}
       />
     </main>
