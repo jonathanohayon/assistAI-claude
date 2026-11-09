@@ -285,6 +285,10 @@ export const calls = pgTable("calls", {
   // id, as reported by the worker. NULL for calls before 2026-11-03. Admin-only.
   realtimeProvider: text("realtime_provider"),
   realtimeModel: text("realtime_model"),
+  // 'RDV' | 'Annulation' | 'Modification' | 'Transfert' | 'Message' | 'Info'
+  // ('' = before this column existed). From the call's deterministic tool
+  // events first, keyword classifier as fallback — lib/call-type.ts.
+  callType: text("call_type").notNull().default(""),
 
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),

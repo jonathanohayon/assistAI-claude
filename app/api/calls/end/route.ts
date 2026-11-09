@@ -1,6 +1,6 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { inferCallType } from "@/lib/call-type";
+import { callTypeForCall } from "@/lib/call-type-db";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
@@ -171,7 +171,16 @@ export async function POST(req: NextRequest) {
     const msg = e instanceof Error ? e.message : "summary failed";
     await db
       .update(calls)
-      .set({ whatsappError: `summary: ${msg}` })
+      .set({
+        whatsappError: `summary: ${msg}`,
+        callType: await callTypeForCall({
+          userId: user.id,
+          endedAt: callRow.createdAt,
+          durationSeconds: durationSeconds ?? 0,
+          summary: "",
+          transcript: transcript.map((t) => t.text),
+        }),
+      })
       .where(eq(calls.id, callRow.id));
     await logEvent({
       source: "summary",
@@ -184,9 +193,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 
+  // Call type: deterministic tool events first, keywords as fallback.
+  const callType = await callTypeForCall({
+    userId: user.id,
+    endedAt: callRow.createdAt,
+    durationSeconds: durationSeconds ?? 0,
+    summary: summary.raw,
+    transcript: transcript.map((t) => t.text),
+  });
   await db
     .update(calls)
-    .set({ summary: summary.raw })
+    .set({ summary: summary.raw, callType })
     .where(eq(calls.id, callRow.id));
 
   let clientSid: string | null = null;
@@ -424,10 +441,6 @@ export async function POST(req: NextRequest) {
         typeof dur === "number" && dur > 0
           ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`
           : "";
-      const callType = inferCallType(
-        summary.raw,
-        transcript.map((t) => t.text),
-      );
       // Format local du numéro pour lisibilité (cohérent avec ce que dit
       // l'agent au téléphone). +972 → 0XXX.
       const localFromNumber = fromNumber.startsWith("+972")
