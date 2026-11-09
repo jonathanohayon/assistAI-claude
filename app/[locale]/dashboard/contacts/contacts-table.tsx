@@ -1,7 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState, useTransition } from "react";
+
+import {
+  type ClientVisits,
+  visitsByPhone,
+  visitsFor,
+} from "@/lib/contacts/loyalty-join";
 
 interface Contact {
   rowIndex: number;
@@ -27,6 +33,35 @@ export function ContactsTable({
   const [draft, setDraft] = useState<Partial<Contact>>({});
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const locale = useLocale();
+
+  // Loyalty (past Calendar bookings per phone). Optional: empty without
+  // Calendar or before the first sync, and a failure just hides the columns.
+  const [visits, setVisits] = useState<ClientVisits[] | null>(null);
+  const [regularMin, setRegularMin] = useState(3);
+  const [regularsOnly, setRegularsOnly] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/dashboard/client-visits${qs}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("visits"))))
+      .then((data: { regularMinVisits?: number; clients?: ClientVisits[] }) => {
+        if (cancelled) return;
+        setVisits(data.clients ?? []);
+        if (data.regularMinVisits) setRegularMin(data.regularMinVisits);
+      })
+      .catch(() => {
+        if (!cancelled) setVisits(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [qs]);
+  const visitIndex = useMemo(() => visitsByPhone(visits ?? []), [visits]);
+  const showLoyalty = visits !== null && visits.length > 0;
+  const dateFmt = useMemo(
+    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }),
+    [locale],
+  );
 
   const startEdit = (c: Contact) => {
     setEditingRow(c.rowIndex);
@@ -86,8 +121,15 @@ export function ContactsTable({
     });
   };
 
-  const visible = contacts.filter((c) => c.name || c.phone || c.email);
-  if (visible.length === 0) {
+  const nonEmpty = contacts.filter((c) => c.name || c.phone || c.email);
+  const regularCount = showLoyalty
+    ? nonEmpty.filter((c) => visitsFor(visitIndex, c.phone)?.regular).length
+    : 0;
+  const visible =
+    showLoyalty && regularsOnly
+      ? nonEmpty.filter((c) => visitsFor(visitIndex, c.phone)?.regular)
+      : nonEmpty;
+  if (nonEmpty.length === 0) {
     return (
       <div className="rounded-2xl border border-[var(--color-border)] bg-white p-8 text-center text-sm text-[var(--color-muted-foreground)]">
         {t("noContacts")}
@@ -103,21 +145,56 @@ export function ContactsTable({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm">
+      {showLoyalty && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={regularsOnly}
+            onClick={() => setRegularsOnly((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors ${
+              regularsOnly
+                ? "bg-[#0e7490] text-white ring-[#0e7490]"
+                : "bg-white text-[var(--color-foreground)] ring-[var(--color-border)] hover:bg-[var(--color-muted)]"
+            }`}
+          >
+            <StarIcon />
+            {t("filterRegulars", { n: regularCount })}
+          </button>
+          <span className="text-[11px] text-[var(--color-muted-foreground)]">
+            {t("regularRule", { n: regularMin })}
+          </span>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--color-muted)]/50 text-left text-xs uppercase tracking-wider text-[var(--color-muted-foreground)]">
+          <thead className="bg-[var(--color-muted)]/50 text-start text-xs uppercase tracking-wider text-[var(--color-muted-foreground)]">
             <tr>
               <th className="px-4 py-3 font-medium">{t("colName")}</th>
               <th className="px-4 py-3 font-medium">{t("colPhone")}</th>
               <th className="px-4 py-3 font-medium">{t("colEmail")}</th>
+              {showLoyalty && (
+                <>
+                  <th className="px-4 py-3 text-end font-medium">{t("colVisits")}</th>
+                  <th className="px-4 py-3 font-medium">{t("colLastVisit")}</th>
+                </>
+              )}
               <th className="px-4 py-3 font-medium">{t("colNotes")}</th>
               <th className="px-4 py-3 font-medium">{t("colAdded")}</th>
-              <th className="px-4 py-3 font-medium text-right">{t("colActions")}</th>
+              <th className="px-4 py-3 font-medium text-end">{t("colActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]/60">
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-xs text-[var(--color-muted-foreground)]">
+                  {t("noRegulars")}
+                </td>
+              </tr>
+            )}
             {visible.map((c) => {
               const editing = editingRow === c.rowIndex;
+              const v = showLoyalty ? visitsFor(visitIndex, c.phone) : null;
               return (
                 <tr key={c.rowIndex}>
                   <td className="px-4 py-3 align-top">
@@ -131,8 +208,16 @@ export function ContactsTable({
                         className="w-full rounded border border-[var(--color-border)] px-2 py-1 text-xs"
                       />
                     ) : (
-                      <span className="font-medium text-[var(--color-foreground)]">
-                        {c.name || "—"}
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <span className="font-medium text-[var(--color-foreground)]">
+                          {c.name || "—"}
+                        </span>
+                        {v?.regular && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfeff] px-2 py-0.5 text-[10px] font-semibold text-[#0e7490] ring-1 ring-[#a5f3fc]">
+                            <StarIcon />
+                            {t("regularBadge")}
+                          </span>
+                        )}
                       </span>
                     )}
                   </td>
@@ -147,7 +232,9 @@ export function ContactsTable({
                         className="w-full rounded border border-[var(--color-border)] px-2 py-1 font-mono text-xs"
                       />
                     ) : (
-                      c.phone || "—"
+                      // dir=ltr: in Hebrew, "+972…" and "050 000 0000" would
+                      // otherwise render reversed ("…972+").
+                      <span dir="ltr">{c.phone || "—"}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 align-top text-xs">
@@ -164,6 +251,21 @@ export function ContactsTable({
                       c.email || "—"
                     )}
                   </td>
+                  {showLoyalty && (
+                    <>
+                      <td className="px-4 py-3 text-end align-top text-xs font-semibold tabular-nums">
+                        {v ? v.visits : <span className="font-normal text-[var(--color-muted-foreground)]">—</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 align-top text-xs text-[var(--color-muted-foreground)]">
+                        {v?.lastVisitAt ? dateFmt.format(new Date(v.lastVisitAt)) : "—"}
+                        {v?.nextVisitAt && (
+                          <span className="mt-0.5 block text-[11px] text-[#0e7490]">
+                            {t("nextVisit", { date: dateFmt.format(new Date(v.nextVisitAt)) })}
+                          </span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   <td className="max-w-[200px] px-4 py-3 align-top text-xs text-[var(--color-muted-foreground)]">
                     {editing ? (
                       <textarea
@@ -227,5 +329,13 @@ export function ContactsTable({
         </table>
       </div>
     </div>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden>
+      <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z" />
+    </svg>
   );
 }

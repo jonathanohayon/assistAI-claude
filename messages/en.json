@@ -1506,7 +1506,14 @@
     "colActions": "Actions",
     "editButton": "Edit",
     "confirmDelete": "Delete this contact?",
-    "errSave": "Error"
+    "errSave": "Error",
+    "colVisits": "Visits",
+    "colLastVisit": "Last visit",
+    "nextVisit": "Next: {date}",
+    "regularBadge": "Regular",
+    "filterRegulars": "Regulars only ({n})",
+    "regularRule": "Regular = {n}+ past visits (Calendar)",
+    "noRegulars": "No regular yet."
   },
   "DashboardSettings": {
     "header": "Settings",

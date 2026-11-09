@@ -1506,7 +1506,14 @@
     "colActions": "פעולות",
     "editButton": "עריכה",
     "confirmDelete": "למחוק את איש הקשר הזה ?",
-    "errSave": "שגיאה"
+    "errSave": "שגיאה",
+    "colVisits": "ביקורים",
+    "colLastVisit": "ביקור אחרון",
+    "nextVisit": "הבא: {date}",
+    "regularBadge": "לקוח/ה קבוע/ה",
+    "filterRegulars": "לקוחות קבועים בלבד ({n})",
+    "regularRule": "לקוח/ה קבוע/ה = {n} ביקורים קודמים ומעלה (יומן)",
+    "noRegulars": "עדיין אין לקוחות קבועים."
   },
   "DashboardSettings": {
     "header": "הגדרות",
