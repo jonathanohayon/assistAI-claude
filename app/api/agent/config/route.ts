@@ -12,6 +12,7 @@ import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { effectiveVoiceProfile } from "@/lib/voice-profile";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
+import { getClientProfile } from "@/lib/loyalty-profile";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -311,6 +312,12 @@ export async function GET(req: NextRequest) {
   //
   // AGENT_WEBHOOK_URL reste accepté comme surcharge globale, utile pour
   // tester un endpoint sur tous les tenants sans toucher à leurs réglages.
+  // Loyalty v1: who is calling (worker passes `caller`, the From number).
+  // Capped at 300 ms and null-safe: never delays or breaks the config.
+  const clientProfilePromise = getClientProfile(
+    tenant.user.id,
+    req.nextUrl.searchParams.get("caller"),
+  );
   const brain = await getAgentBrain(tenant.user.id);
   const envOverride = process.env.AGENT_WEBHOOK_URL;
   const agentWebhook =
@@ -345,6 +352,8 @@ export async function GET(req: NextRequest) {
     voiceProfile: effectiveVoiceProfile(tenant.config.voiceProfile),
     // Call transfer target ('' = none): the worker registers transfer_call only if set.
     transferNumber: tenant.config.transferNumber ?? "",
+    // Caller's visit history with this tenant (null = unknown / first call).
+    clientProfile: await clientProfilePromise,
     features,
     ordersEnabled,
     updatedAt,

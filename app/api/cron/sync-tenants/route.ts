@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { syncTenantCalendarToSheet } from "@/lib/sync-tenant";
+import { syncClientVisits } from "@/lib/loyalty-sync";
 
 // Cron endpoint : itère TOUS les tenants avec Google connecté et déclenche
 // le sync Calendar → Sheet (Clients) pour chacun. Best-effort par tenant :
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
   let totalUpdated = 0;
   let totalErrors = 0;
 
+  const loyalty: Array<Record<string, unknown>> = [];
   for (const t of allTenants) {
     const t0 = Date.now();
     try {
@@ -110,11 +112,39 @@ export async function GET(req: NextRequest) {
         metadata: { error: msg },
       });
     }
+
+    // Loyalty: Calendar → client_visits (independent of the Sheet; a tenant
+    // without a sheet still gets visit counts). Never breaks the loop.
+    try {
+      const v = await syncClientVisits(t.id);
+      loyalty.push({ userId: t.id, ...v });
+      if (v.mode === "backfill" && v.ok) {
+        await logEvent({
+          source: "sync",
+          event: "loyalty_backfill_done",
+          message: `Loyalty backfill ${t.email}: ${v.upserted} bookings from ${v.scanned} events`,
+          userId: t.id,
+          metadata: { ...v } as Record<string, unknown>,
+        });
+      } else if (!v.ok && v.reason !== "no_google_credentials") {
+        await logEvent({
+          source: "sync",
+          event: "loyalty_sync_failed",
+          message: `Loyalty sync ${t.email}: ${v.reason?.slice(0, 160)}`,
+          level: "warn",
+          userId: t.id,
+          metadata: { ...v } as Record<string, unknown>,
+        });
+      }
+    } catch (e) {
+      loyalty.push({ userId: t.id, ok: false, reason: e instanceof Error ? e.message : "exception" });
+    }
   }
 
   const elapsedMs = Date.now() - startedAt;
   return NextResponse.json({
     ok: true,
+    loyalty,
     tenantsTotal: allTenants.length,
     totalInserted,
     totalUpdated,
