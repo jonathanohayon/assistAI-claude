@@ -38,6 +38,13 @@ async function main() {
     assert.equal(wrong.status, 401);
   }
 
+  // owner's morning digest cron
+  {
+    const { GET } = await import("../../app/api/cron/owner-digest/route");
+    const res = await GET(req({ "x-internal-secret": "wrong" }));
+    assert.equal(res.status, 401, "owner-digest cron must require the internal secret");
+  }
+
   // worker → web campaign progress webhook (live console)
   {
     const { POST } = await import("../../app/api/agent/campaign-progress/route");

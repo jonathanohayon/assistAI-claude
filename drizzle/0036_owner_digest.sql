@@ -1,0 +1,1 @@
+ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "owner_digest_enabled" boolean DEFAULT true NOT NULL;
