@@ -294,7 +294,7 @@ function NumbersCell({
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+97223764700"
+              placeholder="+97220000000"
               className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 font-mono text-xs"
             />
             <input

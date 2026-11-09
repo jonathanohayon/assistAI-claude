@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const normalized = normalizeE164(body.phoneNumber);
   if (!/^\+\d{6,15}$/.test(normalized)) {
     return NextResponse.json(
-      { error: "phoneNumber invalide (E.164 attendu, ex: +97223764700)" },
+      { error: "phoneNumber invalide (E.164 attendu, ex: +97220000000)" },
       { status: 400 },
     );
   }

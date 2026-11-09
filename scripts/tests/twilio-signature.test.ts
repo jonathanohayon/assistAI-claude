@@ -25,11 +25,11 @@ import {
 
 // accepts a request signed for one of the candidate URLs, rejects tampering
 {
-  const params = { To: "whatsapp:+97223764700", From: "whatsapp:+972501234567" };
+  const params = { To: "whatsapp:+97220000000", From: "whatsapp:+972500000000" };
   const url = "https://aitamara.com/api/twilio/voice-bridge";
   const sig = twilioSignature("tok", url, params);
   // same value the official SDK computes for these inputs
-  assert.equal(sig, "FwOSs7307Oicygt5fsZHO+zHVro=");
+  assert.equal(sig, "3a2xoYkAtO9/bTun9HWsHIY6a9E=");
   const urls = ["https://internal:8080/api/twilio/voice-bridge", url];
   assert.equal(isValidTwilioSignature({ authToken: "tok", signature: sig, urls, params }), true);
   assert.equal(
