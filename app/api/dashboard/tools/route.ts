@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
 
 // The agent's tools (brick T3). Tenant scope; ?asUserId= for admins.
 //   GET [?agentId=<outbound agent>] →
-//     { tools, capabilities, account: { googleConnected, transferNumberSet },
+//     { tools, capabilities, account: { googleConnected, transferNumberSet,
+//       transferNumber (E.164, the kept number, null = none) },
 //       upgrade, admin? }   — capabilities = the SAME computation as the call
 //       (lib/tools/store.ts); `admin` (technical tool names) only for admins.
 //   PUT [?agentId=] { tools: <partial> } → same body as GET.
@@ -70,23 +71,24 @@ async function view(s: Scope): Promise<Response> {
   const plan = featuresForPlan(matrix, account.plan);
   const googleConnected = Boolean(account.google);
   let result;
-  let transferNumberSet: boolean;
+  // The KEPT number: served when transfer is on, parked when it is off.
+  let transferNumber: string;
   if (s.agentId) {
     const [row] = await outboundRow(s.userId, s.agentId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
     result = outboundCapabilities(row.toolsConfig, googleConnected, plan);
     const [cfg] = await receptionistRow(s.userId);
-    transferNumberSet = Boolean(cfg && accountTransferNumber(cfg));
+    transferNumber = cfg ? accountTransferNumber(cfg) : "";
   } else {
     const [row] = await receptionistRow(s.userId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
     result = receptionistCapabilities(row, await getTileToggles(s.userId), googleConnected, plan);
-    transferNumberSet = Boolean(accountTransferNumber(row));
+    transferNumber = accountTransferNumber(row);
   }
   return NextResponse.json({
     tools: result.tools,
     capabilities: result.capabilities,
-    account: { googleConnected, transferNumberSet },
+    account: { googleConnected, transferNumberSet: Boolean(transferNumber), transferNumber: transferNumber || null },
     upgrade: upgradePlans(result.capabilities, matrix, PLANS),
     ...(isAdmin ? { admin: { toolNames: TOOL_NAMES } } : {}),
   });
