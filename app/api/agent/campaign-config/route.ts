@@ -1,3 +1,4 @@
+import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -74,10 +75,16 @@ export async function GET(req: NextRequest) {
       };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
   const framings = await getCampaignGoalFramings();
-  const instructions = buildCampaignInstructions(
+  const baseInstructions = buildCampaignInstructions(
     { goalPreset: campaign.goalPreset, objective: campaign.objective, persona },
     { contactName: contact.contactName, phoneNumber: contact.phoneNumber, vars: contact.vars },
     framings,
+  );
+  // Spoken languages (Persona P4): empty list / switch off = today's text.
+  const instructions = withOutboundLanguages(
+    baseInstructions,
+    persona.language || "fr",
+    effectiveSpokenLanguages(agent?.personaConfig),
   );
   const greetingInstructions = buildCampaignGreeting({ persona }, {
     contactName: contact.contactName,

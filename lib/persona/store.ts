@@ -20,7 +20,7 @@ import {
   type OutboundPersonaColumns,
 } from "@/lib/persona/adapters";
 import { personaToInboundColumns, personaToOutboundColumns } from "@/lib/persona/columns";
-import { mergePersona, parsePersona, type Persona } from "@/lib/persona/contract";
+import { LANGUAGES_TENANT_EDITABLE, mergePersona, parsePersona, type Persona } from "@/lib/persona/contract";
 
 export const LEGACY_INBOUND_PERSONA_FIELDS = [
   "agentName",
@@ -31,7 +31,7 @@ export const LEGACY_INBOUND_PERSONA_FIELDS = [
 ] as const;
 export const LEGACY_OUTBOUND_PERSONA_FIELDS = ["agentName", "language", "greeting"] as const;
 
-export type PersonaWriteError = { status: 400; body: { error: string; fields?: string[] } };
+export type PersonaWriteError = { status: 400 | 403; body: { error: string; fields?: string[] } };
 
 export function currentInboundPersona(stored: unknown, row: InboundPersonaColumns): Persona {
   const s = parsePersona(stored);
@@ -47,12 +47,17 @@ function plan(
   body: Record<string, unknown>,
   legacy: readonly string[],
   current: Persona,
+  isAdmin: boolean,
 ): { error: PersonaWriteError } | { persona: Persona } | null {
   if (!("personaConfig" in body)) return null;
   const conflict = legacy.filter((f) => f in body);
   if (conflict.length) return { error: { status: 400, body: { error: "persona_config_conflict", fields: conflict } } };
   const merged = mergePersona(current, body.personaConfig);
   if (!merged.ok) return { error: { status: 400, body: { error: "invalid_persona_config", fields: [merged.error] } } };
+  // P4 gate: a non-empty spoken-languages list is admin-only for now.
+  if (!isAdmin && !LANGUAGES_TENANT_EDITABLE && merged.value.languages.length > 0) {
+    return { error: { status: 403, body: { error: "admin_only", fields: ["languages"] } } };
+  }
   return { persona: merged.value };
 }
 
@@ -60,8 +65,9 @@ function plan(
 export function inboundPersonaUpdates(
   body: Record<string, unknown>,
   row: InboundPersonaColumns & { personaConfig: unknown },
+  isAdmin: boolean,
 ): { error: PersonaWriteError } | { updates: Record<string, unknown>; persona: Persona } | null {
-  const p = plan(body, LEGACY_INBOUND_PERSONA_FIELDS, currentInboundPersona(row.personaConfig, row));
+  const p = plan(body, LEGACY_INBOUND_PERSONA_FIELDS, currentInboundPersona(row.personaConfig, row), isAdmin);
   if (!p || "error" in p) return p;
   return { updates: { ...personaToInboundColumns(p.persona), personaConfig: p.persona }, persona: p.persona };
 }
@@ -70,8 +76,9 @@ export function inboundPersonaUpdates(
 export function outboundPersonaUpdates(
   body: Record<string, unknown>,
   row: OutboundPersonaColumns & { personaConfig: unknown },
+  isAdmin: boolean,
 ): { error: PersonaWriteError } | { updates: Record<string, unknown>; persona: Persona } | null {
-  const p = plan(body, LEGACY_OUTBOUND_PERSONA_FIELDS, currentOutboundPersona(row.personaConfig, row));
+  const p = plan(body, LEGACY_OUTBOUND_PERSONA_FIELDS, currentOutboundPersona(row.personaConfig, row), isAdmin);
   if (!p || "error" in p) return p;
   const cols = personaToOutboundColumns(p.persona);
   // Same rule as normalizeAgentFields: `name` (list/campaign label) always

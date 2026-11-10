@@ -188,7 +188,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (voiceWrite) Object.assign(updates, voiceWrite.updates);
   else updates.voiceConfig = inboundVoiceConfigAfterLegacy(currentRow, updates);
   // Persona contract (P3, write-alongside), same rules as the tenant route.
-  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, currentRow);
+  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, currentRow, true);
   if (personaWrite && "error" in personaWrite) {
     return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
   }

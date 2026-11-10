@@ -94,6 +94,12 @@ export const GREETING_VARIABLES = {
   outbound: ["{{name}}", "{{phone}}"] as const,
 } as const;
 
+/**
+ * Spoken languages (P4): tenants can't set a non-empty list until Jonathan's
+ * test call in a second language; admins can. Opening it = flip this line.
+ */
+export const LANGUAGES_TENANT_EDITABLE = false;
+
 export function greetingModeOf(text: string): GreetingMode {
   return text.trim() ? "custom" : "auto";
 }

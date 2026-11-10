@@ -84,7 +84,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
   const voiceFields = voiceWrite ? voiceWrite.updates : { voiceConfig: outboundVoiceConfigAfterLegacy(agent, fields) };
   // Persona contract (P3, write-alongside), same rules as the receptionist.
-  const personaWrite = outboundPersonaUpdates(body, agent);
+  const personaWrite = outboundPersonaUpdates(body, agent, isAdmin);
   if (personaWrite && "error" in personaWrite) {
     return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
   }
