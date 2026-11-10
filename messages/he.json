@@ -2286,5 +2286,34 @@
       "maxDurationMin": "כשמגיעים למשך הזה, תמרה מסיימת את השיחה בנימוס."
     },
     "tryIt": "נסו"
+  },
+  "PersonaBrick": {
+    "nameLabel": "שם הסוכן",
+    "nameHint": "השם שתמרה אומרת בטלפון. לא חובה.",
+    "nameHintOutbound": "השם שנאמר בטלפון, מוצג גם ברשימת הסוכנים.",
+    "namePlaceholder": "למשל שרה",
+    "languageLabel": "שפה ראשית",
+    "greetingLabel": "משפט פתיחה",
+    "greetingAuto": "אוטומטי",
+    "greetingCustom": "המשפט שלי",
+    "greetingPlaceholder": "שלום, הגעתם ל…",
+    "previewTitle": "המתקשרים ישמעו",
+    "previewTitleOutbound": "האדם שמתקשרים אליו ישמע (דוגמה)",
+    "previewAuto": "תמרה פותחת את השיחה בעצמה, לפי ההקשר.",
+    "disclosureLabel": "להודיע שזו בינה מלאכותית",
+    "disclosureOn": "תמרה אומרת בפתיחה שהיא בינה מלאכותית.",
+    "disclosureOff": "המתקשרים ישמעו את הפתיחה שלך כפי שהיא, בלי אזכור של בינה מלאכותית.",
+    "disclosureTextLabel": "משפט משלך",
+    "disclosureTextHint": "לא חובה. ריק: משפט ברירת המחדל.",
+    "disclosureTextPlaceholder": "אני תמרה, בינה מלאכותית.",
+    "disclosureMustMentionAi": "המשפט חייב לציין שזו בינה מלאכותית (למשל „AI”, „בינה מלאכותית”).",
+    "disclosureTooLong": "עד {max} תווים.",
+    "variablesTitle": "משתנים במשפט הפתיחה",
+    "variablesHint": "מוחלפים לכל אדם שמתקשרים אליו.",
+    "variable": {
+      "contactName": "שם האדם",
+      "phoneNumber": "המספר שלו"
+    },
+    "insert": "הוספה"
   }
 }

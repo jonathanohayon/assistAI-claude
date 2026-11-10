@@ -14,6 +14,9 @@ import { AgentEditor } from "./agent-editor";
 import { hydrateVoice, voicePatch, type ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
+import { toOutboundFields } from "@/components/bricks/persona/persona-ui";
+import { personaFromOutbound } from "@/lib/persona/adapters";
+import type { Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
@@ -44,6 +47,8 @@ export function AgentsWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Persona brick state (saved through agentName/language/greeting until P3).
+  const [persona, setPersona] = useState<Persona>(() => personaFromOutbound(null));
   // Voice brick state: full Voice on screen, `voiceBase` = last loaded/saved.
   const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(null));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(null));
@@ -92,7 +97,9 @@ export function AgentsWorkspace({
     setDraft((d) => ({ ...d, ...patch }));
 
   const openNew = () => {
-    setDraft(emptyAgentDraft(locale));
+    const fresh = emptyAgentDraft(locale);
+    setDraft(fresh);
+    setPersona(personaFromOutbound(fresh));
     setVoice(hydrateVoice(null));
     setVoiceBase(hydrateVoice(null));
     setUsage(0);
@@ -100,6 +107,7 @@ export function AgentsWorkspace({
   };
 
   const openEdit = (a: OutboundAgentListItem) => {
+    setPersona(personaFromOutbound(a));
     const served = hydrateVoice((a as OutboundAgentListItem & { voiceConfig?: ServedVoice }).voiceConfig);
     setVoice(served);
     setVoiceBase(served);
@@ -247,6 +255,11 @@ export function AgentsWorkspace({
                 <AgentEditor
                   draft={draft}
                   set={set}
+                  persona={persona}
+                  onPersonaChange={(next) => {
+                    setPersona(next);
+                    set(toOutboundFields(next));
+                  }}
                   voice={voice}
                   onVoiceChange={setVoice}
                   isAdmin={isAdmin}
