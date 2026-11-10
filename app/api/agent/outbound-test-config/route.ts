@@ -6,7 +6,9 @@ import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaign
 import { db } from "@/lib/db";
 import { outboundAgents } from "@/lib/db/schema";
 import { getCampaignGoalFramings } from "@/lib/settings";
-import { personalityToRealtime } from "@/lib/voice-tuning";
+import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
+import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
+import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/outbound-test-config?agentId=  (x-internal-secret)
 // Config runtime servie au worker pour un TEST LIVE d'agent sortant depuis le
@@ -53,17 +55,29 @@ export async function GET(req: NextRequest) {
 
   const tuning = personalityToRealtime(agent.personality, agent.noiseReductionLevel);
 
+  // Voice contract (V2), served as `voiceConfig` (`voice` is the legacy voice
+  // id the live worker reads). The legacy fields stay until worker V2 is live.
+  const voiceConfig = servedOutboundVoice({
+    voice: persona.voice || "marin",
+    personality: agent.personality as AgentPersonality | null | undefined,
+    noiseReductionLevel: agent.noiseReductionLevel ?? null,
+  });
+
+  const engine = toEngineSettings(voiceConfig, { defaultModel: outboundModel() });
+
   return NextResponse.json({
+    voiceConfig,
     instructions,
     greetingInstructions,
     agentName: (persona.agentName || "Sarah").trim(),
-    model: process.env.REALTIME_MODEL || "gpt-realtime",
-    voice: persona.voice || "marin",
+    // Legacy engine fields, built through the contract (identical to before).
+    model: engine.model,
+    voice: engine.voice,
     temperature: tuning.temperature,
-    speed: tuning.speed,
+    speed: engine.speed,
     reactivite: tuning.reactivite,
     maxResponseTokens: 320,
-    noiseReductionLevel: tuning.noiseReductionLevel,
+    noiseReductionLevel: engine.noiseReductionLevel,
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
     features: {

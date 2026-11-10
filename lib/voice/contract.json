@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "voiceGender": {
+    "marin": "f",
+    "cedar": "m",
+    "ballad": "m",
+    "sage": "f",
+    "verse": "m",
+    "alloy": "m",
+    "shimmer": "f",
+    "echo": "m",
+    "fable": "m",
+    "onyx": "m",
+    "nova": "f",
+    "coral": "f",
+    "ash": "m"
+  },
+  "defaultVoiceId": "marin",
+  "styles": [
+    "warm",
+    "professional",
+    "dynamic",
+    "calm"
+  ],
+  "defaultStyle": "warm",
+  "engines": [
+    "auto",
+    "openai",
+    "gemini",
+    "xai"
+  ],
+  "fieldLevel": {
+    "voiceId": 1,
+    "style": 1,
+    "pace": 2,
+    "patience": 2,
+    "bargeIn": 2,
+    "keyTerms": 2,
+    "pronunciations": 2,
+    "noiseReduction": 2,
+    "languageLock": 2,
+    "engine": 3,
+    "advanced": 3
+  },
+  "defaultVoice": {
+    "version": 1,
+    "voiceId": "marin",
+    "style": "warm",
+    "pace": "normal",
+    "patience": 3,
+    "bargeIn": true,
+    "keyTerms": [],
+    "pronunciations": [],
+    "noiseReduction": 8,
+    "languageLock": false,
+    "engine": "auto",
+    "advanced": {
+      "speed": null,
+      "model": null,
+      "languageHint": "auto",
+      "voiceOverrides": {},
+      "minInterruptionMs": 500,
+      "idleHangupSec": 30,
+      "maxDurationMin": 30,
+      "fillers": true,
+      "speakingStyle": "",
+      "openaiTurnMode": "server_vad",
+      "openaiEagerness": "auto",
+      "openaiNoiseReduction": "off",
+      "openaiReasoning": "default",
+      "grokReasoning": "high"
+    }
+  }
+}

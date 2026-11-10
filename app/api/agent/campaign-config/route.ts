@@ -6,7 +6,9 @@ import { db } from "@/lib/db";
 import { campaignContacts, campaigns, outboundAgents } from "@/lib/db/schema";
 import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
-import { personalityToRealtime } from "@/lib/voice-tuning";
+import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
+import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
+import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
 // Config runtime servie au worker pour un appel sortant donné. Même forme
@@ -89,17 +91,29 @@ export async function GET(req: NextRequest) {
     agent?.noiseReductionLevel,
   );
 
+  // Voice contract (V2), served as `voiceConfig` (`voice` is the legacy voice
+  // id the live worker reads). The legacy fields stay until worker V2 is live.
+  const voiceConfig = servedOutboundVoice({
+    voice: persona.voice || "marin",
+    personality: agent?.personality as AgentPersonality | null | undefined,
+    noiseReductionLevel: agent?.noiseReductionLevel ?? null,
+  });
+
+  const engine = toEngineSettings(voiceConfig, { defaultModel: outboundModel() });
+
   return NextResponse.json({
+    voiceConfig,
     instructions,
     greetingInstructions,
     agentName: (persona.agentName || "Sarah").trim(),
-    model: process.env.REALTIME_MODEL || "gpt-realtime",
-    voice: persona.voice || "marin",
+    // Legacy engine fields, built through the contract (identical to before).
+    model: engine.model,
+    voice: engine.voice,
     temperature: tuning.temperature,
-    speed: tuning.speed,
+    speed: engine.speed,
     reactivite: tuning.reactivite,
     maxResponseTokens: 320,
-    noiseReductionLevel: tuning.noiseReductionLevel,
+    noiseReductionLevel: engine.noiseReductionLevel,
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
     // Pas de calendrier/CRM/WhatsApp sur un appel sortant.
