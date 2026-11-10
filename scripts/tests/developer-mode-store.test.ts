@@ -86,6 +86,41 @@ async function main() {
     assert.deepEqual(getDeveloperMode(), { enabled: false, saving: false, error: "save" });
   }
 
+  // a failed load is retried on the next call
+  {
+    __resetDeveloperModeStore();
+    const { f, calls } = mockFetch([{ status: 500 }, { status: 200, body: { developerMode: true } }]);
+    await loadDeveloperMode(null, f);
+    assert.equal(getDeveloperMode().error, "load");
+    await loadDeveloperMode(null, f);
+    assert.equal(calls.length, 2);
+    assert.deepEqual(getDeveloperMode(), { enabled: true, saving: false, error: null });
+  }
+
+  // rapid double toggle: the older save's late outcome never overrides the newer one
+  {
+    __resetDeveloperModeStore();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let n = 0;
+    const f = (async (_url: string, init?: RequestInit) => {
+      n++;
+      if (!init?.method) return new Response(JSON.stringify({ developerMode: false }), { status: 200 });
+      if (n === 2) {
+        await gate; // first PUT (→ true) fails, but only after the second
+        return new Response("{}", { status: 500 });
+      }
+      return new Response(JSON.stringify({ developerMode: false }), { status: 200 });
+    }) as unknown as typeof fetch;
+    await loadDeveloperMode(null, f);
+    const first = setDeveloperMode(null, true, f);
+    const second = await setDeveloperMode(null, false, f);
+    release();
+    assert.equal(await first, false);
+    assert.equal(second, true);
+    assert.deepEqual(getDeveloperMode(), { enabled: false, saving: false, error: null });
+  }
+
   // copy exists in all three languages
   for (const l of ["en", "fr", "he"]) {
     const b = JSON.parse(readFileSync(new URL(`../../messages/${l}.json`, import.meta.url), "utf8")).Bricks;

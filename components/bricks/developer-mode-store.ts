@@ -21,6 +21,10 @@ interface Entry {
   state: DeveloperModeState;
   listeners: Set<Listener>;
   loading: Promise<void> | null;
+  /** Bumped on every save: only the latest save may confirm or roll back. */
+  seq: number;
+  /** Last value the server confirmed (the rollback target). */
+  confirmed: boolean | null;
 }
 
 const entries = new Map<string, Entry>();
@@ -32,7 +36,7 @@ const urlOf = (asUserId?: string | null) =>
 function entry(key: string): Entry {
   let e = entries.get(key);
   if (!e) {
-    e = { state: { enabled: null, saving: false, error: null }, listeners: new Set(), loading: null };
+    e = { state: { enabled: null, saving: false, error: null }, listeners: new Set(), loading: null, seq: 0, confirmed: null };
     entries.set(key, e);
   }
   return e;
@@ -58,14 +62,16 @@ export function subscribeDeveloperMode(asUserId: string | null | undefined, l: L
 export function loadDeveloperMode(asUserId?: string | null, f: Fetch = fetch): Promise<void> {
   const key = keyOf(asUserId);
   const e = entry(key);
-  if (e.state.enabled !== null) return Promise.resolve();
+  // Loaded already → no refetch, unless that load failed (then retry).
+  if (e.state.enabled !== null && e.state.error !== "load") return Promise.resolve();
   if (e.loading) return e.loading;
   e.loading = (async () => {
     try {
       const res = await f(urlOf(asUserId), { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       const body = (await res.json()) as { developerMode?: unknown };
-      set(key, { enabled: body.developerMode === true, error: null });
+      e.confirmed = body.developerMode === true;
+      set(key, { enabled: e.confirmed, error: null });
     } catch {
       // Off is the safe default: advanced fields simply stay hidden.
       set(key, { enabled: false, error: "load" });
@@ -83,7 +89,8 @@ export async function setDeveloperMode(
   f: Fetch = fetch,
 ): Promise<boolean> {
   const key = keyOf(asUserId);
-  const before = entry(key).state.enabled;
+  const e = entry(key);
+  const seq = ++e.seq;
   set(key, { enabled, saving: true, error: null });
   try {
     const res = await f(urlOf(asUserId), {
@@ -93,10 +100,12 @@ export async function setDeveloperMode(
     });
     if (!res.ok) throw new Error(String(res.status));
     const body = (await res.json()) as { developerMode?: unknown };
-    set(key, { enabled: body.developerMode === true, saving: false });
+    e.confirmed = body.developerMode === true;
+    // A newer save started meanwhile: its own outcome decides the display.
+    if (seq === e.seq) set(key, { enabled: e.confirmed, saving: false });
     return true;
   } catch {
-    set(key, { enabled: before ?? false, saving: false, error: "save" });
+    if (seq === e.seq) set(key, { enabled: e.confirmed ?? false, saving: false, error: "save" });
     return false;
   }
 }
