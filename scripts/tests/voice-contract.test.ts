@@ -167,3 +167,4 @@ assert.equal(VOICE_FIELD_LEVEL.engine, 3);
 }
 
 console.log("ALL VOICE-CONTRACT TESTS PASSED");
+

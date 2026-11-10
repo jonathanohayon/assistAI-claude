@@ -34,6 +34,10 @@ const voices: Voice[] = [
     "gpt-realtime-2",
   ),
   withModel(fromOutboundColumns({ voice: "echo", personality: { vitesse: 7 }, noiseReductionLevel: 5 }), "gpt-realtime"),
+  // V6 styles: the worker must apply the presets identically
+  withModel({ ...DEFAULT_VOICE, style: "calm", advanced: { ...DEFAULT_VOICE.advanced, speed: 1.1, speakingStyle: "Mock line." } }, "gpt-realtime-2"),
+  withModel({ ...DEFAULT_VOICE, style: "dynamic", engine: "gemini" }, "gpt-realtime-2"),
+  withModel({ ...DEFAULT_VOICE, style: "professional", engine: "xai" }, "gpt-realtime-2"),
 ];
 
 const examples = voices.map((voice) => ({ voice, engine: toEngineSettings(voice, { defaultModel: "unused" }) }));
