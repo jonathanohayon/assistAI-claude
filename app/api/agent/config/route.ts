@@ -299,7 +299,10 @@ export async function GET(req: NextRequest) {
   ].join(SEP);
 
   // Strip internal IDs — the agent only needs the runtime values.
-  const { id: _id, userId: _userId, updatedAt, ...runtime } = config;
+  // personaConfig (P3) stays out of the worker payload: calls still read the
+  // legacy persona columns until the reader switch.
+  const { id: _id, userId: _userId, updatedAt, personaConfig: _personaConfig, ...runtime } = config;
+  void _personaConfig;
   void _id;
   void _userId;
   // Greeting fallback per-plan : utilisé par le worker quand

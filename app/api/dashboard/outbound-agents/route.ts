@@ -5,6 +5,7 @@ import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { outboundVoiceConfigAfterLegacy, outboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentOutboundVoice, voiceForViewer } from "@/lib/voice/store";
+import { currentOutboundPersona, outboundPersonaAfterLegacy, outboundPersonaUpdates } from "@/lib/persona/store";
 import { db } from "@/lib/db";
 import { campaigns, outboundAgents } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
     agents: rows.map((a) => ({
       ...a,
       voiceConfig: voiceForViewer(currentOutboundVoice(a.voiceConfig, a), isAdmin),
+      personaConfig: currentOutboundPersona(a.personaConfig, a),
       campaignCount: usage.get(a.id) ?? 0,
     })),
   });
@@ -73,9 +75,24 @@ export async function POST(req: NextRequest) {
   }
   const voiceFields = voiceWrite ? voiceWrite.updates : { voiceConfig: outboundVoiceConfigAfterLegacy(voiceCols, {}) };
 
+  // Persona contract (P3, write-alongside), same rules as the receptionist.
+  const personaCols = {
+    agentName: fields.agentName ?? null,
+    language: fields.language ?? null,
+    greeting: fields.greeting ?? null,
+    personaConfig: null,
+  };
+  const personaWrite = outboundPersonaUpdates(body, personaCols);
+  if (personaWrite && "error" in personaWrite) {
+    return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
+  }
+  const personaFields = personaWrite
+    ? personaWrite.updates
+    : { personaConfig: outboundPersonaAfterLegacy(personaCols, {}) };
+
   const [created] = await db
     .insert(outboundAgents)
-    .values({ userId: r.userId, ...fields, ...voiceFields })
+    .values({ userId: r.userId, ...fields, ...voiceFields, ...personaFields })
     .returning();
 
   await logEvent({
@@ -88,7 +105,14 @@ export async function POST(req: NextRequest) {
 
   const isAdmin = await sessionIsAdmin();
   return NextResponse.json(
-    { agent: { ...created, voiceConfig: voiceForViewer(currentOutboundVoice(created.voiceConfig, created), isAdmin), campaignCount: 0 } },
+    {
+      agent: {
+        ...created,
+        voiceConfig: voiceForViewer(currentOutboundVoice(created.voiceConfig, created), isAdmin),
+        personaConfig: currentOutboundPersona(created.personaConfig, created),
+        campaignCount: 0,
+      },
+    },
     { status: 201 },
   );
 }
