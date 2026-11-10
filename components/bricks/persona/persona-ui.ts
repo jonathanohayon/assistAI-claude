@@ -97,3 +97,41 @@ export function withPersonaConfig(
   if (patch) out.personaConfig = patch;
   return out;
 }
+
+/**
+ * The heard sentence split into its sentences, punctuation kept. The
+ * preview isolates each one (customer sentence and disclosure sentence may
+ * be in different scripts), so mixed French/Hebrew never scrambles the
+ * comma, full stop or quotes.
+ */
+export function splitSentences(text: string): string[] {
+  const parts = text.match(/[^.!?…]+[.!?…]+["'»”)\s]*|[^.!?…]+$/gu) ?? [text];
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+/**
+ * Braces a sentence must not contain: anything that isn't exactly one of
+ * the variables this side substitutes (a broken "{{nam", an unknown
+ * "{{city}}", a lone "{") would be read aloud on the call. [] = fine.
+ */
+export function badBraces(text: string, allowed: readonly string[]): string[] {
+  let rest = text;
+  for (const v of allowed) rest = rest.split(v).join(" ");
+  const bad = rest.match(/\{+[^{}\s]*\}*|\}+/g) ?? [];
+  return [...new Set(bad)];
+}
+
+/** Allowed variables present in the sentence (for the one-line helper). */
+export function variablesIn(text: string, allowed: readonly string[]): string[] {
+  return allowed.filter((v) => text.includes(v));
+}
+
+/** Why this persona can't be saved yet (null = fine): the screens call it before saving. */
+export function personaSaveIssue(
+  p: Persona,
+  allowedVariables: readonly string[],
+): { kind: "badBraces"; tokens: string[] } | null {
+  if (p.greeting.mode !== "custom") return null;
+  const tokens = badBraces(p.greeting.text, allowedVariables);
+  return tokens.length ? { kind: "badBraces", tokens } : null;
+}

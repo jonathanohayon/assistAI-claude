@@ -16,7 +16,11 @@ import {
   LEGACY_OUTBOUND_PERSONA_FIELDS,
   heardGreeting,
   insertVariable,
+  badBraces,
   personaPatch,
+  personaSaveIssue,
+  splitSentences,
+  variablesIn,
   withPersonaConfig,
 } from "../../components/bricks/persona/persona-ui";
 
@@ -150,6 +154,41 @@ for (const l of ["en", "fr", "he"]) {
     const text = JSON.stringify(copy(l));
     assert.doesNotMatch(text, /openai|grok|gemini|xai|realtime/i);
     assert.doesNotMatch(text, /coming soon|bientôt|בקרוב/i);
+  }
+}
+
+// 9. Preview isolation: the heard sentence splits into its sentences, punctuation kept
+assert.deepEqual(splitSentences("Bonjour, salon Mock ! אני Sarah, בינה מלאכותית."), ["Bonjour, salon Mock !", "אני Sarah, בינה מלאכותית."]);
+assert.deepEqual(splitSentences("Hello"), ["Hello"]);
+assert.deepEqual(splitSentences("Un. Deux ? Trois…"), ["Un.", "Deux ?", "Trois…"]);
+// mixed scripts: the customer's sentence and the disclosure come out separately (4 combinations)
+for (const page of ["fr", "he"] as const) {
+  for (const sentence of ["Bonjour, salon Mock !", "שלום, סלון מוק!"]) {
+    const heard = heardGreeting(P({ primaryLanguage: page, greeting: { mode: "custom", text: sentence } }), "inbound", { businessName: "Mock" });
+    const parts = splitSentences(heard ?? "");
+    assert.equal(parts[0], sentence, `${page} page + "${sentence}": the customer's sentence is its own part`);
+    assert.ok(parts.length >= 2, "the disclosure is a separate part");
+  }
+}
+
+// 10. Braces: only the side's exact variables; anything else would be read aloud
+{
+  const ob = GREETING_VARIABLES.outbound;
+  assert.deepEqual(badBraces("Bonjour {{name}}, ici {{phone}}.", ob), []);
+  assert.deepEqual(badBraces("Bonjour {{nam", ob), ["{{nam"], "broken token after a deletion");
+  assert.deepEqual(badBraces("Bonjour {{city}}", ob), ["{{city}}"], "unknown variable");
+  assert.deepEqual(badBraces("Bonjour { Dana", ob), ["{"], "lone brace");
+  assert.deepEqual(badBraces("Bonjour {{name}}", GREETING_VARIABLES.inbound), ["{{name}}"], "the receptionist substitutes nothing");
+  assert.deepEqual(variablesIn("Bonjour {{name}}", ob), ["{{name}}"]);
+  assert.deepEqual(personaSaveIssue(P({ greeting: { mode: "custom", text: "Bonjour {{nam" } }), ob), { kind: "badBraces", tokens: ["{{nam"] });
+  assert.equal(personaSaveIssue(P({ greeting: { mode: "auto", text: "Bonjour {{nam" } }), ob), null, "Automatic speaks no text");
+  assert.equal(personaSaveIssue(P({ greeting: { mode: "custom", text: "Bonjour {{name}}" } }), ob), null);
+  // every variable has an explanation in all three languages; no "Tamara" in this brick's copy
+  for (const l of ["en", "fr", "he"]) {
+    const c = JSON.parse(read(`messages/${l}.json`)).PersonaBrick;
+    for (const v of ob) assert.ok(c.variableMeaning[v.replace(/[{}\s]/g, "")], `${l}: meaning for ${v}`);
+    for (const k of ["variableExplained", "badBraces", "saveBlocked"]) assert.ok(c[k], `${l}: ${k}`);
+    assert.doesNotMatch(JSON.stringify(c), /Tamara|תמרה/, `${l}: say "your agent", not Tamara`);
   }
 }
 

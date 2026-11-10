@@ -47,11 +47,12 @@ import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
 import {
   LEGACY_INBOUND_PERSONA_FIELDS,
   personaPatch,
+  personaSaveIssue,
   personaToInboundColumns,
   withPersonaConfig,
 } from "@/components/bricks/persona/persona-ui";
 import { personaFromInbound } from "@/lib/persona/adapters";
-import type { Persona } from "@/lib/persona/contract";
+import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
@@ -112,6 +113,7 @@ export function ConfigForm({
   fullPromptConcat?: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const tPersona = useTranslations("PersonaBrick");
   const voiceLabel = useVoiceLabel();
   const locale = useLocale();
 
@@ -272,6 +274,11 @@ export function ConfigForm({
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Never save a first sentence with braces that would be read aloud.
+    if (personaSaveIssue(persona, GREETING_VARIABLES.inbound)) {
+      setError(tPersona("saveBlocked"));
+      return;
+    }
     startTransition(async () => {
       const endpoint = asUserId
         ? `/api/admin/configs/${asUserId}`

@@ -2289,7 +2289,7 @@
   },
   "PersonaBrick": {
     "nameLabel": "שם הסוכן",
-    "nameHint": "השם שתמרה אומרת בטלפון. לא חובה.",
+    "nameHint": "השם שהסוכן שלך אומר בטלפון. לא חובה.",
     "nameHintOutbound": "השם שנאמר בטלפון, מוצג גם ברשימת הסוכנים.",
     "namePlaceholder": "למשל שרה",
     "languageLabel": "שפה ראשית",
@@ -2299,13 +2299,13 @@
     "greetingPlaceholder": "שלום, הגעתם ל…",
     "previewTitle": "המתקשרים ישמעו",
     "previewTitleOutbound": "האדם שמתקשרים אליו ישמע (דוגמה)",
-    "previewAuto": "תמרה פותחת את השיחה בעצמה, לפי ההקשר.",
+    "previewAuto": "הסוכן שלך פותח את השיחה לפי ההקשר.",
     "disclosureLabel": "להודיע שזו בינה מלאכותית",
-    "disclosureOn": "תמרה אומרת בפתיחה שהיא בינה מלאכותית.",
+    "disclosureOn": "הסוכן שלך מציין בפתיחה שמדובר בבינה מלאכותית.",
     "disclosureOff": "המתקשרים ישמעו את הפתיחה שלך כפי שהיא, בלי אזכור של בינה מלאכותית.",
     "disclosureTextLabel": "משפט משלך",
     "disclosureTextHint": "לא חובה. ריק: משפט ברירת המחדל.",
-    "disclosureTextPlaceholder": "אני תמרה, בינה מלאכותית.",
+    "disclosureTextPlaceholder": "אתם מדברים עם בינה מלאכותית.",
     "disclosureMustMentionAi": "המשפט חייב לציין שזו בינה מלאכותית (למשל „AI”, „בינה מלאכותית”).",
     "disclosureTooLong": "עד {max} תווים.",
     "variablesTitle": "משתנים במשפט הפתיחה",
@@ -2315,6 +2315,13 @@
       "phone": "טלפון איש הקשר"
     },
     "languagesLabel": "שפות נוספות",
-    "languagesHint": "תמרה עוברת לאחת מהשפות האלה אם המתקשר מדבר בה."
+    "languagesHint": "הסוכן שלך עובר לאחת מהשפות האלה אם המתקשר מדבר בה.",
+    "variableExplained": "{token} מוחלף ב{meaning}.",
+    "variableMeaning": {
+      "name": "שם האדם שמתקשרים אליו",
+      "phone": "מספר הטלפון של האדם שמתקשרים אליו"
+    },
+    "badBraces": "הסוגריים האלה ייקראו בקול: {tokens}. מחקו אותם או השתמשו בכפתורי המשתנים.",
+    "saveBlocked": "משפט הפתיחה מכיל סוגריים שייקראו בקול. תקנו אותו לפני השמירה."
   }
 }
