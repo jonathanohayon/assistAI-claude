@@ -2476,6 +2476,12 @@
     "notInPlan": "Non inclus dans votre forfait : {list}.",
     "availableWith": "Disponible avec le forfait {plan}",
     "devTitle": "Mode développeur",
-    "planMatrix": "Ouvrir la grille des forfaits"
+    "planMatrix": "Ouvrir la grille des forfaits",
+    "tileLabel": "Ce que l'agent sait faire",
+    "tileTagline": "Rendez-vous, contacts, transfert, commandes",
+    "tileSummary": "{n, plural, =0 {Aucune capacité active} one {# capacité active} other {# capacités actives}}",
+    "loading": "Chargement…",
+    "saveError": "Les capacités n'ont pas été enregistrées. Réessayez.",
+    "saveAgentFirst": "Enregistrez l'agent pour régler ce qu'il sait faire."
   }
 }

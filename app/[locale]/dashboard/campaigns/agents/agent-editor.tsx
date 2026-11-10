@@ -8,6 +8,9 @@ import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
 import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
+import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
+import type { ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import { CAPABILITY_KEYS, type Tools } from "@/lib/tools/contract";
 import type { SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";
@@ -21,7 +24,7 @@ import { useVoiceLabel } from "@/lib/use-voice-label";
 // tuiles colorées → panneau inline sous la grille. Réutilise les libellés
 // i18n inbound (namespace DashboardConfig) pour voix/personnalité/notifs.
 
-type TileId = "voice" | "persona" | "business" | "notifs" | "channels";
+type TileId = "voice" | "persona" | "business" | "tools" | "notifs" | "channels";
 type TileDef = { id: TileId; label: string; tagline: string; summary: string; accent: string; icon: React.ReactNode };
 
 export function AgentEditor({
@@ -38,6 +41,9 @@ export function AgentEditor({
   sheetIssues,
   outboundUsesCompanySheet,
   savedKey,
+  toolsServed,
+  tools,
+  onToolsChange,
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
@@ -55,9 +61,14 @@ export function AgentEditor({
   outboundUsesCompanySheet: boolean;
   /** Changes after each save (the level-3 preview reloads). */
   savedKey?: number;
+  /** Tools brick: null for a new (unsaved) agent, or while loading. */
+  toolsServed: ToolsResponse | null;
+  tools: Tools | null;
+  onToolsChange: (next: Tools) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tKnowledge = useTranslations("KnowledgeBrick");
+  const tTools = useTranslations("ToolsBrick");
   const voiceLabel = useVoiceLabel();
   const [activeTile, setActiveTile] = useState<TileId | null>("voice");
 
@@ -85,6 +96,14 @@ export function AgentEditor({
       summary: `${draft.agentName} · ${draft.language.toUpperCase()}`,
       accent: "from-[#be185d] to-[#ec4899]",
       icon: <IconPerson />,
+    },
+    {
+      id: "tools",
+      label: tTools("tileLabel"),
+      tagline: tTools("tileTagline"),
+      summary: toolsServed ? tTools("tileSummary", { n: CAPABILITY_KEYS.filter((k) => toolsServed.capabilities[k].active).length }) : "—",
+      accent: "from-[#0e7490] to-[#155e75]",
+      icon: <IconTools />,
     },
     {
       id: "notifs",
@@ -214,6 +233,21 @@ export function AgentEditor({
               ) : (
                 <p className="text-sm text-[#475569]" aria-busy="true">
                   {tKnowledge("loading")}
+                </p>
+              ))}
+            {active.id === "tools" &&
+              (toolsServed && tools ? (
+                <ToolsBrick
+                  kind="outbound"
+                  served={toolsServed}
+                  tools={tools}
+                  onChange={onToolsChange}
+                  returnTo="/dashboard/campaigns"
+                  asUserId={asUserId ?? null}
+                />
+              ) : (
+                <p className="text-sm text-[#475569]" aria-busy={!!draft.id}>
+                  {draft.id ? tTools("loading") : tTools("saveAgentFirst")}
                 </p>
               ))}
             {active.id === "notifs" && <NotifsPanel draft={draft} set={set} t={t} />}
@@ -443,6 +477,14 @@ function ToggleRow({ label, on, onToggle }: { label: string; on: boolean; onTogg
 function IconMic() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v4" /></svg>; }
 function IconBuilding() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M9 7h.01M15 7h.01M9 11h.01M15 11h.01" /></svg>; }
 function IconPerson() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>; }
+function IconTools() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" />
+    </svg>
+  );
+}
+
 function IconBell() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>; }
 function IconChat() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1a8.5 8.5 0 0 1-.9-3.9 8.38 8.38 0 0 1 8.4-9 8.5 8.5 0 0 1 8.6 8.4Z" /></svg>; }
 

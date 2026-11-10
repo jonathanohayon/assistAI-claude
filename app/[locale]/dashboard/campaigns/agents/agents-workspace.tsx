@@ -26,6 +26,8 @@ import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import { sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
+import { toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { Tools } from "@/lib/tools/contract";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
@@ -78,6 +80,11 @@ export function AgentsWorkspace({
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [savedKey, setSavedKey] = useState(0);
+  // Tools brick, per saved agent: the server's answer, the switches on
+  // screen, the last saved switches. A new agent has none until saved.
+  const [toolsServed, setToolsServed] = useState<ToolsResponse | null>(null);
+  const [tools, setTools] = useState<Tools | null>(null);
+  const [toolsBase, setToolsBase] = useState<Tools | null>(null);
 
   const loadList = useCallback(async () => {
     try {
@@ -134,7 +141,21 @@ export function AgentsWorkspace({
   const set = (patch: Partial<OutboundAgentDraft>) =>
     setDraft((d) => ({ ...d, ...patch }));
 
+  const toolsUrl = (agentId: string) =>
+    `/api/dashboard/tools?${new URLSearchParams({ ...(asUserId ? { asUserId } : {}), agentId })}`;
+  const loadTools = async (agentId: string) => {
+    const d = await fetch(toolsUrl(agentId), { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : null))
+      .catch(() => null);
+    setToolsServed(d);
+    setTools(d?.tools ?? null);
+    setToolsBase(d?.tools ?? null);
+  };
+
   const openNew = () => {
+    setToolsServed(null);
+    setTools(null);
+    setToolsBase(null);
     const fresh = emptyAgentDraft(locale);
     setDraft(fresh);
     setPersona(personaFromOutbound(fresh));
@@ -170,6 +191,10 @@ export function AgentsWorkspace({
     });
     setUsage(a.campaignCount);
     setError(null);
+    setToolsServed(null);
+    setTools(null);
+    setToolsBase(null);
+    void loadTools(a.id);
     setView("editor");
   };
 
@@ -223,6 +248,25 @@ export function AgentsWorkspace({
       if (!res.ok) throw new Error("save");
       const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
+      const agentId = data.agent?.id ?? draft.id;
+      // The agent's switches, once it exists.
+      if (agentId && tools && toolsBase) {
+        const tchanges = toolsPatch(toolsBase, tools);
+        if (Object.keys(tchanges).length > 0) {
+          const tres = await fetch(toolsUrl(agentId), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tools: tchanges }),
+          });
+          const tdata = (await tres.json().catch(() => null)) as ToolsResponse | null;
+          if (!tres.ok || !tdata?.tools) throw new Error("tools");
+          setToolsServed(tdata);
+          setTools(tdata.tools);
+          setToolsBase(tdata.tools);
+        }
+      } else if (agentId && !editing) {
+        void loadTools(agentId);
+      }
       const savedPersona = (data.agent as { personaConfig?: Persona } | undefined)?.personaConfig ?? persona;
       setPersona(savedPersona);
       setPersonaBase(savedPersona);
@@ -363,6 +407,9 @@ export function AgentsWorkspace({
                   sheetIssues={issues}
                   outboundUsesCompanySheet={usesSheet}
                   savedKey={savedKey}
+                  toolsServed={toolsServed}
+                  tools={tools}
+                  onToolsChange={setTools}
                 />
                 {draft.id && (
                   <button

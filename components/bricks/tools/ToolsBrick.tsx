@@ -19,6 +19,7 @@
  * Tenant-safe: no supplier word, no technical tool name in this file.
  */
 
+import NextLink from "next/link";
 import { useTranslations } from "next-intl";
 
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
@@ -106,9 +107,10 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
               </div>
             ))}
           </dl>
-          <a href="/admin" className={`mt-2 ${LINK}`}>
+          {/* /admin is outside the locale routes. */}
+          <NextLink href="/admin" className={`mt-2 ${LINK}`}>
             {t("planMatrix")}
-          </a>
+          </NextLink>
         </section>
       )}
     </div>

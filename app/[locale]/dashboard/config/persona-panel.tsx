@@ -2,27 +2,25 @@
 
 /**
  * Tuile "Persona" : the Persona brick (name, language, first sentence, AI
- * disclosure) and the available-tools hint. The agent's instructions and the
- * admin-only inheritance of shared directives live in the Knowledge brick.
+ * disclosure). The agent's instructions and the admin-only inheritance of
+ * shared directives live in the Knowledge brick; what the agent can do lives
+ * in the Tools brick (no technical tool names for tenants).
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `persona`).
  */
 
-import { ToolsAvailableHint } from "./tools-available-hint";
-import type { FormState, FormUpdater } from "./types";
+import type { FormState } from "./types";
 import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
 import type { Persona } from "@/lib/persona/contract";
 
 export function PersonaPanel({
   form,
-  update,
   persona,
   onPersonaChange,
   isAdmin,
   asUserId,
 }: {
   form: FormState;
-  update: FormUpdater;
   persona: Persona;
   onPersonaChange: (next: Persona) => void;
   isAdmin: boolean;
@@ -39,9 +37,6 @@ export function PersonaPanel({
         isAdmin={isAdmin}
         asUserId={asUserId ?? null}
       />
-
-      {/* Tools disponibles — built-in + knowledge */}
-      <ToolsAvailableHint form={form} update={update} />
     </div>
   );
 }

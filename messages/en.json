@@ -2476,6 +2476,12 @@
     "notInPlan": "Not in your plan: {list}.",
     "availableWith": "Available with the {plan} plan",
     "devTitle": "Developer mode",
-    "planMatrix": "Open the plan matrix"
+    "planMatrix": "Open the plan matrix",
+    "tileLabel": "What the agent can do",
+    "tileTagline": "Appointments, contacts, transfer, orders",
+    "tileSummary": "{n, plural, =0 {No active capability} one {# active capability} other {# active capabilities}}",
+    "loading": "Loading…",
+    "saveError": "The capabilities weren't saved. Try again.",
+    "saveAgentFirst": "Save the agent to set what it can do."
   }
 }

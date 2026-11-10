@@ -2,11 +2,14 @@
 // Run with:  npx tsx scripts/tests/tools-brick.test.ts
 
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "../../lib/tools/adapters";
 import { effectiveCapabilities, type CapabilityState } from "../../lib/tools/contract";
 import { capabilityList, capabilityView, toolsPatch } from "../../components/bricks/tools/tools-ui";
+import { TOOL_NAMES } from "../tenant-bundle-match.mjs";
 
 const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: CapabilityState["prerequisite"]["missing"] } = {}): CapabilityState => ({
   requested: over.requested ?? true,
@@ -60,6 +63,53 @@ const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: Capabilit
   const base = toolsFromTileToggles({ calendar: true, customers: true, orders: false });
   assert.deepEqual(toolsPatch(base, structuredClone(base)), {});
   assert.deepEqual(toolsPatch(base, { ...base, orders: { enabled: true } }), { orders: { enabled: true } });
+}
+
+const ROOT = new URL("../../", import.meta.url).pathname;
+const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+
+// 5. One module on both screens; the tenant-facing tool-names box is gone
+{
+  for (const f of ["app/[locale]/dashboard/config-form.tsx", "app/[locale]/dashboard/campaigns/agents/agent-editor.tsx"]) {
+    const src = read(f);
+    assert.match(src, /import \{ ToolsBrick \} from "@\/components\/bricks\/tools\/ToolsBrick"/, f);
+    assert.match(src, /<ToolsBrick\b/, f);
+  }
+  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /kind="inbound"[\s\S]*served=\{toolsServed\}/);
+  assert.match(read("app/[locale]/dashboard/campaigns/agents/agent-editor.tsx"), /kind="outbound"[\s\S]*served=\{toolsServed\}/);
+  assert.ok(!existsSync(join(ROOT, "app/[locale]/dashboard/config/tools-available-hint.tsx")));
+  assert.doesNotMatch(read("app/[locale]/dashboard/config/persona-panel.tsx"), /ToolsAvailableHint/);
+}
+
+// 6. No technical tool name in tenant code; no level 2 until the call reads it; level 3 only from the admin response
+{
+  const names = new RegExp(`\\b(?:${(TOOL_NAMES as string[]).join("|")})\\b`);
+  for (const f of [
+    "components/bricks/tools/ToolsBrick.tsx",
+    "components/bricks/tools/tools-ui.ts",
+    "app/[locale]/dashboard/config-form.tsx",
+    "app/[locale]/dashboard/config/persona-panel.tsx",
+    "app/[locale]/dashboard/campaigns/agents/agent-editor.tsx",
+    "app/[locale]/dashboard/campaigns/agents/agents-workspace.tsx",
+  ])
+    assert.doesNotMatch(read(f), names, `${f}: technical tool name`);
+  for (const l of ["fr", "en", "he"]) assert.doesNotMatch(JSON.stringify(JSON.parse(read(`messages/${l}.json`)).ToolsBrick), names, l);
+  const brick = read("components/bricks/tools/ToolsBrick.tsx");
+  assert.doesNotMatch(brick, /MoreSettings|defaultDurationMinutes|minNoticeMinutes|\.when\b|orders\.ask/, "no level 2 in T2");
+  assert.match(brick, /\{served\.admin && \(/, "level 3 renders only what the server sent");
+  // Tenant code imports only the contract from lib/tools.
+  assert.doesNotMatch(brick + read("components/bricks/tools/tools-ui.ts"), /from "@\/lib\/tools\/(?!contract")/);
+}
+
+// 7. Copy: same keys in fr/en/he; every capability has name, what, on; every missing code has words
+{
+  const keys = (o: Record<string, unknown>, pre = ""): string[] =>
+    Object.entries(o).flatMap(([k, v]) => (v && typeof v === "object" ? keys(v as Record<string, unknown>, `${pre}${k}.`) : [`${pre}${k}`]));
+  const [fr, en, he] = ["fr", "en", "he"].map((l) => keys(JSON.parse(read(`messages/${l}.json`)).ToolsBrick).sort());
+  assert.deepEqual(en, fr);
+  assert.deepEqual(he, fr);
+  for (const c of ["booking", "contacts", "transfer", "orders"]) for (const f of ["name", "what", "on"]) assert.ok(fr.includes(`cap.${c}.${f}`), `${c}.${f}`);
+  for (const m of ["google_not_connected", "no_transfer_number", "not_available_outbound"]) assert.ok(fr.includes(`missing.${m}`), m);
 }
 
 console.log("ALL TOOLS-BRICK TESTS PASSED");
