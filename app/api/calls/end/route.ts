@@ -14,6 +14,8 @@ import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
 import { ltrIsolate } from "@/lib/phone-utils";
+import { withCallUsLine } from "@/lib/whatsapp-call-line";
+import { tenantCallNumber } from "@/lib/tenant-call-number";
 import { getSummaryPromptByPlan } from "@/lib/settings";
 import {
   ensureSheet,
@@ -245,13 +247,18 @@ export async function POST(req: NextRequest) {
     const clientTemplate = isWhatsappChannel
       ? undefined
       : process.env[langKey] || process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
+    // "Call us" line with the tenant's aitamara number (tappable in
+    // WhatsApp), inside the 1000-char template variable.
+    const clientText = withCallUsLine(
+      summary.forClient,
+      cfg.primaryLanguage ?? "fr",
+      await tenantCallNumber(user.id, toNumber || null),
+    );
     const r = await sendWhatsApp({
       to: fromNumber,
-      body: summary.forClient,
+      body: clientText,
       templateSid: clientTemplate || undefined,
-      templateVariables: clientTemplate
-        ? { "1": summary.forClient.slice(0, 1000) }
-        : undefined,
+      templateVariables: clientTemplate ? { "1": clientText } : undefined,
     });
     if (r.ok && r.sid) {
       clientSid = r.sid;
