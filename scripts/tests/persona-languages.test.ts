@@ -4,12 +4,12 @@
 
 import assert from "node:assert/strict";
 
-import { DEFAULT_PERSONA } from "../../lib/persona/contract";
+import { DEFAULT_PERSONA, LANGUAGES_TENANT_EDITABLE } from "../../lib/persona/contract";
+import { inboundPersonaUpdates, outboundPersonaUpdates } from "../../lib/persona/store";
 import {
   effectiveSpokenLanguages,
   inboundLanguageDirective,
   outboundLanguageBlock,
-  spokenLanguagesEnabled,
   withOutboundLanguages,
 } from "../../lib/persona/languages";
 
@@ -30,17 +30,32 @@ assert.equal(inboundLanguageDirective("fr", ["fr"]), TODAY("français", "fr"));
 assert.equal(outboundLanguageBlock("fr", []), "");
 assert.equal(withOutboundLanguages("Mock instructions", "fr", []), "Mock instructions");
 
-// switch: off by default; a stored list is ignored while off
-assert.equal(spokenLanguagesEnabled({}), false);
-assert.equal(spokenLanguagesEnabled({ PERSONA_LANGUAGES: "yes" }), false);
-assert.equal(spokenLanguagesEnabled({ PERSONA_LANGUAGES: " ON " }), true);
+// the stored list (P3) is what the prompts use
 const stored = { ...DEFAULT_PERSONA, languages: ["he", "en"] };
-assert.deepEqual(effectiveSpokenLanguages(stored, false), [], "switch off → []");
-assert.deepEqual(effectiveSpokenLanguages(stored, true), ["he", "en"]);
-assert.deepEqual(effectiveSpokenLanguages(null, true), [], "never written → []");
-assert.deepEqual(effectiveSpokenLanguages({ broken: true }, true), [], "invalid → []");
+assert.deepEqual(effectiveSpokenLanguages(stored), ["he", "en"]);
+assert.deepEqual(effectiveSpokenLanguages(null), [], "never written → []");
+assert.deepEqual(effectiveSpokenLanguages({ broken: true }), [], "invalid → []");
+assert.deepEqual(effectiveSpokenLanguages(DEFAULT_PERSONA), [], "default persona → []");
 
-// filled list (switch on): languages named, other languages fall back to the primary
+// tenants can't set a non-empty list until the test call (admins can)
+{
+  assert.equal(LANGUAGES_TENANT_EDITABLE, false);
+  const inRow = { agentName: "", primaryLanguage: "fr", greetingInstructions: "", aiDisclosureEnabled: true, aiDisclosureText: "", personaConfig: null };
+  const outRow = { agentName: "Sarah", language: "fr", greeting: "", personaConfig: null };
+  const set = { personaConfig: { languages: ["he"] } };
+  for (const r of [inboundPersonaUpdates(set, inRow, false), outboundPersonaUpdates(set, outRow, false)]) {
+    assert.ok(r && "error" in r);
+    assert.deepEqual(r.error, { status: 403, body: { error: "admin_only", fields: ["languages"] } });
+  }
+  for (const r of [inboundPersonaUpdates(set, inRow, true), outboundPersonaUpdates(set, outRow, true)]) {
+    assert.ok(r && !("error" in r) && r.persona.languages[0] === "he", "admins can");
+  }
+  // a tenant clearing the list, or saving other fields with an empty list, is fine
+  assert.ok(!("error" in (inboundPersonaUpdates({ personaConfig: { languages: [] } }, inRow, false) ?? {})));
+  assert.ok(!("error" in (inboundPersonaUpdates({ personaConfig: { name: "Tamara" } }, inRow, false) ?? {})));
+}
+
+// filled list: languages named, other languages fall back to the primary
 {
   const d = inboundLanguageDirective("fr", ["he", "en"]);
   assert.match(d, /LANGUES PARLÉES : français \(fr\), hébreu \(he\), anglais \(US\) \(en\)/);

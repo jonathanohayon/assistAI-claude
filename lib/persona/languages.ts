@@ -3,20 +3,16 @@
 // so this is a web-only change.
 //
 // EMPTY list (the default) = today's prompts, byte-identical (tested).
-// A filled list only takes effect when the server switch PERSONA_LANGUAGES is
-// "on" — off by default until a test call validates it.
+// Until Jonathan's test call in a second language, only admins can set a
+// list (LANGUAGES_TENANT_EDITABLE in lib/persona/contract.ts, enforced on
+// write in lib/persona/store.ts).
 
 import { parsePersona, type PersonaLanguage } from "@/lib/persona/contract";
 
 const LABEL: Record<PersonaLanguage, string> = { fr: "français", he: "hébreu", en: "anglais (US)" };
 
-export function spokenLanguagesEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return (env.PERSONA_LANGUAGES ?? "").trim().toLowerCase() === "on";
-}
-
-/** The list stored in personaConfig (none / invalid → []), only when the switch is on. */
-export function effectiveSpokenLanguages(personaConfig: unknown, enabled = spokenLanguagesEnabled()): PersonaLanguage[] {
-  if (!enabled) return [];
+/** The list stored in personaConfig (never written / invalid → []). */
+export function effectiveSpokenLanguages(personaConfig: unknown): PersonaLanguage[] {
   const p = parsePersona(personaConfig);
   return p.ok ? p.value.languages : [];
 }

@@ -286,7 +286,7 @@ export async function PUT(req: NextRequest) {
 
   // Persona contract (P3, write-alongside), same pattern. "Automatic" keeps
   // the customer's sentence in personaConfig while the column gets ''.
-  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, current);
+  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, current, isAdmin);
   if (personaWrite && "error" in personaWrite) {
     return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
   }

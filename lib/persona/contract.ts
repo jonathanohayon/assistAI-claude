@@ -82,6 +82,12 @@ export const PERSONA_FIELD_LEVEL = {
 /** Variables usable in the first sentence (level 3), substituted for outbound calls. */
 export const GREETING_VARIABLES = ["{contactName}", "{phoneNumber}"] as const;
 
+/**
+ * Spoken languages (P4): tenants can't set a non-empty list until Jonathan's
+ * test call in a second language; admins can. Opening it = flip this line.
+ */
+export const LANGUAGES_TENANT_EDITABLE = false;
+
 export function greetingModeOf(text: string): GreetingMode {
   return text.trim() ? "custom" : "auto";
 }
