@@ -1,3 +1,5 @@
+import { withCallUsLine } from "@/lib/whatsapp-call-line";
+import { tenantCallNumber } from "@/lib/tenant-call-number";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -114,6 +116,8 @@ export async function GET(req: NextRequest) {
         ? t.primaryLanguage
         : "fr") as ReminderLang;
       const templateSid = resolveReminderTemplateSid(lang);
+      // Tenant's aitamara number for the "call us" line (none → no line).
+      const callNumber = await tenantCallNumber(t.id);
 
       for (const ev of items) {
         const eventId = ev.id as string;
@@ -139,18 +143,22 @@ export async function GET(req: NextRequest) {
               hour12: false,
             }).format(new Date(startISO))
           : "";
-        const text = reminderText(lang, {
-          name,
-          dateLabel: formatDateLabel(tomorrow, lang),
-          time,
-          center,
-        });
+        const text = withCallUsLine(
+          reminderText(lang, {
+            name,
+            dateLabel: formatDateLabel(tomorrow, lang),
+            time,
+            center,
+          }),
+          lang,
+          callNumber,
+        );
 
         const r = await sendWhatsApp({
           to: phone,
           body: text,
           templateSid,
-          templateVariables: templateSid ? { "1": text.slice(0, 1000) } : undefined,
+          templateVariables: templateSid ? { "1": text } : undefined,
         });
 
         await db
