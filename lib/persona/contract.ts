@@ -79,8 +79,20 @@ export const PERSONA_FIELD_LEVEL = {
   "aiDisclosure.text": 2,
 } as const satisfies Record<string, PersonaLevel>;
 
-/** Variables usable in the first sentence (level 3), substituted for outbound calls. */
-export const GREETING_VARIABLES = ["{contactName}", "{phoneNumber}"] as const;
+/**
+ * Variables usable in the first sentence (level 3), per side. The contract
+ * follows the ENGINE (tested in persona-greeting-variables.test.ts):
+ *   - outbound: lib/campaigns/prompt.ts substituteVars replaces {{name}} and
+ *     {{phone}} (plus {{<column>}} of the contact's imported vars, which
+ *     depend on each campaign's file and are not listed here);
+ *   - inbound: nothing substitutes the tenant's sentence (the worker only
+ *     fills {agent_name} in the ADMIN fallback template) → none offered.
+ * Labels for humans live in the screen's i18n, keyed by the variable.
+ */
+export const GREETING_VARIABLES = {
+  inbound: [] as const,
+  outbound: ["{{name}}", "{{phone}}"] as const,
+} as const;
 
 export function greetingModeOf(text: string): GreetingMode {
   return text.trim() ? "custom" : "auto";
