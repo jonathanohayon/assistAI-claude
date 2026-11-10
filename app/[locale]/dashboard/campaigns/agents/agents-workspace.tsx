@@ -24,6 +24,8 @@ import {
 import { personaFromOutbound } from "@/lib/persona/adapters";
 import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
+import { sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
+import type { CompanySheet } from "@/lib/knowledge/contract";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
@@ -46,6 +48,7 @@ export function AgentsWorkspace({
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tPersona = useTranslations("PersonaBrick");
+  const tKnowledge = useTranslations("KnowledgeBrick");
   const locale = useLocale();
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -65,8 +68,16 @@ export function AgentsWorkspace({
     emptyAgentDraft(locale),
   );
   const [usage, setUsage] = useState(0);
+  // Knowledge brick: the ACCOUNT's company sheet (shared by every agent),
+  // saved through /api/dashboard/company-sheet; `sheetBase` = last loaded/saved.
+  const [sheet, setSheet] = useState<CompanySheet | null>(null);
+  const [sheetBase, setSheetBase] = useState<CompanySheet | null>(null);
+  const [issues, setIssues] = useState<SheetIssue[]>([]);
+  // Per account, told by the server (S5 switch): absent = not used yet.
+  const [usesSheet, setUsesSheet] = useState(false);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [savedKey, setSavedKey] = useState(0);
 
   const loadList = useCallback(async () => {
     try {
@@ -101,6 +112,24 @@ export function AgentsWorkspace({
       cancelled = true;
     };
   }, [qs, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/dashboard/company-sheet${qs}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("sheet"))))
+      .then((data: { companySheet?: CompanySheet; outboundUsesCompanySheet?: boolean }) => {
+        if (cancelled || !data.companySheet) return;
+        setSheet(data.companySheet);
+        setSheetBase(data.companySheet);
+        setUsesSheet(data.outboundUsesCompanySheet === true);
+      })
+      .catch(() => {
+        if (!cancelled) setError(tKnowledge("loadError"));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [qs, tKnowledge]);
 
   const set = (patch: Partial<OutboundAgentDraft>) =>
     setDraft((d) => ({ ...d, ...patch }));
@@ -154,6 +183,28 @@ export function AgentsWorkspace({
     setError(null);
     setSaving(true);
     try {
+      // 1. The account's company sheet, when it changed. Refused → stop,
+      //    issues shown in the sheet.
+      if (sheet && sheetBase) {
+        const changes = sheetPatch(sheetBase, sheet);
+        if (Object.keys(changes).length > 0) {
+          const sres = await fetch(`/api/dashboard/company-sheet${qs}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ companySheet: changes }),
+          });
+          const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[] } | null;
+          if (!sres.ok || !sdata?.companySheet) {
+            setIssues(sheetIssues(sdata?.fields ?? [], sheet));
+            setError(tKnowledge("issuesTitle"));
+            return;
+          }
+          setIssues([]);
+          setSheet(sdata.companySheet);
+          setSheetBase(sdata.companySheet);
+        }
+      }
+      // 2. The agent.
       const editing = !!draft.id;
       const res = await fetch(
         `/api/dashboard/outbound-agents${editing ? `/${draft.id}` : ""}${qs}`,
@@ -181,6 +232,7 @@ export function AgentsWorkspace({
         setVoiceBase(saved);
       }
       setJustSaved(true);
+      setSavedKey((n) => n + 1);
       setTimeout(() => setJustSaved(false), 1800);
       await loadList();
     } catch {
@@ -303,6 +355,14 @@ export function AgentsWorkspace({
                   onVoiceChange={setVoice}
                   isAdmin={isAdmin}
                   asUserId={asUserId}
+                  sheet={sheet}
+                  onSheetChange={(next) => {
+                    setSheet(next);
+                    setIssues([]);
+                  }}
+                  sheetIssues={issues}
+                  outboundUsesCompanySheet={usesSheet}
+                  savedKey={savedKey}
                 />
                 {draft.id && (
                   <button

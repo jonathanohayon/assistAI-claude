@@ -12,6 +12,7 @@
  * (dashboard/page, dashboard-preview, admin/users/[userId], website-scan-wizard).
  */
 
+import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { useTranslations } from "next-intl";
 
 import type { PERSONALITY_KEYS } from "@/lib/personality";
@@ -35,6 +36,8 @@ export type FormState = {
   /** Persona brick settings as served (P3); absent → derived from the
    *  legacy fields below, which this screen never sends. */
   personaConfig?: Persona;
+  /** The account's company sheet (Knowledge brick); saved via /api/dashboard/company-sheet. */
+  companySheet?: CompanySheet;
   instructions: string;
   greetingInstructions: string;
   maxResponseTokens: number;
