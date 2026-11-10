@@ -1,3 +1,5 @@
+import { outboundKnowledgeText } from "@/lib/knowledge/outbound-sheet";
+import { accountSheetForOutbound } from "@/lib/knowledge/outbound-sheet-load";
 import { knowledgeFromOutbound } from "@/lib/knowledge/adapters";
 import { outboundKnowledgeParts } from "@/lib/knowledge/render";
 import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
@@ -40,13 +42,16 @@ export async function GET(req: NextRequest) {
   // Knowledge (brick S1): the agent's facts and instructions through the
   // Knowledge contract — identical text to before (route snapshots).
   const agentKnowledge = outboundKnowledgeParts(knowledgeFromOutbound(agent ?? null));
+  // Knowledge S5: the account's company sheet, only when the server switch
+  // OUTBOUND_COMPANY_SHEET is on for this account (off = null = today).
+  const accountSheet = await accountSheetForOutbound(agent.userId);
   const persona = {
     agentName: agent.agentName,
     voice: agent.voice,
     language: agent.language,
     instructions: agentKnowledge.instructions,
     greeting: agent.greeting,
-    knowledge: agentKnowledge.knowledge,
+    knowledge: outboundKnowledgeText(agentKnowledge.knowledge, accountSheet),
     successCriteria: "",
   };
 

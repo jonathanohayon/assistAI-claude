@@ -1,3 +1,5 @@
+import { outboundKnowledgeText } from "@/lib/knowledge/outbound-sheet";
+import { accountSheetForOutbound } from "@/lib/knowledge/outbound-sheet-load";
 import { knowledgeFromOutbound } from "@/lib/knowledge/adapters";
 import { outboundKnowledgeParts } from "@/lib/knowledge/render";
 import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
@@ -60,6 +62,9 @@ export async function GET(req: NextRequest) {
   // Knowledge (brick S1): the agent's facts and instructions through the
   // Knowledge contract — identical text to before (route snapshots).
   const agentKnowledge = outboundKnowledgeParts(knowledgeFromOutbound(agent ?? null));
+  // Knowledge S5: the ACCOUNT's company sheet, only when the server switch
+  // OUTBOUND_COMPANY_SHEET is on for this account (off = null = today).
+  const accountSheet = await accountSheetForOutbound(campaign.userId);
   const persona = agent
     ? {
         agentName: agent.agentName,
@@ -67,7 +72,7 @@ export async function GET(req: NextRequest) {
         language: agent.language,
         instructions: agentKnowledge.instructions,
         greeting: agent.greeting,
-        knowledge: agentKnowledge.knowledge,
+        knowledge: outboundKnowledgeText(agentKnowledge.knowledge, accountSheet),
         successCriteria: campaign.successCriteria,
       }
     : {
@@ -78,6 +83,7 @@ export async function GET(req: NextRequest) {
         voice: "marin",
         language: "fr",
         successCriteria: campaign.successCriteria,
+        ...(accountSheet ? { knowledge: outboundKnowledgeText("", accountSheet) } : {}),
       };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
   const framings = await getCampaignGoalFramings();
