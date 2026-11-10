@@ -1458,7 +1458,8 @@
         "raw": "{message}",
         "skipped": "דולג: {reasons}"
       }
-    }
+    },
+    "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}"
   },
   "DashboardCalendar": {
     "header": "יומן",

@@ -1458,7 +1458,8 @@
         "raw": "{message}",
         "skipped": "skipped: {reasons}"
       }
-    }
+    },
+    "pauseToEdit": "Pause the campaign to change: {fields}"
   },
   "DashboardCalendar": {
     "header": "Calendar",

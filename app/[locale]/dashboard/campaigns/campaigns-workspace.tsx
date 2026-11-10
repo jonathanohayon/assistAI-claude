@@ -32,6 +32,12 @@ import { ContactsImportStep } from "./contacts-import-step";
 import { CampaignContactsList } from "./campaign-contacts-list";
 import { CampaignLaunch } from "./campaign-launch";
 import { CampaignLiveConsole } from "./campaign-live-console";
+import {
+  isDraftDirty,
+  pauseToEditFields,
+  pauseToEditLabels,
+  snapshot,
+} from "@/lib/campaigns/edit-guard";
 import { StatusPill } from "./_ui";
 
 type View = "list" | "editor";
@@ -96,6 +102,12 @@ export function CampaignsWorkspace({
   const [saveError, setSaveError] = useState<string | null>(null);
   // Feedback de sauvegarde réussie (badge "✓ Enregistré" + bouton Suivant).
   const [justSaved, setJustSaved] = useState(false);
+  // Bumped after each successful save → the live console remounts and
+  // refetches, so it shows the new call hours right away.
+  const [savedRev, setSavedRev] = useState(0);
+  // JSON of the draft as last loaded or saved (null = never saved). Leaving
+  // the setup step auto-saves only when the draft differs from it.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   // Campagne dont on affiche les analytics (modal).
   const [analyticsFor, setAnalyticsFor] = useState<{ id: string; name: string } | null>(null);
 
@@ -174,6 +186,7 @@ export function CampaignsWorkspace({
 
   const openNew = () => {
     setDraft(emptyDraft(t("newCampaign")));
+    setSavedSnapshot(null);
     setActiveStatus("draft");
     setSaveError(null);
     setTab("setup");
@@ -181,7 +194,7 @@ export function CampaignsWorkspace({
   };
 
   const openExisting = (c: CampaignListItem) => {
-    setDraft({
+    const loaded: CampaignDraft = {
       id: c.id,
       name: c.name,
       goalPreset: c.goalPreset,
@@ -193,11 +206,24 @@ export function CampaignsWorkspace({
       concurrency: c.concurrency,
       retryRules: c.retryRules ?? { ...DEFAULT_RETRY_RULES },
       callWindow: c.callWindow ?? { ...DEFAULT_CALL_WINDOW },
-    });
+    };
+    setDraft(loaded);
+    setSavedSnapshot(snapshot(loaded));
     setActiveStatus(c.status);
     setSaveError(null);
     setTab("setup");
     setView("editor");
+  };
+
+  // Step navigation: leaving the setup step saves first, and only moves on
+  // when the save succeeded (errors, incl. pause_to_edit, keep the user here).
+  const goTo = async (next: EditorTab) => {
+    if (next === tab) return;
+    if (tab === "setup" && draft.id) {
+      const ok = await save();
+      if (!ok) return;
+    }
+    setTab(next);
   };
 
   const patchDraft = (patch: Partial<CampaignDraft>) => {
@@ -224,11 +250,19 @@ export function CampaignsWorkspace({
     await loadList();
   };
 
-  const save = async () => {
-    if (saving) return;
+  const isDirty = isDraftDirty(draft, savedSnapshot);
+
+  /** Saves the draft; true when it is saved (or nothing changed). */
+  const save = async (): Promise<boolean> => {
+    if (saving) return false;
     if (!draft.name.trim()) {
       setSaveError(t("nameRequired"));
-      return;
+      return false;
+    }
+    if (!isDirty) {
+      // Nothing changed since the last load/save: no PATCH.
+      setSaveError(null);
+      return true;
     }
     setSaving(true);
     setSaveError(null);
@@ -244,17 +278,30 @@ export function CampaignsWorkspace({
           body: JSON.stringify(draft),
         },
       );
+      if (res.status === 409) {
+        const fields = pauseToEditFields(await res.json().catch(() => null));
+        if (fields) {
+          setJustSaved(false);
+          setSaveError(t("pauseToEdit", { fields: pauseToEditLabels(fields, (k) => t(k)) }));
+          return false;
+        }
+      }
       if (!res.ok) throw new Error("save");
       const data = (await res.json()) as { campaign: { id: string; status: string } };
-      setDraft((d) => ({ ...d, id: data.campaign.id }));
+      const saved = { ...draft, id: data.campaign.id };
+      setDraft(saved);
+      setSavedSnapshot(snapshot(saved));
       setActiveStatus(data.campaign.status);
       await loadList();
       // Succès : on reste sur l'étape 1 avec un feedback clair + bouton Suivant
       // (au lieu d'un saut silencieux), pour que l'utilisateur voie que c'est
       // bien enregistré et choisisse d'avancer.
       setJustSaved(true);
+      setSavedRev((r) => r + 1);
+      return true;
     } catch {
       setSaveError(t("createError"));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -387,7 +434,7 @@ export function CampaignsWorkspace({
                     >
                       <button
                         type="button"
-                        onClick={() => !locked && setTab(s.key)}
+                        onClick={() => !locked && void goTo(s.key)}
                         disabled={locked}
                         aria-current={active ? "step" : undefined}
                         className={`group flex shrink-0 items-center gap-2 ${
@@ -503,7 +550,7 @@ export function CampaignsWorkspace({
             {view === "editor" && tab === "launch" && draft.id && activeStatus !== "draft" && (
               <div className="mt-4">
                 <CampaignLiveConsole
-                  key={draft.id}
+                  key={`${draft.id}:${savedRev}`}
                   campaignId={draft.id}
                   asUserId={asUserId}
                   onStatusChanged={(status) => {
@@ -532,7 +579,7 @@ export function CampaignsWorkspace({
               </span>
               <div className="flex shrink-0 items-center gap-2">
                 <button
-                  onClick={save}
+                  onClick={() => void save()}
                   disabled={saving}
                   className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-60 ${
                     justSaved
@@ -548,7 +595,8 @@ export function CampaignsWorkspace({
                 </button>
                 {savedCampaign && (
                   <button
-                    onClick={() => setTab("contacts")}
+                    onClick={() => void goTo("contacts")}
+                    disabled={saving}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
                   >
                     {t("nextStepContacts")}
