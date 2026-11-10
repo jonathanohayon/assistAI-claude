@@ -2289,7 +2289,7 @@
   },
   "PersonaBrick": {
     "nameLabel": "Nom de l'agent",
-    "nameHint": "Le prénom que Tamara donne au téléphone. Facultatif.",
+    "nameHint": "Le prénom que votre agent donne au téléphone. Facultatif.",
     "nameHintOutbound": "Le prénom dit au téléphone, aussi utilisé dans la liste des agents.",
     "namePlaceholder": "ex. Sarah",
     "languageLabel": "Langue principale",
@@ -2299,13 +2299,13 @@
     "greetingPlaceholder": "Bonjour, vous êtes bien chez…",
     "previewTitle": "Les appelants entendront",
     "previewTitleOutbound": "La personne appelée entendra (exemple)",
-    "previewAuto": "Tamara ouvre l'appel elle-même, selon le contexte.",
+    "previewAuto": "Votre agent ouvre l'appel selon le contexte.",
     "disclosureLabel": "Annoncer que c'est une IA",
-    "disclosureOn": "Tamara dit dans son accueil qu'elle est une intelligence artificielle.",
+    "disclosureOn": "Votre agent annonce dans son accueil qu'il est une intelligence artificielle.",
     "disclosureOff": "Les appelants entendront votre accueil tel quel, sans mention d'IA.",
     "disclosureTextLabel": "Votre propre phrase",
     "disclosureTextHint": "Facultatif. Vide : la phrase par défaut.",
-    "disclosureTextPlaceholder": "Je suis Tamara, une intelligence artificielle.",
+    "disclosureTextPlaceholder": "Vous parlez à une intelligence artificielle.",
     "disclosureMustMentionAi": "Votre phrase doit dire que c'est une IA (par ex. « IA », « intelligence artificielle », « assistante virtuelle »).",
     "disclosureTooLong": "Restez sous {max} caractères.",
     "variablesTitle": "Variables de la première phrase",
@@ -2315,6 +2315,13 @@
       "phone": "Téléphone du contact"
     },
     "languagesLabel": "Autres langues parlées",
-    "languagesHint": "Tamara passe à l'une de ces langues si la personne la parle."
+    "languagesHint": "Votre agent passe à l'une de ces langues si la personne la parle.",
+    "variableExplained": "{token} est remplacé par {meaning}.",
+    "variableMeaning": {
+      "name": "le prénom de la personne appelée",
+      "phone": "le numéro de la personne appelée"
+    },
+    "badBraces": "Ces accolades seraient lues à voix haute : {tokens}. Supprimez-les ou utilisez les boutons de variables.",
+    "saveBlocked": "La première phrase contient des accolades qui seraient lues à voix haute. Corrigez-la avant d'enregistrer."
   }
 }

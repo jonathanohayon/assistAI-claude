@@ -17,11 +17,12 @@ import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import {
   LEGACY_OUTBOUND_PERSONA_FIELDS,
   personaPatch,
+  personaSaveIssue,
   personaToOutboundColumns,
   withPersonaConfig,
 } from "@/components/bricks/persona/persona-ui";
 import { personaFromOutbound } from "@/lib/persona/adapters";
-import type { Persona } from "@/lib/persona/contract";
+import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
@@ -44,6 +45,7 @@ export function AgentsWorkspace({
   onBack: () => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const tPersona = useTranslations("PersonaBrick");
   const locale = useLocale();
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -142,6 +144,11 @@ export function AgentsWorkspace({
 
   const save = async () => {
     if (saving) return;
+    // Never save a first sentence with braces that would be read aloud.
+    if (personaSaveIssue(persona, GREETING_VARIABLES.outbound)) {
+      setError(tPersona("saveBlocked"));
+      return;
+    }
     setSaving(true);
     try {
       const editing = !!draft.id;

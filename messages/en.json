@@ -2289,7 +2289,7 @@
   },
   "PersonaBrick": {
     "nameLabel": "Agent name",
-    "nameHint": "The first name Tamara gives on the phone. Optional.",
+    "nameHint": "The first name your agent gives on the phone. Optional.",
     "nameHintOutbound": "The first name said on the phone, also shown in the agents list.",
     "namePlaceholder": "e.g. Sarah",
     "languageLabel": "Main language",
@@ -2299,13 +2299,13 @@
     "greetingPlaceholder": "Hello, you've reached…",
     "previewTitle": "Callers will hear",
     "previewTitleOutbound": "The person called will hear (example)",
-    "previewAuto": "Tamara opens the call herself, from the context.",
+    "previewAuto": "Your agent opens the call based on the context.",
     "disclosureLabel": "Say that it's an AI",
-    "disclosureOn": "Tamara says in her greeting that she is an artificial intelligence.",
+    "disclosureOn": "Your agent says in its greeting that it is an artificial intelligence.",
     "disclosureOff": "Callers hear your greeting as written, with no AI mention.",
     "disclosureTextLabel": "Your own sentence",
     "disclosureTextHint": "Optional. Empty: the default sentence.",
-    "disclosureTextPlaceholder": "I'm Tamara, an AI assistant.",
+    "disclosureTextPlaceholder": "You're speaking with an AI assistant.",
     "disclosureMustMentionAi": "Your sentence must say it's an AI (e.g. \"AI\", \"artificial intelligence\", \"virtual assistant\").",
     "disclosureTooLong": "Keep it under {max} characters.",
     "variablesTitle": "First-sentence variables",
@@ -2315,6 +2315,13 @@
       "phone": "Contact's phone"
     },
     "languagesLabel": "Other spoken languages",
-    "languagesHint": "Tamara switches to one of these if the caller speaks it."
+    "languagesHint": "Your agent switches to one of these if the caller speaks it.",
+    "variableExplained": "{token} is replaced by {meaning}.",
+    "variableMeaning": {
+      "name": "the name of the person called",
+      "phone": "the number of the person called"
+    },
+    "badBraces": "These braces would be read aloud: {tokens}. Remove them or use the variable buttons.",
+    "saveBlocked": "The first sentence has braces that would be read aloud. Fix it before saving."
   }
 }

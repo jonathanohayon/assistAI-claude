@@ -28,7 +28,14 @@ import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import { AI_DISCLOSURE_MAX_LENGTH, parseDisclosureText } from "@/lib/ai-disclosure";
 import { GREETING_VARIABLES, PERSONA_LANGUAGES, mergePersona, type Persona } from "@/lib/persona/contract";
 
-import { heardGreeting, insertVariable, type PersonaKind } from "./persona-ui";
+import {
+  badBraces,
+  heardGreeting,
+  insertVariable,
+  splitSentences,
+  variablesIn,
+  type PersonaKind,
+} from "./persona-ui";
 
 const INPUT =
   "w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm text-[#18181b] focus:border-[#0e7490] focus:outline-none focus:ring-2 focus:ring-[#0e7490]/20";
@@ -63,8 +70,8 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
     if (r.ok) onChange(r.value);
   };
 
-  const heard = heardGreeting(value, kind, { businessName, exampleContact: EXAMPLE_CONTACT });
   const variables = GREETING_VARIABLES[kind];
+  const heard = heardGreeting(value, kind, { businessName, exampleContact: EXAMPLE_CONTACT });
   // No section on a side with no variable (the receptionist has none).
   const showVariables = variables.length > 0 && (isAdmin || dev.on);
 
@@ -124,14 +131,30 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             />
           </>
         )}
+        {value.greeting.mode === "custom" && (
+          <GreetingChecks text={value.greeting.text} allowed={variables} />
+        )}
         <div className="mt-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2.5" aria-live="polite">
           <p className="text-xs font-semibold text-[#475569]">
             {kind === "outbound" ? t("previewTitleOutbound") : t("previewTitle")}
           </p>
-          <p className="mt-1 text-sm text-[#18181b]">
-            {/* dir="auto": the sentence may not be in the page's language. */}
-            {heard ? <q dir="auto">{heard}</q> : <span className="text-[#475569]">{t("previewAuto")}</span>}
-          </p>
+          {heard ? (
+            // Its own paragraph, direction from its first strong character;
+            // each sentence isolated (the customer's and the disclosure may
+            // be in different scripts); quotes drawn outside the text.
+            <p dir="auto" className="mt-1 text-sm text-[#18181b]">
+              <span aria-hidden>“</span>
+              {splitSentences(heard).map((part, i) => (
+                <span key={i}>
+                  {i > 0 && " "}
+                  <bdi dir="auto">{part}</bdi>
+                </span>
+              ))}
+              <span aria-hidden>”</span>
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-[#475569]">{t("previewAuto")}</p>
+          )}
         </div>
       </div>
 
@@ -168,6 +191,28 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             ))}
           </div>
         </section>
+      )}
+    </div>
+  );
+}
+
+/** Under the sentence: what each variable becomes, and any brace that would be read aloud. */
+function GreetingChecks({ text, allowed }: { text: string; allowed: readonly string[] }) {
+  const t = useTranslations("PersonaBrick");
+  const used = variablesIn(text, allowed);
+  const bad = badBraces(text, allowed);
+  if (!used.length && !bad.length) return null;
+  return (
+    <div className="mt-1.5 space-y-1 text-xs">
+      {used.map((v) => (
+        <p key={v} className="text-[#475569]">
+          {t("variableExplained", { token: v, meaning: t(`variableMeaning.${v.replace(/[{}\s]/g, "")}`) })}
+        </p>
+      ))}
+      {bad.length > 0 && (
+        <p role="alert" className="font-semibold text-[#b91c1c]">
+          {t("badBraces", { tokens: bad.join(" ") })}
+        </p>
       )}
     </div>
   );
