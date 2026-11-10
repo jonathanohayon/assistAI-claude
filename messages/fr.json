@@ -2279,5 +2279,34 @@
       "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
     },
     "tryIt": "Essayer"
+  },
+  "PersonaBrick": {
+    "nameLabel": "Nom de l'agent",
+    "nameHint": "Le prénom que Tamara donne au téléphone. Facultatif.",
+    "nameHintOutbound": "Le prénom dit au téléphone, aussi utilisé dans la liste des agents.",
+    "namePlaceholder": "ex. Sarah",
+    "languageLabel": "Langue principale",
+    "greetingLabel": "Première phrase",
+    "greetingAuto": "Automatique",
+    "greetingCustom": "Ma phrase",
+    "greetingPlaceholder": "Bonjour, vous êtes bien chez…",
+    "previewTitle": "Les appelants entendront",
+    "previewTitleOutbound": "La personne appelée entendra (exemple)",
+    "previewAuto": "Tamara ouvre l'appel elle-même, selon le contexte.",
+    "disclosureLabel": "Annoncer que c'est une IA",
+    "disclosureOn": "Tamara dit dans son accueil qu'elle est une intelligence artificielle.",
+    "disclosureOff": "Les appelants entendront votre accueil tel quel, sans mention d'IA.",
+    "disclosureTextLabel": "Votre propre phrase",
+    "disclosureTextHint": "Facultatif. Vide : la phrase par défaut.",
+    "disclosureTextPlaceholder": "Je suis Tamara, une intelligence artificielle.",
+    "disclosureMustMentionAi": "Votre phrase doit dire que c'est une IA (par ex. « IA », « intelligence artificielle », « assistante virtuelle »).",
+    "disclosureTooLong": "Restez sous {max} caractères.",
+    "variablesTitle": "Variables de la première phrase",
+    "variablesHint": "Remplacées pour chaque personne appelée.",
+    "variable": {
+      "contactName": "le nom de la personne appelée",
+      "phoneNumber": "son numéro"
+    },
+    "insert": "Insérer"
   }
 }

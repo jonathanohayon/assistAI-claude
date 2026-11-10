@@ -44,6 +44,9 @@ import type {
   FormState,
 } from "./config/types";
 import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import { toInboundFields } from "@/components/bricks/persona/persona-ui";
+import { personaFromInbound } from "@/lib/persona/adapters";
+import type { Persona } from "@/lib/persona/contract";
 import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
@@ -111,6 +114,9 @@ export function ConfigForm({
   // Voice brick: full Voice for the screen; `voiceBase` = last loaded/saved,
   // the save sends only voicePatch(voiceBase, voice).
   const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
+  // Persona brick: kept as a Persona so "Automatic" keeps the typed sentence
+  // while editing (P3 will store it; today greetingInstructions = "").
+  const [persona, setPersona] = useState<Persona>(() => personaFromInbound(initial));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -607,7 +613,16 @@ export function ConfigForm({
                   <PersonaPanel
                     form={form}
                     update={update}
-                    primaryLanguages={primaryLanguages}
+                    persona={persona}
+                    onPersonaChange={(next) => {
+                      setPersona(next);
+                      // Until P3 stores `persona`, it saves through today's
+                      // fields: same request, same behaviour.
+                      setForm((prev) => ({ ...prev, ...toInboundFields(next) }));
+                      setDirty(true);
+                    }}
+                    isAdmin={isAdmin}
+                    asUserId={asUserId}
                     adminInheritablePreview={adminInheritablePreview}
                     planLabel={planLabel}
                     t={t}

@@ -3,6 +3,8 @@
 import NextLink from "next/link";
 import { useState } from "react";
 import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
+import { DEFAULT_PERSONA, type Persona } from "@/lib/persona/contract";
 import { CLIENT_DEFAULT_VOICE, type ClientVoice } from "@/components/bricks/voice/voice-client";
 
 type Gender = "f" | "m";
@@ -36,18 +38,13 @@ export function WowDashboard() {
   // Mock preview: the real Voice brick on local state (no API).
   const [voiceSettings, setVoiceSettings] = useState<ClientVoice>(CLIENT_DEFAULT_VOICE);
   const voice = voiceSettings.voiceId;
-  const [lang, setLang] = useState("fr");
-  const [inheritMode, setInheritMode] = useState<"inherit" | "custom">("inherit");
-  const [greeting, setGreeting] = useState(
-    "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?",
-  );
-  const [instructions, setInstructions] = useState(
-    `Tu es Sarah, secrétaire IA du salon Prestige Coiffure à Ashdod.
-
-Horaires : 9h-19h dimanche-jeudi. Fermé vendredi-samedi.
-Prestations : coupe 60min · couleur 90min · brushing 30min.
-Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
-  );
+  // Mock preview: the real Persona brick on local state (no API).
+  const [persona, setPersona] = useState<Persona>({
+    ...DEFAULT_PERSONA,
+    name: "Sarah",
+    greeting: { mode: "custom", text: "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?" },
+  });
+  const lang = persona.primaryLanguage;
   const [notifs, setNotifs] = useState<Record<NotifChannel, boolean>>({
     whatsapp: true,
     sms: false,
@@ -82,7 +79,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
       id: "persona",
       label: "Persona",
       tagline: "Qui elle est, comment elle parle.",
-      summary: `${inheritMode === "inherit" ? "Hérite admin" : "Personnalisé"} · ${LANGUAGES.find((l) => l.id === lang)?.flag ?? "—"}`,
+      summary: `${persona.name || "—"} · ${LANGUAGES.find((l) => l.id === lang)?.flag ?? "—"}`,
       accent: "from-[#be185d] to-[#ec4899]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -643,16 +640,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
                   <VoiceBrick value={voiceSettings} onChange={setVoiceSettings} isAdmin={false} />
                 )}
                 {activeTile === "persona" && (
-                  <PersonaPanel
-                    inheritMode={inheritMode}
-                    setInheritMode={setInheritMode}
-                    lang={lang}
-                    setLang={setLang}
-                    greeting={greeting}
-                    setGreeting={setGreeting}
-                    instructions={instructions}
-                    setInstructions={setInstructions}
-                  />
+                  <PersonaBrick value={persona} onChange={setPersona} kind="inbound" businessName="Prestige Coiffure" />
                 )}
                 {activeTile === "notifs" && (
                   <NotifsPanel
@@ -693,49 +681,6 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
         </div>
       </div>
     </div>
-  );
-}
-
-// ─── Sous-composants ────────────────────────────────────────────────────
-
-function RadioCard({
-  active,
-  onClick,
-  title,
-  desc,
-}: {
-  active: boolean;
-  onClick: () => void;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group flex items-start gap-2.5 rounded-xl border-2 p-3 text-left transition-all duration-300 ${
-        active
-          ? "border-[#0e7490] bg-white shadow-[0_4px_16px_-6px_rgba(14,116,144,0.35)]"
-          : "border-[#e2e8f0] bg-white/50 hover:-translate-y-0.5 hover:border-[#0e7490]/40 hover:bg-white/90"
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-          active
-            ? "border-[#0e7490] bg-[#0e7490]"
-            : "border-[#cbd5e1] bg-white group-hover:border-[#0e7490]/60"
-        }`}
-      >
-        {active && (
-          <span className="h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-[bounce-in_0.3s_ease-out]" />
-        )}
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-[#18181b]">{title}</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-[#475569]">{desc}</p>
-      </div>
-    </button>
   );
 }
 
@@ -1010,113 +955,6 @@ function AddTile({ delay = 0 }: { delay?: number }) {
       <p className="text-[11px] font-medium text-center">
         Bientôt
       </p>
-    </div>
-  );
-}
-
-function PersonaPanel({
-  inheritMode,
-  setInheritMode,
-  lang,
-  setLang,
-  greeting,
-  setGreeting,
-  instructions,
-  setInstructions,
-}: {
-  inheritMode: "inherit" | "custom";
-  setInheritMode: (v: "inherit" | "custom") => void;
-  lang: string;
-  setLang: (v: string) => void;
-  greeting: string;
-  setGreeting: (v: string) => void;
-  instructions: string;
-  setInstructions: (v: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Mode radio en haut */}
-      <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/50 to-white/30 p-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          Mode de configuration
-        </p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <RadioCard
-            active={inheritMode === "inherit"}
-            onClick={() => setInheritMode("inherit")}
-            title="Hériter du prompt admin"
-            desc="Reçoit les directives globales de ton plan (Pro)."
-          />
-          <RadioCard
-            active={inheritMode === "custom"}
-            onClick={() => setInheritMode("custom")}
-            title="Personnalisé"
-            desc="Utilise uniquement ta persona ci-dessous."
-          />
-        </div>
-      </div>
-
-      {/* Langue */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          Langue principale
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {LANGUAGES.map((l) => {
-            const active = l.id === lang;
-            return (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => setLang(l.id)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                  active
-                    ? "border-transparent bg-[#18181b] text-white shadow-md"
-                    : "border-[#e2e8f0] bg-white/60 text-[#18181b] hover:-translate-y-0.5 hover:border-[#0e7490]/40 hover:shadow-sm"
-                }`}
-              >
-                <span className="font-mono text-[10px] opacity-70">{l.flag}</span>
-                {l.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Greeting */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          Phrase d’accueil
-        </p>
-        <input
-          type="text"
-          value={greeting}
-          onChange={(e) => setGreeting(e.target.value)}
-          className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-2.5 text-sm text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
-        />
-        <p className="mt-1.5 text-[11px] text-[#475569]">
-          Première phrase prononcée à chaque appel. Garde-la courte.
-        </p>
-      </div>
-
-      {/* Instructions */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          Instructions
-        </p>
-        <textarea
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          rows={9}
-          disabled={inheritMode === "inherit"}
-          className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-3 font-mono text-xs leading-relaxed text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15 disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <p className="mt-1.5 text-[11px] text-[#475569]">
-          {inheritMode === "inherit"
-            ? "Désactivé : les directives admin sont appliquées. Bascule sur « Personnalisé » pour éditer."
-            : "Markdown supporté. Décrivez identité, horaires, prestations, ton, workflows."}
-        </p>
-      </div>
     </div>
   );
 }

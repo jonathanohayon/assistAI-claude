@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
+import type { Persona } from "@/lib/persona/contract";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
 
@@ -19,15 +21,11 @@ import { useVoiceLabel } from "@/lib/use-voice-label";
 type TileId = "voice" | "persona" | "business" | "notifs" | "channels";
 type TileDef = { id: TileId; label: string; tagline: string; summary: string; accent: string; icon: React.ReactNode };
 
-const LANGS: ReadonlyArray<[string, string]> = [
-  ["fr", "Français"],
-  ["he", "עברית"],
-  ["en", "English"],
-];
-
 export function AgentEditor({
   draft,
   set,
+  persona,
+  onPersonaChange,
   voice,
   onVoiceChange,
   isAdmin,
@@ -35,6 +33,8 @@ export function AgentEditor({
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
+  persona: Persona;
+  onPersonaChange: (p: Persona) => void;
   voice: ClientVoice;
   onVoiceChange: (v: ClientVoice) => void;
   isAdmin: boolean;
@@ -93,17 +93,6 @@ export function AgentEditor({
     <div className="space-y-4">
       <AgentEditorStyles />
 
-      {/* Nom de l'agent — UNIQUE source : c'est à la fois le nom prononcé par
-       *  l'agent au téléphone ET l'étiquette affichée dans la liste/les
-       *  campagnes. (Le champ `name` en base est mis = agentName côté serveur.) */}
-      <Field label={t("agentNameLabel")} hint={t("agentNameHint")}>
-        <input
-          className={inputCls}
-          value={draft.agentName}
-          placeholder={t("agentNamePlaceholder")}
-          onChange={(e) => set({ agentName: e.target.value })}
-        />
-      </Field>
 
       {/* Grille de tuiles (même look que les appels entrants) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -171,7 +160,25 @@ export function AgentEditor({
                 }
               />
             )}
-            {active.id === "persona" && <PersonaPanel draft={draft} set={set} t={t} />}
+            {active.id === "persona" && (
+              <div className="flex flex-col gap-5">
+                <PersonaBrick
+                  value={persona}
+                  onChange={onPersonaChange}
+                  kind="outbound"
+                  isAdmin={isAdmin}
+                  asUserId={asUserId ?? null}
+                />
+                <Field label={t("instructionsLabel")} hint={t("instructionsHint")}>
+                  <textarea
+                    className={`${inputCls} min-h-32 resize-y`}
+                    value={draft.instructions}
+                    placeholder={t("instructionsPlaceholder")}
+                    onChange={(e) => set({ instructions: e.target.value })}
+                  />
+                </Field>
+              </div>
+            )}
             {active.id === "business" && <BusinessPanel draft={draft} set={set} t={t} />}
             {active.id === "notifs" && <NotifsPanel draft={draft} set={set} t={t} />}
             {active.id === "channels" && <ChannelsPanel draft={draft} set={set} t={t} asUserId={asUserId} />}
@@ -234,45 +241,6 @@ function Tile({
         <span aria-hidden className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#6366f1] motion-safe:animate-pulse" />
       )}
     </button>
-  );
-}
-
-// ─── Panneau Persona ────────────────────────────────────────────────────────
-
-function PersonaPanel({
-  draft, set, t,
-}: {
-  draft: OutboundAgentDraft;
-  set: (patch: Partial<OutboundAgentDraft>) => void;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#be185d]">{t("languageLabel")}</p>
-        <div className="flex flex-wrap gap-2">
-          {LANGS.map(([code, label]) => {
-            const on = draft.language === code;
-            return (
-              <button
-                key={code}
-                type="button"
-                onClick={() => set({ language: code })}
-                className={`cursor-pointer rounded-full px-4 py-1.5 text-[13px] font-semibold transition ${on ? "bg-[#18181b] text-white shadow-sm" : "border border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#be185d]/40"}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <Field label={t("greetingLabel")} hint={t("greetingHint")}>
-        <input className={inputCls} value={draft.greeting} placeholder={t("greetingPlaceholder")} onChange={(e) => set({ greeting: e.target.value })} />
-      </Field>
-      <Field label={t("instructionsLabel")} hint={t("instructionsHint")}>
-        <textarea className={`${inputCls} min-h-32 resize-y`} value={draft.instructions} placeholder={t("instructionsPlaceholder")} onChange={(e) => set({ instructions: e.target.value })} />
-      </Field>
-    </div>
   );
 }
 
