@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
+import { currentCompanySheet } from "@/lib/knowledge/store";
 import { currentInboundPersona } from "@/lib/persona/store";
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
 import {
@@ -153,6 +154,8 @@ export default async function AdminTenantPage({
           // the form fills in defaults in the browser.
           // Persona as stored (P3), else derived from the legacy columns.
           personaConfig: currentInboundPersona(config.personaConfig, config),
+          // The account's company sheet (S4), else built from the business JSON.
+          companySheet: currentCompanySheet(target.companySheet, config.business),
           voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), true) as ServedVoice,
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,

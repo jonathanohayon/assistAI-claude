@@ -14,7 +14,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   BusinessConfig,
@@ -99,11 +99,18 @@ export function WebsiteScanWizard({
   onClose,
   onApply,
   existingBusiness,
+  initialUrl,
+  asUserId,
 }: {
   open: boolean;
   onClose: () => void;
-  onApply: (business: BusinessConfig, primaryLanguage: string | null) => void;
+  /** `url` = the site actually scanned (recorded as a source by the caller). */
+  onApply: (business: BusinessConfig, primaryLanguage: string | null, url: string) => void;
   existingBusiness: BusinessConfig;
+  /** Given: the scan starts on open with this address (no URL step). */
+  initialUrl?: string;
+  /** Admin acting for a tenant: the scan runs in the tenant's scope. */
+  asUserId?: string | null;
 }) {
   const t = useTranslations("WebsiteScan");
   const tDays = useTranslations("DashboardConfig");
@@ -206,8 +213,9 @@ export function WebsiteScanWizard({
     }
   }, []);
 
-  const startScan = useCallback(async () => {
-    if (!url.trim()) return;
+  const startScan = useCallback(async (target: string = url) => {
+    if (!target.trim()) return;
+    setUrl(target);
     setFatalError(null);
     setStep("scanning");
     setAgentStatus({
@@ -222,10 +230,11 @@ export function WebsiteScanWizard({
     abortRef.current = controller;
     let gotResult = false;
     try {
-      const res = await fetch("/api/dashboard/scan-website", {
+      const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+      const res = await fetch(`/api/dashboard/scan-website${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: target.trim() }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
@@ -269,7 +278,25 @@ export function WebsiteScanWizard({
     } finally {
       abortRef.current = null;
     }
-  }, [url, existingBusiness, handleEvent, t]);
+  }, [url, existingBusiness, handleEvent, t, asUserId]);
+
+  // Opened with an address: start right away (the brick's "Learn" button).
+  // Deferred to a callback: starting sets state.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      started.current = false;
+      return;
+    }
+    if (!initialUrl?.trim() || started.current) return;
+    // Flag set when it really starts: a cancelled timer (StrictMode's
+    // mount → cleanup → mount) must not count as started.
+    const id = setTimeout(() => {
+      started.current = true;
+      void startScan(initialUrl);
+    });
+    return () => clearTimeout(id);
+  }, [open, initialUrl, startScan]);
 
   // ── Édition du draft en revue ──────────────────────────────────────────
   const patchDraft = useCallback((partial: Partial<BusinessConfig>) => {
@@ -330,6 +357,7 @@ export function WebsiteScanWizard({
     onApply(
       finalBusiness,
       include.language && suggestedLang ? suggestedLang : null,
+      url.trim(),
     );
     close();
   }, [
@@ -340,6 +368,7 @@ export function WebsiteScanWizard({
     suggestedLang,
     onApply,
     close,
+    url,
   ]);
 
   if (!open) return null;
@@ -410,7 +439,7 @@ export function WebsiteScanWizard({
                 <InputStep
                   url={url}
                   setUrl={setUrl}
-                  onStart={startScan}
+                  onStart={() => void startScan()}
                   error={fatalError}
                   t={t}
                 />

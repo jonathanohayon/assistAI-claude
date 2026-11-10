@@ -1,112 +1,19 @@
 "use client";
 
 /**
- * Tuile "Business" : structure métier du tenant. Assemble dans l'ordre :
- * - bouton + wizard "Remplir depuis mon site web" (WebsiteScanWizard)
- * - IdentitySection (nom, tagline, email + rappels téléphone/langue)
- * - CentresSection (centres + horaires, voir centres-section.tsx)
- * - CentresRulesSection (règles centres/jours STRICT injectées au prompt)
- * - ServicesSection (soins & tarifs, voir services-section.tsx)
- * - KnowledgeBaseSection (base de connaissances vente/expertise)
- *
- * Utilisé par : config-form.tsx (workspace de la tuile `business`).
+ * Company-sheet sections, reused by the Knowledge brick
+ * (components/bricks/knowledge/KnowledgeBrick.tsx), which assembles them with
+ * the website scan, the FAQ and the sources:
+ * - IdentitySection (name, tagline, email; optional phone/language reminders)
+ * - CentresRulesSection (strict location/day rules injected in the prompt)
+ * - KnowledgeBaseSection (free notes: expertise, selling points)
+ * Locations and services live in centres-section.tsx / services-section.tsx.
  */
 
 import { useState } from "react";
 
-import { WebsiteScanWizard } from "../website-scan-wizard";
-import { CentresSection } from "./centres-section";
 import { EMAIL_RE } from "./formatting";
-import { ServicesSection } from "./services-section";
-import type {
-  BusinessConfig,
-  FormState,
-  FormUpdater,
-  Translator,
-} from "./types";
-
-export function BusinessPanel({
-  form,
-  update,
-  t,
-}: {
-  form: FormState;
-  update: FormUpdater;
-  t: Translator;
-}) {
-  const business = form.business;
-  const patch = (partial: Partial<BusinessConfig>) =>
-    update("business", { ...business, ...partial });
-
-  const [scanOpen, setScanOpen] = useState(false);
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Auto-remplissage depuis le site web du tenant (plusieurs sous-agents). */}
-      <button
-        type="button"
-        onClick={() => setScanOpen(true)}
-        className="group flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[#c4b5fd] bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] px-4 py-3.5 text-left transition hover:border-[#a78bfa] hover:shadow-sm"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white shadow-sm">
-            ✨
-          </span>
-          <span>
-            <span className="block text-sm font-extrabold tracking-tight text-[#4c1d95]">
-              {t("scanWebsiteTitle")}
-            </span>
-            <span className="block text-[12px] text-[#7c3aed]/80">
-              {t("scanWebsiteSubtitle")}
-            </span>
-          </span>
-        </span>
-        <span className="shrink-0 rounded-lg bg-white/70 px-3 py-1.5 text-[12px] font-bold text-[#7c3aed] transition group-hover:bg-white">
-          {t("scanWebsiteCta")}
-        </span>
-      </button>
-
-      <WebsiteScanWizard
-        open={scanOpen}
-        onClose={() => setScanOpen(false)}
-        existingBusiness={business}
-        onApply={(nextBusiness, primaryLanguage) => {
-          update("business", nextBusiness);
-          if (primaryLanguage) update("primaryLanguage", primaryLanguage);
-        }}
-      />
-
-      <IdentitySection
-        identity={business.identity}
-        ownerWhatsapp={form.ownerWhatsapp}
-        primaryLanguage={form.primaryLanguage}
-        onChange={(identity) => patch({ identity })}
-        t={t}
-      />
-      <CentresSection
-        centres={business.centres}
-        onChange={(centres) => patch({ centres })}
-        t={t}
-      />
-      <CentresRulesSection
-        value={business.centresRules ?? ""}
-        onChange={(centresRules) => patch({ centresRules })}
-        t={t}
-      />
-      <ServicesSection
-        services={business.services}
-        centres={business.centres}
-        onChange={(services) => patch({ services })}
-        t={t}
-      />
-      <KnowledgeBaseSection
-        value={business.knowledgeBase ?? ""}
-        onChange={(knowledgeBase) => patch({ knowledgeBase })}
-        t={t}
-      />
-    </div>
-  );
-}
+import type { BusinessConfig, Translator } from "./types";
 
 // ─── CentresRules ────────────────────────────────────────────────────────
 
@@ -123,7 +30,7 @@ Si la cliente ne précise pas le centre, propose celui qui correspond au jour qu
 ### Vérification
 Avant CHAQUE appel à check_availability, calcule mentalement le jour de la semaine de la date demandée et vérifie qu'il correspond au bon centre. Si non, propose la prochaine date du bon jour.`;
 
-function CentresRulesSection({
+export function CentresRulesSection({
   value,
   onChange,
   t,
@@ -248,7 +155,7 @@ const KNOWLEDGE_BASE_MAX = 6000;
 // Base de connaissances vente/expertise — texte libre (markdown) rempli par le
 // scan du site (corps de métier, descriptions détaillées, détails techniques,
 // arguments de vente) et éditable ici. Injecté dans le system prompt.
-function KnowledgeBaseSection({
+export function KnowledgeBaseSection({
   value,
   onChange,
   t,
@@ -324,7 +231,7 @@ function KnowledgeBaseSection({
 
 // ─── Identity ────────────────────────────────────────────────────────────
 
-function IdentitySection({
+export function IdentitySection({
   identity,
   ownerWhatsapp,
   primaryLanguage,
@@ -332,8 +239,9 @@ function IdentitySection({
   t,
 }: {
   identity: BusinessConfig["identity"];
-  ownerWhatsapp: string;
-  primaryLanguage: string;
+  /** Receptionist screen only: read-only reminders of where these are edited. */
+  ownerWhatsapp?: string;
+  primaryLanguage?: string;
   onChange: (identity: BusinessConfig["identity"]) => void;
   t: Translator;
 }) {
@@ -436,6 +344,7 @@ function IdentitySection({
           )}
         </IdentityField>
 
+        {primaryLanguage !== undefined && (
         <div className="mt-1 grid grid-cols-1 gap-2 rounded-xl border border-[#e2e8f0] bg-white/60 px-3.5 py-3 sm:grid-cols-2">
           <div className="flex items-center gap-2 text-[11px] text-[#475569]">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-[#0e7490]" aria-hidden>
@@ -458,6 +367,7 @@ function IdentitySection({
             </span>
           </div>
         </div>
+        )}
       </div>
     </section>
   );

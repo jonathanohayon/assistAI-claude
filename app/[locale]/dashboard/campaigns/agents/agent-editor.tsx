@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl";
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
 import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
+import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
+import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
+import type { SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
+import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
 
-import { Field, inputCls } from "../_ui";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 // Éditeur d'agent sortant — MÊME système de tuiles + panneaux que la config
@@ -30,6 +33,11 @@ export function AgentEditor({
   onVoiceChange,
   isAdmin,
   asUserId,
+  sheet,
+  onSheetChange,
+  sheetIssues,
+  outboundUsesCompanySheet,
+  savedKey,
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
@@ -39,8 +47,17 @@ export function AgentEditor({
   onVoiceChange: (v: ClientVoice) => void;
   isAdmin: boolean;
   asUserId?: string;
+  /** The ACCOUNT's company sheet (shared by every agent), null while loading. */
+  sheet: CompanySheet | null;
+  onSheetChange: (next: CompanySheet) => void;
+  sheetIssues: SheetIssue[];
+  /** Server-told, per account: does the outbound agent read the sheet (S5)? */
+  outboundUsesCompanySheet: boolean;
+  /** Changes after each save (the level-3 preview reloads). */
+  savedKey?: number;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const tKnowledge = useTranslations("KnowledgeBrick");
   const voiceLabel = useVoiceLabel();
   const [activeTile, setActiveTile] = useState<TileId | null>("voice");
 
@@ -57,7 +74,7 @@ export function AgentEditor({
       id: "business",
       label: t("sectionBusiness"),
       tagline: t("agentTagBusiness"),
-      summary: draft.knowledge ? `${Math.round(draft.knowledge.length / 100) / 10}k car.` : "—",
+      summary: sheet?.identity.name || "—",
       accent: "from-[#f59e0b] to-[#b45309]",
       icon: <IconBuilding />,
     },
@@ -169,17 +186,36 @@ export function AgentEditor({
                   isAdmin={isAdmin}
                   asUserId={asUserId ?? null}
                 />
-                <Field label={t("instructionsLabel")} hint={t("instructionsHint")}>
-                  <textarea
-                    className={`${inputCls} min-h-32 resize-y`}
-                    value={draft.instructions}
-                    placeholder={t("instructionsPlaceholder")}
-                    onChange={(e) => set({ instructions: e.target.value })}
-                  />
-                </Field>
               </div>
             )}
-            {active.id === "business" && <BusinessPanel draft={draft} set={set} t={t} />}
+            {active.id === "business" &&
+              (sheet ? (
+                <KnowledgeBrick
+                  kind="outbound"
+                  sheet={sheet}
+                  onSheetChange={onSheetChange}
+                  issues={sheetIssues}
+                  instructions={draft.instructions}
+                  onInstructionsChange={(instructions) => set({ instructions })}
+                  outboundUsesCompanySheet={outboundUsesCompanySheet}
+                  agentLearned={{
+                    text: draft.knowledge,
+                    sources: draft.knowledgeSources ?? [],
+                    language: draft.language,
+                    onChange: ({ text, sources }) => set({ knowledge: text, knowledgeSources: sources }),
+                  }}
+                  isAdmin={isAdmin}
+                  asUserId={asUserId ?? null}
+                  devPanel={
+                    // Admin only for now; a saved agent (the call reads the base).
+                    isAdmin && draft.id ? <SessionPreview asUserId={asUserId ?? null} agentId={draft.id} refreshKey={savedKey} /> : undefined
+                  }
+                />
+              ) : (
+                <p className="text-sm text-[#475569]" aria-busy="true">
+                  {tKnowledge("loading")}
+                </p>
+              ))}
             {active.id === "notifs" && <NotifsPanel draft={draft} set={set} t={t} />}
             {active.id === "channels" && <ChannelsPanel draft={draft} set={set} t={t} asUserId={asUserId} />}
           </div>
@@ -241,70 +277,6 @@ function Tile({
         <span aria-hidden className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#6366f1] motion-safe:animate-pulse" />
       )}
     </button>
-  );
-}
-
-// ─── Panneau Business : apprentissage site web → fiche connaissance ─────────
-
-function BusinessPanel({
-  draft, set, t,
-}: {
-  draft: OutboundAgentDraft;
-  set: (patch: Partial<OutboundAgentDraft>) => void;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const [urls, setUrls] = useState((draft.knowledgeSources ?? []).join("\n"));
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const learn = async () => {
-    const list = urls.split(/\r?\n|[,;]/).map((u) => u.trim()).filter(Boolean);
-    if (!list.length || scanning) return;
-    setScanning(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/dashboard/campaigns/learn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: list, language: draft.language || "fr" }),
-      });
-      if (!res.ok) { setError(t("knowledgeError")); return; }
-      const data = (await res.json()) as { knowledge?: string; sources?: string[] };
-      if (!data.knowledge) { setError(t("knowledgeError")); return; }
-      set({ knowledge: data.knowledge, knowledgeSources: data.sources ?? list });
-    } catch {
-      setError(t("knowledgeError"));
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="text-[12px] text-[#475569]">{t("knowledgeHint")}</p>
-      <Field label={t("knowledgeUrlsLabel")}>
-        <textarea className={`${inputCls} min-h-16 resize-y font-mono text-[12px]`} value={urls} placeholder={t("knowledgeUrlsPlaceholder")} onChange={(e) => setUrls(e.target.value)} />
-      </Field>
-      <button
-        type="button"
-        onClick={learn}
-        disabled={scanning}
-        className="flex w-fit cursor-pointer items-center gap-2 rounded-xl bg-[#fef3c7] px-3 py-2 text-[12px] font-bold text-[#b45309] transition hover:bg-[#fde68a] disabled:opacity-60"
-      >
-        {scanning ? (
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#b45309] border-t-transparent" />
-        ) : (
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" /></svg>
-        )}
-        {scanning ? t("knowledgeScanning") : t("knowledgeScanCta")}
-      </button>
-      {error && <p className="text-[12px] text-[#dc2626]">{error}</p>}
-      {draft.knowledge && (
-        <Field label={t("knowledgeLabel")}>
-          <textarea className={`${inputCls} min-h-40 resize-y`} value={draft.knowledge} placeholder={t("knowledgePlaceholder")} onChange={(e) => set({ knowledge: e.target.value })} />
-        </Field>
-      )}
-    </div>
   );
 }
 

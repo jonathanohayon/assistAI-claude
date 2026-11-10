@@ -31,7 +31,7 @@ import { PromptPreview } from "./prompt-preview";
 import { UpsellModal } from "./campaigns/upsell-modal";
 import type { PlanFeatures } from "@/lib/plan-features";
 
-import { BusinessPanel } from "./config/business-panel";
+import { InheritAdminField } from "./config/inherit-admin-field";
 import { ChannelsPanel } from "./config/channels-panel";
 import { CONFIG_FORM_CSS } from "./config/config-form-css";
 import { HeroSection } from "./config/hero-section";
@@ -56,6 +56,11 @@ import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
+import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
+import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
+import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
+import type { CompanySheet } from "@/lib/knowledge/contract";
+import { PERSONA_LANGUAGES } from "@/lib/persona/contract";
 
 // ─── Ordre des tuiles (préférence de layout perso, par navigateur) ───────
 // L'ordre des tuiles est purement cosmétique → localStorage suffit (pas de
@@ -114,6 +119,7 @@ export function ConfigForm({
 }) {
   const t = useTranslations("DashboardConfig");
   const tPersona = useTranslations("PersonaBrick");
+  const tKnowledge = useTranslations("KnowledgeBrick");
   const voiceLabel = useVoiceLabel();
   const locale = useLocale();
 
@@ -128,6 +134,12 @@ export function ConfigForm({
   const [persona, setPersona] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
   const [personaBase, setPersonaBase] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
+  // Knowledge brick: the ACCOUNT's company sheet, saved through its own
+  // endpoint (sheetPatch vs the last loaded/saved). `form.business` mirrors
+  // it for the rest of the screen and is no longer sent with the config.
+  const [sheet, setSheet] = useState<CompanySheet>(() => initial.companySheet ?? sheetFromBusiness(initial.business));
+  const [sheetBase, setSheetBase] = useState<CompanySheet>(() => initial.companySheet ?? sheetFromBusiness(initial.business));
+  const [issues, setIssues] = useState<SheetIssue[]>([]);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -280,15 +292,41 @@ export function ConfigForm({
       return;
     }
     startTransition(async () => {
+      // 1. The company sheet (account-level), when it changed. A refused
+      //    sheet stops the save: nothing else is sent, issues shown inline.
+      const changes = sheetPatch(sheetBase, sheet);
+      if (Object.keys(changes).length > 0) {
+        const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+        const sres = await fetch(`/api/dashboard/company-sheet${qs}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companySheet: changes }),
+        });
+        const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[] } | null;
+        if (!sres.ok || !sdata?.companySheet) {
+          setIssues(sheetIssues(sdata?.fields ?? [], sheet));
+          setError(tKnowledge("issuesTitle"));
+          return;
+        }
+        // The server's normalized sheet is the truth (trimmed, valid hours).
+        setIssues([]);
+        setSheet(sdata.companySheet);
+        setSheetBase(sdata.companySheet);
+        setForm((prev) => ({ ...prev, business: businessFromSheet(sdata.companySheet!) }));
+      }
+
+      // 2. The agent's config — without `business`, which the sheet owns.
       const endpoint = asUserId
         ? `/api/admin/configs/${asUserId}`
         : "/api/dashboard/config";
+      const { business: _sheetOwned, ...agentFields } = form;
+      void _sheetOwned;
       const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           withPersonaConfig(
-            withVoiceConfig(form, [], voicePatch(voiceBase, voice)),
+            withVoiceConfig(agentFields, [], voicePatch(voiceBase, voice)),
             LEGACY_INBOUND_PERSONA_FIELDS,
             personaPatch(personaBase, persona),
           ),
@@ -650,16 +688,53 @@ export function ConfigForm({
                     }}
                     isAdmin={isAdmin}
                     asUserId={asUserId}
-                    adminInheritablePreview={adminInheritablePreview}
-                    planLabel={planLabel}
-                    t={t}
                   />
                 )}
                 {activeTile === "notifs" && (
                   <NotifsPanel form={form} update={update} t={t} />
                 )}
                 {activeTile === "business" && (
-                  <BusinessPanel form={form} update={update} t={t} />
+                  <KnowledgeBrick
+                    kind="inbound"
+                    sheet={sheet}
+                    onSheetChange={(next) => {
+                      setSheet(next);
+                      setIssues([]);
+                      setForm((prev) => ({ ...prev, business: businessFromSheet(next) }));
+                      setDirty(true);
+                    }}
+                    issues={issues}
+                    instructions={form.instructions}
+                    onInstructionsChange={(v) => update("instructions", v)}
+                    reminders={{ ownerWhatsapp: form.ownerWhatsapp, primaryLanguage: persona.primaryLanguage }}
+                    onSuggestedLanguage={(lang) => {
+                      // The scan's language goes through the persona (P3).
+                      if (!(PERSONA_LANGUAGES as readonly string[]).includes(lang)) return;
+                      const next = { ...persona, primaryLanguage: lang as Persona["primaryLanguage"] };
+                      setPersona(next);
+                      setForm((prev) => ({ ...prev, ...personaToInboundColumns(next) }));
+                      setDirty(true);
+                    }}
+                    isAdmin={isAdmin}
+                    asUserId={asUserId ?? null}
+                    devPanel={
+                      // Admin only (tenants see nothing): the inheritance of
+                      // the plan's shared directives, and the full
+                      // instructions the call receives.
+                      isAdmin ? (
+                        <div className="flex flex-col gap-4">
+                          <InheritAdminField
+                            value={form.inheritAdminGlobals}
+                            onChange={(v) => update("inheritAdminGlobals", v)}
+                            inheritedPreview={adminInheritablePreview}
+                            planLabel={planLabel}
+                            t={t}
+                          />
+                          <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
+                        </div>
+                      ) : undefined
+                    }
+                  />
                 )}
                 {activeTile === "channels" && (
                   <ChannelsPanel t={t} asUserId={asUserId} />
