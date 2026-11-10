@@ -3,17 +3,33 @@
 
 import assert from "node:assert/strict";
 
-import { CALL_ME_COOLDOWN_MS, callMeAllowed, callMeTarget } from "../../lib/call-me";
+import { CALL_ME_COOLDOWN_MS, callMeAccess, callMeAllowed, callMeAllowedTargets, callMeMode, callMeTarget } from "../../lib/call-me";
 import { CALL_ME_ROOM_PREFIX, callMeRoomName } from "../../lib/campaigns/dial";
 
-// target: body number, else the owner's WhatsApp; E.164 only
-assert.equal(callMeTarget("+972500000000", "+972500000001"), "+972500000000");
-assert.equal(callMeTarget(undefined, "+972500000001"), "+972500000001");
-assert.equal(callMeTarget("  ", "+972500000001"), "+972500000001");
-assert.equal(callMeTarget("+972 50-000 0000", null), "+972500000000", "spaces/dashes stripped");
-assert.equal(callMeTarget("0500000000", null), null, "local format refused (E.164 required)");
-assert.equal(callMeTarget(undefined, ""), null);
-assert.equal(callMeTarget(42, null), null);
+// target: ONLY the account's own numbers (owner WhatsApp, transfer number)
+const acct = { ownerWhatsapp: "+972500000001", transferNumber: "+97230000000" };
+assert.equal(callMeTarget(undefined, acct), "+972500000001", "default = owner WhatsApp");
+assert.equal(callMeTarget("  ", acct), "+972500000001");
+assert.equal(callMeTarget("+97230000000", acct), "+97230000000", "transfer number allowed");
+assert.equal(callMeTarget("+972 50-000 0001", acct), "+972500000001", "spaces/dashes stripped");
+assert.equal(callMeTarget("+972500000009", acct), null, "free-form number refused");
+assert.equal(callMeTarget("0500000001", acct), null, "local format refused");
+assert.equal(callMeTarget(undefined, { ownerWhatsapp: "", transferNumber: "" }), null, "no number on the account");
+assert.equal(callMeTarget(undefined, { ownerWhatsapp: "", transferNumber: "+97230000000" }), null, "default is the owner's WhatsApp only");
+assert.equal(callMeTarget(42, acct), null);
+assert.deepEqual(callMeAllowedTargets({ ownerWhatsapp: "+972500000001", transferNumber: "+972500000001" }), ["+972500000001"]);
+// server-side switch: OFF for everyone by default (admins included)
+assert.equal(callMeMode({}), "off");
+assert.equal(callMeMode({ CALL_ME: "" }), "off");
+assert.equal(callMeMode({ CALL_ME: "yes" }), "off", "unknown value = off");
+assert.equal(callMeMode({ CALL_ME: " Admin " }), "admin");
+assert.equal(callMeMode({ CALL_ME: "all" }), "all");
+assert.equal(callMeAccess("off", true), "call_me_disabled", "off: admins refused too");
+assert.equal(callMeAccess("off", false), "call_me_disabled");
+assert.equal(callMeAccess("admin", true), null);
+assert.equal(callMeAccess("admin", false), "admin_only");
+assert.equal(callMeAccess("all", false), null);
+assert.equal(callMeAccess("all", true), null);
 
 // cooldown: one call-back every 2 minutes
 const now = new Date("2026-11-10T20:00:00Z");
