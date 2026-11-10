@@ -1,3 +1,4 @@
+import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
 import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -81,16 +82,24 @@ export async function GET(req: NextRequest) {
     framings,
   );
   // Spoken languages (Persona P4): empty list / switch off = today's text.
-  const instructions = withOutboundLanguages(
+  const instructionsWithLanguages = withOutboundLanguages(
     baseInstructions,
     persona.language || "fr",
     effectiveSpokenLanguages(agent?.personaConfig),
   );
-  const greetingInstructions = buildCampaignGreeting({ persona }, {
+  const baseGreeting = buildCampaignGreeting({ persona }, {
     contactName: contact.contactName,
     phoneNumber: contact.phoneNumber,
     vars: contact.vars,
   });
+  // Outbound AI disclosure (Persona P5), OFF unless enabled on the agent
+  // (admins only for now). Off = today's greeting and instructions.
+  const disclosure = effectiveOutboundDisclosure(agent?.personaConfig);
+  const greetingInstructions = outboundGreetingWithDisclosure(baseGreeting, disclosure, {
+    language: persona.language || "fr",
+    agentName: (persona.agentName || "Sarah").trim(),
+  });
+  const instructions = withOutboundDisclosureDirective(instructionsWithLanguages, baseGreeting, disclosure);
 
   // Réglages voix dérivés de l'agent (mêmes sliders que l'agent entrant).
   const tuning = personalityToRealtime(
