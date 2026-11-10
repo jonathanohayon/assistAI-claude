@@ -44,6 +44,10 @@ export const users = pgTable("users", {
   // Account display preference: show level-3 ("developer") settings in the
   // dashboard. Display only — admin-only fields stay admin-only whatever it says.
   developerMode: boolean("developer_mode").notNull().default(false),
+  // Knowledge contract (S4): the ACCOUNT's companySheet, shared by all its
+  // agents (lib/knowledge/contract.ts). Written alongside agent_configs.business,
+  // which stays the calls' read source. NULL = built lazily from business.
+  companySheet: jsonb("company_sheet"),
   // Stamp posé par le cron trial-cleanup quand l'email d'alerte 2h-avant
   // a été envoyé, pour idempotence (un seul warning par trial). Reste null
   // tant que pas envoyé OU si le user upgrade avant la fenêtre warning.
