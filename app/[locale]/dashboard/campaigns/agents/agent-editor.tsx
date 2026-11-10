@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
-import { VOICE_GENDER } from "@/lib/voice-tuning";
+import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
 
 import { Field, inputCls } from "../_ui";
@@ -27,27 +28,28 @@ const LANGS: ReadonlyArray<[string, string]> = [
 export function AgentEditor({
   draft,
   set,
-  voices,
+  voice,
+  onVoiceChange,
+  isAdmin,
   asUserId,
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
-  voices: readonly string[];
+  voice: ClientVoice;
+  onVoiceChange: (v: ClientVoice) => void;
+  isAdmin: boolean;
   asUserId?: string;
 }) {
   const t = useTranslations("DashboardCampaigns");
-  const tc = useTranslations("DashboardConfig");
   const voiceLabel = useVoiceLabel();
   const [activeTile, setActiveTile] = useState<TileId | null>("voice");
-
-  const vitesse = draft.personality.vitesse ?? 5;
 
   const TILES: TileDef[] = [
     {
       id: "voice",
       label: t("sectionVoice"),
       tagline: t("agentTagVoice"),
-      summary: `${voiceLabel(draft.voice)} · ${vitesse}/10`,
+      summary: voiceLabel(voice.voiceId),
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: <IconMic />,
     },
@@ -148,7 +150,27 @@ export function AgentEditor({
             </button>
           </header>
           <div className="px-5 py-6 sm:px-7">
-            {active.id === "voice" && <VoicePanel draft={draft} set={set} voices={voices} tc={tc} />}
+            {active.id === "voice" && (
+              <VoiceBrick
+                value={voice}
+                onChange={onVoiceChange}
+                isAdmin={isAdmin}
+                asUserId={asUserId ?? null}
+                primaryLanguage={draft.language}
+                testAction={
+                  draft.id
+                    ? {
+                        label: "tryIt",
+                        onClick: () => {
+                          const el = document.getElementById("agent-live-test");
+                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          el?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+                        },
+                      }
+                    : undefined
+                }
+              />
+            )}
             {active.id === "persona" && <PersonaPanel draft={draft} set={set} t={t} />}
             {active.id === "business" && <BusinessPanel draft={draft} set={set} t={t} />}
             {active.id === "notifs" && <NotifsPanel draft={draft} set={set} t={t} />}
@@ -160,7 +182,7 @@ export function AgentEditor({
       {/* Tester en live — même panneau que les appels entrants. Disponible une
        *  fois l'agent enregistré (le worker lit la config depuis la base). */}
       {draft.id ? (
-        <div className="overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 p-4 shadow-[0_4px_24px_-8px_rgba(99,102,241,0.18)] backdrop-blur-xl sm:p-5">
+        <div id="agent-live-test" className="scroll-mt-24 overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 p-4 shadow-[0_4px_24px_-8px_rgba(99,102,241,0.18)] backdrop-blur-xl sm:p-5">
           <LiveTestPanelLK dirty={false} asUserId={asUserId} agentId={draft.id} />
         </div>
       ) : (
@@ -212,162 +234,6 @@ function Tile({
         <span aria-hidden className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#6366f1] motion-safe:animate-pulse" />
       )}
     </button>
-  );
-}
-
-// ─── Panneau Voix : voice card-grid + bruit + 3 sliders (copie inbound) ──────
-
-function VoicePanel({
-  draft,
-  set,
-  voices,
-  tc,
-}: {
-  draft: OutboundAgentDraft;
-  set: (patch: Partial<OutboundAgentDraft>) => void;
-  voices: readonly string[];
-  tc: ReturnType<typeof useTranslations>;
-}) {
-  const voiceLabel = useVoiceLabel();
-  const setP = (patch: Partial<OutboundAgentDraft["personality"]>) =>
-    set({ personality: { ...draft.personality, ...patch } });
-  const nrl = draft.noiseReductionLevel ?? 8;
-  // No supplier names in tenant UI, so only the VAD slider keeps a badge.
-  const sliders: { key: "vitesse" | "creativite" | "reactivite"; badge?: string }[] = [
-    { key: "vitesse" },
-    { key: "creativite" },
-    { key: "reactivite", badge: "VAD" },
-  ];
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Voice picker avec genre */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          {tc("voiceLabel")}
-        </p>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-          {voices.map((v) => {
-            const isF = (VOICE_GENDER[v] ?? "m") === "f";
-            const isActive = v === draft.voice;
-            const activeGradient = isF ? "from-[#be185d] to-[#ec4899]" : "from-[#06b6d4] to-[#0e7490]";
-            const inactiveHover = isF ? "hover:border-[#be185d]/40" : "hover:border-[#0e7490]/40";
-            const inactivePlay = isF ? "bg-[#fdf2f8] text-[#be185d]" : "bg-[#ecfeff] text-[#0e7490]";
-            const inactiveBadge = isF ? "text-[#be185d] bg-[#fdf2f8] ring-[#fbcfe8]" : "text-[#0e7490] bg-[#ecfeff] ring-[#22d3ee]/40";
-            return (
-              <button
-                key={v}
-                type="button"
-                onClick={() => set({ voice: v })}
-                className={`group flex cursor-pointer items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-300 ${
-                  isActive
-                    ? `border-transparent bg-gradient-to-br ${activeGradient} text-white shadow-md`
-                    : `border-[#e2e8f0] bg-white/60 text-[#18181b] hover:-translate-y-0.5 hover:bg-white hover:shadow-md ${inactiveHover}`
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold">{voiceLabel(v)}</p>
-                    <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-inset ${isActive ? "bg-white/20 text-white ring-white/30" : inactiveBadge}`}>
-                      {isF ? "F" : "M"}
-                    </span>
-                  </div>
-                  <p className={`mt-0.5 truncate text-[11px] ${isActive ? "text-white/75" : "text-[#475569]"}`}>
-                    {isF ? tc("wowGenderF") : tc("wowGenderM")}
-                  </p>
-                </div>
-                <span aria-hidden className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${isActive ? "scale-110 bg-white/20 text-white" : `${inactivePlay} group-hover:scale-110`}`}>
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="ml-0.5 h-3 w-3"><path d="M8 5v14l11-7z" /></svg>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-[#475569]">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899]" />{tc("wowGenderF")}</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-gradient-to-br from-[#06b6d4] to-[#0e7490]" />{tc("wowGenderM")}</span>
-        </div>
-      </div>
-
-      {/* Réduction de bruit */}
-      <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#fdf2f8]/40 to-white/60 p-5">
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#be185d]">{tc("wowNoiseTitle")}</p>
-          <span className="rounded-full bg-[#be185d]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#be185d]">Quail VF 2.1 L</span>
-        </div>
-        <p className="mb-4 text-[12px] leading-relaxed text-[#475569]">{tc("wowNoiseSubtitle")}</p>
-        <div className="space-y-1.5">
-          <div className="flex items-baseline justify-between text-[11px] text-[#475569]">
-            <span>{tc("wowNoiseMin")}</span>
-            <span className="font-mono text-sm font-semibold tabular-nums text-[#be185d]">{nrl}<span className="text-[10px] font-normal text-[#94a3b8]"> / 10</span></span>
-            <span>{tc("wowNoiseMax")}</span>
-          </div>
-          <input
-            type="range" min={1} max={10} step={1} value={nrl}
-            onChange={(e) => set({ noiseReductionLevel: Number(e.target.value) })}
-            aria-label={tc("wowNoiseTitle")}
-            className="w-full cursor-pointer accent-[#be185d]"
-            style={{ background: `linear-gradient(to right, #be185d 0%, #ec4899 ${((nrl - 1) / 9) * 100}%, #e2e8f0 ${((nrl - 1) / 9) * 100}%, #e2e8f0 100%)`, height: 6, borderRadius: 9999, appearance: "none", outline: "none" }}
-          />
-        </div>
-      </div>
-
-      {/* Personnalité — 3 sliders branchés */}
-      <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/40 to-white/60 p-5">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">{tc("wowPersonalityTitle")}</p>
-          <button type="button" onClick={() => setP({ vitesse: 5, creativite: 5, reactivite: 5 })} className="cursor-pointer text-[10px] font-medium text-[#475569] underline-offset-4 hover:underline">{tc("wowReset")}</button>
-        </div>
-        <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-          {sliders.map((s) => (
-            <PersonalitySlider
-              key={s.key}
-              label={tc(`wowSlider${cap(s.key)}Label`)}
-              minLabel={tc(`wowSlider${cap(s.key)}Min`)}
-              maxLabel={tc(`wowSlider${cap(s.key)}Max`)}
-              midLabel={tc("wowSliderMid")}
-              badge={s.badge}
-              value={draft.personality[s.key] ?? 5}
-              onChange={(v) => setP({ [s.key]: v })}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PersonalitySlider({
-  label, value, onChange, minLabel, maxLabel, midLabel, badge,
-}: {
-  label: string; value: number; onChange: (v: number) => void;
-  minLabel: string; maxLabel: string; midLabel: string; badge?: string;
-}) {
-  const pct = ((value - 1) / 9) * 100;
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-semibold text-[#18181b]">{label}</p>
-          {badge && <span className="shrink-0 rounded-full bg-[#ecfeff] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40">{badge}</span>}
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#ecfeff] to-[#cffafe] px-2 py-0.5 font-mono text-[11px] font-bold text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40 shadow-sm">
-          {value}<span className="opacity-50">/10</span>
-        </span>
-      </div>
-      <input
-        type="range" min={1} max={10} step={1} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={label}
-        aria-valuetext={`${value}/10 — ${value <= 3 ? minLabel : value >= 8 ? maxLabel : midLabel}`}
-        className="fancy-slider"
-        style={{ background: `linear-gradient(to right, #0891b2 0%, #22d3ee ${pct}%, #e0f7fa ${pct}%, #cffafe 100%)` }}
-      />
-      <div className="mt-2 flex justify-between gap-2 text-[10px] leading-tight text-[#475569]">
-        <span className={`max-w-[45%] ${value <= 3 ? "font-semibold text-[#0e7490]" : ""}`}>{minLabel}</span>
-        <span className={`max-w-[45%] text-right ${value >= 8 ? "font-semibold text-[#0e7490]" : ""}`}>{maxLabel}</span>
-      </div>
-    </div>
   );
 }
 
@@ -633,7 +499,6 @@ function ToggleRow({ label, on, onToggle }: { label: string; on: boolean; onTogg
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function IconMic() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v4" /></svg>; }
 function IconBuilding() { return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M9 7h.01M15 7h.01M9 11h.01M15 11h.01" /></svg>; }

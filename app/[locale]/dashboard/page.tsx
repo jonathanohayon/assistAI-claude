@@ -1,6 +1,4 @@
 import { eq } from "drizzle-orm";
-import type { VoiceProfile } from "@/lib/voice-profile";
-import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -31,6 +29,8 @@ import { getTileToggles } from "@/lib/tile-toggles";
 
 import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 
+import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { ConfigForm, DEFAULT_BUSINESS } from "./config-form";
 
 export default async function DashboardPage(props: {
@@ -202,20 +202,11 @@ export default async function DashboardPage(props: {
       />
       <ConfigForm
         initial={{
+          // Served as the API serves it (tenants: supplier fields removed);
+          // the form fills in defaults in the browser.
+          voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), isAdmin) as ServedVoice,
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
-          model: config.model,
-          // Admin-only field, never part of a tenant form state.
-          ...(isAdmin
-            ? {
-                realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider),
-                // Stored JSONB, validated by voiceProfileSchema on write.
-          voiceProfile: (config.voiceProfile ?? null) as Partial<VoiceProfile> | null,
-              }
-            : {}),
-          voice: config.voice,
-          temperature: config.temperature,
-          speed: config.speed,
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
           transferNumber: config.transferNumber ?? "",
@@ -227,7 +218,6 @@ export default async function DashboardPage(props: {
           agentName: config.agentName ?? "",
           aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
           aiDisclosureText: config.aiDisclosureText ?? "",
-          noiseReductionLevel: config.noiseReductionLevel ?? 8,
           // Champ `business` ajouté en parallèle par la migration schema
           // (jsonb). Tant que la colonne n'est pas en place, on retombe sur
           // DEFAULT_BUSINESS. `config` est typé Drizzle donc on lit le

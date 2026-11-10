@@ -1,8 +1,8 @@
-// Voice brick — screen-side helpers over the V1 contract (lib/voice/contract).
-// Pure and client-safe: no supplier names (the admin engine mapping lives in
-// voice-admin.ts, loaded for admins only).
+// Voice brick — screen-side helpers over the tenant-safe contract subset
+// (voice-client.ts). Pure and client-safe: no supplier names (the admin
+// engine mapping lives in voice-admin.ts, loaded for admins only).
 
-import { VOICE_GENDER, type Voice, type VoiceGender } from "@/lib/voice/contract";
+import { CLIENT_DEFAULT_VOICE, VOICE_GENDER, type ClientVoice, type VoiceGender } from "./voice-client";
 
 /**
  * Six recommended voices shown first, three female and three male,
@@ -49,10 +49,10 @@ export function addKeyTerm(terms: readonly string[], raw: string): string[] {
 }
 
 export function addPronunciation(
-  list: Voice["pronunciations"],
+  list: ClientVoice["pronunciations"],
   term: string,
   sayAs: string,
-): Voice["pronunciations"] {
+): ClientVoice["pronunciations"] {
   const t = term.trim().slice(0, PRONUNCIATION_MAX.term);
   const s = sayAs.trim().slice(0, PRONUNCIATION_MAX.sayAs);
   if (!t || !s || list.length >= PRONUNCIATION_MAX.items) return list;
@@ -103,4 +103,40 @@ export function radioKeyTarget(
     default:
       return null;
   }
+}
+
+/** A voiceConfig as the API serves it (tenants: our fields only). */
+export type ServedVoice = ClientVoice;
+
+/** Screen value: what the viewer was served, with tenant-visible defaults filled in. */
+export function hydrateVoice(served: Partial<ClientVoice> | null | undefined): ClientVoice {
+  if (!served) return CLIENT_DEFAULT_VOICE;
+  return {
+    ...CLIENT_DEFAULT_VOICE,
+    ...served,
+    advanced: { ...CLIENT_DEFAULT_VOICE.advanced, ...(served.advanced ?? {}) },
+  } as ClientVoice;
+}
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * What changed since `base` (last loaded or saved), as the partial the API
+ * takes: top-level fields as a whole, `advanced` key by key. Unchanged
+ * fields are never sent, so a tenant never sends an admin-only field.
+ * null = nothing changed.
+ */
+export function voicePatch(base: ClientVoice, next: ClientVoice): Record<string, unknown> | null {
+  const patch: Record<string, unknown> = {};
+  for (const k of Object.keys(next) as Array<keyof ClientVoice>) {
+    if (k === "version" || k === "advanced") continue;
+    if (!same(base[k], next[k])) patch[k] = next[k];
+  }
+  const adv: Record<string, unknown> = {};
+  const keys = new Set([...Object.keys(base.advanced), ...Object.keys(next.advanced)]) as Set<keyof ClientVoice["advanced"]>;
+  for (const k of keys) {
+    if (!same(base.advanced[k], next.advanced[k])) adv[k] = next.advanced[k];
+  }
+  if (Object.keys(adv).length) patch.advanced = adv;
+  return Object.keys(patch).length ? patch : null;
 }

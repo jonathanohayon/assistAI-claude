@@ -2,6 +2,8 @@
 
 import NextLink from "next/link";
 import { useState } from "react";
+import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import { CLIENT_DEFAULT_VOICE, type ClientVoice } from "@/components/bricks/voice/voice-client";
 
 type Gender = "f" | "m";
 
@@ -19,10 +21,6 @@ const VOICES: ReadonlyArray<{
   { id: "shimmer", name: "Shimmer", desc: "Douce, lumineuse", gender: "f" },
 ];
 
-const GENDER_LABEL: Record<Gender, string> = {
-  f: "Féminine",
-  m: "Masculine",
-};
 
 const LANGUAGES = [
   { id: "fr", flag: "FR", name: "Français" },
@@ -34,135 +32,11 @@ type NotifChannel = "whatsapp" | "sms" | "email";
 
 // 9 dimensions de personnalité (1-10) — chacune avec labels min/max
 // affichés sous le slider pour donner le sens du curseur, + une icône SVG
-// avec une mini-animation propre à la dimension (slow, subtle, toujours en cours).
-const PERSONALITY_SLIDERS = [
-  {
-    key: "vitesse",
-    label: "Vitesse de parole",
-    min: "Très lente",
-    max: "Rapide et rythmée",
-    anim: "anim-slide-x",
-    icon: (
-      <>
-        <polygon points="13 19 22 12 13 5 13 19" />
-        <polygon points="2 19 11 12 2 5 2 19" />
-      </>
-    ),
-  },
-  {
-    key: "creativite",
-    label: "Créativité",
-    min: "Structurée et littérale",
-    max: "Très spontanée et originale",
-    anim: "anim-sparkle",
-    icon: (
-      <path d="M12 3l1.9 5.8L20 10l-5 4.8 1.5 6.2L12 17.8 7.5 21 9 14.8 4 10l6.1-1.2z" />
-    ),
-  },
-  {
-    key: "reactivite",
-    label: "Réactivité",
-    min: "Réponses plus posées",
-    max: "Ultra-réactive et fluide",
-    anim: "anim-pulse-quick",
-    icon: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
-  },
-  {
-    key: "joie",
-    label: "Joie",
-    min: "Neutre, peu expressive",
-    max: "Très joyeuse et enthousiaste",
-    anim: "anim-bounce-soft",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
-      </>
-    ),
-  },
-  {
-    key: "empathie",
-    label: "Empathie",
-    min: "Factuelle, distante",
-    max: "Très chaleureuse et bienveillante",
-    anim: "anim-pulse-soft",
-    icon: (
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    ),
-  },
-  {
-    key: "dynamisme",
-    label: "Dynamisme",
-    min: "Calme, posée",
-    max: "Pleine d'énergie et dynamique",
-    anim: "anim-flash",
-    icon: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
-  },
-  {
-    key: "professionnel",
-    label: "Ton Professionnel",
-    min: "Très décontracté",
-    max: "Très professionnel et élégant",
-    anim: "anim-tilt",
-    icon: (
-      <>
-        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-      </>
-    ),
-  },
-  {
-    key: "humour",
-    label: "Légèreté / Humour",
-    min: "Très sérieux",
-    max: "Copine festive, fun et taquine",
-    anim: "anim-wiggle",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M7 13a5 5 0 0 0 10 0" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
-      </>
-    ),
-  },
-  {
-    key: "accent",
-    label: "Accent",
-    min: "Accent neutre / international",
-    max: "Accent marqué de la langue principale",
-    anim: "anim-spin-slow",
-    icon: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <line x1="2" y1="12" x2="22" y2="12" />
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-      </>
-    ),
-  },
-] as const;
-
-type PersonalityKey = (typeof PERSONALITY_SLIDERS)[number]["key"];
-type Personality = Record<PersonalityKey, number>;
-
-const PERSONALITY_DEFAULT: Personality = {
-  joie: 6,
-  empathie: 8,
-  dynamisme: 7,
-  vitesse: 5,
-  professionnel: 7,
-  creativite: 5,
-  humour: 4,
-  reactivite: 8,
-  accent: 3,
-};
-
 export function WowDashboard() {
-  const [voice, setVoice] = useState("marin");
+  // Mock preview: the real Voice brick on local state (no API).
+  const [voiceSettings, setVoiceSettings] = useState<ClientVoice>(CLIENT_DEFAULT_VOICE);
+  const voice = voiceSettings.voiceId;
   const [lang, setLang] = useState("fr");
-  const [personality, setPersonality] = useState<Personality>(PERSONALITY_DEFAULT);
   const [inheritMode, setInheritMode] = useState<"inherit" | "custom">("inherit");
   const [greeting, setGreeting] = useState(
     "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?",
@@ -195,7 +69,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
       id: "voice",
       label: "Voix",
       tagline: "Le timbre, le rythme, l'âme.",
-      summary: `${VOICES.find((v) => v.id === voice)?.name ?? "—"} · 9 dimensions`,
+      summary: VOICES.find((v) => v.id === voice)?.name ?? "—",
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -564,7 +438,6 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
             <div className="relative space-y-3">
               <Meta label="Voix" value={VOICES.find((v) => v.id === voice)?.name ?? "—"} />
               <Meta label="Langue" value={LANGUAGES.find((l) => l.id === lang)?.name ?? "—"} />
-              <Meta label="Vitesse" value={`${personality.vitesse}/10`} />
             </div>
           </div>
         </section>
@@ -767,12 +640,7 @@ Ton chaleureux, jamais familier. Réponses courtes (1-2 phrases).`,
 
               <div className="px-6 py-6 sm:px-8 sm:py-7">
                 {activeTile === "voice" && (
-                  <VoicePanel
-                    voice={voice}
-                    setVoice={setVoice}
-                    personality={personality}
-                    setPersonality={setPersonality}
-                  />
+                  <VoiceBrick value={voiceSettings} onChange={setVoiceSettings} isAdmin={false} />
                 )}
                 {activeTile === "persona" && (
                   <PersonaPanel
@@ -1012,41 +880,6 @@ function NotifChannelCard({
   );
 }
 
-function Tag({
-  label,
-  value,
-  lock = false,
-}: {
-  label: string;
-  value: string;
-  lock?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#22d3ee]/25 bg-gradient-to-r from-[#ecfeff] to-[#fdf2f8] px-3.5 py-2.5">
-      <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          {label}
-        </p>
-        <p className="mt-0.5 font-mono text-xs font-semibold text-[#18181b]">
-          {value}
-        </p>
-      </div>
-      {lock && (
-        <span
-          aria-hidden
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-[#0e7490]"
-          title="Verrouillé"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
-            <rect x="3" y="11" width="18" height="11" rx="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        </span>
-      )}
-    </div>
-  );
-}
-
 function Stat({
   label,
   value,
@@ -1177,235 +1010,6 @@ function AddTile({ delay = 0 }: { delay?: number }) {
       <p className="text-[11px] font-medium text-center">
         Bientôt
       </p>
-    </div>
-  );
-}
-
-// ─── Panels (contenu de chaque tuile expand) ────────────────────────────
-
-function VoicePanel({
-  voice,
-  setVoice,
-  personality,
-  setPersonality,
-}: {
-  voice: string;
-  setVoice: (v: string) => void;
-  personality: Personality;
-  setPersonality: React.Dispatch<React.SetStateAction<Personality>>;
-}) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* 1. Modèle + voice picker (top) */}
-      <div>
-        <Tag label="Modèle" value="gpt-realtime-mini" lock />
-
-        <div className="mt-5">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Voix sélectionnée
-          </p>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {VOICES.map((v) => {
-              const active = v.id === voice;
-              const isF = v.gender === "f";
-              // Gradient actif : rose pour féminine, cyan/teal pour masculine.
-              const activeGradient = isF
-                ? "from-[#be185d] to-[#ec4899]"
-                : "from-[#06b6d4] to-[#0e7490]";
-              // Border hover : tinted gender pour signaler visuellement avant click.
-              const inactiveHover = isF
-                ? "hover:border-[#be185d]/40"
-                : "hover:border-[#0e7490]/40";
-              // Play button bg + couleur icon en mode inactif.
-              const inactivePlay = isF
-                ? "bg-[#fdf2f8] text-[#be185d]"
-                : "bg-[#ecfeff] text-[#0e7490]";
-              // Genre badge en mode inactif (couleur du label).
-              const inactiveBadge = isF
-                ? "text-[#be185d] bg-[#fdf2f8] ring-[#fbcfe8]"
-                : "text-[#0e7490] bg-[#ecfeff] ring-[#22d3ee]/40";
-
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVoice(v.id)}
-                  className={`group flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-300 ${
-                    active
-                      ? `border-transparent bg-gradient-to-br ${activeGradient} text-white shadow-md`
-                      : `border-[#e2e8f0] bg-white/60 text-[#18181b] hover:-translate-y-0.5 hover:bg-white hover:shadow-md ${inactiveHover}`
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-sm font-semibold">{v.name}</p>
-                      <span
-                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-inset transition-colors ${
-                          active
-                            ? "bg-white/20 text-white ring-white/30"
-                            : inactiveBadge
-                        }`}
-                      >
-                        {isF ? "F" : "M"}
-                      </span>
-                    </div>
-                    <p
-                      className={`mt-0.5 truncate text-[11px] ${active ? "text-white/75" : "text-[#475569]"}`}
-                    >
-                      {GENDER_LABEL[v.gender]} · {v.desc}
-                    </p>
-                  </div>
-                  <span
-                    aria-hidden
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all ${
-                      active
-                        ? "bg-white/20 text-white scale-110"
-                        : `${inactivePlay} group-hover:scale-110`
-                    }`}
-                  >
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="ml-0.5 h-3 w-3">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Légende couleurs genre — discrète, sous la grille */}
-          <div className="mt-3 flex items-center gap-4 text-[11px] text-[#475569]">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#ec4899]" />
-              Féminine
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-gradient-to-br from-[#06b6d4] to-[#0e7490]" />
-              Masculine
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Personnalité — 9 sliders 1-10 en grid 2 cols desktop */}
-      <div className="rounded-2xl border border-[#e2e8f0] bg-gradient-to-br from-[#ecfeff]/40 to-white/60 p-5 sm:p-6">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            Personnalité de la voix
-          </p>
-          <button
-            type="button"
-            onClick={() => setPersonality(PERSONALITY_DEFAULT)}
-            className="text-[10px] font-medium text-[#475569] underline-offset-4 hover:underline"
-          >
-            Réinitialiser
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-          {PERSONALITY_SLIDERS.map((s) => (
-            <PersonalitySlider
-              key={s.key}
-              label={s.label}
-              value={personality[s.key]}
-              onChange={(v) =>
-                setPersonality((prev) => ({ ...prev, [s.key]: v }))
-              }
-              minLabel={s.min}
-              maxLabel={s.max}
-              icon={s.icon}
-              animClass={s.anim}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Slider 1-10 custom : track gradient cyan→teal qui se remplit jusqu'à la
- * valeur, fond muted pour la partie non-atteinte. Thumb gradient avec glow
- * au hover/active. Voir `.fancy-slider` dans le <style> embedded.
- */
-function PersonalitySlider({
-  label,
-  value,
-  onChange,
-  minLabel,
-  maxLabel,
-  icon,
-  animClass,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  minLabel: string;
-  maxLabel: string;
-  icon?: React.ReactNode;
-  animClass?: string;
-}) {
-  // Pourcentage de remplissage (1→0%, 10→100%). Construit le gradient inline
-  // qui matérialise la portion "fillée" jusqu'au thumb.
-  const pct = ((value - 1) / 9) * 100;
-  const trackGradient = `linear-gradient(to right, #0891b2 0%, #22d3ee ${pct}%, #e0f7fa ${pct}%, #cffafe 100%)`;
-
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          {icon && (
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#ecfeff] to-[#cffafe] text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/30 ${animClass ?? ""}`}
-              aria-hidden
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-              >
-                {icon}
-              </svg>
-            </span>
-          )}
-          <p className="truncate text-sm font-semibold text-[#18181b]">{label}</p>
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#ecfeff] to-[#cffafe] px-2 py-0.5 font-mono text-[11px] font-bold text-[#0e7490] ring-1 ring-inset ring-[#22d3ee]/40 shadow-sm">
-          {value}
-          <span className="text-[#0e7490]/50">/10</span>
-        </span>
-      </div>
-      <input
-        type="range"
-        min={1}
-        max={10}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={label}
-        aria-valuetext={`${value} sur 10 — ${value <= 3 ? minLabel : value >= 8 ? maxLabel : "intermédiaire"}`}
-        className="fancy-slider"
-        style={{ background: trackGradient }}
-      />
-      <div className="mt-2 flex justify-between gap-2 text-[10px] leading-tight text-[#475569]">
-        <span
-          className={`max-w-[45%] transition-colors ${
-            value <= 3 ? "font-semibold text-[#0e7490]" : ""
-          }`}
-        >
-          {minLabel}
-        </span>
-        <span
-          className={`max-w-[45%] text-right transition-colors ${
-            value >= 8 ? "font-semibold text-[#0e7490]" : ""
-          }`}
-        >
-          {maxLabel}
-        </span>
-      </div>
     </div>
   );
 }

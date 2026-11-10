@@ -15,7 +15,7 @@ type View = "hub" | "agents" | "campaigns";
  * ouvre son workspace en mode page (inline sous la nav). Vue pilotée par état
  * interne plutôt que par sous-routes → plus simple, pas de gating à dupliquer.
  */
-export function OutboundHome({ asUserId }: { asUserId?: string }) {
+export function OutboundHome({ asUserId, isAdmin = false }: { asUserId?: string; isAdmin?: boolean }) {
   const t = useTranslations("DashboardCampaigns");
   const [view, setView] = useState<View>("hub");
   const [counts, setCounts] = useState<{ agents: number; campaigns: number }>({
@@ -47,7 +47,7 @@ export function OutboundHome({ asUserId }: { asUserId?: string }) {
 
   if (view === "agents")
     return (
-      <AgentsWorkspace asUserId={asUserId} onBack={() => setView("hub")} />
+      <AgentsWorkspace asUserId={asUserId} isAdmin={isAdmin} onBack={() => setView("hub")} />
     );
 
   if (view === "campaigns")

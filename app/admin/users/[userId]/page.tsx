@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
-import type { VoiceProfile } from "@/lib/voice-profile";
-import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
 import { redirect } from "next/navigation";
 
+import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
 import {
   DEFAULT_CAPABILITIES_DIRECTIVE,
@@ -148,15 +148,11 @@ export default async function AdminTenantPage({
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
       <ConfigForm
         initial={{
+          // Served as the API serves it (tenants: supplier fields removed);
+          // the form fills in defaults in the browser.
+          voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), true) as ServedVoice,
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
-          model: config.model,
-          realtimeProvider: effectiveRealtimeProvider(config.realtimeProvider),
-          // Stored JSONB, validated by voiceProfileSchema on write.
-          voiceProfile: (config.voiceProfile ?? null) as Partial<VoiceProfile> | null,
-          voice: config.voice,
-          temperature: config.temperature,
-          speed: config.speed,
           maxResponseTokens: config.maxResponseTokens,
           ownerWhatsapp: config.ownerWhatsapp,
           transferNumber: config.transferNumber ?? "",
@@ -168,7 +164,6 @@ export default async function AdminTenantPage({
           agentName: config.agentName ?? "",
           aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
           aiDisclosureText: config.aiDisclosureText ?? "",
-          noiseReductionLevel: config.noiseReductionLevel ?? 8,
           business: (() => {
             const maybe = (config as unknown as { business?: unknown })
               .business;

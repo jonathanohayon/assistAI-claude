@@ -30,10 +30,6 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 import { PromptPreview } from "./prompt-preview";
 import { UpsellModal } from "./campaigns/upsell-modal";
 import type { PlanFeatures } from "@/lib/plan-features";
-import {
-  useRealtimeCatalog,
-  voicesForCatalog,
-} from "@/lib/use-realtime-catalog";
 
 import { BusinessPanel } from "./config/business-panel";
 import { ChannelsPanel } from "./config/channels-panel";
@@ -41,20 +37,16 @@ import { CONFIG_FORM_CSS } from "./config/config-form-css";
 import { HeroSection } from "./config/hero-section";
 import { NotifsPanel } from "./config/notifs-panel";
 import { PersonaPanel } from "./config/persona-panel";
-import {
-  PERSONALITY_DEFAULT,
-  clamp10,
-  speedFromUI,
-  uiFromSpeed,
-} from "./config/personality-constants";
 import { AddTile, AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
   DashboardStats,
   FormState,
-  Personality,
 } from "./config/types";
-import { VoicePanel } from "./config/voice-panel";
+import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
+import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
+import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
+import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 
 // ─── Ordre des tuiles (préférence de layout perso, par navigateur) ───────
 // L'ordre des tuiles est purement cosmétique → localStorage suffit (pas de
@@ -116,6 +108,10 @@ export function ConfigForm({
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
+  // Voice brick: full Voice for the screen; `voiceBase` = last loaded/saved,
+  // the save sends only voicePatch(voiceBase, voice).
+  const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
+  const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -235,11 +231,6 @@ export function ConfigForm({
     };
   }, [asUserId]);
 
-  const catalog = useRealtimeCatalog();
-  const availableVoices = useMemo(
-    () => voicesForCatalog(catalog, form.model),
-    [catalog, form.model],
-  );
 
   // Labels langues traduits stables (refs).
   const primaryLanguages = useMemo(
@@ -256,46 +247,10 @@ export function ConfigForm({
   const currentLangFlag =
     primaryLanguages.find((l) => l.value === form.primaryLanguage)?.flag ?? "—";
 
-  // Récupère valeur UI 1-10 pour un slider personality (avec mappings spéciaux
-  // pour vitesse, stockée dans form.speed).
-  const getPersonalityValue = (key: string): number => {
-    if (key === "vitesse") return clamp10(uiFromSpeed(form.speed));
-    return clamp10(form.personality[key as keyof Personality] ?? 5);
-  };
-
-  const setPersonalityValue = (key: string, ui: number) => {
-    setDirty(true);
-    setForm((prev) => {
-      const ui10 = clamp10(ui);
-      if (key === "vitesse") {
-        return { ...prev, speed: speedFromUI(ui10) };
-      }
-      return {
-        ...prev,
-        personality: { ...prev.personality, [key]: ui10 },
-      };
-    });
-  };
-
-  const resetPersonality = () => {
-    setDirty(true);
-    setForm((prev) => ({
-      ...prev,
-      speed: speedFromUI(PERSONALITY_DEFAULT.vitesse!),
-      personality: { ...PERSONALITY_DEFAULT },
-    }));
-  };
-
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "model") {
-        const allowed = voicesForCatalog(catalog, value as string);
-        if (!allowed.includes(prev.voice) && allowed.length > 0) {
-          next.voice = allowed[0]!;
-        }
-      }
       return next;
     });
   };
@@ -310,11 +265,14 @@ export function ConfigForm({
       const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(withVoiceConfig(form, [], voicePatch(voiceBase, voice))),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(
+          data?.error === "invalid_voice_config" || data?.error === "admin_only" || data?.error === "voice_config_conflict"
+            ? t("errVoiceSave")
+            : 
           data?.error === "ai_disclosure_must_mention_ai"
             ? t("aiDisclosureMustMentionAi")
             : data?.error === "invalid_ai_disclosure_text"
@@ -329,6 +287,10 @@ export function ConfigForm({
         locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
       setSavedAt(new Date().toLocaleTimeString(timeLocale));
       setDirty(false);
+      const saved = (await res.json().catch(() => null)) as { voiceConfig?: FormState["voiceConfig"] } | null;
+      const savedVoice = saved?.voiceConfig ? hydrateVoice(saved.voiceConfig) : voice;
+      setVoice(savedVoice);
+      setVoiceBase(savedVoice);
       // Re-render le server component parent (dashboard) pour que la checklist
       // de setup reflète l'état fraîchement sauvegardé (ex: numéro WhatsApp
       // renseigné → étape "Recap WhatsApp" passe au vert sans reload manuel).
@@ -342,7 +304,7 @@ export function ConfigForm({
       id: "voice",
       label: t("voiceTitle"),
       tagline: t("wowTagVoice"),
-      summary: `${voiceLabel(form.voice)} · ${getPersonalityValue("vitesse")}/10`,
+      summary: voiceLabel(voice.voiceId),
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -510,7 +472,7 @@ export function ConfigForm({
           stats={stats}
           lastUpdatedLabel={lastUpdatedLabel}
           planLabel={planLabel}
-          voice={form.voice}
+          voice={voice.voiceId}
           currentLangLabel={currentLangLabel}
         />
 
@@ -524,7 +486,9 @@ export function ConfigForm({
            *  its layout box still reserved the 280 px, leaving an empty band
            *  under the tiles at the bottom of the page. */}
           <div className="xl:sticky xl:top-24">
-            <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
+            <div id="live-test" className="scroll-mt-24">
+              <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
+            </div>
           </div>
         </aside>
 
@@ -620,17 +584,23 @@ export function ConfigForm({
 
               <div className="px-6 py-6 sm:px-8 sm:py-7">
                 {activeTile === "voice" && (
-                  <VoicePanel
-                    form={form}
-                    update={update}
-                    availableVoices={availableVoices}
+                  <VoiceBrick
+                    value={voice}
+                    onChange={(next) => {
+                      setVoice(next);
+                      setDirty(true);
+                    }}
                     isAdmin={isAdmin}
-                    catalogModels={catalog.models}
-                    dirty={dirty}
-                    saving={isPending}
-                    getPersonalityValue={getPersonalityValue}
-                    setPersonalityValue={setPersonalityValue}
-                    resetPersonality={resetPersonality}
+                    asUserId={asUserId ?? null}
+                    primaryLanguage={form.primaryLanguage}
+                    testAction={{
+                      label: "tryIt",
+                      onClick: () => {
+                        const el = document.getElementById("live-test");
+                        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        el?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+                      },
+                    }}
                   />
                 )}
                 {activeTile === "persona" && (
@@ -743,3 +713,4 @@ export type {
 } from "./config/types";
 export { DEFAULT_BUSINESS } from "./config/types";
 export { AdminBadge } from "./config/shared-ui";
+

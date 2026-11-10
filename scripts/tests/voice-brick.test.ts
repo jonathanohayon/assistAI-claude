@@ -11,8 +11,10 @@ import {
   addPronunciation,
   genderOf,
   patienceToScreen,
+  hydrateVoice,
   pickerVoices,
   radioKeyTarget,
+  voicePatch,
   screenToPatience,
   showLevel3,
 } from "../../components/bricks/voice/voice-ui";
@@ -117,6 +119,35 @@ for (const l of ["en", "fr", "he"]) {
   assert.equal(radioKeyTarget("End", ids, "a", true), "c");
   assert.equal(radioKeyTarget("Enter", ids, "a", false), null);
   assert.equal(radioKeyTarget("ArrowRight", ids, "zzz", false), "b", "unknown current starts at the first");
+}
+
+// hydrate a tenant's trimmed voiceConfig; patch = only what changed
+{
+  const { engine: _e, advanced, ...rest } = DEFAULT_VOICE;
+  void _e;
+  const tenantServed = { ...rest, voiceId: "coral", advanced: { idleHangupSec: 45, minInterruptionMs: 500, maxDurationMin: 30 } };
+  const v = hydrateVoice(tenantServed);
+  assert.equal(v.voiceId, "coral");
+  assert.equal(v.engine, DEFAULT_VOICE.engine);
+  assert.equal(v.advanced.idleHangupSec, 45);
+  assert.equal(v.advanced.openaiTurnMode, DEFAULT_VOICE.advanced.openaiTurnMode);
+  assert.deepEqual(hydrateVoice(null), DEFAULT_VOICE);
+
+  assert.equal(voicePatch(v, v), null, "nothing changed → nothing sent");
+  const r = mergeVoice(v, { bargeIn: false, advanced: { idleHangupSec: 60 } });
+  assert.ok(r.ok);
+  const patch = voicePatch(v, r.ok ? r.value : v);
+  assert.deepEqual(patch, { bargeIn: false, advanced: { idleHangupSec: 60 } });
+  assert.ok(!("engine" in (patch ?? {})), "a tenant never sends engine");
+
+  // picking a pace while a custom speed is kept sends the pace and the cleared speed
+  const custom = hydrateVoice({ ...tenantServed, advanced: { ...tenantServed.advanced, speed: 1.13 } });
+  const p2 = mergeVoice(custom, { pace: "fast" });
+  assert.ok(p2.ok);
+  assert.deepEqual(voicePatch(custom, p2.ok ? p2.value : custom), { pace: "fast", advanced: { speed: null } });
+  // arrays compare by value
+  const kt = mergeVoice(v, { keyTerms: ["Mock"] });
+  assert.deepEqual(voicePatch(v, kt.ok ? kt.value : v), { keyTerms: ["Mock"] });
 }
 
 console.log("ALL VOICE-BRICK TESTS PASSED");

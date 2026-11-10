@@ -21,6 +21,9 @@ import {
   OPENAI_TURN_MODES,
 } from "@/lib/voice-profile";
 import type { Voice } from "@/lib/voice/contract";
+import { useRealtimeCatalog } from "@/lib/use-realtime-catalog";
+
+import type { ClientVoice } from "./voice-client";
 
 import { ADMIN_ENGINE_OPTIONS, engineOptionOf, engineOptionPatch } from "./voice-admin";
 
@@ -35,16 +38,18 @@ const SELECT =
   "min-h-11 w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm text-[#18181b] focus:border-[#0e7490] focus:outline-none focus:ring-2 focus:ring-[#0e7490]/20";
 
 export function VoiceAdminFields({
-  value,
+  value: served,
   onPatch,
-  catalogModels,
   primaryLanguage,
 }: {
-  value: Voice;
+  /** Admins are served the full voice (voiceForViewer). */
+  value: ClientVoice;
   onPatch: (patch: Record<string, unknown>) => void;
-  catalogModels: ReadonlyArray<{ id: string; provider: string }>;
   primaryLanguage: string | null;
 }) {
+  const value = served as Voice;
+  // The live model catalog names suppliers: fetched here, admin-only code.
+  const catalogModels = useRealtimeCatalog().models;
   const tE = useTranslations("AdminEngine");
   const tP = useTranslations("AdminVoiceProfile");
   const a = value.advanced;

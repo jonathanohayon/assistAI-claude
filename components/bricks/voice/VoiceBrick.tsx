@@ -2,8 +2,9 @@
 
 /**
  * Voice brick — the ONE voice settings screen (spec §3), used as is by the
- * receptionist and by outbound agents. It edits a `Voice` (lib/voice/contract)
- * and hands every change back through `onChange`, validated by mergeVoice.
+ * receptionist and by outbound agents. It edits the voice the viewer was
+ * served (voice-client.ts, the tenant-safe contract subset) and hands every
+ * change back through `onChange`; the server validates with mergeVoice.
  *
  *   Level 1, always visible: voice (+ style for admins until V6), Listen, Call me.
  *   Level 2, <MoreSettings>: pace, patience, barge-in, language lock,
@@ -23,15 +24,15 @@ import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
 import { useVoiceLabel } from "@/lib/use-voice-label";
-import { PACES } from "@/lib/voice-profile";
 import {
   STYLE_SELECTOR_TENANT_VISIBLE,
   VOICE_IDS,
+  VOICE_PACES as PACES,
   VOICE_STYLES,
-  mergeVoice,
-  paceMode,
-  type Voice,
-} from "@/lib/voice/contract";
+  isCustomPace,
+  mergeClientVoice,
+  type ClientVoice,
+} from "./voice-client";
 
 import {
   ADVANCED_LIMITS,
@@ -77,20 +78,18 @@ function radioKeys(ids: readonly string[], current: string, onPick: (id: string)
 }
 
 export interface VoiceBrickProps {
-  value: Voice;
-  onChange: (next: Voice) => void;
+  value: ClientVoice;
+  onChange: (next: ClientVoice) => void;
   isAdmin: boolean;
   /** Admin acting on a tenant: that tenant's developer mode. */
   asUserId?: string | null;
   /** Voices offered (default: all). */
   availableVoices?: readonly string[];
-  /** "Call me": the existing test call. Hidden when absent. */
-  onCallMe?: () => void;
-  callMeBusy?: boolean;
+  /** "Try it": opens the screen's existing browser test call. Hidden when
+   *  absent. (No "Call me" until the phone call-back exists.) */
+  testAction?: { label: "tryIt"; onClick: () => void; busy?: boolean };
   /** Sample for "Listen" (V7). The button only shows when a sample exists. */
-  sampleUrl?: (voiceId: string, style: Voice["style"]) => string | null;
-  /** Admin engine picker: models from the catalog. */
-  catalogModels?: ReadonlyArray<{ id: string; provider: string }>;
+  sampleUrl?: (voiceId: string, style: ClientVoice["style"]) => string | null;
   primaryLanguage?: string | null;
 }
 
@@ -100,10 +99,8 @@ export function VoiceBrick({
   isAdmin,
   asUserId,
   availableVoices = VOICE_IDS,
-  onCallMe,
-  callMeBusy = false,
+  testAction,
   sampleUrl,
-  catalogModels = [],
   primaryLanguage,
 }: VoiceBrickProps) {
   const t = useTranslations("VoiceBrick");
@@ -111,7 +108,7 @@ export function VoiceBrick({
   const [error, setError] = useState<string | null>(null);
 
   const apply = (patch: Record<string, unknown>) => {
-    const r = mergeVoice(value, patch);
+    const r = mergeClientVoice(value, patch);
     if (r.ok) {
       setError(null);
       onChange(r.value);
@@ -119,7 +116,7 @@ export function VoiceBrick({
       setError(r.error);
     }
   };
-  const applyAdvanced = (patch: Partial<Voice["advanced"]>) => apply({ advanced: patch });
+  const applyAdvanced = (patch: Partial<ClientVoice["advanced"]>) => apply({ advanced: patch });
 
   const styleVisible = isAdmin || STYLE_SELECTOR_TENANT_VISIBLE;
 
@@ -144,8 +141,7 @@ export function VoiceBrick({
 
       <TestActions
         sample={sampleUrl?.(value.voiceId, value.style) ?? null}
-        onCallMe={onCallMe}
-        callMeBusy={callMeBusy}
+        testAction={testAction}
       />
 
       {error && (
@@ -160,9 +156,9 @@ export function VoiceBrick({
           label={t("paceLabel")}
           options={[
             ...PACES.map((p) => ({ id: p as string, label: t(`pace.${p}`) })),
-            ...(paceMode(value) === "custom" ? [{ id: "custom", label: t("pace.custom") }] : []),
+            ...(isCustomPace(value) ? [{ id: "custom", label: t("pace.custom") }] : []),
           ]}
-          selected={paceMode(value) === "custom" ? "custom" : value.pace}
+          selected={isCustomPace(value) ? "custom" : value.pace}
           onPick={(pace) => {
             if (pace !== "custom") apply({ pace });
           }}
@@ -237,7 +233,6 @@ export function VoiceBrick({
               <VoiceAdminFields
                 value={value}
                 onPatch={apply}
-                catalogModels={catalogModels}
                 primaryLanguage={primaryLanguage ?? null}
               />
             </div>
@@ -333,12 +328,10 @@ function VoicePicker({
 
 function TestActions({
   sample,
-  onCallMe,
-  callMeBusy,
+  testAction,
 }: {
   sample: string | null;
-  onCallMe?: () => void;
-  callMeBusy: boolean;
+  testAction?: VoiceBrickProps["testAction"];
 }) {
   const t = useTranslations("VoiceBrick");
   // The sample being played; a new sample (voice or style changed) is
@@ -353,7 +346,7 @@ function TestActions({
     audio.current = null;
   }, [sample]);
 
-  if (!sample && !onCallMe) return null;
+  if (!sample && !testAction) return null;
 
   const toggle = () => {
     if (!sample) return;
@@ -387,17 +380,17 @@ function TestActions({
           {playing ? t("stop") : t("listen")}
         </button>
       )}
-      {onCallMe && (
+      {testAction && (
         <button
           type="button"
-          onClick={onCallMe}
-          disabled={callMeBusy}
+          onClick={testAction.onClick}
+          disabled={testAction.busy}
           className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white shadow-sm disabled:cursor-wait disabled:opacity-60 ${FOCUS}`}
         >
           <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
             <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z" />
           </svg>
-          {t("callMe")}
+          {t(testAction.label)}
         </button>
       )}
     </div>
@@ -727,8 +720,8 @@ function Pronunciations({
   value,
   onChange,
 }: {
-  value: Voice["pronunciations"];
-  onChange: (v: Voice["pronunciations"]) => void;
+  value: ClientVoice["pronunciations"];
+  onChange: (v: ClientVoice["pronunciations"]) => void;
 }) {
   const t = useTranslations("VoiceBrick");
   const [term, setTerm] = useState("");

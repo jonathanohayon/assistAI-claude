@@ -1057,7 +1057,8 @@
     "transferNormalized": "Sera composé :",
     "transferNone": "Aucun transfert : Tamara prend un message.",
     "transferInvalid": "Numéro invalide. Exemple : 050 000 0000 ou +972 50 000 0000.",
-    "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp."
+    "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp.",
+    "errVoiceSave": "Les réglages de voix n'ont pas pu être enregistrés. Vérifiez les valeurs et réessayez."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",
@@ -2211,7 +2212,6 @@
     },
     "listen": "Écouter",
     "stop": "Arrêter",
-    "callMe": "Appelez-moi",
     "invalid": "Cette valeur ne peut pas être enregistrée. Vérifiez le champ et réessayez.",
     "paceLabel": "Rythme de parole",
     "pace": {
@@ -2276,6 +2276,7 @@
       "minInterruptionMs": "Si la personne parle moins longtemps, Tamara continue sa phrase.",
       "idleHangupSec": "Après ce silence, Tamara dit au revoir et raccroche.",
       "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
-    }
+    },
+    "tryIt": "Essayer"
   }
 }
