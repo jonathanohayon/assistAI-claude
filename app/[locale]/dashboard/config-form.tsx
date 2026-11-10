@@ -315,12 +315,14 @@ export function ConfigForm({
         setForm((prev) => ({ ...prev, business: businessFromSheet(sdata.companySheet!) }));
       }
 
-      // 2. The agent's config — without `business`, which the sheet owns.
+      // 2. The agent's config — without the sheet (`business` and its
+      //    loaded copy `companySheet`), which saves through its own endpoint.
       const endpoint = asUserId
         ? `/api/admin/configs/${asUserId}`
         : "/api/dashboard/config";
-      const { business: _sheetOwned, ...agentFields } = form;
+      const { business: _sheetOwned, companySheet: _sheetCopy, ...agentFields } = form;
       void _sheetOwned;
+      void _sheetCopy;
       const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

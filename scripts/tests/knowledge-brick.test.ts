@@ -123,7 +123,7 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.ok(!existsSync(join(ROOT, "app/[locale]/dashboard/config/business-panel.tsx")));
   // The sheet saves through its own endpoint; `business` is not sent with the config.
   assert.match(inbound, /\/api\/dashboard\/company-sheet/);
-  assert.match(inbound, /const \{ business: _sheetOwned, \.\.\.agentFields \} = form;/);
+  assert.match(inbound, /const \{ business: _sheetOwned, companySheet: _sheetCopy, \.\.\.agentFields \} = form;/);
   assert.match(read("app/[locale]/dashboard/campaigns/agents/agents-workspace.tsx"), /\/api\/dashboard\/company-sheet/);
 }
 
@@ -157,9 +157,13 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     ["mon-wed", "thu-thu", "fri-fri", "sat-sun"],
   );
   assert.deepEqual(hoursRuns(week, "he").map((r) => `${r.from}-${r.to}`), ["sun-sun", "mon-wed", "thu-thu", "fri-fri", "sat-sat"]);
-  assert.equal(hoursSummary(week, "en", "closed"), "Mon–Wed 09:00–19:00, Thu 09:00–20:00, Fri 09:00–14:00, Sat–Sun closed");
+  const plain = (x: string) => x.replace(/[\u2066\u2069]/g, "");
+  assert.equal(plain(hoursSummary(week, "en", "closed")), "Mon–Wed 09:00–19:00, Thu 09:00–20:00, Fri 09:00–14:00, Sat–Sun closed");
+  // Each time range is an LTR isolate, so it never reads backwards in Hebrew.
+  assert.equal(hoursSummary(week, "he", "סגור").match(/\u2066\d\d:\d\d–\d\d:\d\d\u2069/g)?.length, 3);
   const allOff = Object.fromEntries(Object.keys(week).map((d) => [d, off])) as typeof week;
   assert.equal(hoursSummary(allOff, "en", "closed"), "Mon–Sun closed");
+  assert.equal(plain(hoursSummary(week, "he", "סגור")), "א׳ סגור, ב׳–ד׳ 09:00–19:00, ה׳ 09:00–20:00, ו׳ 09:00–14:00, שבת סגור");
   console.log("HOURS SUMMARY OK");
 }
 

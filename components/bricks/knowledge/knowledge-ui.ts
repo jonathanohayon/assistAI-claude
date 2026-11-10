@@ -130,7 +130,9 @@ export function hoursRuns(hours: Week, locale: string): HoursRun[] {
 
 export function dayName(d: Day, locale: string): string {
   const i = DAYS_FROM_SUNDAY.indexOf(d);
-  return new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(SUNDAY + i * 86_400_000));
+  const name = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" }).format(new Date(SUNDAY + i * 86_400_000));
+  // Hebrew short days read "יום א׳": the letter alone is how a week is written.
+  return locale === "he" ? name.replace(/^יום\s+/, "") : name;
 }
 
 /** One line; `closed` is the translated word. */
@@ -138,7 +140,9 @@ export function hoursSummary(hours: Week, locale: string, closed: string): strin
   return hoursRuns(hours, locale)
     .map((r) => {
       const days = r.from === r.to ? dayName(r.from, locale) : `${dayName(r.from, locale)}–${dayName(r.to, locale)}`;
-      return `${days} ${r.span ? `${r.span.open}–${r.span.close}` : closed}`;
+      // The time range is isolated left-to-right (U+2066…U+2069): in a
+      // right-to-left line "09:00–19:00" would otherwise read "19:00–09:00".
+      return `${days} ${r.span ? `\u2066${r.span.open}–${r.span.close}\u2069` : closed}`;
     })
     .join(", ");
 }

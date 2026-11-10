@@ -298,7 +298,7 @@ export function SheetCard({
         ) : (
           <Row onClick={() => setEditing({ kind: "identity" })} label={t("editCompany")}>
             {identityLine.length ? (
-              <Line first={identityLine[0]} rest={identityLine.slice(1).join(" · ")} />
+              <Line first={identityLine[0]} rest={identityLine.slice(1)} />
             ) : (
               <span className={MUTED}>{t("companyMissing")}</span>
             )}
@@ -311,7 +311,7 @@ export function SheetCard({
         {sheet.locations.length === 0 && <p className={`px-4 py-2 text-sm ${MUTED}`}>{t("locationsEmpty")}</p>}
         {sheet.locations.map((l) => {
           const open = Object.values(l.hours).some((h) => h.open);
-          const facts = [l.address.trim(), open ? hoursSummary(l.hours, locale, t("closed")) : ""].filter(Boolean).join(" · ");
+          const facts = [l.address.trim(), open ? hoursSummary(l.hours, locale, t("closed")) : ""].filter(Boolean);
           return (
             <Row key={l.id} onClick={() => setEditing({ kind: "location", id: l.id, fresh: false })} label={t("editItem", { name: l.name })}>
               <Line first={l.name || t("unnamed")} rest={facts} />
@@ -333,9 +333,7 @@ export function SheetCard({
             s.durationMinutes > 0 ? t("minutes", { n: s.durationMinutes }) : "",
             s.priceILS > 0 ? t("price", { n: s.priceILS }) : "",
             where,
-          ]
-            .filter(Boolean)
-            .join(" · ");
+          ].filter(Boolean);
           return (
             <Row key={s.id} onClick={() => setEditing({ kind: "service", id: s.id, fresh: false })} label={t("editItem", { name: s.name })}>
               <Line first={s.name || t("unnamed")} rest={facts} />
@@ -414,21 +412,25 @@ function Row({ onClick, label, children }: { onClick: () => void; label: string;
   );
 }
 
-/** Name first, then the facts; at most two lines, ellipsis after. */
-function Line({ first, rest }: { first: string; rest: string }) {
+/**
+ * Name first, then the facts; at most two lines, ellipsis after. Each fact
+ * is its own isolate: an address in Latin script next to Hebrew hours must
+ * not take the other's direction.
+ */
+function Line({ first, rest }: { first: string; rest: string[] }) {
   return (
     <span className="line-clamp-2 text-sm text-[#18181b]">
       <bdi dir="auto" className="font-semibold">
         {first}
       </bdi>
-      {rest && (
-        <>
+      {rest.map((part, i) => (
+        <span key={i}>
           <span className="text-[#94a3b8]"> · </span>
           <bdi dir="auto" className="text-[#475569]">
-            {rest}
+            {part}
           </bdi>
-        </>
-      )}
+        </span>
+      ))}
     </span>
   );
 }

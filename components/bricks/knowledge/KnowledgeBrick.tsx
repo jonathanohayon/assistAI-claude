@@ -227,7 +227,10 @@ function TextBlock({
         onChange={(e) => onChange(e.target.value)}
         className={`mt-2 py-2 ${INPUT}`}
       />
-      <p className="mt-1 text-end text-xs text-[#64748b]">{t("charCount", { n: value.length, max })}</p>
+      <p className="mt-1 text-end text-xs text-[#64748b]">
+        {/* Numbers keep their order in a right-to-left page. */}
+        <bdi dir="ltr">{t("charCount", { n: value.length, max })}</bdi>
+      </p>
     </div>
   );
 }
