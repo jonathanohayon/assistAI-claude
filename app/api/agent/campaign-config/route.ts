@@ -1,3 +1,5 @@
+import { knowledgeFromOutbound } from "@/lib/knowledge/adapters";
+import { outboundKnowledgeParts } from "@/lib/knowledge/render";
 import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
 import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
 import { eq } from "drizzle-orm";
@@ -55,14 +57,17 @@ export async function GET(req: NextRequest) {
           .limit(1)
       )[0] ?? null)
     : null;
+  // Knowledge (brick S1): the agent's facts and instructions through the
+  // Knowledge contract — identical text to before (route snapshots).
+  const agentKnowledge = outboundKnowledgeParts(knowledgeFromOutbound(agent ?? null));
   const persona = agent
     ? {
         agentName: agent.agentName,
         voice: agent.voice,
         language: agent.language,
-        instructions: agent.instructions,
+        instructions: agentKnowledge.instructions,
         greeting: agent.greeting,
-        knowledge: agent.knowledge,
+        knowledge: agentKnowledge.knowledge,
         successCriteria: campaign.successCriteria,
       }
     : {
