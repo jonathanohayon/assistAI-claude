@@ -20,6 +20,8 @@ import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 import { getTileToggles } from "@/lib/tile-toggles";
+import { receptionistCallFields, toolsFromTileToggles } from "@/lib/tools/adapters";
+import { effectiveCapabilities } from "@/lib/tools/contract";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -206,14 +208,15 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // une feature autorisée par le plan. Le worker n'enregistre alors plus les
   // tools correspondants, et le prompt annonce la capacité comme désactivée.
   const tileToggles = await getTileToggles(tenant.user.id);
-  const features = {
-    ...planFeatures,
-    calendar: planFeatures.calendar && tileToggles.calendar,
-    crm: planFeatures.crm && tileToggles.customers,
-  };
-  // Prise de commandes au téléphone (nouveau tool record_order côté worker) :
-  // réservée aux plans CRM, activable via le toggle "Commandes".
-  const ordersEnabled = Boolean(planFeatures.crm) && tileToggles.orders;
+  // Tools brick (T1): ONE function decides what the call gets — the same the
+  // screen will show. Orders (record_order) ride on the CRM plan feature and
+  // the "Commandes" toggle; transfer on the number (served below).
+  const capabilities = effectiveCapabilities(
+    { recipe: "receptionist", tools: toolsFromTileToggles(tileToggles) },
+    { transferNumber: tenant.config.transferNumber ?? "", googleConnected: Boolean(tenant.user.googleRefreshToken) },
+    planFeatures,
+  );
+  const { features, ordersEnabled } = receptionistCallFields(capabilities, planFeatures);
 
   // Template "capacités" éditable par plan depuis /admin.
   const capabilitiesByPlan = await getCapabilitiesDirectiveByPlan();

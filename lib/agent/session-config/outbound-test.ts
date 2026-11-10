@@ -19,6 +19,9 @@ import { outboundAgents } from "@/lib/db/schema";
 import { getCampaignGoalFramings } from "@/lib/settings";
 import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
 import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
+import { OUTBOUND_TOOLS, outboundCallFeatures } from "@/lib/tools/adapters";
+import { effectiveCapabilities } from "@/lib/tools/contract";
+import { capabilityInputsFor } from "@/lib/tools/load";
 import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/outbound-test-config?agentId=  (x-internal-secret)
@@ -50,6 +53,13 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
   // Knowledge S5: the account's company sheet, only when the server switch
   // OUTBOUND_COMPANY_SHEET is on for this account (off = null = today).
   const accountSheet = await accountSheetForOutbound(agent.userId);
+  // Tools (T1): the same function as the receptionist and the screen.
+  const toolInputs = await capabilityInputsFor(agent.userId);
+  const capabilities = effectiveCapabilities(
+    { recipe: "outbound", tools: OUTBOUND_TOOLS },
+    { ...toolInputs.account, transferNumber: "" },
+    toolInputs.plan,
+  );
   const persona = {
     agentName: agent.agentName,
     voice: agent.voice,
@@ -110,13 +120,7 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
     noiseReductionLevel: engine.noiseReductionLevel,
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
-    features: {
-      calendar: false,
-      crm: false,
-      whatsapp_confirm: false,
-      whatsapp_recap: false,
-      outbound_campaigns: true,
-    },
+    features: outboundCallFeatures(capabilities),
     updatedAt: new Date().toISOString(),
   });
 }

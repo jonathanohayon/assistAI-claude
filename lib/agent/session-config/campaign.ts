@@ -19,6 +19,9 @@ import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
 import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
 import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
+import { OUTBOUND_TOOLS, outboundCallFeatures } from "@/lib/tools/adapters";
+import { effectiveCapabilities } from "@/lib/tools/contract";
+import { capabilityInputsFor } from "@/lib/tools/load";
 import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
@@ -70,6 +73,13 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
   // Knowledge S5: the ACCOUNT's company sheet, only when the server switch
   // OUTBOUND_COMPANY_SHEET is on for this account (off = null = today).
   const accountSheet = await accountSheetForOutbound(campaign.userId);
+  // Tools (T1): the same function as the receptionist and the screen.
+  const toolInputs = await capabilityInputsFor(campaign.userId);
+  const capabilities = effectiveCapabilities(
+    { recipe: "outbound", tools: OUTBOUND_TOOLS },
+    { ...toolInputs.account, transferNumber: "" },
+    toolInputs.plan,
+  );
   const persona = agent
     ? {
         agentName: agent.agentName,
@@ -147,14 +157,8 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
     noiseReductionLevel: engine.noiseReductionLevel,
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
-    // Pas de calendrier/CRM/WhatsApp sur un appel sortant.
-    features: {
-      calendar: false,
-      crm: false,
-      whatsapp_confirm: false,
-      whatsapp_recap: false,
-      outbound_campaigns: true,
-    },
+    // Tools (T1): no calendar / CRM / WhatsApp on an outbound call (until T4).
+    features: outboundCallFeatures(capabilities),
     campaign: {
       id: campaign.id,
       contactId: contact.id,
