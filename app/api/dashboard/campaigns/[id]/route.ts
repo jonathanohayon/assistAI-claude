@@ -10,13 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
-import {
-  normalizeCallWindow,
-  normalizeConcurrency,
-  normalizeExtractionSchema,
-  normalizeGoalPreset,
-  normalizeRetryRules,
-} from "@/lib/campaigns/validate";
+import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -90,7 +84,10 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ campaign, agent, contacts, calls, counts });
 }
 
-// PATCH — mise à jour partielle (champs structurels seulement si draft/paused).
+// PATCH — partial update. What may change depends on the status
+// (lib/campaigns/patch-plan.ts): everything while draft/paused, only the call
+// window while running (applied on the next dispatcher tick). A refused
+// change returns 409 and applies NOTHING — never a silent 200.
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   const r = await resolveTargetUserId(req);
   if ("unauthorized" in r)
@@ -105,48 +102,42 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   // body optionnel : tous les champs sont facultatifs (patch partiel).
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const editable = campaign.status === "draft" || campaign.status === "paused";
 
-  const patch: Record<string, unknown> = { updatedAt: sql`now()` };
+  const plan = planCampaignPatch(campaign, body);
+  if (!plan.ok) {
+    return NextResponse.json(
+      { error: plan.error, fields: plan.fields, status: campaign.status },
+      { status: 409 },
+    );
+  }
+
+  const patch: Record<string, unknown> = { updatedAt: sql`now()`, ...plan.changes };
   if (typeof body.name === "string" && body.name.trim())
     patch.name = body.name.trim().slice(0, 160);
 
-  // Les champs structurels (qui changent le comportement de dialing) ne sont
-  // modifiables que tant que la campagne n'a pas démarré ou est en pause.
-  if (editable) {
-    if (body.goalPreset !== undefined)
-      patch.goalPreset = normalizeGoalPreset(body.goalPreset);
-    if (typeof body.objective === "string")
-      patch.objective = body.objective.slice(0, 4000);
-    if (typeof body.successCriteria === "string")
-      patch.successCriteria = body.successCriteria.slice(0, 4000);
-    if (body.agentId !== undefined) {
-      // null explicite = détacher l'agent ; sinon valider l'appartenance.
-      if (body.agentId === null) patch.agentId = null;
-      else if (typeof body.agentId === "string" && body.agentId) {
-        const [a] = await db
-          .select({ id: outboundAgents.id })
-          .from(outboundAgents)
-          .where(
-            and(
-              eq(outboundAgents.id, body.agentId),
-              eq(outboundAgents.userId, r.userId),
-            ),
-          )
-          .limit(1);
-        patch.agentId = a?.id ?? null;
-      }
-    }
-    if (body.extractionSchema !== undefined)
-      patch.extractionSchema = normalizeExtractionSchema(body.extractionSchema);
-    if (body.concurrency !== undefined)
-      patch.concurrency = normalizeConcurrency(body.concurrency);
-    if (body.retryRules !== undefined)
-      patch.retryRules = normalizeRetryRules(body.retryRules);
-    if (body.callWindow !== undefined)
-      patch.callWindow = normalizeCallWindow(body.callWindow);
-    if (typeof body.fromNumber === "string")
-      patch.fromNumber = body.fromNumber.trim();
+  // A changed agent must belong to the tenant (null = detach).
+  if (typeof plan.changes.agentId === "string") {
+    const [a] = await db
+      .select({ id: outboundAgents.id })
+      .from(outboundAgents)
+      .where(
+        and(
+          eq(outboundAgents.id, plan.changes.agentId),
+          eq(outboundAgents.userId, r.userId),
+        ),
+      )
+      .limit(1);
+    patch.agentId = a?.id ?? null;
+  }
+
+  if (campaign.status === "running" && plan.changes.callWindow) {
+    await logEvent({
+      source: "web",
+      event: "campaign_call_window_changed",
+      message: "Call window changed on a running campaign (applies on the next dispatcher tick)",
+      userId: r.userId,
+      metadata: { campaignId: id, callWindow: plan.changes.callWindow },
+    });
   }
 
   const [updated] = await db
