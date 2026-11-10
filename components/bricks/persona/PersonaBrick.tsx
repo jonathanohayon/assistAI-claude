@@ -7,20 +7,22 @@
  *
  *   Level 1: agent name, main language, first sentence (Automatic | My
  *            sentence) with the live "Callers will hear" preview.
- *   Level 2, <MoreSettings>: the AI disclosure (inbound only until P5).
- *   Level 3, developer mode: the variables usable in the first sentence
- *            (outbound only: the receptionist has none).
+ *   Level 2, <MoreSettings>: other spoken languages (admins only until a
+ *            test call validates them), the AI disclosure (inbound only
+ *            until P5).
+ *   Level 3, developer mode: the variables usable in the first sentence,
+ *            as click-to-insert chips (outbound only: the receptionist has
+ *            none, so no section).
  *
  * The heard sentence comes from the side's existing single source
- * (persona-ui.ts heardGreeting), never re-implemented here. The "other
- * spoken languages" control waits for P4 (no store, no engine path yet):
- * it is not shown rather than shown doing nothing.
+ * (persona-ui.ts heardGreeting), never re-implemented here.
  */
 
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
-import { ChipGroup, FOCUS, HINT, LABEL, Segmented, ToggleRow } from "@/components/bricks/controls";
+import { ChipGroup, FOCUS, HINT, LABEL, SELECTED, Segmented, ToggleRow } from "@/components/bricks/controls";
+import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import { AI_DISCLOSURE_MAX_LENGTH, parseDisclosureText } from "@/lib/ai-disclosure";
@@ -62,7 +64,9 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
   };
 
   const heard = heardGreeting(value, kind, { businessName, exampleContact: EXAMPLE_CONTACT });
-  const showVariables = kind === "outbound" && (isAdmin || dev.on);
+  const variables = GREETING_VARIABLES[kind];
+  // No section on a side with no variable (the receptionist has none).
+  const showVariables = variables.length > 0 && (isAdmin || dev.on);
 
   return (
     <div className="flex flex-col gap-5">
@@ -132,9 +136,12 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
       </div>
 
       {/* ── Level 2 ─────────────────────────────────────────── */}
-      {kind === "inbound" && (
+      {(kind === "inbound" || isAdmin) && (
         <MoreSettings>
-          <DisclosureFields value={value} apply={apply} />
+          {/* Admins only until a test call in a second language validates it. */}
+          {isAdmin && <OtherLanguages value={value} apply={apply} />}
+          {/* Outbound: the disclosure waits for P5 (off, not shown). */}
+          {kind === "inbound" && <DisclosureFields value={value} apply={apply} />}
         </MoreSettings>
       )}
 
@@ -146,7 +153,7 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
           </h3>
           <p className={HINT}>{t("variablesHint")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {GREETING_VARIABLES.map((v) => (
+            {variables.map((v) => (
               <button
                 key={v}
                 type="button"
@@ -162,6 +169,42 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/** Other languages the agent may switch to (toggle chips; never the main one). */
+function OtherLanguages({ value, apply }: { value: Persona; apply: (patch: Record<string, unknown>) => void }) {
+  const t = useTranslations("PersonaBrick");
+  const labelId = useId();
+  const options = PERSONA_LANGUAGES.filter((l) => l !== value.primaryLanguage);
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <p id={labelId} className={LABEL}>
+          {t("languagesLabel")}
+        </p>
+        <AdminBadge size="xs" />
+      </div>
+      <p className={HINT}>{t("languagesHint")}</p>
+      <div role="group" aria-labelledby={labelId} className="mt-2 flex flex-wrap gap-2">
+        {options.map((l) => {
+          const on = value.languages.includes(l);
+          return (
+            <button
+              key={l}
+              type="button"
+              aria-pressed={on}
+              onClick={() => apply({ languages: on ? value.languages.filter((x) => x !== l) : [...value.languages, l] })}
+              className={`min-h-11 cursor-pointer rounded-full border px-4 text-sm font-semibold transition-colors duration-150 ${FOCUS} ${
+                on ? SELECTED : "border-[#e2e8f0] bg-white text-[#18181b] hover:border-[#be185d]/40"
+              }`}
+            >
+              {LANGUAGE_NAME[l]}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

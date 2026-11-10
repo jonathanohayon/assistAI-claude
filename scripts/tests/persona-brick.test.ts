@@ -41,9 +41,9 @@ const P = (over: Partial<Persona> = {}): Persona => ({ ...DEFAULT_PERSONA, name:
   const keptText = P({ greeting: { mode: "auto", text: "Texte gardé" }, aiDisclosure: { enabled: false, text: "" } });
   assert.equal(heardGreeting(keptText, "inbound"), null);
   // outbound: variables substituted by buildCampaignGreeting
-  const ob = P({ greeting: { mode: "custom", text: "Bonjour {contactName} !" } });
+  const ob = P({ greeting: { mode: "custom", text: "Bonjour {{name}} !" } });
   const contact = { contactName: "Dana", phoneNumber: "050 000 0000" };
-  assert.equal(heardGreeting(ob, "outbound", { exampleContact: contact }), buildCampaignGreeting({ persona: { greeting: "Bonjour {contactName} !" } }, contact));
+  assert.equal(heardGreeting(ob, "outbound", { exampleContact: contact }), buildCampaignGreeting({ persona: { greeting: "Bonjour {{name}} !" } }, contact));
   assert.equal(heardGreeting(P(), "outbound"), null, "outbound auto: the model opens");
 }
 
@@ -82,14 +82,15 @@ const P = (over: Partial<Persona> = {}): Persona => ({ ...DEFAULT_PERSONA, name:
 
 // Every variable the screen offers must be substituted by the engine's
 // greeting builder, or it would be spoken literally on real calls.
-for (const v of GREETING_VARIABLES) {
+assert.deepEqual([...GREETING_VARIABLES.inbound], [], "the receptionist offers no variable");
+for (const v of GREETING_VARIABLES.outbound) {
   const spoken = buildCampaignGreeting({ persona: { greeting: `Bonjour ${v}` } }, { contactName: "Dana", phoneNumber: "050 000 0000" });
   assert.ok(!spoken.includes(v), `${v} is offered but not substituted (spoken: "${spoken}")`);
 }
 
-assert.equal(insertVariable("", "{contactName}"), "{contactName}");
-assert.equal(insertVariable("Bonjour", "{contactName}"), "Bonjour {contactName}");
-assert.equal(insertVariable("Bonjour ", "{contactName}"), "Bonjour {contactName}");
+assert.equal(insertVariable("", "{{name}}"), "{{name}}");
+assert.equal(insertVariable("Bonjour", "{{name}}"), "Bonjour {{name}}");
+assert.equal(insertVariable("Bonjour ", "{{name}}"), "Bonjour {{name}}");
 
 // 5. One screen: every persona screen renders the one PersonaBrick module
 const BRICK = /from "@\/components\/bricks\/persona\/PersonaBrick"/;
@@ -128,14 +129,14 @@ for (const f of personaScreens) assert.doesNotMatch(read(f), /comingSoon|wowComi
 // 7. Gated until their step ships: no languages control (P4), no outbound disclosure (P5)
 {
   const brick = read("components/bricks/persona/PersonaBrick.tsx").replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "");
-  assert.doesNotMatch(brick, /apply\(\{\s*languages:\s*\[/, "no control adds other spoken languages before P4");
-  assert.match(brick, /kind === "inbound" && \(\s*<MoreSettings>\s*<DisclosureFields/, "disclosure only on inbound before P5");
+  assert.match(brick, /\{isAdmin && <OtherLanguages /, "other spoken languages: admins only until validated by a test call");
+  assert.match(brick, /\{kind === "inbound" && <DisclosureFields /, "disclosure only on inbound before P5");
 }
 
 // 7b. Every offered variable has a human label in all three languages
 for (const l of ["en", "fr", "he"]) {
   const labels = JSON.parse(read(`messages/${l}.json`)).PersonaBrick.variable as Record<string, string>;
-  for (const v of GREETING_VARIABLES) assert.ok(labels[v.replace(/[{}\s]/g, "")], `${l}: label for ${v}`);
+  for (const v of GREETING_VARIABLES.outbound) assert.ok(labels[v.replace(/[{}\s]/g, "")], `${l}: label for ${v}`);
 }
 
 // 8. Copy: same keys FR/EN/HE, no supplier name, no "coming soon"
