@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { useRealtimeCatalog, voicesForCatalog } from "@/lib/use-realtime-catalog";
 import {
   emptyAgentDraft,
   type OutboundAgentDraft,
@@ -12,6 +11,9 @@ import {
 } from "@/lib/outbound-agents/types";
 
 import { AgentEditor } from "./agent-editor";
+import { hydrateVoice, voicePatch, type ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
+import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
@@ -25,15 +27,16 @@ type View = "list" | "editor";
  */
 export function AgentsWorkspace({
   asUserId,
+  isAdmin = false,
   onBack,
 }: {
   asUserId?: string;
+  /** Admin viewer: the Voice brick shows its supplier settings. */
+  isAdmin?: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const locale = useLocale();
-  const catalog = useRealtimeCatalog();
-  const voices = useMemo(() => voicesForCatalog(catalog, ""), [catalog]);
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
   const [view, setView] = useState<View>("list");
@@ -41,6 +44,9 @@ export function AgentsWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Voice brick state: full Voice on screen, `voiceBase` = last loaded/saved.
+  const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(null));
+  const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(null));
   const [draft, setDraft] = useState<OutboundAgentDraft>(() =>
     emptyAgentDraft(locale),
   );
@@ -87,11 +93,16 @@ export function AgentsWorkspace({
 
   const openNew = () => {
     setDraft(emptyAgentDraft(locale));
+    setVoice(hydrateVoice(null));
+    setVoiceBase(hydrateVoice(null));
     setUsage(0);
     setView("editor");
   };
 
   const openEdit = (a: OutboundAgentListItem) => {
+    const served = hydrateVoice((a as OutboundAgentListItem & { voiceConfig?: ServedVoice }).voiceConfig);
+    setVoice(served);
+    setVoiceBase(served);
     setDraft({
       id: a.id,
       name: a.name,
@@ -121,12 +132,17 @@ export function AgentsWorkspace({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(draft),
+          body: JSON.stringify(withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice))),
         },
       );
       if (!res.ok) throw new Error("save");
-      const data = (await res.json()) as { agent: OutboundAgentListItem };
+      const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
+      if (data.agent?.voiceConfig) {
+        const saved = hydrateVoice(data.agent.voiceConfig);
+        setVoice(saved);
+        setVoiceBase(saved);
+      }
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 1800);
       await loadList();
@@ -231,7 +247,9 @@ export function AgentsWorkspace({
                 <AgentEditor
                   draft={draft}
                   set={set}
-                  voices={voices}
+                  voice={voice}
+                  onVoiceChange={setVoice}
+                  isAdmin={isAdmin}
                   asUserId={asUserId}
                 />
                 {draft.id && (
@@ -386,3 +404,4 @@ function AgentGlyph({ className = "h-5 w-5" }: { className?: string }) {
     </svg>
   );
 }
+

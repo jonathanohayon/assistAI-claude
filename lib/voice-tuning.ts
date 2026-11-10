@@ -4,7 +4,8 @@
 // CLIENT-SAFE (pas d'I/O).
 
 // The voice-gender table lives in the Voice contract (one table only).
-export { VOICE_GENDER, type VoiceGender as Gender } from "@/lib/voice/contract";
+// Tenant-safe source (no supplier names): use-voice-label ships to tenants.
+export { VOICE_GENDER, type VoiceGender as Gender } from "@/lib/voice/public";
 
 // UI 1-10 ↔ API. Speed 0.5..1.5 (5 = 1.0×). Temperature 0..1.5.
 export const speedFromUI = (ui: number) => 0.5 + ((ui - 1) / 9) * 1.0;

@@ -3,9 +3,9 @@
 /**
  * Petits composants UI réutilisés à travers le formulaire de configuration
  * (/dashboard) : AdminBadge, Tile/AddTile (grille de tuiles), EmptyState,
- * PersonalitySlider, RadioCard, Tag, Stat, Meta — plus le type TileDef.
+ * RadioCard, Tag, Stat, Meta — plus le type TileDef.
  *
- * Utilisé par : config-form.tsx (tuiles, hero), voice-panel, persona-panel,
+ * Utilisé par : config-form.tsx (tuiles, hero), persona-panel,
  * channels-panel, centres-section, services-section.
  * AdminBadge est aussi ré-exporté par config-form.tsx (export historique).
  */
@@ -232,107 +232,6 @@ export function EmptyState({
           {cta.label}
         </button>
       )}
-    </div>
-  );
-}
-
-// ─── PersonalitySlider ───────────────────────────────────────────────────
-
-/** Slider 1-10 stylé (.fancy-slider) avec icône animée, badge et labels
- *  min/mid/max — utilisé par la tuile Voix & personnalité. */
-export function PersonalitySlider({
-  label,
-  value,
-  onChange,
-  minLabel,
-  maxLabel,
-  midLabel,
-  icon,
-  animClass,
-  enabled,
-  badge,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  minLabel: string;
-  maxLabel: string;
-  midLabel: string;
-  icon?: React.ReactNode;
-  animClass?: string;
-  enabled: boolean;
-  badge?: string;
-}) {
-  const pct = ((value - 1) / 9) * 100;
-  const trackGradient = enabled
-    ? `linear-gradient(to right, #0891b2 0%, #22d3ee ${pct}%, #e0f7fa ${pct}%, #cffafe 100%)`
-    : `linear-gradient(to right, #94a3b8 0%, #cbd5e1 ${pct}%, #f1f5f9 ${pct}%, #f1f5f9 100%)`;
-
-  return (
-    <div className={enabled ? "" : "opacity-60"}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          {icon && (
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${enabled ? "from-[#ecfeff] to-[#cffafe] text-[#0e7490] ring-[#22d3ee]/30" : "from-[#f1f5f9] to-[#e2e8f0] text-[#94a3b8] ring-[#cbd5e1]"} ring-1 ring-inset ${enabled ? animClass ?? "" : ""}`}
-              aria-hidden
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                {icon}
-              </svg>
-            </span>
-          )}
-          <p className="truncate text-sm font-semibold text-[#18181b]">
-            {label}
-          </p>
-          {badge && (
-            <span
-              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1 ring-inset ${
-                enabled
-                  ? "bg-[#ecfeff] text-[#0e7490] ring-[#22d3ee]/40"
-                  : "bg-[#f1f5f9] text-[#94a3b8] ring-[#cbd5e1]"
-              }`}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full bg-gradient-to-br ${enabled ? "from-[#ecfeff] to-[#cffafe] text-[#0e7490] ring-[#22d3ee]/40" : "from-[#f1f5f9] to-[#e2e8f0] text-[#94a3b8] ring-[#cbd5e1]"} px-2 py-0.5 font-mono text-[11px] font-bold ring-1 ring-inset shadow-sm`}
-        >
-          {value}
-          <span className="opacity-50">/10</span>
-        </span>
-      </div>
-      <input
-        type="range"
-        min={1}
-        max={10}
-        step={1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        disabled={!enabled}
-        aria-label={label}
-        aria-valuetext={`${value}/10 — ${value <= 3 ? minLabel : value >= 8 ? maxLabel : midLabel}`}
-        className="fancy-slider"
-        style={{ background: trackGradient }}
-      />
-      <div className="mt-2 flex justify-between gap-2 text-[10px] leading-tight text-[#475569]">
-        <span
-          className={`max-w-[45%] transition-colors ${
-            enabled && value <= 3 ? "font-semibold text-[#0e7490]" : ""
-          }`}
-        >
-          {minLabel}
-        </span>
-        <span
-          className={`max-w-[45%] text-right transition-colors ${
-            enabled && value >= 8 ? "font-semibold text-[#0e7490]" : ""
-          }`}
-        >
-          {maxLabel}
-        </span>
-      </div>
     </div>
   );
 }

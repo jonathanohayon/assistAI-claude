@@ -39,7 +39,7 @@ export default async function CampaignsPage(props: {
 
   return (
     <main className="pb-6">
-      <CampaignsPageClient />
+      <CampaignsPageClient isAdmin={isAdmin} />
     </main>
   );
 }

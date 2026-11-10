@@ -1057,7 +1057,8 @@
     "transferNormalized": "Sera composé :",
     "transferNone": "Aucun transfert : Tamara prend un message.",
     "transferInvalid": "Numéro invalide. Exemple : 050 000 0000 ou +972 50 000 0000.",
-    "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp."
+    "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp.",
+    "errVoiceSave": "Les réglages de voix n'ont pas pu être enregistrés. Vérifiez les valeurs et réessayez."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",
@@ -2194,5 +2195,88 @@
     "developerModeLabel": "Mode développeur",
     "developerModeHint": "Affiche les réglages techniques, comme les durées limites et les seuils d'interruption, dans chaque section. Votre agent fonctionne de la même façon dans les deux cas.",
     "developerModeSaveError": "Échec de l'enregistrement. Réessayez."
+  },
+  "VoiceBrick": {
+    "voiceLabel": "Voix",
+    "genderFilter": "Afficher les voix",
+    "genderAll": "Toutes",
+    "genderF": "Féminine",
+    "genderM": "Masculine",
+    "allVoices": "Voir les {count} voix",
+    "styleLabel": "Style",
+    "style": {
+      "warm": "Chaleureux",
+      "professional": "Professionnel",
+      "dynamic": "Dynamique",
+      "calm": "Posé"
+    },
+    "listen": "Écouter",
+    "stop": "Arrêter",
+    "invalid": "Cette valeur ne peut pas être enregistrée. Vérifiez le champ et réessayez.",
+    "paceLabel": "Rythme de parole",
+    "pace": {
+      "slow": "Lent",
+      "normal": "Normal",
+      "fast": "Rapide",
+      "custom": "Actuel (personnalisé)"
+    },
+    "patienceLabel": "Patience avant de répondre",
+    "patienceHint": "Combien de temps Tamara attend que la personne ait fini avant de répondre.",
+    "patienceMin": "Répond vite",
+    "patienceMax": "Attend plus",
+    "bargeInLabel": "Le client peut couper la parole",
+    "languageLockLabel": "Rester dans la langue principale",
+    "noiseLabel": "Réduction du bruit de fond",
+    "noiseHint": "Plus haut filtre davantage la rue et le salon. Trop haut peut couper les voix faibles.",
+    "noiseMin": "Légère",
+    "noiseMax": "Forte",
+    "keyTermsLabel": "Mots à bien reconnaître",
+    "keyTermsHint": "Les noms que Tamara doit comprendre et écrire juste : marques, soins, rues.",
+    "keyTermsPlaceholder": "ex. un nom de marque",
+    "add": "Ajouter",
+    "remove": "Retirer {item}",
+    "pronunciationsLabel": "Prononciations",
+    "pronunciationsHint": "Comment Tamara doit dire un mot à voix haute.",
+    "termLabel": "Mot",
+    "sayAsLabel": "À prononcer",
+    "saidAs": "dit « {sayAs} »",
+    "developerTitle": "Réglages développeur",
+    "developerHint": "Durées limites de chaque appel. Les valeurs par défaut conviennent à la plupart des commerces.",
+    "advanced": {
+      "minInterruptionMs": "Durée minimale pour couper la parole",
+      "idleHangupSec": "Silence avant de raccrocher",
+      "maxDurationMin": "Durée maximale d'un appel"
+    },
+    "unit": {
+      "ms": "ms",
+      "s": "s",
+      "min": "min"
+    },
+    "desc": {
+      "marin": "Souriante, posée",
+      "cedar": "Grave, apaisante",
+      "coral": "Chaude et douce",
+      "ballad": "Posée et grave",
+      "sage": "Calme, conseil",
+      "ash": "Calme, réfléchie",
+      "shimmer": "Douce, lumineuse",
+      "nova": "Vive, lumineuse",
+      "verse": "Énergique, nette",
+      "alloy": "Neutre et pro",
+      "echo": "Pro et neutre",
+      "fable": "Conteuse",
+      "onyx": "Grave et ferme"
+    },
+    "fewerVoices": "Voir moins",
+    "bargeInOn": "Tamara s'arrête dès que la personne parle.",
+    "bargeInOff": "Tamara finit toujours sa phrase.",
+    "languageLockOn": "Tamara répond toujours dans votre langue principale.",
+    "languageLockOff": "Tamara suit la langue de la personne qui appelle.",
+    "advancedHint": {
+      "minInterruptionMs": "Si la personne parle moins longtemps, Tamara continue sa phrase.",
+      "idleHangupSec": "Après ce silence, Tamara dit au revoir et raccroche.",
+      "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
+    },
+    "tryIt": "Essayer"
   }
 }

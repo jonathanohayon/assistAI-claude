@@ -1,5 +1,8 @@
 import { ConfigForm, DEFAULT_BUSINESS } from "../dashboard/config-form";
 import { PaletteSwitcher } from "./palette-switcher";
+import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { DEFAULT_VOICE } from "@/lib/voice/contract";
+import { voiceForViewer } from "@/lib/voice/store";
 
 /**
  * Route de prévisualisation visuelle du redesign /dashboard config — sans
@@ -49,13 +52,11 @@ export default async function DashboardPreviewPage(props: {
 
       <ConfigForm
         initial={{
+          // Mock tenant view: default voice, supplier fields removed.
+          voiceConfig: voiceForViewer(DEFAULT_VOICE, false) as ServedVoice,
           instructions: mockInstructions,
           greetingInstructions:
             "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?",
-          model: "gpt-realtime-mini",
-          voice: "marin",
-          temperature: 0.6,
-          speed: 1,
           maxResponseTokens: 220,
           ownerWhatsapp: "+972500000000",
           transferNumber: "+972500000000",
@@ -67,7 +68,6 @@ export default async function DashboardPreviewPage(props: {
           agentName: "Sarah",
           aiDisclosureEnabled: true,
           aiDisclosureText: "",
-          noiseReductionLevel: 8,
           business: DEFAULT_BUSINESS,
         }}
         // Public page: render exactly what a tenant sees. Admin-only controls

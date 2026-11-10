@@ -1,5 +1,3 @@
-import type { RealtimeProvider } from "@/lib/realtime-provider";
-import type { VoiceProfile } from "@/lib/voice-profile";
 /**
  * Types & constantes partagés du formulaire de configuration (/dashboard).
  *
@@ -22,23 +20,19 @@ import type { PERSONALITY_KEYS } from "@/lib/personality";
  *  passée en prop `t` à la plupart des sous-composants. */
 export type Translator = ReturnType<typeof useTranslations<"DashboardConfig">>;
 
+import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+
 export type Personality = Partial<
   Record<(typeof PERSONALITY_KEYS)[number], number>
 >;
 
 export type FormState = {
+  /** Voice brick settings as the API serves them (tenants: no supplier
+   *  fields). The voice is saved only through `voiceConfig`; the legacy voice
+   *  columns are not part of this form (voice_config_conflict). */
+  voiceConfig: ServedVoice;
   instructions: string;
   greetingInstructions: string;
-  model: string;
-  /** Admin-only voice engine. Absent for tenants (the tenant GET strips it);
-   *  absent or null = OpenAI. See config/engine-picker.tsx. */
-  realtimeProvider?: RealtimeProvider | null;
-  /** Admin-only voice profile (lib/voice-profile). Absent for tenants;
-   *  absent keys = field defaults; null = reset everything to defaults. */
-  voiceProfile?: Partial<VoiceProfile> | null;
-  voice: string;
-  temperature: number;
-  speed: number;
   maxResponseTokens: number;
   ownerWhatsapp: string;
   /** Call-transfer number, E.164; '' = no transfer (lib/transfer-number). */
@@ -55,10 +49,6 @@ export type FormState = {
   aiDisclosureEnabled: boolean;
   /** Custom disclosure line; '' = localized default. Must mention AI. */
   aiDisclosureText: string;
-  /** Slider 1-10 piloté ici, envoyé tel quel au PUT puis exposé à
-   *  /api/agent/config pour le worker qui le mappe en enhancementLevel 0.1-1.0
-   *  du QVF 2.1 L (ai-coustics). 1 = passthrough, 8 = équilibré, 10 = agressif. */
-  noiseReductionLevel: number;
   /** Structure métier du tenant : identité + centres (avec horaires hebdo) +
    *  soins/tarifs. Remplace l'ancienne `knowledge` libre — exposé tel quel
    *  au worker via /api/agent/config qui en dérive les tools dynamiques. */

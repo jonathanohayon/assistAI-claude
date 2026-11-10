@@ -1057,7 +1057,8 @@
     "transferNormalized": "החיוג יהיה אל:",
     "transferNone": "אין העברה: תמרה רושמת הודעה.",
     "transferInvalid": "מספר לא תקין. לדוגמה: 050 000 0000 או ‎+972 50 000 0000.",
-    "transferHint": "המספר שאליו הסוכנת מעבירה את השיחה כשמתקשר מבקש לדבר עם אדם. שיחות טלפון בלבד, לא וואטסאפ."
+    "transferHint": "המספר שאליו הסוכנת מעבירה את השיחה כשמתקשר מבקש לדבר עם אדם. שיחות טלפון בלבד, לא וואטסאפ.",
+    "errVoiceSave": "לא ניתן היה לשמור את הגדרות הקול. בדקו את הערכים ונסו שוב."
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",
@@ -2194,5 +2195,88 @@
     "developerModeLabel": "מצב מפתחים",
     "developerModeHint": "מציג הגדרות טכניות, כמו מגבלות זמן וספי הפרעה, בכל אזור. הסוכן שלך פועל באותו אופן בכל מקרה.",
     "developerModeSaveError": "השמירה נכשלה. נסו שוב."
+  },
+  "VoiceBrick": {
+    "voiceLabel": "קול",
+    "genderFilter": "הצגת קולות",
+    "genderAll": "הכול",
+    "genderF": "נשי",
+    "genderM": "גברי",
+    "allVoices": "להצגת כל {count} הקולות",
+    "styleLabel": "סגנון",
+    "style": {
+      "warm": "חם",
+      "professional": "מקצועי",
+      "dynamic": "דינמי",
+      "calm": "רגוע"
+    },
+    "listen": "האזנה",
+    "stop": "עצירה",
+    "invalid": "לא ניתן לשמור את הערך הזה. בדקו את השדה ונסו שוב.",
+    "paceLabel": "קצב דיבור",
+    "pace": {
+      "slow": "איטי",
+      "normal": "רגיל",
+      "fast": "מהיר",
+      "custom": "נוכחי (מותאם)"
+    },
+    "patienceLabel": "סבלנות לפני תשובה",
+    "patienceHint": "כמה זמן תמרה מחכה שהמתקשר יסיים לפני שהיא עונה.",
+    "patienceMin": "עונה מהר",
+    "patienceMax": "מחכה יותר",
+    "bargeInLabel": "המתקשר יכול לקטוע",
+    "languageLockLabel": "להישאר בשפה הראשית",
+    "noiseLabel": "הפחתת רעשי רקע",
+    "noiseHint": "ערך גבוה מסנן יותר רעשי רחוב ומספרה. גבוה מדי עלול לחתוך קולות שקטים.",
+    "noiseMin": "קלה",
+    "noiseMax": "חזקה",
+    "keyTermsLabel": "מילים לזיהוי",
+    "keyTermsHint": "שמות שתמרה צריכה להבין ולאיית נכון: מותגים, טיפולים, רחובות.",
+    "keyTermsPlaceholder": "למשל שם מותג",
+    "add": "הוספה",
+    "remove": "הסרת {item}",
+    "pronunciationsLabel": "הגייה",
+    "pronunciationsHint": "איך תמרה צריכה לומר מילה בקול.",
+    "termLabel": "מילה",
+    "sayAsLabel": "לבטא כ־",
+    "saidAs": "נאמר „{sayAs}”",
+    "developerTitle": "הגדרות מפתחים",
+    "developerHint": "מגבלות זמן לכל שיחה. ברירות המחדל מתאימות לרוב העסקים.",
+    "advanced": {
+      "minInterruptionMs": "משך דיבור מינימלי לקטיעה",
+      "idleHangupSec": "שקט לפני ניתוק",
+      "maxDurationMin": "משך שיחה מרבי"
+    },
+    "unit": {
+      "ms": "מ״ש",
+      "s": "שנ׳",
+      "min": "דק׳"
+    },
+    "desc": {
+      "marin": "חם ויציב",
+      "cedar": "עמוק ומרגיע",
+      "coral": "חם ועדין",
+      "ballad": "רגוע ועמוק",
+      "sage": "שקט ומייעץ",
+      "ash": "שקט ומהורהר",
+      "shimmer": "רך ומאיר",
+      "nova": "מאיר ונמרץ",
+      "verse": "אנרגטי וצלול",
+      "alloy": "ניטרלי ומקצועי",
+      "echo": "מקצועי וניטרלי",
+      "fable": "מספר סיפורים",
+      "onyx": "עמוק ותקיף"
+    },
+    "fewerVoices": "להצגת פחות",
+    "bargeInOn": "תמרה עוצרת ברגע שהמתקשר מדבר.",
+    "bargeInOff": "תמרה תמיד מסיימת את המשפט.",
+    "languageLockOn": "תמרה תמיד עונה בשפה הראשית שלך.",
+    "languageLockOff": "תמרה עונה בשפה של המתקשר.",
+    "advancedHint": {
+      "minInterruptionMs": "אם המתקשר מדבר פחות מזה, תמרה ממשיכה במשפט.",
+      "idleHangupSec": "אחרי שקט כזה, תמרה נפרדת ומנתקת.",
+      "maxDurationMin": "כשמגיעים למשך הזה, תמרה מסיימת את השיחה בנימוס."
+    },
+    "tryIt": "נסו"
   }
 }

@@ -1057,7 +1057,8 @@
     "transferNormalized": "Will be dialled as:",
     "transferNone": "No transfer: Tamara takes a message.",
     "transferInvalid": "Invalid number. Example: 050 000 0000 or +972 50 000 0000.",
-    "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp."
+    "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp.",
+    "errVoiceSave": "The voice settings could not be saved. Check the highlighted values and try again."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
@@ -2194,5 +2195,88 @@
     "developerModeLabel": "Developer mode",
     "developerModeHint": "Shows technical settings, such as time limits and interruption thresholds, in each section. Your agent works the same either way.",
     "developerModeSaveError": "Couldn't save. Try again."
+  },
+  "VoiceBrick": {
+    "voiceLabel": "Voice",
+    "genderFilter": "Show voices",
+    "genderAll": "All",
+    "genderF": "Female",
+    "genderM": "Male",
+    "allVoices": "See all {count} voices",
+    "styleLabel": "Style",
+    "style": {
+      "warm": "Warm",
+      "professional": "Professional",
+      "dynamic": "Dynamic",
+      "calm": "Calm"
+    },
+    "listen": "Listen",
+    "stop": "Stop",
+    "invalid": "This value can't be saved. Check the field and try again.",
+    "paceLabel": "Speaking pace",
+    "pace": {
+      "slow": "Slow",
+      "normal": "Normal",
+      "fast": "Fast",
+      "custom": "Current (custom)"
+    },
+    "patienceLabel": "Patience before answering",
+    "patienceHint": "How long Tamara waits after the caller stops before she answers.",
+    "patienceMin": "Answers quickly",
+    "patienceMax": "Waits longer",
+    "bargeInLabel": "Callers can interrupt",
+    "languageLockLabel": "Stay in the main language",
+    "noiseLabel": "Background noise reduction",
+    "noiseHint": "Higher filters more street and salon noise. Too high can clip quiet voices.",
+    "noiseMin": "Light",
+    "noiseMax": "Strong",
+    "keyTermsLabel": "Words to recognise",
+    "keyTermsHint": "Names Tamara must understand and spell right: brands, treatments, streets.",
+    "keyTermsPlaceholder": "e.g. a brand name",
+    "add": "Add",
+    "remove": "Remove {item}",
+    "pronunciationsLabel": "Pronunciations",
+    "pronunciationsHint": "How Tamara should say a word out loud.",
+    "termLabel": "Word",
+    "sayAsLabel": "Say it as",
+    "saidAs": "said “{sayAs}”",
+    "developerTitle": "Developer settings",
+    "developerHint": "Time limits for every call. The defaults suit most businesses.",
+    "advanced": {
+      "minInterruptionMs": "Shortest speech that interrupts",
+      "idleHangupSec": "Silence before hanging up",
+      "maxDurationMin": "Longest call"
+    },
+    "unit": {
+      "ms": "ms",
+      "s": "s",
+      "min": "min"
+    },
+    "desc": {
+      "marin": "Warm and steady",
+      "cedar": "Deep, reassuring",
+      "coral": "Warm and gentle",
+      "ballad": "Composed, deep",
+      "sage": "Calm, advisory",
+      "ash": "Calm, thoughtful",
+      "shimmer": "Soft and bright",
+      "nova": "Bright, lively",
+      "verse": "Energetic, clear",
+      "alloy": "Neutral and pro",
+      "echo": "Pro and neutral",
+      "fable": "Storyteller",
+      "onyx": "Deep and firm"
+    },
+    "fewerVoices": "See fewer",
+    "bargeInOn": "Tamara stops as soon as the caller speaks.",
+    "bargeInOff": "Tamara always finishes her sentence.",
+    "languageLockOn": "Tamara always answers in your main language.",
+    "languageLockOff": "Tamara follows the caller's language.",
+    "advancedHint": {
+      "minInterruptionMs": "If the caller speaks for less than this, Tamara keeps talking.",
+      "idleHangupSec": "After this much silence, Tamara says goodbye and hangs up.",
+      "maxDurationMin": "At this length, Tamara politely wraps up the call."
+    },
+    "tryIt": "Try it"
   }
 }

@@ -35,7 +35,7 @@ export function MoreSettings({
           onClick={() => setOpen((o) => !o)}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-start text-sm font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
-          <span>{title ?? t("moreSettings")}</span>
+          {title ?? t("moreSettings")}
           <svg
             aria-hidden
             viewBox="0 0 24 24"
