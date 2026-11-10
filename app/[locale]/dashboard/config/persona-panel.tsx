@@ -3,8 +3,8 @@
 /**
  * Tuile "Persona" : the Persona brick (name, language, first sentence, AI
  * disclosure). The agent's instructions and the admin-only inheritance of
- * shared directives live in the Knowledge brick. No technical tool names
- * for tenants (check-tenant-bundle).
+ * shared directives live in the Knowledge brick; what the agent can do lives
+ * in the Tools brick (no technical tool names for tenants).
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `persona`).
  */

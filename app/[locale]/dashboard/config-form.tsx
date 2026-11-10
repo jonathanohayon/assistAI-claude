@@ -57,6 +57,9 @@ import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
+import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
+import { activeCount, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { Tools } from "@/lib/tools/contract";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
@@ -120,6 +123,7 @@ export function ConfigForm({
   const t = useTranslations("DashboardConfig");
   const tPersona = useTranslations("PersonaBrick");
   const tKnowledge = useTranslations("KnowledgeBrick");
+  const tTools = useTranslations("ToolsBrick");
   const voiceLabel = useVoiceLabel();
   const locale = useLocale();
 
@@ -140,6 +144,14 @@ export function ConfigForm({
   const [sheet, setSheet] = useState<CompanySheet>(() => initial.companySheet ?? sheetFromBusiness(initial.business));
   const [sheetBase, setSheetBase] = useState<CompanySheet>(() => initial.companySheet ?? sheetFromBusiness(initial.business));
   const [issues, setIssues] = useState<SheetIssue[]>([]);
+  // Tools brick: the server's answer (capabilities = what the call gets),
+  // the switches on screen, and the last saved switches.
+  const [toolsServed, setToolsServed] = useState<ToolsResponse | null>(null);
+  const [tools, setTools] = useState<Tools | null>(null);
+  const [toolsBase, setToolsBase] = useState<Tools | null>(null);
+  // The transfer number is written by the tools PUT too (switching transfer
+  // off clears the served number): the config only sends it when edited.
+  const [transferBase, setTransferBase] = useState(initial.transferNumber);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -180,7 +192,7 @@ export function ConfigForm({
   const tilesRef = useRef<HTMLDivElement | null>(null);
   const tileParam = searchParams.get("tile");
   useEffect(() => {
-    const OPENABLE = ["voice", "business", "persona", "notifs", "channels"];
+    const OPENABLE = ["voice", "business", "tools", "persona", "notifs", "channels"];
     if (tileParam && OPENABLE.includes(tileParam)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- ouverture pilotée par l'URL (deep-link), pattern voulu
       setActiveTile(tileParam);
@@ -275,6 +287,20 @@ export function ConfigForm({
   const currentLangFlag =
     primaryLanguages.find((l) => l.value === form.primaryLanguage)?.flag ?? "—";
 
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+    fetch(`/api/dashboard/tools${qs}`, { signal: ctrl.signal, cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        setToolsServed(d);
+        setTools(d.tools);
+        setToolsBase(d.tools);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [asUserId]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
     setForm((prev) => {
@@ -315,14 +341,37 @@ export function ConfigForm({
         setForm((prev) => ({ ...prev, business: businessFromSheet(sdata.companySheet!) }));
       }
 
-      // 2. The agent's config — without the sheet (`business` and its
+      // 2. The agent's switches (tools), when they changed.
+      if (tools && toolsBase) {
+        const tchanges = toolsPatch(toolsBase, tools);
+        if (Object.keys(tchanges).length > 0) {
+          const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+          const tres = await fetch(`/api/dashboard/tools${qs}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tools: tchanges }),
+          });
+          const tdata = (await tres.json().catch(() => null)) as ToolsResponse | null;
+          if (!tres.ok || !tdata?.tools) {
+            setError(tTools("saveError"));
+            return;
+          }
+          setToolsServed(tdata);
+          setTools(tdata.tools);
+          setToolsBase(tdata.tools);
+        }
+      }
+
+      // 3. The agent's config — without the sheet (`business` and its
       //    loaded copy `companySheet`), which saves through its own endpoint.
       const endpoint = asUserId
         ? `/api/admin/configs/${asUserId}`
         : "/api/dashboard/config";
-      const { business: _sheetOwned, companySheet: _sheetCopy, ...agentFields } = form;
+      const { business: _sheetOwned, companySheet: _sheetCopy, transferNumber, ...rest } = form;
       void _sheetOwned;
       void _sheetCopy;
+      // Sent only when edited here: the tools switch also writes it.
+      const agentFields = transferNumber !== transferBase ? { ...rest, transferNumber } : rest;
       const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -358,6 +407,19 @@ export function ConfigForm({
         voiceConfig?: FormState["voiceConfig"];
         personaConfig?: Persona;
       } | null;
+      setTransferBase(transferNumber);
+      // A new transfer number changes the prerequisites: refresh the tools state.
+      if (transferNumber !== transferBase) {
+        const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+        const fresh = await fetch(`/api/dashboard/tools${qs}`, { cache: "no-store" })
+          .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : null))
+          .catch(() => null);
+        if (fresh) {
+          setToolsServed(fresh);
+          setTools(fresh.tools);
+          setToolsBase(fresh.tools);
+        }
+      }
       const savedPersona = saved?.personaConfig ?? persona;
       setPersona(savedPersona);
       setPersonaBase(savedPersona);
@@ -398,6 +460,20 @@ export function ConfigForm({
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z" />
+        </svg>
+      ),
+    },
+    {
+      id: "tools",
+      label: tTools("tileLabel"),
+      tagline: tTools("tileTagline"),
+      summary: toolsServed
+        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities) })
+        : "—",
+      accent: "from-[#0e7490] to-[#155e75]",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+          <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z" />
         </svg>
       ),
     },
@@ -693,6 +769,28 @@ export function ConfigForm({
                 )}
                 {activeTile === "notifs" && (
                   <NotifsPanel form={form} update={update} t={t} />
+                )}
+                {activeTile === "tools" && (
+                  <div className="pb-28">
+                    {toolsServed && tools ? (
+                      <ToolsBrick
+                        kind="inbound"
+                        served={toolsServed}
+                        tools={tools}
+                        onChange={(next) => {
+                          setTools(next);
+                          setDirty(true);
+                        }}
+                        onAddNumber={() => setActiveTile("notifs")}
+                        returnTo="/dashboard?tile=tools"
+                        asUserId={asUserId ?? null}
+                      />
+                    ) : (
+                      <p className="text-sm text-[#475569]" aria-busy="true">
+                        {tTools("loading")}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {activeTile === "business" && (
                   // The floating save bar sits over the page bottom: room below

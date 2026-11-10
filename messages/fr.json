@@ -2406,5 +2406,55 @@
     "before": "avant :",
     "after": "après :",
     "fieldLabel": "{label} :"
+  },
+  "ToolsBrick": {
+    "intro": "Ce que votre réceptionniste peut faire pendant un appel, en plus de parler. Raccrocher est toujours possible.",
+    "introOutbound": "Ce que cet agent peut faire pendant un appel, en plus de parler.",
+    "cap": {
+      "booking": {
+        "name": "Prendre des rendez-vous",
+        "what": "Propose des créneaux libres et réserve dans votre agenda.",
+        "on": "Actif : agenda connecté."
+      },
+      "contacts": {
+        "name": "Enregistrer les contacts",
+        "what": "Ajoute le nom et le numéro de l'appelant à votre liste de contacts.",
+        "on": "Actif."
+      },
+      "transfer": {
+        "name": "Transférer à une personne",
+        "what": "Passe l'appel à votre numéro quand l'appelant demande quelqu'un. Fonctionne pendant les appels téléphoniques ; le test dans le navigateur ne transfère pas.",
+        "on": "Actif : vers votre numéro de transfert."
+      },
+      "orders": {
+        "name": "Prendre des commandes",
+        "what": "Note une commande et vous l'envoie.",
+        "on": "Actif."
+      }
+    },
+    "statusOff": "Éteint.",
+    "statusPending": "Pas encore actif :",
+    "missing": {
+      "google_not_connected": "compte Google non connecté.",
+      "no_transfer_number": "ajoutez un numéro de transfert.",
+      "not_available_outbound": "pas encore disponible pour les appels sortants."
+    },
+    "connectGoogle": "Connecter Google",
+    "connectGoogleTenantOnly": "Le client doit connecter son agenda Google depuis son compte.",
+    "addNumber": "Ajouter un numéro",
+    "notInPlan": "Non inclus dans votre forfait : {list}.",
+    "availableWith": "Disponible avec le forfait {plan}",
+    "devTitle": "Mode développeur",
+    "planMatrix": "Ouvrir la grille des forfaits",
+    "tileLabel": "Ce que l'agent sait faire",
+    "tileTagline": "Rendez-vous, contacts, transfert, commandes",
+    "tileSummary": "{n, plural, =0 {Aucune capacité active} one {# capacité active} other {# capacités actives}}",
+    "loading": "Chargement…",
+    "saveError": "Les capacités n'ont pas été enregistrées. Réessayez.",
+    "saveAgentFirst": "Enregistrez l'agent pour régler ce qu'il sait faire.",
+    "offOutbound": "Pas encore disponible pour les appels sortants.",
+    "googleNotice": "Connectez votre compte Google pour activer : {list}.",
+    "transferOnTo": "Actif : vers <n>{number}</n>.",
+    "editNumber": "Modifier"
   }
 }

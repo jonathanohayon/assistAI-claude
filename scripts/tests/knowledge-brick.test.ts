@@ -123,7 +123,7 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.ok(!existsSync(join(ROOT, "app/[locale]/dashboard/config/business-panel.tsx")));
   // The sheet saves through its own endpoint; `business` is not sent with the config.
   assert.match(inbound, /\/api\/dashboard\/company-sheet/);
-  assert.match(inbound, /const \{ business: _sheetOwned, companySheet: _sheetCopy, \.\.\.agentFields \} = form;/);
+  assert.match(inbound, /const \{ business: _sheetOwned, companySheet: _sheetCopy, transferNumber, \.\.\.rest \} = form;/);
   assert.match(read("app/[locale]/dashboard/campaigns/agents/agents-workspace.tsx"), /\/api\/dashboard\/company-sheet/);
 }
 

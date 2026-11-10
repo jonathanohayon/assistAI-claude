@@ -2406,5 +2406,55 @@
     "before": "before:",
     "after": "after:",
     "fieldLabel": "{label}:"
+  },
+  "ToolsBrick": {
+    "intro": "What your receptionist can do on a call, besides talking. Hanging up is always possible.",
+    "introOutbound": "What this agent can do on a call, besides talking.",
+    "cap": {
+      "booking": {
+        "name": "Book appointments",
+        "what": "Offers free slots and books them in your calendar.",
+        "on": "Active: calendar connected."
+      },
+      "contacts": {
+        "name": "Save contacts",
+        "what": "Adds the caller's name and number to your contact list.",
+        "on": "Active."
+      },
+      "transfer": {
+        "name": "Transfer to a person",
+        "what": "Passes the call to your number when the caller asks for someone. Works on phone calls; the browser test does not transfer.",
+        "on": "Active: to your transfer number."
+      },
+      "orders": {
+        "name": "Take orders",
+        "what": "Notes an order and sends it to you.",
+        "on": "Active."
+      }
+    },
+    "statusOff": "Off.",
+    "statusPending": "Not active yet:",
+    "missing": {
+      "google_not_connected": "Google account not connected.",
+      "no_transfer_number": "add a transfer number.",
+      "not_available_outbound": "not available for outbound calls yet."
+    },
+    "connectGoogle": "Connect Google",
+    "connectGoogleTenantOnly": "The customer connects their Google calendar from their own account.",
+    "addNumber": "Add a number",
+    "notInPlan": "Not in your plan: {list}.",
+    "availableWith": "Available with the {plan} plan",
+    "devTitle": "Developer mode",
+    "planMatrix": "Open the plan matrix",
+    "tileLabel": "What the agent can do",
+    "tileTagline": "Appointments, contacts, transfer, orders",
+    "tileSummary": "{n, plural, =0 {No active capability} one {# active capability} other {# active capabilities}}",
+    "loading": "Loading…",
+    "saveError": "The capabilities weren't saved. Try again.",
+    "saveAgentFirst": "Save the agent to set what it can do.",
+    "offOutbound": "Not available for outbound calls yet.",
+    "googleNotice": "Connect your Google account to turn on: {list}.",
+    "transferOnTo": "Active: to <n>{number}</n>.",
+    "editNumber": "Edit"
   }
 }
