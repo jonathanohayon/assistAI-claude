@@ -20,8 +20,8 @@ import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 import { getTileToggles } from "@/lib/tile-toggles";
-import { receptionistCallFields, toolsFromTileToggles } from "@/lib/tools/adapters";
-import { effectiveCapabilities } from "@/lib/tools/contract";
+import { receptionistCallFields } from "@/lib/tools/adapters";
+import { receptionistCapabilities } from "@/lib/tools/store";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -211,9 +211,10 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // Tools brick (T1): ONE function decides what the call gets — the same the
   // screen will show. Orders (record_order) ride on the CRM plan feature and
   // the "Commandes" toggle; transfer on the number (served below).
-  const capabilities = effectiveCapabilities(
-    { recipe: "receptionist", tools: toolsFromTileToggles(tileToggles) },
-    { transferNumber: tenant.config.transferNumber ?? "", googleConnected: Boolean(tenant.user.googleRefreshToken) },
+  const { capabilities } = receptionistCapabilities(
+    tenant.config,
+    tileToggles,
+    Boolean(tenant.user.googleRefreshToken),
     planFeatures,
   );
   const { features, ordersEnabled } = receptionistCallFields(capabilities, planFeatures);
@@ -241,9 +242,18 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
 
   // Strip internal IDs — the agent only needs the runtime values.
   // personaConfig (P3) stays out of the worker payload: calls still read the
-  // legacy persona columns until the reader switch.
-  const { id: _id, userId: _userId, updatedAt, personaConfig: _personaConfig, ...runtime } = config;
-  void _personaConfig;
+  // legacy persona columns until the reader switch. Same for the Tools
+  // store (T3): calls read the tile toggles + transferNumber.
+  const {
+    id: _id,
+    userId: _userId,
+    updatedAt,
+    personaConfig: _personaConfig,
+    toolsConfig: _toolsConfig,
+    transferNumberParked: _parked,
+    ...runtime
+  } = config;
+  void [_personaConfig, _toolsConfig, _parked];
   void _id;
   void _userId;
   // Greeting fallback per-plan : utilisé par le worker quand

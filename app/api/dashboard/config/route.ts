@@ -18,6 +18,8 @@ import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-provider";
 import { parseTransferNumber } from "@/lib/transfer-number";
+import { legacyTransferWriteUpdates } from "@/lib/tools/legacy-sync";
+import { withoutToolsStore } from "@/lib/tools/store";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 export async function GET() {
@@ -44,7 +46,7 @@ export async function GET() {
   // Voice contract (V5): the stored voice, or derived from the columns;
   // admin-only paths removed for tenants (no provider trace).
   return NextResponse.json({
-    ...config,
+    ...withoutToolsStore(config),
     voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
     personaConfig: currentInboundPersona(row.config.personaConfig, row.config),
   });
@@ -189,6 +191,8 @@ export async function PUT(req: NextRequest) {
     const tn = parseTransferNumber(body.transferNumber);
     if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
     updates.transferNumber = tn.value;
+    // Tools T3: nothing stays parked; a stored `tools` is refreshed.
+    Object.assign(updates, await legacyTransferWriteUpdates(guard.userId, tn.value));
   }
   if ("aiDisclosureEnabled" in body) {
     updates.aiDisclosureEnabled = body.aiDisclosureEnabled !== false;
@@ -290,7 +294,7 @@ export async function PUT(req: NextRequest) {
   void warmGreetingAudioForUser(guard.userId);
 
   return NextResponse.json({
-    ...updated,
+    ...withoutToolsStore(updated),
     voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin),
     personaConfig: currentInboundPersona(updated.personaConfig, updated),
   });
