@@ -44,7 +44,12 @@ import type {
   FormState,
 } from "./config/types";
 import { VoiceBrick } from "@/components/bricks/voice/VoiceBrick";
-import { toInboundFields } from "@/components/bricks/persona/persona-ui";
+import {
+  LEGACY_INBOUND_PERSONA_FIELDS,
+  personaPatch,
+  personaToInboundColumns,
+  withPersonaConfig,
+} from "@/components/bricks/persona/persona-ui";
 import { personaFromInbound } from "@/lib/persona/adapters";
 import type { Persona } from "@/lib/persona/contract";
 import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
@@ -114,9 +119,12 @@ export function ConfigForm({
   // Voice brick: full Voice for the screen; `voiceBase` = last loaded/saved,
   // the save sends only voicePatch(voiceBase, voice).
   const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
-  // Persona brick: kept as a Persona so "Automatic" keeps the typed sentence
-  // while editing (P3 will store it; today greetingInstructions = "").
-  const [persona, setPersona] = useState<Persona>(() => personaFromInbound(initial));
+  // Persona brick: a full Persona on screen, saved as a partial
+  // personaConfig (P3 stores mode and text independently). The legacy
+  // persona fields in `form` are kept in sync for the rest of the screen
+  // but never sent (persona_config_conflict).
+  const [persona, setPersona] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
+  const [personaBase, setPersonaBase] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -271,7 +279,13 @@ export function ConfigForm({
       const res = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(withVoiceConfig(form, [], voicePatch(voiceBase, voice))),
+        body: JSON.stringify(
+          withPersonaConfig(
+            withVoiceConfig(form, [], voicePatch(voiceBase, voice)),
+            LEGACY_INBOUND_PERSONA_FIELDS,
+            personaPatch(personaBase, persona),
+          ),
+        ),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -293,7 +307,13 @@ export function ConfigForm({
         locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
       setSavedAt(new Date().toLocaleTimeString(timeLocale));
       setDirty(false);
-      const saved = (await res.json().catch(() => null)) as { voiceConfig?: FormState["voiceConfig"] } | null;
+      const saved = (await res.json().catch(() => null)) as {
+        voiceConfig?: FormState["voiceConfig"];
+        personaConfig?: Persona;
+      } | null;
+      const savedPersona = saved?.personaConfig ?? persona;
+      setPersona(savedPersona);
+      setPersonaBase(savedPersona);
       const savedVoice = saved?.voiceConfig ? hydrateVoice(saved.voiceConfig) : voice;
       setVoice(savedVoice);
       setVoiceBase(savedVoice);
@@ -618,7 +638,7 @@ export function ConfigForm({
                       setPersona(next);
                       // Until P3 stores `persona`, it saves through today's
                       // fields: same request, same behaviour.
-                      setForm((prev) => ({ ...prev, ...toInboundFields(next) }));
+                      setForm((prev) => ({ ...prev, ...personaToInboundColumns(next) }));
                       setDirty(true);
                     }}
                     isAdmin={isAdmin}
