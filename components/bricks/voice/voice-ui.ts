@@ -2,13 +2,14 @@
 // (voice-client.ts). Pure and client-safe: no supplier names (the admin
 // engine mapping lives in voice-admin.ts, loaded for admins only).
 
-import { CLIENT_DEFAULT_VOICE, VOICE_GENDER, type ClientVoice, type VoiceGender } from "./voice-client";
+import { CLIENT_DEFAULT_VOICE, RECOMMENDED_VOICE_IDS, VOICE_GENDER, type ClientVoice, type VoiceGender } from "./voice-client";
 
 /**
  * Six recommended voices shown first, three female and three male,
  * interleaved so the two-column grid reads female | male on every row.
+ * Same list as the voice samples (lib/voice/public).
  */
-export const RECOMMENDED_VOICES: readonly string[] = ["marin", "cedar", "coral", "ballad", "sage", "ash"];
+export const RECOMMENDED_VOICES: readonly string[] = RECOMMENDED_VOICE_IDS;
 
 export type GenderFilter = VoiceGender | "all";
 

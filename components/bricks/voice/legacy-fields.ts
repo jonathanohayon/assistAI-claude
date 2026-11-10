@@ -1,17 +1,9 @@
 // Legacy voice fields a screen must NOT send next to `voiceConfig`
-// (400 voice_config_conflict). Browser-safe copy of the lists in
-// lib/voice/store.ts (server code, which also imports the engine mapping);
-// scripts/tests/voice-brick.test.ts fails if the two ever differ.
-
-export const LEGACY_INBOUND_VOICE_FIELDS = [
-  "voice",
-  "speed",
-  "temperature",
-  "model",
-  "realtimeProvider",
-  "voiceProfile",
-  "noiseReductionLevel",
-] as const;
+// (400 voice_config_conflict). Outbound only: the receptionist form no
+// longer holds any legacy voice field (its list names a supplier, so it
+// must stay out of tenant code). Browser-safe copy of the list in
+// lib/voice/store.ts; scripts/tests/voice-brick-single-screen.test.ts fails
+// if the two ever differ.
 
 export const LEGACY_OUTBOUND_VOICE_FIELDS = ["voice", "personality", "noiseReductionLevel"] as const;
 

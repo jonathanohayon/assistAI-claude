@@ -5,6 +5,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { DEFAULT_VOICE, VOICE_GENDER, VOICE_IDS, mergeVoice } from "../../lib/voice/contract";
+import { PACES } from "../../lib/voice-profile";
+import { voiceForViewer } from "../../lib/voice/store";
+import {
+  CLIENT_DEFAULT_VOICE,
+  VOICE_PACES,
+  mergeClientVoice,
+  type ClientVoice,
+} from "../../components/bricks/voice/voice-client";
 import {
   RECOMMENDED_VOICES,
   addKeyTerm,
@@ -51,8 +59,8 @@ assert.equal(showLevel3({ isAdmin: false, developerMode: true }), true);
 
 // pace: picking a preset clears a kept custom speed (contract rule the custom chip relies on)
 {
-  const custom = { ...DEFAULT_VOICE, advanced: { ...DEFAULT_VOICE.advanced, speed: 1.13 } };
-  const r = mergeVoice(custom, { pace: "fast" });
+  const custom: ClientVoice = { ...CLIENT_DEFAULT_VOICE, advanced: { ...CLIENT_DEFAULT_VOICE.advanced, speed: 1.13 } };
+  const r = mergeClientVoice(custom, { pace: "fast" });
   assert.ok(r.ok && r.value.advanced.speed === null && r.value.pace === "fast");
 }
 
@@ -121,33 +129,78 @@ for (const l of ["en", "fr", "he"]) {
   assert.equal(radioKeyTarget("ArrowRight", ids, "zzz", false), "b", "unknown current starts at the first");
 }
 
-// hydrate a tenant's trimmed voiceConfig; patch = only what changed
+// hydrate a tenant's served voiceConfig; patch = only what changed
 {
-  const { engine: _e, advanced, ...rest } = DEFAULT_VOICE;
-  void _e;
-  const tenantServed = { ...rest, voiceId: "coral", advanced: { idleHangupSec: 45, minInterruptionMs: 500, maxDurationMin: 30 } };
+  const tenantServed = voiceForViewer({ ...DEFAULT_VOICE, voiceId: "coral", advanced: { ...DEFAULT_VOICE.advanced, idleHangupSec: 45 } }, false) as ClientVoice;
   const v = hydrateVoice(tenantServed);
   assert.equal(v.voiceId, "coral");
-  assert.equal(v.engine, DEFAULT_VOICE.engine);
   assert.equal(v.advanced.idleHangupSec, 45);
-  assert.equal(v.advanced.openaiTurnMode, DEFAULT_VOICE.advanced.openaiTurnMode);
-  assert.deepEqual(hydrateVoice(null), DEFAULT_VOICE);
+  assert.ok(!("engine" in v), "a tenant's screen value has no engine");
+  assert.deepEqual(hydrateVoice(null), CLIENT_DEFAULT_VOICE);
 
   assert.equal(voicePatch(v, v), null, "nothing changed → nothing sent");
-  const r = mergeVoice(v, { bargeIn: false, advanced: { idleHangupSec: 60 } });
+  const r = mergeClientVoice(v, { bargeIn: false, advanced: { idleHangupSec: 60 } });
   assert.ok(r.ok);
   const patch = voicePatch(v, r.ok ? r.value : v);
   assert.deepEqual(patch, { bargeIn: false, advanced: { idleHangupSec: 60 } });
-  assert.ok(!("engine" in (patch ?? {})), "a tenant never sends engine");
 
-  // picking a pace while a custom speed is kept sends the pace and the cleared speed
   const custom = hydrateVoice({ ...tenantServed, advanced: { ...tenantServed.advanced, speed: 1.13 } });
-  const p2 = mergeVoice(custom, { pace: "fast" });
+  const p2 = mergeClientVoice(custom, { pace: "fast" });
   assert.ok(p2.ok);
   assert.deepEqual(voicePatch(custom, p2.ok ? p2.value : custom), { pace: "fast", advanced: { speed: null } });
-  // arrays compare by value
-  const kt = mergeVoice(v, { keyTerms: ["Mock"] });
+  const kt = mergeClientVoice(v, { keyTerms: ["Mock"] });
   assert.deepEqual(voicePatch(v, kt.ok ? kt.value : v), { keyTerms: ["Mock"] });
+}
+
+// the browser subset = the contract: same tenant defaults, same paces, and
+// the same merge result as the server for every tenant write the screen makes
+{
+  assert.deepEqual(CLIENT_DEFAULT_VOICE, voiceForViewer(DEFAULT_VOICE, false), "CLIENT_DEFAULT_VOICE = tenant view of DEFAULT_VOICE");
+  assert.deepEqual([...VOICE_PACES], [...PACES]);
+  const full = { ...DEFAULT_VOICE, advanced: { ...DEFAULT_VOICE.advanced, speed: 1.13 } };
+  const tenant = voiceForViewer(full, false) as ClientVoice;
+  const writes: Array<Record<string, unknown>> = [
+    { voiceId: "cedar" },
+    { pace: "fast" },
+    { pace: "slow", advanced: { speed: 0.9 } },
+    { patience: 1 },
+    { bargeIn: false, languageLock: true },
+    { noiseReduction: 3 },
+    { keyTerms: ["Mock", "Salon Mock"] },
+    { pronunciations: [{ term: "Mock", sayAs: "mok" }] },
+    { advanced: { minInterruptionMs: 800, idleHangupSec: 60, maxDurationMin: 12 } },
+  ];
+  for (const w of writes) {
+    const server = mergeVoice(full, w);
+    const client = mergeClientVoice(tenant, w);
+    assert.ok(server.ok && client.ok, JSON.stringify(w));
+    assert.deepEqual(client.ok && client.value, server.ok && voiceForViewer(server.value, false), `same merge for ${JSON.stringify(w)}`);
+  }
+  // and the same refusals for out-of-range values
+  for (const w of [{ patience: 9 }, { noiseReduction: 0 }, { advanced: { idleHangupSec: 5 } }, { keyTerms: ["x".repeat(41)] }, { pace: "turbo" }]) {
+    assert.equal(mergeVoice(full, w).ok, false, `server refuses ${JSON.stringify(w)}`);
+    assert.equal(mergeClientVoice(tenant, w).ok, false, `client refuses ${JSON.stringify(w)}`);
+  }
+}
+
+// tenant modules never import the full contract or supplier modules at runtime
+{
+  const TENANT_MODULES = [
+    "components/bricks/voice/VoiceBrick.tsx",
+    "components/bricks/voice/voice-ui.ts",
+    "components/bricks/voice/voice-client.ts",
+    "components/bricks/voice/legacy-fields.ts",
+    "components/bricks/MoreSettings.tsx",
+    "components/bricks/DeveloperModeSwitch.tsx",
+    "components/bricks/use-developer-mode.ts",
+    "app/[locale]/dashboard/config-form.tsx",
+    "app/[locale]/dashboard/config/types.ts",
+    "app/[locale]/dashboard/campaigns/agents/agent-editor.tsx",
+    "app/[locale]/dashboard/campaigns/agents/agents-workspace.tsx",
+    "app/[locale]/dashboard-preview/wow/client.tsx",
+  ];
+  const FORBIDDEN = /^import (?!type )[^;]*from "@\/lib\/(voice\/contract|voice\/store|voice\/engine|voice\/adapters|voice-profile|realtime-provider|realtime|use-realtime-catalog)"/m;
+  for (const f of TENANT_MODULES) assert.doesNotMatch(read(f), FORBIDDEN, `${f}: runtime import of a supplier/full-contract module`);
 }
 
 console.log("ALL VOICE-BRICK TESTS PASSED");

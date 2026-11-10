@@ -7,11 +7,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  LEGACY_INBOUND_VOICE_FIELDS,
-  LEGACY_OUTBOUND_VOICE_FIELDS,
-  withVoiceConfig,
-} from "../../components/bricks/voice/legacy-fields";
+import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "../../components/bricks/voice/legacy-fields";
 import * as store from "../../lib/voice/store";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
@@ -66,17 +62,24 @@ for (const top of ["app", "components"]) {
 }
 
 // 4. Browser-safe legacy lists = the server's (the API refuses a mix).
-assert.deepEqual([...LEGACY_INBOUND_VOICE_FIELDS], [...store.LEGACY_INBOUND_VOICE_FIELDS]);
+// The receptionist form state holds NO legacy voice field at all.
+{
+  const types = read("app/[locale]/dashboard/config/types.ts");
+  const formState = types.slice(types.indexOf("export type FormState = {"), types.indexOf("};", types.indexOf("export type FormState = {")));
+  for (const k of store.LEGACY_INBOUND_VOICE_FIELDS) {
+    assert.doesNotMatch(formState, new RegExp(`^\\s*${k}\\??:`, "m"), `FormState still has legacy field ${k}`);
+  }
+}
 assert.deepEqual([...LEGACY_OUTBOUND_VOICE_FIELDS], [...store.LEGACY_OUTBOUND_VOICE_FIELDS]);
 
 // 5. Save bodies never carry a legacy voice field next to voiceConfig.
 {
   const inbound = { voice: "marin", speed: 1, model: "m", voiceProfile: {}, noiseReductionLevel: 8, temperature: 0.8, realtimeProvider: null, voiceConfig: { stale: true }, agentName: "Mock" };
-  const body = withVoiceConfig(inbound, LEGACY_INBOUND_VOICE_FIELDS, { bargeIn: false });
+  const body = withVoiceConfig(inbound, store.LEGACY_INBOUND_VOICE_FIELDS, { bargeIn: false });
   assert.deepEqual(body, { agentName: "Mock", voiceConfig: { bargeIn: false } });
   assert.deepEqual(store.conflictingFields(body, store.LEGACY_INBOUND_VOICE_FIELDS), []);
   // nothing changed in the voice → no voiceConfig, still no legacy field
-  assert.deepEqual(withVoiceConfig(inbound, LEGACY_INBOUND_VOICE_FIELDS, null), { agentName: "Mock" });
+  assert.deepEqual(withVoiceConfig(inbound, store.LEGACY_INBOUND_VOICE_FIELDS, null), { agentName: "Mock" });
 
   const outbound = { voice: "marin", personality: {}, noiseReductionLevel: 8, agentName: "Mock" };
   const ob = withVoiceConfig(outbound, LEGACY_OUTBOUND_VOICE_FIELDS, { voiceId: "cedar" });

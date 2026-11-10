@@ -6,7 +6,8 @@
 // screen works on what a tenant is served (voiceForViewer) with this subset,
 // and the server stays the authority (mergeVoice validates every write).
 //
-// Everything here is a COPY of the contract, pinned by
+// Voices and styles come from lib/voice/public (tamaraVlad's tenant-safe
+// subset). The rest here is a COPY of the contract, pinned by
 // scripts/tests/voice-brick.test.ts: values, defaults and merge results must
 // equal the contract's, so a change there fails the test until mirrored.
 // Only `import type` from the contract is allowed (erased at build time).
@@ -21,27 +22,17 @@ export type ClientVoice = Omit<Voice, "engine" | "advanced"> & {
     Pick<Voice["advanced"], "speed" | "minInterruptionMs" | "idleHangupSec" | "maxDurationMin">;
 };
 
-export type VoiceGender = "f" | "m";
+// Voices and styles: the tenant-safe public subset of the contract.
+export {
+  RECOMMENDED_VOICE_IDS,
+  STYLE_SELECTOR_TENANT_VISIBLE,
+  VOICE_GENDER,
+  VOICE_IDS,
+  VOICE_STYLES,
+  type VoiceGender,
+} from "@/lib/voice/public";
+import { VOICE_STYLES } from "@/lib/voice/public";
 
-export const VOICE_GENDER: Readonly<Record<string, VoiceGender>> = {
-  marin: "f",
-  cedar: "m",
-  ballad: "m",
-  sage: "f",
-  verse: "m",
-  alloy: "m",
-  shimmer: "f",
-  echo: "m",
-  fable: "m",
-  onyx: "m",
-  nova: "f",
-  coral: "f",
-  ash: "m",
-};
-export const VOICE_IDS: readonly string[] = Object.keys(VOICE_GENDER);
-
-export const VOICE_STYLES = ["warm", "professional", "dynamic", "calm"] as const;
-export const STYLE_SELECTOR_TENANT_VISIBLE = false;
 export const VOICE_PACES = ["slow", "normal", "fast"] as const;
 
 /** Tenant-visible defaults (= today's behaviour). */
