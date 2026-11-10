@@ -31,6 +31,7 @@ import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
+import { currentInboundPersona } from "@/lib/persona/store";
 import { ConfigForm, DEFAULT_BUSINESS } from "./config-form";
 
 export default async function DashboardPage(props: {
@@ -204,6 +205,8 @@ export default async function DashboardPage(props: {
         initial={{
           // Served as the API serves it (tenants: supplier fields removed);
           // the form fills in defaults in the browser.
+          // Persona as stored (P3), else derived from the legacy columns.
+          personaConfig: currentInboundPersona(config.personaConfig, config),
           voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), isAdmin) as ServedVoice,
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,

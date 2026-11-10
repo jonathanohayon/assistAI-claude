@@ -142,25 +142,21 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             {t("variablesTitle")}
           </h3>
           <p className={HINT}>{t("variablesHint")}</p>
-          <ul className="mt-3 space-y-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {GREETING_VARIABLES.map((v) => (
-              <li key={v} className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm">
-                  <code dir="ltr" className="rounded bg-white px-1.5 py-0.5 text-[#be185d] ring-1 ring-[#e2e8f0]">
-                    {v}
-                  </code>{" "}
-                  <span className="text-[#475569]">{t(`variable.${v.slice(1, -1)}`)}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => apply({ greeting: { mode: "custom", text: insertVariable(value.greeting.text, v) } })}
-                  className={`min-h-11 cursor-pointer rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm font-semibold text-[#18181b] hover:border-[#be185d]/40 ${FOCUS}`}
-                >
-                  {t("insert")}
-                </button>
-              </li>
+              <button
+                key={v}
+                type="button"
+                onClick={() => apply({ greeting: { mode: "custom", text: insertVariable(value.greeting.text, v) } })}
+                className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border border-[#e2e8f0] bg-white px-4 text-sm font-semibold text-[#18181b] hover:border-[#be185d]/40 ${FOCUS}`}
+              >
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5 text-[#be185d]">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                {t(`variable.${v.replace(/[{}\s]/g, "")}`)}
+              </button>
             ))}
-          </ul>
+          </div>
         </section>
       )}
     </div>

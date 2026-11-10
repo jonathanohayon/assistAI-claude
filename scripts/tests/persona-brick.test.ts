@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { effectiveGreeting } from "../../lib/ai-disclosure";
 import { buildCampaignGreeting } from "../../lib/campaigns/prompt";
 import { personaFromInbound, personaFromOutbound } from "../../lib/persona/adapters";
+import * as store from "../../lib/persona/store";
 import { DEFAULT_PERSONA, GREETING_VARIABLES, mergePersona, type Persona } from "../../lib/persona/contract";
 import {
   LEGACY_INBOUND_PERSONA_FIELDS,
@@ -64,6 +65,12 @@ const P = (over: Partial<Persona> = {}): Persona => ({ ...DEFAULT_PERSONA, name:
   assert.deepEqual(withPersonaConfig(inbound, LEGACY_INBOUND_PERSONA_FIELDS, { name: "Dana" }), { instructions: "Mock", personaConfig: { name: "Dana" } });
   const outbound = { agentName: "Sarah", language: "fr", greeting: "", knowledge: "" };
   assert.deepEqual(withPersonaConfig(outbound, LEGACY_OUTBOUND_PERSONA_FIELDS, null), { knowledge: "" });
+}
+
+// 3b. My legacy lists = P3's server lists (the API refuses a mix)
+{
+  assert.deepEqual([...LEGACY_INBOUND_PERSONA_FIELDS], [...store.LEGACY_INBOUND_PERSONA_FIELDS]);
+  assert.deepEqual([...LEGACY_OUTBOUND_PERSONA_FIELDS], [...store.LEGACY_OUTBOUND_PERSONA_FIELDS]);
 }
 
 // 4. Reads stay today's (P1 adapters), and the outbound disclosure stays off
@@ -123,6 +130,12 @@ for (const f of personaScreens) assert.doesNotMatch(read(f), /comingSoon|wowComi
   const brick = read("components/bricks/persona/PersonaBrick.tsx").replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "");
   assert.doesNotMatch(brick, /apply\(\{\s*languages:\s*\[/, "no control adds other spoken languages before P4");
   assert.match(brick, /kind === "inbound" && \(\s*<MoreSettings>\s*<DisclosureFields/, "disclosure only on inbound before P5");
+}
+
+// 7b. Every offered variable has a human label in all three languages
+for (const l of ["en", "fr", "he"]) {
+  const labels = JSON.parse(read(`messages/${l}.json`)).PersonaBrick.variable as Record<string, string>;
+  for (const v of GREETING_VARIABLES) assert.ok(labels[v.replace(/[{}\s]/g, "")], `${l}: label for ${v}`);
 }
 
 // 8. Copy: same keys FR/EN/HE, no supplier name, no "coming soon"

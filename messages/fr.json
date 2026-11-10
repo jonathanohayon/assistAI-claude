@@ -2309,11 +2309,10 @@
     "disclosureMustMentionAi": "Votre phrase doit dire que c'est une IA (par ex. « IA », « intelligence artificielle », « assistante virtuelle »).",
     "disclosureTooLong": "Restez sous {max} caractères.",
     "variablesTitle": "Variables de la première phrase",
-    "variablesHint": "Remplacées pour chaque personne appelée.",
+    "variablesHint": "Cliquez pour l'ajouter à votre phrase ; il est remplacé pour chaque personne appelée.",
     "variable": {
-      "contactName": "le nom de la personne appelée",
-      "phoneNumber": "son numéro"
-    },
-    "insert": "Insérer"
+      "name": "Prénom du contact",
+      "phone": "Téléphone du contact"
+    }
   }
 }
