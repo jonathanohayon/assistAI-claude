@@ -51,7 +51,8 @@ interface CallMetricsMetadata {
     worker?: string;
     web?: string;
     livekit?: string;
-    openai?: string;
+    /** Voice engine region (admin-only data). */
+    engine?: string;
   };
 }
 
@@ -136,7 +137,7 @@ export async function GET(req: NextRequest) {
         // 3. Worker → web (HTTP /api/agent/config)
         workerToWebConfig: setup.configFetch ?? null,
         // 4. Worker → OpenAI Realtime (WS handshake)
-        workerToOpenai: setup.sessionStart ?? null,
+        workerToEngine: setup.sessionStart ?? null,
         // 5. Greeting full latency (config done → 1st audio chunk audible)
         greeting: greeting,
         // 6. Transcription (user speech committed → STT done)
@@ -170,12 +171,12 @@ export async function GET(req: NextRequest) {
       // env vars locales si l'event n'a pas été emis avec topology
       // (anciens appels pré-2026-05-18).
       // Infra topology names the AI supplier: admin-only.
-      topology: !viewerIsAdmin ? undefined : m.topology ?? {
+      topology: !viewerIsAdmin ? undefined : topologyForChart(m.topology) ?? {
         twilio: process.env.INFRA_TWILIO_EDGE ?? "unknown",
         worker: process.env.INFRA_WORKER_REGION ?? "unknown",
         web: process.env.INFRA_WEB_REGION ?? "unknown",
         livekit: process.env.INFRA_LIVEKIT_REGION ?? "unknown",
-        openai: process.env.INFRA_OPENAI_REGION ?? "unknown",
+        engine: process.env.INFRA_OPENAI_REGION ?? "unknown",
       },
     };
   });
@@ -188,3 +189,10 @@ export async function GET(req: NextRequest) {
   });
 }
 
+
+/** Stored per-call topology (worker event) → chart shape: the engine region under a neutral key. */
+function topologyForChart(t: Record<string, string | undefined> | undefined) {
+  if (!t) return undefined;
+  const { openai, ...rest } = t;
+  return { ...rest, ...(openai !== undefined || t.engine !== undefined ? { engine: t.engine ?? openai } : {}) };
+}

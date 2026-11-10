@@ -1744,14 +1744,14 @@
         },
         "greeting": {
           "short": "Accueil initial",
-          "long": "Temps total entre le début de session et le 1er son de l’accueil de l’agent. Inclut les phases de setup (connexion, config, WS OpenAI)."
+          "long": "Temps total entre le début de session et le 1er son de l’accueil de l’agent. Inclut les phases de setup (connexion, config, moteur vocal)."
         }
       },
       "hop": {
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit (connexion)",
         "workerToWebConfig": "Worker → Web (config)",
-        "workerToOpenai": "Worker → OpenAI (WS)",
+        "workerToEngine": "Worker → moteur vocal",
         "greeting": "Accueil (init E2E)",
         "transcription": "Transcription (STT)",
         "endOfUtterance": "Fin de phrase (LLM)",
@@ -1761,32 +1761,33 @@
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit",
         "workerToWebConfig": "Worker → Web (config)",
-        "workerToOpenai": "Worker → OpenAI"
+        "workerToEngine": "Worker → moteur vocal"
       },
       "setupShort": {
         "twilioToWorker": "Worker",
         "workerToLivekit": "LiveKit",
         "workerToWebConfig": "Web (config)",
-        "workerToOpenai": "OpenAI"
+        "workerToEngine": "Moteur vocal"
       },
       "series": {
         "transcription": {
           "label": "STT → Worker (transcription)",
-          "hint": "Temps entre la fin de parole de l’utilisateur et la fin du STT. Retour OpenAI → Worker."
+          "hint": "Temps entre la fin de parole de l’utilisateur et la fin du STT. Retour moteur vocal → Worker."
         },
         "eou": {
           "label": "LLM → Worker (fin de phrase)",
-          "hint": "Temps entre la fin de parole de l’utilisateur et le début de la réponse du LLM. Retour OpenAI → Worker."
+          "hint": "Temps entre la fin de parole de l’utilisateur et le début de la réponse du LLM. Retour moteur vocal → Worker."
         },
         "firstAudio": {
           "label": "Audio → Worker (1er segment)",
-          "hint": "Temps entre le début du LLM et le 1er son audible. Retour OpenAI → Worker."
+          "hint": "Temps entre le début du LLM et le 1er son audible. Retour moteur vocal → Worker."
         },
         "ttft": {
           "label": "Worker → Utilisateur (TTFA total)",
           "hint": "Latence finale perçue : l’utilisateur finit de parler → l’agent émet son 1er son."
         }
-      }
+      },
+      "topologyEngine": "Moteur vocal"
     }
   },
   "Email": {

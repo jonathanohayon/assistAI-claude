@@ -15,7 +15,6 @@ export interface Plan {
   monthly: number;
   annualTotal: number;
   annualMonthly: number;
-  model: string;
   popular?: boolean;
   /** Minutes vocales incluses par mois. Utilisé pour le calcul d'overage. */
   minutesIncluded: number;
@@ -63,7 +62,6 @@ export const PLANS: readonly Plan[] = [
     monthly: 89,
     annualTotal: 890,
     annualMonthly: 74,
-    model: "gpt-realtime",
     popular: true,
     minutesIncluded: 300,
     public: true,
@@ -90,7 +88,6 @@ export const PLANS: readonly Plan[] = [
     monthly: 169,
     annualTotal: 1690,
     annualMonthly: 141,
-    model: "gpt-realtime",
     minutesIncluded: 800,
     public: true,
     features: [
@@ -114,7 +111,6 @@ export const PLANS: readonly Plan[] = [
     monthly: 59,
     annualTotal: 588,
     annualMonthly: 49,
-    model: "gpt-realtime",
     minutesIncluded: 300,
     // Legacy (2026-11): no longer offered; existing subscribers keep it.
     public: false,

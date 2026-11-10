@@ -33,7 +33,7 @@ interface LatencyPoint {
     twilioToWorker: number | null;
     workerToLivekit: number | null;
     workerToWebConfig: number | null;
-    workerToOpenai: number | null;
+    workerToEngine: number | null;
     greeting: number | null;
     transcription: number | null;
     endOfUtterance: number | null;
@@ -52,7 +52,7 @@ interface LatencyPoint {
     worker?: string;
     web?: string;
     livekit?: string;
-    openai?: string;
+    engine?: string;
   };
 }
 
@@ -96,7 +96,7 @@ const HOP_KEYS: ReadonlyArray<keyof LatencyPoint["latencies"]> = [
   "twilioToWorker",
   "workerToLivekit",
   "workerToWebConfig",
-  "workerToOpenai",
+  "workerToEngine",
   "greeting",
   "transcription",
   "endOfUtterance",
@@ -584,7 +584,7 @@ const SETUP_SERIES: ReadonlyArray<{
   { key: "twilioToWorker", color: "#06b6d4" },
   { key: "workerToLivekit", color: "#0e7490" },
   { key: "workerToWebConfig", color: "#ec4899" },
-  { key: "workerToOpenai", color: "#be185d" },
+  { key: "workerToEngine", color: "#be185d" },
 ];
 
 function CallDetailPanel({
@@ -1011,7 +1011,7 @@ function CallDetailPanel({
                   ["Worker", point.topology.worker, "#be185d"],
                   ["Web", point.topology.web, "#22d3ee"],
                   ["LiveKit", point.topology.livekit, "#0e7490"],
-                  ["OpenAI", point.topology.openai, "#7c3aed"],
+                  [t("topologyEngine"), point.topology.engine, "#7c3aed"],
                 ] as const
               ).map(([label, value, color]) => (
                 <div
