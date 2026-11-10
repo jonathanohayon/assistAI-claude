@@ -1,7 +1,7 @@
 import { alertAdmins } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
-import { getInitialInstructionsForPlan } from "@/lib/initial-config";
+import { seedForNewAccount } from "@/lib/neutral-seed";
 import { type PlanKey } from "@/lib/plans";
 import {
   getOnboardingGreetingByPlan,
@@ -60,23 +60,21 @@ export async function provisionTenant(input: ProvisionTenantInput) {
     })
     .returning();
 
-  // Bootstrap agent_config avec la persona du PLAN choisi.
-  // Cascade : template/greeting admin per-plan (/admin → Persona template)
-  // → sinon valeurs hardcodées per-plan de lib/initial-config.
+  // Bootstrap agent_config. Cascade: the admin's per-plan template/greeting
+  // (/admin → Persona template) → else a NEUTRAL persona in the account's
+  // language (lib/neutral-seed.ts: no customer's business fact — the
+  // business reaches the agent through its own company sheet).
   const [templatesByPlan, greetingsByPlan] = await Promise.all([
     getOnboardingTemplateByPlan(),
     getOnboardingGreetingByPlan(),
   ]);
-  const defaults = getInitialInstructionsForPlan(plan);
-  const adminTemplate = templatesByPlan[plan]?.trim() ?? "";
-  const adminGreeting = greetingsByPlan[plan]?.trim() ?? "";
-  const seedInstructions = adminTemplate || defaults.instructions;
-  const seedGreeting = adminGreeting || defaults.greeting;
+  const seed = seedForNewAccount(plan, locale, templatesByPlan, greetingsByPlan);
 
   await db.insert(agentConfigs).values({
     userId: created.id,
-    instructions: seedInstructions,
-    greetingInstructions: seedGreeting,
+    instructions: seed.instructions,
+    greetingInstructions: seed.greeting,
+    primaryLanguage: seed.primaryLanguage,
   });
 
   // The founder calls every new trial within 48 h (2026-11 plan): one
