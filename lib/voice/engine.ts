@@ -6,7 +6,7 @@
 // noiseReductionLevel and the full voiceProfile. Until worker V2 lands, the
 // web keeps serving these legacy fields; they must stay byte-identical.
 
-import type { Voice } from "@/lib/voice/contract";
+import { VOICE_STYLE_PRESETS, type Voice } from "@/lib/voice/contract";
 import type { RealtimeProvider } from "@/lib/realtime-provider";
 import { DEFAULT_VOICE_PROFILE, type VoiceProfile } from "@/lib/voice-profile";
 
@@ -22,15 +22,34 @@ export interface EngineSettings {
 export interface EngineContext {
   /** Model used when the voice doesn't name one (inbound column default / outbound env). */
   defaultModel: string;
+  /**
+   * false = the voice's own values, without the style preset. Used to write
+   * the legacy columns (which hold base values): applying the style there
+   * would apply it twice once it is served. Default true.
+   */
+  applyStyle?: boolean;
+}
+
+/** Base speed × style factor, rounded like the stored speeds (3 decimals). */
+function styledSpeed(base: number, factor: number): number {
+  return factor === 1 ? base : Math.round(base * factor * 1000) / 1000;
 }
 
 export function toEngineSettings(v: Voice, ctx: EngineContext): EngineSettings {
   const a = v.advanced;
+  const provider: RealtimeProvider = v.engine === "auto" ? "openai" : v.engine;
+  // Style preset (V6). "warm" is empty on every engine = today, unchanged.
+  const preset =
+    ctx.applyStyle === false ? VOICE_STYLE_PRESETS.warm[provider] : VOICE_STYLE_PRESETS[v.style][provider];
+  // No preset text → the tenant's line verbatim (byte-identical to today).
+  const speakingStyle = preset.instruction
+    ? [preset.instruction, a.speakingStyle.trim()].filter(Boolean).join(" ")
+    : a.speakingStyle;
   return {
-    realtimeProvider: v.engine === "auto" ? "openai" : v.engine,
+    realtimeProvider: provider,
     model: a.model ?? ctx.defaultModel,
     voice: v.voiceId,
-    speed: a.speed ?? 1,
+    speed: styledSpeed(a.speed ?? 1, preset.speedFactor),
     noiseReductionLevel: v.noiseReduction,
     voiceProfile: {
       ...DEFAULT_VOICE_PROFILE,
@@ -45,7 +64,7 @@ export function toEngineSettings(v: Voice, ctx: EngineContext): EngineSettings {
       pace: v.pace,
       pronunciations: v.pronunciations,
       fillers: a.fillers,
-      speakingStyle: a.speakingStyle,
+      speakingStyle,
       languageLock: v.languageLock,
       openaiTurnMode: a.openaiTurnMode,
       openaiEagerness: a.openaiEagerness,

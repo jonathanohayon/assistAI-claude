@@ -63,6 +63,47 @@ export const DEFAULT_VOICE_STYLE: VoiceStyle = "warm";
 /** Tenants can't pick a style until V6 is tuned and heard by Jonathan. Admins can. */
 export const STYLE_SELECTOR_TENANT_VISIBLE = false;
 
+/**
+ * Style presets, first tuning per engine (V6). Applied by toEngineSettings:
+ * `instruction` is prepended to the speaking-style line of the voice profile
+ * (the worker adds it to the prompt), `speedFactor` multiplies the base speed
+ * (only OpenAI has a speed setting; Gemini/Grok get the pace in words).
+ * "warm" is EMPTY on every engine: exactly today's behaviour.
+ * To be tuned by ear (Jonathan) before tenants can pick a style.
+ */
+export interface StylePreset {
+  instruction: string;
+  speedFactor: number;
+}
+type PresetEngine = "openai" | "gemini" | "xai";
+
+const PRO = "Sound composed and businesslike: clear, courteous and to the point, with little small talk.";
+const DYN = "Sound upbeat and energetic, with a lively, smiling tone and short sentences.";
+const CALM = "Sound calm, soft and reassuring; leave short pauses and never rush.";
+
+export const VOICE_STYLE_PRESETS: Record<VoiceStyle, Record<PresetEngine, StylePreset>> = {
+  warm: {
+    openai: { instruction: "", speedFactor: 1 },
+    gemini: { instruction: "", speedFactor: 1 },
+    xai: { instruction: "", speedFactor: 1 },
+  },
+  professional: {
+    openai: { instruction: PRO, speedFactor: 1 },
+    gemini: { instruction: PRO, speedFactor: 1 },
+    xai: { instruction: PRO, speedFactor: 1 },
+  },
+  dynamic: {
+    openai: { instruction: DYN, speedFactor: 1.08 },
+    gemini: { instruction: `${DYN} Speak at a brisk pace.`, speedFactor: 1 },
+    xai: { instruction: `${DYN} Speak at a brisk pace.`, speedFactor: 1 },
+  },
+  calm: {
+    openai: { instruction: CALM, speedFactor: 0.92 },
+    gemini: { instruction: `${CALM} Speak slowly.`, speedFactor: 1 },
+    xai: { instruction: `${CALM} Speak slowly.`, speedFactor: 1 },
+  },
+};
+
 // ── Engine ──────────────────────────────────────────────────────────────
 
 export const VOICE_ENGINES = ["auto", "openai", "gemini", "xai"] as const;
@@ -257,5 +298,6 @@ export function voiceContractRules() {
     engines: [...VOICE_ENGINES],
     fieldLevel: VOICE_FIELD_LEVEL,
     defaultVoice: DEFAULT_VOICE,
+    stylePresets: VOICE_STYLE_PRESETS,
   };
 }
