@@ -679,7 +679,6 @@ export function ConfigForm({
                 {activeTile === "persona" && (
                   <PersonaPanel
                     form={form}
-                    update={update}
                     persona={persona}
                     onPersonaChange={(next) => {
                       setPersona(next);

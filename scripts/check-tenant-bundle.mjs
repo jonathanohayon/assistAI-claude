@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Proof that a TENANT's browser never receives supplier names (Voice brick
-// rule). Run against a PRODUCTION build (`next build && next start`) backed
+// rule) nor the technical names of the agent's tools (Tools brick rule;
+// list in tenant-bundle-match.mjs). Run against a PRODUCTION build (`next build && next start`) backed
 // by a throwaway database with a mock tenant — never against production.
 //
 //   node scripts/check-tenant-bundle.mjs http://localhost:3997 tenant@example.test <password>
@@ -12,13 +13,14 @@
 // downloaded on demand (e.g. admin-only code) and say which ones contain a
 // match. Exit 1 if the page or any statically loaded chunk matches.
 
+import { hits } from "./tenant-bundle-match.mjs";
+
 const [base, email, password] = process.argv.slice(2);
 if (!base || !email || !password) {
   console.error("usage: check-tenant-bundle.mjs <baseUrl> <tenantEmail> <password>");
   process.exit(2);
 }
 
-const PATTERN = /openai|grok|gemini|xai|realtime/gi;
 // NextAuth basePath (auth.ts).
 const AUTH = "/api/admin/auth";
 // Every tenant page under /dashboard, in the three languages.
@@ -54,36 +56,6 @@ async function get(path, opts = {}) {
 }
 
 const chunkPaths = (text) => new Set([...text.matchAll(/\/_next\/static\/[A-Za-z0-9_\-./~]+?\.js/g)].map((m) => m[0]));
-// A match inside a long base64 run (per-request encoded bytes, e.g. a
-// serialized payload) is random letters, not a word: "…/UqxaiMcjn…" flaked
-// once. Identifiers and copy never contain "+" or "/", so such a run is
-// skipped only when it does.
-const inBase64Run = (text, index, length) => {
-  let s = index, e = index + length;
-  while (s > 0 && /[A-Za-z0-9+/]/.test(text[s - 1])) s--;
-  while (e < text.length && /[A-Za-z0-9+/]/.test(text[e])) e++;
-  const run = text.slice(s, e);
-  // Also mixed case with digits, so a long lowercase URL path that names a
-  // supplier (e.g. /api/realtime/…) is never skipped.
-  return (
-    run.length >= 40 &&
-    /[+/]/.test(run) &&
-    !/\/_next\//.test(run) &&
-    (run.match(/[A-Z]/g) ?? []).length >= 3 &&
-    (run.match(/[0-9]/g) ?? []).length >= 2
-  );
-};
-const hits = (text) => {
-  const out = new Map();
-  for (const m of text.matchAll(PATTERN)) {
-    if (inBase64Run(text, m.index, m[0].length)) continue;
-    const ctx = text.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30).replace(/\s+/g, " ");
-    const key = m[0].toLowerCase();
-    if (!out.has(key)) out.set(key, []);
-    if (out.get(key).length < 3) out.get(key).push(ctx);
-  }
-  return out;
-};
 const show = (label, h) => {
   for (const [word, ctx] of h) console.log(`  ✗ ${label}: "${word}" e.g. …${ctx[0]}…`);
 };
@@ -124,5 +96,5 @@ for (const page of PAGES) {
   }
 }
 
-console.log(failed ? "FAIL: supplier names reach a tenant page" : "PASS: 0 matches in tenant HTML and loaded chunks");
+console.log(failed ? "FAIL: supplier or tool names reach a tenant page" : "PASS: 0 matches in tenant HTML and loaded chunks");
 process.exit(failed ? 1 : 0);

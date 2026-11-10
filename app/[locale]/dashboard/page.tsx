@@ -161,10 +161,15 @@ export default async function DashboardPage(props: {
     "config_blocks",
     "admin_global",
   ]);
-  const adminInheritablePreview = promptBlocksPreview
-    .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
-    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
-    .join("\n\n");
+  // The plan's shared directives are admin-only: never serialized into a
+  // tenant's page (the field that shows them renders for admins only, but a
+  // prop reaches the browser whether it renders or not).
+  const adminInheritablePreview = isAdmin
+    ? promptBlocksPreview
+        .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
+        .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+        .join("\n\n")
+    : "";
 
   // État réel du tenant → checklist de setup en haut du dashboard.
   const hasPhone = Boolean(primaryPhone);
