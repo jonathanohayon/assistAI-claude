@@ -13,6 +13,7 @@ import { AgentUrlSection } from "./agent-url-section";
 import { ApiKeySection } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
+import { DeveloperModeSwitch } from "@/components/bricks/DeveloperModeSwitch";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,16 @@ export default async function SettingsPage(props: {
             {t("passwordDesc")}
           </p>
           <PasswordSection />
+        </div>
+
+        {/* Display: account-level developer mode (shared by every brick). */}
+        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="font-display text-lg text-[var(--color-foreground)]">
+            {t("developerSection")}
+          </h2>
+          <div className="mt-4">
+            <DeveloperModeSwitch />
+          </div>
         </div>
 
         {/* Abonnement */}

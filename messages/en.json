@@ -1575,7 +1575,8 @@
     "apiCopy": "Copy",
     "apiCopied": "Copied",
     "apiEndpointLabel": "Endpoint",
-    "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset."
+    "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "developerSection": "Display"
   },
   "DashboardBilling": {
     "header": "Billing",
@@ -2187,5 +2188,11 @@
     "kind_busy": "When your line is busy",
     "kind_noAnswer": "When you don't answer",
     "kind_unreachable": "When your phone is off or has no signal"
+  },
+  "Bricks": {
+    "moreSettings": "More settings",
+    "developerModeLabel": "Developer mode",
+    "developerModeHint": "Shows technical settings, such as time limits and interruption thresholds, in each section. Your agent works the same either way.",
+    "developerModeSaveError": "Couldn't save. Try again."
   }
 }

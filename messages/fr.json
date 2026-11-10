@@ -1575,7 +1575,8 @@
     "apiCopy": "Copier",
     "apiCopied": "Copié",
     "apiEndpointLabel": "Point d’accès",
-    "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset."
+    "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset.",
+    "developerSection": "Affichage"
   },
   "DashboardBilling": {
     "header": "Abonnement",
@@ -2187,5 +2188,11 @@
     "kind_busy": "Quand votre ligne est occupée",
     "kind_noAnswer": "Quand vous ne répondez pas",
     "kind_unreachable": "Quand votre téléphone est éteint ou sans réseau"
+  },
+  "Bricks": {
+    "moreSettings": "Plus de réglages",
+    "developerModeLabel": "Mode développeur",
+    "developerModeHint": "Affiche les réglages techniques, comme les durées limites et les seuils d'interruption, dans chaque section. Votre agent fonctionne de la même façon dans les deux cas.",
+    "developerModeSaveError": "Échec de l'enregistrement. Réessayez."
   }
 }
