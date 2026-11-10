@@ -17,7 +17,7 @@ import {
   type InboundVoiceColumns,
   type OutboundVoiceColumns,
 } from "@/lib/voice/adapters";
-import { mergeVoice, parseVoice, type Voice } from "@/lib/voice/contract";
+import { mergeVoice, parseVoice, STYLE_SELECTOR_TENANT_VISIBLE, type Voice } from "@/lib/voice/contract";
 import { toEngineSettings } from "@/lib/voice/engine";
 import type { RealtimeProvider } from "@/lib/realtime-provider";
 import type { VoiceProfile } from "@/lib/voice-profile";
@@ -65,7 +65,11 @@ export function planVoiceWrite(current: Voice, patch: unknown, isAdmin: boolean)
   const merged = mergeVoice(current, patch);
   if (!merged.ok) return { ok: false, status: 400, error: "invalid_voice_config", fields: [merged.error] };
   if (!isAdmin) {
-    const changed = VOICE_ADMIN_ONLY_PATHS.filter((p) => !same(get(current, p), get(merged.value, p)));
+    // Gates fire only when the tenant CHANGES a gated value: saving other
+    // fields under an admin-set value is fine.
+    const changed: string[] = VOICE_ADMIN_ONLY_PATHS.filter((p) => !same(get(current, p), get(merged.value, p)));
+    // Styles stay admin-only until Jonathan has listened (V6).
+    if (!STYLE_SELECTOR_TENANT_VISIBLE && merged.value.style !== current.style) changed.push("style");
     if (changed.length) return { ok: false, status: 403, error: "admin_only", fields: changed };
   }
   return { ok: true, voice: merged.value };
