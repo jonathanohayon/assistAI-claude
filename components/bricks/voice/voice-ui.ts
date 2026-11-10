@@ -72,3 +72,35 @@ export const ADVANCED_LIMITS = {
 export function showLevel3(opts: { isAdmin: boolean; developerMode: boolean }): boolean {
   return opts.isAdmin || opts.developerMode;
 }
+
+/**
+ * Radio group keyboard pattern (WAI-ARIA): one tab stop per group, arrows
+ * move AND select, mirrored in right-to-left, Home/End jump to the ends.
+ * Returns the id to select, or null when the key isn't handled.
+ */
+export function radioKeyTarget(
+  key: string,
+  ids: readonly string[],
+  current: string,
+  rtl: boolean,
+): string | null {
+  if (ids.length === 0) return null;
+  const i = Math.max(0, ids.indexOf(current));
+  const next = (d: number) => ids[(i + d + ids.length) % ids.length];
+  switch (key) {
+    case "ArrowDown":
+      return next(1);
+    case "ArrowUp":
+      return next(-1);
+    case "ArrowRight":
+      return next(rtl ? -1 : 1);
+    case "ArrowLeft":
+      return next(rtl ? 1 : -1);
+    case "Home":
+      return ids[0];
+    case "End":
+      return ids[ids.length - 1];
+    default:
+      return null;
+  }
+}

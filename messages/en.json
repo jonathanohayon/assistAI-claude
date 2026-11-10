@@ -2201,7 +2201,7 @@
     "genderAll": "All",
     "genderF": "Female",
     "genderM": "Male",
-    "allVoices": "All {count} voices",
+    "allVoices": "See all {count} voices",
     "styleLabel": "Style",
     "style": {
       "warm": "Warm",
@@ -2225,9 +2225,7 @@
     "patienceMin": "Answers quickly",
     "patienceMax": "Waits longer",
     "bargeInLabel": "Callers can interrupt",
-    "bargeInHint": "Off: Tamara always finishes her sentence first.",
     "languageLockLabel": "Stay in the main language",
-    "languageLockHint": "On: Tamara answers in your main language even if the caller switches.",
     "noiseLabel": "Background noise reduction",
     "noiseHint": "Higher filters more street and salon noise. Too high can clip quiet voices.",
     "noiseMin": "Light",
@@ -2245,7 +2243,7 @@
     "developerTitle": "Developer settings",
     "developerHint": "Time limits for every call. The defaults suit most businesses.",
     "advanced": {
-      "minInterruptionMs": "Shortest interruption",
+      "minInterruptionMs": "Shortest speech that interrupts",
       "idleHangupSec": "Silence before hanging up",
       "maxDurationMin": "Longest call"
     },
@@ -2253,6 +2251,31 @@
       "ms": "ms",
       "s": "s",
       "min": "min"
+    },
+    "desc": {
+      "marin": "Warm and steady",
+      "cedar": "Deep, reassuring",
+      "coral": "Warm and gentle",
+      "ballad": "Composed, deep",
+      "sage": "Calm, advisory",
+      "ash": "Calm, thoughtful",
+      "shimmer": "Soft and bright",
+      "nova": "Bright, lively",
+      "verse": "Energetic, clear",
+      "alloy": "Neutral and pro",
+      "echo": "Pro and neutral",
+      "fable": "Storyteller",
+      "onyx": "Deep and firm"
+    },
+    "fewerVoices": "See fewer",
+    "bargeInOn": "Tamara stops as soon as the caller speaks.",
+    "bargeInOff": "Tamara always finishes her sentence.",
+    "languageLockOn": "Tamara always answers in your main language.",
+    "languageLockOff": "Tamara follows the caller's language.",
+    "advancedHint": {
+      "minInterruptionMs": "If the caller speaks for less than this, Tamara keeps talking.",
+      "idleHangupSec": "After this much silence, Tamara says goodbye and hangs up.",
+      "maxDurationMin": "At this length, Tamara politely wraps up the call."
     }
   }
 }

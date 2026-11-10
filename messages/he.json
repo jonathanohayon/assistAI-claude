@@ -2201,7 +2201,7 @@
     "genderAll": "הכול",
     "genderF": "נשי",
     "genderM": "גברי",
-    "allVoices": "כל {count} הקולות",
+    "allVoices": "להצגת כל {count} הקולות",
     "styleLabel": "סגנון",
     "style": {
       "warm": "חם",
@@ -2225,9 +2225,7 @@
     "patienceMin": "עונה מהר",
     "patienceMax": "מחכה יותר",
     "bargeInLabel": "המתקשר יכול לקטוע",
-    "bargeInHint": "כבוי: תמרה תמיד מסיימת את המשפט.",
     "languageLockLabel": "להישאר בשפה הראשית",
-    "languageLockHint": "פעיל: תמרה עונה בשפה הראשית גם אם המתקשר מחליף שפה.",
     "noiseLabel": "הפחתת רעשי רקע",
     "noiseHint": "ערך גבוה מסנן יותר רעשי רחוב ומספרה. גבוה מדי עלול לחתוך קולות שקטים.",
     "noiseMin": "קלה",
@@ -2245,14 +2243,39 @@
     "developerTitle": "הגדרות מפתחים",
     "developerHint": "מגבלות זמן לכל שיחה. ברירות המחדל מתאימות לרוב העסקים.",
     "advanced": {
-      "minInterruptionMs": "הקטיעה הקצרה ביותר",
+      "minInterruptionMs": "משך דיבור מינימלי לקטיעה",
       "idleHangupSec": "שקט לפני ניתוק",
-      "maxDurationMin": "השיחה הארוכה ביותר"
+      "maxDurationMin": "משך שיחה מרבי"
     },
     "unit": {
       "ms": "מ״ש",
       "s": "שנ׳",
       "min": "דק׳"
+    },
+    "desc": {
+      "marin": "חם ויציב",
+      "cedar": "עמוק ומרגיע",
+      "coral": "חם ועדין",
+      "ballad": "רגוע ועמוק",
+      "sage": "שקט ומייעץ",
+      "ash": "שקט ומהורהר",
+      "shimmer": "רך ומאיר",
+      "nova": "מאיר ונמרץ",
+      "verse": "אנרגטי וצלול",
+      "alloy": "ניטרלי ומקצועי",
+      "echo": "מקצועי וניטרלי",
+      "fable": "מספר סיפורים",
+      "onyx": "עמוק ותקיף"
+    },
+    "fewerVoices": "להצגת פחות",
+    "bargeInOn": "תמרה עוצרת ברגע שהמתקשר מדבר.",
+    "bargeInOff": "תמרה תמיד מסיימת את המשפט.",
+    "languageLockOn": "תמרה תמיד עונה בשפה הראשית שלך.",
+    "languageLockOff": "תמרה עונה בשפה של המתקשר.",
+    "advancedHint": {
+      "minInterruptionMs": "אם המתקשר מדבר פחות מזה, תמרה ממשיכה במשפט.",
+      "idleHangupSec": "אחרי שקט כזה, תמרה נפרדת ומנתקת.",
+      "maxDurationMin": "כשמגיעים למשך הזה, תמרה מסיימת את השיחה בנימוס."
     }
   }
 }

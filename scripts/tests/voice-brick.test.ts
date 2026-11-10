@@ -12,6 +12,7 @@ import {
   genderOf,
   patienceToScreen,
   pickerVoices,
+  radioKeyTarget,
   screenToPatience,
   showLevel3,
 } from "../../components/bricks/voice/voice-ui";
@@ -89,4 +90,34 @@ for (const l of ["en", "fr", "he"]) {
   assert.doesNotMatch(text, /coming soon|bientôt|בקרוב/i, `${l}: no "coming soon"`);
 }
 
+// every voice has a short descriptor (fits a phone card without truncation)
+for (const l of ["en", "fr", "he"]) {
+  const d = copy(l).desc as Record<string, string>;
+  for (const v of VOICE_IDS) {
+    assert.ok(d[v], `${l}: VoiceBrick.desc.${v}`);
+    assert.ok(d[v].length <= 16, `${l}: desc.${v} "${d[v]}" is over 16 characters`);
+  }
+}
+
+// switch helpers describe the current state, one string per state
+for (const l of ["en", "fr", "he"]) {
+  const c = copy(l);
+  for (const k of ["bargeInOn", "bargeInOff", "languageLockOn", "languageLockOff", "fewerVoices"]) assert.ok(c[k], `${l}: ${k}`);
+  assert.ok(!("bargeInHint" in c) && !("languageLockHint" in c), `${l}: old two-state hints removed`);
+}
+
+// radio keyboard pattern: wraps, mirrored in RTL, Home/End, other keys ignored
+{
+  const ids = ["a", "b", "c"];
+  assert.equal(radioKeyTarget("ArrowRight", ids, "a", false), "b");
+  assert.equal(radioKeyTarget("ArrowRight", ids, "a", true), "c", "RTL: right goes back");
+  assert.equal(radioKeyTarget("ArrowLeft", ids, "a", false), "c", "wraps");
+  assert.equal(radioKeyTarget("ArrowDown", ids, "c", false), "a");
+  assert.equal(radioKeyTarget("Home", ids, "c", false), "a");
+  assert.equal(radioKeyTarget("End", ids, "a", true), "c");
+  assert.equal(radioKeyTarget("Enter", ids, "a", false), null);
+  assert.equal(radioKeyTarget("ArrowRight", ids, "zzz", false), "b", "unknown current starts at the first");
+}
+
 console.log("ALL VOICE-BRICK TESTS PASSED");
+

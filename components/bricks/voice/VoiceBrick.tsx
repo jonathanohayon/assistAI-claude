@@ -17,7 +17,7 @@
 
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
@@ -42,6 +42,7 @@ import {
   addPronunciation,
   patienceToScreen,
   pickerVoices,
+  radioKeyTarget,
   screenToPatience,
   showLevel3,
   type GenderFilter,
@@ -59,6 +60,21 @@ const SELECTED =
 const FOCUS = "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2";
 const LABEL = "text-sm font-semibold text-[#18181b]";
 const HINT = "mt-0.5 text-xs leading-relaxed text-[#475569]";
+
+/** Arrow-key handler for a radiogroup of buttons (roving tabindex). */
+function radioKeys(ids: readonly string[], current: string, onPick: (id: string) => void) {
+  return (e: KeyboardEvent<HTMLElement>) => {
+    const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+    const target = radioKeyTarget(e.key, ids, current, rtl);
+    if (target === null) return;
+    e.preventDefault();
+    onPick(target);
+    const group = e.currentTarget;
+    requestAnimationFrame(() =>
+      group.querySelector<HTMLElement>(`[role="radio"][data-id="${CSS.escape(target)}"]`)?.focus(),
+    );
+  };
+}
 
 export interface VoiceBrickProps {
   value: Voice;
@@ -165,14 +181,14 @@ export function VoiceBrick({
 
         <ToggleRow
           label={t("bargeInLabel")}
-          hint={t("bargeInHint")}
+          hint={value.bargeIn ? t("bargeInOn") : t("bargeInOff")}
           checked={value.bargeIn}
           onChange={(bargeIn) => apply({ bargeIn })}
         />
 
         <ToggleRow
           label={t("languageLockLabel")}
-          hint={t("languageLockHint")}
+          hint={value.languageLock ? t("languageLockOn") : t("languageLockOff")}
           checked={value.languageLock}
           onChange={(languageLock) => apply({ languageLock })}
         />
@@ -186,7 +202,6 @@ export function VoiceBrick({
           minLabel={t("noiseMin")}
           maxLabel={t("noiseMax")}
           onChange={(noiseReduction) => apply({ noiseReduction })}
-          showValue
         />
 
         <KeyTerms value={value.keyTerms} onChange={(keyTerms) => apply({ keyTerms })} />
@@ -204,11 +219,12 @@ export function VoiceBrick({
             {t("developerTitle")}
           </h3>
           <p className={HINT}>{t("developerHint")}</p>
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4">
             {OUR_ADVANCED_FIELDS.map((k) => (
               <NumberField
                 key={k}
                 label={t(`advanced.${k}`)}
+                hint={t(`advancedHint.${k}`)}
                 {...ADVANCED_LIMITS[k]}
                 unit={t(`unit.${ADVANCED_LIMITS[k].unit}`)}
                 value={value.advanced[k]}
@@ -269,33 +285,46 @@ function VoicePicker({
         />
       </div>
 
-      <div role="radiogroup" aria-labelledby={labelId} className="mt-3 grid grid-cols-2 gap-2">
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        onKeyDown={radioKeys(voices, voices.includes(value) ? value : voices[0], onPick)}
+        className="mt-3 grid grid-cols-2 gap-2"
+      >
         {voices.map((v) => {
           const active = v === value;
+          const desc = t.has(`desc.${v}`) ? t(`desc.${v}`) : null;
           return (
             <button
               key={v}
               type="button"
               role="radio"
               aria-checked={active}
+              aria-label={desc ? `${desc}, ${voiceLabel(v)}` : voiceLabel(v)}
+              data-id={v}
+              tabIndex={active || (!voices.includes(value) && v === voices[0]) ? 0 : -1}
               onClick={() => onPick(v)}
               className={`flex min-h-12 cursor-pointer items-center rounded-xl border px-3 py-2 text-start transition-colors duration-150 ${FOCUS} ${
                 active ? SELECTED : "border-[#e2e8f0] bg-white text-[#18181b] hover:border-[#be185d]/40"
               }`}
             >
-              <span className="text-sm font-semibold">{voiceLabel(v)}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{desc ?? voiceLabel(v)}</span>
+                <span className={`block truncate text-xs ${active ? "text-white/90" : "text-[#475569]"}`}>{voiceLabel(v)}</span>
+              </span>
             </button>
           );
         })}
       </div>
 
-      {!showAll && hidden > 0 && (
+      {hidden > 0 && (
         <button
           type="button"
-          onClick={() => setShowAll(true)}
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
           className={`mt-2 min-h-11 cursor-pointer rounded-lg px-1 text-sm font-semibold text-[#be185d] underline-offset-4 hover:underline ${FOCUS}`}
         >
-          {t("allVoices", { count: available.length })}
+          {showAll ? t("fewerVoices") : t("allVoices", { count: available.length })}
         </button>
       )}
     </div>
@@ -389,7 +418,12 @@ function Segmented({
   onPick: (id: string) => void;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl bg-[#f1f5f9] p-1">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={radioKeys(options.map((o) => o.id), selected, onPick)}
+      className="inline-flex rounded-xl bg-[#f1f5f9] p-1"
+    >
       {options.map((o) => {
         const active = o.id === selected;
         return (
@@ -398,6 +432,8 @@ function Segmented({
             type="button"
             role="radio"
             aria-checked={active}
+            data-id={o.id}
+            tabIndex={active ? 0 : -1}
             onClick={() => onPick(o.id)}
             className={`min-h-9 cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors ${FOCUS} ${
               active ? "bg-white text-[#18181b] shadow-sm" : "text-[#475569] hover:text-[#18181b]"
@@ -433,7 +469,12 @@ function ChipGroup({
         </p>
         {badge}
       </div>
-      <div role="radiogroup" aria-labelledby={id} className="mt-2 flex flex-wrap gap-2">
+      <div
+        role="radiogroup"
+        aria-labelledby={id}
+        onKeyDown={radioKeys(options.map((o) => o.id), selected, onPick)}
+        className="mt-2 flex flex-wrap gap-2"
+      >
         {options.map((o) => {
           const active = o.id === selected;
           return (
@@ -442,6 +483,8 @@ function ChipGroup({
               type="button"
               role="radio"
               aria-checked={active}
+              data-id={o.id}
+              tabIndex={active ? 0 : -1}
               onClick={() => onPick(o.id)}
               className={`min-h-11 cursor-pointer rounded-full border px-4 text-sm font-semibold transition-colors duration-150 ${FOCUS} ${
                 active ? SELECTED : "border-[#e2e8f0] bg-white text-[#18181b] hover:border-[#be185d]/40"
@@ -514,7 +557,6 @@ function Slider({
   minLabel,
   maxLabel,
   onChange,
-  showValue = false,
 }: {
   label: string;
   hint: string;
@@ -524,7 +566,6 @@ function Slider({
   minLabel: string;
   maxLabel: string;
   onChange: (v: number) => void;
-  showValue?: boolean;
 }) {
   const id = useId();
   const hintId = useId();
@@ -534,11 +575,6 @@ function Slider({
         <label htmlFor={id} className={LABEL}>
           {label}
         </label>
-        {showValue && (
-          <span className="text-sm font-semibold tabular-nums text-[#be185d]" dir="ltr">
-            {value} / {max}
-          </span>
-        )}
       </div>
       <p id={hintId} className={HINT}>
         {hint}
@@ -565,6 +601,7 @@ function Slider({
 
 function NumberField({
   label,
+  hint,
   unit,
   min,
   max,
@@ -573,6 +610,7 @@ function NumberField({
   onChange,
 }: {
   label: string;
+  hint: string;
   unit: string;
   min: number;
   max: number;
@@ -597,6 +635,9 @@ function NumberField({
       <label htmlFor={id} className="text-xs font-semibold text-[#18181b]">
         {label}
       </label>
+      <p id={`${id}-hint`} className="mt-0.5 text-xs leading-snug text-[#475569]">
+        {hint}
+      </p>
       <div className="mt-1 flex items-center gap-2">
         <input
           id={id}
@@ -610,6 +651,7 @@ function NumberField({
           onBlur={commit}
           onKeyDown={(e) => e.key === "Enter" && commit()}
           dir="ltr"
+          aria-describedby={`${id}-hint`}
           className="min-h-11 w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm tabular-nums text-[#18181b] focus:border-[#0e7490] focus:outline-none focus:ring-2 focus:ring-[#0e7490]/20"
         />
         <span className="shrink-0 text-xs text-[#475569]">{unit}</span>

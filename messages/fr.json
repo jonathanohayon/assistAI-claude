@@ -2201,7 +2201,7 @@
     "genderAll": "Toutes",
     "genderF": "Féminine",
     "genderM": "Masculine",
-    "allVoices": "Les {count} voix",
+    "allVoices": "Voir les {count} voix",
     "styleLabel": "Style",
     "style": {
       "warm": "Chaleureux",
@@ -2225,9 +2225,7 @@
     "patienceMin": "Répond vite",
     "patienceMax": "Attend plus",
     "bargeInLabel": "Le client peut couper la parole",
-    "bargeInHint": "Désactivé : Tamara finit toujours sa phrase.",
     "languageLockLabel": "Rester dans la langue principale",
-    "languageLockHint": "Activé : Tamara répond dans votre langue principale même si la personne en change.",
     "noiseLabel": "Réduction du bruit de fond",
     "noiseHint": "Plus haut filtre davantage la rue et le salon. Trop haut peut couper les voix faibles.",
     "noiseMin": "Légère",
@@ -2245,14 +2243,39 @@
     "developerTitle": "Réglages développeur",
     "developerHint": "Durées limites de chaque appel. Les valeurs par défaut conviennent à la plupart des commerces.",
     "advanced": {
-      "minInterruptionMs": "Interruption la plus courte",
+      "minInterruptionMs": "Durée minimale pour couper la parole",
       "idleHangupSec": "Silence avant de raccrocher",
-      "maxDurationMin": "Appel le plus long"
+      "maxDurationMin": "Durée maximale d'un appel"
     },
     "unit": {
       "ms": "ms",
       "s": "s",
       "min": "min"
+    },
+    "desc": {
+      "marin": "Souriante, posée",
+      "cedar": "Grave, apaisante",
+      "coral": "Chaude et douce",
+      "ballad": "Posée et grave",
+      "sage": "Calme, conseil",
+      "ash": "Calme, réfléchie",
+      "shimmer": "Douce, lumineuse",
+      "nova": "Vive, lumineuse",
+      "verse": "Énergique, nette",
+      "alloy": "Neutre et pro",
+      "echo": "Pro et neutre",
+      "fable": "Conteuse",
+      "onyx": "Grave et ferme"
+    },
+    "fewerVoices": "Voir moins",
+    "bargeInOn": "Tamara s'arrête dès que la personne parle.",
+    "bargeInOff": "Tamara finit toujours sa phrase.",
+    "languageLockOn": "Tamara répond toujours dans votre langue principale.",
+    "languageLockOff": "Tamara suit la langue de la personne qui appelle.",
+    "advancedHint": {
+      "minInterruptionMs": "Si la personne parle moins longtemps, Tamara continue sa phrase.",
+      "idleHangupSec": "Après ce silence, Tamara dit au revoir et raccroche.",
+      "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
     }
   }
 }
