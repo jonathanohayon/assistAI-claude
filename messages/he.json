@@ -2194,5 +2194,65 @@
     "developerModeLabel": "מצב מפתחים",
     "developerModeHint": "מציג הגדרות טכניות, כמו מגבלות זמן וספי הפרעה, בכל אזור. הסוכן שלך פועל באותו אופן בכל מקרה.",
     "developerModeSaveError": "השמירה נכשלה. נסו שוב."
+  },
+  "VoiceBrick": {
+    "voiceLabel": "קול",
+    "genderFilter": "הצגת קולות",
+    "genderAll": "הכול",
+    "genderF": "נשי",
+    "genderM": "גברי",
+    "allVoices": "כל {count} הקולות",
+    "styleLabel": "סגנון",
+    "style": {
+      "warm": "חם",
+      "professional": "מקצועי",
+      "dynamic": "דינמי",
+      "calm": "רגוע"
+    },
+    "listen": "האזנה",
+    "stop": "עצירה",
+    "callMe": "התקשרו אליי",
+    "invalid": "לא ניתן לשמור את הערך הזה. בדקו את השדה ונסו שוב.",
+    "paceLabel": "קצב דיבור",
+    "pace": {
+      "slow": "איטי",
+      "normal": "רגיל",
+      "fast": "מהיר",
+      "custom": "נוכחי (מותאם)"
+    },
+    "patienceLabel": "סבלנות לפני תשובה",
+    "patienceHint": "כמה זמן תמרה מחכה שהמתקשר יסיים לפני שהיא עונה.",
+    "patienceMin": "עונה מהר",
+    "patienceMax": "מחכה יותר",
+    "bargeInLabel": "המתקשר יכול לקטוע",
+    "bargeInHint": "כבוי: תמרה תמיד מסיימת את המשפט.",
+    "languageLockLabel": "להישאר בשפה הראשית",
+    "languageLockHint": "פעיל: תמרה עונה בשפה הראשית גם אם המתקשר מחליף שפה.",
+    "noiseLabel": "הפחתת רעשי רקע",
+    "noiseHint": "ערך גבוה מסנן יותר רעשי רחוב ומספרה. גבוה מדי עלול לחתוך קולות שקטים.",
+    "noiseMin": "קלה",
+    "noiseMax": "חזקה",
+    "keyTermsLabel": "מילים לזיהוי",
+    "keyTermsHint": "שמות שתמרה צריכה להבין ולאיית נכון: מותגים, טיפולים, רחובות.",
+    "keyTermsPlaceholder": "למשל שם מותג",
+    "add": "הוספה",
+    "remove": "הסרת {item}",
+    "pronunciationsLabel": "הגייה",
+    "pronunciationsHint": "איך תמרה צריכה לומר מילה בקול.",
+    "termLabel": "מילה",
+    "sayAsLabel": "לבטא כ־",
+    "saidAs": "נאמר „{sayAs}”",
+    "developerTitle": "הגדרות מפתחים",
+    "developerHint": "מגבלות זמן לכל שיחה. ברירות המחדל מתאימות לרוב העסקים.",
+    "advanced": {
+      "minInterruptionMs": "הקטיעה הקצרה ביותר",
+      "idleHangupSec": "שקט לפני ניתוק",
+      "maxDurationMin": "השיחה הארוכה ביותר"
+    },
+    "unit": {
+      "ms": "מ״ש",
+      "s": "שנ׳",
+      "min": "דק׳"
+    }
   }
 }
