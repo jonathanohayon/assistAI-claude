@@ -1744,14 +1744,14 @@
         },
         "greeting": {
           "short": "Initial greeting",
-          "long": "Total time from session start to the first sound of the agent’s greeting. Includes the setup phases (connect, config, OpenAI WS)."
+          "long": "Total time from session start to the first sound of the agent’s greeting. Includes the setup phases (connect, config, voice engine)."
         }
       },
       "hop": {
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit (connect)",
         "workerToWebConfig": "Worker → Web (config)",
-        "workerToOpenai": "Worker → OpenAI (WS)",
+        "workerToEngine": "Worker → voice engine",
         "greeting": "Greeting (E2E init)",
         "transcription": "Transcription (STT)",
         "endOfUtterance": "End of utterance (LLM)",
@@ -1761,32 +1761,33 @@
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit",
         "workerToWebConfig": "Worker → Web (config)",
-        "workerToOpenai": "Worker → OpenAI"
+        "workerToEngine": "Worker → voice engine"
       },
       "setupShort": {
         "twilioToWorker": "Worker",
         "workerToLivekit": "LiveKit",
         "workerToWebConfig": "Web (config)",
-        "workerToOpenai": "OpenAI"
+        "workerToEngine": "Voice engine"
       },
       "series": {
         "transcription": {
           "label": "STT → Worker (transcription)",
-          "hint": "Time from the caller finishing speaking to STT done. Return leg OpenAI → Worker."
+          "hint": "Time from the caller finishing speaking to STT done. Return leg voice engine → Worker."
         },
         "eou": {
           "label": "LLM → Worker (end of utterance)",
-          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg OpenAI → Worker."
+          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg voice engine → Worker."
         },
         "firstAudio": {
           "label": "Audio → Worker (1st chunk)",
-          "hint": "Time from LLM start to the first audible sound. Return leg OpenAI → Worker."
+          "hint": "Time from LLM start to the first audible sound. Return leg voice engine → Worker."
         },
         "ttft": {
           "label": "Worker → Caller (total TTFA)",
           "hint": "Final perceived latency: the caller stops speaking → the agent plays its first sound."
         }
-      }
+      },
+      "topologyEngine": "Voice engine"
     }
   },
   "Email": {

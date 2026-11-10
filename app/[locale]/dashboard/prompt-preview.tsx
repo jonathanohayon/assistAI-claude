@@ -153,7 +153,7 @@ export function PromptPreview({
           </h2>
           <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
             Vue d&apos;ensemble des {blocks.length} blocs assemblés dans le
-            system prompt OpenAI Realtime à chaque appel. {totalChars} chars total.
+            prompt système du moteur vocal à chaque appel. {totalChars} chars total.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

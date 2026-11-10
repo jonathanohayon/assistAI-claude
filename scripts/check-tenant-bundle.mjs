@@ -21,7 +21,9 @@ if (!base || !email || !password) {
 const PATTERN = /openai|grok|gemini|xai|realtime/gi;
 // NextAuth basePath (auth.ts).
 const AUTH = "/api/admin/auth";
-const PAGES = ["/fr/dashboard", "/fr/dashboard/campaigns", "/fr/dashboard/settings"];
+// Every tenant page under /dashboard, in the three languages.
+const TENANT_PATHS = ["/dashboard", "/dashboard/settings", "/dashboard/billing", "/dashboard/calendar", "/dashboard/contacts", "/dashboard/crm", "/dashboard/logs", "/dashboard/forwarding", "/dashboard/campaigns"];
+const PAGES = ["fr", "en", "he"].flatMap((l) => TENANT_PATHS.map((p) => `/${l}${p}`));
 
 let cookie = "";
 const remember = (res) => {

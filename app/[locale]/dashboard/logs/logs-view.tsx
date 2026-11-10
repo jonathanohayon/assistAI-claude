@@ -2,12 +2,10 @@
 
 import { useLocale, useTranslations } from "next-intl";
 
-import {
-  callPricing,
-  engineDisplayName,
-  resolveCallEngine,
-  type CallEngine,
-} from "@/lib/call-engine";
+// Engine resolution is admin-only (names suppliers): loaded on demand when
+// `showEngine` is set, so a tenant's browser never receives it.
+import type { CallEngine } from "@/lib/call-engine";
+type EngineLib = typeof import("@/lib/call-engine");
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LatencyChart } from "./latency-chart";
@@ -64,7 +62,7 @@ interface CallGroup {
  * en cours (ex. WhatsApp delivery check 8s), il y est quand même attaché.
  * C'est OK car on capture l'intention "events liés à cet appel".
  */
-function groupEventsByCall(events: EventRow[]): CallGroup[] {
+function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): CallGroup[] {
   const sortedAsc = [...events].sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   );
@@ -151,10 +149,12 @@ function groupEventsByCall(events: EventRow[]): CallGroup[] {
   }
 
   // Order DESC (newest first) pour l'affichage
-  for (const g of groups) {
-    if (g.kind !== "call") continue;
-    g.engine = resolveCallEngine(g.events);
-    g.pricing = callPricing(g.events);
+  if (engineLib) {
+    for (const g of groups) {
+      if (g.kind !== "call") continue;
+      g.engine = engineLib.resolveCallEngine(g.events);
+      g.pricing = engineLib.callPricing(g.events);
+    }
   }
   return groups.reverse();
 }
@@ -190,6 +190,17 @@ export function LogsView({
 } = {}) {
   const t = useTranslations("DashboardLogs");
   const locale = useLocale();
+  const [engineLib, setEngineLib] = useState<EngineLib | null>(null);
+  useEffect(() => {
+    if (!showEngine) return;
+    let alive = true;
+    void import("@/lib/call-engine").then((m) => {
+      if (alive) setEngineLib(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [showEngine]);
   const timeLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
 
   // Reconstruit la liste à chaque render pour bénéficier des labels traduits.
@@ -382,7 +393,7 @@ export function LogsView({
               <button
                 onClick={() =>
                   setExpandedGroups(
-                    new Set(groupEventsByCall(filtered).map((g) => g.key)),
+                    new Set(groupEventsByCall(filtered, engineLib).map((g) => g.key)),
                   )
                 }
                 className="bg-white px-3 py-1 text-xs font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
@@ -431,7 +442,7 @@ export function LogsView({
         </div>
       ) : groupByCall ? (
         <div className="space-y-3">
-          {groupEventsByCall(filtered).map((group) => {
+          {groupEventsByCall(filtered, engineLib).map((group) => {
             const isCollapsed = !expandedGroups.has(group.key);
             const accent =
               group.kind === "other"
@@ -480,7 +491,7 @@ export function LogsView({
                       {showEngine && group.kind === "call" && (
                         <p className="mt-0.5 flex items-center gap-2" aria-label={t("engineAria")}>
                           <span dir="ltr" className="truncate font-mono text-base font-bold text-[#0f172a]">
-                            {group.engine ? engineDisplayName(group.engine) : "—"}
+                            {group.engine && engineLib ? engineLib.engineDisplayName(group.engine) : "—"}
                           </span>
                           {group.engine && (
                             <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">

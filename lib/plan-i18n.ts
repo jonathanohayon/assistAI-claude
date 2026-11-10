@@ -26,7 +26,6 @@ interface PlanContent {
   monthly: number;
   annualMonthly: number;
   annualTotal: number;
-  model: string;
   popular?: boolean;
 }
 
@@ -62,7 +61,6 @@ export function getLocalizedPlan(
     monthly: plan.monthly,
     annualMonthly: plan.annualMonthly,
     annualTotal: plan.annualTotal,
-    model: plan.model,
     popular: plan.popular,
     name: block?.name ?? plan.name,
     tagline: block?.tagline ?? plan.tagline,

@@ -1744,14 +1744,14 @@
         },
         "greeting": {
           "short": "ברכת פתיחה",
-          "long": "הזמן הכולל מתחילת הסשן ועד הצליל הראשון של ברכת הפתיחה של הסוכן. כולל את שלבי ההקמה (חיבור, הגדרות, WS של OpenAI)."
+          "long": "הזמן הכולל מתחילת הסשן ועד הצליל הראשון של ברכת הפתיחה של הסוכן. כולל את שלבי ההקמה (חיבור, הגדרות, מנוע הקול)."
         }
       },
       "hop": {
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit (חיבור)",
         "workerToWebConfig": "Worker → Web (הגדרות)",
-        "workerToOpenai": "Worker → OpenAI (WS)",
+        "workerToEngine": "Worker → מנוע הקול",
         "greeting": "ברכת פתיחה (אתחול E2E)",
         "transcription": "תמלול (STT)",
         "endOfUtterance": "סוף משפט (LLM)",
@@ -1761,32 +1761,33 @@
         "twilioToWorker": "Twilio/Web → Worker",
         "workerToLivekit": "Worker → LiveKit",
         "workerToWebConfig": "Worker → Web (הגדרות)",
-        "workerToOpenai": "Worker → OpenAI"
+        "workerToEngine": "Worker → מנוע הקול"
       },
       "setupShort": {
         "twilioToWorker": "Worker",
         "workerToLivekit": "LiveKit",
         "workerToWebConfig": "Web (config)",
-        "workerToOpenai": "OpenAI"
+        "workerToEngine": "מנוע הקול"
       },
       "series": {
         "transcription": {
           "label": "STT → Worker (תמלול)",
-          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד סיום ה-STT. חזרה OpenAI → Worker."
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד סיום ה-STT. חזרה מנוע הקול → Worker."
         },
         "eou": {
           "label": "LLM → Worker (סוף משפט)",
-          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד שה-LLM מתחיל לענות. חזרה OpenAI → Worker."
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד שה-LLM מתחיל לענות. חזרה מנוע הקול → Worker."
         },
         "firstAudio": {
           "label": "Audio → Worker (מקטע ראשון)",
-          "hint": "הזמן מתחילת ה-LLM ועד הצליל הראשון שנשמע. חזרה OpenAI → Worker."
+          "hint": "הזמן מתחילת ה-LLM ועד הצליל הראשון שנשמע. חזרה מנוע הקול → Worker."
         },
         "ttft": {
           "label": "Worker → משתמש (TTFA כולל)",
           "hint": "ההשהיה הסופית שהמשתמש מרגיש: המשתמש מסיים לדבר → הסוכן משמיע את הצליל הראשון."
         }
-      }
+      },
+      "topologyEngine": "מנוע הקול"
     }
   },
   "Email": {
