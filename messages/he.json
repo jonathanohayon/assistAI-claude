@@ -1575,7 +1575,8 @@
     "apiCopy": "העתקה",
     "apiCopied": "הועתק",
     "apiEndpointLabel": "נקודת קצה",
-    "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset."
+    "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "developerSection": "תצוגה"
   },
   "DashboardBilling": {
     "header": "מנוי",
@@ -2187,5 +2188,11 @@
     "kind_busy": "כשהקו תפוס",
     "kind_noAnswer": "כשאין מענה",
     "kind_unreachable": "כשהטלפון כבוי או מחוץ לאזור קליטה"
+  },
+  "Bricks": {
+    "moreSettings": "הגדרות נוספות",
+    "developerModeLabel": "מצב מפתחים",
+    "developerModeHint": "מציג הגדרות טכניות, כמו מגבלות זמן וספי הפרעה, בכל אזור. הסוכן שלך פועל באותו אופן בכל מקרה.",
+    "developerModeSaveError": "השמירה נכשלה. נסו שוב."
   }
 }
