@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Proof that a TENANT's browser never receives supplier names (Voice brick
-// rule). Run against a PRODUCTION build (`next build && next start`) backed
+// rule) nor the technical names of the agent's tools (Tools brick rule;
+// list in tenant-bundle-match.mjs). Run against a PRODUCTION build (`next build && next start`) backed
 // by a throwaway database with a mock tenant — never against production.
 //
 //   node scripts/check-tenant-bundle.mjs http://localhost:3997 tenant@example.test <password>
@@ -95,5 +96,5 @@ for (const page of PAGES) {
   }
 }
 
-console.log(failed ? "FAIL: supplier names reach a tenant page" : "PASS: 0 matches in tenant HTML and loaded chunks");
+console.log(failed ? "FAIL: supplier or tool names reach a tenant page" : "PASS: 0 matches in tenant HTML and loaded chunks");
 process.exit(failed ? 1 : 0);
