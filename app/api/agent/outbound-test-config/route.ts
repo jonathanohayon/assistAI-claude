@@ -2,13 +2,14 @@ import { outboundKnowledgeText } from "@/lib/knowledge/outbound-sheet";
 import { accountSheetForOutbound } from "@/lib/knowledge/outbound-sheet-load";
 import { knowledgeFromOutbound } from "@/lib/knowledge/adapters";
 import { outboundKnowledgeParts } from "@/lib/knowledge/render";
-import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
-import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
+import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure } from "@/lib/persona/outbound-disclosure";
+import { effectiveSpokenLanguages } from "@/lib/persona/languages";
+import { outboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
-import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
+import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
 import { db } from "@/lib/db";
 import { outboundAgents } from "@/lib/db/schema";
 import { getCampaignGoalFramings } from "@/lib/settings";
@@ -58,17 +59,6 @@ export async function GET(req: NextRequest) {
   // Pas d'objectif de campagne en test → preset "sales" pour que l'agent
   // présente quand même son offre (sinon il resterait passif). Pas de contact.
   const framings = await getCampaignGoalFramings();
-  const baseInstructions = buildCampaignInstructions(
-    { goalPreset: "sales", objective: "", persona },
-    {},
-    framings,
-  );
-  // Spoken languages (Persona P4): empty list / switch off = today's text.
-  const instructionsWithLanguages = withOutboundLanguages(
-    baseInstructions,
-    persona.language || "fr",
-    effectiveSpokenLanguages(agent.personaConfig),
-  );
   const baseGreeting = buildCampaignGreeting({ persona }, {});
   // Outbound AI disclosure (Persona P5), OFF unless enabled on the agent
   // (admins only for now). Off = today's greeting and instructions.
@@ -77,7 +67,17 @@ export async function GET(req: NextRequest) {
     language: persona.language || "fr",
     agentName: (persona.agentName || "Sarah").trim(),
   });
-  const instructions = withOutboundDisclosureDirective(instructionsWithLanguages, baseGreeting, disclosure);
+  // The session instructions: ONE pure function (also used by the prompt
+  // preview). No campaign in a test → "sales" preset, no contact.
+  const instructions = outboundSessionInstructions({
+    campaign: { goalPreset: "sales", objective: "", persona },
+    contact: {},
+    framings,
+    primaryLanguage: persona.language || "fr",
+    spokenLanguages: effectiveSpokenLanguages(agent.personaConfig),
+    baseGreeting,
+    disclosure,
+  });
 
   const tuning = personalityToRealtime(agent.personality, agent.noiseReductionLevel);
 

@@ -7,13 +7,9 @@ import { calls } from "@/lib/db/schema";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { logEvent } from "@/lib/logger";
 import { decideTenantResolution } from "@/lib/tenant-resolution";
-import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { servedInboundVoice } from "@/lib/voice/serve";
-import { knowledgeFromInbound } from "@/lib/knowledge/adapters";
-import { inboundInstructionsBlock, inboundKnowledgeBlock } from "@/lib/knowledge/render";
-import { effectiveSpokenLanguages, inboundLanguageDirective } from "@/lib/persona/languages";
+import { inboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { toEngineSettings } from "@/lib/voice/engine";
-import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
 import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
@@ -189,20 +185,12 @@ export async function GET(req: NextRequest) {
     PLANS.some((p) => p.key === tenant.user.subscriptionPlan)
       ? (tenant.user.subscriptionPlan as PlanKey)
       : PLANS[0].key;
-  // Toutes les directives sont per-plan : on extrait la version du plan
-  // du tenant. Si le tenant a `inheritAdminGlobals=false`, on remplace par
-  // "" pour ne PAS injecter les blocs admin → le prompt assemblé contient
-  // alors uniquement persona + language directive.
+  // perCallContextTemplate follows the same inheritAdminGlobals rule as the
+  // admin blocks of the instructions (see lib/agent/session-instructions.ts).
   const inherits = config.inheritAdminGlobals !== false;
-  const spokenTime = inherits ? spokenTimeByPlan[planKey] ?? "" : "";
-  const spokenPhone = inherits ? spokenPhoneByPlan[planKey] ?? "" : "";
-  const hangup = inherits ? hangupByPlan[planKey] ?? "" : "";
   const perCallContextTemplate = inherits
     ? perCallContextByPlan[planKey] ?? ""
     : "";
-  const configBlocks = inherits ? configBlocksByPlan[planKey] ?? "" : "";
-  const blockOrder = blockOrderByPlan[planKey] ?? [];
-  const globalInstructions = inherits ? globalByPlan[planKey] ?? "" : "";
   // Features activées pour le plan de ce tenant (matrice admin). Le worker
   // utilise cette map pour décider quels tools enregistrer (cf. recent
   // session : règles métier déterministes côté tools, pas dans le prompt).
@@ -221,53 +209,26 @@ export async function GET(req: NextRequest) {
   // réservée aux plans CRM, activable via le toggle "Commandes".
   const ordersEnabled = Boolean(planFeatures.crm) && tileToggles.orders;
 
-  // Template "capacités" éditable par plan depuis /admin ({calendar}/{crm}/
-  // {orders} substitués par le statut réel du tenant). Toujours présent.
+  // Template "capacités" éditable par plan depuis /admin.
   const capabilitiesByPlan = await getCapabilitiesDirectiveByPlan();
-  const capabilitiesDirective = renderCapabilitiesDirective(
-    capabilitiesByPlan[planKey] ?? DEFAULT_CAPABILITIES_DIRECTIVE,
-    { calendar: features.calendar, crm: features.crm, orders: ordersEnabled },
-  );
 
-  const primary = config.primaryLanguage ?? "fr";
-  // Spoken languages (Persona P4): empty list / switch off = today's text.
-  const languageDirective = inboundLanguageDirective(primary, effectiveSpokenLanguages(config.personaConfig));
-
-  // L'ordre des blocs est piloté depuis /admin (app_settings.prompt_block_order).
-  // Default order = directives système d'abord, puis config_blocks (meta
-  // "respecte les étapes"), puis persona, langue, admin global. L'admin
-  // peut tout réordonner — y compris déplacer la persona avant les
-  // directives, ou bouger admin_global en tête, etc.
-  const adminBlock = globalInstructions
-    ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
-    : "";
-
-  // Knowledge (brick S1): the company facts block and this agent's
-  // instructions, built through the Knowledge contract — identical text to
-  // before (route snapshots). The legacy `knowledge` array fallback is kept
-  // in the adapter until S6.
-  const knowledge = knowledgeFromInbound({
-    business: config.business,
-    instructions: config.instructions,
-    knowledge: config.knowledge,
+  // The session instructions: ONE pure function (also used by the prompt
+  // preview). Block order, admin blocks (blanked when inheritAdminGlobals is
+  // false), knowledge, language, capabilities.
+  const mergedInstructions = inboundSessionInstructions({
+    config,
+    planKey,
+    directives: {
+      globalByPlan,
+      spokenTimeByPlan,
+      spokenPhoneByPlan,
+      hangupByPlan,
+      configBlocksByPlan,
+      blockOrderByPlan,
+      capabilitiesByPlan,
+    },
+    capabilities: { calendar: features.calendar, crm: features.crm, orders: ordersEnabled },
   });
-  const businessBlock = inboundKnowledgeBlock(knowledge);
-
-  const blockContent: Record<string, string> = {
-    spoken_time: spokenTime,
-    spoken_phone: spokenPhone,
-    hangup,
-    config_blocks: configBlocks,
-    persona: inboundInstructionsBlock(knowledge.agent),
-    knowledge: businessBlock,
-    language: languageDirective,
-    admin_global: adminBlock,
-  };
-  const SEP = "\n\n──────────────────────────────────────────\n\n";
-  const mergedInstructions = [
-    ...blockOrder.map((id) => blockContent[id] ?? "").filter(Boolean),
-    capabilitiesDirective,
-  ].join(SEP);
 
   // Strip internal IDs — the agent only needs the runtime values.
   // personaConfig (P3) stays out of the worker payload: calls still read the
