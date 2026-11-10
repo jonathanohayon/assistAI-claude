@@ -1,14 +1,17 @@
+import { outboundKnowledgeText } from "@/lib/knowledge/outbound-sheet";
+import { accountSheetForOutbound } from "@/lib/knowledge/outbound-sheet-load";
 import { knowledgeFromOutbound } from "@/lib/knowledge/adapters";
 import { outboundKnowledgeParts } from "@/lib/knowledge/render";
-import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure, withOutboundDisclosureDirective } from "@/lib/persona/outbound-disclosure";
-import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
+import { effectiveOutboundDisclosure, outboundGreetingWithDisclosure } from "@/lib/persona/outbound-disclosure";
+import { effectiveSpokenLanguages } from "@/lib/persona/languages";
+import { outboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { campaignContacts, campaigns, outboundAgents } from "@/lib/db/schema";
-import { buildCampaignGreeting, buildCampaignInstructions } from "@/lib/campaigns/prompt";
+import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
 import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
 import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
@@ -60,6 +63,9 @@ export async function GET(req: NextRequest) {
   // Knowledge (brick S1): the agent's facts and instructions through the
   // Knowledge contract — identical text to before (route snapshots).
   const agentKnowledge = outboundKnowledgeParts(knowledgeFromOutbound(agent ?? null));
+  // Knowledge S5: the ACCOUNT's company sheet, only when the server switch
+  // OUTBOUND_COMPANY_SHEET is on for this account (off = null = today).
+  const accountSheet = await accountSheetForOutbound(campaign.userId);
   const persona = agent
     ? {
         agentName: agent.agentName,
@@ -67,7 +73,7 @@ export async function GET(req: NextRequest) {
         language: agent.language,
         instructions: agentKnowledge.instructions,
         greeting: agent.greeting,
-        knowledge: agentKnowledge.knowledge,
+        knowledge: outboundKnowledgeText(agentKnowledge.knowledge, accountSheet),
         successCriteria: campaign.successCriteria,
       }
     : {
@@ -78,20 +84,10 @@ export async function GET(req: NextRequest) {
         voice: "marin",
         language: "fr",
         successCriteria: campaign.successCriteria,
+        ...(accountSheet ? { knowledge: outboundKnowledgeText("", accountSheet) } : {}),
       };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
   const framings = await getCampaignGoalFramings();
-  const baseInstructions = buildCampaignInstructions(
-    { goalPreset: campaign.goalPreset, objective: campaign.objective, persona },
-    { contactName: contact.contactName, phoneNumber: contact.phoneNumber, vars: contact.vars },
-    framings,
-  );
-  // Spoken languages (Persona P4): empty list / switch off = today's text.
-  const instructionsWithLanguages = withOutboundLanguages(
-    baseInstructions,
-    persona.language || "fr",
-    effectiveSpokenLanguages(agent?.personaConfig),
-  );
   const baseGreeting = buildCampaignGreeting({ persona }, {
     contactName: contact.contactName,
     phoneNumber: contact.phoneNumber,
@@ -104,7 +100,17 @@ export async function GET(req: NextRequest) {
     language: persona.language || "fr",
     agentName: (persona.agentName || "Sarah").trim(),
   });
-  const instructions = withOutboundDisclosureDirective(instructionsWithLanguages, baseGreeting, disclosure);
+  // The session instructions: ONE pure function (also used by the prompt
+  // preview) — campaign framing, spoken languages (P4), disclosure (P5).
+  const instructions = outboundSessionInstructions({
+    campaign: { goalPreset: campaign.goalPreset, objective: campaign.objective, persona },
+    contact: { contactName: contact.contactName, phoneNumber: contact.phoneNumber, vars: contact.vars },
+    framings,
+    primaryLanguage: persona.language || "fr",
+    spokenLanguages: effectiveSpokenLanguages(agent?.personaConfig),
+    baseGreeting,
+    disclosure,
+  });
 
   // Réglages voix dérivés de l'agent (mêmes sliders que l'agent entrant).
   const tuning = personalityToRealtime(

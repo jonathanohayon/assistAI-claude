@@ -5,10 +5,12 @@ import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { currentCompanySheet, planSheetWrite } from "@/lib/knowledge/store";
+import { outboundSheetEnabled } from "@/lib/knowledge/outbound-sheet";
 import { logEvent } from "@/lib/logger";
 
 // The account's company sheet (Knowledge S4). Tenant scope; ?asUserId= for admins.
-//   GET → { companySheet }  (stored, or built from today's business JSON)
+//   GET → { companySheet, outboundUsesCompanySheet }  (sheet stored, or built
+//         from today's business JSON; whether outbound agents read it — S5 switch)
 //   PUT { companySheet: <partial> } → { companySheet }
 //     top-level keys replace, identity merges key by key; also writes
 //     agent_configs.business (the calls' read source), through the business
@@ -37,7 +39,11 @@ export async function GET(req: NextRequest) {
   if ("error" in s) return s.error;
   const row = await load(s.userId);
   if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json({ companySheet: currentCompanySheet(row.companySheet, row.business) });
+  return NextResponse.json({
+    companySheet: currentCompanySheet(row.companySheet, row.business),
+    // Knowledge S5: do this account's outbound agents read the sheet? (server switch)
+    outboundUsesCompanySheet: outboundSheetEnabled(s.userId),
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -62,5 +68,5 @@ export async function PUT(req: NextRequest) {
       .where(eq(users.id, s.userId));
   });
   await logEvent({ source: "web", event: "company_sheet_updated", message: "Company sheet updated", userId: s.userId });
-  return NextResponse.json({ companySheet: plan.sheet });
+  return NextResponse.json({ companySheet: plan.sheet, outboundUsesCompanySheet: outboundSheetEnabled(s.userId) });
 }

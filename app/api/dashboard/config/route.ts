@@ -10,6 +10,7 @@ import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
+import { inheritAdminGlobalsWrite } from "@/lib/admin-gates";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
@@ -74,13 +75,6 @@ export async function PUT(req: NextRequest) {
     aiDisclosureText: string | null;
     ownerDigestEnabled: boolean;
     noiseReductionLevel: number;
-    knowledge: Array<{
-      id?: string;
-      toolName?: string;
-      businessName?: string;
-      openingHours?: string;
-      description?: string;
-    }>;
     business: unknown;
   }>;
 
@@ -106,6 +100,7 @@ export async function PUT(req: NextRequest) {
       aiDisclosureEnabled: agentConfigs.aiDisclosureEnabled,
       aiDisclosureText: agentConfigs.aiDisclosureText,
       personaConfig: agentConfigs.personaConfig,
+      inheritAdminGlobals: agentConfigs.inheritAdminGlobals,
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
@@ -175,9 +170,11 @@ export async function PUT(req: NextRequest) {
   if (body.reminderEnabled != null) {
     updates.reminderEnabled = Boolean(body.reminderEnabled);
   }
-  if (body.inheritAdminGlobals != null) {
-    updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
-  }
+  // Admin-only since 11/11 (product change): a tenant CHANGE → 403;
+  // existing values are kept.
+  const inherit = inheritAdminGlobalsWrite(body, current.inheritAdminGlobals !== false, isAdmin);
+  if (!inherit.ok) return NextResponse.json({ error: inherit.error, fields: inherit.fields }, { status: 403 });
+  if (inherit.value !== undefined) updates.inheritAdminGlobals = inherit.value;
   if ("personality" in body) {
     const cleaned = sanitizePersonality(body.personality);
     if (cleaned !== undefined) updates.personality = cleaned;
@@ -227,43 +224,14 @@ export async function PUT(req: NextRequest) {
       clamp(body.noiseReductionLevel, 1, 10),
     );
   }
-  if (Array.isArray(body.knowledge)) {
-    // Sanitize : trim strings, cap lengths, drop empty entries, ensure id.
-    // toolName est sanitize en identifiant valide (a-z, 0-9, _, lead letter)
-    // car il devient le NOM RÉEL d'un tool LLM côté worker.
-    const sanitizeTool = (raw: string): string =>
-      raw
-        .toLowerCase()
-        .replace(/[^a-z0-9_]/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 60);
-    const cleaned = body.knowledge
-      .map((entry, idx) => {
-        const rawTool = String(entry?.toolName ?? "").trim().slice(0, 60);
-        const toolName = sanitizeTool(rawTool);
-        return {
-          id: String(entry?.id ?? `${Date.now()}-${idx}`).slice(0, 64),
-          toolName,
-          businessName: String(entry?.businessName ?? "").trim().slice(0, 120),
-          openingHours: String(entry?.openingHours ?? "").trim().slice(0, 500),
-          description: String(entry?.description ?? "").trim().slice(0, 4000),
-        };
-      })
-      .filter(
-        (e) =>
-          e.businessName.length > 0 ||
-          e.toolName.length > 0 ||
-          e.description.length > 0,
-      )
-      .slice(0, 30); // garde-fou : max 30 entrées par tenant
-    // Cast SQL explicite ::jsonb car postgres-js sérialise les arrays JS en
-    // ARRAY Postgres natif (text[]) par défaut, ce qui ne matche pas la
-    // colonne jsonb. Le cast force le bon type d'entrée même si Drizzle
-    // ne le détecte pas via $type<Array<...>>. Symptôme sans le cast :
-    // UPDATE silently no-op, colonne reste à `[]` même avec data envoyée.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (updates as any).knowledge = sql`${JSON.stringify(cleaned)}::jsonb`;
+  // Deprecated inbound `knowledge` array (Knowledge S6a): no longer written.
+  // The facts live in `business` / the account company sheet. Refused
+  // explicitly rather than ignored, so a caller knows nothing was saved.
+  if ("knowledge" in body) {
+    return NextResponse.json(
+      { error: "knowledge_field_removed", fields: ["knowledge"], use: "PUT /api/dashboard/company-sheet" },
+      { status: 400 },
+    );
   }
   if ("business" in body) {
     // Sanitization complète (cf. lib/business.ts) — toujours renvoie un
