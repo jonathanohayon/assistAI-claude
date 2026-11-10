@@ -68,8 +68,8 @@ const outboundToday = (agent: OutRow | null, c: typeof contact | Record<string, 
 };
 const outboundRows: Array<OutRow | null> = [
   { agentName: "Sarah", language: "fr", greeting: "" }, // defaults → the model opens
-  { agentName: "Dana", language: "he", greeting: "שלום {contactName}, כאן דנה." }, // variables
-  { agentName: "  Noa  ", language: "en", greeting: "Hi {contactName} from {city}!" }, // trim + vars
+  { agentName: "Dana", language: "he", greeting: "שלום {{name}}, כאן דנה." }, // variables
+  { agentName: "  Noa  ", language: "en", greeting: "Hi {{name}} from {{city}}!" }, // trim + vars
   { agentName: "", language: "fr", greeting: "   " }, // empty name → Sarah, blank greeting
   null, // campaign without an agent
 ];
