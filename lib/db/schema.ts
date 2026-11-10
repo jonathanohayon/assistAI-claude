@@ -205,6 +205,10 @@ export const agentConfigs = pgTable("agent_configs", {
   // voice columns (V5). NULL = never written: derived from the columns.
   // Readers still use the legacy columns until the reader switch ships.
   voiceConfig: jsonb("voice_config"),
+  // Persona contract v1 (lib/persona/contract.ts), written alongside the
+  // legacy persona columns (P3). NULL = never written: derived from them.
+  // Calls still read the legacy columns.
+  personaConfig: jsonb("persona_config"),
   // Speech-to-speech engine for this tenant: "openai" | "gemini" | "xai".
   // NULL = openai. Admin-only (lib/realtime-provider.ts): never shown to or
   // writable by tenants.
@@ -355,6 +359,10 @@ export const outboundAgents = pgTable("outbound_agents", {
   // voice columns (V5). NULL = never written: derived from the columns.
   // Readers still use the legacy columns until the reader switch ships.
   voiceConfig: jsonb("voice_config"),
+  // Persona contract v1 (lib/persona/contract.ts), written alongside the
+  // legacy persona columns (P3). NULL = never written: derived from them.
+  // Calls still read the legacy columns.
+  personaConfig: jsonb("persona_config"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
