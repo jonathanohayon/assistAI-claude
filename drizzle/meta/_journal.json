@@ -281,6 +281,13 @@
       "when": 1793880835478,
       "tag": "0039_call_id",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794331154100,
+      "tag": "0040_developer_mode",
+      "breakpoints": true
     }
   ]
 }
