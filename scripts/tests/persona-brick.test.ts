@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { effectiveGreeting } from "../../lib/ai-disclosure";
 import { buildCampaignGreeting } from "../../lib/campaigns/prompt";
 import { personaFromInbound, personaFromOutbound } from "../../lib/persona/adapters";
-import { DEFAULT_PERSONA, mergePersona, type Persona } from "../../lib/persona/contract";
+import { DEFAULT_PERSONA, GREETING_VARIABLES, mergePersona, type Persona } from "../../lib/persona/contract";
 import {
   LEGACY_INBOUND_PERSONA_FIELDS,
   LEGACY_OUTBOUND_PERSONA_FIELDS,
@@ -71,6 +71,13 @@ const P = (over: Partial<Persona> = {}): Persona => ({ ...DEFAULT_PERSONA, name:
   const p = personaFromInbound({ agentName: "Sarah", primaryLanguage: "he", greetingInstructions: "שלום", aiDisclosureEnabled: true, aiDisclosureText: "" });
   assert.equal(p.greeting.mode, "custom");
   assert.equal(personaFromOutbound({ agentName: "Mock", language: "en", greeting: "" }).aiDisclosure.enabled, false);
+}
+
+// Every variable the screen offers must be substituted by the engine's
+// greeting builder, or it would be spoken literally on real calls.
+for (const v of GREETING_VARIABLES) {
+  const spoken = buildCampaignGreeting({ persona: { greeting: `Bonjour ${v}` } }, { contactName: "Dana", phoneNumber: "050 000 0000" });
+  assert.ok(!spoken.includes(v), `${v} is offered but not substituted (spoken: "${spoken}")`);
 }
 
 assert.equal(insertVariable("", "{contactName}"), "{contactName}");
