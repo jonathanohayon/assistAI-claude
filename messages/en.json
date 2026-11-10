@@ -2322,6 +2322,7 @@
       "phone": "the number of the person called"
     },
     "badBraces": "These braces would be read aloud: {tokens}. Remove them or use the variable buttons.",
-    "saveBlocked": "The first sentence has braces that would be read aloud. Fix it before saving."
+    "saveBlocked": "The first sentence has braces that would be read aloud. Fix it before saving.",
+    "previewAutoWithDisclosure": "Your agent opens the call based on the context and says it is an artificial intelligence."
   }
 }
