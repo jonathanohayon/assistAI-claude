@@ -55,7 +55,11 @@ export function CampaignLiveConsole({
   const eventsRef = useRef<LiveEvent[]>([]);
   const lastStatusRef = useRef<string | null>(null);
   const onStatusRef = useRef(onStatusChanged);
-  onStatusRef.current = onStatusChanged;
+  // Latest callback for the poller; written after render, before the
+  // polling effect below runs (effects run in declaration order).
+  useEffect(() => {
+    onStatusRef.current = onStatusChanged;
+  });
 
   // ─── Polling: only while visible; backoff on errors ───────────────────
   const pollNow = useRef<() => void>(() => {});
