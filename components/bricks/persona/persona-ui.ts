@@ -2,7 +2,8 @@
 // tenant-safe. The sentence callers hear comes from the ONE existing source
 // per side, never re-implemented here:
 //   inbound  → lib/ai-disclosure effectiveGreeting
-//   outbound → lib/campaigns/prompt buildCampaignGreeting
+//   outbound → lib/campaigns/prompt buildCampaignGreeting, then
+//              lib/persona/outbound-disclosure outboundGreetingWithDisclosure (P5)
 //
 // Until P3 stores `persona`, saves go through today's legacy fields, so the
 // behaviour is exactly today's. The write mapping is tamaraVlad's
@@ -10,6 +11,7 @@
 
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
+import { outboundGreetingWithDisclosure } from "@/lib/persona/outbound-disclosure";
 import type { Persona } from "@/lib/persona/contract";
 
 export { personaToInboundColumns, personaToOutboundColumns } from "@/lib/persona/columns";
@@ -61,7 +63,11 @@ export function heardGreeting(
           },
           ctx.businessName ?? "",
         )
-      : buildCampaignGreeting({ persona: { greeting: spokenGreeting(p) } }, ctx.exampleContact ?? {});
+      : outboundGreetingWithDisclosure(
+          buildCampaignGreeting({ persona: { greeting: spokenGreeting(p) } }, ctx.exampleContact ?? {}),
+          p.aiDisclosure,
+          { language: p.primaryLanguage, agentName: p.name },
+        );
   return text.trim() ? text : null;
 }
 

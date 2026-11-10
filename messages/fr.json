@@ -2322,6 +2322,7 @@
       "phone": "le numéro de la personne appelée"
     },
     "badBraces": "Ces accolades seraient lues à voix haute : {tokens}. Supprimez-les ou utilisez les boutons de variables.",
-    "saveBlocked": "La première phrase contient des accolades qui seraient lues à voix haute. Corrigez-la avant d'enregistrer."
+    "saveBlocked": "La première phrase contient des accolades qui seraient lues à voix haute. Corrigez-la avant d'enregistrer.",
+    "previewAutoWithDisclosure": "Votre agent ouvre l'appel selon le contexte et annonce qu'il est une intelligence artificielle."
   }
 }

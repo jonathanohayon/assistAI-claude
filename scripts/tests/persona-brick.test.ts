@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 import { effectiveGreeting } from "../../lib/ai-disclosure";
 import { buildCampaignGreeting } from "../../lib/campaigns/prompt";
+import { outboundGreetingWithDisclosure } from "../../lib/persona/outbound-disclosure";
 import { personaFromInbound, personaFromOutbound } from "../../lib/persona/adapters";
 import * as store from "../../lib/persona/store";
 import { DEFAULT_PERSONA, GREETING_VARIABLES, mergePersona, type Persona } from "../../lib/persona/contract";
@@ -46,10 +47,17 @@ const P = (over: Partial<Persona> = {}): Persona => ({ ...DEFAULT_PERSONA, name:
   const keptText = P({ greeting: { mode: "auto", text: "Texte gardé" }, aiDisclosure: { enabled: false, text: "" } });
   assert.equal(heardGreeting(keptText, "inbound"), null);
   // outbound: variables substituted by buildCampaignGreeting
-  const ob = P({ greeting: { mode: "custom", text: "Bonjour {{name}} !" } });
+  // an outbound persona ships with the disclosure off (personaFromOutbound)
+  const ob = P({ greeting: { mode: "custom", text: "Bonjour {{name}} !" }, aiDisclosure: { enabled: false, text: "" } });
   const contact = { contactName: "Dana", phoneNumber: "050 000 0000" };
-  assert.equal(heardGreeting(ob, "outbound", { exampleContact: contact }), buildCampaignGreeting({ persona: { greeting: "Bonjour {{name}} !" } }, contact));
-  assert.equal(heardGreeting(P(), "outbound"), null, "outbound auto: the model opens");
+  assert.equal(heardGreeting(ob, "outbound", { exampleContact: contact }), buildCampaignGreeting({ persona: { greeting: "Bonjour {{name}} !" } }, contact), "disclosure off: exactly today's outbound sentence");
+  const obOn = P({ greeting: { mode: "custom", text: "Bonjour {{name}} !" }, aiDisclosure: { enabled: true, text: "" } });
+  assert.equal(
+    heardGreeting(obOn, "outbound", { exampleContact: contact }),
+    outboundGreetingWithDisclosure(buildCampaignGreeting({ persona: { greeting: "Bonjour {{name}} !" } }, contact), obOn.aiDisclosure, { language: "fr", agentName: "Sarah" }),
+    "disclosure on: P5's single source",
+  );
+  assert.equal(heardGreeting(P({ aiDisclosure: { enabled: false, text: "" } }), "outbound"), null, "outbound auto: the model opens");
 }
 
 // 2. Patch = only what changed; greeting/aiDisclosure key by key
@@ -134,8 +142,8 @@ for (const f of personaScreens) assert.doesNotMatch(read(f), /comingSoon|wowComi
 // 7. Gated until their step ships: no languages control (P4), no outbound disclosure (P5)
 {
   const brick = read("components/bricks/persona/PersonaBrick.tsx").replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "");
-  assert.match(brick, /\{isAdmin && <OtherLanguages /, "other spoken languages: admins only until validated by a test call");
-  assert.match(brick, /\{kind === "inbound" && <DisclosureFields /, "disclosure only on inbound before P5");
+  assert.match(brick, /const showLanguages = isAdmin \|\| LANGUAGES_TENANT_EDITABLE;/, "other languages: same flag as the server guard");
+  assert.match(brick, /const showDisclosure = kind === "inbound" \|\| isAdmin \|\| OUTBOUND_DISCLOSURE_TENANT_EDITABLE;/, "outbound disclosure: same flag as the server guard");
 }
 
 // 7b. Every offered variable has a human label in all three languages

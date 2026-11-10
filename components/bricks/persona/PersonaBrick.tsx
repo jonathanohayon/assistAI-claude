@@ -7,9 +7,9 @@
  *
  *   Level 1: agent name, main language, first sentence (Automatic | My
  *            sentence) with the live "Callers will hear" preview.
- *   Level 2, <MoreSettings>: other spoken languages (admins only until a
- *            test call validates them), the AI disclosure (inbound only
- *            until P5).
+ *   Level 2, <MoreSettings>: other spoken languages and, on outbound, the
+ *            AI disclosure: shown to tenants only once their flag
+ *            (LANGUAGES_ / OUTBOUND_DISCLOSURE_TENANT_EDITABLE) is on.
  *   Level 3, developer mode: the variables usable in the first sentence,
  *            as click-to-insert chips (outbound only: the receptionist has
  *            none, so no section).
@@ -26,7 +26,14 @@ import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import { AI_DISCLOSURE_MAX_LENGTH, parseDisclosureText } from "@/lib/ai-disclosure";
-import { GREETING_VARIABLES, PERSONA_LANGUAGES, mergePersona, type Persona } from "@/lib/persona/contract";
+import {
+  GREETING_VARIABLES,
+  LANGUAGES_TENANT_EDITABLE,
+  OUTBOUND_DISCLOSURE_TENANT_EDITABLE,
+  PERSONA_LANGUAGES,
+  mergePersona,
+  type Persona,
+} from "@/lib/persona/contract";
 
 import {
   badBraces,
@@ -72,6 +79,11 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
   };
 
   const variables = GREETING_VARIABLES[kind];
+  // Each shown only where it does something and the viewer may change it:
+  // other languages until a second-language test call; the outbound
+  // disclosure until its test call (P5). Same flags as the server guards.
+  const showLanguages = isAdmin || LANGUAGES_TENANT_EDITABLE;
+  const showDisclosure = kind === "inbound" || isAdmin || OUTBOUND_DISCLOSURE_TENANT_EDITABLE;
   const heard = heardGreeting(value, kind, { businessName, exampleContact: EXAMPLE_CONTACT });
   // No section on a side with no variable (the receptionist has none).
   const showVariables = variables.length > 0 && (isAdmin || dev.on);
@@ -155,18 +167,18 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
               <span aria-hidden>”</span>
             </p>
           ) : (
-            <p className="mt-1 text-sm text-[#475569]">{t("previewAuto")}</p>
+            <p className="mt-1 text-sm text-[#475569]">
+              {kind === "outbound" && value.aiDisclosure.enabled ? t("previewAutoWithDisclosure") : t("previewAuto")}
+            </p>
           )}
         </div>
       </div>
 
       {/* ── Level 2 ─────────────────────────────────────────── */}
-      {(kind === "inbound" || isAdmin) && (
+      {(showLanguages || showDisclosure) && (
         <MoreSettings>
-          {/* Admins only until a test call in a second language validates it. */}
-          {isAdmin && <OtherLanguages value={value} apply={apply} />}
-          {/* Outbound: the disclosure waits for P5 (off, not shown). */}
-          {kind === "inbound" && <DisclosureFields value={value} apply={apply} />}
+          {showLanguages && <OtherLanguages value={value} apply={apply} adminOnly={!LANGUAGES_TENANT_EDITABLE} />}
+          {showDisclosure && <DisclosureFields value={value} apply={apply} />}
         </MoreSettings>
       )}
 
@@ -221,7 +233,15 @@ function GreetingChecks({ text, allowed }: { text: string; allowed: readonly str
 }
 
 /** Other languages the agent may switch to (toggle chips; never the main one). */
-function OtherLanguages({ value, apply }: { value: Persona; apply: (patch: Record<string, unknown>) => void }) {
+function OtherLanguages({
+  value,
+  apply,
+  adminOnly,
+}: {
+  value: Persona;
+  apply: (patch: Record<string, unknown>) => void;
+  adminOnly: boolean;
+}) {
   const t = useTranslations("PersonaBrick");
   const labelId = useId();
   const options = PERSONA_LANGUAGES.filter((l) => l !== value.primaryLanguage);
@@ -231,7 +251,7 @@ function OtherLanguages({ value, apply }: { value: Persona; apply: (patch: Recor
         <p id={labelId} className={LABEL}>
           {t("languagesLabel")}
         </p>
-        <AdminBadge size="xs" />
+        {adminOnly && <AdminBadge size="xs" />}
       </div>
       <p className={HINT}>{t("languagesHint")}</p>
       <div role="group" aria-labelledby={labelId} className="mt-2 flex flex-wrap gap-2">
