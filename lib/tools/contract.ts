@@ -1,0 +1,82 @@
+// The Tools contract (brick T1): what an agent may do during a call beyond
+// talking. Pure, client-safe (no DB import).
+//
+// A capability is ACTIVE on a call only if the customer turned it on
+// (`requested`), the plan includes it (`planIncluded`) and its prerequisite
+// is met — ONE function, effectiveCapabilities, for the screen and the call.
+// The screen shows "Not active yet: <why>" whenever prerequisite.met is
+// false, whatever `active` says (see PREREQUISITES_ENFORCED_ON_CALL).
+
+import type { PlanFeatures } from "@/lib/plan-features";
+
+export const TOOLS_VERSION = 1 as const;
+
+export const CAPABILITY_KEYS = ["booking", "contacts", "transfer", "orders"] as const;
+export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
+
+/** The agent's own switches (stored with the agent from T3; derived today). */
+export interface Tools {
+  version: typeof TOOLS_VERSION;
+  booking: { enabled: boolean };
+  contacts: { enabled: boolean };
+  transfer: { enabled: boolean };
+  orders: { enabled: boolean };
+}
+
+/** Stable machine codes — the screen maps them to words. */
+export type MissingPrerequisite = "google_not_connected" | "no_transfer_number" | "not_available_outbound";
+
+export interface CapabilityState {
+  /** The customer's switch. */
+  requested: boolean;
+  planIncluded: boolean;
+  prerequisite: { met: boolean; missing: MissingPrerequisite | null };
+  /** What the call gets. */
+  active: boolean;
+}
+
+export type EffectiveCapabilities = Record<CapabilityKey, CapabilityState>;
+
+/**
+ * Off: a missing Google connection does NOT turn booking/contacts off on the
+ * call — today's behaviour (the tools are offered and fail during the call).
+ * Turning it on is its own step, after a test call. Prerequisites today's
+ * code already enforces (transfer number, outbound) are enforced regardless.
+ */
+export const PREREQUISITES_ENFORCED_ON_CALL = false;
+
+const ENFORCED_TODAY: Record<MissingPrerequisite, boolean> = {
+  google_not_connected: false,
+  no_transfer_number: true,
+  not_available_outbound: true,
+};
+
+export interface CapabilityAgent {
+  recipe: "receptionist" | "outbound";
+  tools: Tools;
+}
+export interface CapabilityAccount {
+  transferNumber: string;
+  googleConnected: boolean;
+}
+
+export function effectiveCapabilities(agent: CapabilityAgent, account: CapabilityAccount, plan: PlanFeatures): EffectiveCapabilities {
+  const outbound = agent.recipe === "outbound";
+  const state = (requested: boolean, planIncluded: boolean, missing: MissingPrerequisite | null): CapabilityState => {
+    // Outbound agents have no tools until T4.
+    const m: MissingPrerequisite | null = outbound ? "not_available_outbound" : missing;
+    const blocking = m !== null && (PREREQUISITES_ENFORCED_ON_CALL || ENFORCED_TODAY[m]);
+    return { requested, planIncluded, prerequisite: { met: m === null, missing: m }, active: requested && planIncluded && !blocking };
+  };
+  const google = account.googleConnected ? null : "google_not_connected";
+  return {
+    booking: state(agent.tools.booking.enabled, plan.calendar, google),
+    // Contacts go to the customer's Google Sheet (app/api/sheets/contact).
+    contacts: state(agent.tools.contacts.enabled, plan.crm, google),
+    // No plan feature for transfer: every plan includes it.
+    // Same test as the worker (a non-empty string registers transfer_call).
+    transfer: state(agent.tools.transfer.enabled, true, account.transferNumber ? null : "no_transfer_number"),
+    // Orders ride on the CRM plan feature; no prerequisite.
+    orders: state(agent.tools.orders.enabled, plan.crm, null),
+  };
+}
