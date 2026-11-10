@@ -46,8 +46,10 @@ assert.deepEqual(currentInboundVoice({ broken: true }, inboundRow), fromInboundC
 {
   const r = inboundVoiceConfigUpdates(
     { voiceConfig: { voiceId: "cedar", patience: 2, pace: "fast", bargeIn: false, keyTerms: ["Mock"], noiseReduction: 6, style: "calm" } },
-    inboundRow, false, anyVoice,
+    inboundRow, true, anyVoice, // admin: a non-warm style is admin-only (V6)
   );
+  const tenant = inboundVoiceConfigUpdates({ voiceConfig: { style: "calm" } }, inboundRow, false, anyVoice);
+  assert.ok(tenant && "error" in tenant && tenant.error.status === 403, "tenant can't pick a style");
   assert.ok(r && !("error" in r));
   const { voiceConfig, ...cols } = r.updates as Record<string, unknown>;
   assert.equal((voiceConfig as Voice).style, "calm", "style stored in voice_config");
