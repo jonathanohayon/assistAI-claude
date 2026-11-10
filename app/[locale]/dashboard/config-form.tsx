@@ -696,49 +696,53 @@ export function ConfigForm({
                   <NotifsPanel form={form} update={update} t={t} />
                 )}
                 {activeTile === "business" && (
-                  <KnowledgeBrick
-                    kind="inbound"
-                    sheet={sheet}
-                    onSheetChange={(next) => {
-                      setSheet(next);
-                      setIssues([]);
-                      setForm((prev) => ({ ...prev, business: businessFromSheet(next) }));
-                      setDirty(true);
-                    }}
-                    issues={issues}
-                    instructions={form.instructions}
-                    onInstructionsChange={(v) => update("instructions", v)}
-                    onSuggestedLanguage={(lang) => {
-                      // The scan's language goes through the persona (P3).
-                      if (!(PERSONA_LANGUAGES as readonly string[]).includes(lang)) return;
-                      const next = { ...persona, primaryLanguage: lang as Persona["primaryLanguage"] };
-                      setPersona(next);
-                      setForm((prev) => ({ ...prev, ...personaToInboundColumns(next) }));
-                      setDirty(true);
-                    }}
-                    isAdmin={isAdmin}
-                    asUserId={asUserId ?? null}
-                    devPanel={
-                      // Admin: the inheritance of the plan's shared directives
-                      // (tenants never see it) and the preview; the server
-                      // decides what the preview contains.
-                      isAdmin ? (
-                        <div className="flex flex-col gap-4">
-                          <InheritAdminField
-                            value={form.inheritAdminGlobals}
-                            onChange={(v) => update("inheritAdminGlobals", v)}
-                            inheritedPreview={adminInheritablePreview}
-                            planLabel={planLabel}
-                            t={t}
-                          />
+                  // The floating save bar sits over the page bottom: room below
+                  // the last field, and a focused field scrolls clear of it.
+                  <div className="pb-28 [&_input]:scroll-mb-32 [&_textarea]:scroll-mb-32">
+                    <KnowledgeBrick
+                      kind="inbound"
+                      sheet={sheet}
+                      onSheetChange={(next) => {
+                        setSheet(next);
+                        setIssues([]);
+                        setForm((prev) => ({ ...prev, business: businessFromSheet(next) }));
+                        setDirty(true);
+                      }}
+                      issues={issues}
+                      instructions={form.instructions}
+                      onInstructionsChange={(v) => update("instructions", v)}
+                      onSuggestedLanguage={(lang) => {
+                        // The scan's language goes through the persona (P3).
+                        if (!(PERSONA_LANGUAGES as readonly string[]).includes(lang)) return;
+                        const next = { ...persona, primaryLanguage: lang as Persona["primaryLanguage"] };
+                        setPersona(next);
+                        setForm((prev) => ({ ...prev, ...personaToInboundColumns(next) }));
+                        setDirty(true);
+                      }}
+                      isAdmin={isAdmin}
+                      asUserId={asUserId ?? null}
+                      devPanel={
+                        // Admin: the inheritance of the plan's shared directives
+                        // (tenants never see it) and the preview; the server
+                        // decides what the preview contains.
+                        isAdmin ? (
+                          <div className="flex flex-col gap-4">
+                            <InheritAdminField
+                              value={form.inheritAdminGlobals}
+                              onChange={(v) => update("inheritAdminGlobals", v)}
+                              inheritedPreview={adminInheritablePreview}
+                              planLabel={planLabel}
+                              t={t}
+                            />
+                            <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
+                          </div>
+                        ) : (
+                          // Tenant in developer mode: the server sends only their parts.
                           <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
-                        </div>
-                      ) : (
-                        // Tenant in developer mode: the server sends only their parts.
-                        <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
-                      )
-                    }
-                  />
+                        )
+                      }
+                    />
+                  </div>
                 )}
                 {activeTile === "channels" && (
                   <ChannelsPanel t={t} asUserId={asUserId} />

@@ -181,35 +181,95 @@ export function LearnReview({
 
 function ChangeRow({ c }: { c: ScanChange }) {
   const t = useTranslations("KnowledgeBrick");
-  const what = (w: string[]) => w.map((x) => t(`changeWhat.${x}`)).join(", ");
+  const locale = useLocale();
   switch (c.kind) {
     case "identity":
+      return <ValueChange label={t(`identityField.${c.field}`)} before={c.before} after={c.after} />;
+    case "locationAdded":
       return (
         <>
-          <span className="font-semibold">{t(`identityField.${c.field}`)}</span> ·{" "}
-          {c.before ? (
-            <>
-              <bdi dir="auto" className="line-through decoration-[#94a3b8]">
-                {c.before}
-              </bdi>{" "}
-              → <bdi dir="auto">{c.after}</bdi>
-            </>
-          ) : (
-            <bdi dir="auto">{c.after}</bdi>
+          <p className="text-xs font-semibold text-[#475569]">{t("addedLocation")}</p>
+          <Line first={c.name} rest={locationFacts(c, locale, t("closed"))} />
+        </>
+      );
+    case "locationChanged":
+      return (
+        <>
+          <Line first={c.name} rest={[]} />
+          {c.address && <ValueChange label={t("fieldAddress")} before={c.address.before} after={c.address.after} />}
+          {c.hours && (
+            <div className="mt-1 text-sm">
+              <p className="text-xs font-semibold text-[#475569]">{t("fieldHours")}</p>
+              <p className="text-[#64748b]">
+                <span className="sr-only">{t("before")} </span>
+                <bdi dir="auto">{hoursSummary(c.hours.before, locale, t("closed"))}</bdi>
+              </p>
+              <p className="text-[#18181b]">
+                <span className="sr-only">{t("after")} </span>
+                <bdi dir="auto">{hoursSummary(c.hours.after, locale, t("closed"))}</bdi>
+              </p>
+            </div>
           )}
         </>
       );
-    case "locationAdded":
-      return t.rich("changeLocationAdded", { name: c.name, b: (x) => <bdi dir="auto" className="font-semibold">{x}</bdi> });
-    case "locationChanged":
-      return t.rich("changeUpdated", { name: c.name, what: what(c.what), b: (x) => <bdi dir="auto" className="font-semibold">{x}</bdi> });
     case "serviceAdded":
-      return t.rich("changeServiceAdded", { name: c.name, b: (x) => <bdi dir="auto" className="font-semibold">{x}</bdi> });
+      return (
+        <>
+          <p className="text-xs font-semibold text-[#475569]">{t("addedService")}</p>
+          <Line first={c.name} rest={serviceFacts(c, t)} />
+        </>
+      );
     case "serviceChanged":
-      return t.rich("changeUpdated", { name: c.name, what: what(c.what), b: (x) => <bdi dir="auto" className="font-semibold">{x}</bdi> });
+      return (
+        <>
+          <Line first={c.name} rest={[]} />
+          {c.price && <ValueChange label={t("fieldPrice")} before={c.price.before ? t("price", { n: c.price.before }) : ""} after={t("price", { n: c.price.after })} />}
+          {c.duration && (
+            <ValueChange
+              label={t("fieldDuration")}
+              before={c.duration.before ? t("minutes", { n: c.duration.before }) : ""}
+              after={t("minutes", { n: c.duration.after })}
+            />
+          )}
+          {c.description && <ValueChange label={t("fieldDescription")} before={c.description.before} after={c.description.after} />}
+        </>
+      );
     case "notesAdded":
       return <>{t("changeNotesAdded")}</>;
   }
+}
+
+/** "Label : before → after"; an empty before reads "(empty)"; the arrow follows the page direction. */
+function ValueChange({ label, before, after }: { label: string; before: string; after: string }) {
+  const t = useTranslations("KnowledgeBrick");
+  return (
+    <p className="mt-0.5 text-sm text-[#18181b]">
+      {/* French puts a space before the colon, English and Hebrew don't. */}
+      <span className="text-[#475569]">{t("fieldLabel", { label })} </span>
+      <span className="sr-only">{t("before")} </span>
+      <bdi dir="auto" className="text-[#64748b]">
+        {before.trim() ? before : t("emptyValue")}
+      </bdi>
+      <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-1 inline h-3.5 w-3.5 align-[-2px] text-[#94a3b8] rtl:rotate-180">
+        <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span className="sr-only">{t("after")} </span>
+      <bdi dir="auto" className="font-semibold">
+        {after}
+      </bdi>
+    </p>
+  );
+}
+
+/** A location's facts, in the sheet's row format. */
+function locationFacts(l: Pick<SheetLocation, "address" | "hours">, locale: string, closed: string): string[] {
+  const open = Object.values(l.hours).some((h) => h.open);
+  return [l.address.trim(), open ? hoursSummary(l.hours, locale, closed) : ""].filter(Boolean);
+}
+
+/** A service's facts, in the sheet's row format. */
+function serviceFacts(s: { durationMinutes: number; priceILS: number }, t: ReturnType<typeof useTranslations>): string[] {
+  return [s.durationMinutes > 0 ? t("minutes", { n: s.durationMinutes }) : "", s.priceILS > 0 ? t("price", { n: s.priceILS }) : ""].filter(Boolean);
 }
 
 // ── The sheet, as plain rows ─────────────────────────────────────────────
@@ -311,7 +371,7 @@ export function SheetCard({
         {sheet.locations.length === 0 && <p className={`px-4 py-2 text-sm ${MUTED}`}>{t("locationsEmpty")}</p>}
         {sheet.locations.map((l) => {
           const open = Object.values(l.hours).some((h) => h.open);
-          const facts = [l.address.trim(), open ? hoursSummary(l.hours, locale, t("closed")) : ""].filter(Boolean);
+          const facts = locationFacts(l, locale, t("closed"));
           return (
             <Row key={l.id} onClick={() => setEditing({ kind: "location", id: l.id, fresh: false })} label={t("editItem", { name: l.name })}>
               <Line first={l.name || t("unnamed")} rest={facts} />
@@ -329,11 +389,7 @@ export function SheetCard({
             s.locationIds === "all" || sheet.locations.length < 2
               ? ""
               : s.locationIds.map((id) => locById(id)?.name).filter(Boolean).join(", ");
-          const facts = [
-            s.durationMinutes > 0 ? t("minutes", { n: s.durationMinutes }) : "",
-            s.priceILS > 0 ? t("price", { n: s.priceILS }) : "",
-            where,
-          ].filter(Boolean);
+          const facts = [...serviceFacts(s, t), where].filter(Boolean);
           return (
             <Row key={s.id} onClick={() => setEditing({ kind: "service", id: s.id, fresh: false })} label={t("editItem", { name: s.name })}>
               <Line first={s.name || t("unnamed")} rest={facts} />
@@ -413,24 +469,27 @@ function Row({ onClick, label, children }: { onClick: () => void; label: string;
 }
 
 /**
- * Name first, then the facts; at most two lines, ellipsis after. Each fact
- * is its own isolate: an address in Latin script next to Hebrew hours must
- * not take the other's direction.
+ * Name on the first line, the facts on the second; each line is cut with an
+ * ellipsis at its logical end (page direction), never wrapped. Each fact is
+ * its own isolate (a Latin name or address on a Hebrew page, or the reverse,
+ * keeps its own direction) while the facts follow the page's order.
  */
 function Line({ first, rest }: { first: string; rest: string[] }) {
   return (
-    <span className="line-clamp-2 text-sm text-[#18181b]">
-      <bdi dir="auto" className="font-semibold">
-        {first}
-      </bdi>
-      {rest.map((part, i) => (
-        <span key={i}>
-          <span className="text-[#94a3b8]"> · </span>
-          <bdi dir="auto" className="text-[#475569]">
-            {part}
-          </bdi>
+    <span className="block min-w-0 text-sm">
+      <span className="block truncate font-semibold text-[#18181b]">
+        <bdi dir="auto">{first}</bdi>
+      </span>
+      {rest.length > 0 && (
+        <span className="block truncate text-[#475569]" title={rest.join(" · ")}>
+          {rest.map((part, i) => (
+            <span key={i}>
+              {i > 0 && <span className="text-[#94a3b8]"> · </span>}
+              <bdi dir="auto">{part}</bdi>
+            </span>
+          ))}
         </span>
-      ))}
+      )}
     </span>
   );
 }

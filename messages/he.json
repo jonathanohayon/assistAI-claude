@@ -2389,21 +2389,11 @@
     "countLocationsChanged": "{n, plural, one {סניף אחד שונה} other {# סניפים שונו}}",
     "countIdentityChanged": "{n, plural, one {פרט אחד של העסק שונה} other {# פרטים של העסק שונו}}",
     "countNotesAdded": "ההערות הושלמו",
-    "changeWhat": {
-      "address": "כתובת",
-      "hours": "שעות",
-      "price": "מחיר",
-      "duration": "משך",
-      "description": "תיאור"
-    },
     "identityField": {
       "name": "שם",
-      "tagline": "משפט פתיחה",
+      "tagline": "תיאור",
       "email": "אימייל ליצירת קשר"
     },
-    "changeLocationAdded": "סניף נוסף: <b>{name}</b>",
-    "changeServiceAdded": "שירות נוסף: <b>{name}</b>",
-    "changeUpdated": "<b>{name}</b>: עודכנו {what}",
     "changeNotesAdded": "ההערות הושלמו בטקסט מהאתר",
     "groupCompany": "העסק",
     "groupLocations": "סניפים",
@@ -2435,6 +2425,17 @@
     "partSheet": "כרטיס העסק",
     "partInstructions": "ההנחיות של הסוכן הזה",
     "partEmpty": "—",
-    "controlSaved": "כפי שנשמר. שמרו כדי לראות את השינויים האחרונים."
+    "controlSaved": "כפי שנשמר. שמרו כדי לראות את השינויים האחרונים.",
+    "addedLocation": "סניף נוסף",
+    "addedService": "שירות נוסף",
+    "fieldAddress": "כתובת",
+    "fieldHours": "שעות פתיחה",
+    "fieldPrice": "מחיר",
+    "fieldDuration": "משך",
+    "fieldDescription": "תיאור",
+    "emptyValue": "(ריק)",
+    "before": "לפני:",
+    "after": "אחרי:",
+    "fieldLabel": "{label}:"
   }
 }

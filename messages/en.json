@@ -2389,21 +2389,11 @@
     "countLocationsChanged": "{n, plural, one {# location changed} other {# locations changed}}",
     "countIdentityChanged": "{n, plural, one {# company detail changed} other {# company details changed}}",
     "countNotesAdded": "notes completed",
-    "changeWhat": {
-      "address": "address",
-      "hours": "hours",
-      "price": "price",
-      "duration": "duration",
-      "description": "description"
-    },
     "identityField": {
       "name": "Name",
-      "tagline": "Tagline",
+      "tagline": "Description",
       "email": "Contact email"
     },
-    "changeLocationAdded": "Location added: <b>{name}</b>",
-    "changeServiceAdded": "Service added: <b>{name}</b>",
-    "changeUpdated": "<b>{name}</b>: {what} updated",
     "changeNotesAdded": "Notes completed with the site's text",
     "groupCompany": "Company",
     "groupLocations": "Locations",
@@ -2435,6 +2425,17 @@
     "partSheet": "Company sheet",
     "partInstructions": "This agent's instructions",
     "partEmpty": "—",
-    "controlSaved": "As saved. Save to see your latest changes."
+    "controlSaved": "As saved. Save to see your latest changes.",
+    "addedLocation": "Location added",
+    "addedService": "Service added",
+    "fieldAddress": "Address",
+    "fieldHours": "Opening hours",
+    "fieldPrice": "Price",
+    "fieldDuration": "Duration",
+    "fieldDescription": "Description",
+    "emptyValue": "(empty)",
+    "before": "before:",
+    "after": "after:",
+    "fieldLabel": "{label}:"
   }
 }

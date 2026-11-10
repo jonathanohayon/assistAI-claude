@@ -142,7 +142,9 @@ export function hoursSummary(hours: Week, locale: string, closed: string): strin
       const days = r.from === r.to ? dayName(r.from, locale) : `${dayName(r.from, locale)}–${dayName(r.to, locale)}`;
       // The time range is isolated left-to-right (U+2066…U+2069): in a
       // right-to-left line "09:00–19:00" would otherwise read "19:00–09:00".
-      return `${days} ${r.span ? `\u2066${r.span.open}–${r.span.close}\u2069` : closed}`;
+      // Word joiners (U+2060) keep the range on one line: split across two
+      // lines inside a right-to-left paragraph it reads scrambled.
+      return `${days} ${r.span ? `\u2066${r.span.open}\u2060–\u2060${r.span.close}\u2069` : closed}`;
     })
     .join(", ");
 }
@@ -154,12 +156,19 @@ export function hoursSummary(hours: Week, locale: string, closed: string): strin
 // the customer already has and the site states differently is listed as a
 // change; an empty field is filled; nothing is ever removed.
 
+/** A value before and after the learn ("" / 0 = empty before). */
+export interface Diff<T> {
+  before: T;
+  after: T;
+}
+
+/** Every change carries the values themselves, so the customer approves what they see. */
 export type ScanChange =
   | { kind: "identity"; field: "name" | "tagline" | "email"; before: string; after: string }
-  | { kind: "locationAdded"; name: string }
-  | { kind: "locationChanged"; name: string; what: ("address" | "hours")[] }
+  | { kind: "locationAdded"; name: string; address: string; hours: Week }
+  | { kind: "locationChanged"; name: string; address?: Diff<string>; hours?: Diff<Week> }
   | { kind: "serviceAdded"; name: string; durationMinutes: number; priceILS: number }
-  | { kind: "serviceChanged"; name: string; what: ("price" | "duration" | "description")[] }
+  | { kind: "serviceChanged"; name: string; price?: Diff<number>; duration?: Diff<number>; description?: Diff<string> }
   | { kind: "notesAdded" };
 
 const key = (s: string) => s.trim().toLocaleLowerCase().replace(/\s+/g, " ");
@@ -184,20 +193,20 @@ export function planScan(sheet: CompanySheet, draft: BusinessConfig): { next: Co
       const id = uniqueId(l.id, locations.map((x) => x.id));
       locations.push({ ...l, id });
       locationIdMap.set(l.id, id);
-      changes.push({ kind: "locationAdded", name: l.name });
+      changes.push({ kind: "locationAdded", name: l.name, address: l.address, hours: l.hours });
       continue;
     }
     locationIdMap.set(l.id, mine.id);
-    const what: ("address" | "hours")[] = [];
+    const change: Extract<ScanChange, { kind: "locationChanged" }> = { kind: "locationChanged", name: mine.name };
     if (l.address.trim() && l.address.trim() !== mine.address.trim()) {
+      change.address = { before: mine.address, after: l.address };
       mine.address = l.address;
-      what.push("address");
     }
     if (JSON.stringify(l.hours) !== JSON.stringify(mine.hours)) {
+      change.hours = { before: mine.hours, after: l.hours };
       mine.hours = l.hours;
-      what.push("hours");
     }
-    if (what.length) changes.push({ kind: "locationChanged", name: mine.name, what });
+    if (change.address || change.hours) changes.push(change);
   }
 
   const services = sheet.services.map((s) => ({ ...s }));
@@ -210,20 +219,20 @@ export function planScan(sheet: CompanySheet, draft: BusinessConfig): { next: Co
       changes.push({ kind: "serviceAdded", name: s.name, durationMinutes: s.durationMinutes, priceILS: s.priceILS });
       continue;
     }
-    const what: ("price" | "duration" | "description")[] = [];
+    const change: Extract<ScanChange, { kind: "serviceChanged" }> = { kind: "serviceChanged", name: mine.name };
     if (s.priceILS > 0 && s.priceILS !== mine.priceILS) {
+      change.price = { before: mine.priceILS, after: s.priceILS };
       mine.priceILS = s.priceILS;
-      what.push("price");
     }
     if (s.durationMinutes > 0 && s.durationMinutes !== mine.durationMinutes) {
+      change.duration = { before: mine.durationMinutes, after: s.durationMinutes };
       mine.durationMinutes = s.durationMinutes;
-      what.push("duration");
     }
     if (s.description.trim() && !mine.description.trim()) {
+      change.description = { before: mine.description, after: s.description };
       mine.description = s.description;
-      what.push("description");
     }
-    if (what.length) changes.push({ kind: "serviceChanged", name: mine.name, what });
+    if (change.price || change.duration || change.description) changes.push(change);
   }
 
   let notes = sheet.notes;

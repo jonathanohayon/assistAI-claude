@@ -157,10 +157,11 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     ["mon-wed", "thu-thu", "fri-fri", "sat-sun"],
   );
   assert.deepEqual(hoursRuns(week, "he").map((r) => `${r.from}-${r.to}`), ["sun-sun", "mon-wed", "thu-thu", "fri-fri", "sat-sat"]);
-  const plain = (x: string) => x.replace(/[\u2066\u2069]/g, "");
+  const plain = (x: string) => x.replace(/[\u2066\u2069\u2060]/g, "");
   assert.equal(plain(hoursSummary(week, "en", "closed")), "Mon–Wed 09:00–19:00, Thu 09:00–20:00, Fri 09:00–14:00, Sat–Sun closed");
   // Each time range is an LTR isolate, so it never reads backwards in Hebrew.
-  assert.equal(hoursSummary(week, "he", "סגור").match(/\u2066\d\d:\d\d–\d\d:\d\d\u2069/g)?.length, 3);
+  // Each time range is one unbreakable LTR isolate.
+  assert.equal(hoursSummary(week, "he", "סגור").match(/\u2066\d\d:\d\d\u2060–\u2060\d\d:\d\d\u2069/g)?.length, 3);
   const allOff = Object.fromEntries(Object.keys(week).map((d) => [d, off])) as typeof week;
   assert.equal(hoursSummary(allOff, "en", "closed"), "Mon–Sun closed");
   assert.equal(plain(hoursSummary(week, "he", "סגור")), "א׳ סגור, ב׳–ד׳ 09:00–19:00, ה׳ 09:00–20:00, ו׳ 09:00–14:00, שבת סגור");
@@ -193,7 +194,16 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.deepEqual(next.services[1].locationIds, [next.locations[1].id], "scanned location ids remapped");
   assert.deepEqual(next.faq, SHEET.faq);
   assert.deepEqual(scanCounts(changes), { servicesAdded: 1, servicesChanged: 1, locationsAdded: 1, locationsChanged: 1, identityChanged: 1, notesAdded: 1 });
-  assert.deepEqual(changes.find((c) => c.kind === "locationChanged"), { kind: "locationChanged", name: "Centre Mock", what: ["hours"] });
+  // Each change carries the values, before and after, so the review shows them.
+  assert.deepEqual(changes.find((c) => c.kind === "locationChanged"), {
+    kind: "locationChanged",
+    name: "Centre Mock",
+    hours: { before: SHEET.locations[0].hours, after: draft.centres[0].hours },
+  });
+  assert.deepEqual(changes.find((c) => c.kind === "serviceChanged"), { kind: "serviceChanged", name: "Coupe", price: { before: 100, after: 120 } });
+  assert.deepEqual(changes.find((c) => c.kind === "identity"), { kind: "identity", field: "tagline", before: "", after: "Coiffure" });
+  const added = changes.find((c) => c.kind === "locationAdded");
+  assert.ok(added && added.kind === "locationAdded" && added.address === "2 rue Mock" && added.hours === draft.centres[1].hours);
   // The proposal is valid for the server (no duplicate or unknown ids).
   assert.ok(planSheetWrite(SHEET, sheetPatch(SHEET, next)).ok);
   // A scan that states nothing new changes nothing.

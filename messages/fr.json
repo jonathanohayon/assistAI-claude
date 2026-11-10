@@ -2389,21 +2389,11 @@
     "countLocationsChanged": "{n, plural, one {# établissement modifié} other {# établissements modifiés}}",
     "countIdentityChanged": "{n, plural, one {# information de l'entreprise modifiée} other {# informations de l'entreprise modifiées}}",
     "countNotesAdded": "notes complétées",
-    "changeWhat": {
-      "address": "adresse",
-      "hours": "horaires",
-      "price": "prix",
-      "duration": "durée",
-      "description": "description"
-    },
     "identityField": {
       "name": "Nom",
-      "tagline": "Accroche",
+      "tagline": "Description",
       "email": "E-mail de contact"
     },
-    "changeLocationAdded": "Établissement ajouté : <b>{name}</b>",
-    "changeServiceAdded": "Prestation ajoutée : <b>{name}</b>",
-    "changeUpdated": "<b>{name}</b> : {what} mis à jour",
     "changeNotesAdded": "Notes complétées avec le texte du site",
     "groupCompany": "Entreprise",
     "groupLocations": "Établissements",
@@ -2435,6 +2425,17 @@
     "partSheet": "La fiche de l'entreprise",
     "partInstructions": "Les consignes de cet agent",
     "partEmpty": "—",
-    "controlSaved": "Tel qu'enregistré. Enregistrez pour voir vos dernières modifications."
+    "controlSaved": "Tel qu'enregistré. Enregistrez pour voir vos dernières modifications.",
+    "addedLocation": "Établissement ajouté",
+    "addedService": "Prestation ajoutée",
+    "fieldAddress": "Adresse",
+    "fieldHours": "Horaires",
+    "fieldPrice": "Prix",
+    "fieldDuration": "Durée",
+    "fieldDescription": "Description",
+    "emptyValue": "(vide)",
+    "before": "avant :",
+    "after": "après :",
+    "fieldLabel": "{label} :"
   }
 }
