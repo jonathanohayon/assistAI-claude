@@ -9,6 +9,7 @@ import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
+import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
@@ -272,6 +273,13 @@ export async function PUT(req: NextRequest) {
     const cleaned = sanitizeBusinessConfig(body.business);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (updates as any).business = sql`${JSON.stringify(cleaned)}::jsonb`;
+    // Knowledge S4 (write-alongside): refresh the account's company sheet
+    // from the saved business, keeping its FAQ and sources.
+    const [acct] = await db.select({ companySheet: users.companySheet }).from(users).where(eq(users.id, guard.userId)).limit(1);
+    await db
+      .update(users)
+      .set({ companySheet: sql`${JSON.stringify(sheetAfterBusinessWrite(acct?.companySheet ?? null, cleaned))}::jsonb` } as never)
+      .where(eq(users.id, guard.userId));
   }
 
   // Voice contract (V5, write-alongside): a `voiceConfig` patch writes the
