@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "../../lib/tools/adapters";
 import { effectiveCapabilities, type CapabilityState } from "../../lib/tools/contract";
-import { activeCount, capabilityList, capabilityView, toolsPatch } from "../../components/bricks/tools/tools-ui";
+import { activeCount, capabilityList, capabilityView, inSentence, localPhone, toolsPatch, waitingForGoogle } from "../../components/bricks/tools/tools-ui";
 import { TOOL_NAMES } from "../tenant-bundle-match.mjs";
 
 const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: CapabilityState["prerequisite"]["missing"] } = {}): CapabilityState => ({
@@ -143,6 +143,21 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     assert.doesNotMatch(read(`messages/${l}.json`), names, `${l}: a message names a tool (all messages ship to the browser)`);
   }
   assert.match(read("app/[locale]/dashboard/page.tsx"), /const adminInheritablePreview = isAdmin\s*\?/);
+}
+
+// 11. Design review: one Google notice, the transfer number shown, the plan line as a sentence
+{
+  const tools = toolsFromTileToggles({ calendar: true, customers: true, orders: true });
+  const caps = effectiveCapabilities({ recipe: "receptionist", tools }, { transferNumber: "+000", googleConnected: false }, DEFAULT_MATRIX.premium);
+  assert.deepEqual(waitingForGoogle(capabilityList(caps).switches), ["booking", "contacts"]);
+  const off = effectiveCapabilities({ recipe: "receptionist", tools: { ...tools, contacts: { enabled: false } } }, { transferNumber: "+000", googleConnected: false }, DEFAULT_MATRIX.premium);
+  assert.deepEqual(waitingForGoogle(capabilityList(off).switches), ["booking"], "a switched-off capability isn't waiting");
+  assert.equal(localPhone("+972500000000"), "050 000 0000");
+  assert.equal(localPhone("+97221234567"), "02 123 4567");
+  assert.equal(localPhone("+33612345678"), "06 12 34 56 78");
+  assert.equal(localPhone("+15555550100"), "+15555550100");
+  assert.equal(inSentence("Prendre des rendez-vous", "fr"), "prendre des rendez-vous");
+  assert.equal(inSentence("קביעת פגישות", "he"), "קביעת פגישות");
 }
 
 console.log("ALL TOOLS-BRICK TESTS PASSED");

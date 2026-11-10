@@ -20,14 +20,14 @@
  */
 
 import NextLink from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
 import { Link } from "@/i18n/navigation";
 import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 
-import { capabilityList, capabilityView, type CapabilityView, type ToolsResponse } from "./tools-ui";
+import { capabilityList, capabilityView, inSentence, localPhone, waitingForGoogle, type CapabilityView, type ToolsResponse } from "./tools-ui";
 
 const LINK = `inline-flex min-h-11 cursor-pointer items-center rounded-lg text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline ${FOCUS}`;
 
@@ -49,7 +49,9 @@ export interface ToolsBrickProps {
 export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnTo, asUserId }: ToolsBrickProps) {
   const t = useTranslations("ToolsBrick");
   const tPlans = useTranslations("Plans");
+  const locale = useLocale();
   const { switches, notInPlan } = capabilityList(served.capabilities);
+  const number = served.account.transferNumber ? localPhone(served.account.transferNumber) : null;
   // The switch shows the customer's intent before saving; plan and
   // prerequisites stay the server's.
   const view = (v: CapabilityView): CapabilityView =>
@@ -61,6 +63,26 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
     <div className="flex flex-col gap-4">
       <p className={HINT}>{kind === "outbound" ? t("introOutbound") : t("intro")}</p>
 
+      {/* ONE Google notice for every capability waiting for it (not a button per row). */}
+      {(() => {
+        const waiting = waitingForGoogle(switches.map(view));
+        if (!waiting.length) return null;
+        return (
+          <div role="note" className="rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3">
+            <p className="text-sm text-[#78350f]">
+              {t("googleNotice", { list: waiting.map((k) => inSentence(t(`cap.${k}.name`), locale)).join(", ") })}
+            </p>
+            {asUserId ? (
+              <p className={HINT}>{t("connectGoogleTenantOnly")}</p>
+            ) : (
+              <ConnectGoogleLink returnTo={returnTo} className={LINK}>
+                {t("connectGoogle")}
+              </ConnectGoogleLink>
+            )}
+          </div>
+        );
+      })()}
+
       <ul className="flex flex-col divide-y divide-[#f1f5f9] rounded-2xl border border-[#e2e8f0] bg-white">
         {switches.map((s) => (
           <CapabilityRow
@@ -68,21 +90,15 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
             v={view(s)}
             checked={tools[s.key].enabled}
             onToggle={(enabled) => onChange({ ...tools, [s.key]: { ...tools[s.key], enabled } })}
-            action={
-              <Action
-                v={view(s)}
-                onAddNumber={onAddNumber}
-                returnTo={returnTo}
-                adminForTenant={!!asUserId}
-              />
-            }
+            number={s.key === "transfer" ? number : null}
+            action={<Action v={view(s)} hasNumber={!!number} onAddNumber={onAddNumber} />}
           />
         ))}
       </ul>
 
       {notInPlan.length > 0 && (
         <p className="text-sm text-[#475569]">
-          {t("notInPlan", { list: notInPlan.map((k) => t(`cap.${k}.name`)).join(", ") })}{" "}
+          {t("notInPlan", { list: notInPlan.map((k) => inSentence(t(`cap.${k}.name`), locale)).join(", ") })}{" "}
           {upgrades.length > 0 && (
             <Link href="/dashboard/billing" className={LINK}>
               {t("availableWith", { plan: upgrades.map(planName).join(" / ") })}
@@ -122,11 +138,14 @@ function CapabilityRow({
   checked,
   onToggle,
   action,
+  number,
 }: {
   v: CapabilityView;
   checked: boolean;
   onToggle: (enabled: boolean) => void;
   action: React.ReactNode;
+  /** Transfer: the account's number, local format. */
+  number: string | null;
 }) {
   const t = useTranslations("ToolsBrick");
   const labelId = `tools-${v.key}-label`;
@@ -140,7 +159,7 @@ function CapabilityRow({
         <p className={HINT}>{t(`cap.${v.key}.what`)}</p>
         {/* The state in words first; colour only repeats it. */}
         <p id={statusId} className="mt-1 text-sm" aria-live="polite">
-          <StatusWords v={v} />
+          <StatusWords v={v} number={number} />
         </p>
         {action}
       </div>
@@ -162,7 +181,7 @@ function CapabilityRow({
   );
 }
 
-function StatusWords({ v }: { v: CapabilityView }) {
+function StatusWords({ v, number }: { v: CapabilityView; number: string | null }) {
   const t = useTranslations("ToolsBrick");
   if (v.status === "off")
     return (
@@ -172,7 +191,14 @@ function StatusWords({ v }: { v: CapabilityView }) {
         {v.missing === "not_available_outbound" && <> {t("offOutbound")}</>}
       </span>
     );
-  if (v.status === "on") return <span className="font-semibold text-[#047857]">{t(`cap.${v.key}.on`)}</span>;
+  if (v.status === "on")
+    return (
+      <span className="font-semibold text-[#047857]">
+        {v.key === "transfer" && number
+          ? t.rich("transferOnTo", { number, n: (c) => <bdi dir="ltr">{c}</bdi> })
+          : t(`cap.${v.key}.on`)}
+      </span>
+    );
   return (
     <span className="text-[#92400e]">
       <span className="font-semibold">{t("statusPending")}</span> {t(`missing.${v.missing}`)}
@@ -180,37 +206,19 @@ function StatusWords({ v }: { v: CapabilityView }) {
   );
 }
 
-function Action({
-  v,
-  onAddNumber,
-  returnTo,
-  adminForTenant,
-}: {
-  v: CapabilityView;
-  onAddNumber?: () => void;
-  returnTo: string;
-  adminForTenant: boolean;
-}) {
+function Action({ v, hasNumber, onAddNumber }: { v: CapabilityView; hasNumber: boolean; onAddNumber?: () => void }) {
   const t = useTranslations("ToolsBrick");
-  if (v.action === "connectGoogle") {
-    // An admin acting for a tenant can't connect the tenant's Google account.
-    if (adminForTenant) return <p className={HINT}>{t("connectGoogleTenantOnly")}</p>;
-    return (
-      <ConnectGoogleLink returnTo={returnTo} className={LINK}>
-        {t("connectGoogle")}
-      </ConnectGoogleLink>
-    );
-  }
-  if (v.action === "addNumber") {
-    return onAddNumber ? (
-      <button type="button" onClick={onAddNumber} className={LINK}>
-        {t("addNumber")}
-      </button>
-    ) : (
-      <Link href="/dashboard?tile=notifs" className={LINK}>
-        {t("addNumber")}
-      </Link>
-    );
-  }
-  return null;
+  // Google: one notice above the list, no button per row.
+  // Transfer: "Edit" next to the number, or "Add a number" when there's none.
+  const label = v.action === "addNumber" ? t("addNumber") : v.key === "transfer" && v.status === "on" && hasNumber ? t("editNumber") : null;
+  if (!label) return null;
+  return onAddNumber ? (
+    <button type="button" onClick={onAddNumber} className={LINK}>
+      {label}
+    </button>
+  ) : (
+    <Link href="/dashboard?tile=notifs" className={LINK}>
+      {label}
+    </Link>
+  );
 }

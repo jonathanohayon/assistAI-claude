@@ -2435,7 +2435,7 @@
     "statusOff": "Éteint.",
     "statusPending": "Pas encore actif :",
     "missing": {
-      "google_not_connected": "connectez votre agenda Google.",
+      "google_not_connected": "compte Google non connecté.",
       "no_transfer_number": "ajoutez un numéro de transfert.",
       "not_available_outbound": "pas encore disponible pour les appels sortants."
     },
@@ -2452,6 +2452,9 @@
     "loading": "Chargement…",
     "saveError": "Les capacités n'ont pas été enregistrées. Réessayez.",
     "saveAgentFirst": "Enregistrez l'agent pour régler ce qu'il sait faire.",
-    "offOutbound": "Pas encore disponible pour les appels sortants."
+    "offOutbound": "Pas encore disponible pour les appels sortants.",
+    "googleNotice": "Connectez votre compte Google pour activer : {list}.",
+    "transferOnTo": "Actif : vers <n>{number}</n>.",
+    "editNumber": "Modifier"
   }
 }

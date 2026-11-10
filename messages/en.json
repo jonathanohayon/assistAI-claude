@@ -2435,7 +2435,7 @@
     "statusOff": "Off.",
     "statusPending": "Not active yet:",
     "missing": {
-      "google_not_connected": "connect your Google calendar.",
+      "google_not_connected": "Google account not connected.",
       "no_transfer_number": "add a transfer number.",
       "not_available_outbound": "not available for outbound calls yet."
     },
@@ -2452,6 +2452,9 @@
     "loading": "Loading…",
     "saveError": "The capabilities weren't saved. Try again.",
     "saveAgentFirst": "Save the agent to set what it can do.",
-    "offOutbound": "Not available for outbound calls yet."
+    "offOutbound": "Not available for outbound calls yet.",
+    "googleNotice": "Connect your Google account to turn on: {list}.",
+    "transferOnTo": "Active: to <n>{number}</n>.",
+    "editNumber": "Edit"
   }
 }

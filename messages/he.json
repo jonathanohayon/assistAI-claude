@@ -2435,7 +2435,7 @@
     "statusOff": "כבוי.",
     "statusPending": "עדיין לא פעיל:",
     "missing": {
-      "google_not_connected": "חברו את יומן Google שלכם.",
+      "google_not_connected": "חשבון Google לא מחובר.",
       "no_transfer_number": "הוסיפו מספר להעברה.",
       "not_available_outbound": "עדיין לא זמין בשיחות יוצאות."
     },
@@ -2452,6 +2452,9 @@
     "loading": "טוען…",
     "saveError": "היכולות לא נשמרו. נסו שוב.",
     "saveAgentFirst": "שמרו את הסוכן כדי להגדיר מה הוא יודע לעשות.",
-    "offOutbound": "עדיין לא זמין בשיחות יוצאות."
+    "offOutbound": "עדיין לא זמין בשיחות יוצאות.",
+    "googleNotice": "חברו את חשבון Google שלכם כדי להפעיל: {list}.",
+    "transferOnTo": "פעיל: אל <n>{number}</n>.",
+    "editNumber": "עריכה"
   }
 }

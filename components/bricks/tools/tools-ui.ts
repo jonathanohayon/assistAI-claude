@@ -19,7 +19,8 @@ import {
 export interface ToolsResponse {
   tools: Tools;
   capabilities: EffectiveCapabilities;
-  account: { googleConnected: boolean; transferNumberSet: boolean };
+  /** transferNumber: the KEPT number (stored, or parked while transfer is off), E.164; null = none. */
+  account: { googleConnected: boolean; transferNumberSet: boolean; transferNumber?: string | null };
   /** For a capability the plan doesn't include: the plan that does. */
   upgrade: Partial<Record<CapabilityKey, string>>;
   admin?: { toolNames: Record<CapabilityKey, string[]> };
@@ -105,3 +106,30 @@ export function toolsPatch<T extends object>(baseIn: T, nextIn: T): Record<strin
 export function activeCount(caps: EffectiveCapabilities): number {
   return capabilityList(caps).switches.filter((v) => v.status === "on").length;
 }
+
+/**
+ * One Google notice above the list instead of a button per row: the
+ * switched-on capabilities waiting for the Google account, in list order.
+ */
+export function waitingForGoogle(switches: CapabilityView[]): CapabilityKey[] {
+  return switches.filter((v) => v.status === "pending" && v.missing === "google_not_connected").map((v) => v.key);
+}
+
+/**
+ * A number the way people dial it at home ("050 000 0000", "06 12 34 56 78");
+ * anything else as stored. Shown isolated left-to-right.
+ */
+export function localPhone(e164: string): string {
+  const raw = e164.replace(/[\s-]/g, "");
+  const il = /^\+972([57]\d)(\d{3})(\d{4})$/.exec(raw);
+  if (il) return `0${il[1]} ${il[2]} ${il[3]}`;
+  const ilLand = /^\+972([23489])(\d{3})(\d{4})$/.exec(raw);
+  if (ilLand) return `0${ilLand[1]} ${ilLand[2]} ${ilLand[3]}`;
+  const fr = /^\+33(\d)(\d{8})$/.exec(raw);
+  if (fr) return `0${fr[1]} ${fr[2].match(/\d{2}/g)!.join(" ")}`;
+  return e164;
+}
+
+/** "Book appointments" → "book appointments" inside a sentence (no-op for Hebrew). */
+export const inSentence = (name: string, locale: string): string =>
+  name.charAt(0).toLocaleLowerCase(locale) + name.slice(1);
