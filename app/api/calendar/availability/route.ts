@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { computeFreeSlots } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
+import { isNewShape, locationLabel } from "@/lib/booking-place";
 import {
   type Center,
   centerForDate,
@@ -11,10 +12,15 @@ import {
 } from "@/lib/schedule";
 
 export async function POST(req: NextRequest) {
-  const { date, center, duration } = await req.json();
+  const body = (await req.json()) as Record<string, unknown>;
+  const { date, center, duration } = body as { date?: string; center?: string; duration?: number };
+  // With a `location` (the tenant's own place, new worker): no weekday rule,
+  // no centre label (lib/booking-place.ts). Without: today's behaviour.
+  const newShape = isNewShape(body);
+  const location = locationLabel(body.location);
   // Slots must fit the requested service length, not a fixed 30 min.
   const durationMin =
-    Number.isFinite(duration) && duration > 0 ? Math.round(duration) : 30;
+    typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? Math.round(duration) : 30;
 
   if (!date) {
     return NextResponse.json(
@@ -29,7 +35,7 @@ export async function POST(req: NextRequest) {
   // the right one.
   let allowedCenter: Center;
   try {
-    allowedCenter = centerForDate(date);
+    allowedCenter = centerForDate(date); // also validates the date (both shapes)
   } catch (e) {
     return NextResponse.json(
       { error: (e as Error).message },
@@ -37,7 +43,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (center && center !== allowedCenter) {
+  if (!newShape && center && center !== allowedCenter) {
     // The agent asked for a center that isn't open this day. Don't just say
     // no — return the next valid dates for THE CENTER THE CALLER WANTED so
     // the agent can directly propose them ("Jérusalem est fermé lundi, mais
@@ -79,6 +85,14 @@ export async function POST(req: NextRequest) {
       durationMin,
     );
 
+    if (newShape) {
+      return NextResponse.json({
+        date,
+        location,
+        available_slots: slots,
+        ...(slots.length === 0 ? { reason: `Plus de créneau disponible pour le ${date}.` } : {}),
+      });
+    }
     const suggested = slots.length === 0
       ? nextDatesForCenter(allowedCenter, 3, date)
       : [];

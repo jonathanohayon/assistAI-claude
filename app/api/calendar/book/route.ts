@@ -5,11 +5,14 @@ import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
-import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
+import { atPlace, eventPlaceLine, eventTitle, resolvePlace } from "@/lib/booking-place";
+import { type Center, nextDatesForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
-  const parsed = parseBookingRequest(await req.json().catch(() => null));
+  const raw = await req.json().catch(() => null);
+  const body = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const parsed = parseBookingRequest(raw);
   if (!parsed.ok) {
     await logEvent({
       source: "calendar",
@@ -22,30 +25,29 @@ export async function POST(req: NextRequest) {
   const { name, phone, email, date, time, duration, description, center } =
     parsed.value;
 
-  // Center rules: each day of the week is bound to exactly one centre.
-  // Reject if the agent picked a date that doesn't match the requested
-  // centre — fixes "book Ashdod on a Tuesday" type bugs.
-  let resolved;
-  try {
-    resolved = validateBooking(date, (center as Center | undefined) ?? null);
-  } catch (e) {
+  // Where (lib/booking-place.ts): a `location` from the tenant's own sheet
+  // (no weekday rule), or — legacy worker, no `location` key — today's
+  // centre-per-weekday rule, refusing a mismatch ("book Ashdod on a Tuesday").
+  const placed = resolvePlace(body, date);
+  if (!placed.ok && placed.kind === "invalid_date") {
     await logEvent({
       source: "calendar",
       event: "book_invalid_date",
       message: `Date invalide : ${date}`,
       level: "warn",
-      metadata: { date, error: (e as Error).message },
+      metadata: { date, error: placed.error },
     });
     return NextResponse.json(
-      { error: (e as Error).message },
+      { error: placed.error },
       { status: 400 },
     );
   }
 
-  if (!resolved.ok) {
+  if (!placed.ok) {
     // Caller booked the wrong center for this date. Hand back the next
     // valid dates FOR THE CENTER THEY ASKED FOR so the agent can re-propose
     // without recomputing anything.
+    const resolved = placed.refusal;
     const suggested = nextDatesForCenter(center as Center, 3, date);
     await logEvent({
       source: "calendar",
@@ -72,6 +74,9 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  const { place } = placed;
+  // Legacy: `center` in the response and logs, as before. New: `location`.
+  const placeField = place.kind === "legacy" ? { center: place.center } : { location: place.label };
 
   // Refuse bookings in the past (with 5-min grace for clock skew). The agent
   // should never propose a passé créneau, but if it does, we block here.
@@ -119,8 +124,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       simulated: true,
-      center: resolved.center,
-      summary: `RDV confirmé le ${date} à ${time} pour ${name} à ${resolved.label}`,
+      ...placeField,
+      summary: `RDV confirmé le ${date} à ${time} pour ${name}${atPlace(place)}`,
     });
   }
 
@@ -183,10 +188,10 @@ export async function POST(req: NextRequest) {
     const event = await caller.calendar.events.insert({
       calendarId: caller.calendarId,
       requestBody: {
-        summary: `RDV ${resolved.label} — ${name}`,
+        summary: eventTitle(place, name),
         description: [
           description || "Rendez-vous",
-          `Centre : ${resolved.label}`,
+          eventPlaceLine(place),
           `Tel : ${phone}`,
           email ? `Email : ${email}` : "",
         ]
@@ -203,7 +208,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "calendar",
       event: "book_success",
-      message: `RDV créé : ${name} · ${date} ${time} · ${resolved.label}`,
+      message: `RDV créé : ${name} · ${date} ${time}${place.label ? ` · ${place.label}` : ""}`,
       // Attributed to the tenant: the dashboard counts real bookings from it.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
       metadata: {
@@ -214,7 +219,7 @@ export async function POST(req: NextRequest) {
         date,
         time,
         duration,
-        center: resolved.center,
+        ...placeField,
       },
     });
 
@@ -222,8 +227,8 @@ export async function POST(req: NextRequest) {
       success: true,
       eventId: event.data.id,
       link: event.data.htmlLink,
-      center: resolved.center,
-      summary: `RDV confirmé le ${date} à ${time} pour ${name} à ${resolved.label}`,
+      ...placeField,
+      summary: `RDV confirmé le ${date} à ${time} pour ${name}${atPlace(place)}`,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur calendrier";
