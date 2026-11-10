@@ -64,3 +64,57 @@ resolverTests().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+// ── Default-tenant fallback is REPORTED on every path (A3) ─────────────
+import { resolveInboundTenantWith, tenantFallbackReport, type TenantFallback } from "../../lib/tenant-resolution";
+
+async function fallbackTests() {
+  const seen: TenantFallback[] = [];
+  const L = {
+    byUserId: async (u: string) => (u === "u-known" ? "tenant-U" : null),
+    byPhone: async (p: string) => (p === "+15550000002" ? "tenant-A" : null),
+    byDefault: async () => "first-tenant-in-db",
+    accountId: (t: string) => `acct:${t}`,
+    onFallback: (f: TenantFallback) => void seen.push(f),
+  };
+  const run = (phone: string | null, userId: string | null) =>
+    resolveInboundTenantWith({ origin: "agent_config", phone, userId }, L);
+
+  // normal paths: no report
+  assert.deepEqual(await run(null, "u-known"), { resolution: "user_match", tenant: "tenant-U" });
+  assert.deepEqual(await run("+15550000002", null), { resolution: "phone_match", tenant: "tenant-A" });
+  // unknown number: refused, not a fallback → no report
+  assert.deepEqual(await run("+15550000009", null), { resolution: "unknown_number", tenant: null });
+  assert.equal(seen.length, 0);
+
+  // userId miss → default tenant, reported
+  assert.deepEqual(await run(null, "u-missing"), { resolution: "default_fallback", tenant: "first-tenant-in-db" });
+  assert.deepEqual(seen.pop(), {
+    origin: "agent_config", missed: "user_id_not_found", missedUserId: "u-missing", answeredBy: "acct:first-tenant-in-db",
+  });
+  // no identifier → default tenant, reported
+  assert.deepEqual(await run(null, null), { resolution: "no_id", tenant: "first-tenant-in-db" });
+  assert.equal(seen.pop()?.missed, "no_identifier");
+  // empty DB: still reported, answeredBy null
+  await resolveInboundTenantWith({ origin: "web", phone: null, userId: "u-missing" }, { ...L, byDefault: async () => null });
+  assert.equal(seen.pop()?.answeredBy, null);
+
+  // resolveTenantWith (calls/end, whatsapp/notify): only the no-number path reports
+  const answered: Array<string | null> = [];
+  const RL = { byPhone: L.byPhone, byDefault: L.byDefault, onFallback: (t: string | null) => void answered.push(t) };
+  await resolveTenantWith("+15550000002", RL);
+  await resolveTenantWith("+15550000009", RL);
+  assert.equal(answered.length, 0);
+  await resolveTenantWith(null, RL);
+  await resolveTenantWith("  ", RL);
+  assert.deepEqual(answered, ["first-tenant-in-db", "first-tenant-in-db"]);
+
+  // the report: level error, deduplicated per origin, no phone number anywhere
+  const r = tenantFallbackReport({ origin: "calls_end", missed: "no_identifier", answeredBy: "acct-1" });
+  assert.equal(r.event.event, "tenant_fallback_used");
+  assert.equal(r.event.level, "error");
+  assert.equal(r.alert.key, "tenant_fallback:calls_end");
+  assert.ok(!/\+?\d{8,}/.test(JSON.stringify(r)), "no phone-like number in the report");
+  console.log("ALL TENANT-FALLBACK REPORT TESTS PASSED");
+}
+fallbackTests().catch((e) => { console.error(e); process.exit(1); });

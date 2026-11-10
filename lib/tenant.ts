@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { normalizeE164 } from "@/lib/phone-utils";
+import { reportTenantFallback } from "@/lib/tenant-fallback";
 import { resolveTenantWith } from "@/lib/tenant-resolution";
 
 export interface ResolvedTenant {
@@ -85,10 +86,14 @@ export async function resolveDefaultTenant(): Promise<ResolvedTenant | null> {
  */
 export async function resolveTenant(
   phone: string | null,
+  /** Who is asking — named in the fallback report. */
+  origin: string,
 ): Promise<ResolvedTenant | null> {
   const tenant = await resolveTenantWith(phone, {
     byPhone: resolveTenantByPhone,
     byDefault: resolveDefaultTenant,
+    onFallback: (t) =>
+      reportTenantFallback({ origin, missed: "no_identifier", answeredBy: t?.user.id ?? null }),
   });
   if (!tenant && phone?.trim()) {
     console.warn(`[tenant] no phone_numbers row for ${phone}, refused`);

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const tenantPhone = req.headers.get("x-tenant-phone");
-  const tenant = await resolveTenant(tenantPhone);
+  const tenant = await resolveTenant(tenantPhone, "whatsapp_notify");
   if (!tenant) {
     return NextResponse.json(
       { error: `Tenant inconnu pour ${tenantPhone || "(numéro absent)"}` },

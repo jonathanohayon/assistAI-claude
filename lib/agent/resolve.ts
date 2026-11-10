@@ -16,7 +16,8 @@ import type { CallOrigin, Resolution } from "@/lib/agent/contract";
 import { db } from "@/lib/db";
 import { agentConfigs, campaignContacts, campaigns, outboundAgents, users } from "@/lib/db/schema";
 import { resolveDefaultTenant, resolveTenantByPhone, resolveTenantByUserId } from "@/lib/tenant";
-import { decideTenantResolution } from "@/lib/tenant-resolution";
+import { reportTenantFallback } from "@/lib/tenant-fallback";
+import { resolveInboundTenantWith } from "@/lib/tenant-resolution";
 
 async function accountRows(accountId: string) {
   // leftJoin: the outbound routes never needed the account's agent_configs
@@ -30,7 +31,11 @@ async function accountRows(accountId: string) {
   return row ?? null;
 }
 
-export async function resolveCall(origin: CallOrigin): Promise<Resolution> {
+export async function resolveCall(
+  origin: CallOrigin,
+  /** reportFallback: false when the legacy handler already reported a fallback. */
+  opts: { reportFallback?: boolean } = {},
+): Promise<Resolution> {
   switch (origin.kind) {
     case "vox":
       return { ok: false, external: true };
@@ -41,11 +46,18 @@ export async function resolveCall(origin: CallOrigin): Promise<Resolution> {
       // Same order as /api/agent/config: userId first, else the called number.
       const userId = origin.kind === "phone" ? null : origin.userId || null;
       const phone = origin.kind === "phone" ? origin.calledNumber || null : null;
-      let tenant = userId ? await resolveTenantByUserId(userId) : phone ? await resolveTenantByPhone(phone) : null;
-      if (decideTenantResolution({ phone, userId, matched: Boolean(tenant) }) === "unknown_number") {
-        return { ok: false, status: 404, error: "unknown_number" };
-      }
-      if (!tenant) tenant = await resolveDefaultTenant();
+      const { resolution, tenant } = await resolveInboundTenantWith(
+        { origin: origin.kind, phone, userId },
+        {
+          byUserId: resolveTenantByUserId,
+          byPhone: resolveTenantByPhone,
+          byDefault: resolveDefaultTenant,
+          accountId: (t) => t.user.id,
+          // Off when the caller already ran the legacy handler (it reported).
+          onFallback: opts.reportFallback === false ? () => {} : reportTenantFallback,
+        },
+      );
+      if (resolution === "unknown_number") return { ok: false, status: 404, error: "unknown_number" };
       if (!tenant) return { ok: false, status: 404, error: "No tenant" };
       return {
         ok: true,
