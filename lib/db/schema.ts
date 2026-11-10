@@ -41,6 +41,9 @@ export const users = pgTable("users", {
   // updatable from /dashboard/billing.
   subscriptionPlan: text("subscription_plan").notNull().default("essential"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  // Account display preference: show level-3 ("developer") settings in the
+  // dashboard. Display only — admin-only fields stay admin-only whatever it says.
+  developerMode: boolean("developer_mode").notNull().default(false),
   // Stamp posé par le cron trial-cleanup quand l'email d'alerte 2h-avant
   // a été envoyé, pour idempotence (un seul warning par trial). Reste null
   // tant que pas envoyé OU si le user upgrade avant la fenêtre warning.
