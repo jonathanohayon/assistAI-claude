@@ -8,12 +8,13 @@
  * Cet endpoint ne touche AUCUNE donnée tenant en base : il fetch une URL et
  * appelle OpenAI, puis renvoie un brouillon. L'application au formulaire (et la
  * sauvegarde via PUT /api/dashboard/config) se fait côté client après revue.
- * → une simple session authentifiée suffit (pas de resolveScopeUserId).
+ * Scoped with resolveTargetUserId (?asUserId= for admins), so the scan is
+ * logged for the tenant it was made for.
  */
 
 import { NextRequest } from "next/server";
 
-import { requireSession } from "@/lib/api/auth-guards";
+import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { extractSheetDraft } from "@/lib/knowledge/learn";
 
@@ -23,9 +24,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  const guard = await requireSession();
-  if (!guard.ok) return guard.response;
-  const userId = guard.userId;
+  // Scoped like the other dashboard routes: an admin scanning with
+  // ?asUserId= acts on (and logs for) that tenant.
+  const scope = await resolveTargetUserId(req);
+  if ("unauthorized" in scope) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if ("forbidden" in scope) return Response.json({ error: "Forbidden" }, { status: 403 });
+  const userId = scope.userId;
 
   const parsed = await parseJsonBody<{ url?: string }>(req);
   if (!parsed.ok) return parsed.response;

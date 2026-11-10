@@ -27,7 +27,7 @@ export const DEFAULT_GOAL_FRAMINGS: Record<GoalPreset, string> = {
   custom: "",
 };
 
-function substituteVars(
+export function substituteVars(
   text: string,
   contact: { contactName?: string; phoneNumber?: string; vars?: Record<string, string> },
 ): string {
