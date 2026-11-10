@@ -74,6 +74,7 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
         <p className={HINT}>{kind === "outbound" ? t("nameHintOutbound") : t("nameHint")}</p>
         <input
           id={nameId}
+          dir="auto"
           value={value.name}
           maxLength={80}
           placeholder={t("namePlaceholder")}
@@ -109,6 +110,7 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             </label>
             <textarea
               id={greetingId}
+              dir="auto"
               value={value.greeting.text}
               maxLength={1000}
               rows={3}
@@ -123,7 +125,8 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             {kind === "outbound" ? t("previewTitleOutbound") : t("previewTitle")}
           </p>
           <p className="mt-1 text-sm text-[#18181b]">
-            {heard ? <q>{heard}</q> : <span className="text-[#475569]">{t("previewAuto")}</span>}
+            {/* dir="auto": the sentence may not be in the page's language. */}
+            {heard ? <q dir="auto">{heard}</q> : <span className="text-[#475569]">{t("previewAuto")}</span>}
           </p>
         </div>
       </div>
@@ -200,6 +203,7 @@ function DisclosureFields({ value, apply }: { value: Persona; apply: (patch: Rec
           <p className={HINT}>{t("disclosureTextHint")}</p>
           <input
             id={id}
+            dir="auto"
             value={text}
             maxLength={AI_DISCLOSURE_MAX_LENGTH}
             placeholder={t("disclosureTextPlaceholder")}
