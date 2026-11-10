@@ -50,6 +50,15 @@ export function sampleUrl(k: SampleKey): string {
   return `/api/voice/samples/${k.voiceId}/${k.style}/${k.language}`;
 }
 
+/**
+ * Listed URL, versioned: playback is cached privately for 24 h, so a
+ * re-rendered sample (new row → new created time, or a new
+ * VOICE_SAMPLE_VERSION) gets a new URL. The audio route ignores `v`.
+ */
+export function versionedSampleUrl(k: SampleKey, createdAt: Date): string {
+  return `${sampleUrl(k)}?v=${VOICE_SAMPLE_VERSION}.${createdAt.getTime()}`;
+}
+
 /** Tenants only hear the styles they can pick (just "warm" until V6 is heard). */
 export function sampleVisible(k: Pick<SampleKey, "style">, isAdmin: boolean): boolean {
   return isAdmin || STYLE_SELECTOR_TENANT_VISIBLE || k.style === "warm";

@@ -21,12 +21,17 @@ export function sampleRendering(k: SampleKey): { text: string; tone?: string; sp
 /** Model used to render samples: the default engine's default model. */
 const SAMPLE_MODEL = "gpt-realtime-2";
 
-export async function availableSampleKeys(): Promise<SampleKey[]> {
+export async function availableSampleKeys(): Promise<Array<SampleKey & { createdAt: Date }>> {
   const rows = await db
-    .select({ voiceId: voiceSamples.voiceId, style: voiceSamples.style, language: voiceSamples.language })
+    .select({
+      voiceId: voiceSamples.voiceId,
+      style: voiceSamples.style,
+      language: voiceSamples.language,
+      createdAt: voiceSamples.createdAt,
+    })
     .from(voiceSamples)
     .where(eq(voiceSamples.version, VOICE_SAMPLE_VERSION));
-  return rows as SampleKey[];
+  return rows as Array<SampleKey & { createdAt: Date }>;
 }
 
 export async function getSample(k: SampleKey) {

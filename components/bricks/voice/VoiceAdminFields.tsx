@@ -8,7 +8,7 @@
  * supplier names never reach a tenant's browser.
  */
 
-import { useId } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
@@ -26,6 +26,10 @@ import { useRealtimeCatalog } from "@/lib/use-realtime-catalog";
 import type { ClientVoice } from "./voice-client";
 
 import { ADMIN_ENGINE_OPTIONS, engineOptionOf, engineOptionPatch } from "./voice-admin";
+import { generateAllSamples, type GenerateProgress, type GenerateResponse } from "./generate-samples";
+import { getSamples, loadSamples, subscribeSamples } from "./voice-samples-store";
+import { samplePlan } from "@/lib/voice/samples";
+import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const OPTION_KEY: Record<string, string> = {
   "openai-2": "optionOpenai2",
@@ -63,6 +67,8 @@ export function VoiceAdminFields({
         <h4 className="text-sm font-semibold text-[#18181b]">{tP("title")}</h4>
         <AdminBadge size="xs" />
       </div>
+
+      <GenerateSamples />
 
       <Select
         label={tE("label")}
@@ -222,6 +228,69 @@ function TextField({
         <textarea id={id} value={value} maxLength={maxLength} rows={3} onChange={(e) => onChange(e.target.value)} className={cls} />
       ) : (
         <input id={id} value={value} maxLength={maxLength} onChange={(e) => onChange(e.target.value)} className={`${cls} min-h-11`} />
+      )}
+    </div>
+  );
+}
+
+const SAMPLE_TOTAL = samplePlan().length;
+
+/** Admin: render every missing Listen sample (72), with progress; safe to re-click. */
+function GenerateSamples() {
+  const tP = useTranslations("AdminVoiceProfile");
+  const voiceLabel = useVoiceLabel();
+  const samples = useSyncExternalStore(subscribeSamples, getSamples, getSamples);
+  const [progress, setProgress] = useState<GenerateProgress | null>(null);
+  const running = progress?.status === "running";
+  const existing = progress?.done ?? samples.byKey.size;
+
+  const run = async () => {
+    if (running) return;
+    await generateAllSamples({
+      total: SAMPLE_TOTAL,
+      existing: async () => {
+        await loadSamples(fetch, true);
+        return new Set(getSamples().byKey.keys());
+      },
+      post: async () => {
+        const res = await fetch("/api/admin/voice-samples/generate?limit=6", { method: "POST" });
+        const body = res.ok ? ((await res.json().catch(() => null)) as GenerateResponse | null) : null;
+        return { ok: res.ok, status: res.status, body };
+      },
+      onProgress: setProgress,
+    });
+  };
+
+  return (
+    <div className="rounded-xl border border-[#e2e8f0] bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-[#18181b]">{tP("samplesTitle")}</p>
+          <p className="mt-0.5 text-xs text-[#475569]" aria-live="polite">
+            {tP("samplesCount", { done: existing, total: SAMPLE_TOTAL })}
+            {progress?.status === "done" && ` · ${tP("samplesDone")}`}
+            {progress?.status === "stuck" && ` · ${tP("samplesStuck")}`}
+            {progress?.status === "error" && ` · ${tP("samplesError", { error: progress.error ?? "" })}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void run()}
+          disabled={running || (existing >= SAMPLE_TOTAL && !progress)}
+          aria-busy={running}
+          className="min-h-11 cursor-pointer rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+        >
+          {running ? tP("samplesRunning") : tP("samplesGenerate")}
+        </button>
+      </div>
+      {progress && progress.failed.length > 0 && (
+        <ul className="mt-2 space-y-1 text-xs text-[#b91c1c]" role="status">
+          {progress.failed.map((f) => (
+            <li key={`${f.voiceId}/${f.style}/${f.language}`}>
+              {voiceLabel(f.voiceId)} · {f.style} · {f.language.toUpperCase()} — {f.error}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

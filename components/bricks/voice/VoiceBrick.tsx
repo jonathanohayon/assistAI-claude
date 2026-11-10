@@ -23,6 +23,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ChipGroup, FOCUS, HINT, LABEL, SELECTED, Segmented, ToggleRow, radioKeys } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
+import { useVoiceSample } from "./use-voice-samples";
+import { markSampleMissing } from "./voice-samples-store";
 import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import {
@@ -66,7 +68,8 @@ export interface VoiceBrickProps {
   /** "Try it": opens the screen's existing browser test call. Hidden when
    *  absent. (No "Call me" until the phone call-back exists.) */
   testAction?: { label: "tryIt"; onClick: () => void; busy?: boolean };
-  /** Sample for "Listen" (V7). The button only shows when a sample exists. */
+  /** Sample override (mock pages). Default: the shared sample list
+   *  (V7) in the agent's language. Listen only shows when a sample exists. */
   sampleUrl?: (voiceId: string, style: ClientVoice["style"]) => string | null;
   primaryLanguage?: string | null;
 }
@@ -83,6 +86,9 @@ export function VoiceBrick({
 }: VoiceBrickProps) {
   const t = useTranslations("VoiceBrick");
   const dev = useDeveloperMode(asUserId);
+  const sampleLanguage = primaryLanguage === "he" || primaryLanguage === "en" ? primaryLanguage : "fr";
+  const listedSample = useVoiceSample(sampleLanguage);
+  const sampleFor = sampleUrl ?? listedSample;
   const [error, setError] = useState<string | null>(null);
 
   const apply = (patch: Record<string, unknown>) => {
@@ -118,7 +124,7 @@ export function VoiceBrick({
       )}
 
       <TestActions
-        sample={sampleUrl?.(value.voiceId, value.style) ?? null}
+        sample={sampleFor(value.voiceId, value.style)}
         testAction={testAction}
       />
 
@@ -335,7 +341,11 @@ function TestActions({
     }
     const a = new Audio(sample);
     a.onended = () => setPlayingSample(null);
-    a.onerror = () => setPlayingSample(null);
+    a.onerror = () => {
+      setPlayingSample(null);
+      // Deleted since the list was read (404): hide the button.
+      markSampleMissing(sample);
+    };
     audio.current = a;
     void a.play().then(
       () => setPlayingSample(sample),
