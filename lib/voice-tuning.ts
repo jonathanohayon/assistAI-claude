@@ -3,24 +3,8 @@
 // pour que les agents sortants se règlent EXACTEMENT comme l'agent entrant.
 // CLIENT-SAFE (pas d'I/O).
 
-export type Gender = "f" | "m";
-
-// Genre par défaut de chaque voix OpenAI Realtime (rose = F, cyan = M).
-export const VOICE_GENDER: Record<string, Gender> = {
-  marin: "f",
-  cedar: "m",
-  ballad: "m",
-  sage: "f",
-  verse: "m",
-  alloy: "m",
-  shimmer: "f",
-  echo: "m",
-  fable: "m",
-  onyx: "m",
-  nova: "f",
-  coral: "f",
-  ash: "m",
-};
+// The voice-gender table lives in the Voice contract (one table only).
+export { VOICE_GENDER, type VoiceGender as Gender } from "@/lib/voice/contract";
 
 // UI 1-10 ↔ API. Speed 0.5..1.5 (5 = 1.0×). Temperature 0..1.5.
 export const speedFromUI = (ui: number) => 0.5 + ((ui - 1) / 9) * 1.0;
