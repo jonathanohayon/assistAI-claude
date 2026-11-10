@@ -14,6 +14,15 @@ import { AgentEditor } from "./agent-editor";
 import { hydrateVoice, voicePatch, type ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
+import {
+  LEGACY_OUTBOUND_PERSONA_FIELDS,
+  personaPatch,
+  personaSaveIssue,
+  personaToOutboundColumns,
+  withPersonaConfig,
+} from "@/components/bricks/persona/persona-ui";
+import { personaFromOutbound } from "@/lib/persona/adapters";
+import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
@@ -36,6 +45,7 @@ export function AgentsWorkspace({
   onBack: () => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const tPersona = useTranslations("PersonaBrick");
   const locale = useLocale();
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -44,6 +54,10 @@ export function AgentsWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Persona brick state (saved through agentName/language/greeting until P3).
+  const [persona, setPersona] = useState<Persona>(() => personaFromOutbound(null));
+  // Last loaded/saved persona; null = a new agent (send it whole on POST).
+  const [personaBase, setPersonaBase] = useState<Persona | null>(null);
   // Voice brick state: full Voice on screen, `voiceBase` = last loaded/saved.
   const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(null));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(null));
@@ -92,14 +106,21 @@ export function AgentsWorkspace({
     setDraft((d) => ({ ...d, ...patch }));
 
   const openNew = () => {
-    setDraft(emptyAgentDraft(locale));
+    const fresh = emptyAgentDraft(locale);
+    setDraft(fresh);
+    setPersona(personaFromOutbound(fresh));
+    setPersonaBase(null);
     setVoice(hydrateVoice(null));
     setVoiceBase(hydrateVoice(null));
     setUsage(0);
+    setError(null);
     setView("editor");
   };
 
   const openEdit = (a: OutboundAgentListItem) => {
+    const servedPersona = (a as OutboundAgentListItem & { personaConfig?: Persona }).personaConfig ?? personaFromOutbound(a);
+    setPersona(servedPersona);
+    setPersonaBase(servedPersona);
     const served = hydrateVoice((a as OutboundAgentListItem & { voiceConfig?: ServedVoice }).voiceConfig);
     setVoice(served);
     setVoiceBase(served);
@@ -119,11 +140,18 @@ export function AgentsWorkspace({
       noiseReductionLevel: a.noiseReductionLevel ?? 8,
     });
     setUsage(a.campaignCount);
+    setError(null);
     setView("editor");
   };
 
   const save = async () => {
     if (saving) return;
+    // Never save a first sentence with braces that would be read aloud.
+    if (personaSaveIssue(persona, GREETING_VARIABLES.outbound)) {
+      setError(tPersona("saveBlocked"));
+      return;
+    }
+    setError(null);
     setSaving(true);
     try {
       const editing = !!draft.id;
@@ -132,12 +160,21 @@ export function AgentsWorkspace({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice))),
+          body: JSON.stringify(
+            withPersonaConfig(
+              withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
+              LEGACY_OUTBOUND_PERSONA_FIELDS,
+              personaBase ? personaPatch(personaBase, persona) : persona,
+            ),
+          ),
         },
       );
       if (!res.ok) throw new Error("save");
       const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
+      const savedPersona = (data.agent as { personaConfig?: Persona } | undefined)?.personaConfig ?? persona;
+      setPersona(savedPersona);
+      setPersonaBase(savedPersona);
       if (data.agent?.voiceConfig) {
         const saved = hydrateVoice(data.agent.voiceConfig);
         setVoice(saved);
@@ -216,6 +253,14 @@ export function AgentsWorkspace({
           </div>
         </div>
 
+        {/* Editor errors sit outside the scroll area, so a blocked or failed
+            save is seen from either save button. */}
+        {view === "editor" && error && (
+          <p role="alert" className="shrink-0 border-b border-[#fecaca] bg-[#fef2f2] px-6 py-2.5 text-[13px] font-semibold text-[#b91c1c]">
+            {error}
+          </p>
+        )}
+
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <AnimatePresence mode="wait">
             {view === "list" ? (
@@ -247,6 +292,13 @@ export function AgentsWorkspace({
                 <AgentEditor
                   draft={draft}
                   set={set}
+                  persona={persona}
+                  onPersonaChange={(next) => {
+                    setPersona(next);
+                    set(personaToOutboundColumns(next));
+                    // A fixed sentence clears the "save blocked" message.
+                    if (!personaSaveIssue(next, GREETING_VARIABLES.outbound)) setError(null);
+                  }}
                   voice={voice}
                   onVoiceChange={setVoice}
                   isAdmin={isAdmin}
@@ -264,6 +316,13 @@ export function AgentsWorkspace({
                   </button>
                 )}
                 {/* Save aussi en bas (long formulaire). */}
+                {error && (
+                  // Visual copy of the header alert, next to this button;
+                  // hidden from screen readers so it is announced once.
+                  <p aria-hidden="true" className="text-center text-[13px] font-semibold text-[#b91c1c]">
+                    {error}
+                  </p>
+                )}
                 <button
                   onClick={save}
                   disabled={saving}

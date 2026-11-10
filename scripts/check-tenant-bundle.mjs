@@ -54,9 +54,29 @@ async function get(path, opts = {}) {
 }
 
 const chunkPaths = (text) => new Set([...text.matchAll(/\/_next\/static\/[A-Za-z0-9_\-./~]+?\.js/g)].map((m) => m[0]));
+// A match inside a long base64 run (per-request encoded bytes, e.g. a
+// serialized payload) is random letters, not a word: "…/UqxaiMcjn…" flaked
+// once. Identifiers and copy never contain "+" or "/", so such a run is
+// skipped only when it does.
+const inBase64Run = (text, index, length) => {
+  let s = index, e = index + length;
+  while (s > 0 && /[A-Za-z0-9+/]/.test(text[s - 1])) s--;
+  while (e < text.length && /[A-Za-z0-9+/]/.test(text[e])) e++;
+  const run = text.slice(s, e);
+  // Also mixed case with digits, so a long lowercase URL path that names a
+  // supplier (e.g. /api/realtime/…) is never skipped.
+  return (
+    run.length >= 40 &&
+    /[+/]/.test(run) &&
+    !/\/_next\//.test(run) &&
+    (run.match(/[A-Z]/g) ?? []).length >= 3 &&
+    (run.match(/[0-9]/g) ?? []).length >= 2
+  );
+};
 const hits = (text) => {
   const out = new Map();
   for (const m of text.matchAll(PATTERN)) {
+    if (inBase64Run(text, m.index, m[0].length)) continue;
     const ctx = text.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30).replace(/\s+/g, " ");
     const key = m[0].toLowerCase();
     if (!out.has(key)) out.set(key, []);

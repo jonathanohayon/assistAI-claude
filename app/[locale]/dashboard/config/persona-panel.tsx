@@ -2,8 +2,8 @@
 
 /**
  * Tuile "Persona" : mode hérité admin vs custom (RadioCards + preview des
- * directives héritées), langue principale FR/HE/EN, nom de l'agent, phrase
- * d'accueil, encart tools disponibles et textarea instructions (persona).
+ * directives héritées), the Persona brick (name, language, first sentence,
+ * AI disclosure), encart tools disponibles et textarea instructions.
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `persona`).
  */
@@ -11,19 +11,26 @@
 import { RadioCard } from "./shared-ui";
 import { ToolsAvailableHint } from "./tools-available-hint";
 import type { FormState, FormUpdater, Translator } from "./types";
-import { AiDisclosureField } from "./ai-disclosure-field";
+import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
+import type { Persona } from "@/lib/persona/contract";
 
 export function PersonaPanel({
   form,
   update,
-  primaryLanguages,
+  persona,
+  onPersonaChange,
+  isAdmin,
+  asUserId,
   adminInheritablePreview,
   planLabel,
   t,
 }: {
   form: FormState;
   update: FormUpdater;
-  primaryLanguages: ReadonlyArray<{ value: string; flag: string; label: string }>;
+  persona: Persona;
+  onPersonaChange: (next: Persona) => void;
+  isAdmin: boolean;
+  asUserId?: string;
   adminInheritablePreview: string;
   planLabel: string;
   t: Translator;
@@ -63,75 +70,15 @@ export function PersonaPanel({
         )}
       </div>
 
-      {/* Langue */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          {t("primaryLanguageLabel")}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {primaryLanguages.map((l) => {
-            const active = l.value === form.primaryLanguage;
-            return (
-              <button
-                key={l.value}
-                type="button"
-                onClick={() => update("primaryLanguage", l.value)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-300 ${
-                  active
-                    ? "border-transparent bg-[#18181b] text-white shadow-md"
-                    : "border-[#e2e8f0] bg-white/60 text-[#18181b] hover:-translate-y-0.5 hover:border-[#0e7490]/40 hover:shadow-sm"
-                }`}
-              >
-                <span className="font-mono text-[10px] opacity-70">{l.flag}</span>
-                {l.label}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-1.5 text-[11px] text-[#475569]">
-          {t("primaryLanguageHint")}
-        </p>
-      </div>
-
-      {/* Agent name (facultatif) — prononcé dans la phrase d'accueil */}
-      <div>
-        <div className="mb-2 flex items-baseline gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-            {t("wowAgentNameLabel")}
-          </p>
-          <span className="text-[10px] text-[#94a3b8]">
-            {t("wowOptional")}
-          </span>
-        </div>
-        <input
-          type="text"
-          value={form.agentName}
-          onChange={(e) => update("agentName", e.target.value)}
-          placeholder={t("wowAgentNamePlaceholder")}
-          maxLength={80}
-          className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-2.5 text-sm text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
-        />
-        <p className="mt-1.5 text-[11px] text-[#475569]">
-          {t("wowAgentNameHint")}
-        </p>
-      </div>
-
-      {/* Greeting */}
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#0e7490]">
-          {t("greetingLabel")}
-        </p>
-        <input
-          type="text"
-          value={form.greetingInstructions}
-          onChange={(e) => update("greetingInstructions", e.target.value)}
-          placeholder={t("greetingPlaceholder")}
-          className="w-full rounded-2xl border border-[#e2e8f0] bg-white/80 px-4 py-2.5 text-sm text-[#18181b] shadow-inner backdrop-blur transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15"
-        />
-        <p className="mt-1.5 text-[11px] text-[#475569]">{t("greetingHint")}</p>
-      </div>
-
-      <AiDisclosureField form={form} update={update} t={t} />
+      {/* Who answers: name, language, first sentence + preview, AI disclosure. */}
+      <PersonaBrick
+        value={persona}
+        onChange={onPersonaChange}
+        kind="inbound"
+        businessName={form.business?.identity?.name ?? ""}
+        isAdmin={isAdmin}
+        asUserId={asUserId ?? null}
+      />
 
       {/* Tools disponibles — built-in + knowledge */}
       <ToolsAvailableHint form={form} update={update} />
