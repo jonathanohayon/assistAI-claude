@@ -89,6 +89,7 @@ as the business number). The salon's usual line must forward to
 | Cron ran | Railway web HTTP logs, `/api/cron/appointment-reminders` | **Pass:** `200`. |
 | Sent | `SELECT status, channel, error, appointment_start FROM appointment_reminders ORDER BY sent_at DESC LIMIT 3;` + events `appointment_reminder_sent` / `appointment_reminder_failed` | **Pass:** a `sent` row for the call-1 booking. |
 | Received | The phone that booked | **Pass:** one WhatsApp reminder with tomorrow's date and time. |
+| "Call us" line (#180) | Same WhatsApp, last line | **Pass:** "📞 … : +972…" with the tenant's aitamara number, and tapping it opens the dialer (check once with the tenant in Hebrew: the number must stay "+972…" and tappable). |
 
 ## Results
 

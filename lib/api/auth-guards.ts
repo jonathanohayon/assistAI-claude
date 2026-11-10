@@ -121,3 +121,11 @@ export async function resolveTargetUserId(req: NextRequest) {
   if ("forbidden" in scope) return { forbidden: true as const };
   return { userId: scope.userId };
 }
+
+/** True when the signed-in user is an admin (for admin-only fields on shared routes). */
+export async function sessionIsAdmin(): Promise<boolean> {
+  const session = await auth();
+  if (!session?.user?.id) return false;
+  const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id)).limit(1);
+  return u?.role === "admin";
+}
