@@ -20,6 +20,7 @@ import {
   personaPatch,
   personaSaveIssue,
   splitSentences,
+  textDirection,
   variablesIn,
   withPersonaConfig,
 } from "../../components/bricks/persona/persona-ui";
@@ -170,6 +171,12 @@ for (const page of ["fr", "he"] as const) {
     assert.ok(parts.length >= 2, "the disclosure is a separate part");
   }
 }
+
+// preview paragraph direction = the heard sentence's first strong character
+assert.equal(textDirection("שלום, סלון מוק! אני Sarah."), "rtl");
+assert.equal(textDirection("Bonjour ! אני Sarah."), "ltr");
+assert.equal(textDirection("“ 12, שלום"), "rtl", "neutrals and digits are skipped");
+assert.equal(textDirection("…"), "ltr");
 
 // 10. Braces: only the side's exact variables; anything else would be read aloud
 {

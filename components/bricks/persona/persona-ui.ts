@@ -135,3 +135,13 @@ export function personaSaveIssue(
   const tokens = badBraces(p.greeting.text, allowedVariables);
   return tokens.length ? { kind: "badBraces", tokens } : null;
 }
+
+/**
+ * Direction from the first strong character (Unicode bidi P2/P3), for the
+ * preview paragraph: dir="auto" can't be used there because it skips the
+ * isolated <bdi> parts and only sees the neutral quote mark.
+ */
+export function textDirection(text: string): "rtl" | "ltr" {
+  const m = text.match(/[\p{Script=Hebrew}\p{Script=Arabic}]|[\p{L}]/u);
+  return m && /[\p{Script=Hebrew}\p{Script=Arabic}]/u.test(m[0]) ? "rtl" : "ltr";
+}
