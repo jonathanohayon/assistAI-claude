@@ -2131,7 +2131,14 @@
     },
     "unsaved": "Unsaved changes: they only apply to calls once you save.",
     "saveNow": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "samplesTitle": "Listen samples",
+    "samplesCount": "{done} of {total} ready",
+    "samplesGenerate": "Generate voice samples",
+    "samplesRunning": "Generating…",
+    "samplesDone": "all ready",
+    "samplesStuck": "some failed, see below; click again to retry",
+    "samplesError": "stopped ({error}); click again to retry"
   },
   "DashboardForwarding": {
     "title": "Forward your business number",

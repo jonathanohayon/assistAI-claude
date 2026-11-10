@@ -2131,7 +2131,14 @@
     },
     "unsaved": "שינויים שלא נשמרו: הם יחולו על השיחות רק אחרי השמירה.",
     "saveNow": "שמירה",
-    "saving": "שומר…"
+    "saving": "שומר…",
+    "samplesTitle": "דוגמאות האזנה",
+    "samplesCount": "{done} מתוך {total} מוכנות",
+    "samplesGenerate": "יצירת דוגמאות קול",
+    "samplesRunning": "יוצר…",
+    "samplesDone": "כולן מוכנות",
+    "samplesStuck": "חלק נכשלו, ראו למטה; לחצו שוב כדי לנסות שוב",
+    "samplesError": "נעצר ({error}); לחצו שוב כדי לנסות שוב"
   },
   "DashboardForwarding": {
     "title": "הפניית המספר העסקי",

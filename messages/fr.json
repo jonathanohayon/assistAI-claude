@@ -2131,7 +2131,14 @@
     },
     "unsaved": "Modifications non enregistrées : elles ne s'appliquent aux appels qu'après l'enregistrement.",
     "saveNow": "Enregistrer",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "samplesTitle": "Extraits « Écouter »",
+    "samplesCount": "{done} sur {total} prêts",
+    "samplesGenerate": "Générer les extraits de voix",
+    "samplesRunning": "Génération…",
+    "samplesDone": "tous prêts",
+    "samplesStuck": "certains ont échoué, voir ci-dessous ; recliquez pour réessayer",
+    "samplesError": "arrêté ({error}) ; recliquez pour réessayer"
   },
   "DashboardForwarding": {
     "title": "Renvoyer votre numéro professionnel",
