@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     greeting: fields.greeting ?? null,
     personaConfig: null,
   };
-  const personaWrite = outboundPersonaUpdates(body, personaCols);
+  const personaWrite = outboundPersonaUpdates(body, personaCols, await sessionIsAdmin());
   if (personaWrite && "error" in personaWrite) {
     return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
   }
