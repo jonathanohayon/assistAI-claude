@@ -12,6 +12,7 @@ import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
 import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentInboundVoice } from "@/lib/voice/store";
+import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
 import { parseTransferNumber } from "@/lib/transfer-number";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
@@ -41,7 +42,13 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   // Voice contract (V5): stored voice or derived from the columns (admin: full).
   return NextResponse.json({
     user,
-    config: cfg ? { ...cfg, voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg) } : null,
+    config: cfg
+      ? {
+          ...cfg,
+          voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg),
+          personaConfig: currentInboundPersona(cfg.personaConfig, cfg),
+        }
+      : null,
   });
 }
 
@@ -180,6 +187,13 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   }
   if (voiceWrite) Object.assign(updates, voiceWrite.updates);
   else updates.voiceConfig = inboundVoiceConfigAfterLegacy(currentRow, updates);
+  // Persona contract (P3, write-alongside), same rules as the tenant route.
+  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, currentRow);
+  if (personaWrite && "error" in personaWrite) {
+    return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
+  }
+  if (personaWrite) Object.assign(updates, personaWrite.updates);
+  else updates.personaConfig = inboundPersonaAfterLegacy(currentRow, updates);
 
   const [updated] = await db
     .update(agentConfigs)
@@ -201,5 +215,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   // Pré-génère l'audio d'accueil du tenant édité (fire-and-forget).
   void warmGreetingAudioForUser(userId);
 
-  return NextResponse.json({ ...updated, voiceConfig: currentInboundVoice(updated.voiceConfig, updated) });
+  return NextResponse.json({
+    ...updated,
+    voiceConfig: currentInboundVoice(updated.voiceConfig, updated),
+    personaConfig: currentInboundPersona(updated.personaConfig, updated),
+  });
 }

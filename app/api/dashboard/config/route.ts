@@ -8,6 +8,7 @@ import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
+import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
@@ -43,6 +44,7 @@ export async function GET() {
   return NextResponse.json({
     ...config,
     voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
+    personaConfig: currentInboundPersona(row.config.personaConfig, row.config),
   });
 }
 
@@ -96,6 +98,13 @@ export async function PUT(req: NextRequest) {
       voiceProfile: agentConfigs.voiceProfile,
       noiseReductionLevel: agentConfigs.noiseReductionLevel,
       voiceConfig: agentConfigs.voiceConfig,
+      // Persona columns: P3 stores `personaConfig` alongside them.
+      agentName: agentConfigs.agentName,
+      primaryLanguage: agentConfigs.primaryLanguage,
+      greetingInstructions: agentConfigs.greetingInstructions,
+      aiDisclosureEnabled: agentConfigs.aiDisclosureEnabled,
+      aiDisclosureText: agentConfigs.aiDisclosureText,
+      personaConfig: agentConfigs.personaConfig,
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
@@ -275,6 +284,15 @@ export async function PUT(req: NextRequest) {
   if (voiceWrite) Object.assign(updates, voiceWrite.updates);
   else updates.voiceConfig = inboundVoiceConfigAfterLegacy(current, updates);
 
+  // Persona contract (P3, write-alongside), same pattern. "Automatic" keeps
+  // the customer's sentence in personaConfig while the column gets ''.
+  const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, current);
+  if (personaWrite && "error" in personaWrite) {
+    return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
+  }
+  if (personaWrite) Object.assign(updates, personaWrite.updates);
+  else updates.personaConfig = inboundPersonaAfterLegacy(current, updates);
+
   const [updated] = await db
     .update(agentConfigs)
     .set(updates)
@@ -295,5 +313,9 @@ export async function PUT(req: NextRequest) {
   // changer) → 1er appel instantané. Fire-and-forget, ne bloque pas la réponse.
   void warmGreetingAudioForUser(guard.userId);
 
-  return NextResponse.json({ ...updated, voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin) });
+  return NextResponse.json({
+    ...updated,
+    voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin),
+    personaConfig: currentInboundPersona(updated.personaConfig, updated),
+  });
 }
