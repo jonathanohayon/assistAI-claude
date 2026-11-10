@@ -6,6 +6,8 @@ import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
+import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
+import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
@@ -32,11 +34,16 @@ export async function GET() {
       : withoutAdminOnlyFields(row.config)
     : undefined;
 
-  if (!config) {
+  if (!config || !row) {
     return NextResponse.json({ error: "No config" }, { status: 404 });
   }
 
-  return NextResponse.json(config);
+  // Voice contract (V5): the stored voice, or derived from the columns;
+  // admin-only paths removed for tenants (no provider trace).
+  return NextResponse.json({
+    ...config,
+    voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -82,6 +89,13 @@ export async function PUT(req: NextRequest) {
     .select({
       model: agentConfigs.model,
       role: users.role,
+      // Voice columns: V5 stores `voiceConfig` alongside them.
+      voice: agentConfigs.voice,
+      speed: agentConfigs.speed,
+      realtimeProvider: agentConfigs.realtimeProvider,
+      voiceProfile: agentConfigs.voiceProfile,
+      noiseReductionLevel: agentConfigs.noiseReductionLevel,
+      voiceConfig: agentConfigs.voiceConfig,
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
@@ -251,6 +265,16 @@ export async function PUT(req: NextRequest) {
     (updates as any).business = sql`${JSON.stringify(cleaned)}::jsonb`;
   }
 
+  // Voice contract (V5, write-alongside): a `voiceConfig` patch writes the
+  // legacy voice columns it maps to; any other save refreshes the stored
+  // voice from the columns. Readers still use the legacy columns.
+  const voiceWrite = inboundVoiceConfigUpdates(body as Record<string, unknown>, current, isAdmin, voicesFor);
+  if (voiceWrite && "error" in voiceWrite) {
+    return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
+  }
+  if (voiceWrite) Object.assign(updates, voiceWrite.updates);
+  else updates.voiceConfig = inboundVoiceConfigAfterLegacy(current, updates);
+
   const [updated] = await db
     .update(agentConfigs)
     .set(updates)
@@ -271,5 +295,5 @@ export async function PUT(req: NextRequest) {
   // changer) → 1er appel instantané. Fire-and-forget, ne bloque pas la réponse.
   void warmGreetingAudioForUser(guard.userId);
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin) });
 }

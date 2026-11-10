@@ -201,6 +201,10 @@ export const agentConfigs = pgTable("agent_configs", {
   // Appliqué SUR LE CHEMIN TÉLÉPHONE (Twilio worker) et SUR LE CHEMIN WEB
   // (LiveTest via LiveKit, une fois Phase 2 shippée).
   noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
+  // Voice contract v1 (lib/voice/contract.ts), written alongside the legacy
+  // voice columns (V5). NULL = never written: derived from the columns.
+  // Readers still use the legacy columns until the reader switch ships.
+  voiceConfig: jsonb("voice_config"),
   // Speech-to-speech engine for this tenant: "openai" | "gemini" | "xai".
   // NULL = openai. Admin-only (lib/realtime-provider.ts): never shown to or
   // writable by tenants.
@@ -347,6 +351,10 @@ export const outboundAgents = pgTable("outbound_agents", {
     .notNull()
     .default({}),
   noiseReductionLevel: integer("noise_reduction_level").notNull().default(8),
+  // Voice contract v1 (lib/voice/contract.ts), written alongside the legacy
+  // voice columns (V5). NULL = never written: derived from the columns.
+  // Readers still use the legacy columns until the reader switch ships.
+  voiceConfig: jsonb("voice_config"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

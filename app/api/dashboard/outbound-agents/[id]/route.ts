@@ -1,3 +1,6 @@
+import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { outboundVoiceConfigAfterLegacy, outboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
+import { currentOutboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,7 +45,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   return NextResponse.json({
-    agent: { ...agent, campaignCount: await countCampaigns(agent.id) },
+    agent: {
+      ...agent,
+      voiceConfig: voiceForViewer(currentOutboundVoice(agent.voiceConfig, agent), await sessionIsAdmin()),
+      campaignCount: await countCampaigns(agent.id),
+    },
   });
 }
 
@@ -61,16 +68,31 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   // body optionnel : patch partiel mergé sur l'agent existant.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const fields = normalizeAgentFields({ ...agent, ...body });
+  // `voiceConfig` is not an agent column for normalizeAgentFields: keep it out.
+  const { voiceConfig: _vc, ...legacyBody } = body;
+  void _vc;
+  const fields = normalizeAgentFields({ ...agent, ...legacyBody });
+
+  // Voice contract (V5, write-alongside), same rules as the receptionist.
+  const isAdmin = await sessionIsAdmin();
+  const voiceWrite = outboundVoiceConfigUpdates(body, agent, isAdmin);
+  if (voiceWrite && "error" in voiceWrite) {
+    return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
+  }
+  const voiceFields = voiceWrite ? voiceWrite.updates : { voiceConfig: outboundVoiceConfigAfterLegacy(agent, fields) };
 
   const [updated] = await db
     .update(outboundAgents)
-    .set({ ...fields, updatedAt: sql`now()` })
+    .set({ ...fields, ...voiceFields, updatedAt: sql`now()` })
     .where(eq(outboundAgents.id, agent.id))
     .returning();
 
   return NextResponse.json({
-    agent: { ...updated, campaignCount: await countCampaigns(agent.id) },
+    agent: {
+      ...updated,
+      voiceConfig: voiceForViewer(currentOutboundVoice(updated.voiceConfig, updated), isAdmin),
+      campaignCount: await countCampaigns(agent.id),
+    },
   });
 }
 

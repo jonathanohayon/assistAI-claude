@@ -288,6 +288,13 @@
       "when": 1794331154100,
       "tag": "0040_developer_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794332041101,
+      "tag": "0041_voice_config",
+      "breakpoints": true
     }
   ]
 }
