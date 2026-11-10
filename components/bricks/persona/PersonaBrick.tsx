@@ -33,6 +33,7 @@ import {
   heardGreeting,
   insertVariable,
   splitSentences,
+  textDirection,
   variablesIn,
   type PersonaKind,
 } from "./persona-ui";
@@ -139,10 +140,11 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
             {kind === "outbound" ? t("previewTitleOutbound") : t("previewTitle")}
           </p>
           {heard ? (
-            // Its own paragraph, direction from its first strong character;
-            // each sentence isolated (the customer's and the disclosure may
-            // be in different scripts); quotes drawn outside the text.
-            <p dir="auto" className="mt-1 text-sm text-[#18181b]">
+            // Its own paragraph, direction from its first strong character
+            // (computed: dir="auto" would skip the isolated parts); each
+            // sentence isolated (the customer's and the disclosure may be in
+            // different scripts); quotes drawn outside the text.
+            <p dir={textDirection(heard)} className="mt-1 text-sm text-[#18181b]">
               <span aria-hidden>“</span>
               {splitSentences(heard).map((part, i) => (
                 <span key={i}>
