@@ -706,7 +706,6 @@ export function ConfigForm({
                     issues={issues}
                     instructions={form.instructions}
                     onInstructionsChange={(v) => update("instructions", v)}
-                    reminders={{ ownerWhatsapp: form.ownerWhatsapp, primaryLanguage: persona.primaryLanguage }}
                     onSuggestedLanguage={(lang) => {
                       // The scan's language goes through the persona (P3).
                       if (!(PERSONA_LANGUAGES as readonly string[]).includes(lang)) return;
@@ -718,9 +717,9 @@ export function ConfigForm({
                     isAdmin={isAdmin}
                     asUserId={asUserId ?? null}
                     devPanel={
-                      // Admin only (tenants see nothing): the inheritance of
-                      // the plan's shared directives, and the full
-                      // instructions the call receives.
+                      // Admin: the inheritance of the plan's shared directives
+                      // (tenants never see it) and the preview; the server
+                      // decides what the preview contains.
                       isAdmin ? (
                         <div className="flex flex-col gap-4">
                           <InheritAdminField
@@ -732,7 +731,10 @@ export function ConfigForm({
                           />
                           <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
                         </div>
-                      ) : undefined
+                      ) : (
+                        // Tenant in developer mode: the server sends only their parts.
+                        <SessionPreview asUserId={asUserId ?? null} refreshKey={savedAt} />
+                      )
                     }
                   />
                 )}

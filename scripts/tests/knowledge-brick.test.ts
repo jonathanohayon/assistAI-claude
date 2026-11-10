@@ -11,6 +11,10 @@ import { EMPTY_COMPANY_SHEET, type CompanySheet } from "../../lib/knowledge/cont
 import { planSheetWrite } from "../../lib/knowledge/store";
 import {
   applyScan,
+  hoursRuns,
+  planScan,
+  scanCounts,
+  hoursSummary,
   businessFromSheet,
   sameSite,
   sheetIssues,
@@ -140,6 +144,75 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.deepEqual(he, fr);
   for (const k of ["issue.duplicateLocation", "issue.duplicateService", "issue.unknownLocation", "issue.invalidEmail", "issue.notesTooLong", "issue.invalid"])
     assert.ok(fr.includes(k), k);
+}
+
+
+// 9. Readable hours: runs of equal days, locale week order, closed days named
+{
+  const open = (o: string, c: string) => ({ open: true, openTime: o, closeTime: c });
+  const off = { open: false, openTime: "09:00", closeTime: "18:00" };
+  const week = { sun: off, mon: open("09:00", "19:00"), tue: open("09:00", "19:00"), wed: open("09:00", "19:00"), thu: open("09:00", "20:00"), fri: open("09:00", "14:00"), sat: off };
+  assert.deepEqual(
+    hoursRuns(week, "fr").map((r) => `${r.from}-${r.to}`),
+    ["mon-wed", "thu-thu", "fri-fri", "sat-sun"],
+  );
+  assert.deepEqual(hoursRuns(week, "he").map((r) => `${r.from}-${r.to}`), ["sun-sun", "mon-wed", "thu-thu", "fri-fri", "sat-sat"]);
+  assert.equal(hoursSummary(week, "en", "closed"), "Mon–Wed 09:00–19:00, Thu 09:00–20:00, Fri 09:00–14:00, Sat–Sun closed");
+  const allOff = Object.fromEntries(Object.keys(week).map((d) => [d, off])) as typeof week;
+  assert.equal(hoursSummary(allOff, "en", "closed"), "Mon–Sun closed");
+  console.log("HOURS SUMMARY OK");
+}
+
+// 10. Learning = a proposal: adds, fills, lists changes; never removes or silently overwrites
+{
+  const draft: BusinessConfig = {
+    identity: { name: "Salon Mock", tagline: "Coiffure", email: "" },
+    centres: [
+      { id: "x1", name: "centre mock", address: "1 rue Mock", hours: { ...hours, tue: { open: true, openTime: "10:00", closeTime: "18:00" } } },
+      { id: "x2", name: "Annexe Mock", address: "2 rue Mock", hours },
+    ],
+    services: [
+      { id: "s1", name: "coupe", durationMinutes: 30, priceILS: 120, centreIds: ["x1"], description: "" },
+      { id: "s1", name: "Brushing", durationMinutes: 20, priceILS: 60, centreIds: ["x2"], description: "" },
+    ],
+    centresRules: "",
+    knowledgeBase: "Spécialiste mock.",
+  };
+  const { next, changes } = planScan(SHEET, draft);
+  assert.equal(next.identity.name, "Salon Mock");
+  assert.equal(next.identity.tagline, "Coiffure");
+  assert.equal(next.locations.length, 2, "no location removed, one added");
+  assert.equal(next.locations[0].id, "l1", "matched by name, id kept");
+  assert.equal(next.services.length, 2);
+  assert.equal(next.services[0].priceILS, 120);
+  assert.equal(next.services[1].id, "s1-2", "colliding scanned id renamed");
+  assert.deepEqual(next.services[1].locationIds, [next.locations[1].id], "scanned location ids remapped");
+  assert.deepEqual(next.faq, SHEET.faq);
+  assert.deepEqual(scanCounts(changes), { servicesAdded: 1, servicesChanged: 1, locationsAdded: 1, locationsChanged: 1, identityChanged: 1, notesAdded: 1 });
+  assert.deepEqual(changes.find((c) => c.kind === "locationChanged"), { kind: "locationChanged", name: "Centre Mock", what: ["hours"] });
+  // The proposal is valid for the server (no duplicate or unknown ids).
+  assert.ok(planSheetWrite(SHEET, sheetPatch(SHEET, next)).ok);
+  // A scan that states nothing new changes nothing.
+  const same = planScan(SHEET, businessFromSheet(SHEET));
+  assert.deepEqual(same.changes, []);
+  assert.deepEqual(same.next, SHEET);
+}
+
+// 11. Every static key the brick's files ask for exists (fr = reference, 8. checks the others)
+{
+  const fr = JSON.parse(read("messages/fr.json")).KnowledgeBrick;
+  const has = (k: string) => k.split(".").reduce<unknown>((o, p) => (o && typeof o === "object" ? (o as Record<string, unknown>)[p] : undefined), fr) !== undefined;
+  for (const f of ["KnowledgeBrick.tsx", "SheetCard.tsx", "SessionPreview.tsx"]) {
+    const src = read(`components/bricks/knowledge/${f}`);
+    for (const m of src.matchAll(/\bt(?:\.rich)?\("([A-Za-z0-9_.]+)"/g)) assert.ok(has(m[1]), `${f}: missing KnowledgeBrick.${m[1]}`);
+  }
+  // No salon word and no product name in this brick's copy, any language — except the
+  // agreed "Tamara adds its own rules" line of the tenant preview.
+  for (const l of ["fr", "en", "he"]) {
+    const kb = { ...JSON.parse(read(`messages/${l}.json`)).KnowledgeBrick };
+    delete kb.controlHint;
+    assert.doesNotMatch(JSON.stringify(kb), /\bsoins?\b|salon|coiffure|טיפול|Tamara/i, `${l}: salon word or product name`);
+  }
 }
 
 console.log("ALL KNOWLEDGE-BRICK TESTS PASSED");

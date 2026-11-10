@@ -101,6 +101,7 @@ export function WebsiteScanWizard({
   existingBusiness,
   initialUrl,
   asUserId,
+  onDraft,
 }: {
   open: boolean;
   onClose: () => void;
@@ -111,6 +112,11 @@ export function WebsiteScanWizard({
   initialUrl?: string;
   /** Admin acting for a tenant: the scan runs in the tenant's scope. */
   asUserId?: string | null;
+  /**
+   * Given: no review step here — the raw draft goes back to the caller
+   * (the Knowledge brick shows its own proposal: what changes, Apply/Cancel).
+   */
+  onDraft?: (draft: BusinessConfig, suggestedLanguage: string | null, url: string) => void;
 }) {
   const t = useTranslations("WebsiteScan");
   const tDays = useTranslations("DashboardConfig");
@@ -147,6 +153,8 @@ export function WebsiteScanWizard({
   const [mergeMode, setMergeMode] = useState<"replace" | "add">("replace");
 
   const abortRef = useRef<AbortController | null>(null);
+  // The scan's result, readable when the stream ends (state isn't yet).
+  const resultRef = useRef<{ business: BusinessConfig; lang: string | null } | null>(null);
 
   const dayLabel = useCallback(
     (d: WeekDay) => {
@@ -203,6 +211,7 @@ export function WebsiteScanWizard({
       case "result": {
         setDraft(ev.business);
         setSuggestedLang(ev.suggestedPrimaryLanguage);
+        resultRef.current = { business: ev.business, lang: ev.suggestedPrimaryLanguage ?? null };
         // mergeMode est décidé après la fin du stream (cf. startScan) selon que
         // la config business existante est vide ou non.
         break;
@@ -263,6 +272,14 @@ export function WebsiteScanWizard({
           handleEvent(ev);
         }
       }
+      if (gotResult && onDraft && resultRef.current) {
+        const r = resultRef.current;
+        resultRef.current = null;
+        onDraft(r.business, r.lang, target.trim());
+        reset();
+        onClose();
+        return;
+      }
       if (gotResult) {
         // existingBusiness non vide → défaut "add" pour ne pas écraser.
         setMergeMode(isEmptyBusiness(existingBusiness) ? "replace" : "add");
@@ -278,7 +295,7 @@ export function WebsiteScanWizard({
     } finally {
       abortRef.current = null;
     }
-  }, [url, existingBusiness, handleEvent, t, asUserId]);
+  }, [url, existingBusiness, handleEvent, t, asUserId, onDraft, reset, onClose]);
 
   // Opened with an address: start right away (the brick's "Learn" button).
   // Deferred to a callback: starting sets state.

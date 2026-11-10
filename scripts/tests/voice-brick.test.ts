@@ -199,7 +199,6 @@ for (const l of ["en", "fr", "he"]) {
     "components/bricks/knowledge/KnowledgeBrick.tsx",
     "components/bricks/knowledge/knowledge-ui.ts",
     "components/bricks/knowledge/SessionPreview.tsx",
-    "app/[locale]/dashboard/config/sheet-sections.tsx",
     "app/[locale]/dashboard/config/inherit-admin-field.tsx",
     "app/[locale]/dashboard/website-scan-wizard.tsx",
     "app/[locale]/dashboard/config-form.tsx",

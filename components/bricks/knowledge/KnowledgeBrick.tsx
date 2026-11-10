@@ -21,21 +21,14 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 
-import { CentresSection } from "@/app/[locale]/dashboard/config/centres-section";
-import { ServicesSection } from "@/app/[locale]/dashboard/config/services-section";
-import { CentresRulesSection, IdentitySection, KnowledgeBaseSection } from "@/app/[locale]/dashboard/config/sheet-sections";
 import { WebsiteScanWizard } from "@/app/[locale]/dashboard/website-scan-wizard";
-import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
+import { HINT, LABEL } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 
-import { applyScan, businessFromSheet, learnedDate, withFacts, type SheetIssue } from "./knowledge-ui";
-
-const INPUT =
-  "w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm text-[#18181b] placeholder:text-[#64748b] focus:border-[#0e7490] focus:outline-none focus:ring-2 focus:ring-[#0e7490]/20";
-const BUTTON = `inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS}`;
-const GHOST = `inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-4 text-sm font-semibold text-[#18181b] hover:border-[#be185d]/40 ${FOCUS}`;
+import { learnedDate, planScan, withSource, type ScanChange, type SheetIssue } from "./knowledge-ui";
+import { BUTTON, GHOST, INPUT, LearnFromSite, LearnReview, SheetCard } from "./SheetCard";
 
 /** Outbound, while this agent still reads its own learned text (S5 off for the account). */
 export interface AgentLearned {
@@ -53,19 +46,20 @@ export interface KnowledgeBrickProps {
   issues?: SheetIssue[];
   instructions: string;
   onInstructionsChange: (next: string) => void;
-  /** Receptionist: read-only reminders in the identity section. */
-  reminders?: { ownerWhatsapp: string; primaryLanguage: string };
-  /** The scan's suggested language (off by default in the review step). */
+  /** The scan's suggested language (applied with the learned facts). */
   onSuggestedLanguage?: (lang: string) => void;
-  /** Outbound: does this account's outbound agent read the sheet (S5)? */
+  /** Outbound: does this account's outbound agent read the sheet (S5)? Told by the server. */
   outboundUsesCompanySheet?: boolean;
   /** Outbound with the sheet not used yet: the agent's own learned text. */
   agentLearned?: AgentLearned;
   isAdmin?: boolean;
   asUserId?: string | null;
-  /** Level 3 content (full prompt preview, admin-only inheritance). */
+  /** Level 3 content (session preview; admin-only inheritance). */
   devPanel?: ReactNode;
 }
+
+const NOTES_MAX = 6000;
+const RULES_MAX = 4000;
 
 export function KnowledgeBrick({
   kind,
@@ -74,7 +68,6 @@ export function KnowledgeBrick({
   issues = [],
   instructions,
   onInstructionsChange,
-  reminders,
   onSuggestedLanguage,
   outboundUsesCompanySheet = false,
   agentLearned,
@@ -83,76 +76,66 @@ export function KnowledgeBrick({
   devPanel,
 }: KnowledgeBrickProps) {
   const t = useTranslations("KnowledgeBrick");
-  const tc = useTranslations("DashboardConfig");
   const locale = useLocale();
   const dev = useDeveloperMode(asUserId);
-  const business = businessFromSheet(sheet);
   const patch = (p: Partial<CompanySheet>) => onSheetChange({ ...sheet, ...p });
 
-  // One scan at a time; `scanUrl` set = wizard open, scanning that address.
+  // `scanUrl` set = the scan is running for that address.
   const [scanUrl, setScanUrl] = useState<string | null>(null);
+  // A learned proposal waiting for Apply / Cancel.
+  const [proposal, setProposal] = useState<{ url: string; next: CompanySheet; changes: ScanChange[]; lang: string | null } | null>(null);
+  const [manual, setManual] = useState(false);
   const instructionsId = useId();
-  const sheetNote = kind === "outbound" && !outboundUsesCompanySheet;
+  const notesId = useId();
+  const rulesId = useId();
+
+  const empty = !sheet.identity.name.trim() && sheet.locations.length === 0 && sheet.services.length === 0;
+  const lastSource = sheet.sources[0] ?? null;
+  const note = kind === "outbound" && !outboundUsesCompanySheet ? t("sheetOutboundNote") : undefined;
   const showLearned = kind === "outbound" && !outboundUsesCompanySheet && !!agentLearned;
   const showDev = !!devPanel && (isAdmin || dev.on);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {/* ── Level 1 ─────────────────────────────────────────── */}
-      <LearnFromSite onLearn={setScanUrl} />
+      {proposal ? (
+        <LearnReview
+          url={proposal.url}
+          changes={proposal.changes}
+          onApply={() => {
+            onSheetChange({ ...proposal.next, sources: withSource(proposal.next.sources, proposal.url, new Date().toISOString()) });
+            if (proposal.lang) onSuggestedLanguage?.(proposal.lang);
+            setProposal(null);
+          }}
+          onCancel={() => setProposal(null)}
+        />
+      ) : (
+        <LearnFromSite compact={!empty} lastSource={lastSource} onLearn={setScanUrl} onManual={empty && !manual ? () => setManual(true) : undefined} />
+      )}
       <WebsiteScanWizard
         open={scanUrl !== null}
         initialUrl={scanUrl ?? undefined}
         asUserId={asUserId}
         onClose={() => setScanUrl(null)}
-        existingBusiness={business}
-        onApply={(next, lang, url) => {
-          onSheetChange(applyScan(sheet, next, url || scanUrl || "", new Date().toISOString()));
-          if (lang) onSuggestedLanguage?.(lang);
+        existingBusiness={{ identity: sheet.identity, centres: [], services: [] }}
+        onApply={() => {}}
+        onDraft={(draft, lang, url) => {
+          const { next, changes } = planScan(sheet, draft);
+          setProposal({ url: url || scanUrl || "", next, changes, lang });
         }}
       />
 
-      <section aria-labelledby="kb-sheet-title" className="flex flex-col gap-4">
-        <div>
-          <h3 id="kb-sheet-title" className={LABEL}>
-            {t("sheetTitle")}
-          </h3>
-          <p className={HINT}>{t("sheetShared")}</p>
-          {sheetNote && (
-            <p role="note" className="mt-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs font-medium text-[#92400e]">
-              {t("sheetOutboundNote")}
-            </p>
-          )}
+      {(!empty || manual) && <SheetCard sheet={sheet} onChange={onSheetChange} note={note} />}
+      {issues.length > 0 && (
+        <div role="alert" className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-sm text-[#b91c1c]">
+          <p className="font-semibold">{t("issuesTitle")}</p>
+          <ul className="mt-1 list-disc ps-5">
+            {issues.map((i, n) => (
+              <li key={n}>{t(`issue.${i.key}`, i.params)}</li>
+            ))}
+          </ul>
         </div>
-        <IdentitySection
-          identity={sheet.identity}
-          ownerWhatsapp={reminders?.ownerWhatsapp}
-          primaryLanguage={reminders?.primaryLanguage}
-          onChange={(identity) => patch({ identity })}
-          t={tc}
-        />
-        <CentresSection
-          centres={business.centres}
-          onChange={(centres) => onSheetChange(withFacts(sheet, { ...business, centres }))}
-          t={tc}
-        />
-        <ServicesSection
-          services={business.services}
-          centres={business.centres}
-          onChange={(services) => onSheetChange(withFacts(sheet, { ...business, services }))}
-          t={tc}
-        />
-        {issues.length > 0 && (
-          <div role="alert" className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-sm text-[#b91c1c]">
-            <p className="font-semibold">{t("issuesTitle")}</p>
-            <ul className="mt-1 list-disc ps-5">
-              {issues.map((i, n) => (
-                <li key={n}>{t(`issue.${i.key}`, i.params)}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
+      )}
 
       <div>
         <label htmlFor={instructionsId} className={LABEL}>
@@ -163,7 +146,7 @@ export function KnowledgeBrick({
           id={instructionsId}
           dir="auto"
           value={instructions}
-          rows={6}
+          rows={4}
           placeholder={t("instructionsPlaceholder")}
           onChange={(e) => onInstructionsChange(e.target.value)}
           className={`mt-2 py-2 ${INPUT}`}
@@ -174,10 +157,26 @@ export function KnowledgeBrick({
       <MoreSettings>
         <div className="flex flex-col gap-6 p-4 pt-0">
           {showLearned && agentLearned && <LearnedByAgent value={agentLearned} asUserId={asUserId} />}
-          <KnowledgeBaseSection value={sheet.notes} onChange={(notes) => patch({ notes })} t={tc} />
+          <TextBlock
+            id={notesId}
+            label={t("notesLabel")}
+            hint={t("notesHint")}
+            placeholder={t("notesPlaceholder")}
+            value={sheet.notes}
+            max={NOTES_MAX}
+            onChange={(notes) => patch({ notes })}
+          />
           <FaqEditor faq={sheet.faq} onChange={(faq) => patch({ faq })} />
           <Sources sources={sheet.sources} locale={locale} onLearnAgain={setScanUrl} />
-          <CentresRulesSection value={sheet.locationRules} onChange={(locationRules) => patch({ locationRules })} t={tc} />
+          <TextBlock
+            id={rulesId}
+            label={t("rulesLabel")}
+            hint={t("rulesHint")}
+            placeholder={t("rulesPlaceholder")}
+            value={sheet.locationRules}
+            max={RULES_MAX}
+            onChange={(locationRules) => patch({ locationRules })}
+          />
         </div>
       </MoreSettings>
 
@@ -194,41 +193,41 @@ export function KnowledgeBrick({
   );
 }
 
-function LearnFromSite({ onLearn }: { onLearn: (url: string) => void }) {
+function TextBlock({
+  id,
+  label,
+  hint,
+  placeholder,
+  value,
+  max,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  max: number;
+  onChange: (v: string) => void;
+}) {
   const t = useTranslations("KnowledgeBrick");
-  const [url, setUrl] = useState("");
-  const id = useId();
-  const submit = () => {
-    if (url.trim()) onLearn(url.trim());
-  };
   return (
-    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
+    <div>
       <label htmlFor={id} className={LABEL}>
-        {t("learnTitle")}
+        {label}
       </label>
-      <p className={HINT}>{t("learnHint")}</p>
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-        <input
-          id={id}
-          type="url"
-          inputMode="url"
-          autoComplete="url"
-          dir="ltr"
-          value={url}
-          placeholder={t("learnPlaceholder")}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          className={`min-h-11 ${INPUT}`}
-        />
-        <button type="button" onClick={submit} disabled={!url.trim()} className={BUTTON}>
-          {t("learnCta")}
-        </button>
-      </div>
+      <p className={HINT}>{hint}</p>
+      <textarea
+        id={id}
+        dir="auto"
+        value={value}
+        maxLength={max}
+        rows={4}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className={`mt-2 py-2 ${INPUT}`}
+      />
+      <p className="mt-1 text-end text-xs text-[#64748b]">{t("charCount", { n: value.length, max })}</p>
     </div>
   );
 }

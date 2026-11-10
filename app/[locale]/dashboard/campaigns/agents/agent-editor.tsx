@@ -207,8 +207,8 @@ export function AgentEditor({
                   isAdmin={isAdmin}
                   asUserId={asUserId ?? null}
                   devPanel={
-                    // Admin only for now; a saved agent (the call reads the base).
-                    isAdmin && draft.id ? <SessionPreview asUserId={asUserId ?? null} agentId={draft.id} refreshKey={savedKey} /> : undefined
+                    // A saved agent (its test call reads the base); the server decides the scope.
+                    draft.id ? <SessionPreview asUserId={asUserId ?? null} agentId={draft.id} refreshKey={savedKey} /> : undefined
                   }
                 />
               ) : (
