@@ -5,6 +5,7 @@
 // Run with:  npx tsx scripts/tests/voice-contract.test.ts
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { fromInboundColumns, fromOutboundColumns } from "../../lib/voice/adapters";
 import {
@@ -17,6 +18,7 @@ import {
   VOICE_GENDER,
   VOICE_IDS,
   VOICE_STYLES,
+  voiceContractRules,
 } from "../../lib/voice/contract";
 import { toEngineSettings } from "../../lib/voice/engine";
 import { effectiveRealtimeProvider } from "../../lib/realtime-provider";
@@ -149,5 +151,19 @@ assert.deepEqual(Object.keys(VOICE_FIELD_LEVEL).sort(), Object.keys(DEFAULT_VOIC
 assert.equal(VOICE_FIELD_LEVEL.voiceId, 1);
 assert.equal(VOICE_FIELD_LEVEL.patience, 2);
 assert.equal(VOICE_FIELD_LEVEL.engine, 3);
+
+
+// ── Shared rules: the committed JSON (vendored by the worker) = the TS ──
+{
+  const committed = JSON.parse(readFileSync(new URL("../../lib/voice/contract.json", import.meta.url), "utf8"));
+  const stale = "lib/voice/contract.json is stale: run `npx tsx scripts/voice-contract-json.ts` and copy it to the worker";
+  const { examples, ...rules } = committed;
+  assert.deepEqual(rules, JSON.parse(JSON.stringify(voiceContractRules())), stale);
+  assert.ok(Array.isArray(examples) && examples.length >= 4, stale);
+  for (const ex of examples) {
+    assert.equal(parseVoice(ex.voice).ok, true, "example voice is valid");
+    assert.deepEqual(toEngineSettings(ex.voice, { defaultModel: "unused" }), ex.engine, stale);
+  }
+}
 
 console.log("ALL VOICE-CONTRACT TESTS PASSED");

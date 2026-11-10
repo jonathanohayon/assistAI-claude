@@ -8,8 +8,8 @@ import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { logEvent } from "@/lib/logger";
 import { decideTenantResolution } from "@/lib/tenant-resolution";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
-import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
-import { effectiveVoiceProfile } from "@/lib/voice-profile";
+import { servedInboundVoice } from "@/lib/voice/serve";
+import { toEngineSettings } from "@/lib/voice/engine";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
 import { getClientProfile } from "@/lib/loyalty-profile";
@@ -353,14 +353,20 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  const voiceConfig = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  const engine = toEngineSettings(voiceConfig, { defaultModel: tenant.config.model || "gpt-realtime-2" });
+
   return NextResponse.json({
     ...runtime,
     ...(agentWebhook ? { agentWebhook } : {}),
     instructions: mergedInstructions,
-    // Speech-to-speech engine (admin-only setting). "openai" when unset.
-    realtimeProvider: effectiveRealtimeProvider(tenant.config.realtimeProvider),
-    // Voice profile (admin-only setting), always complete: defaults = today.
-    voiceProfile: effectiveVoiceProfile(tenant.config.voiceProfile),
+    // Engine (admin-only setting, "openai" when unset) and the full voice
+    // profile (defaults = today) now come from `...engine` below.
+    // Voice contract (V2), served as `voiceConfig` (`voice` is the legacy
+    // voice id the live worker reads), plus the legacy engine fields built
+    // THROUGH it — identical to the columns (proven by the route snapshots).
+    voiceConfig,
+    ...engine,
     // Call transfer target ('' = none): the worker registers transfer_call only if set.
     transferNumber: tenant.config.transferNumber ?? "",
     // Greeting the worker speaks verbatim, AI disclosure included — the SAME

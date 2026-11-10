@@ -240,3 +240,22 @@ export function mergeVoice(stored: Voice, patch: unknown): VoiceParse {
   }
   return parseVoice(next);
 }
+
+// ── Shared rules (web ↔ worker) ────────────────────────────────────────
+// The data the worker must agree on, as plain JSON. Committed as
+// lib/voice/contract.json and vendored byte-for-byte by the worker
+// (src/voice/contract.json). Tests on BOTH sides fail as soon as the TS and
+// the JSON, or the two JSON copies, differ.
+
+export function voiceContractRules() {
+  return {
+    version: VOICE_CONTRACT_VERSION,
+    voiceGender: VOICE_GENDER,
+    defaultVoiceId: DEFAULT_VOICE_ID,
+    styles: [...VOICE_STYLES],
+    defaultStyle: DEFAULT_VOICE_STYLE,
+    engines: [...VOICE_ENGINES],
+    fieldLevel: VOICE_FIELD_LEVEL,
+    defaultVoice: DEFAULT_VOICE,
+  };
+}
