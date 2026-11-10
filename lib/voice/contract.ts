@@ -32,36 +32,25 @@ export const VOICE_CONTRACT_VERSION = 1 as const;
 // Voices are identified by their OpenAI id; the worker maps them to Gemini
 // and Grok voices by gender. Shown to customers as "Voice 1, Voice 2…".
 
-export type VoiceGender = "f" | "m";
-
-/** Gender of each voice — the ONE table (lib/voice-tuning re-exports it). */
-export const VOICE_GENDER: Record<string, VoiceGender> = {
-  marin: "f",
-  cedar: "m",
-  ballad: "m",
-  sage: "f",
-  verse: "m",
-  alloy: "m",
-  shimmer: "f",
-  echo: "m",
-  fable: "m",
-  onyx: "m",
-  nova: "f",
-  coral: "f",
-  ash: "m",
-};
-
-export const VOICE_IDS = Object.keys(VOICE_GENDER);
-export const DEFAULT_VOICE_ID = "marin";
-
-// ── Styles ──────────────────────────────────────────────────────────────
-
-export const VOICE_STYLES = ["warm", "professional", "dynamic", "calm"] as const;
-export type VoiceStyle = (typeof VOICE_STYLES)[number];
-/** "warm" = today's behaviour, exactly. */
-export const DEFAULT_VOICE_STYLE: VoiceStyle = "warm";
-/** Tenants can't pick a style until V6 is tuned and heard by Jonathan. Admins can. */
-export const STYLE_SELECTOR_TENANT_VISIBLE = false;
+// Voices, styles and the tenant gate live in lib/voice/public.ts (tenant-safe,
+// no supplier words) and are re-exported here.
+export {
+  DEFAULT_VOICE_ID,
+  DEFAULT_VOICE_STYLE,
+  STYLE_SELECTOR_TENANT_VISIBLE,
+  VOICE_GENDER,
+  VOICE_IDS,
+  VOICE_STYLES,
+  type VoiceGender,
+  type VoiceStyle,
+} from "@/lib/voice/public";
+import {
+  DEFAULT_VOICE_ID,
+  DEFAULT_VOICE_STYLE,
+  VOICE_GENDER,
+  VOICE_STYLES,
+  type VoiceStyle,
+} from "@/lib/voice/public";
 
 /**
  * Style presets, first tuning per engine (V6). Applied by toEngineSettings:

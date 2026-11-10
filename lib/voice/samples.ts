@@ -6,12 +6,20 @@
 // neutral voice names already used by the contract, styles and languages
 // are ours.
 
-import { STYLE_SELECTOR_TENANT_VISIBLE, VOICE_STYLES, VOICE_STYLE_PRESETS, type VoiceStyle } from "@/lib/voice/contract";
+// TENANT-SAFE: imports only lib/voice/public.ts (no supplier words; a test
+// greps this file). The style-tuned rendering is server-only
+// (lib/voice/samples-store.ts).
 
-/** Voices offered first in the picker (they map to a dedicated voice on every engine). */
-export const RECOMMENDED_VOICE_IDS = ["marin", "cedar", "coral"] as const;
-export const SAMPLE_LANGUAGES = ["fr", "he", "en"] as const;
-export type SampleLanguage = (typeof SAMPLE_LANGUAGES)[number];
+import {
+  RECOMMENDED_VOICE_IDS,
+  SAMPLE_LANGUAGES,
+  STYLE_SELECTOR_TENANT_VISIBLE,
+  VOICE_STYLES,
+  type SampleLanguage,
+  type VoiceStyle,
+} from "@/lib/voice/public";
+
+export { RECOMMENDED_VOICE_IDS, SAMPLE_LANGUAGES, type SampleLanguage };
 
 /** Bump to re-render every sample (new text, new tuning). */
 export const VOICE_SAMPLE_VERSION = 1;
@@ -36,16 +44,6 @@ export function samplePlan(): SampleKey[] {
     for (const style of VOICE_STYLES)
       for (const language of SAMPLE_LANGUAGES) out.push({ voiceId, style, language });
   return out;
-}
-
-/** How the default engine is asked to read it: the style's own tuning. */
-export function sampleRendering(k: SampleKey): { text: string; tone?: string; speed?: number } {
-  const p = VOICE_STYLE_PRESETS[k.style].openai;
-  return {
-    text: SAMPLE_TEXT[k.language],
-    ...(p.instruction ? { tone: p.instruction } : {}),
-    ...(p.speedFactor !== 1 ? { speed: p.speedFactor } : {}),
-  };
 }
 
 export function sampleUrl(k: SampleKey): string {
