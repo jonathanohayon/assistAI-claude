@@ -92,7 +92,7 @@ const outboundRows = [
   { voice: "marin", personality: null, noiseReductionLevel: 8 }, // defaults
   { voice: "echo", personality: { vitesse: 7, creativite: 2, reactivite: 9 }, noiseReductionLevel: 5 }, // sliders
   { voice: null, personality: { vitesse: 1 }, noiseReductionLevel: 10 }, // slowest, voice missing
-  { voice: "coral", personality: { vitesse: 5 }, noiseReductionLevel: 8 }, // 5 = 1.0x → preset
+  { voice: "coral", personality: { vitesse: 5 }, noiseReductionLevel: 8 }, // 5 = 0.944x (the scale has no 1.0x step)
 ];
 for (const [i, row] of outboundRows.entries()) {
   const voice = fromOutboundColumns(row);

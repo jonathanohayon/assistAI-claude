@@ -10,6 +10,8 @@ import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
+import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
+import { currentInboundVoice } from "@/lib/voice/store";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
 import { parseTransferNumber } from "@/lib/transfer-number";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
@@ -36,7 +38,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     .where(eq(agentConfigs.userId, userId))
     .limit(1);
 
-  return NextResponse.json({ user, config: cfg ?? null });
+  // Voice contract (V5): stored voice or derived from the columns (admin: full).
+  return NextResponse.json({
+    user,
+    config: cfg ? { ...cfg, voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg) } : null,
+  });
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
@@ -165,6 +171,16 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     updates.realtimeProvider = rp.value;
   }
 
+  // Voice contract (V5, write-alongside), same rules as the tenant route.
+  const [currentRow] = await db.select().from(agentConfigs).where(eq(agentConfigs.userId, userId)).limit(1);
+  if (!currentRow) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const voiceWrite = inboundVoiceConfigUpdates(body as Record<string, unknown>, currentRow, true, voicesFor);
+  if (voiceWrite && "error" in voiceWrite) {
+    return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
+  }
+  if (voiceWrite) Object.assign(updates, voiceWrite.updates);
+  else updates.voiceConfig = inboundVoiceConfigAfterLegacy(currentRow, updates);
+
   const [updated] = await db
     .update(agentConfigs)
     .set(updates)
@@ -185,5 +201,5 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   // Pré-génère l'audio d'accueil du tenant édité (fire-and-forget).
   void warmGreetingAudioForUser(userId);
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, voiceConfig: currentInboundVoice(updated.voiceConfig, updated) });
 }
