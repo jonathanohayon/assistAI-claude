@@ -10,12 +10,12 @@ import {
   pcmToWav,
   RECOMMENDED_VOICE_IDS,
   SAMPLE_TEXT,
-  sampleRendering,
   samplePlan,
   sampleUrl,
   sampleVisible,
 } from "../../lib/voice/samples";
-import { VOICE_STYLE_PRESETS } from "../../lib/voice/contract";
+import { VOICE_GENDER, VOICE_STYLE_PRESETS } from "../../lib/voice/contract";
+import { sampleRendering } from "../../lib/voice/samples-store";
 
 // The opener's session.update is byte-identical to before (no tone/speed).
 assert.deepEqual(renderSessionUpdate({ text: "x", voice: "marin", model: "gpt-realtime-2" }), {
@@ -39,9 +39,11 @@ assert.deepEqual(renderSessionUpdate({ text: "x", voice: "marin", model: "gpt-re
 
 // 3 voices × 4 styles × 3 languages, stable order, no duplicates
 const plan = samplePlan();
-assert.equal(plan.length, 36);
-assert.equal(new Set(plan.map((k) => `${k.voiceId}/${k.style}/${k.language}`)).size, 36);
-assert.deepEqual([...RECOMMENDED_VOICE_IDS], ["marin", "cedar", "coral"]);
+assert.equal(plan.length, 72);
+assert.equal(new Set(plan.map((k) => `${k.voiceId}/${k.style}/${k.language}`)).size, 72);
+// 6 recommended voices, 3 female + 3 male, interleaved (tamaraHenry's picker)
+assert.deepEqual([...RECOMMENDED_VOICE_IDS], ["marin", "cedar", "coral", "ballad", "sage", "ash"]);
+assert.deepEqual(RECOMMENDED_VOICE_IDS.map((v) => VOICE_GENDER[v]), ["f", "m", "f", "m", "f", "m"]);
 
 // each sample is read with its style's tuning; warm = plain reading
 assert.deepEqual(sampleRendering({ voiceId: "marin", style: "warm", language: "fr" }), { text: SAMPLE_TEXT.fr });
@@ -67,7 +69,7 @@ for (const s of ["professional", "dynamic", "calm"] as const) {
 
 // URL parsing: only known keys
 assert.deepEqual(parseSampleKey("coral", "dynamic", "en"), { voiceId: "coral", style: "dynamic", language: "en" });
-assert.equal(parseSampleKey("ash", "warm", "fr"), null, "not a recommended voice");
+assert.equal(parseSampleKey("echo", "warm", "fr"), null, "not a recommended voice");
 assert.equal(parseSampleKey("marin", "loud", "fr"), null);
 assert.equal(parseSampleKey("marin", "warm", "de"), null);
 assert.equal(parseSampleKey("../x", "warm", "fr"), null);
@@ -91,5 +93,12 @@ assert.ok(SAMPLE_TEXT.he.length > 10 && SAMPLE_TEXT.en.length > 10);
 const sql = readFileSync(new URL("../../drizzle/0042_voice_samples.sql", import.meta.url), "utf8");
 assert.match(sql, /CREATE TABLE IF NOT EXISTS "voice_samples"/);
 assert.match(sql, /UNIQUE\("voice_id","style","language","version"\)/);
+
+// tenant-safe modules: no supplier word, and no import of the full contract
+for (const f of ["../../lib/voice/public.ts", "../../lib/voice/samples.ts"]) {
+  const src = readFileSync(new URL(f, import.meta.url), "utf8");
+  assert.doesNotMatch(src, /openai|gemini|grok|xai|gpt-|google|elevenlabs/i, `${f} must stay supplier-free`);
+  assert.doesNotMatch(src, /from "@\/lib\/voice\/(contract|engine|adapters|store|serve)"/, `${f} must not import the full contract`);
+}
 
 console.log("ALL VOICE-SAMPLES TESTS PASSED");
