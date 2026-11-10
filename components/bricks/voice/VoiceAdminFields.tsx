@@ -55,7 +55,7 @@ export function VoiceAdminFields({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <h4 className="text-sm font-semibold text-[#18181b]">{tE("label")}</h4>
+        <h4 className="text-sm font-semibold text-[#18181b]">{tP("title")}</h4>
         <AdminBadge size="xs" />
       </div>
 

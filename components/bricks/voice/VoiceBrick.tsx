@@ -269,7 +269,7 @@ function VoicePicker({
         />
       </div>
 
-      <div role="radiogroup" aria-labelledby={labelId} className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div role="radiogroup" aria-labelledby={labelId} className="mt-3 grid grid-cols-2 gap-2">
         {voices.map((v) => {
           const active = v === value;
           return (

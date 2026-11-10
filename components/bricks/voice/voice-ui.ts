@@ -4,8 +4,11 @@
 
 import { VOICE_GENDER, type Voice, type VoiceGender } from "@/lib/voice/contract";
 
-/** Six recommended voices shown first: three female, three male. */
-export const RECOMMENDED_VOICES: readonly string[] = ["marin", "coral", "sage", "cedar", "ballad", "ash"];
+/**
+ * Six recommended voices shown first, three female and three male,
+ * interleaved so the two-column grid reads female | male on every row.
+ */
+export const RECOMMENDED_VOICES: readonly string[] = ["marin", "cedar", "coral", "ballad", "sage", "ash"];
 
 export type GenderFilter = VoiceGender | "all";
 
