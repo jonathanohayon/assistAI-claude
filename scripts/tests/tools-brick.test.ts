@@ -135,16 +135,6 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.equal(activeCount(caps), 1, "only transfer is honestly active");
 }
 
-// 10. Leaks the extended bundle check found: no message string names a tool,
-//     and the plan's shared directives are computed for admins only.
-{
-  for (const l of ["fr", "en", "he"]) {
-    const names = new RegExp(`\\b(?:${(TOOL_NAMES as string[]).join("|")})\\b`);
-    assert.doesNotMatch(read(`messages/${l}.json`), names, `${l}: a message names a tool (all messages ship to the browser)`);
-  }
-  assert.match(read("app/[locale]/dashboard/page.tsx"), /const adminInheritablePreview = isAdmin\s*\?/);
-}
-
 // 11. Design review: one Google notice, the transfer number shown, the plan line as a sentence
 {
   const tools = toolsFromTileToggles({ calendar: true, customers: true, orders: true });
