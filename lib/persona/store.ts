@@ -20,7 +20,13 @@ import {
   type OutboundPersonaColumns,
 } from "@/lib/persona/adapters";
 import { personaToInboundColumns, personaToOutboundColumns } from "@/lib/persona/columns";
-import { LANGUAGES_TENANT_EDITABLE, mergePersona, parsePersona, type Persona } from "@/lib/persona/contract";
+import {
+  LANGUAGES_TENANT_EDITABLE,
+  mergePersona,
+  OUTBOUND_DISCLOSURE_TENANT_EDITABLE,
+  parsePersona,
+  type Persona,
+} from "@/lib/persona/contract";
 
 export const LEGACY_INBOUND_PERSONA_FIELDS = [
   "agentName",
@@ -54,8 +60,10 @@ function plan(
   if (conflict.length) return { error: { status: 400, body: { error: "persona_config_conflict", fields: conflict } } };
   const merged = mergePersona(current, body.personaConfig);
   if (!merged.ok) return { error: { status: 400, body: { error: "invalid_persona_config", fields: [merged.error] } } };
-  // P4 gate: a non-empty spoken-languages list is admin-only for now.
-  if (!isAdmin && !LANGUAGES_TENANT_EDITABLE && merged.value.languages.length > 0) {
+  // P4 gate: SETTING a non-empty spoken-languages list is admin-only for now
+  // (a tenant saving other fields under an admin-set list is fine).
+  const languagesChanged = JSON.stringify(merged.value.languages) !== JSON.stringify(current.languages);
+  if (!isAdmin && !LANGUAGES_TENANT_EDITABLE && languagesChanged && merged.value.languages.length > 0) {
     return { error: { status: 403, body: { error: "admin_only", fields: ["languages"] } } };
   }
   return { persona: merged.value };
@@ -78,8 +86,15 @@ export function outboundPersonaUpdates(
   row: OutboundPersonaColumns & { personaConfig: unknown },
   isAdmin: boolean,
 ): { error: PersonaWriteError } | { updates: Record<string, unknown>; persona: Persona } | null {
-  const p = plan(body, LEGACY_OUTBOUND_PERSONA_FIELDS, currentOutboundPersona(row.personaConfig, row), isAdmin);
+  const current = currentOutboundPersona(row.personaConfig, row);
+  const p = plan(body, LEGACY_OUTBOUND_PERSONA_FIELDS, current, isAdmin);
   if (!p || "error" in p) return p;
+  // P5 gate: TURNING ON (or changing the line of) the outbound AI disclosure
+  // is admin-only for now; saving other fields under an admin-set one is fine.
+  const disclosureChanged = JSON.stringify(p.persona.aiDisclosure) !== JSON.stringify(current.aiDisclosure);
+  if (!isAdmin && !OUTBOUND_DISCLOSURE_TENANT_EDITABLE && disclosureChanged && p.persona.aiDisclosure.enabled) {
+    return { error: { status: 403, body: { error: "admin_only", fields: ["aiDisclosure.enabled"] } } };
+  }
   const cols = personaToOutboundColumns(p.persona);
   // Same rule as normalizeAgentFields: `name` (list/campaign label) always
   // follows `agentName`, and an empty name falls back to "Sarah".

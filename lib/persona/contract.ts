@@ -100,6 +100,12 @@ export const GREETING_VARIABLES = {
  */
 export const LANGUAGES_TENANT_EDITABLE = false;
 
+/**
+ * Outbound AI disclosure (P5): tenants can't turn it on for an outbound
+ * agent until Jonathan's test call; admins can. Opening it = flip this line.
+ */
+export const OUTBOUND_DISCLOSURE_TENANT_EDITABLE = false;
+
 export function greetingModeOf(text: string): GreetingMode {
   return text.trim() ? "custom" : "auto";
 }
