@@ -10,6 +10,7 @@ import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
+import { inheritAdminGlobalsWrite } from "@/lib/admin-gates";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
@@ -99,6 +100,7 @@ export async function PUT(req: NextRequest) {
       aiDisclosureEnabled: agentConfigs.aiDisclosureEnabled,
       aiDisclosureText: agentConfigs.aiDisclosureText,
       personaConfig: agentConfigs.personaConfig,
+      inheritAdminGlobals: agentConfigs.inheritAdminGlobals,
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
@@ -168,9 +170,11 @@ export async function PUT(req: NextRequest) {
   if (body.reminderEnabled != null) {
     updates.reminderEnabled = Boolean(body.reminderEnabled);
   }
-  if (body.inheritAdminGlobals != null) {
-    updates.inheritAdminGlobals = Boolean(body.inheritAdminGlobals);
-  }
+  // Admin-only since 11/11 (product change): a tenant CHANGE → 403;
+  // existing values are kept.
+  const inherit = inheritAdminGlobalsWrite(body, current.inheritAdminGlobals !== false, isAdmin);
+  if (!inherit.ok) return NextResponse.json({ error: inherit.error, fields: inherit.fields }, { status: 403 });
+  if (inherit.value !== undefined) updates.inheritAdminGlobals = inherit.value;
   if ("personality" in body) {
     const cleaned = sanitizePersonality(body.personality);
     if (cleaned !== undefined) updates.personality = cleaned;

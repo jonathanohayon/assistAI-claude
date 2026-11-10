@@ -39,48 +39,58 @@ export interface InboundInstructionsInput {
   capabilities: { calendar: boolean; crm: boolean; orders: boolean };
 }
 
-/** The receptionist's instructions, exactly as /api/agent/config assembled them. */
-export function inboundSessionInstructions(input: InboundInstructionsInput): string {
+/** The receptionist's instruction SECTIONS (block id → text), in the admin's order. */
+export interface InboundSections {
+  order: string[];
+  blocks: Record<string, string>;
+  capabilities: string;
+}
+
+export function inboundSessionSections(input: InboundInstructionsInput): InboundSections {
   const { config, planKey: k, directives: d } = input;
   // inheritAdminGlobals=false → the admin blocks are blanked: the prompt is
   // then persona + knowledge + language (+ capabilities).
   const inherits = config.inheritAdminGlobals !== false;
-  const spokenTime = inherits ? (d.spokenTimeByPlan[k] ?? "") : "";
-  const spokenPhone = inherits ? (d.spokenPhoneByPlan[k] ?? "") : "";
-  const hangup = inherits ? (d.hangupByPlan[k] ?? "") : "";
-  const configBlocks = inherits ? (d.configBlocksByPlan[k] ?? "") : "";
-  const blockOrder = d.blockOrderByPlan[k] ?? [];
   const globalInstructions = inherits ? (d.globalByPlan[k] ?? "") : "";
-
-  const capabilitiesDirective = renderCapabilitiesDirective(
-    d.capabilitiesByPlan[k] ?? DEFAULT_CAPABILITIES_DIRECTIVE,
-    input.capabilities,
-  );
   const primary = config.primaryLanguage ?? "fr";
-  // Spoken languages (Persona P4): empty list = today's text.
-  const languageDirective = inboundLanguageDirective(primary, effectiveSpokenLanguages(config.personaConfig));
-  const adminBlock = globalInstructions
-    ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
-    : "";
   // Knowledge (brick S1): company facts + this agent's instructions.
   const knowledge = knowledgeFromInbound({
     business: config.business,
     instructions: config.instructions,
     knowledge: config.knowledge,
   });
-  const blockContent: Record<string, string> = {
-    spoken_time: spokenTime,
-    spoken_phone: spokenPhone,
-    hangup,
-    config_blocks: configBlocks,
-    persona: inboundInstructionsBlock(knowledge.agent),
-    knowledge: inboundKnowledgeBlock(knowledge),
-    language: languageDirective,
-    admin_global: adminBlock,
+  return {
+    order: d.blockOrderByPlan[k] ?? [],
+    blocks: {
+      spoken_time: inherits ? (d.spokenTimeByPlan[k] ?? "") : "",
+      spoken_phone: inherits ? (d.spokenPhoneByPlan[k] ?? "") : "",
+      hangup: inherits ? (d.hangupByPlan[k] ?? "") : "",
+      config_blocks: inherits ? (d.configBlocksByPlan[k] ?? "") : "",
+      persona: inboundInstructionsBlock(knowledge.agent),
+      knowledge: inboundKnowledgeBlock(knowledge),
+      // Spoken languages (Persona P4): empty list = today's text.
+      language: inboundLanguageDirective(primary, effectiveSpokenLanguages(config.personaConfig)),
+      admin_global: globalInstructions
+        ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
+        : "",
+    },
+    capabilities: renderCapabilitiesDirective(d.capabilitiesByPlan[k] ?? DEFAULT_CAPABILITIES_DIRECTIVE, input.capabilities),
   };
-  return [...blockOrder.map((id) => blockContent[id] ?? "").filter(Boolean), capabilitiesDirective].join(
-    BLOCK_SEPARATOR,
-  );
+}
+
+/** The receptionist's instructions, exactly as /api/agent/config assembled them. */
+export function inboundSessionInstructions(input: InboundInstructionsInput): string {
+  const s = inboundSessionSections(input);
+  return [...s.order.map((id) => s.blocks[id] ?? "").filter(Boolean), s.capabilities].join(BLOCK_SEPARATOR);
+}
+
+/**
+ * The tenant's OWN part (developer-mode preview), from the same sections —
+ * never a filtered copy of the full text, so no admin directive can leak.
+ */
+export function inboundTenantSections(input: InboundInstructionsInput): { companySheet: string; instructions: string } {
+  const s = inboundSessionSections(input);
+  return { companySheet: s.blocks.knowledge ?? "", instructions: s.blocks.persona ?? "" };
 }
 
 export interface OutboundInstructionsInput {
