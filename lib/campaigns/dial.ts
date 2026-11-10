@@ -102,3 +102,38 @@ export async function dialContact(opts: {
     participantId: participant.participantId,
   };
 }
+
+// ── "Call me" (V7b): the receptionist calls its owner ─────────────────────
+
+/** Room name prefix the worker recognises: callme__<userId>__<ts>. */
+export const CALL_ME_ROOM_PREFIX = "callme__";
+
+export function callMeRoomName(userId: string, now = Date.now()): string {
+  return `${CALL_ME_ROOM_PREFIX}${userId}__${now.toString(36)}`;
+}
+
+/**
+ * Dials the owner with the tenant's RECEPTIONIST (persona from
+ * /api/agent/config?userId=, worker origin `call_me`). Waits until the owner
+ * answers, so the greeting is never spoken to a ringing line.
+ * `fromNumber` = the tenant's own number (caller id the owner recognises).
+ */
+export async function dialCallMe(opts: {
+  userId: string;
+  phoneNumber: string;
+  fromNumber?: string;
+  roomName: string;
+}): Promise<DialResult> {
+  const trunkSid = await resolveOutboundTrunkSid();
+  const metadata = JSON.stringify({ source: "call_me", userId: opts.userId });
+  await dispatchClient().createDispatch(opts.roomName, CAMPAIGN_AGENT_NAME, { metadata });
+  const participant = await sipClient().createSipParticipant(trunkSid, opts.phoneNumber, opts.roomName, {
+    participantIdentity: `callee-callme`,
+    participantName: opts.phoneNumber,
+    participantMetadata: metadata,
+    ...(opts.fromNumber ? { fromNumber: opts.fromNumber } : {}),
+    waitUntilAnswered: true,
+    ringingTimeout: 30,
+  });
+  return { roomName: opts.roomName, participantId: participant.participantId };
+}
