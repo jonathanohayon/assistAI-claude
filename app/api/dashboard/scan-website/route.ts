@@ -15,18 +15,7 @@ import { NextRequest } from "next/server";
 
 import { requireSession } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
-import { logEvent } from "@/lib/logger";
-import {
-  hoursAgent,
-  identityAgent,
-  knowledgeAgent,
-  languagesAgent,
-  locationAgent,
-  servicesAgent,
-  type AgentKey,
-} from "@/lib/website-scan/agents";
-import { ScanError, crawlSite, pagesToContext } from "@/lib/website-scan/crawl";
-import { assembleDraft, type AgentOutputs } from "@/lib/website-scan/merge";
+import { extractSheetDraft } from "@/lib/knowledge/learn";
 
 // Node runtime (cheerio + dns + fetch streaming). Jamais caché (POST).
 export const dynamic = "force-dynamic";
@@ -52,75 +41,9 @@ export async function POST(req: NextRequest) {
       const send = (obj: unknown) => {
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       };
-
       try {
-        // 1. Crawl
-        send({ type: "crawl", status: "start" });
-        const pages = await crawlSite(url);
-        const pageMeta = pages.map((p) => ({ url: p.url, title: p.title }));
-        send({ type: "crawl", status: "done", pages: pageMeta });
-
-        const ctx = pagesToContext(pages);
-
-        // 2. Sous-agents en parallèle. Chaque agent émet running puis done/error
-        //    dès qu'il se résout — pas de barrière entre eux.
-        const outputs: AgentOutputs = {};
-        const runAgent = async <K extends AgentKey>(
-          key: K,
-          fn: () => Promise<AgentOutputs[K]>,
-        ) => {
-          send({ type: "agent", agent: key, status: "running" });
-          try {
-            const result = await fn();
-            outputs[key] = result;
-            send({
-              type: "agent",
-              agent: key,
-              status: "done",
-              confidence: (result as { confidence?: number })?.confidence ?? 0,
-            });
-          } catch (e) {
-            send({
-              type: "agent",
-              agent: key,
-              status: "error",
-              error: e instanceof Error ? e.message : "Erreur agent",
-            });
-          }
-        };
-
-        await Promise.all([
-          runAgent("identity", () => identityAgent(ctx)),
-          runAgent("hours", () => hoursAgent(ctx)),
-          runAgent("location", () => locationAgent(ctx)),
-          runAgent("services", () => servicesAgent(ctx)),
-          runAgent("languages", () => languagesAgent(ctx)),
-          runAgent("knowledge", () => knowledgeAgent(ctx)),
-        ]);
-
-        // 3. Assemblage + sanitize
-        const draft = assembleDraft(outputs, pageMeta);
-        send({ type: "result", ...draft });
-
-        void logEvent({
-          source: "web",
-          event: "website_scanned",
-          message: `Scan site web (${pageMeta.length} pages)`,
-          userId,
-          metadata: {
-            url,
-            pages: pageMeta.length,
-            confidence: draft.confidence,
-          },
-        });
-      } catch (e) {
-        const message =
-          e instanceof ScanError
-            ? e.message
-            : e instanceof Error
-              ? e.message
-              : "Échec du scan.";
-        send({ type: "error", message });
+        // The one learning service (Knowledge S2): crawl + extraction agents.
+        await extractSheetDraft(url, userId, send);
       } finally {
         controller.close();
       }
