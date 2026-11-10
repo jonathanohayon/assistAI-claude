@@ -1,3 +1,4 @@
+import { effectiveSpokenLanguages, withOutboundLanguages } from "@/lib/persona/languages";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -46,10 +47,16 @@ export async function GET(req: NextRequest) {
   // Pas d'objectif de campagne en test → preset "sales" pour que l'agent
   // présente quand même son offre (sinon il resterait passif). Pas de contact.
   const framings = await getCampaignGoalFramings();
-  const instructions = buildCampaignInstructions(
+  const baseInstructions = buildCampaignInstructions(
     { goalPreset: "sales", objective: "", persona },
     {},
     framings,
+  );
+  // Spoken languages (Persona P4): empty list / switch off = today's text.
+  const instructions = withOutboundLanguages(
+    baseInstructions,
+    persona.language || "fr",
+    effectiveSpokenLanguages(agent.personaConfig),
   );
   const greetingInstructions = buildCampaignGreeting({ persona }, {});
 

@@ -9,6 +9,7 @@ import { logEvent } from "@/lib/logger";
 import { decideTenantResolution } from "@/lib/tenant-resolution";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { servedInboundVoice } from "@/lib/voice/serve";
+import { effectiveSpokenLanguages, inboundLanguageDirective } from "@/lib/persona/languages";
 import { toEngineSettings } from "@/lib/voice/engine";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
@@ -226,16 +227,9 @@ export async function GET(req: NextRequest) {
     { calendar: features.calendar, crm: features.crm, orders: ordersEnabled },
   );
 
-  const langLabel: Record<string, string> = {
-    fr: "français",
-    he: "hébreu",
-    en: "anglais (US)",
-  };
   const primary = config.primaryLanguage ?? "fr";
-  const languageDirective = `LANGUE PAR DÉFAUT DU TENANT : ${langLabel[primary] ?? "français"} (code: ${primary}).
-- Utilise cette langue UNIQUEMENT pour le tout premier message d'accueil.
-- Dès que ton interlocuteur parle, détecte sa langue et réponds STRICTEMENT dans la sienne.
-- S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
+  // Spoken languages (Persona P4): empty list / switch off = today's text.
+  const languageDirective = inboundLanguageDirective(primary, effectiveSpokenLanguages(config.personaConfig));
 
   // L'ordre des blocs est piloté depuis /admin (app_settings.prompt_block_order).
   // Default order = directives système d'abord, puis config_blocks (meta
