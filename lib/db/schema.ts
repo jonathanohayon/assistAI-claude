@@ -213,6 +213,13 @@ export const agentConfigs = pgTable("agent_configs", {
   // legacy persona columns (P3). NULL = never written: derived from them.
   // Calls still read the legacy columns.
   personaConfig: jsonb("persona_config"),
+  // Tools contract v1 (lib/tools/contract.ts), written alongside the CRM
+  // tile toggles and transfer_number (T3). NULL = never written: derived.
+  // Calls still read the legacy settings.
+  toolsConfig: jsonb("tools_config"),
+  // The transfer number kept while the Tools transfer switch is OFF
+  // (transfer_number is then ''); restored when it is turned back ON.
+  transferNumberParked: text("transfer_number_parked"),
   // Speech-to-speech engine for this tenant: "openai" | "gemini" | "xai".
   // NULL = openai. Admin-only (lib/realtime-provider.ts): never shown to or
   // writable by tenants.
@@ -367,6 +374,8 @@ export const outboundAgents = pgTable("outbound_agents", {
   // legacy persona columns (P3). NULL = never written: derived from them.
   // Calls still read the legacy columns.
   personaConfig: jsonb("persona_config"),
+  // Tools contract v1, stored only (outbound agents get no tools until T4).
+  toolsConfig: jsonb("tools_config"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

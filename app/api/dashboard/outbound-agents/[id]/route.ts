@@ -9,6 +9,7 @@ import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { db } from "@/lib/db";
 import { campaigns, outboundAgents } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { withoutToolsStore } from "@/lib/tools/store";
 import { normalizeAgentFields } from "@/lib/outbound-agents/validate";
 
 interface Ctx {
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
   return NextResponse.json({
     agent: {
-      ...agent,
+      ...withoutToolsStore(agent),
       voiceConfig: voiceForViewer(currentOutboundVoice(agent.voiceConfig, agent), await sessionIsAdmin()),
       personaConfig: currentOutboundPersona(agent.personaConfig, agent),
       campaignCount: await countCampaigns(agent.id),
@@ -100,7 +101,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   return NextResponse.json({
     agent: {
-      ...updated,
+      ...withoutToolsStore(updated),
       voiceConfig: voiceForViewer(currentOutboundVoice(updated.voiceConfig, updated), isAdmin),
       personaConfig: currentOutboundPersona(updated.personaConfig, updated),
       campaignCount: await countCampaigns(agent.id),

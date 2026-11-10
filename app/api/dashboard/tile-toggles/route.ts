@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
-import { getTileToggles, setTileToggles } from "@/lib/tile-toggles";
+import { getTileToggles } from "@/lib/tile-toggles";
+import { setTileTogglesSyncingTools } from "@/lib/tools/legacy-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
   if (typeof parsed.data.customers === "boolean") patch.customers = parsed.data.customers;
   if (typeof parsed.data.orders === "boolean") patch.orders = parsed.data.orders;
 
-  const toggles = await setTileToggles(r.userId, patch);
+  // Tools T3: a stored `tools` is refreshed in the same transaction.
+  const toggles = await setTileTogglesSyncingTools(r.userId, patch);
   return NextResponse.json({ toggles });
 }

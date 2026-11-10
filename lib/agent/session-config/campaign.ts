@@ -19,9 +19,9 @@ import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
 import { getCampaignGoalFramings } from "@/lib/settings";
 import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
 import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
-import { OUTBOUND_TOOLS, outboundCallFeatures } from "@/lib/tools/adapters";
-import { effectiveCapabilities } from "@/lib/tools/contract";
+import { outboundCallFeatures } from "@/lib/tools/adapters";
 import { capabilityInputsFor } from "@/lib/tools/load";
+import { outboundCapabilities } from "@/lib/tools/store";
 import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
@@ -75,11 +75,7 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
   const accountSheet = await accountSheetForOutbound(campaign.userId);
   // Tools (T1): the same function as the receptionist and the screen.
   const toolInputs = await capabilityInputsFor(campaign.userId);
-  const capabilities = effectiveCapabilities(
-    { recipe: "outbound", tools: OUTBOUND_TOOLS },
-    { ...toolInputs.account, transferNumber: "" },
-    toolInputs.plan,
-  );
+  const { capabilities } = outboundCapabilities(agent?.toolsConfig ?? null, toolInputs.account.googleConnected, toolInputs.plan);
   const persona = agent
     ? {
         agentName: agent.agentName,

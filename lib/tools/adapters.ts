@@ -10,19 +10,19 @@ import { TOOLS_VERSION, type EffectiveCapabilities, type Tools } from "@/lib/too
 export function toolsFromTileToggles(t: TileToggles): Tools {
   return {
     version: TOOLS_VERSION,
-    booking: { enabled: t.calendar },
+    booking: { enabled: t.calendar, defaultDurationMinutes: null, minNoticeMinutes: null },
     contacts: { enabled: t.customers },
-    transfer: { enabled: true },
-    orders: { enabled: t.orders },
+    transfer: { enabled: true, when: "always" },
+    orders: { enabled: t.orders, ask: "" },
   };
 }
 
 export const OUTBOUND_TOOLS: Tools = {
   version: TOOLS_VERSION,
-  booking: { enabled: false },
+  booking: { enabled: false, defaultDurationMinutes: null, minNoticeMinutes: null },
   contacts: { enabled: false },
-  transfer: { enabled: false },
-  orders: { enabled: false },
+  transfer: { enabled: false, when: "always" },
+  orders: { enabled: false, ask: "" },
 };
 
 // ── Capabilities → today's payload fields (the call side) ──────────────

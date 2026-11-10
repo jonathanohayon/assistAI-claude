@@ -14,13 +14,21 @@ export const TOOLS_VERSION = 1 as const;
 export const CAPABILITY_KEYS = ["booking", "contacts", "transfer", "orders"] as const;
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
 
-/** The agent's own switches (stored with the agent from T3; derived today). */
+export const TRANSFER_WHEN = ["always", "business_hours"] as const;
+export type TransferWhen = (typeof TRANSFER_WHEN)[number];
+
+/**
+ * The agent's own switches + per-capability settings (stored with the agent
+ * since T3). Level-2 settings (durations, transfer.when, orders.ask) are
+ * STORED ONLY: calls don't read them yet, so the screen hides them until the
+ * reader step ships (null / "always" / "" = today's behaviour).
+ */
 export interface Tools {
   version: typeof TOOLS_VERSION;
-  booking: { enabled: boolean };
+  booking: { enabled: boolean; defaultDurationMinutes: number | null; minNoticeMinutes: number | null };
   contacts: { enabled: boolean };
-  transfer: { enabled: boolean };
-  orders: { enabled: boolean };
+  transfer: { enabled: boolean; when: TransferWhen };
+  orders: { enabled: boolean; ask: string };
 }
 
 /** Stable machine codes — the screen maps them to words. */
