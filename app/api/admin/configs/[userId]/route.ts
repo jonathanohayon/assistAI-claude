@@ -15,6 +15,8 @@ import { currentInboundVoice } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
 import { parseTransferNumber } from "@/lib/transfer-number";
+import { legacyTransferWriteUpdates } from "@/lib/tools/legacy-sync";
+import { withoutToolsStore } from "@/lib/tools/store";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 interface Ctx {
@@ -44,7 +46,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     user,
     config: cfg
       ? {
-          ...cfg,
+          ...withoutToolsStore(cfg),
           voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg),
           personaConfig: currentInboundPersona(cfg.personaConfig, cfg),
         }
@@ -150,6 +152,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const tn = parseTransferNumber(body.transferNumber);
     if (!tn.ok) return NextResponse.json({ error: tn.error }, { status: 400 });
     updates.transferNumber = tn.value;
+    // Tools T3: nothing stays parked; a stored `tools` is refreshed.
+    Object.assign(updates, await legacyTransferWriteUpdates(userId, tn.value));
   }
   if ("aiDisclosureEnabled" in body) {
     updates.aiDisclosureEnabled = body.aiDisclosureEnabled !== false;
@@ -216,7 +220,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   void warmGreetingAudioForUser(userId);
 
   return NextResponse.json({
-    ...updated,
+    ...withoutToolsStore(updated),
     voiceConfig: currentInboundVoice(updated.voiceConfig, updated),
     personaConfig: currentInboundPersona(updated.personaConfig, updated),
   });

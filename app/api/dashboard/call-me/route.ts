@@ -6,6 +6,7 @@ import { callMeAccess, callMeAllowed, callMeMode, callMeTarget } from "@/lib/cal
 import { callMeRoomName, dialCallMe } from "@/lib/campaigns/dial";
 import { db } from "@/lib/db";
 import { agentConfigs, events, phoneNumbers } from "@/lib/db/schema";
+import { accountTransferNumber } from "@/lib/tools/store";
 import { logEvent } from "@/lib/logger";
 
 export const maxDuration = 60;
@@ -32,12 +33,21 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as { phoneNumber?: unknown };
 
   const [cfg] = await db
-    .select({ ownerWhatsapp: agentConfigs.ownerWhatsapp, transferNumber: agentConfigs.transferNumber })
+    .select({
+      ownerWhatsapp: agentConfigs.ownerWhatsapp,
+      transferNumber: agentConfigs.transferNumber,
+      transferNumberParked: agentConfigs.transferNumberParked,
+    })
     .from(agentConfigs)
     .where(eq(agentConfigs.userId, r.userId))
     .limit(1);
   if (!cfg) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const phoneNumber = callMeTarget(body.phoneNumber, cfg);
+  // Tools T3: a transfer switched OFF keeps its number parked — still the
+  // account's number, so still an allowed call-me target.
+  const phoneNumber = callMeTarget(body.phoneNumber, {
+    ownerWhatsapp: cfg.ownerWhatsapp,
+    transferNumber: accountTransferNumber(cfg),
+  });
   if (!phoneNumber) return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
 
   const [line] = await db

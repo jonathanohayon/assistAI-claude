@@ -14,7 +14,11 @@
  * DÉSACTIVÉ (opt-in — la prise de commandes au téléphone est un nouveau
  * comportement qui n'apparaît que si le tenant l'active).
  */
-import { getSetting, setSetting } from "@/lib/settings";
+import { eq, sql } from "drizzle-orm";
+
+import { db } from "@/lib/db";
+import { appSettings } from "@/lib/db/schema";
+import { getSetting } from "@/lib/settings";
 
 const TILE_TOGGLES_SETTING = "tenant_tile_toggles";
 
@@ -33,7 +37,17 @@ export const DEFAULT_TILE_TOGGLES: TileToggles = {
 type ToggleMap = Record<string, Partial<TileToggles>>;
 
 async function readMap(): Promise<ToggleMap> {
-  const raw = await getSetting(TILE_TOGGLES_SETTING);
+  return parseMap(await getSetting(TILE_TOGGLES_SETTING));
+}
+
+export async function getTileToggles(userId: string): Promise<TileToggles> {
+  const map = await readMap();
+  return { ...DEFAULT_TILE_TOGGLES, ...(map[userId] ?? {}) };
+}
+
+export type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function parseMap(raw: string | null | undefined): ToggleMap {
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw) as ToggleMap;
@@ -43,22 +57,32 @@ async function readMap(): Promise<ToggleMap> {
   }
 }
 
-export async function getTileToggles(userId: string): Promise<TileToggles> {
-  const map = await readMap();
-  return { ...DEFAULT_TILE_TOGGLES, ...(map[userId] ?? {}) };
-}
-
-export async function setTileToggles(
+/**
+ * Writes one tenant's toggles INSIDE a transaction: the shared JSON map row
+ * is locked (FOR UPDATE), so two concurrent writes can't lose each other's
+ * tenant, and a Tools write (T3) commits toggles + tools together.
+ */
+export async function setTileTogglesIn(
+  tx: DbTx,
   userId: string,
   toggles: Partial<TileToggles>,
 ): Promise<TileToggles> {
-  const map = await readMap();
-  const next: TileToggles = {
-    ...DEFAULT_TILE_TOGGLES,
-    ...(map[userId] ?? {}),
-    ...toggles,
-  };
+  await tx.insert(appSettings).values({ key: TILE_TOGGLES_SETTING, value: "{}" }).onConflictDoNothing();
+  const [row] = await tx
+    .select({ value: appSettings.value })
+    .from(appSettings)
+    .where(eq(appSettings.key, TILE_TOGGLES_SETTING))
+    .for("update");
+  const map = parseMap(row?.value);
+  const next: TileToggles = { ...DEFAULT_TILE_TOGGLES, ...(map[userId] ?? {}), ...toggles };
   map[userId] = next;
-  await setSetting(TILE_TOGGLES_SETTING, JSON.stringify(map));
+  await tx
+    .update(appSettings)
+    .set({ value: JSON.stringify(map), updatedAt: sql`now()` })
+    .where(eq(appSettings.key, TILE_TOGGLES_SETTING));
   return next;
+}
+
+export async function setTileToggles(userId: string, toggles: Partial<TileToggles>): Promise<TileToggles> {
+  return db.transaction((tx) => setTileTogglesIn(tx, userId, toggles));
 }
