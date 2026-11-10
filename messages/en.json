@@ -2437,5 +2437,45 @@
     "before": "before:",
     "after": "after:",
     "fieldLabel": "{label}:"
+  },
+  "ToolsBrick": {
+    "intro": "What your receptionist can do on a call, besides talking. Hanging up is always possible.",
+    "introOutbound": "What this agent can do on a call, besides talking.",
+    "cap": {
+      "booking": {
+        "name": "Book appointments",
+        "what": "Offers free slots and books them in your calendar.",
+        "on": "Active: calendar connected."
+      },
+      "contacts": {
+        "name": "Save contacts",
+        "what": "Adds the caller's name and number to your contact list.",
+        "on": "Active."
+      },
+      "transfer": {
+        "name": "Transfer to a person",
+        "what": "Passes the call to your number when the caller asks for someone.",
+        "on": "Active: to your transfer number."
+      },
+      "orders": {
+        "name": "Take orders",
+        "what": "Notes an order and sends it to you.",
+        "on": "Active."
+      }
+    },
+    "statusOff": "Off.",
+    "statusPending": "Not active yet:",
+    "missing": {
+      "google_not_connected": "connect your Google calendar.",
+      "no_transfer_number": "add a transfer number.",
+      "not_available_outbound": "not available for outbound calls yet."
+    },
+    "connectGoogle": "Connect Google",
+    "connectGoogleTenantOnly": "The customer connects their Google calendar from their own account.",
+    "addNumber": "Add a number",
+    "notInPlan": "Not in your plan: {list}.",
+    "availableWith": "Available with the {plan} plan",
+    "devTitle": "Developer mode",
+    "planMatrix": "Open the plan matrix"
   }
 }
