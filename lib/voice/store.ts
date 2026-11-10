@@ -97,7 +97,8 @@ export interface InboundLegacyColumns {
  * in legacy columns): fromInboundColumns(result) gives the voice back.
  */
 export function inboundColumnsFromVoice(v: Voice, currentModel: string): InboundLegacyColumns {
-  const e = toEngineSettings(v, { defaultModel: currentModel });
+  // Base values only: the style is applied when serving, never stored twice.
+  const e = toEngineSettings(v, { defaultModel: currentModel, applyStyle: false });
   return {
     voice: e.voice,
     model: e.model,

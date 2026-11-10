@@ -53,9 +53,14 @@ assert.deepEqual(currentInboundVoice({ broken: true }, inboundRow), fromInboundC
   assert.equal((voiceConfig as Voice).style, "calm", "style stored in voice_config");
   assert.deepEqual(cols.voice, "cedar");
   assert.deepEqual(cols.realtimeProvider, null, "engine auto = NULL as today");
-  // what today's readers will serve after the write = the stored voice's engine settings
+  // what today's readers will serve after the write = the stored voice's BASE
+  // engine settings (the legacy columns hold no style: it applies only once
+  // readers switch to voice_config)
   const readBack = fromInboundColumns(cols as never);
-  assert.deepEqual(toEngineSettings(readBack, { defaultModel: "x" }), toEngineSettings(r.voice, { defaultModel: "x" }));
+  assert.deepEqual(
+    toEngineSettings(readBack, { defaultModel: "x" }),
+    toEngineSettings(r.voice, { defaultModel: "x", applyStyle: false }),
+  );
   assert.deepEqual({ ...readBack, style: "calm" }, r.voice, "columns hold everything but the style");
 }
 // a custom speed survives the round trip exactly

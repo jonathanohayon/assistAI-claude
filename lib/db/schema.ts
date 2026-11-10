@@ -587,6 +587,28 @@ export const paymentOrders = pgTable("payment_orders", {
   paidAt: timestamp("paid_at", { withTimezone: true }),
 });
 
+// Voice samples (V7): one sample per recommended voice × style × language,
+// rendered on the default engine (lib/voice/samples.ts). Regenerable, so never
+// committed to git; bump VOICE_SAMPLE_VERSION to re-render.
+export const voiceSamples = pgTable(
+  "voice_samples",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    voiceId: text("voice_id").notNull(),
+    style: text("style").notNull(),
+    language: text("language").notNull(),
+    version: integer("version").notNull(),
+    audioPcm: bytea("audio_pcm").notNull(),
+    sampleRate: integer("sample_rate").notNull().default(24000),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => ({
+    uniq: unique("voice_samples_key").on(t.voiceId, t.style, t.language, t.version),
+  }),
+);
+
 // Cache de l'audio d'accueil pré-généré (PCM16 24kHz mono) joué instantanément
 // au décroché par le worker. Une ligne par (tenant, texte d'opener, voix,
 // langue, version de rendu). Régénéré quand le texte/voix change (text_hash ou

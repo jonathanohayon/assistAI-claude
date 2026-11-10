@@ -16,11 +16,43 @@ import WebSocket from "ws";
 const OPENAI_WS = "wss://api.openai.com/v1/realtime";
 const SAMPLE_RATE = 24000;
 
-export async function renderOpenerAudio(opts: {
+const READ_ALOUD =
+  "Tu lis À VOIX HAUTE, mot pour mot, exactement le texte que l'utilisateur te donne. N'ajoute rien, ne reformule pas, ne commente pas.";
+
+export interface RenderOptions {
   text: string;
   voice: string;
   model: string;
-}): Promise<{ pcm: Buffer; sampleRate: number }> {
+  /** Voice samples only (V7): how to say it (style preset line). */
+  tone?: string;
+  /** Voice samples only (V7): output speed (style factor). */
+  speed?: number;
+}
+
+/**
+ * The session.update sent to the Realtime API. Without `tone`/`speed` it is
+ * byte-identical to the opener's (tested): the greeting is unaffected.
+ */
+export function renderSessionUpdate(opts: RenderOptions): Record<string, unknown> {
+  return {
+    type: "session.update",
+    session: {
+      type: "realtime",
+      output_modalities: ["audio"],
+      audio: {
+        output: {
+          voice: opts.voice,
+          format: { type: "audio/pcm", rate: SAMPLE_RATE },
+          ...(opts.speed !== undefined && opts.speed !== 1 ? { speed: opts.speed } : {}),
+        },
+      },
+      // Contrainte forte : l'agent ne fait QUE lire le texte fourni.
+      instructions: opts.tone ? `${READ_ALOUD} Ton : ${opts.tone}` : READ_ALOUD,
+    },
+  };
+}
+
+export async function renderOpenerAudio(opts: RenderOptions): Promise<{ pcm: Buffer; sampleRate: number }> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY manquant");
 
@@ -46,24 +78,7 @@ export async function renderOpenerAudio(opts: {
     const timer = setTimeout(() => fail(new Error("render timeout")), 20000);
 
     ws.on("open", () => {
-      ws.send(
-        JSON.stringify({
-          type: "session.update",
-          session: {
-            type: "realtime",
-            output_modalities: ["audio"],
-            audio: {
-              output: {
-                voice: opts.voice,
-                format: { type: "audio/pcm", rate: SAMPLE_RATE },
-              },
-            },
-            // Contrainte forte : l'agent ne fait QUE lire le texte fourni.
-            instructions:
-              "Tu lis À VOIX HAUTE, mot pour mot, exactement le texte que l'utilisateur te donne. N'ajoute rien, ne reformule pas, ne commente pas.",
-          },
-        }),
-      );
+      ws.send(JSON.stringify(renderSessionUpdate(opts)));
       ws.send(
         JSON.stringify({
           type: "conversation.item.create",
