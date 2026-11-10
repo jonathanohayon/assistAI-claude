@@ -5,43 +5,39 @@
 //   outbound → lib/campaigns/prompt buildCampaignGreeting
 //
 // Until P3 stores `persona`, saves go through today's legacy fields, so the
-// behaviour is exactly today's. Write mapping below = inverse of
-// lib/persona/adapters (round trip pinned by scripts/tests/persona-brick.test.ts).
+// behaviour is exactly today's. The write mapping is tamaraVlad's
+// lib/persona/columns (the one place P3 changes).
 
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { buildCampaignGreeting } from "@/lib/campaigns/prompt";
 import type { Persona } from "@/lib/persona/contract";
 
+export { personaToInboundColumns, personaToOutboundColumns } from "@/lib/persona/columns";
+
 export type PersonaKind = "inbound" | "outbound";
 
-export interface InboundPersonaFields {
-  agentName: string;
-  primaryLanguage: string;
-  greetingInstructions: string;
-  aiDisclosureEnabled: boolean;
-  aiDisclosureText: string;
-}
-
-export interface OutboundPersonaFields {
-  agentName: string;
-  language: string;
-  greeting: string;
-}
-
+/** The sentence actually spoken: the tenant's in "custom" mode, none in "auto". */
 const spokenGreeting = (p: Persona) => (p.greeting.mode === "custom" ? p.greeting.text : "");
 
-export function toInboundFields(p: Persona): InboundPersonaFields {
-  return {
-    agentName: p.name,
-    primaryLanguage: p.primaryLanguage,
-    greetingInstructions: spokenGreeting(p),
-    aiDisclosureEnabled: p.aiDisclosure.enabled,
-    aiDisclosureText: p.aiDisclosure.text,
-  };
-}
-
-export function toOutboundFields(p: Persona): OutboundPersonaFields {
-  return { agentName: p.name, language: p.primaryLanguage, greeting: spokenGreeting(p) };
+/**
+ * What changed since `base` (last loaded or saved), as the partial
+ * personaConfig the API takes: top-level fields whole, `greeting` and
+ * `aiDisclosure` key by key. null = nothing changed.
+ */
+export function personaPatch(base: Persona, next: Persona): Record<string, unknown> | null {
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  const patch: Record<string, unknown> = {};
+  for (const k of Object.keys(next) as Array<keyof Persona>) {
+    if (k === "version") continue;
+    if (k === "greeting" || k === "aiDisclosure") {
+      const sub: Record<string, unknown> = {};
+      for (const [sk, sv] of Object.entries(next[k])) {
+        if (!same((base[k] as Record<string, unknown>)[sk], sv)) sub[sk] = sv;
+      }
+      if (Object.keys(sub).length) patch[k] = sub;
+    } else if (!same(base[k], next[k])) patch[k] = next[k];
+  }
+  return Object.keys(patch).length ? patch : null;
 }
 
 /**
@@ -73,4 +69,31 @@ export function heardGreeting(
 export function insertVariable(text: string, variable: string): string {
   if (!text) return variable;
   return /\s$/.test(text) ? `${text}${variable}` : `${text} ${variable}`;
+}
+
+/** Legacy persona fields a screen must NOT send next to personaConfig (400 persona_config_conflict). */
+export const LEGACY_INBOUND_PERSONA_FIELDS = [
+  "agentName",
+  "primaryLanguage",
+  "greetingInstructions",
+  "aiDisclosureEnabled",
+  "aiDisclosureText",
+] as const;
+export const LEGACY_OUTBOUND_PERSONA_FIELDS = ["agentName", "language", "greeting"] as const;
+
+/**
+ * A save body without ANY legacy persona field (even unchanged: a legacy
+ * write must never overwrite the stored sentence), plus the persona patch
+ * when something changed.
+ */
+export function withPersonaConfig(
+  body: Record<string, unknown>,
+  legacy: readonly string[],
+  patch: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...body };
+  delete out.personaConfig;
+  for (const k of legacy) delete out[k];
+  if (patch) out.personaConfig = patch;
+  return out;
 }

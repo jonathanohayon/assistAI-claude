@@ -14,7 +14,12 @@ import { AgentEditor } from "./agent-editor";
 import { hydrateVoice, voicePatch, type ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
-import { toOutboundFields } from "@/components/bricks/persona/persona-ui";
+import {
+  LEGACY_OUTBOUND_PERSONA_FIELDS,
+  personaPatch,
+  personaToOutboundColumns,
+  withPersonaConfig,
+} from "@/components/bricks/persona/persona-ui";
 import { personaFromOutbound } from "@/lib/persona/adapters";
 import type { Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
@@ -49,6 +54,8 @@ export function AgentsWorkspace({
 
   // Persona brick state (saved through agentName/language/greeting until P3).
   const [persona, setPersona] = useState<Persona>(() => personaFromOutbound(null));
+  // Last loaded/saved persona; null = a new agent (send it whole on POST).
+  const [personaBase, setPersonaBase] = useState<Persona | null>(null);
   // Voice brick state: full Voice on screen, `voiceBase` = last loaded/saved.
   const [voice, setVoice] = useState<ClientVoice>(() => hydrateVoice(null));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(null));
@@ -100,6 +107,7 @@ export function AgentsWorkspace({
     const fresh = emptyAgentDraft(locale);
     setDraft(fresh);
     setPersona(personaFromOutbound(fresh));
+    setPersonaBase(null);
     setVoice(hydrateVoice(null));
     setVoiceBase(hydrateVoice(null));
     setUsage(0);
@@ -107,7 +115,9 @@ export function AgentsWorkspace({
   };
 
   const openEdit = (a: OutboundAgentListItem) => {
-    setPersona(personaFromOutbound(a));
+    const servedPersona = (a as OutboundAgentListItem & { personaConfig?: Persona }).personaConfig ?? personaFromOutbound(a);
+    setPersona(servedPersona);
+    setPersonaBase(servedPersona);
     const served = hydrateVoice((a as OutboundAgentListItem & { voiceConfig?: ServedVoice }).voiceConfig);
     setVoice(served);
     setVoiceBase(served);
@@ -140,12 +150,21 @@ export function AgentsWorkspace({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice))),
+          body: JSON.stringify(
+            withPersonaConfig(
+              withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
+              LEGACY_OUTBOUND_PERSONA_FIELDS,
+              personaBase ? personaPatch(personaBase, persona) : persona,
+            ),
+          ),
         },
       );
       if (!res.ok) throw new Error("save");
       const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
+      const savedPersona = (data.agent as { personaConfig?: Persona } | undefined)?.personaConfig ?? persona;
+      setPersona(savedPersona);
+      setPersonaBase(savedPersona);
       if (data.agent?.voiceConfig) {
         const saved = hydrateVoice(data.agent.voiceConfig);
         setVoice(saved);
@@ -258,7 +277,7 @@ export function AgentsWorkspace({
                   persona={persona}
                   onPersonaChange={(next) => {
                     setPersona(next);
-                    set(toOutboundFields(next));
+                    set(personaToOutboundColumns(next));
                   }}
                   voice={voice}
                   onVoiceChange={setVoice}
