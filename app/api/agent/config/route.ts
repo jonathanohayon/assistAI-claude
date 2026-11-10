@@ -9,6 +9,8 @@ import { logEvent } from "@/lib/logger";
 import { decideTenantResolution } from "@/lib/tenant-resolution";
 import { DEFAULT_CAPABILITIES_DIRECTIVE } from "@/lib/agent-prompt-defaults";
 import { servedInboundVoice } from "@/lib/voice/serve";
+import { knowledgeFromInbound } from "@/lib/knowledge/adapters";
+import { inboundInstructionsBlock, inboundKnowledgeBlock } from "@/lib/knowledge/render";
 import { effectiveSpokenLanguages, inboundLanguageDirective } from "@/lib/persona/languages";
 import { toEngineSettings } from "@/lib/voice/engine";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
@@ -240,48 +242,23 @@ export async function GET(req: NextRequest) {
     ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
     : "";
 
-  // Bloc business tenant — formatte la structure { identity, centres,
-  // services } en section référence pour le prompt. Fallback sur le
-  // legacy `knowledge` array si business pas encore peuplé pour ce tenant.
-  let businessBlock = "";
-  if (
-    config.business &&
-    typeof config.business === "object" &&
-    ((config.business.identity?.name ?? "").length > 0 ||
-      (config.business.centres?.length ?? 0) > 0 ||
-      (config.business.services?.length ?? 0) > 0)
-  ) {
-    const { renderBusinessPromptBlock, sanitizeBusinessConfig } = await import(
-      "@/lib/business"
-    );
-    businessBlock = renderBusinessPromptBlock(
-      sanitizeBusinessConfig(config.business),
-    );
-  } else if (Array.isArray(config.knowledge) && config.knowledge.length > 0) {
-    // Fallback legacy : un tenant qui a juste l'ancien knowledge mais pas
-    // encore migré vers business. Affiche en bloc texte simple.
-    const knowledgeEntries = config.knowledge.filter(
-      (e) => (e?.businessName?.length ?? 0) > 0 || (e?.description?.length ?? 0) > 0,
-    );
-    if (knowledgeEntries.length > 0) {
-      businessBlock = `BUSINESS — INFOS LEGACY (sera migré vers structure complète au prochain save dashboard) :\n\n${knowledgeEntries
-        .map((e, i) => {
-          const lines: string[] = [];
-          lines.push(`### ${i + 1}. ${e.businessName || "(sans nom)"}`);
-          if (e.openingHours) lines.push(`Horaires : ${e.openingHours}`);
-          if (e.description) lines.push(`Détails : ${e.description}`);
-          return lines.join("\n");
-        })
-        .join("\n\n")}`;
-    }
-  }
+  // Knowledge (brick S1): the company facts block and this agent's
+  // instructions, built through the Knowledge contract — identical text to
+  // before (route snapshots). The legacy `knowledge` array fallback is kept
+  // in the adapter until S6.
+  const knowledge = knowledgeFromInbound({
+    business: config.business,
+    instructions: config.instructions,
+    knowledge: config.knowledge,
+  });
+  const businessBlock = inboundKnowledgeBlock(knowledge);
 
   const blockContent: Record<string, string> = {
     spoken_time: spokenTime,
     spoken_phone: spokenPhone,
     hangup,
     config_blocks: configBlocks,
-    persona: config.instructions,
+    persona: inboundInstructionsBlock(knowledge.agent),
     knowledge: businessBlock,
     language: languageDirective,
     admin_global: adminBlock,
