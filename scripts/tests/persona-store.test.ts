@@ -102,13 +102,13 @@ assert.deepEqual(currentInboundPersona(null, inRow), personaFromInbound(inRow));
 
 // ── outbound ────────────────────────────────────────────────────────────
 {
-  const row = { agentName: "Sarah", language: "fr", greeting: "Bonjour {contactName} !", personaConfig: null as unknown };
+  const row = { agentName: "Sarah", language: "fr", greeting: "Bonjour {{name}} !", personaConfig: null as unknown };
   const r = outboundPersonaUpdates({ personaConfig: { greeting: { mode: "auto" }, name: "Dana" } }, row, true);
   assert.ok(r && !("error" in r));
   assert.equal(r.updates.greeting, "");
   assert.equal(r.updates.agentName, "Dana");
   assert.equal(r.updates.name, "Dana", "`name` follows agentName (normalizeAgentFields rule)");
-  assert.deepEqual(r.persona.greeting, { mode: "auto", text: "Bonjour {contactName} !" }, "text kept");
+  assert.deepEqual(r.persona.greeting, { mode: "auto", text: "Bonjour {{name}} !" }, "text kept");
   // empty name → "Sarah" in the columns (as normalizeAgentFields), persona keeps ''
   const e = outboundPersonaUpdates({ personaConfig: { name: "  " } }, row, true);
   assert.ok(e && !("error" in e) && e.updates.agentName === "Sarah" && e.updates.name === "Sarah");
