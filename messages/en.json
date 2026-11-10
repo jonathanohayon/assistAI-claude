@@ -2309,11 +2309,10 @@
     "disclosureMustMentionAi": "Your sentence must say it's an AI (e.g. \"AI\", \"artificial intelligence\", \"virtual assistant\").",
     "disclosureTooLong": "Keep it under {max} characters.",
     "variablesTitle": "First-sentence variables",
-    "variablesHint": "Replaced for each person called.",
+    "variablesHint": "Click to add it to your sentence; it's replaced for each person called.",
     "variable": {
-      "contactName": "the person's name",
-      "phoneNumber": "their number"
-    },
-    "insert": "Insert"
+      "name": "Contact's name",
+      "phone": "Contact's phone"
+    }
   }
 }
