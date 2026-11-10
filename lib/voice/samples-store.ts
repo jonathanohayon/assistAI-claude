@@ -5,7 +5,18 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { voiceSamples } from "@/lib/db/schema";
 import { renderOpenerAudio } from "@/lib/greeting-render";
-import { samplePlan, sampleRendering, VOICE_SAMPLE_VERSION, type SampleKey } from "@/lib/voice/samples";
+import { VOICE_STYLE_PRESETS } from "@/lib/voice/contract";
+import { SAMPLE_TEXT, samplePlan, VOICE_SAMPLE_VERSION, type SampleKey } from "@/lib/voice/samples";
+
+/** How the default engine is asked to read a sample: the style's own tuning. */
+export function sampleRendering(k: SampleKey): { text: string; tone?: string; speed?: number } {
+  const p = VOICE_STYLE_PRESETS[k.style].openai;
+  return {
+    text: SAMPLE_TEXT[k.language],
+    ...(p.instruction ? { tone: p.instruction } : {}),
+    ...(p.speedFactor !== 1 ? { speed: p.speedFactor } : {}),
+  };
+}
 
 /** Model used to render samples: the default engine's default model. */
 const SAMPLE_MODEL = "gpt-realtime-2";
