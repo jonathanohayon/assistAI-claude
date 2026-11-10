@@ -4,11 +4,19 @@ import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
-import { type Center, nextDatesForCenter, validateBooking } from "@/lib/schedule";
+import { eventTitle, nameFromTitle, resolvePlace } from "@/lib/booking-place";
+import { type Center, nextDatesForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
-  const { eventId, newDate, newTime, duration, center } = await req.json();
+  const body = (await req.json()) as Record<string, unknown>;
+  const { eventId, newDate, newTime, duration, center } = body as {
+    eventId?: string;
+    newDate?: string;
+    newTime?: string;
+    duration?: number;
+    center?: string;
+  };
 
   if (!eventId || !newDate || !newTime) {
     return NextResponse.json(
@@ -21,13 +29,14 @@ export async function POST(req: NextRequest) {
   // centre doesn't match the one requested (center is optional ; null = just
   // compute the canonical centre for newDate). validateBooking throws on a
   // malformed date.
-  let resolved;
-  try {
-    resolved = validateBooking(newDate, (center as Center | undefined) ?? null);
-  } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+  // With a `location` (the tenant's own place, new worker) there is no
+  // weekday rule (lib/booking-place.ts).
+  const placed = resolvePlace(body, newDate);
+  if (!placed.ok && placed.kind === "invalid_date") {
+    return NextResponse.json({ error: placed.error }, { status: 400 });
   }
-  if (!resolved.ok) {
+  if (!placed.ok) {
+    const resolved = placed.refusal;
     const suggested = nextDatesForCenter(center as Center, 3, newDate);
     await logEvent({
       source: "calendar",
@@ -53,6 +62,10 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+
+  const { place } = placed;
+  // Legacy: `center` in the response and logs, as before. New: `location`.
+  const placeField = place.kind === "legacy" ? { center: place.center } : { location: place.label };
 
   // Refuse moving a RDV into the past (5-min grace for clock skew) — same as book.
   try {
@@ -152,11 +165,10 @@ export async function POST(req: NextRequest) {
     // Jerusalem-Tuesday RDV moved to a Monday becomes Ashdod). Parse the client
     // name out of "RDV {label} — {name}"; leave the summary untouched if it
     // doesn't follow that shape (custom titles, manual events).
+    // With a `location` but no place given, the title is left as it is.
     const oldSummary = existing.data.summary ?? "";
-    const nameMatch = oldSummary.match(/^RDV .+? — (.+)$/);
-    const newSummaryField = nameMatch
-      ? `RDV ${resolved.label} — ${nameMatch[1]}`
-      : undefined;
+    const clientName = nameFromTitle(oldSummary, place);
+    const newSummaryField = clientName && place.label ? eventTitle(place, clientName) : undefined;
 
     const updated = await caller.calendar.events.patch({
       calendarId: caller.calendarId,
@@ -174,7 +186,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "calendar",
       event: "reschedule_success",
-      message: `RDV déplacé : ${newDate} ${newTime} · ${resolved.label}`,
+      message: `RDV déplacé : ${newDate} ${newTime}${place.label ? ` · ${place.label}` : ""}`,
       // Attributed to the tenant (like book_success): the call type and the
       // dashboard read tool events by user_id.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
@@ -184,15 +196,15 @@ export async function POST(req: NextRequest) {
         newDate,
         newTime,
         durationMin,
-        center: resolved.center,
+        ...placeField,
       },
     });
 
     return NextResponse.json({
       success: true,
       eventId: updated.data.id,
-      center: resolved.center,
-      summary: `RDV déplacé au ${newDate} à ${newTime} (${resolved.label}).`,
+      ...placeField,
+      summary: `RDV déplacé au ${newDate} à ${newTime}${place.label ? ` (${place.label})` : ""}.`,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur reschedule";
