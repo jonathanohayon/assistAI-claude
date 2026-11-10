@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   // appels où ni userId ni toNumber n'arrivent (devrait plus arriver).
   const tenant = userId
     ? await resolveTenantByUserId(userId)
-    : await resolveTenant(toNumber || null);
+    : await resolveTenant(toNumber || null, "calls_end");
   if (!tenant) {
     await logEvent({
       source: "tenant",
