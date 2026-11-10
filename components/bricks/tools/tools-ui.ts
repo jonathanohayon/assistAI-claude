@@ -96,3 +96,12 @@ export function toolsPatch<T extends object>(baseIn: T, nextIn: T): Record<strin
   }
   return out;
 }
+
+/**
+ * The tile summary's count: capabilities the screen calls active ("on").
+ * Not `active` alone: until T1b a capability can be active on the call
+ * while the screen honestly says "Not active yet".
+ */
+export function activeCount(caps: EffectiveCapabilities): number {
+  return capabilityList(caps).switches.filter((v) => v.status === "on").length;
+}

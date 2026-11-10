@@ -164,7 +164,14 @@ function CapabilityRow({
 
 function StatusWords({ v }: { v: CapabilityView }) {
   const t = useTranslations("ToolsBrick");
-  if (v.status === "off") return <span className="text-[#475569]">{t("statusOff")}</span>;
+  if (v.status === "off")
+    return (
+      <span className="text-[#475569]">
+        {t("statusOff")}
+        {/* Outbound until T4: say it now, not only once the switch is on. */}
+        {v.missing === "not_available_outbound" && <> {t("offOutbound")}</>}
+      </span>
+    );
   if (v.status === "on") return <span className="font-semibold text-[#047857]">{t(`cap.${v.key}.on`)}</span>;
   return (
     <span className="text-[#92400e]">

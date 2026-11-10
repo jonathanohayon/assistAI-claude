@@ -9,8 +9,8 @@ import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
-import type { ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import { CAPABILITY_KEYS, type Tools } from "@/lib/tools/contract";
+import { activeCount, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { Tools } from "@/lib/tools/contract";
 import type { SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";
@@ -101,7 +101,7 @@ export function AgentEditor({
       id: "tools",
       label: tTools("tileLabel"),
       tagline: tTools("tileTagline"),
-      summary: toolsServed ? tTools("tileSummary", { n: CAPABILITY_KEYS.filter((k) => toolsServed.capabilities[k].active).length }) : "—",
+      summary: toolsServed ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities) }) : "—",
       accent: "from-[#0e7490] to-[#155e75]",
       icon: <IconTools />,
     },

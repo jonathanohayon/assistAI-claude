@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "../../lib/tools/adapters";
 import { effectiveCapabilities, type CapabilityState } from "../../lib/tools/contract";
-import { capabilityList, capabilityView, toolsPatch } from "../../components/bricks/tools/tools-ui";
+import { activeCount, capabilityList, capabilityView, toolsPatch } from "../../components/bricks/tools/tools-ui";
 import { TOOL_NAMES } from "../tenant-bundle-match.mjs";
 
 const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: CapabilityState["prerequisite"]["missing"] } = {}): CapabilityState => ({
@@ -56,13 +56,15 @@ const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: Capabilit
   }
   const out = capabilityList(effectiveCapabilities({ recipe: "outbound", tools: OUTBOUND_TOOLS }, { transferNumber: "+000", googleConnected: true }, DEFAULT_MATRIX.premium));
   assert.ok(out.switches.every((v) => v.status === "off"), "outbound: everything off until T4");
+  // …and each says why, even with its switch off.
+  assert.ok(out.switches.every((v) => v.missing === "not_available_outbound"));
 }
 
 // 4. Save patch: only what changed, key by key
 {
   const base = toolsFromTileToggles({ calendar: true, customers: true, orders: false });
   assert.deepEqual(toolsPatch(base, structuredClone(base)), {});
-  assert.deepEqual(toolsPatch(base, { ...base, orders: { enabled: true } }), { orders: { enabled: true } });
+  assert.deepEqual(toolsPatch(base, { ...base, orders: { ...base.orders, enabled: true } }), { orders: { enabled: true } });
 }
 
 const ROOT = new URL("../../", import.meta.url).pathname;
@@ -110,6 +112,37 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.deepEqual(he, fr);
   for (const c of ["booking", "contacts", "transfer", "orders"]) for (const f of ["name", "what", "on"]) assert.ok(fr.includes(`cap.${c}.${f}`), `${c}.${f}`);
   for (const m of ["google_not_connected", "no_transfer_number", "not_available_outbound"]) assert.ok(fr.includes(`missing.${m}`), m);
+}
+
+// 8. No row promises in the browser test what only a phone call does: transfer says so, in every language
+{
+  const t = (l: string) => JSON.parse(read(`messages/${l}.json`)).ToolsBrick.cap.transfer.what as string;
+  assert.match(t("fr"), /test dans le navigateur ne transfère pas/);
+  assert.match(t("en"), /browser test does not transfer/);
+  assert.match(t("he"), /הבדיקה בדפדפן לא מעבירה/);
+  // "Test it" wording is never attached to a capability's active state.
+  for (const l of ["fr", "en", "he"]) {
+    const cap = JSON.parse(read(`messages/${l}.json`)).ToolsBrick.cap as Record<string, { on: string }>;
+    for (const [k, v] of Object.entries(cap)) assert.doesNotMatch(v.on, /test|בדק|בדיק/i, `${l} ${k}.on`);
+  }
+}
+
+// 9. The tile counts what the screen calls active, not what T1 lets the call have
+{
+  const tools = toolsFromTileToggles({ calendar: true, customers: true, orders: false });
+  const caps = effectiveCapabilities({ recipe: "receptionist", tools }, { transferNumber: "+000", googleConnected: false }, DEFAULT_MATRIX.premium);
+  assert.equal(caps.booking.active, true, "T1: Google not enforced on the call");
+  assert.equal(activeCount(caps), 1, "only transfer is honestly active");
+}
+
+// 10. Leaks the extended bundle check found: no message string names a tool,
+//     and the plan's shared directives are computed for admins only.
+{
+  for (const l of ["fr", "en", "he"]) {
+    const names = new RegExp(`\\b(?:${(TOOL_NAMES as string[]).join("|")})\\b`);
+    assert.doesNotMatch(read(`messages/${l}.json`), names, `${l}: a message names a tool (all messages ship to the browser)`);
+  }
+  assert.match(read("app/[locale]/dashboard/page.tsx"), /const adminInheritablePreview = isAdmin\s*\?/);
 }
 
 console.log("ALL TOOLS-BRICK TESTS PASSED");

@@ -58,8 +58,8 @@ import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
-import { toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import { CAPABILITY_KEYS, type Tools } from "@/lib/tools/contract";
+import { activeCount, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { Tools } from "@/lib/tools/contract";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
@@ -468,7 +468,7 @@ export function ConfigForm({
       label: tTools("tileLabel"),
       tagline: tTools("tileTagline"),
       summary: toolsServed
-        ? tTools("tileSummary", { n: CAPABILITY_KEYS.filter((k) => toolsServed.capabilities[k].active).length })
+        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities) })
         : "—",
       accent: "from-[#0e7490] to-[#155e75]",
       icon: (
