@@ -66,31 +66,37 @@ export function ForwardingWizard({
   );
 
   // ─── Test state: load once, then poll while waiting ──────────────────
-  const load = useCallback(
+  // Fetch only; callers store the result (setState in a callback, not in
+  // the effect body).
+  const fetchTest = useCallback(
     async (signal?: AbortSignal) => {
       const res = await fetch(`/api/dashboard/forwarding-test${qs}`, { signal, cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
-      setTest((await res.json()) as ForwardingTest);
+      return (await res.json()) as ForwardingTest;
     },
     [qs],
   );
 
   useEffect(() => {
     const ctrl = new AbortController();
-    load(ctrl.signal).catch(() => {});
+    fetchTest(ctrl.signal).then(setTest).catch(() => {});
     return () => ctrl.abort();
-  }, [load]);
+  }, [fetchTest]);
 
   const polling = shouldPoll(test, now);
   const pollingRef = useRef(polling);
-  pollingRef.current = polling;
+  // Written after render, before the polling effect below runs.
+  useEffect(() => {
+    pollingRef.current = polling;
+  });
   useEffect(() => {
     if (!polling) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const ctrl = new AbortController();
     const tick = () => {
       if (document.visibilityState !== "visible") return;
-      load(ctrl.signal)
+      fetchTest(ctrl.signal)
+        .then(setTest)
         .catch(() => {})
         .finally(() => {
           if (pollingRef.current && !ctrl.signal.aborted) timer = setTimeout(tick, POLL_MS);
@@ -110,7 +116,7 @@ export function ForwardingWizard({
       if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [polling, load]);
+  }, [polling, fetchTest]);
 
   // 1 s clock for the countdown, only while waiting.
   useEffect(() => {
