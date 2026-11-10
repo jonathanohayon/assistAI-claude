@@ -2313,6 +2313,8 @@
     "variable": {
       "name": "Prénom du contact",
       "phone": "Téléphone du contact"
-    }
+    },
+    "languagesLabel": "Autres langues parlées",
+    "languagesHint": "Tamara passe à l'une de ces langues si la personne la parle."
   }
 }
