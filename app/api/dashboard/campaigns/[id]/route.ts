@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { withoutToolsStore } from "@/lib/tools/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
 
 interface Ctx {
@@ -81,7 +82,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       )[0] ?? null)
     : null;
 
-  return NextResponse.json({ campaign, agent, contacts, calls, counts });
+  // Never the raw Tools store: it holds the "ask your agent" secret (T5a).
+  return NextResponse.json({ campaign, agent: agent ? withoutToolsStore(agent) : null, contacts, calls, counts });
 }
 
 // PATCH — partial update. What may change depends on the status
