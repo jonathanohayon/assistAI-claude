@@ -116,7 +116,13 @@ for (const l of LOCALES) {
   assert.equal(urlInputs(html), 0, `${l}: no url input`);
   assert.ok(!html.includes(esc(m.configuredByTeam)), `${l}: no configured line`);
   assert.ok(!html.includes(m.urlLabel), `${l}: no url label`);
-  assert.ok(html.includes(esc(m.secretNotSet)), `${l}: secret "not set"`);
+  // Design review: no setup form for something the tenant can't set up — only who can connect one.
+  assert.ok(html.includes(esc(m.connectViaTeam)), `${l}: who can connect it`);
+  assert.ok(!/type="checkbox"/.test(html), `${l}: no switch`);
+  assert.ok(!/type="password"|type="text"|<input/.test(html), `${l}: no input at all`);
+  for (const k of ["secretLabel", "secretNotSet", "secretSet", "contractTitle", "toggleLabel"] as const)
+    assert.ok(!html.includes(esc(m[k])), `${l}: no ${k}`);
+  assert.ok(!html.includes("HMAC"), `${l}: no signature sentence`);
 }
 // An older server without urlEditable is treated as a tenant (safe default).
 assert.equal(urlInputs(render(served(undefined, { enabled: true, url: MOCK_URL }))), 0);

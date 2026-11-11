@@ -188,6 +188,14 @@ export function AgentBrainView(props: AgentBrainViewProps) {
   const btnPrimary = `${btn} bg-[var(--color-foreground)] text-white`;
   const btnGhost = `${btn} border border-[var(--color-border)] hover:bg-[var(--color-muted)]`;
 
+  // A tenant with no webhook can't set one up: no form at all (no switch,
+  // secret, signature sentence or contract), just who can connect one. The
+  // section's title and lead sentence come from the page. Kept as a full
+  // view if the agent is somehow on, so it can still be switched off.
+  if (!view.urlEditable && !view.urlConfigured && !view.enabled) {
+    return <p className="mt-4 text-sm text-[var(--color-foreground)]">{t("connectViaTeam")}</p>;
+  }
+
   return (
     <div className="mt-4 space-y-4">
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3">
