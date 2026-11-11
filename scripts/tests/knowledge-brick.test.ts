@@ -13,6 +13,7 @@ import {
   applyScan,
   hoursRuns,
   planScan,
+  widened,
   scanCounts,
   hoursSummary,
   businessFromSheet,
@@ -196,12 +197,13 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.deepEqual(scanCounts(changes), { servicesAdded: 1, servicesChanged: 1, locationsAdded: 1, locationsChanged: 1, identityChanged: 1, notesAdded: 1 });
   // Each change carries the values, before and after, so the review shows them.
   assert.deepEqual(changes.find((c) => c.kind === "locationChanged"), {
+    id: "location~:l1",
     kind: "locationChanged",
     name: "Centre Mock",
     hours: { before: SHEET.locations[0].hours, after: draft.centres[0].hours },
   });
-  assert.deepEqual(changes.find((c) => c.kind === "serviceChanged"), { kind: "serviceChanged", name: "Coupe", price: { before: 100, after: 120 } });
-  assert.deepEqual(changes.find((c) => c.kind === "identity"), { kind: "identity", field: "tagline", before: "", after: "Coiffure" });
+  assert.deepEqual(changes.find((c) => c.kind === "serviceChanged"), { id: "service~:s1", kind: "serviceChanged", name: "Coupe", price: { before: 100, after: 120 } });
+  assert.deepEqual(changes.find((c) => c.kind === "identity"), { id: "identity:tagline", kind: "identity", field: "tagline", before: "", after: "Coiffure" });
   const added = changes.find((c) => c.kind === "locationAdded");
   assert.ok(added && added.kind === "locationAdded" && added.address === "2 rue Mock" && added.hours === draft.centres[1].hours);
   // The proposal is valid for the server (no duplicate or unknown ids).
@@ -227,6 +229,53 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     delete kb.controlHint;
     assert.doesNotMatch(JSON.stringify(kb), /\bsoins?\b|salon|coiffure|טיפול|Tamara/i, `${l}: salon word or product name`);
   }
+}
+
+// 12. Per-line review: every line listed whatever is ticked; unticked lines aren't applied
+{
+  const draft: BusinessConfig = {
+    identity: { name: "Salon Mock", tagline: "Coiffure", email: "" },
+    centres: [
+      { id: "x1", name: "Centre Mock", address: "9 rue Mock", hours },
+      { id: "x2", name: "Annexe Mock", address: "2 rue Mock", hours },
+    ],
+    services: [
+      { id: "a", name: "Coupe", durationMinutes: 30, priceILS: 120, centreIds: "all", description: "" },
+      { id: "b", name: "Brushing", durationMinutes: 20, priceILS: 60, centreIds: ["x2"], description: "" },
+      { id: "c", name: "Soin", durationMinutes: 45, priceILS: 90, centreIds: ["x1", "x2"], description: "" },
+    ],
+    centresRules: "",
+    knowledgeBase: "",
+  };
+  const all = planScan(SHEET, draft);
+  const ids = all.changes.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length, "ids are unique");
+  // Nothing skipped = the whole proposal (unchanged behaviour).
+  assert.deepEqual(planScan(SHEET, draft, new Set()).next, all.next);
+  // Everything skipped = the sheet as it was.
+  assert.deepEqual(planScan(SHEET, draft, new Set(ids)).next, SHEET);
+  // The list doesn't depend on what's ticked.
+  assert.deepEqual(planScan(SHEET, draft, new Set(["identity:tagline"])).changes, all.changes);
+
+  // Skip one price change and the tagline: the rest still applies.
+  const some = planScan(SHEET, draft, new Set(["service~:s1", "identity:tagline"]));
+  assert.equal(some.next.services.find((x) => x.id === "s1")?.priceILS, 100, "price kept");
+  assert.equal(some.next.identity.tagline, "", "tagline kept");
+  assert.equal(some.next.locations[0].address, "9 rue Mock", "address change applied");
+  assert.ok(planSheetWrite(SHEET, sheetPatch(SHEET, some.next)).ok);
+
+  // Skip the added location: services offered only there would be widened; the line says so.
+  const annexe = all.changes.find((c) => c.kind === "locationAdded")!.id;
+  const brushing = all.changes.find((c) => c.kind === "serviceAdded" && c.name === "Brushing")!;
+  const soin = all.changes.find((c) => c.kind === "serviceAdded" && c.name === "Soin")!;
+  assert.equal(widened(brushing, new Set([annexe])), true);
+  assert.equal(widened(soin, new Set([annexe])), false, "still has an existing location");
+  assert.equal(widened(brushing, new Set()), false);
+  const noAnnexe = planScan(SHEET, draft, new Set([annexe]));
+  assert.equal(noAnnexe.next.locations.length, 1);
+  assert.equal(noAnnexe.next.services.find((x) => x.name === "Brushing")?.locationIds, "all");
+  assert.deepEqual(noAnnexe.next.services.find((x) => x.name === "Soin")?.locationIds, ["l1"]);
+  assert.ok(planSheetWrite(SHEET, sheetPatch(SHEET, noAnnexe.next)).ok, "no unknown location id");
 }
 
 console.log("ALL KNOWLEDGE-BRICK TESTS PASSED");

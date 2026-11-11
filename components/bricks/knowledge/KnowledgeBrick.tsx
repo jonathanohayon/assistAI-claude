@@ -25,6 +25,7 @@ import { WebsiteScanWizard } from "@/app/[locale]/dashboard/website-scan-wizard"
 import { HINT, LABEL } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
+import type { BusinessConfig } from "@/lib/business";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 
 import { learnedDate, planScan, withSource, type ScanChange, type SheetIssue } from "./knowledge-ui";
@@ -83,7 +84,8 @@ export function KnowledgeBrick({
   // `scanUrl` set = the scan is running for that address.
   const [scanUrl, setScanUrl] = useState<string | null>(null);
   // A learned proposal waiting for Apply / Cancel.
-  const [proposal, setProposal] = useState<{ url: string; next: CompanySheet; changes: ScanChange[]; lang: string | null } | null>(null);
+  // The draft is kept: Apply re-runs the merge without the unticked lines.
+  const [proposal, setProposal] = useState<{ url: string; draft: BusinessConfig; changes: ScanChange[]; lang: string | null } | null>(null);
   const [manual, setManual] = useState(false);
   const instructionsId = useId();
   const notesId = useId();
@@ -102,8 +104,9 @@ export function KnowledgeBrick({
         <LearnReview
           url={proposal.url}
           changes={proposal.changes}
-          onApply={() => {
-            onSheetChange({ ...proposal.next, sources: withSource(proposal.next.sources, proposal.url, new Date().toISOString()) });
+          onApply={(skip) => {
+            const { next } = planScan(sheet, proposal.draft, skip);
+            onSheetChange({ ...next, sources: withSource(next.sources, proposal.url, new Date().toISOString()) });
             if (proposal.lang) onSuggestedLanguage?.(proposal.lang);
             setProposal(null);
           }}
@@ -120,8 +123,8 @@ export function KnowledgeBrick({
         existingBusiness={{ identity: sheet.identity, centres: [], services: [] }}
         onApply={() => {}}
         onDraft={(draft, lang, url) => {
-          const { next, changes } = planScan(sheet, draft);
-          setProposal({ url: url || scanUrl || "", next, changes, lang });
+          const { changes } = planScan(sheet, draft);
+          setProposal({ url: url || scanUrl || "", draft, changes, lang });
         }}
       />
 

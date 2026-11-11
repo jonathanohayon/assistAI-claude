@@ -2404,7 +2404,9 @@
     "emptyValue": "(ריק)",
     "before": "לפני:",
     "after": "אחרי:",
-    "fieldLabel": "{label}:"
+    "fieldLabel": "{label}:",
+    "widenedNote": "הסניף שלו לא נשמר: השירות יוצע בכל הסניפים שלכם.",
+    "reviewApplySome": "החלה של {n} מתוך {total}"
   },
   "ToolsBrick": {
     "intro": "מה פקידת הקבלה שלכם יכולה לעשות בשיחה, מעבר לדיבור. ניתוק השיחה תמיד אפשרי.",
