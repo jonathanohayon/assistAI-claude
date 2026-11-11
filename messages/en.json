@@ -2663,7 +2663,6 @@
     "rawTranscriptNote": "The conversation couldn't be laid out. Here is the text as it was saved:",
     "noTranscript": "No conversation was saved for this call.",
     "moreDetails": "More details",
-    "calledNumber": "Number called",
-    "duration": "Duration"
+    "calledNumber": "Number called"
   }
 }

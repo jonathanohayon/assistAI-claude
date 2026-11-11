@@ -188,10 +188,10 @@ test("a null duration is not rendered; a known one is", () => {
         moreOpen: true,
       }),
     );
-  assert.ok(!body(null).includes("data-duration"));
-  assert.ok(!body(null).includes("Plus de détails"), "nothing to disclose → no level 2");
-  assert.ok(body(45).includes("data-duration"));
-  assert.match(body(45), /45 s/);
+  // Level 2 never repeats the duration (it's on the line); without a called number there is no level 2.
+  assert.ok(!body(null).includes("data-duration") && !body(45).includes("data-duration"));
+  assert.ok(!body(45).includes("Plus de détails"), "nothing to disclose → no level 2");
+  assert.ok(body(45, "+972300000000").includes("Plus de détails"));
 });
 
 test("the called number is rendered only when present, LTR-isolated", () => {

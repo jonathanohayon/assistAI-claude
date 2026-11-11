@@ -377,7 +377,6 @@ export function CallDetailBody({
   const merged: CallLine = { ...line, ...d };
   const conv = conversationView(d);
   const toNumber = calledNumber(merged);
-  const duration = durationMessage(merged.durationSeconds);
   const heading = "text-xs font-semibold uppercase tracking-wider text-[#475569]";
 
   return (
@@ -432,23 +431,14 @@ export function CallDetailBody({
         </div>
       </div>
 
-      {(toNumber || duration) && (
+      {/* Level 2: only the number called (the duration is already on the line). */}
+      {toNumber && (
         <MoreSettings title={t("moreDetails")} defaultOpen={moreOpen}>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            {toNumber && (
-              <>
-                <dt className="text-[var(--color-muted-foreground)]">{t("calledNumber")}</dt>
-                <dd data-called-number>
-                  <bdi dir="ltr">{toNumber}</bdi>
-                </dd>
-              </>
-            )}
-            {duration && (
-              <>
-                <dt className="text-[var(--color-muted-foreground)]">{t("duration")}</dt>
-                <dd data-duration>{say(t, duration)}</dd>
-              </>
-            )}
+            <dt className="text-[var(--color-muted-foreground)]">{t("calledNumber")}</dt>
+            <dd data-called-number>
+              <bdi dir="ltr">{toNumber}</bdi>
+            </dd>
           </dl>
         </MoreSettings>
       )}
