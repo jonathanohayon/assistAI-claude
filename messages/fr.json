@@ -1427,6 +1427,15 @@
         "status_archive": "Campagne archivée",
         "raw": "{message}",
         "skipped": "ignoré : {reasons}"
+      },
+      "dispatchOff": "Les appels sont en pause sur cette plateforme : aucun appel n’est passé pour l’instant.",
+      "dispatchDry": "Mode test : aucun appel n’est passé.",
+      "actionError": {
+        "session": "Votre session a expiré. Reconnectez-vous puis réessayez.",
+        "forbidden": "Ce compte ne peut pas {action, select, pause {mettre en pause} other {lancer}} cette campagne.",
+        "notFound": "Cette campagne n’existe plus. Rechargez la page.",
+        "changed": "Cette campagne a changé entre-temps. Rechargez la page puis réessayez.",
+        "unknown": "Impossible de {action, select, pause {mettre en pause} other {lancer}} la campagne. Réessayez."
       }
     },
     "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}"
