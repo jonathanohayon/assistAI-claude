@@ -16,7 +16,7 @@ const directives = {
   blockOrderByPlan: { premium: ["spoken_time", "spoken_phone", "hangup", "config_blocks", "persona", "knowledge", "language", "admin_global"] },
   capabilitiesByPlan: { premium: "Calendar: {calendar}." },
 };
-const config = { inheritAdminGlobals: true, primaryLanguage: "fr", personaConfig: null, business: null, instructions: "Mock persona.", knowledge: null };
+const config = { inheritAdminGlobals: true, primaryLanguage: "fr", personaConfig: null, business: null, instructions: "Mock persona.", knowledge: null, voiceProfile: null };
 const caps = { calendar: true, crm: false, orders: false };
 
 {

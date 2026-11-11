@@ -25,8 +25,40 @@ function todayInbound(primary: string): string {
 - S'il/elle bascule à une autre langue, suis-le/la immédiatement.`;
 }
 
-/** Receptionist language block. Empty list → today's text exactly. */
-export function inboundLanguageDirective(primary: string, languages: readonly PersonaLanguage[]): string {
+/**
+ * The language the Voice brick's lock ("Rester dans la langue principale")
+ * pins the receptionist to, or null when the lock is off. Mirrors the worker
+ * (src/voice-profile.ts `language()`), which writes "Always answer in X" from
+ * the served voiceProfile: languageHint when it isn't "auto", else the
+ * tenant's primaryLanguage (|| "fr").
+ */
+export function lockedLanguage(
+  voice: { languageLock: boolean; languageHint: string },
+  primaryLanguage: string | null | undefined,
+): string | null {
+  if (!voice.languageLock) return null;
+  return voice.languageHint !== "auto" ? voice.languageHint : primaryLanguage || "fr";
+}
+
+/** Lock on: ONE language rule (the worker's "Always answer in X" agrees with it). */
+function lockedInbound(primary: string, locked: string): string {
+  return `LANGUE PAR DÉFAUT DU TENANT : ${LABEL[primary as PersonaLanguage] ?? "français"} (code: ${primary}).
+- Utilise cette langue pour le tout premier message d'accueil.
+- LANGUE VERROUILLÉE : réponds TOUJOURS en ${LABEL[locked as PersonaLanguage] ?? locked} (code: ${locked}), même si ton interlocuteur parle une autre langue ou en change.`;
+}
+
+/**
+ * Receptionist language block. Empty list → today's text exactly.
+ * `locked` (lockedLanguage()) non-null → the lock text, whatever the list:
+ * the "answer in the caller's language" rules would contradict the lock.
+ * Omitted / null → byte-identical to before the lock was read here.
+ */
+export function inboundLanguageDirective(
+  primary: string,
+  languages: readonly PersonaLanguage[],
+  locked: string | null = null,
+): string {
+  if (locked) return lockedInbound(primary, locked);
   const others = languages.filter((l) => l !== primary);
   if (!others.length) return todayInbound(primary);
   const allowed = [primary, ...others].map((l) => `${LABEL[l as PersonaLanguage] ?? l} (${l})`).join(", ");
