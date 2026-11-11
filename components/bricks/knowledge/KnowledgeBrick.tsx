@@ -85,7 +85,15 @@ export function KnowledgeBrick({
   const [scanUrl, setScanUrl] = useState<string | null>(null);
   // A learned proposal waiting for Apply / Cancel.
   // The draft is kept: Apply re-runs the merge without the unticked lines.
-  const [proposal, setProposal] = useState<{ url: string; draft: BusinessConfig; changes: ScanChange[]; lang: string | null } | null>(null);
+  const [proposal, setProposal] = useState<{
+    url: string;
+    draft: BusinessConfig;
+    changes: ScanChange[];
+    lang: string | null;
+    /** The plan's location cap from the scan result (undefined: an older server). */
+    locationCap?: number;
+    locationsTruncated: boolean;
+  } | null>(null);
   const [manual, setManual] = useState(false);
   const instructionsId = useId();
   const notesId = useId();
@@ -104,8 +112,9 @@ export function KnowledgeBrick({
         <LearnReview
           url={proposal.url}
           changes={proposal.changes}
+          locationCapNote={proposal.locationsTruncated ? proposal.locationCap : undefined}
           onApply={(skip) => {
-            const { next } = planScan(sheet, proposal.draft, skip);
+            const { next } = planScan(sheet, proposal.draft, skip, proposal.locationCap);
             onSheetChange({ ...next, sources: withSource(next.sources, proposal.url, new Date().toISOString()) });
             if (proposal.lang) onSuggestedLanguage?.(proposal.lang);
             setProposal(null);
@@ -122,9 +131,9 @@ export function KnowledgeBrick({
         onClose={() => setScanUrl(null)}
         existingBusiness={{ identity: sheet.identity, centres: [], services: [] }}
         onApply={() => {}}
-        onDraft={(draft, lang, url) => {
-          const { changes } = planScan(sheet, draft);
-          setProposal({ url: url || scanUrl || "", draft, changes, lang });
+        onDraft={(draft, lang, url, locationCap) => {
+          const { changes, locationsTruncated } = planScan(sheet, draft, new Set(), locationCap);
+          setProposal({ url: url || scanUrl || "", draft, changes, lang, locationCap, locationsTruncated });
         }}
       />
 

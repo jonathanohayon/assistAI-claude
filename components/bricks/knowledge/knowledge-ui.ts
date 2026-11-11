@@ -9,6 +9,7 @@
 import type { BusinessConfig } from "@/lib/business";
 import { sheetFromBusiness } from "@/lib/knowledge/adapters";
 import type { CompanySheet } from "@/lib/knowledge/contract";
+import { capScannedLocations } from "@/lib/locations-cap";
 
 export { businessFromSheet, sheetFromBusiness } from "@/lib/knowledge/adapters";
 
@@ -76,7 +77,17 @@ export function withFacts(sheet: CompanySheet, business: BusinessConfig): Compan
 export type SheetIssue =
   | { key: "duplicateLocation" | "duplicateService"; params: { id: string } }
   | { key: "unknownLocation"; params: { service: string; id: string } }
+  | { key: "locationCap"; params: { cap: number } }
   | { key: "invalidEmail" | "notesTooLong" | "invalid"; params: Record<string, string> };
+
+/** The issues of a refused company-sheet save (its JSON body): the 403 location cap, or the 400 fields. */
+export function sheetSaveIssues(
+  body: { error?: string; cap?: number; fields?: string[] } | null,
+  sheet: CompanySheet,
+): SheetIssue[] {
+  if (body?.error === "location_cap") return [{ key: "locationCap", params: { cap: body.cap ?? 1 } }];
+  return sheetIssues(body?.fields ?? [], sheet);
+}
 
 export function sheetIssues(fields: string[], sheet: CompanySheet): SheetIssue[] {
   return fields.map((f): SheetIssue => {
@@ -199,8 +210,21 @@ export function planScan(
   sheet: CompanySheet,
   draft: BusinessConfig,
   skip: ReadonlySet<string> = new Set(),
-): { next: CompanySheet; changes: ScanChange[] } {
+  /**
+   * The plan's location cap (the scan result's `locationCap`). Given: only
+   * the NEW locations that fit in the room left under it are proposed (in
+   * the site's order); the others are left out and `locationsTruncated` is
+   * true. Existing locations are never removed, whatever the cap.
+   */
+  locationCap?: number,
+): { next: CompanySheet; changes: ScanChange[]; locationsTruncated: boolean } {
   const scanned = sheetFromBusiness(draft);
+  let locationsTruncated = false;
+  if (locationCap !== undefined) {
+    const capped = capScannedLocations(sheet.locations, scanned.locations, locationCap);
+    locationsTruncated = capped.truncated;
+    scanned.locations = capped.kept;
+  }
   const changes: ScanChange[] = [];
   const take = (id: string) => !skip.has(id);
 
@@ -285,7 +309,7 @@ export function planScan(
     if (take("notes")) notes = [notes.trim(), scannedNotes].filter(Boolean).join("\n\n");
   }
 
-  return { next: { ...sheet, identity, locations, services, notes }, changes };
+  return { next: { ...sheet, identity, locations, services, notes }, changes, locationsTruncated };
 }
 
 /** A service added at locations that are all left out: it'd be offered everywhere. */

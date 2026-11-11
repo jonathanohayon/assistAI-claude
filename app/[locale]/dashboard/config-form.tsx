@@ -69,7 +69,7 @@ import {
   type ToolsResponse,
 } from "@/components/bricks/tools/tools-ui";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
-import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
+import { businessFromSheet, sheetFromBusiness, sheetPatch, sheetSaveIssues, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import { PERSONA_LANGUAGES } from "@/lib/persona/contract";
 
@@ -341,9 +341,9 @@ export function ConfigForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ companySheet: changes }),
         });
-        const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[] } | null;
+        const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[]; error?: string; cap?: number } | null;
         if (!sres.ok || !sdata?.companySheet) {
-          setIssues(sheetIssues(sdata?.fields ?? [], sheet));
+          setIssues(sheetSaveIssues(sdata, sheet));
           setError(tKnowledge("issuesTitle"));
           return;
         }

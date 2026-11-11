@@ -2,7 +2,6 @@ import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireSession } from "@/lib/api/auth-guards";
-import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
@@ -10,6 +9,7 @@ import { inboundLegacyVoiceUpdates, inboundVoiceConfigUpdates } from "@/lib/voic
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
+import { planConfigBusinessWrite } from "@/lib/locations-cap";
 import { inheritAdminGlobalsWrite } from "@/lib/admin-gates";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { logEvent } from "@/lib/logger";
@@ -246,7 +246,17 @@ export async function PUT(req: NextRequest) {
     // objet valide (jamais throw). Cast ::jsonb explicite à cause du
     // bug postgres-js sur les objets/arrays JS qui se serialisent en
     // text[] par défaut (cf. fix knowledge column).
-    const cleaned = sanitizeBusinessConfig(body.business);
+    // Location cap (lib/locations-cap.ts): a `business` without `centres`
+    // keeps the stored ones; ADDING beyond the plan's cap → 403.
+    const [stored] = await db
+      .select({ business: agentConfigs.business, plan: users.subscriptionPlan })
+      .from(agentConfigs)
+      .innerJoin(users, eq(users.id, agentConfigs.userId))
+      .where(eq(agentConfigs.userId, guard.userId))
+      .limit(1);
+    const write = planConfigBusinessWrite(body.business, stored?.business, stored?.plan);
+    if (!write.ok) return NextResponse.json(write.body, { status: write.status });
+    const cleaned = write.business;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (updates as any).business = sql`${JSON.stringify(cleaned)}::jsonb`;
     // Knowledge S4 (write-alongside): refresh the account's company sheet

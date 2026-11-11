@@ -16,6 +16,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { capScannedLocations, locationKey } from "@/lib/locations-cap";
+
 import type {
   BusinessConfig,
   BusinessService,
@@ -38,6 +40,9 @@ interface ScanResultEvent {
   suggestedPrimaryLanguage: string | null;
   confidence: Record<AgentKey, number>;
   pages: { url: string; title: string }[];
+  /** The plan's location cap (lib/locations-cap.ts). */
+  locationCap?: number;
+  centresTruncated?: boolean;
 }
 
 type StreamEvent =
@@ -116,7 +121,7 @@ export function WebsiteScanWizard({
    * Given: no review step here — the raw draft goes back to the caller
    * (the Knowledge brick shows its own proposal: what changes, Apply/Cancel).
    */
-  onDraft?: (draft: BusinessConfig, suggestedLanguage: string | null, url: string) => void;
+  onDraft?: (draft: BusinessConfig, suggestedLanguage: string | null, url: string, locationCap?: number) => void;
 }) {
   const t = useTranslations("WebsiteScan");
   const tDays = useTranslations("DashboardConfig");
@@ -154,7 +159,7 @@ export function WebsiteScanWizard({
 
   const abortRef = useRef<AbortController | null>(null);
   // The scan's result, readable when the stream ends (state isn't yet).
-  const resultRef = useRef<{ business: BusinessConfig; lang: string | null } | null>(null);
+  const resultRef = useRef<{ business: BusinessConfig; lang: string | null; locationCap?: number } | null>(null);
 
   const dayLabel = useCallback(
     (d: WeekDay) => {
@@ -211,7 +216,7 @@ export function WebsiteScanWizard({
       case "result": {
         setDraft(ev.business);
         setSuggestedLang(ev.suggestedPrimaryLanguage);
-        resultRef.current = { business: ev.business, lang: ev.suggestedPrimaryLanguage ?? null };
+        resultRef.current = { business: ev.business, lang: ev.suggestedPrimaryLanguage ?? null, locationCap: ev.locationCap };
         // mergeMode est décidé après la fin du stream (cf. startScan) selon que
         // la config business existante est vide ou non.
         break;
@@ -275,7 +280,7 @@ export function WebsiteScanWizard({
       if (gotResult && onDraft && resultRef.current) {
         const r = resultRef.current;
         resultRef.current = null;
-        onDraft(r.business, r.lang, target.trim());
+        onDraft(r.business, r.lang, target.trim(), r.locationCap);
         reset();
         onClose();
         return;
@@ -340,10 +345,17 @@ export function WebsiteScanWizard({
           : draft.identity;
     }
 
+    // Locations: a scan never removes one (also in "replace"), and adds new
+    // ones only within the room left under the plan's cap.
     const centres = include.centres
-      ? mergeMode === "add"
-        ? [...existingBusiness.centres, ...draft.centres]
-        : draft.centres
+      ? [
+          ...existingBusiness.centres,
+          ...capScannedLocations(
+            existingBusiness.centres,
+            draft.centres.filter((c) => !existingBusiness.centres.some((e) => locationKey(e.name) === locationKey(c.name))),
+            resultRef.current?.locationCap ?? Number.POSITIVE_INFINITY,
+          ).kept,
+        ]
       : existingBusiness.centres;
 
     const services = include.services

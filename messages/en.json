@@ -2352,7 +2352,8 @@
       "unknownLocation": "“{service}” is linked to a location that no longer exists.",
       "invalidEmail": "the email address isn't valid.",
       "notesTooLong": "the notes are longer than 6000 characters.",
-      "invalid": "a value isn't valid."
+      "invalid": "a value isn't valid.",
+      "locationCap": "your plan allows {cap, plural, one {# location} other {# locations}}: remove one before adding another."
     },
     "instructionsLabel": "This agent's instructions",
     "instructionsHint": "What this agent should do or avoid. They apply to this agent only.",
@@ -2449,7 +2450,8 @@
     "after": "after:",
     "fieldLabel": "{label}:",
     "widenedNote": "Its location isn't kept: it will be offered at all your locations.",
-    "reviewApplySome": "Apply {n} of {total}"
+    "reviewApplySome": "Apply {n} of {total}",
+    "reviewLocationCap": "Your plan allows {cap, plural, one {# location} other {# locations}}: the site lists more, so the extra ones are left out. Nothing you already have is removed."
   },
   "ToolsBrick": {
     "intro": "What your receptionist can do on a call, besides talking. Hanging up is always possible.",

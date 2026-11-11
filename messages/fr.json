@@ -2352,7 +2352,8 @@
       "unknownLocation": "« {service} » est rattachée à un établissement qui n'existe plus.",
       "invalidEmail": "l'adresse e-mail n'est pas valide.",
       "notesTooLong": "les notes dépassent 6000 caractères.",
-      "invalid": "une valeur n'est pas valide."
+      "invalid": "une valeur n'est pas valide.",
+      "locationCap": "votre offre permet {cap, plural, one {# établissement} other {# établissements}} : retirez-en un avant d'en ajouter un autre."
     },
     "instructionsLabel": "Les consignes de cet agent",
     "instructionsHint": "Ce que cet agent doit faire ou éviter. Elles ne valent que pour lui.",
@@ -2449,7 +2450,8 @@
     "after": "après :",
     "fieldLabel": "{label} :",
     "widenedNote": "Son établissement n'est pas retenu : elle sera proposée dans tous vos établissements.",
-    "reviewApplySome": "Appliquer {n} sur {total}"
+    "reviewApplySome": "Appliquer {n} sur {total}",
+    "reviewLocationCap": "Votre offre permet {cap, plural, one {# établissement} other {# établissements}} : le site en liste davantage, les autres ne sont pas ajoutés. Rien de ce que vous avez déjà n'est retiré."
   },
   "ToolsBrick": {
     "intro": "Ce que votre réceptionniste peut faire pendant un appel, en plus de parler. Raccrocher est toujours possible.",
