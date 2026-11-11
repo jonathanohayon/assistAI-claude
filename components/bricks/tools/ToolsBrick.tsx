@@ -21,28 +21,43 @@
  * Outbound (T4): rendered only when the server says this account's outbound
  * calls may use tools (`outboundTools.visible`), and then only booking and
  * transfer — contacts and orders are not shown at all.
+ *
+ * "Ask your agent" (T5b): one more row on the receptionist, only when the
+ * server says `clientAgentTool.visible` (not in the DOM otherwise): its
+ * switch, the agent's address, the mode, a connection test (plain words
+ * only) and a WRITE-ONLY signing secret — generated in the browser, shown
+ * once until the save, then only "set / not set".
  */
 
 import NextLink from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { useId, useState } from "react";
 
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
-import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
+import { ChipGroup, FOCUS, HINT, LABEL } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
-// The screen holds what GET sends: Tools without the client agent secret.
-import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
+import { CLIENT_AGENT_MODES, type CapabilityKey, type ClientAgentMode } from "@/lib/tools/contract";
 
 import {
   capabilityList,
   capabilityView,
   capabilityWhatKey,
+  clientAgentRowVisible,
+  clientAgentTestBody,
+  clientAgentTestWords,
+  clientAgentView,
+  generateClientAgentSecret,
   inSentence,
   localPhone,
+  secretState,
   shownCapabilities,
   toolsBrickVisible,
   waitingForGoogle,
   type CapabilityView,
+  type ClientAgentRefusal,
+  type ScreenTools as Tools,
+  type TestWords,
   type ToolsKind,
   type ToolsResponse,
 } from "./tools-ui";
@@ -64,9 +79,21 @@ export interface ToolsBrickProps {
   asUserId?: string | null;
   /** The last save was refused for these capabilities (403 outbound_tools_disabled). */
   refused?: CapabilityKey[] | null;
+  /** The last save was refused for "Ask your agent" (403 client_agent_disabled / 400 unsafe_url). */
+  clientAgentRefused?: ClientAgentRefusal | null;
 }
 
-export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnTo, asUserId, refused }: ToolsBrickProps) {
+export function ToolsBrick({
+  kind,
+  served,
+  tools,
+  onChange,
+  onAddNumber,
+  returnTo,
+  asUserId,
+  refused,
+  clientAgentRefused,
+}: ToolsBrickProps) {
   const t = useTranslations("ToolsBrick");
   const tPlans = useTranslations("Plans");
   const locale = useLocale();
@@ -126,6 +153,16 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
             action={<Action v={view(s)} hasNumber={!!number} onAddNumber={onAddNumber} />}
           />
         ))}
+        {clientAgentRowVisible(kind, served) && (
+          <CapabilityRow
+            v={clientAgentView(served, tools)}
+            checked={tools.clientAgent.enabled}
+            onToggle={(enabled) => onChange({ ...tools, clientAgent: { ...tools.clientAgent, enabled } })}
+            number={null}
+            kind={kind}
+            action={<ClientAgentSettings tools={tools} onChange={onChange} asUserId={asUserId} refused={clientAgentRefused ?? null} />}
+          />
+        )}
       </ul>
 
       {notInPlan.length > 0 && (
@@ -250,5 +287,218 @@ function Action({ v, hasNumber, onAddNumber }: { v: CapabilityView; hasNumber: b
     <Link href="/dashboard?tile=notifs" className={LINK}>
       {label}
     </Link>
+  );
+}
+
+const BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-4 text-sm font-semibold text-[#18181b] hover:border-[#be185d]/40 disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS}`;
+const ALERT = "rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm text-[#991b1b]";
+
+/**
+ * "Ask your agent" settings: address, mode, signing secret, connection test.
+ * Everything is the screen's unsaved state until the page's Save.
+ */
+function ClientAgentSettings({
+  tools,
+  onChange,
+  asUserId,
+  refused,
+}: {
+  tools: Tools;
+  onChange: (next: Tools) => void;
+  asUserId?: string | null;
+  refused: ClientAgentRefusal | null;
+}) {
+  const t = useTranslations("ToolsBrick.agent");
+  const id = useId();
+  const ca = tools.clientAgent;
+  const [confirming, setConfirming] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [test, setTest] = useState<TestWords | "running" | null>(null);
+  const secret = secretState(tools);
+
+  const set = (patch: Partial<Tools["clientAgent"]>) => onChange({ ...tools, clientAgent: { ...ca, ...patch } });
+  // Back to what the server has: no `secret` key at all (the save omits it).
+  const keepStoredSecret = () => {
+    const { secret: _drop, ...rest } = ca;
+    void _drop;
+    onChange({ ...tools, clientAgent: rest });
+  };
+  const generate = () => {
+    setConfirming(false);
+    setCopied(false);
+    set({ secret: generateClientAgentSecret() });
+  };
+
+  const runTest = async () => {
+    const body = clientAgentTestBody(tools);
+    // Nothing to test: say so without spending one of the account's tests.
+    if (!body.url) return setTest({ key: "no_agent_url" });
+    setTest("running");
+    const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+    try {
+      const res = await fetch(`/api/dashboard/tools/client-agent/test${qs}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setTest(clientAgentTestWords(res.status, await res.json().catch(() => null)));
+    } catch {
+      setTest({ key: "generic" });
+    }
+  };
+
+  const urlId = `${id}-url`;
+  const urlHintId = `${id}-url-hint`;
+  const urlErrorId = `${id}-url-error`;
+  const secretLabelId = `${id}-secret`;
+
+  return (
+    <div className="mt-3 flex flex-col gap-4">
+      {/* A refused save, in our words next to the row (never the server's message). */}
+      {refused === "disabled" && (
+        <p role="alert" className={ALERT}>
+          {t("refused.disabled")}
+        </p>
+      )}
+
+      <div>
+        <label htmlFor={urlId} className={LABEL}>
+          {t("url")}
+        </label>
+        <input
+          id={urlId}
+          type="url"
+          inputMode="url"
+          dir="ltr"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="https://"
+          value={ca.url}
+          aria-describedby={refused === "unsafeUrl" ? `${urlHintId} ${urlErrorId}` : urlHintId}
+          aria-invalid={refused === "unsafeUrl" || undefined}
+          onChange={(e) => {
+            setTest(null);
+            set({ url: e.target.value });
+          }}
+          className={`mt-1 block min-h-11 w-full rounded-xl border bg-white px-3 text-start text-sm text-[#18181b] ${refused === "unsafeUrl" ? "border-[#dc2626]" : "border-[#cbd5e1]"} ${FOCUS}`}
+        />
+        <p id={urlHintId} className={HINT}>
+          {t("urlHint")}
+        </p>
+        {refused === "unsafeUrl" && (
+          <p id={urlErrorId} role="alert" className={`mt-2 ${ALERT}`}>
+            {t("refused.unsafeUrl")}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <ChipGroup
+          label={t("mode")}
+          options={CLIENT_AGENT_MODES.map((m) => ({ id: m, label: t(`modes.${m}`) }))}
+          selected={ca.mode}
+          onPick={(m) => set({ mode: m as ClientAgentMode })}
+        />
+        <p className={`mt-2 ${HINT}`}>{t(`modeHint.${ca.mode}`)}</p>
+      </div>
+
+      <div>
+        <p id={secretLabelId} className={LABEL}>
+          {t("secret")}
+        </p>
+        <p className={HINT}>{t("secretHint")}</p>
+        {/* Only ever "set / not set" from the server: the value never comes back. */}
+        <p className="mt-1 text-sm text-[#18181b]" aria-live="polite">
+          {secret === "set" ? t("secretSet") : secret === "removing" ? t("secretRemoving") : secret === "unset" ? t("secretUnset") : null}
+        </p>
+
+        {secret === "new" && typeof ca.secret === "string" && (
+          <div className="mt-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] p-3" role="group" aria-labelledby={`${id}-new`}>
+            <p id={`${id}-new`} className="text-sm font-semibold text-[#78350f]">
+              {t("newSecretLabel")}
+            </p>
+            <code dir="ltr" className="mt-1 block select-all break-all rounded-lg bg-white px-2 py-2 font-mono text-sm text-[#18181b]">
+              {ca.secret}
+            </code>
+            <p className="mt-2 text-sm font-semibold text-[#78350f]">{t("copyNow")}</p>
+            <p className={HINT}>{t("saveToKeep")}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className={BUTTON}
+                onClick={() => {
+                  navigator.clipboard?.writeText(ca.secret as string).then(
+                    () => setCopied(true),
+                    () => {},
+                  );
+                }}
+              >
+                {t("copy")}
+              </button>
+              <button type="button" className={LINK} onClick={keepStoredSecret}>
+                {t("undo")}
+              </button>
+              <span className="text-sm text-[#047857]" aria-live="polite">
+                {copied ? t("copied") : ""}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Regenerating breaks the secret the customer's agent uses: ask first. */}
+        {confirming ? (
+          <div role="group" aria-labelledby={`${id}-confirm`} className="mt-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
+            <p id={`${id}-confirm`} role="alert" className="text-sm text-[#18181b]">
+              {t("confirmRegenerate")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className={BUTTON} onClick={generate}>
+                {t("confirmYes")}
+              </button>
+              <button type="button" className={BUTTON} onClick={() => setConfirming(false)}>
+                {t("confirmNo")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          secret !== "new" && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className={BUTTON}
+                aria-describedby={secretLabelId}
+                onClick={() => (secret === "set" ? setConfirming(true) : generate())}
+              >
+                {secret === "set" ? t("regenerate") : t("generate")}
+              </button>
+              {secret === "set" && (
+                <button type="button" className={LINK} aria-describedby={secretLabelId} onClick={() => set({ secret: null })}>
+                  {t("remove")}
+                </button>
+              )}
+              {secret === "removing" && (
+                <button type="button" className={LINK} onClick={keepStoredSecret}>
+                  {t("undo")}
+                </button>
+              )}
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button type="button" className={`${BUTTON} self-start`} onClick={runTest} disabled={test === "running"}>
+          {test === "running" ? t("testing") : t("testButton")}
+        </button>
+        {/* One calm line, in our words only: never an address, a remote body or a status number. */}
+        <p role="status" aria-live="polite" className="min-h-5 text-sm">
+          {test && test !== "running" && (
+            <span className={test.key === "ok" ? "font-semibold text-[#047857]" : "text-[#92400e]"}>
+              {test.key === "ok" ? t("test.ok", { ms: test.ms }) : t(`test.${test.key}`)}
+            </span>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }

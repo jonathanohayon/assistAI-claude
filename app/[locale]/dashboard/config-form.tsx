@@ -58,9 +58,14 @@ import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
-import { activeCount, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-// The screen holds what GET sends: Tools without the client agent secret.
-import type { PublicTools as Tools } from "@/lib/tools/contract";
+import {
+  activeCount,
+  clientAgentSaveRefusal,
+  toolsSaveBody,
+  type ClientAgentRefusal,
+  type ScreenTools as Tools,
+  type ToolsResponse,
+} from "@/components/bricks/tools/tools-ui";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
@@ -153,6 +158,8 @@ export function ConfigForm({
   const [toolsServed, setToolsServed] = useState<ToolsResponse | null>(null);
   const [tools, setTools] = useState<Tools | null>(null);
   const [toolsBase, setToolsBase] = useState<Tools | null>(null);
+  // "Ask your agent": the last save refused for it, shown next to its row.
+  const [clientAgentRefused, setClientAgentRefused] = useState<ClientAgentRefusal | null>(null);
   // The transfer number is written by the tools PUT too (switching transfer
   // off clears the served number): the config only sends it when edited.
   const [transferBase, setTransferBase] = useState(initial.transferNumber);
@@ -347,7 +354,10 @@ export function ConfigForm({
 
       // 2. The agent's switches (tools), when they changed.
       if (tools && toolsBase) {
-        const tchanges = toolsPatch(toolsBase, tools);
+        // Carries clientAgent.enabled whenever clientAgent is touched; the
+        // secret only once generated or removed.
+        const tchanges = toolsSaveBody(toolsBase, tools);
+        setClientAgentRefused(null);
         if (Object.keys(tchanges).length > 0) {
           const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
           const tres = await fetch(`/api/dashboard/tools${qs}`, {
@@ -357,6 +367,13 @@ export function ConfigForm({
           });
           const tdata = (await tres.json().catch(() => null)) as ToolsResponse | null;
           if (!tres.ok || !tdata?.tools) {
+            // Refused for "Ask your agent": our words next to its row, the
+            // unsaved values (a generated secret included) kept on screen.
+            const caRefusal = clientAgentSaveRefusal(tres.status, tdata);
+            if (caRefusal) {
+              setClientAgentRefused(caRefusal);
+              setActiveTile("tools");
+            }
             setError(tTools("saveError"));
             return;
           }
@@ -789,6 +806,7 @@ export function ConfigForm({
                         onAddNumber={() => setActiveTile("notifs")}
                         returnTo="/dashboard?tile=tools"
                         asUserId={asUserId ?? null}
+                        clientAgentRefused={clientAgentRefused}
                       />
                     ) : (
                       <p className="text-sm text-[#475569]" aria-busy="true">

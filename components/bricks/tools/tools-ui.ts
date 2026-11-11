@@ -66,8 +66,11 @@ export type CapabilityStatus =
 
 export type PrerequisiteAction = "connectGoogle" | "addNumber" | null;
 
+/** A row on the screen: the plan capabilities, plus "Ask your agent" (T5b). */
+export type ShownKey = CapabilityKey | "clientAgent";
+
 export interface CapabilityView {
-  key: CapabilityKey;
+  key: ShownKey;
   status: CapabilityStatus;
   missing: MissingPrerequisite | null;
   action: PrerequisiteAction;
@@ -88,7 +91,7 @@ const ACTION: Record<MissingPrerequisite, PrerequisiteAction> = {
  * the call would still get the tool (`active` true): until prerequisites are
  * enforced on the call (T1b), the screen is the honest one.
  */
-export function capabilityView(key: CapabilityKey, s: CapabilityState): CapabilityView {
+export function capabilityView(key: ShownKey, s: CapabilityState): CapabilityView {
   const missing = s.prerequisite.met ? null : s.prerequisite.missing;
   if (!s.requested) return { key, status: "off", missing, action: null };
   if (missing) return { key, status: "pending", missing, action: ACTION[missing] };
@@ -164,7 +167,10 @@ export function refusedCapabilities(status: number, body: unknown): CapabilityKe
  * switched-on capabilities waiting for the Google account, in list order.
  */
 export function waitingForGoogle(switches: CapabilityView[]): CapabilityKey[] {
-  return switches.filter((v) => v.status === "pending" && v.missing === "google_not_connected").map((v) => v.key);
+  return switches
+    .filter((v) => v.status === "pending" && v.missing === "google_not_connected")
+    .map((v) => v.key)
+    .filter((k): k is CapabilityKey => k !== "clientAgent");
 }
 
 /**
@@ -191,6 +197,120 @@ export const inSentence = (name: string, locale: string): string =>
  * Outbound wording where the receptionist's would be wrong: on an outbound
  * call nobody is "the caller" (we called them), so transfer has its own line.
  */
-export function capabilityWhatKey(key: CapabilityKey, kind: ToolsKind): string {
+export function capabilityWhatKey(key: ShownKey, kind: ToolsKind): string {
   return kind === "outbound" && key === "transfer" ? "cap.transfer.whatOutbound" : `cap.${key}.what`;
+}
+
+// ── "Ask your agent" (T5b): the customer's own agent, asked during calls ──
+
+/**
+ * What the screen holds: what GET sends, plus — only between "Generate" and
+ * the save — the new secret (a string) or its removal (null). Never filled
+ * from a server answer: after a save or a reload it is gone again.
+ */
+export type ScreenTools = Omit<PublicTools, "clientAgent"> & {
+  clientAgent: PublicTools["clientAgent"] & { secret?: string | null };
+};
+
+/**
+ * Whether the "Ask your agent" row exists. Receptionist only, and only when
+ * the server says so for this account; a missing answer counts as no.
+ */
+export function clientAgentRowVisible(kind: ToolsKind, served: ToolsResponse | null | undefined): boolean {
+  return kind === "inbound" && served?.clientAgentTool?.visible === true;
+}
+
+/** The row's state: the server's prerequisites, the screen's (unsaved) switch. */
+export function clientAgentView(served: ToolsResponse, tools: ScreenTools): CapabilityView {
+  return capabilityView("clientAgent", { ...served.capabilities.clientAgent, requested: tools.clientAgent.enabled });
+}
+
+/** Bytes of randomness in a generated secret (256 bits). */
+export const SECRET_BYTES = 32;
+
+/**
+ * A strong signing secret, made in the browser: 32 random bytes, base64url
+ * (43 characters, no padding). `fill` is injectable for tests only.
+ */
+export function generateClientAgentSecret(
+  fill: (b: Uint8Array) => Uint8Array = (b) => globalThis.crypto.getRandomValues(b),
+): string {
+  const bytes = fill(new Uint8Array(SECRET_BYTES));
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * How the secret field reads. "new": generated, shown once, not saved yet;
+ * "removing": cleared on save; otherwise the server's secretSet. Never the
+ * value itself (only the one-time box shows a "new" one).
+ */
+export type SecretState = "new" | "removing" | "set" | "unset";
+export function secretState(tools: ScreenTools): SecretState {
+  const s = tools.clientAgent.secret;
+  if (typeof s === "string") return "new";
+  if (s === null) return tools.clientAgent.secretSet ? "removing" : "unset";
+  return tools.clientAgent.secretSet ? "set" : "unset";
+}
+
+/**
+ * The tools PUT body: only what changed (toolsPatch) — so `secret` is sent
+ * only once generated (a string) or removed (null) — and, whenever the
+ * client agent is touched, its CURRENT `enabled` too (live-bug rule: a
+ * partial clientAgent save never leaves the switch to a server default).
+ */
+export function toolsSaveBody(base: ScreenTools, next: ScreenTools): Record<string, unknown> {
+  const patch = toolsPatch(base, next);
+  const ca = patch.clientAgent as Record<string, unknown> | undefined;
+  if (ca) patch.clientAgent = { ...ca, enabled: next.clientAgent.enabled };
+  return patch;
+}
+
+/**
+ * The test request's body: the UNSAVED address, and the secret only when
+ * one was generated (string) or removed (null). Omitted, the server signs
+ * with the stored secret when the address is the stored one.
+ */
+export function clientAgentTestBody(tools: ScreenTools): { url: string; secret?: string | null } {
+  const { url, secret } = tools.clientAgent;
+  return secret === undefined ? { url: url.trim() } : { url: url.trim(), secret };
+}
+
+const TEST_REASONS = ["blocked_address", "timeout", "http_status", "bad_shape", "too_large", "network", "no_agent_url"] as const;
+
+/** The message key under ToolsBrick.agent.test for one test answer. */
+export type TestWords =
+  | { key: "ok"; ms: number }
+  | { key: (typeof TEST_REASONS)[number] | "rateLimited" | "disabled" | "generic" };
+
+/**
+ * POST /api/dashboard/tools/client-agent/test → one calm line. Only known
+ * codes map to words; nothing the server (or the customer's agent) sent is
+ * ever shown: no address, no remote body, no status number.
+ */
+export function clientAgentTestWords(status: number, body: unknown): TestWords {
+  const b = (body && typeof body === "object" ? body : {}) as { ok?: unknown; ms?: unknown; reason?: unknown; error?: unknown };
+  if (status === 429) return { key: "rateLimited" };
+  if (status === 403 && b.error === "client_agent_disabled") return { key: "disabled" };
+  if (status !== 200) return { key: "generic" };
+  if (b.ok === true && typeof b.ms === "number" && Number.isFinite(b.ms) && b.ms >= 0) return { key: "ok", ms: Math.round(b.ms) };
+  if (b.ok === false) {
+    const r = TEST_REASONS.find((x) => x === b.reason);
+    if (r) return { key: r };
+  }
+  return { key: "generic" };
+}
+
+/**
+ * A refused save, for the "Ask your agent" row: 403 client_agent_disabled →
+ * "disabled"; 400 unsafe_url → "unsafeUrl"; anything else null (the
+ * caller's generic error). Words only, never the server's message.
+ */
+export type ClientAgentRefusal = "disabled" | "unsafeUrl";
+export function clientAgentSaveRefusal(status: number, body: unknown): ClientAgentRefusal | null {
+  const b = body as { error?: unknown } | null;
+  if (status === 403 && b?.error === "client_agent_disabled") return "disabled";
+  if (status === 400 && b?.error === "unsafe_url") return "unsafeUrl";
+  return null;
 }
