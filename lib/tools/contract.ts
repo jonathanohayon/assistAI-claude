@@ -66,25 +66,37 @@ export interface CapabilityAgent {
 export interface CapabilityAccount {
   transferNumber: string;
   googleConnected: boolean;
+  /**
+   * Outbound only (T4): the OUTBOUND_TOOLS site switch for this account
+   * (lib/tools/outbound-switch.ts). Absent / false = no tool on outbound
+   * calls, exactly as before.
+   */
+  outboundToolsEnabled?: boolean;
 }
+
+/** Capabilities an outbound agent can have once OUTBOUND_TOOLS allows it (T4). */
+export const OUTBOUND_CAPABILITIES: readonly CapabilityKey[] = ["booking", "transfer"];
 
 export function effectiveCapabilities(agent: CapabilityAgent, account: CapabilityAccount, plan: PlanFeatures): EffectiveCapabilities {
   const outbound = agent.recipe === "outbound";
-  const state = (requested: boolean, planIncluded: boolean, missing: MissingPrerequisite | null): CapabilityState => {
-    // Outbound agents have no tools until T4.
-    const m: MissingPrerequisite | null = outbound ? "not_available_outbound" : missing;
+  const state = (key: CapabilityKey, requested: boolean, planIncluded: boolean, missing: MissingPrerequisite | null): CapabilityState => {
+    // Outbound (T4): booking and transfer only, and only when the site
+    // switch allows it for this account; otherwise not available, as before.
+    // From there: the SAME rules as the receptionist.
+    const outboundOk = account.outboundToolsEnabled === true && OUTBOUND_CAPABILITIES.includes(key);
+    const m: MissingPrerequisite | null = outbound && !outboundOk ? "not_available_outbound" : missing;
     const blocking = m !== null && (PREREQUISITES_ENFORCED_ON_CALL || ENFORCED_TODAY[m]);
     return { requested, planIncluded, prerequisite: { met: m === null, missing: m }, active: requested && planIncluded && !blocking };
   };
   const google = account.googleConnected ? null : "google_not_connected";
   return {
-    booking: state(agent.tools.booking.enabled, plan.calendar, google),
+    booking: state("booking", agent.tools.booking.enabled, plan.calendar, google),
     // Contacts go to the customer's Google Sheet (app/api/sheets/contact).
-    contacts: state(agent.tools.contacts.enabled, plan.crm, google),
+    contacts: state("contacts", agent.tools.contacts.enabled, plan.crm, google),
     // No plan feature for transfer: every plan includes it.
     // Same test as the worker (a non-empty string registers transfer_call).
-    transfer: state(agent.tools.transfer.enabled, true, account.transferNumber ? null : "no_transfer_number"),
+    transfer: state("transfer", agent.tools.transfer.enabled, true, account.transferNumber ? null : "no_transfer_number"),
     // Orders ride on the CRM plan feature; no prerequisite.
-    orders: state(agent.tools.orders.enabled, plan.crm, null),
+    orders: state("orders", agent.tools.orders.enabled, plan.crm, null),
   };
 }

@@ -35,7 +35,19 @@ export function receptionistCallFields(caps: EffectiveCapabilities, plan: PlanFe
   };
 }
 
-/** Outbound: no calendar / CRM / WhatsApp on an outbound call (unchanged). */
+/**
+ * Outbound (T4): what the worker needs to run the tools — ONLY when at least
+ * one is active ({} otherwise: OUTBOUND_TOOLS off = today's payload, byte for
+ * byte). The tools route by `accountId` (x-tenant-user-id), never by the
+ * call's numbers: a campaign without its own caller id shows the trunk's
+ * default number, which may not be this account's.
+ */
+export function outboundToolFields(caps: EffectiveCapabilities, accountId: string, transferNumber: string) {
+  if (!caps.booking.active && !caps.transfer.active) return {};
+  return { accountId, ...(caps.transfer.active ? { transferNumber } : {}) };
+}
+
+/** Outbound: calendar = booking (T4, off by default); no CRM / WhatsApp. */
 export function outboundCallFeatures(caps: EffectiveCapabilities) {
   return {
     calendar: caps.booking.active,

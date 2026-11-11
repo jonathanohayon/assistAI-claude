@@ -12,6 +12,7 @@ import { getTileToggles } from "@/lib/tile-toggles";
 import { TOOL_NAMES } from "@/lib/tools/admin-names";
 import { accountTransferNumber, outboundCapabilities, receptionistCapabilities } from "@/lib/tools/store";
 import { writeTools } from "@/lib/tools/write";
+import { capabilityInputsFor } from "@/lib/tools/load";
 import { upgradePlans } from "@/lib/tools/upgrade";
 
 export const dynamic = "force-dynamic";
@@ -73,12 +74,15 @@ async function view(s: Scope): Promise<Response> {
   let result;
   // The KEPT number: served when transfer is on, parked when it is off.
   let transferNumber: string;
+  let outboundVisible: boolean | null = null;
   if (s.agentId) {
     const [row] = await outboundRow(s.userId, s.agentId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    result = outboundCapabilities(row.toolsConfig, googleConnected, plan);
-    const [cfg] = await receptionistRow(s.userId);
-    transferNumber = cfg ? accountTransferNumber(cfg) : "";
+    // T4: the account's inputs, OUTBOUND_TOOLS included (same as the call).
+    const inputs = await capabilityInputsFor(s.userId);
+    result = outboundCapabilities(row.toolsConfig, inputs.account, plan);
+    transferNumber = inputs.account.transferNumber;
+    outboundVisible = inputs.account.outboundToolsEnabled;
   } else {
     const [row] = await receptionistRow(s.userId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -90,6 +94,9 @@ async function view(s: Scope): Promise<Response> {
     capabilities: result.capabilities,
     account: { googleConnected, transferNumberSet: Boolean(transferNumber), transferNumber: transferNumber || null },
     upgrade: upgradePlans(result.capabilities, matrix, PLANS),
+    // Outbound (T4): the server's decision from OUTBOUND_TOOLS for this
+    // account — never the switch value. false = the screen shows no tools.
+    ...(outboundVisible === null ? {} : { outboundTools: { visible: outboundVisible } }),
     ...(isAdmin ? { admin: { toolNames: TOOL_NAMES } } : {}),
   });
 }
@@ -105,7 +112,9 @@ export async function PUT(req: NextRequest) {
   if ("error" in s) return s.error;
   const body = (await req.json().catch(() => null)) as { tools?: unknown } | null;
 
-  const w = await writeTools(s.userId, s.agentId, body?.tools);
+  // T4: the outbound gate needs this account's OUTBOUND_TOOLS decision.
+  const enabled = s.agentId ? (await capabilityInputsFor(s.userId)).account.outboundToolsEnabled : false;
+  const w = await writeTools(s.userId, s.agentId, body?.tools, enabled);
   if (!w.ok) return NextResponse.json(w.body, { status: w.status });
   await logEvent({
     source: "web",
