@@ -5,7 +5,8 @@
 // number / ON restores it; a tools write commits toggles + columns in ONE
 // transaction (forced failure rolls both back); invalid writes change
 // nothing; legacy writes refresh the store; outbound stored only; the call
-// routes serve today's bytes after a round trip.
+// routes serve today's bytes after a round trip; outbound writes pass the
+// T4 gate only when OUTBOUND_TOOLS allows the account.
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -104,7 +105,12 @@ async function main() {
 
   // 7. Outbound: stored only, owner-checked, call unchanged.
   const ob = await otestC1();
-  ok("outbound write", (await writeTools(A, id("c1"), { booking: { enabled: true }, transfer: { enabled: true } })).ok);
+  // T4: with OUTBOUND_TOOLS off for the account, turning a tool on is refused…
+  const gated = await writeTools(A, id("c1"), { booking: { enabled: true }, transfer: { enabled: true } });
+  ok("outbound write, switch off → 403", !gated.ok && gated.status === 403 && gated.body.error === "outbound_tools_disabled");
+  // …and allowed when the switch is on for it (the stored value; the call
+  // below still has no tool: OUTBOUND_TOOLS is unset in this process).
+  ok("outbound write", (await writeTools(A, id("c1"), { booking: { enabled: true }, transfer: { enabled: true } }, true)).ok);
   const [c1] = await db.select({ t: outboundAgents.toolsConfig }).from(outboundAgents).where(eq(outboundAgents.id, id("c1")));
   ok("outbound stored", parseTools(c1.t).ok && (c1.t as { booking: { enabled: boolean } }).booking.enabled === true);
   ok("outbound call unchanged (still no tools)", (await otestC1()) === ob);
