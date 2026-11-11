@@ -56,6 +56,11 @@ export function ForwardingWizard({
   const [test, setTest] = useState<ForwardingTest | null>(null);
   const [startError, setStartError] = useState<ForwardingTestError | "network" | null>(null);
   const [starting, setStarting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(false);
+  // After a cancel the button disappears: focus goes to "Start the test".
+  const startRef = useRef<HTMLButtonElement>(null);
+  const focusStart = useRef(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const now = useMemo(() => new Date(clock), [clock]);
@@ -149,6 +154,31 @@ export function ForwardingWizard({
       setStarting(false);
     }
   };
+
+  // Cancel a running test: the window is cleared server-side (a past
+  // verification stays); back to idle, so polling stops.
+  const cancelTest = async () => {
+    if (cancelling) return;
+    setCancelling(true);
+    setCancelError(false);
+    try {
+      const res = await fetch(`/api/dashboard/forwarding-test${qs}`, { method: "DELETE" });
+      const data = (await res.json().catch(() => null)) as ForwardingTest | null;
+      if (!res.ok || !data) throw new Error(String(res.status));
+      focusStart.current = true;
+      setTest(data);
+    } catch {
+      setCancelError(true);
+    } finally {
+      setCancelling(false);
+    }
+  };
+  useEffect(() => {
+    if (focusStart.current && startRef.current) {
+      focusStart.current = false;
+      startRef.current.focus();
+    }
+  });
 
   const copy = async (text: string) => {
     try {
@@ -366,7 +396,22 @@ export function ForwardingWizard({
                 <span className="ms-auto font-mono text-[13px] tabular-nums" dir="ltr">
                   {formatCountdown(secondsLeft(test, now))}
                 </span>
+                {/* Quiet secondary action: stop waiting (a test started by mistake). */}
+                <button
+                  type="button"
+                  onClick={() => void cancelTest()}
+                  disabled={cancelling}
+                  aria-busy={cancelling}
+                  className="min-h-11 shrink-0 cursor-pointer whitespace-nowrap rounded-full border border-[#a5f3fc] bg-white px-3 text-[12px] font-semibold text-[#0e7490] hover:bg-[#f0fdff] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+                >
+                  {t("cancelTest")}
+                </button>
               </p>
+              {cancelError && (
+                <p role="alert" className="mt-1 text-[12px] text-[#b91c1c]">
+                  {t("cancelError")}
+                </p>
+              )}
               <p className="mt-2 text-[13px] text-[#155e75]">
                 {test.businessPhone
                   ? t.rich("waitingBodyWithNumber", {
@@ -404,6 +449,7 @@ export function ForwardingWizard({
                 className="mt-1 w-full max-w-xs rounded-xl border border-[#e2e8f0] px-3 py-2 text-sm tabular-nums"
               />
               <button
+                ref={startRef}
                 type="button"
                 onClick={startTest}
                 disabled={starting}

@@ -44,3 +44,12 @@ export function verificationMethod(
   if (!fwd) return "window";
   return !businessPhone || fwd === businessPhone ? "diversion" : "window";
 }
+
+/**
+ * Cancelling a test: clear the window and nothing else. A past verification
+ * (verifiedAt / method) and a past detection stay as they are; with no
+ * window, forwardingStatus is "idle" and markForwardingTestCall can't match
+ * (it requires startedAt within the window).
+ */
+export const CANCEL_TEST_PATCH = { forwardingTestStartedAt: null } as const;
+

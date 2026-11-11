@@ -2,6 +2,7 @@
 // Run with:  npx tsx scripts/tests/forwarding-wizard.test.ts
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   activationCode,
@@ -91,5 +92,18 @@ for (const id of ["hot_mobile", "other"] as const) {
   }
   // never without a source
   assert.equal(conditionalCodes({ ...CARRIERS.partner, source: null }, "+972500000000"), null);
+}
+// The waiting state can be cancelled: a quiet button calls DELETE and puts the
+// answer (status idle) in state, which stops polling; focus goes back to Start.
+{
+  const src = readFileSync(new URL("../../app/[locale]/dashboard/forwarding/forwarding-wizard.tsx", import.meta.url), "utf8");
+  const waiting = src.slice(src.indexOf('status === "waiting" && test ?'), src.indexOf("waitingHangUp"));
+  assert.match(waiting, /onClick=\{\(\) => void cancelTest\(\)\}/, "cancel button in the waiting state");
+  assert.match(src, /method: "DELETE"[\s\S]{0,200}setTest\(data\)/, "cancel puts the server's idle state in place");
+  assert.match(src, /ref=\{startRef\}/, "focus target after cancel");
+  for (const l of ["fr", "en", "he"]) {
+    const m = JSON.parse(readFileSync(new URL(`../../messages/${l}.json`, import.meta.url), "utf8")).DashboardForwarding;
+    assert.ok(m.cancelTest && m.cancelError, `${l}: cancel copy`);
+  }
 }
 console.log("ALL FORWARDING-CARRIER TESTS PASSED");

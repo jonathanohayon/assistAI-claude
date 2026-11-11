@@ -2165,7 +2165,9 @@
     "step2BodyMissed": "From your business phone, dial these three codes one after the other (wait for the confirmation each time).",
     "kind_busy": "When your line is busy",
     "kind_noAnswer": "When you don't answer",
-    "kind_unreachable": "When your phone is off or has no signal"
+    "kind_unreachable": "When your phone is off or has no signal",
+    "cancelTest": "Cancel the test",
+    "cancelError": "The test couldn't be cancelled. Try again."
   },
   "Bricks": {
     "moreSettings": "More settings",
