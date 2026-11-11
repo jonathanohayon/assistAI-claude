@@ -1009,7 +1009,7 @@
     "statAvgDuration": "Durée moy.",
     "statMinutesValue": "{count} min",
     "statDurationValue": "{min} min {sec} s",
-    "statPercentValue": "{rate} %",
+    "statPercentValue": "{rate} %",
     "statApproxValue": "≈ {value}",
     "statBookings": "RDV pris",
     "statBookingsSince": "depuis le {date}",
