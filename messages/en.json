@@ -2552,7 +2552,9 @@
       "refused": {
         "disabled": "Not turned on: asking your agent isn't open for this account yet.",
         "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
-      }
+      },
+      "copiedDone": "I've copied it",
+      "saveFirstToTest": "Save first to test."
     }
   },
   "AgentBrain": {

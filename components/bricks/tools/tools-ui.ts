@@ -317,3 +317,15 @@ export function clientAgentSaveRefusal(status: number, body: unknown): ClientAge
   if (status === 400 && b?.error === "unsafe_url") return "unsafeUrl";
   return null;
 }
+
+/**
+ * "Test the connection" can't be meaningful yet: the address changed while the
+ * stored secret is kept. The test route signs a NEW address only with a secret
+ * sent with it, so it would run unsigned, while after saving the live call is
+ * signed with the kept secret. A new secret or an unchanged address tests fine.
+ */
+export function clientAgentTestNeedsSave(tools: ScreenTools, storedUrl: string): boolean {
+  const ca = tools.clientAgent;
+  const urlChanged = ca.url.trim() !== storedUrl.trim();
+  return urlChanged && ca.secret === undefined && ca.secretSet;
+}

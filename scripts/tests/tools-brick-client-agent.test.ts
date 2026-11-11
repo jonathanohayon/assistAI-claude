@@ -26,6 +26,7 @@ import {
   generateClientAgentSecret,
   SECRET_BYTES,
   secretState,
+  clientAgentTestNeedsSave,
   toolsSaveBody,
   type ClientAgentRefusal,
   type ScreenTools,
@@ -284,6 +285,35 @@ const en = messages("en").ToolsBrick;
   }
   const brick = read("components/bricks/tools/ToolsBrick.tsx");
   assert.doesNotMatch(brick, /from-\[#(?:be185d|db2777|ec4899)\][^"]*to-\[#(?:0e7490|06b6d4|67e8f9|22d3ee)\]/, "no pink→cyan gradient");
+}
+
+// Design review (tamaraVP): the new-secret box is NOT tied to the save — it stays until
+// "C'est copié" (or leaving the page); "Annuler" only before the save.
+{
+  const src = read("components/bricks/tools/ToolsBrick.tsx");
+  assert.match(src, /const \[revealed, setRevealed\] = useState<string \| null>\(null\)/);
+  assert.match(src, /setRevealed\(s\);\s*set\(\{ secret: s \}\)/, "generate keeps its own copy");
+  assert.match(src, /const shown = revealed \?\? /);
+  assert.match(src, /secret === "new" \? \([\s\S]*?t\("undo"\)[\s\S]*?\) : \([\s\S]*?setRevealed\(null\)[\s\S]*?t\("copiedDone"\)/, "Annuler before save, C'est copié after");
+  for (const l of ["fr", "en", "he"]) assert.ok(messages(l).ToolsBrick.agent.copiedDone, l);
+  assert.equal(messages("fr").ToolsBrick.agent.copiedDone, "C'est copié");
+}
+
+// Design review: "Tester la connexion" is disabled ONLY when the address changed and the
+// stored secret is kept (the test would run unsigned; the live call would be signed).
+{
+  const base = { enabled: true, url: "https://agent.example.test/a", mode: "lead" as const, secretSet: true };
+  const st = (ca: Partial<ScreenTools["clientAgent"]>) => ({ clientAgent: { ...base, ...ca } }) as unknown as ScreenTools;
+  const stored = "https://agent.example.test/a";
+  assert.equal(clientAgentTestNeedsSave(st({ url: "https://agent.example.test/b" }), stored), true, "changed + kept secret");
+  assert.equal(clientAgentTestNeedsSave(st({}), stored), false, "unchanged address");
+  assert.equal(clientAgentTestNeedsSave(st({ url: "https://agent.example.test/b", secret: "new" }), stored), false, "changed + new secret");
+  assert.equal(clientAgentTestNeedsSave(st({ url: "https://agent.example.test/b", secretSet: false }), stored), false, "no secret anywhere");
+  assert.equal(clientAgentTestNeedsSave(st({ url: " https://agent.example.test/a " }), stored), false, "whitespace is not a change");
+  const src = read("components/bricks/tools/ToolsBrick.tsx");
+  assert.match(src, /disabled=\{test === "running" \|\| testBlocked\}/);
+  assert.match(src, /\{testBlocked && \([\s\S]*?t\("saveFirstToTest"\)/);
+  assert.equal(messages("fr").ToolsBrick.agent.saveFirstToTest, "Enregistrez d'abord pour tester.");
 }
 
 console.log("ALL TOOLS-BRICK CLIENT AGENT TESTS PASSED");

@@ -51,6 +51,7 @@ import {
   inSentence,
   localPhone,
   secretState,
+  clientAgentTestNeedsSave,
   shownCapabilities,
   toolsBrickVisible,
   waitingForGoogle,
@@ -160,7 +161,7 @@ export function ToolsBrick({
             onToggle={(enabled) => onChange({ ...tools, clientAgent: { ...tools.clientAgent, enabled } })}
             number={null}
             kind={kind}
-            action={<ClientAgentSettings tools={tools} onChange={onChange} asUserId={asUserId} refused={clientAgentRefused ?? null} />}
+            action={<ClientAgentSettings tools={tools} storedUrl={served.tools.clientAgent?.url ?? ""} onChange={onChange} asUserId={asUserId} refused={clientAgentRefused ?? null} />}
           />
         )}
       </ul>
@@ -301,11 +302,14 @@ const ltr = (c: React.ReactNode) => <bdi dir="ltr">{c}</bdi>;
  */
 function ClientAgentSettings({
   tools,
+  storedUrl,
   onChange,
   asUserId,
   refused,
 }: {
   tools: Tools;
+  /** The address the server has (to know when a test can't be meaningful yet). */
+  storedUrl: string;
   onChange: (next: Tools) => void;
   asUserId?: string | null;
   refused: ClientAgentRefusal | null;
@@ -315,6 +319,13 @@ function ClientAgentSettings({
   const ca = tools.clientAgent;
   const [confirming, setConfirming] = useState(false);
   const [copied, setCopied] = useState(false);
+  // The new secret stays on screen until the user says it's copied (or leaves
+  // the page) — NOT tied to the save: a box that vanished after a partly
+  // failed save, before it was copied, would force a regenerate.
+  const [revealed, setRevealed] = useState<string | null>(null);
+  const testBlocked = clientAgentTestNeedsSave(tools, storedUrl);
+  // What the box shows: the secret generated here, else a new one in the draft.
+  const shown = revealed ?? (typeof ca.secret === "string" ? ca.secret : null);
   const [test, setTest] = useState<TestWords | "running" | null>(null);
   const secret = secretState(tools);
 
@@ -328,7 +339,9 @@ function ClientAgentSettings({
   const generate = () => {
     setConfirming(false);
     setCopied(false);
-    set({ secret: generateClientAgentSecret() });
+    const s = generateClientAgentSecret();
+    setRevealed(s);
+    set({ secret: s });
   };
 
   const runTest = async () => {
@@ -414,22 +427,22 @@ function ClientAgentSettings({
           {secret === "set" ? t("secretSet") : secret === "removing" ? t("secretRemoving") : secret === "unset" ? t("secretUnset") : null}
         </p>
 
-        {secret === "new" && typeof ca.secret === "string" && (
+        {shown !== null && (
           <div className="mt-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] p-3" role="group" aria-labelledby={`${id}-new`}>
             <p id={`${id}-new`} className="text-sm font-semibold text-[#78350f]">
               {t("newSecretLabel")}
             </p>
             <code dir="ltr" className="mt-1 block select-all break-all rounded-lg bg-white px-2 py-2 font-mono text-sm text-[#18181b]">
-              {ca.secret}
+              {shown}
             </code>
             <p className="mt-2 text-sm font-semibold text-[#78350f]">{t("copyNow")}</p>
-            <p className={HINT}>{t("saveToKeep")}</p>
+            {secret === "new" && <p className={HINT}>{t("saveToKeep")}</p>}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 className={BUTTON}
                 onClick={() => {
-                  navigator.clipboard?.writeText(ca.secret as string).then(
+                  navigator.clipboard?.writeText(shown).then(
                     () => setCopied(true),
                     () => {},
                   );
@@ -437,9 +450,23 @@ function ClientAgentSettings({
               >
                 {t("copy")}
               </button>
-              <button type="button" className={LINK} onClick={keepStoredSecret}>
-                {t("undo")}
-              </button>
+              {/* Before the save: drop it. After: only "C'est copié" closes the box. */}
+              {secret === "new" ? (
+                <button
+                  type="button"
+                  className={LINK}
+                  onClick={() => {
+                    setRevealed(null);
+                    keepStoredSecret();
+                  }}
+                >
+                  {t("undo")}
+                </button>
+              ) : (
+                <button type="button" className={BUTTON} onClick={() => setRevealed(null)}>
+                  {t("copiedDone")}
+                </button>
+              )}
               <span className="text-sm text-[#047857]" aria-live="polite">
                 {copied ? t("copied") : ""}
               </span>
@@ -448,7 +475,7 @@ function ClientAgentSettings({
         )}
 
         {/* Regenerating breaks the secret the customer's agent uses: ask first. */}
-        {confirming ? (
+        {shown !== null && secret !== "new" ? null : confirming ? (
           <div role="group" aria-labelledby={`${id}-confirm`} className="mt-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
             <p id={`${id}-confirm`} role="alert" className="text-sm text-[#18181b]">
               {t("confirmRegenerate")}
@@ -489,9 +516,21 @@ function ClientAgentSettings({
       </div>
 
       <div className="flex flex-col gap-2">
-        <button type="button" className={`${BUTTON} self-start`} onClick={runTest} disabled={test === "running"}>
+        <button
+          type="button"
+          className={`${BUTTON} self-start`}
+          onClick={runTest}
+          disabled={test === "running" || testBlocked}
+          aria-describedby={testBlocked ? `${id}-test-save` : undefined}
+        >
           {test === "running" ? t("testing") : t("testButton")}
         </button>
+        {/* Changed address + kept secret: the test would run unsigned while the live call is signed. */}
+        {testBlocked && (
+          <p id={`${id}-test-save`} className={HINT}>
+            {t("saveFirstToTest")}
+          </p>
+        )}
         {/* One calm line, in our words only: never an address, a remote body or a status number. */}
         <p role="status" aria-live="polite" className="min-h-5 text-sm">
           {test && test !== "running" && (
