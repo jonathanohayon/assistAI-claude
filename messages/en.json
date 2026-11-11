@@ -2554,5 +2554,35 @@
         "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
       }
     }
+  },
+  "AgentBrain": {
+    "title": "Who answers the phone",
+    "desc": "By default, the persona set up above answers. You can connect your own agent instead.",
+    "loading": "Loading…",
+    "toggleLabel": "Use my own agent",
+    "toggleHint": "Tamara keeps the voice, the number and the phone line; your agent decides what to say.",
+    "personaUnused": "While this is on, the persona set up above is not used.",
+    "configuredByTeam": "Your agent is connected. Configured by the Tamara team.",
+    "connectViaTeam": "To connect your agent, contact the Tamara team.",
+    "urlLabel": "Your agent's address",
+    "save": "Save",
+    "saved": "Saved.",
+    "test": "Test",
+    "secretLabel": "Signing secret",
+    "secretSet": "Set. It is never shown again.",
+    "secretNotSet": "Not set.",
+    "secretPlaceholder": "New secret",
+    "secretSave": "Save secret",
+    "secretHelp": "Your agent checks <code>X-Tamara-Signature = HMAC-SHA256(raw request body, this secret)</code> before handling the request.",
+    "errors": {
+      "adminOnly": "Only the Tamara team can change this address.",
+      "unsafeUrl": "This address can't be used.",
+      "generic": "Couldn't save. Please try again in a moment."
+    },
+    "probeReply": "Reply: “{reply}”",
+    "probeNoReply": "HTTP {status}: no usable \"reply\" field.",
+    "probeUnreachable": "Can't be reached from the browser (often CORS). The server calls your agent directly and isn't affected.",
+    "contractTitle": "What Tamara sends to your agent",
+    "contractFoot": "After 2 seconds, the turn counts as silence: a holding line is spoken for you."
   }
 }

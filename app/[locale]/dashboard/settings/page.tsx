@@ -44,6 +44,7 @@ export default async function SettingsPage(props: {
   const isAdmin = me.role === "admin";
 
   const t = await getTranslations({ locale, namespace: "DashboardSettings" });
+  const tBrain = await getTranslations({ locale, namespace: "AgentBrain" });
   const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
 
   return (
@@ -183,11 +184,10 @@ export default async function SettingsPage(props: {
         {/* Cerveau de l'agent : persona Tamara ou agent externe du tenant. */}
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
           <h2 className="font-display text-lg text-[var(--color-foreground)]">
-            Qui répond au téléphone
+            {tBrain("title")}
           </h2>
           <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            Par défaut, la persona configurée ci-dessus répond. Vous pouvez à
-            la place brancher votre propre agent.
+            {tBrain("desc")}
           </p>
           <AgentBrainSection />
         </div>

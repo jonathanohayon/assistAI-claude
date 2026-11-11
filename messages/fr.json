@@ -2554,5 +2554,35 @@
         "unsafeUrl": "Cette adresse ne peut pas être utilisée : indiquez une adresse publique qui commence par <l>https://</l>."
       }
     }
+  },
+  "AgentBrain": {
+    "title": "Qui répond au téléphone",
+    "desc": "Par défaut, la persona configurée ci-dessus répond. Vous pouvez à la place brancher votre propre agent.",
+    "loading": "Chargement…",
+    "toggleLabel": "Utiliser mon propre agent",
+    "toggleHint": "Tamara garde la voix, le numéro et la téléphonie ; c'est votre agent qui décide des réponses.",
+    "personaUnused": "Tant que ce mode est actif, la persona configurée plus haut n'est pas utilisée.",
+    "configuredByTeam": "Votre agent est branché. Configuré par l'équipe Tamara.",
+    "connectViaTeam": "Pour brancher votre agent, contactez l'équipe Tamara.",
+    "urlLabel": "Adresse de votre agent",
+    "save": "Enregistrer",
+    "saved": "Enregistré.",
+    "test": "Tester",
+    "secretLabel": "Secret de signature",
+    "secretSet": "Défini. Il n'est jamais réaffiché.",
+    "secretNotSet": "Non défini.",
+    "secretPlaceholder": "Nouveau secret",
+    "secretSave": "Enregistrer le secret",
+    "secretHelp": "Votre agent vérifie <code>X-Tamara-Signature = HMAC-SHA256(corps brut de la requête, ce secret)</code> avant de traiter la requête.",
+    "errors": {
+      "adminOnly": "Seule l'équipe Tamara peut modifier cette adresse.",
+      "unsafeUrl": "Cette adresse ne peut pas être utilisée.",
+      "generic": "Enregistrement impossible. Réessayez dans un instant."
+    },
+    "probeReply": "Réponse : « {reply} »",
+    "probeNoReply": "HTTP {status} : pas de champ \"reply\" exploitable.",
+    "probeUnreachable": "Injoignable depuis le navigateur (souvent du CORS). Le serveur appelle votre agent directement et n'est pas concerné.",
+    "contractTitle": "Ce que Tamara envoie à votre agent",
+    "contractFoot": "Au-delà de 2 secondes, le tour est traité comme un silence : une phrase d'attente est prononcée à votre place."
   }
 }
