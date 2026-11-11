@@ -44,3 +44,30 @@ export async function servedAgentWebhook<W extends { url: string }>(
   const r = await checkAgentUrl(candidate.url, check);
   return r.ok ? { webhook: candidate, refused: null } : { webhook: undefined, refused: r.code };
 }
+
+/**
+ * The url a PUT saves. A tenant can't see the url (it is admin-managed until
+ * the "ask your agent" tool ships), so for a non-admin an ABSENT or EMPTY url
+ * keeps the stored one — only a real, different url is a change (→ 403 in
+ * agentBrainSaveDecision). For an admin: absent keeps it, "" clears it.
+ */
+export function urlToSave(bodyUrl: unknown, currentUrl: string, isAdmin: boolean): string {
+  if (typeof bodyUrl !== "string") return currentUrl.trim();
+  const url = bodyUrl.trim();
+  return url === "" && !isAdmin ? currentUrl.trim() : url;
+}
+
+/**
+ * What GET / PUT return. The secret's VALUE and the url only to an admin;
+ * a tenant gets `secretSet` / `urlSet` (url kept as "" so the current screen
+ * still renders).
+ */
+export function brainView(brain: { enabled: boolean; url: string; secret?: string }, isAdmin: boolean) {
+  return {
+    enabled: brain.enabled,
+    url: isAdmin ? brain.url : "",
+    urlSet: Boolean(brain.url),
+    secretSet: Boolean(brain.secret),
+    ...(isAdmin && brain.secret ? { secret: brain.secret } : {}),
+  };
+}
