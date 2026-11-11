@@ -2198,13 +2198,15 @@
     "stop": "Arrêter",
     "invalid": "Cette valeur ne peut pas être enregistrée. Vérifiez le champ et réessayez.",
     "paceLabel": "Rythme de parole",
+    "paceReset": "Réinitialiser",
+    "speedFollowsPace": "Suit le rythme",
     "pace": {
       "very_slow": "Très lent",
       "slow": "Lent",
       "normal": "Normal",
       "fast": "Rapide",
       "very_fast": "Très rapide",
-      "custom": "Actuel (personnalisé)"
+      "custom": "Personnalisé"
     },
     "patienceLabel": "Patience avant de répondre",
     "patienceHint": "Combien de temps Tamara attend que la personne ait fini avant de répondre.",
@@ -2230,7 +2232,8 @@
     "advanced": {
       "minInterruptionMs": "Durée minimale pour couper la parole",
       "idleHangupSec": "Silence avant de raccrocher",
-      "maxDurationMin": "Durée maximale d'un appel"
+      "maxDurationMin": "Durée maximale d'un appel",
+      "speed": "Vitesse exacte"
     },
     "unit": {
       "ms": "ms",
@@ -2275,7 +2278,8 @@
     "advancedHint": {
       "minInterruptionMs": "Si la personne parle moins longtemps, Tamara continue sa phrase.",
       "idleHangupSec": "Après ce silence, Tamara dit au revoir et raccroche.",
-      "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
+      "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment.",
+      "speed": "Vide : suit le rythme choisi. Un nombre (ex. 1,1) le remplace, et le rythme affiche « Personnalisé »."
     },
     "liveTestLink": "Tester en direct"
   },

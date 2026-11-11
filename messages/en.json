@@ -2198,13 +2198,15 @@
     "stop": "Stop",
     "invalid": "This value can't be saved. Check the field and try again.",
     "paceLabel": "Speaking pace",
+    "paceReset": "Reset",
+    "speedFollowsPace": "Follows the pace",
     "pace": {
       "very_slow": "Very slow",
       "slow": "Slow",
       "normal": "Normal",
       "fast": "Fast",
       "very_fast": "Very fast",
-      "custom": "Current (custom)"
+      "custom": "Custom"
     },
     "patienceLabel": "Patience before answering",
     "patienceHint": "How long Tamara waits after the caller stops before she answers.",
@@ -2230,7 +2232,8 @@
     "advanced": {
       "minInterruptionMs": "Shortest speech that interrupts",
       "idleHangupSec": "Silence before hanging up",
-      "maxDurationMin": "Longest call"
+      "maxDurationMin": "Longest call",
+      "speed": "Exact speed"
     },
     "unit": {
       "ms": "ms",
@@ -2275,7 +2278,8 @@
     "advancedHint": {
       "minInterruptionMs": "If the caller speaks for less than this, Tamara keeps talking.",
       "idleHangupSec": "After this much silence, Tamara says goodbye and hangs up.",
-      "maxDurationMin": "At this length, Tamara politely wraps up the call."
+      "maxDurationMin": "At this length, Tamara politely wraps up the call.",
+      "speed": "Empty: follows the pace. A number (e.g. 1.1) replaces it, and the pace reads “Custom”."
     },
     "liveTestLink": "Test it live"
   },

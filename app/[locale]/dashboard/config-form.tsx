@@ -750,6 +750,8 @@ export function ConfigForm({
                     asUserId={asUserId ?? null}
                     primaryLanguage={form.primaryLanguage}
                     choice={voiceChoice}
+                    // The receptionist's call honours pace (V9).
+                    showPace
                     // Below xl the Live Test sits above the tiles; from xl it is beside them (no link).
                     liveTestLink={{ targetId: "live-test", direction: "up", className: "xl:hidden" }}
                   />
