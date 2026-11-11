@@ -142,8 +142,12 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     assert.doesNotMatch(JSON.stringify([dc.launchPausedTitle, dc.launchDryTitle]), /CAMPAIGN_DISPATCH|twilio|livekit/i, l);
   }
   const fr = JSON.parse(read("messages/fr.json")).DashboardCampaigns;
-  assert.equal(fr.launchPausedTitle, "En pause sur la plateforme");
   assert.equal(fr.launchDryTitle, "Mode test");
+  // Design review: what is paused is the CALLS, not the campaign (the owner has their own Pause button).
+  const paused = (l: string) => JSON.parse(read(`messages/${l}.json`)).DashboardCampaigns.launchPausedTitle as string;
+  assert.match(paused("fr"), /^Appels en pause/);
+  assert.match(paused("en"), /^Calls paused/);
+  assert.match(paused("he"), /^השיחות מושהות/);
 }
 
 console.log("ALL CAMPAIGN-START-FEEDBACK TESTS PASSED");

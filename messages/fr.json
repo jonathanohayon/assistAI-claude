@@ -1294,7 +1294,7 @@
     "sheetsLoad": "Charger le sheet",
     "sheetsNotConnected": "Connectez Google dans les Paramètres pour importer depuis Sheets.",
     "launchTitle": "Prêt à lancer",
-    "launchPausedTitle": "En pause sur la plateforme",
+    "launchPausedTitle": "Appels en pause sur la plateforme",
     "launchDryTitle": "Mode test",
     "launchNoContentWarning": "Cette campagne n'a ni objectif ni connaissance métier — l'agent ne saura pas quoi vendre et risque d'improviser. Ajoutez un objectif ou scannez un site dans la configuration avant de lancer.",
     "detailQueued": "En file d'attente",

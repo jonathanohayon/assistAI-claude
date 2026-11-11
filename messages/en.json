@@ -1294,7 +1294,7 @@
     "sheetsLoad": "Load sheet",
     "sheetsNotConnected": "Connect Google in Settings to import from Sheets.",
     "launchTitle": "Ready to launch",
-    "launchPausedTitle": "Paused on the platform",
+    "launchPausedTitle": "Calls paused on the platform",
     "launchDryTitle": "Test mode",
     "launchNoContentWarning": "This campaign has no objective and no business knowledge — the agent won't know what to sell and may improvise. Add an objective or scan a website in Setup before launching.",
     "detailQueued": "Queued",
