@@ -39,16 +39,17 @@ export type UnreadableReporter = (kind: SecretKind, reason: OpenFailure, now?: n
 /** Fire-and-forget, never throws, at most one send per kind per DEDUP_MS in this process. */
 export function createUnreadableReporter(send: (a: UnreadableAlert) => Promise<unknown>): UnreadableReporter {
   const last = new Map<SecretKind, number>();
+  // Sends run one after the other: alertAdmins' ledger is one JSON value, two
+  // concurrent sends for different kinds would overwrite each other's entry.
+  let queue: Promise<unknown> = Promise.resolve();
   return (kind, reason, now = Date.now()) => {
     const prev = last.get(kind);
     if (prev !== undefined && now - prev < DEDUP_MS) return;
     last.set(kind, now);
     console.warn(`[secrets] unreadable ${kind} secret (${reason})`);
-    try {
-      void send(unreadableAlert(kind, reason)).catch(() => {});
-    } catch {
-      // alerting must never break the call path
-    }
+    const alert = unreadableAlert(kind, reason);
+    // alerting must never break the call path: nothing here throws or rejects
+    queue = queue.then(() => send(alert)).catch(() => {});
   };
 }
 
