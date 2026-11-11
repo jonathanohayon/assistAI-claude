@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
+import { CallsView } from "./calls-view";
 import { LogsView } from "./logs-view";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +25,20 @@ export default async function LogsPage(props: {
 
   return (
     <main>
-      <section className="mx-auto w-full max-w-5xl px-6 pt-10">
+      {/* J2: the plain Calls view is the page's default content (its title
+          is the page's h1). The engineering console follows, unchanged, under
+          its own header (J3 moves it behind developer mode). */}
+      <section className="mx-auto w-full max-w-5xl px-4 pt-10 sm:px-6">
+        <CallsView headingLevel={1} />
+      </section>
+
+      <section className="mx-auto w-full max-w-5xl px-6 pt-14">
         <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
           {t("header")}
         </p>
-        <h1 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
+        <h2 className="mt-2 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
           {t("title")}
-        </h1>
+        </h2>
         <p className="mt-3 max-w-2xl text-sm text-[var(--color-muted-foreground)]">
           {t("subtitle")}
         </p>

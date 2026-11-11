@@ -14,7 +14,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { TranscriptBubbles } from "@/components/calls/TranscriptBubbles";
-import type { CallDetailResponse, CallFigures, CallListResponse, CallOutcome, CallPeriod } from "@/lib/calls/contract";
+import type {
+  CallDetailResponse,
+  CallFigures,
+  CallLine,
+  CallListResponse,
+  CallOutcome,
+  CallPeriod,
+} from "@/lib/calls/contract";
 import {
   actionMessage,
   calledNumber,
@@ -25,13 +32,11 @@ import {
   formatCallTime,
   listUrl,
   outcomeKey,
-  type CallLineView,
   type Msg,
 } from "@/lib/calls/view";
 
 import { Stat } from "../config/shared-ui";
 
-type CallDetailView = CallDetailResponse & { toNumber?: string };
 type T = ReturnType<typeof useTranslations<"Calls">>;
 // Keys are built by lib/calls/view.ts; the tests check they all exist.
 const say = (t: T, m: Msg) => (t as unknown as (k: string, v?: Msg["values"]) => string)(m.key, m.values);
@@ -44,13 +49,20 @@ const OUTCOME_TONE: Record<CallOutcome, string> = {
   conversation: "bg-[#f1f5f9] text-[#475569]",
 };
 
-type DetailState = { status: "loading" } | { status: "error" } | { status: "ready"; data: CallDetailView };
+type DetailState = { status: "loading" } | { status: "error" } | { status: "ready"; data: CallDetailResponse };
 
-export function CallsView({ asUserId }: { asUserId?: string } = {}) {
+export function CallsView({
+  asUserId,
+  headingLevel = 2,
+}: {
+  asUserId?: string;
+  /** 1 when the view opens the page (tenant Monitoring page). */
+  headingLevel?: 1 | 2;
+} = {}) {
   const t = useTranslations("Calls");
   const locale = useLocale();
 
-  const [items, setItems] = useState<CallLineView[]>([]);
+  const [items, setItems] = useState<CallLine[]>([]);
   const [figures, setFigures] = useState<CallFigures | null>(null);
   const [period, setPeriod] = useState<CallPeriod | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -68,23 +80,37 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
     [asUserId],
   );
 
-  const loadFirst = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const page = await fetchPage(null);
-      setItems(page.items);
-      setFigures(page.figures);
-      setPeriod(page.period);
-      setNextCursor(page.nextCursor);
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
-  }, [fetchPage]);
+  const showFirst = (page: CallListResponse) => {
+    setItems(page.items);
+    setFigures(page.figures);
+    setPeriod(page.period);
+    setNextCursor(page.nextCursor);
+    setStatus("ready");
+  };
+
+  // Status starts at "loading"; a retry sets it back before calling this.
+  const loadFirst = () =>
+    fetchPage(null).then(showFirst, () => setStatus("error"));
 
   useEffect(() => {
-    void loadFirst();
-  }, [loadFirst]);
+    let alive = true;
+    fetchPage(null).then(
+      (page) => {
+        if (!alive) return;
+        setItems(page.items);
+        setFigures(page.figures);
+        setPeriod(page.period);
+        setNextCursor(page.nextCursor);
+        setStatus("ready");
+      },
+      () => {
+        if (alive) setStatus("error");
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [fetchPage]);
 
   const loadMore = async () => {
     if (!nextCursor) return;
@@ -104,7 +130,7 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
     try {
       const res = await fetch(detailUrl(id, asUserId), { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as CallDetailView;
+      const data = (await res.json()) as CallDetailResponse;
       setDetails((d) => ({ ...d, [id]: { status: "ready", data } }));
     } catch {
       setDetails((d) => ({ ...d, [id]: { status: "error" } }));
@@ -121,6 +147,7 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
     if (!d || d.status === "error") void loadDetail(id);
   };
 
+  const Title = headingLevel === 1 ? "h1" : "h2";
   const dayFmt = new Intl.DateTimeFormat(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR", {
     day: "numeric",
     month: "long",
@@ -129,9 +156,9 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
   return (
     <section aria-labelledby="calls-title" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="calls-title" className="font-display text-2xl tracking-tight text-[var(--color-foreground)]">
+        <Title id="calls-title" className="font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
           {t("title")}
-        </h2>
+        </Title>
         {period && (
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {t("periodRange", {
@@ -153,7 +180,10 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
           <p className="text-sm text-[var(--color-foreground)]">{t("loadError")}</p>
           <button
             type="button"
-            onClick={() => void loadFirst()}
+            onClick={() => {
+              setStatus("loading");
+              void loadFirst();
+            }}
             className="min-h-11 rounded-full border border-[var(--color-border)] px-4 text-sm font-medium text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
           >
             {t("retry")}
@@ -197,25 +227,42 @@ export function CallsView({ asUserId }: { asUserId?: string } = {}) {
         </ul>
       )}
 
-      {status === "ready" && nextCursor && (
-        <div className="flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void loadMore()}
-            disabled={moreStatus === "loading"}
-            data-cursor={nextCursor}
-            className="min-h-11 rounded-full border border-[var(--color-border)] bg-white px-6 text-sm font-medium text-[var(--color-foreground)] shadow-sm hover:bg-[var(--color-muted)] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
-          >
-            {moreStatus === "loading" ? t("loading") : t("loadMore")}
-          </button>
-          {moreStatus === "error" && (
-            <p role="alert" className="text-sm text-[#991b1b]">
-              {t("loadError")}
-            </p>
-          )}
-        </div>
+      {status === "ready" && (
+        <LoadMore nextCursor={nextCursor} status={moreStatus} onMore={() => void loadMore()} t={t} />
       )}
     </section>
+  );
+}
+
+/** "Show more": present only while the API returns a next cursor (no infinite scroll). */
+export function LoadMore({
+  nextCursor,
+  status,
+  onMore,
+  t,
+}: {
+  nextCursor: string | null;
+  status: "idle" | "loading" | "error";
+  onMore: () => void;
+  t: T;
+}) {
+  if (!nextCursor) return null;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={onMore}
+        disabled={status === "loading"}
+        className="min-h-11 rounded-full border border-[var(--color-border)] bg-white px-6 text-sm font-medium text-[var(--color-foreground)] shadow-sm hover:bg-[var(--color-muted)] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+      >
+        {status === "loading" ? t("loading") : t("loadMore")}
+      </button>
+      {status === "error" && (
+        <p role="alert" className="text-sm text-[#991b1b]">
+          {t("loadError")}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -229,7 +276,7 @@ export function CallRow({
   locale,
   now,
 }: {
-  line: CallLineView;
+  line: CallLine;
   open: boolean;
   onToggle: () => void;
   detail?: DetailState;
@@ -296,7 +343,7 @@ export function CallDetailBody({
   locale,
   moreOpen,
 }: {
-  line: CallLineView;
+  line: CallLine;
   detail?: DetailState;
   onRetry: () => void;
   t: T;
@@ -327,7 +374,7 @@ export function CallDetailBody({
   }
   const d = detail.data;
   // The list line may be older than the detail; the detail wins when present.
-  const merged: CallLineView = { ...line, ...d };
+  const merged: CallLine = { ...line, ...d };
   const conv = conversationView(d);
   const toNumber = calledNumber(merged);
   const duration = durationMessage(merged.durationSeconds);

@@ -6,8 +6,6 @@
 import type { CallAction, CallLine, CallOutcome } from "@/lib/calls/contract";
 import { formatPhone } from "@/lib/format-phone";
 
-/** A line as the front reads it: `toNumber` is optional until #278 sends it on every row. */
-export type CallLineView = CallLine & { toNumber?: string };
 
 /** A message of the `Calls` namespace with its ICU values. */
 export interface Msg {
@@ -123,8 +121,8 @@ export function durationMessage(seconds: number | null | undefined): Msg | null 
 }
 
 /** The number that was called, formatted, or null when absent / empty. */
-export function calledNumber(line: CallLineView): string | null {
-  const n = line.toNumber?.trim();
+export function calledNumber(line: Pick<CallLine, "toNumber">): string | null {
+  const n = line.toNumber.trim();
   return n ? formatPhone(n) : null;
 }
 
