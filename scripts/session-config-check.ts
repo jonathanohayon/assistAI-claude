@@ -2,7 +2,8 @@
 // every origin, the old route's response EXACTLY (same status, same JSON in
 // the same key order) plus `session` = resolveCall(origin). Run against a
 // throwaway Postgres seeded with mock rows (…0a/…0b/…0c accounts, …c1/…c2
-// agents, …d1/…d2 campaigns, …e1/…e2 contacts, +97220000000/+97220000001):
+// agents, …d1/…d2 campaigns, …e1/…e2 contacts, +97220000000/+97220000001;
+// M2a adds …c3, …d3–…d9, …e3–…e9: scripts/fixtures/mission-m2a-seed.sql):
 //   DATABASE_URL=<throwaway> INTERNAL_SECRET=mock npx tsx scripts/session-config-check.ts
 import { NextRequest } from "next/server";
 
@@ -44,6 +45,13 @@ async function main() {
     ["outbound_test c1", { kind: "outbound_test", agentId: id("c1") }, `origin=outbound_test&agentId=${id("c1")}`, otest, `agentId=${id("c1")}`],
     ["outbound_test c2", { kind: "outbound_test", agentId: id("c2") }, `origin=outbound_test&agentId=${id("c2")}`, otest, `agentId=${id("c2")}`],
     ["outbound_test missing", null, `origin=outbound_test&agentId=${id("ff")}`, otest, `agentId=${id("ff")}`],
+    // M2a seed (scripts/fixtures/mission-m2a-seed.sql): one campaign per goal
+    // preset + an unknown stored preset; …c3 has a stored mission.
+    ...(["d3", "d4", "d5", "d6", "d7", "d8", "d9"].map((d) => {
+      const c = id(d), e = id(`e${d.slice(1)}`);
+      return [`campaign ${d}`, { kind: "campaign", campaignId: c, contactId: e }, `origin=campaign&campaignId=${c}&contactId=${e}`, camp, `campaignId=${c}&contactId=${e}`];
+    }) as typeof cases),
+    ["outbound_test c3", { kind: "outbound_test", agentId: id("c3") }, `origin=outbound_test&agentId=${id("c3")}`, otest, `agentId=${id("c3")}`],
   ];
 
   for (const [name, origin, q, legacyHandler, legacyQ] of cases) {

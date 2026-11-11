@@ -11,6 +11,7 @@ import {
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { withoutToolsStore } from "@/lib/tools/store";
+import { withoutMissionStore } from "@/lib/mission/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
 import { campaignCallPublicColumns } from "@/lib/campaigns/campaign-call-row";
 
@@ -84,7 +85,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     : null;
 
   // Never the raw Tools store: it holds the "ask your agent" secret (T5a).
-  return NextResponse.json({ campaign, agent: agent ? withoutToolsStore(agent) : null, contacts, calls, counts });
+  // Nor the mission store (M2a): only the agent's own GET returns it.
+  return NextResponse.json({ campaign, agent: agent ? withoutMissionStore(withoutToolsStore(agent)) : null, contacts, calls, counts });
 }
 
 // PATCH — partial update. What may change depends on the status

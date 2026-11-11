@@ -1,10 +1,29 @@
 // Today's settings → the Mission contract (M1), and back to the inputs the
 // instruction builders take today. Pure.
-import type { ExtractionField } from "@/lib/campaigns/constants";
-import { MISSION_VERSION, type Mission } from "@/lib/mission/contract";
+import type { ExtractionField, GoalPreset } from "@/lib/campaigns/constants";
+import { MISSION_VERSION, SALES_MISSION_TABLE, type Mission, type SalesMission } from "@/lib/mission/contract";
 import type { EffectiveCapabilities } from "@/lib/tools/contract";
 
 type OutboundMission = Extract<Mission, { recipe: "outbound" }>;
+
+/**
+ * Today's goal presets → the sales missions (M2a, mapping to confirm by
+ * tamaraVP). Cold prospecting = qualify_lead + cold.
+ */
+export const PRESET_TO_MISSION: Record<GoalPreset, { kind: SalesMission; cold: boolean }> = {
+  cold: { kind: "qualify_lead", cold: true },
+  lead_gen: { kind: "qualify_lead", cold: false },
+  sales: { kind: "announce_offer", cold: false },
+  marketing: { kind: "announce_offer", cold: false },
+  custom: { kind: "other", cold: false },
+};
+
+/** A stored preset → its mission; any other stored string → "other" (the raw preset is kept by the caller). */
+export function missionForPreset(preset: string): { kind: SalesMission; cold: boolean } {
+  return Object.prototype.hasOwnProperty.call(PRESET_TO_MISSION, preset)
+    ? PRESET_TO_MISSION[preset as GoalPreset]
+    : { kind: "other", cold: false };
+}
 
 /** A campaign's goal (campaigns row). */
 export function missionFromCampaign(c: {
@@ -13,16 +32,21 @@ export function missionFromCampaign(c: {
   successCriteria: string;
   extractionSchema: ExtractionField[] | null | undefined;
 }): OutboundMission {
+  const { kind, cold } = missionForPreset(c.goalPreset);
   return {
     version: MISSION_VERSION,
     recipe: "outbound",
-    kind: null,
+    kind,
+    cold,
+    // The raw stored value, so nothing is lost (an unknown preset stays as is).
     preset: c.goalPreset,
     objective: c.objective,
     successCriteria: c.successCriteria,
     capture: c.extractionSchema ?? [],
     fallback: null,
-    requires: [],
+    // The capabilities every mapped mission strictly needs: none of today's
+    // presets maps to one that requires a capability.
+    requires: [...SALES_MISSION_TABLE[kind].requires.all],
   };
 }
 
@@ -30,7 +54,9 @@ export function missionFromCampaign(c: {
 export const OUTBOUND_TEST_MISSION: OutboundMission = {
   version: MISSION_VERSION,
   recipe: "outbound",
-  kind: null,
+  // Same reading as a "sales" campaign (PRESET_TO_MISSION).
+  kind: "announce_offer",
+  cold: false,
   preset: "sales",
   objective: "",
   successCriteria: "",

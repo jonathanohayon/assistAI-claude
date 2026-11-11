@@ -1,0 +1,1 @@
+ALTER TABLE "outbound_agents" ADD COLUMN IF NOT EXISTS "mission" jsonb;

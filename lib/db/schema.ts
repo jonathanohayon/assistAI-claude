@@ -379,6 +379,10 @@ export const outboundAgents = pgTable("outbound_agents", {
   personaConfig: jsonb("persona_config"),
   // Tools contract v1, stored only (outbound agents get no tools until T4).
   toolsConfig: jsonb("tools_config"),
+  // Sales mission (M2a, lib/mission/store.ts): { version, kind, cold }.
+  // NULL = never set. Stored only: the instructions still come from the
+  // campaign's goal fields.
+  mission: jsonb("mission"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

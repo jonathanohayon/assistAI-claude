@@ -1,7 +1,6 @@
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
-import { outboundVoiceConfigAfterLegacy, outboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentOutboundVoice, voiceForViewer } from "@/lib/voice/store";
-import { currentOutboundPersona, outboundPersonaAfterLegacy, outboundPersonaUpdates } from "@/lib/persona/store";
+import { currentOutboundPersona } from "@/lib/persona/store";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -10,7 +9,8 @@ import { db } from "@/lib/db";
 import { campaigns, outboundAgents } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { withoutToolsStore } from "@/lib/tools/store";
-import { normalizeAgentFields } from "@/lib/outbound-agents/validate";
+import { currentAgentMission, withoutMissionStore } from "@/lib/mission/store";
+import { planOutboundAgentPatch } from "@/lib/outbound-agents/patch";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -48,9 +48,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
   return NextResponse.json({
     agent: {
-      ...withoutToolsStore(agent),
+      ...withoutMissionStore(withoutToolsStore(agent)),
       voiceConfig: voiceForViewer(currentOutboundVoice(agent.voiceConfig, agent), await sessionIsAdmin()),
       personaConfig: currentOutboundPersona(agent.personaConfig, agent),
+      // M2a: the stored sales mission (null when unset). Only this GET returns it.
+      mission: currentAgentMission(agent.mission),
       campaignCount: await countCampaigns(agent.id),
     },
   });
@@ -71,37 +73,23 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
   // body optionnel : patch partiel mergé sur l'agent existant.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  // `voiceConfig` is not an agent column for normalizeAgentFields: keep it out.
-  const { voiceConfig: _vc, personaConfig: _pc, ...legacyBody } = body;
-  void _vc;
-  void _pc;
-  const fields = normalizeAgentFields({ ...agent, ...legacyBody });
-
-  // Voice contract (V5, write-alongside), same rules as the receptionist.
+  // The raw body → the stored columns (legacy fields, voice, persona, and
+  // the M2a mission): one pure function, also run by the gate tests.
   const isAdmin = await sessionIsAdmin();
-  const voiceWrite = outboundVoiceConfigUpdates(body, agent, isAdmin);
-  if (voiceWrite && "error" in voiceWrite) {
-    return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
+  const plan = planOutboundAgentPatch(body, agent, isAdmin);
+  if ("error" in plan) {
+    return NextResponse.json(plan.error.body, { status: plan.error.status });
   }
-  const voiceFields = voiceWrite ? voiceWrite.updates : { voiceConfig: outboundVoiceConfigAfterLegacy(agent, fields) };
-  // Persona contract (P3, write-alongside), same rules as the receptionist.
-  const personaWrite = outboundPersonaUpdates(body, agent, isAdmin);
-  if (personaWrite && "error" in personaWrite) {
-    return NextResponse.json(personaWrite.error.body, { status: personaWrite.error.status });
-  }
-  const personaFields = personaWrite
-    ? personaWrite.updates
-    : { personaConfig: outboundPersonaAfterLegacy(agent, fields) };
 
   const [updated] = await db
     .update(outboundAgents)
-    .set({ ...fields, ...voiceFields, ...personaFields, updatedAt: sql`now()` })
+    .set({ ...plan.set, updatedAt: sql`now()` })
     .where(eq(outboundAgents.id, agent.id))
     .returning();
 
   return NextResponse.json({
     agent: {
-      ...withoutToolsStore(updated),
+      ...withoutMissionStore(withoutToolsStore(updated)),
       voiceConfig: voiceForViewer(currentOutboundVoice(updated.voiceConfig, updated), isAdmin),
       personaConfig: currentOutboundPersona(updated.personaConfig, updated),
       campaignCount: await countCampaigns(agent.id),
