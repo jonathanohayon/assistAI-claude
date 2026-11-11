@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Carte d'un canal de notification owner (WhatsApp / Email) :
+ * Carte d'un canal de notification owner (WhatsApp today) :
  * toggle on/off, champ de saisie du contact et bouton "Tester" qui POST
  * {to: value} sur testEndpoint (statuts envoi/envoyé/erreur auto-resetés).
  *

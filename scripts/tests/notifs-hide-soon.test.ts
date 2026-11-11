@@ -1,7 +1,8 @@
 // Notifications panel: a channel that can't be used is not shown at all.
-// SMS has no sender yet, so no SMS card, no "soon" badge, no disabled row,
-// in fr/en/he, for a tenant and for an admin. The tile summary on /dashboard
-// does not mention it either. Renders the REAL NotifsPanel. Mock data only.
+// SMS has no sender yet, so no SMS card, no "soon" badge, no disabled row.
+// Email is not saved yet (its switch and address were local state only), so
+// no Email card, no email switch, no email input. In fr/en/he, for a tenant
+// and for an admin. The tile summary on /dashboard mentions neither. Renders the REAL NotifsPanel. Mock data only.
 // Run with:  npx tsx scripts/tests/notifs-hide-soon.test.ts
 
 import assert from "node:assert/strict";
@@ -47,6 +48,10 @@ function render(locale: string, isAdmin: boolean) {
 }
 
 // The badge words as they shipped before (fr/en/he), so a revived badge is caught.
+// renderToStaticMarkup escapes text; compare catalogue strings the same way.
+const escape = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+
 const SOON = /Bientôt|\bSoon\b|בקרוב/i;
 
 for (const locale of ["fr", "en", "he"]) {
@@ -55,7 +60,18 @@ for (const locale of ["fr", "en", "he"]) {
     const who = `${locale}/${isAdmin ? "admin" : "tenant"}`;
     // Sanity: the panel did render its real channels.
     assert.match(html, />WhatsApp</, `${who}: WhatsApp card rendered`);
-    assert.match(html, />Email</, `${who}: Email card rendered`);
+    // The other rows still render: transfer number, J-1 reminder, owner digest, footer.
+    const dc = messages(locale).DashboardConfig;
+    for (const k of ["reminderTitle", "whatsappFooter"]) {
+      assert.ok(html.includes(escape(dc[k])), `${who}: ${k} rendered`);
+    }
+    assert.ok((html.match(/role="switch"/g) ?? []).length >= 3, `${who}: WhatsApp, reminder and digest switches rendered`);
+    // No Email card: no label, no email switch, no email input, no test call.
+    assert.doesNotMatch(html, />E-?mail</i, `${who}: no Email card`);
+    assert.doesNotMatch(html, /aria-label="[^"]*E-?mail[^"]*"/i, `${who}: no email switch or test button`);
+    assert.doesNotMatch(html, /type="email"/, `${who}: no email input`);
+    assert.doesNotMatch(html, /contact@/, `${who}: no email placeholder`);
+    assert.doesNotMatch(html, /email-test/, `${who}: no email test endpoint`);
     // The unavailable channel and its badge are absent from the DOM.
     assert.doesNotMatch(html, /\bSMS\b/, `${who}: no SMS card`);
     assert.doesNotMatch(html, SOON, `${who}: no "soon" badge`);
@@ -68,12 +84,18 @@ for (const locale of ["fr", "en", "he"]) {
   const dc = messages(locale).DashboardConfig;
   for (const k of ["wowNotifsSummaryActive", "wowNotifsSummaryInactive", "wowTagNotifs"]) {
     assert.doesNotMatch(dc[k], /SMS/i, `${locale}: ${k} mentions SMS`);
+    assert.doesNotMatch(dc[k], /e-?mail|courriel|אימייל|מייל|דוא"ל/i, `${locale}: ${k} mentions email`);
   }
 }
 
 // The summary is computed from WhatsApp only, never counts SMS.
 const configForm = read("app/[locale]/dashboard/config-form.tsx");
 assert.match(configForm, /summary: form\.ownerWhatsapp \? t\("wowNotifsSummaryActive"\) : t\("wowNotifsSummaryInactive"\)/);
+// The panel source keeps no email state or endpoint behind the scenes.
+{
+  const leftover = read("app/[locale]/dashboard/config/notifs-panel.tsx").match(/emailOn|emailValue|email-test|label="Email"/);
+  assert.equal(leftover, null, `notifs-panel.tsx: email leftover ${leftover?.[0]}`);
+}
 // The card no longer has a "coming soon" mode to fall back on.
 assert.doesNotMatch(read("app/[locale]/dashboard/config/notif-channel-card.tsx"), /comingSoon/);
 

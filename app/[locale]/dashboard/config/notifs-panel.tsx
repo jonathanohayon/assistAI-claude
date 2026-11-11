@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * Tuile "Notifications" : cartes des canaux owner (WhatsApp branché en DB,
- * Email en state local) + toggle du rappel de RDV J-1
+ * Tuile "Notifications" : carte du canal owner WhatsApp (branché en DB)
+ * + toggle du rappel de RDV J-1
  * envoyé automatiquement au client par WhatsApp (cron).
  *
- * SMS is not offered: a channel that can't be used is not rendered at all
- * (no "soon" badge, no disabled row). Add its card back once it ships.
+ * SMS and Email are not offered: a channel that can't be used is not rendered
+ * at all (no "soon" badge, no disabled row, no switch that is never saved).
+ * Add their cards back once they ship (the email test API route is kept
+ * server side for that day).
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `notifs`).
  */
@@ -37,10 +39,6 @@ export function NotifsPanel({
   // DB ; l'extinction vide le numéro.
   const [whatsappOn, setWhatsappOn] = useState(Boolean(form.ownerWhatsapp));
 
-  // Local-only state for Email (pas encore en DB)
-  const [emailOn, setEmailOn] = useState(false);
-  const [emailValue, setEmailValue] = useState("");
-
   return (
     <div className="flex flex-col gap-3">
       <NotifChannelCard
@@ -64,23 +62,6 @@ export function NotifsPanel({
         testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
       <TransferNumberField form={form} update={update} t={t} />
-      <NotifChannelCard
-        label="Email"
-        color="#0e7490"
-        icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-            <rect x="2" y="4" width="20" height="16" rx="2" />
-            <path d="m22 6-10 7L2 6" />
-          </svg>
-        }
-        on={emailOn}
-        onToggle={setEmailOn}
-        value={emailValue}
-        onChangeValue={setEmailValue}
-        placeholder="contact@..."
-        inputType="email"
-        testEndpoint="/api/dashboard/notifications/email-test"
-      />
       {/* Rappel de RDV J-1 — WhatsApp au client la veille (cron). Pas de
           champ contact : le numéro vient de l'événement Google Calendar. */}
       <div
