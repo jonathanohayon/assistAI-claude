@@ -43,9 +43,10 @@ export function AgentBrainSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(next),
       });
-      const d = (await res.json()) as { brain?: Brain; error?: string };
+      const d = (await res.json()) as { brain?: Brain; error?: string; message?: string };
       if (!res.ok || d.error) {
-        setError(d.error ?? "Enregistrement impossible.");
+        // unsafe_url carries one plain message; other errors are plain text.
+        setError(d.message ?? d.error ?? "Enregistrement impossible.");
         return;
       }
       if (d.brain) setBrain(d.brain);
