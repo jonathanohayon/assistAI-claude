@@ -214,6 +214,7 @@ export interface CallRow {
   id: string;
   createdAt: Date;
   fromNumber: string;
+  toNumber: string;
   summary: string;
   transcript: unknown;
   durationSeconds: number;
@@ -226,6 +227,7 @@ export function toLine(row: CallRow, events: JoinEvent[], contactName: string | 
     id: row.id,
     createdAt: row.createdAt.toISOString(),
     fromNumber: row.fromNumber ?? "",
+    toNumber: row.toNumber ?? "",
     contactName: contactName && contactName.trim() ? contactName.trim() : null,
     outcome: outcomeFromEvents(events),
     durationSeconds: durationOrNull(row.durationSeconds),

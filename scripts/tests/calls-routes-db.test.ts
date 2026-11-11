@@ -49,11 +49,12 @@ async function main() {
     endMin: number;
     dur?: number;
     from?: string;
+    to?: string;
     summary?: string;
     transcript?: unknown;
   }) =>
-    exec(sql`INSERT INTO calls (id, user_id, from_number, transcript, summary, duration_seconds, call_id, created_at)
-      VALUES (${o.id}, ${o.user}, ${o.from ?? "+15550000001"}, ${JSON.stringify(o.transcript ?? [{ role: "user", text: "Bonjour" }])}::jsonb,
+    exec(sql`INSERT INTO calls (id, user_id, from_number, to_number, transcript, summary, duration_seconds, call_id, created_at)
+      VALUES (${o.id}, ${o.user}, ${o.from ?? "+15550000001"}, ${o.to ?? ""}, ${JSON.stringify(o.transcript ?? [{ role: "user", text: "Bonjour" }])}::jsonb,
               ${o.summary ?? ""}, ${o.dur ?? 60}, ${o.callId}, ${T(o.endMin)})`);
   const addEvent = async (user: string | null, event: string, min: number, metadata: Record<string, unknown>) =>
     exec(sql`INSERT INTO events (user_id, source, event, message, metadata, created_at)
@@ -69,7 +70,7 @@ async function main() {
   await addEvent(A, "call_received", 0.01, { callId: id(1), toNumber: "+15550009999" });
   await addEvent(A, "whatsapp_sent_client", 0.1, { callId: id(1), sid: "SM-mock-1" });
   // 2. hashed id (current worker), call_started of an inbound SIP call
-  await addCall({ id: id(2), user: A, callId: HASH, endMin: 10, from: "+15550000002" });
+  await addCall({ id: id(2), user: A, callId: HASH, endMin: 10, from: "+15550000002", to: "+15550009999" });
   await addEvent(A, "call_started", 9, { callId: HASH, roomName: "call-_+15550000002_bbb", origin: { kind: "sip" } });
   await addEvent(A, "call_transfer", 9.5, { callId: HASH, ok: true });
   // 3. legacy '' row: unstamped tool event in its time span
@@ -126,6 +127,9 @@ async function main() {
   assert.equal(by[id(4)].outcome, "conversation", "no keyword guess");
   assert.equal(by[id(4)].durationSeconds, null, "duration 0 → null");
   assert.equal(by[id(2)].contactName, "Mock Client");
+  assert.equal(by[id(2)].toNumber, "+15550009999", "calls.to_number on the line");
+  assert.equal(by[id(1)].toNumber, "", "call_received.toNumber is never used as a fallback");
+  assert.equal(by[id(3)].toNumber, "", "old row without to_number → \"\"");
   assert.equal(by[id(4)].contactName, null, "another tenant's contact name never used");
   assert.deepEqual(res.figures, { callsReceived: 4, booked: 1, transferred: 1 }, "tool-proven, inbound only");
   assert.deepEqual(res.period, { since: period.since.toISOString(), until: period.until.toISOString() });
@@ -159,6 +163,8 @@ async function main() {
   const d3 = await getCallDetail(A, id(3));
   assert.deepEqual(d3!.actions.map((a) => a.kind), ["cancelled"], "window: no other call's / tenant's event");
   assert.equal(d3!.summary, null);
+  assert.equal(d3!.toNumber, "", "old row → \"\" (no fallback to event metadata)");
+  assert.equal((await getCallDetail(A, id(2)))!.toNumber, "+15550009999", "calls.to_number in the detail");
   assert.equal(await getCallDetail(A, id(20)), null, "tenant A cannot read B's call");
   assert.equal(await getCallDetail(B, id(1)), null, "tenant B cannot read A's call");
   for (const n of [5, 6, 7, 8, 9, 10]) assert.equal(await getCallDetail(A, id(n)), null, `outbound/test call ${n} → 404`);
