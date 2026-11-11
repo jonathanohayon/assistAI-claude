@@ -3,23 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
+import { agentNumberFromRow, legacyChannelNumber } from "@/lib/channels/adapters";
 import { phoneNumbers } from "@/lib/db/schema";
 
-// Twilio encode les numéros WhatsApp avec le préfixe `whatsapp:` dans
-// phone_numbers.phoneNumber ; les numéros PSTN classiques sont stockés en
-// E.164 nu (`+...`). On dérive le canal du préfixe et on le retire pour
-// l'affichage côté UI.
-const WHATSAPP_PREFIX = "whatsapp:";
-
-type Channel = "pstn" | "whatsapp";
-
-interface ChannelNumber {
-  id: string;
-  phoneNumber: string;
-  channel: Channel;
-  label: string;
-  countryCode: string;
-}
+// Twilio stores WhatsApp numbers with a `whatsapp:` prefix in
+// phone_numbers.phoneNumber; PSTN numbers are bare E.164. The channel comes
+// from the prefix, which is stripped for display — through the Channels
+// contract adapters (C1, lib/channels/adapters.ts), same output as before.
 
 // GET — liste les numéros du tenant avec leur canal (PSTN / WhatsApp).
 // L'admin peut voir les numéros d'un tenant via ?asUserId (resolveTargetUserId
@@ -36,18 +26,7 @@ export async function GET(req: NextRequest) {
     .from(phoneNumbers)
     .where(eq(phoneNumbers.userId, r.userId));
 
-  const numbers: ChannelNumber[] = rows.map((row) => {
-    const isWhatsapp = row.phoneNumber.startsWith(WHATSAPP_PREFIX);
-    return {
-      id: row.id,
-      phoneNumber: isWhatsapp
-        ? row.phoneNumber.slice(WHATSAPP_PREFIX.length)
-        : row.phoneNumber,
-      channel: isWhatsapp ? "whatsapp" : "pstn",
-      label: row.label,
-      countryCode: row.countryCode,
-    };
-  });
+  const numbers = rows.map((row) => legacyChannelNumber(agentNumberFromRow(row)));
 
   return NextResponse.json({ numbers });
 }
