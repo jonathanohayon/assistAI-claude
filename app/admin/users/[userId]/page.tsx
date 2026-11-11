@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { voiceChoiceFor } from "@/lib/voice/choice-load";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentCompanySheet } from "@/lib/knowledge/store";
 import { currentInboundPersona } from "@/lib/persona/store";
@@ -157,6 +158,7 @@ export default async function AdminTenantPage({
           // The account's company sheet (S4), else built from the business JSON.
           companySheet: currentCompanySheet(target.companySheet, config.business),
           voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), true) as ServedVoice,
+          voiceChoice: await voiceChoiceFor(config, true),
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
           maxResponseTokens: config.maxResponseTokens,

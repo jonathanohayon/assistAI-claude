@@ -53,7 +53,7 @@ import {
 } from "@/components/bricks/persona/persona-ui";
 import { personaFromInbound } from "@/lib/persona/adapters";
 import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
-import { hydrateVoice, voicePatch } from "@/components/bricks/voice/voice-ui";
+import { hydrateVoice, voicePatch, type ServedVoiceChoice } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
@@ -138,6 +138,8 @@ export function ConfigForm({
   const [persona, setPersona] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
   const [personaBase, setPersonaBase] = useState<Persona>(() => initial.personaConfig ?? personaFromInbound(initial));
   const [voiceBase, setVoiceBase] = useState<ClientVoice>(() => hydrateVoice(initial.voiceConfig));
+  // V8c: the server's voice choice (our ids); refreshed by every save.
+  const [voiceChoice, setVoiceChoice] = useState<ServedVoiceChoice | null>(initial.voiceChoice ?? null);
   // Knowledge brick: the ACCOUNT's company sheet, saved through its own
   // endpoint (sheetPatch vs the last loaded/saved). `form.business` mirrors
   // it for the rest of the screen and is no longer sent with the config.
@@ -405,6 +407,7 @@ export function ConfigForm({
       setDirty(false);
       const saved = (await res.json().catch(() => null)) as {
         voiceConfig?: FormState["voiceConfig"];
+        voiceChoice?: ServedVoiceChoice;
         personaConfig?: Persona;
       } | null;
       setTransferBase(transferNumber);
@@ -426,6 +429,7 @@ export function ConfigForm({
       const savedVoice = saved?.voiceConfig ? hydrateVoice(saved.voiceConfig) : voice;
       setVoice(savedVoice);
       setVoiceBase(savedVoice);
+      if (saved?.voiceChoice) setVoiceChoice(saved.voiceChoice);
       // Re-render le server component parent (dashboard) pour que la checklist
       // de setup reflète l'état fraîchement sauvegardé (ex: numéro WhatsApp
       // renseigné → étape "Recap WhatsApp" passe au vert sans reload manuel).
@@ -741,6 +745,7 @@ export function ConfigForm({
                     isAdmin={isAdmin}
                     asUserId={asUserId ?? null}
                     primaryLanguage={form.primaryLanguage}
+                    choice={voiceChoice}
                     // Below xl the Live Test sits above the tiles; from xl it is beside them (no link).
                     liveTestLink={{ targetId: "live-test", direction: "up", className: "xl:hidden" }}
                   />

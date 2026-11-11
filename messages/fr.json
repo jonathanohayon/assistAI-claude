@@ -2246,6 +2246,21 @@
       "fable": "Conteuse",
       "onyx": "Grave et ferme"
     },
+    "voiceDesc": {
+      "voice-101": "Souriante, posée",
+      "voice-102": "Grave, apaisante",
+      "voice-103": "Posée et grave",
+      "voice-104": "Calme, conseil",
+      "voice-105": "Énergique, nette",
+      "voice-106": "Neutre et pro",
+      "voice-107": "Douce, lumineuse",
+      "voice-108": "Pro et neutre",
+      "voice-109": "Conteuse",
+      "voice-110": "Grave et ferme",
+      "voice-111": "Vive, lumineuse",
+      "voice-112": "Chaude et douce",
+      "voice-113": "Calme, réfléchie"
+    },
     "fewerVoices": "Voir moins",
     "bargeInOn": "Tamara s'arrête dès que la personne parle.",
     "bargeInOff": "Tamara finit toujours sa phrase.",
