@@ -5,14 +5,14 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
 import { CallsView } from "@/app/[locale]/dashboard/logs/calls-view";
-import { LogsView } from "@/app/[locale]/dashboard/logs/logs-view";
+import { DeveloperConsole } from "@/app/[locale]/dashboard/logs/developer-console";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 export const dynamic = "force-dynamic";
 
-// Admin monitoring du tenant — réutilise LogsView du dashboard avec
-// asUserId pour scoper events + call-metrics. Layout / header / nav
-// fournis par /admin/users/[userId]/layout.tsx.
+// Admin view of the tenant's Calls tab: same Calls view and developer
+// console as /dashboard/logs, scoped with asUserId (admins always see the
+// console). Layout / header / nav come from /admin/users/[userId]/layout.tsx.
 export default async function AdminTenantLogsPage({
   params,
 }: {
@@ -30,10 +30,8 @@ export default async function AdminTenantLogsPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
-      <div className="mb-8">
-        <CallsView asUserId={target.id} />
-      </div>
-      <LogsView asUserId={target.id} showEngine />
+      <CallsView asUserId={target.id} />
+      <DeveloperConsole isAdmin asUserId={target.id} />
     </main>
   );
 }
