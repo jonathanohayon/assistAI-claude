@@ -1,6 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+
+import { showLevel3 } from "@/components/bricks/level3";
+import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 
 /**
  * URL publique de l'agent — à copier dans un client vocal (tamaravox) pour
@@ -10,8 +14,36 @@ import { useEffect, useRef, useState } from "react";
  * recopie, pas un secret saisi une fois. Il est aussi distinct de la clé API,
  * qui ouvrirait l'accès aux transcripts — partager cette URL ne donne que la
  * parole.
+ *
+ * Engineering-facing, so it is level-3 content: shown only when the viewer's
+ * developer mode is on (admins always see it, same rule as every brick).
+ * Off means the card is not in the DOM and the token is never fetched.
  */
+export function AgentUrlCard({ isAdmin }: { isAdmin: boolean }) {
+  const dev = useDeveloperMode();
+  return <AgentUrlCardGate isAdmin={isAdmin} developerMode={dev.on} />;
+}
+
+/** The gate itself, without the store (rendered as-is by the tests). */
+export function AgentUrlCardGate({ isAdmin, developerMode }: { isAdmin: boolean; developerMode: boolean }) {
+  const t = useTranslations("AgentUrl");
+  if (!showLevel3({ isAdmin, developerMode })) return null;
+  return (
+    <section
+      aria-labelledby="agent-url-title"
+      className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6"
+    >
+      <h2 id="agent-url-title" className="font-display text-lg text-[var(--color-foreground)]">
+        {t("title")}
+      </h2>
+      <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t("desc")}</p>
+      <AgentUrlSection />
+    </section>
+  );
+}
+
 export function AgentUrlSection() {
+  const t = useTranslations("AgentUrl");
   const [token, setToken] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,18 +86,13 @@ export function AgentUrlSection() {
   return (
     <div className="mt-4 space-y-4">
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3">
-        <p className="text-sm font-medium text-[var(--color-foreground)]">
-          URL publique de votre agent
-        </p>
-        <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-          Collez-la dans un service vocal pour que votre agent réponde au
-          téléphone. Elle utilise la persona configurée ci-dessus.
-        </p>
+        <p className="text-sm font-medium text-[var(--color-foreground)]">{t("urlLabel")}</p>
+        <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t("urlHint")}</p>
 
         <div className="mt-3 flex items-center gap-2">
           <code
             dir="ltr"
-            className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-muted)] px-3 py-2 font-mono text-xs text-[var(--color-foreground)]"
+            className="min-w-0 flex-1 truncate rounded-lg bg-[var(--color-muted)] px-3 py-2 text-start font-mono text-xs text-[var(--color-foreground)]"
           >
             {url || "…"}
           </code>
@@ -73,41 +100,40 @@ export function AgentUrlSection() {
             type="button"
             onClick={copy}
             disabled={!url}
-            className="shrink-0 rounded-lg bg-[var(--color-foreground)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded-lg bg-[var(--color-foreground)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
-            {copied ? "Copié" : "Copier"}
+            {copied ? t("copied") : t("copy")}
           </button>
+          {/* Announces the copy to screen readers (the label swap alone isn't). */}
+          <span role="status" aria-live="polite" className="sr-only">
+            {copied ? t("copied") : ""}
+          </span>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-[var(--color-muted-foreground)]">
-            Toute personne disposant de cette URL peut faire parler votre
-            agent. Elle ne donne accès ni à vos transcripts ni à votre compte.
-          </p>
+          <p className="text-[11px] text-[var(--color-muted-foreground)]">{t("warning")}</p>
           <button
             type="button"
             onClick={rotate}
             disabled={busy}
-            className="shrink-0 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-muted)] disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded-full border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-muted)] disabled:opacity-50"
           >
-            Régénérer
+            {t("rotate")}
           </button>
         </div>
       </div>
 
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-xs">
-        <p className="font-medium text-[var(--color-foreground)]">
-          Contrat attendu par les clients vocaux
-        </p>
+        <p className="font-medium text-[var(--color-foreground)]">{t("contractTitle")}</p>
         <pre
           dir="ltr"
-          className="mt-2 overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]"
+          className="mt-2 overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 text-start font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]"
         >
-{`POST ${url || "<votre-url>"}
+{`POST ${url || t("urlPlaceholder")}
 { "call_id": "…", "turn_id": 1, "language": "fr",
   "transcript": "Bonjour…", "history": [] }
 
-→ 200 { "reply": "…" }   sous 2 s`}
+→ 200 { "reply": "…" }   ${t("replyWithin")}`}
         </pre>
       </div>
     </div>

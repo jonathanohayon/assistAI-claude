@@ -178,29 +178,65 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
   });
 }
 
-// 6. Error mapping: three keys, never the server's message or code
+// 6. Error mapping: our keys only, never the server's message or code.
+//    unsafe_url reads by role: tenant -> the long key (who can fix it), admin -> the short one.
 {
   const leaky = "Resolves to 127.0.0.1 (loopback)";
-  assert.equal(brainSaveError(403, { error: "admin_only", fields: ["url"] }), "adminOnly");
-  assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }), "unsafeUrl");
-  assert.equal(brainSaveError(400, { error: "Bad JSON" }), "generic");
-  assert.equal(brainSaveError(403, { error: "Forbidden" }), "generic");
-  assert.equal(brainSaveError(500, null), "generic");
-  assert.equal(brainSaveError(200, { error: "x" }), "generic");
-  assert.equal(brainSaveError(200, { brain: { enabled: true, url: "" } }), null);
+  const TENANT = { urlEditable: false };
+  const ADMIN = { urlEditable: true };
+  for (const who of [TENANT, ADMIN]) {
+    assert.equal(brainSaveError(403, { error: "admin_only", fields: ["url"] }, who), "adminOnly");
+    assert.equal(brainSaveError(400, { error: "Bad JSON" }, who), "generic");
+    assert.equal(brainSaveError(403, { error: "Forbidden" }, who), "generic");
+    assert.equal(brainSaveError(403, { error: "unsafe_url" }, who), "generic");
+    assert.equal(brainSaveError(500, null, who), "generic");
+    assert.equal(brainSaveError(200, { error: "x" }, who), "generic");
+    assert.equal(brainSaveError(200, { brain: { enabled: true, url: "" } }, who), null);
+  }
+  assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, TENANT), "unsafeUrlTenant");
+  assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, ADMIN), "unsafeUrl");
+  // The section passes the view's urlEditable (from the server answer, missing = tenant).
+  for (const [d, key] of [
+    [served(false, { enabled: true, url: MOCK_URL }), "unsafeUrlTenant"],
+    [served(undefined, { enabled: true, url: MOCK_URL }), "unsafeUrlTenant"],
+    [served(true, { enabled: true, url: MOCK_URL }), "unsafeUrl"],
+  ] as const) {
+    const { view } = toBrainState(d);
+    assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, { urlEditable: view.urlEditable }), key);
+  }
+  assert.match(
+    read("app/[locale]/dashboard/settings/agent-brain-section.tsx"),
+    /brainSaveError\(res\.status, d, \{ urlEditable: state\.view\.urlEditable \}\)/,
+    "the section branches on the server's urlEditable",
+  );
+  // Exact copy (tamaraVP).
+  assert.equal(
+    messages("fr").AgentBrain.errors.unsafeUrlTenant,
+    "Cette adresse ne peut pas être utilisée. Contactez l'équipe Tamara pour la mettre à jour, ou désactivez l'agent.",
+  );
+  assert.equal(
+    messages("en").AgentBrain.errors.unsafeUrlTenant,
+    "This address can't be used. Contact the Tamara team to update it, or turn the agent off.",
+  );
+  assert.equal(messages("fr").AgentBrain.errors.unsafeUrl, "Cette adresse ne peut pas être utilisée.");
 
   for (const l of LOCALES) {
     const m = messages(l).AgentBrain;
-    for (const key of ["adminOnly", "unsafeUrl", "generic"] as BrainErrorKey[]) {
-      const html = render(served(true, { enabled: false, url: "http://127.0.0.1/x" }), l, { error: key });
+    for (const key of ["adminOnly", "unsafeUrl", "unsafeUrlTenant", "generic"] as BrainErrorKey[]) {
+      const urlEditable = key !== "unsafeUrlTenant";
+      const html = render(served(urlEditable, { enabled: true, url: "http://127.0.0.1/x" }), l, { error: key });
       assert.match(html, /role="alert"/, `${l}/${key}: alert`);
       assert.ok(html.includes(esc(m.errors[key])), `${l}/${key}: our words`);
       for (const bad of [leaky, "admin_only", "unsafe_url", "loopback"]) {
         assert.ok(!html.includes(bad), `${l}/${key}: never "${bad}"`);
       }
     }
+    // The tenant line is longer than the admin one and starts with it.
+    assert.ok(m.errors.unsafeUrlTenant.startsWith(m.errors.unsafeUrl), `${l}: tenant line extends the short one`);
+    assert.notEqual(m.errors.unsafeUrlTenant, m.errors.unsafeUrl, `${l}: tenant line differs`);
     // One plain line, no address detail in our own copy either.
-    assert.doesNotMatch(m.errors.unsafeUrl, /\d+\.\d+|IP|localhost/i, `${l}: no detail`);
+    for (const k of ["unsafeUrl", "unsafeUrlTenant"] as const)
+      assert.doesNotMatch(m.errors[k], /\d+\.\d+|\bIP\b|localhost/i, `${l}/${k}: no detail`);
   }
 }
 

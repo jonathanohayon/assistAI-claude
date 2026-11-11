@@ -2579,6 +2579,7 @@
     "errors": {
       "adminOnly": "Seule l'équipe Tamara peut modifier cette adresse.",
       "unsafeUrl": "Cette adresse ne peut pas être utilisée.",
+      "unsafeUrlTenant": "Cette adresse ne peut pas être utilisée. Contactez l'équipe Tamara pour la mettre à jour, ou désactivez l'agent.",
       "generic": "Enregistrement impossible. Réessayez dans un instant."
     },
     "probeReply": "Réponse : « {reply} »",
@@ -2586,5 +2587,18 @@
     "probeUnreachable": "Injoignable depuis le navigateur (souvent du CORS). Le serveur appelle votre agent directement et n'est pas concerné.",
     "contractTitle": "Ce que Tamara envoie à votre agent",
     "contractFoot": "Au-delà de 2 secondes, le tour est traité comme un silence : une phrase d'attente est prononcée à votre place."
+  },
+  "AgentUrl": {
+    "title": "Agent joignable",
+    "desc": "Donnez à votre agent une voix et un numéro depuis un service vocal externe, en lui fournissant cette URL.",
+    "urlLabel": "URL publique de votre agent",
+    "urlHint": "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la persona configurée ci-dessus.",
+    "copy": "Copier",
+    "copied": "Copié",
+    "warning": "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.",
+    "rotate": "Régénérer",
+    "contractTitle": "Contrat attendu par les clients vocaux",
+    "urlPlaceholder": "<votre-url>",
+    "replyWithin": "sous 2 s"
   }
 }

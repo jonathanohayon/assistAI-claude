@@ -2579,6 +2579,7 @@
     "errors": {
       "adminOnly": "Only the Tamara team can change this address.",
       "unsafeUrl": "This address can't be used.",
+      "unsafeUrlTenant": "This address can't be used. Contact the Tamara team to update it, or turn the agent off.",
       "generic": "Couldn't save. Please try again in a moment."
     },
     "probeReply": "Reply: “{reply}”",
@@ -2586,5 +2587,18 @@
     "probeUnreachable": "Can't be reached from the browser (often CORS). The server calls your agent directly and isn't affected.",
     "contractTitle": "What Tamara sends to your agent",
     "contractFoot": "After 2 seconds, the turn counts as silence: a holding line is spoken for you."
+  },
+  "AgentUrl": {
+    "title": "Reachable agent",
+    "desc": "Give your agent a voice and a phone number from an external voice service by giving it this URL.",
+    "urlLabel": "Your agent's public URL",
+    "urlHint": "Paste it into a voice service so your agent answers the phone. It uses the persona configured above.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "warning": "Anyone with this URL can make your agent speak. It gives no access to your transcripts or your account.",
+    "rotate": "Regenerate",
+    "contractTitle": "Contract expected by voice clients",
+    "urlPlaceholder": "<your-url>",
+    "replyWithin": "within 2 s"
   }
 }
