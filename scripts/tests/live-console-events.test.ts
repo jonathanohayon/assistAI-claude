@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { eventContactId } from "../../lib/campaigns/live-events";
+import { eventContactId, WORKER_CONSOLE_NOISE } from "../../lib/campaigns/live-events";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -51,6 +51,16 @@ const campaignOrigin = (campaignId: string, contactId: string) => ({
   assert.equal(eventContactId({ contactId: 42 }), null, "non-string contactId");
   assert.equal(eventContactId(null), null);
   assert.equal(eventContactId({}), null);
+}
+
+// 1b. The noise deny list hides diagnostics only, never the call's story
+{
+  for (const e of ["chatctx_snapshot", "config_loaded", "call_metrics"]) {
+    assert.ok((WORKER_CONSOLE_NOISE as readonly string[]).includes(e), `${e} hidden`);
+  }
+  for (const e of ["call_started", "call_ended", "call_transfer", "call_refused", "auto_hangup", "realtime_server_error", "realtime_fatal_error", "session_start_failed", "campaign_dial"]) {
+    assert.ok(!(WORKER_CONSOLE_NOISE as readonly string[]).includes(e), `${e} kept`);
+  }
 }
 
 // 2. The live route uses the shared predicate and helper (no inline top-level-only filter)
@@ -103,12 +113,18 @@ async function sqlPart(url: string) {
   const contactB = randomUUID();
 
   // Worker events go through the real ingestion route, as the worker posts them.
-  async function postWorker(event: string, campaignId: string, contactId: string, metadata: Record<string, unknown>) {
+  async function postWorker(
+    event: string,
+    campaignId: string,
+    contactId: string,
+    metadata: Record<string, unknown>,
+    level: "info" | "warn" | "error" = "info",
+  ) {
     const body = {
       source: "agent",
       event,
       message: `mock ${event}`,
-      level: "info",
+      level,
       metadata: workerFinalMetadata(
         { ...metadata, testTag: tag },
         { origin: campaignOrigin(campaignId, contactId), callId: `call-${contactId}` },
@@ -132,6 +148,12 @@ async function sqlPart(url: string) {
     await postWorker("call_started", campaignA, contactA, { roomName: `campaign__${campaignA}__${contactA}__1` });
     await postWorker("call_transfer", campaignA, contactA, { requested: "mock" });
     await postWorker("call_started", campaignB, contactB, { roomName: `campaign__${campaignB}__${contactB}__1` });
+    // Worker noise for campaign A: hidden, unless level = error.
+    await postWorker("chatctx_snapshot", campaignA, contactA, { items: ["mock"] });
+    await postWorker("config_loaded", campaignA, contactA, { model: "mock" });
+    await postWorker("config_loaded", campaignA, contactA, { model: "mock" }, "error");
+    // A web-side event with a noise name stays: the deny list is worker-branch only.
+    await logEvent({ source: "web", event: "config_loaded", message: "mock web", metadata: { campaignId: campaignA, contactId: contactA, testTag: tag } });
     // Look-alikes that must never match campaign A.
     await logEvent({ source: "agent", event: "call_started", message: "mock sip", metadata: { origin: { kind: "sip", campaignId: campaignA }, testTag: tag } });
     await logEvent({ source: "agent", event: "config_loaded", message: "mock no origin", metadata: { testTag: tag } });
@@ -160,11 +182,22 @@ async function sqlPart(url: string) {
 
     // Before (main): the top-level-only filter misses the worker's events.
     const before = await feed(sql`${events.metadata} ? 'campaignId' AND (${events.metadata}->>'campaignId') = ${campaignA}`);
-    assert.deepEqual(before.map((r) => r.event), ["campaign_dial"], "main: only the web event");
+    assert.deepEqual(before.map((r) => r.event).sort(), ["campaign_dial", "config_loaded"], "main: only the web events");
 
-    // After: both shapes of campaign A, nothing of campaign B, no look-alike.
+    // After: both shapes of campaign A, nothing of campaign B, no look-alike,
+    // no worker noise (chatctx_snapshot, info config_loaded), errors kept.
     const after = await feed(campaignEventsWhere(campaignA));
-    assert.deepEqual(after.map((r) => r.event).sort(), ["call_started", "call_transfer", "campaign_dial"]);
+    assert.deepEqual(after.map((r) => r.event).sort(), ["call_started", "call_transfer", "campaign_dial", "config_loaded", "config_loaded"]);
+    assert.ok(!after.some((r) => r.event === "chatctx_snapshot"), "chatctx_snapshot hidden");
+    const keptConfig = await db
+      .select({ level: events.level, source: events.source })
+      .from(events)
+      .where(and(campaignEventsWhere(campaignA), eq(events.event, "config_loaded"), sql`${events.metadata}->>'testTag' = ${tag}`));
+    assert.deepEqual(
+      keptConfig.map((r) => `${r.source}:${r.level}`).sort(),
+      ["agent:error", "web:info"],
+      "worker info config_loaded hidden; worker error and web-side kept",
+    );
     for (const r of after) {
       const m = r.metadata as Record<string, unknown>;
       const origin = m.origin as Record<string, unknown> | undefined;
@@ -174,6 +207,16 @@ async function sqlPart(url: string) {
     const afterB = await feed(campaignEventsWhere(campaignB));
     assert.deepEqual(afterB.map((r) => r.event).sort(), ["call_started", "campaign_dial"]);
     assert.equal((await feed(campaignEventsWhere(randomUUID()))).length, 0, "unknown campaign: nothing");
+
+    // 150 noisy worker events after one campaign_dial: the dial stays in the 100-event window.
+    const campaignC = randomUUID();
+    const contactC = randomUUID();
+    await logEvent({ source: "web", event: "campaign_dial", message: "mock dial", metadata: { campaignId: campaignC, contactId: contactC, attempt: 1, testTag: tag } });
+    for (let i = 0; i < 150; i++) {
+      await postWorker(WORKER_CONSOLE_NOISE[i % WORKER_CONSOLE_NOISE.length], campaignC, contactC, { i });
+    }
+    const windowC = await feed(campaignEventsWhere(campaignC));
+    assert.deepEqual(windowC.map((r) => r.event), ["campaign_dial"], "noise takes no slot");
 
     // Index: both branches are index-servable (BitmapOr of the two partial indexes).
     const q = db
