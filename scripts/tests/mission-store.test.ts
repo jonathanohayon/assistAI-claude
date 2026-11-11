@@ -3,7 +3,7 @@
 // Mock data only. Run with:  npx tsx scripts/tests/mission-store.test.ts
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { outboundAgents, type OutboundAgent } from "../../lib/db/schema";
 import { agentMissionUpdates, currentAgentMission, parseAgentMission, withoutMissionStore } from "../../lib/mission/store";
@@ -163,12 +163,88 @@ for (const [actor, isAdmin] of [["tenant", false], ["admin ?asUserId", true]] as
   }
 }
 
-// ── Every route spreading the row strips the column; only the agent GET adds it back ──
+// ── Every route spreading the row strips the column; only the agent GET and PATCH add it back ──
 {
   const r = row(STORED);
   assert.equal("mission" in withoutMissionStore(withoutToolsStore(r)), false);
   assert.equal("toolsConfig" in withoutMissionStore(withoutToolsStore(r)), false);
   assert.deepEqual(Object.keys(getJson(r, false)).filter((k) => k === "mission"), ["mission"]);
+}
+
+// ── The PATCH response returns the stored mission in the GET's shape ─────
+// Source-level: read the route files and check what each handler returns.
+{
+  const src = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
+  const handler = (file: string, name: string) => {
+    const s = src(file);
+    const start = s.indexOf(`export async function ${name}(`);
+    assert.ok(start >= 0, `${file}: ${name} handler found`);
+    const next = s.indexOf("export async function ", start + 1);
+    return s.slice(start, next < 0 ? undefined : next);
+  };
+  const ONE = "app/api/dashboard/outbound-agents/[id]/route.ts";
+  const get = handler(ONE, "GET");
+  const patch = handler(ONE, "PATCH");
+  assert.match(get, /mission: currentAgentMission\(agent\.mission\),/, "GET returns the stored mission");
+  assert.match(patch, /mission: currentAgentMission\(updated\.mission\),/, "PATCH returns the stored (updated) mission, same helper as GET");
+  // both spread the row without the raw column, then add the normalised key back
+  for (const [name, body, v] of [["GET", get, "agent"], ["PATCH", patch, "updated"]] as const) {
+    assert.ok(body.includes(`...withoutMissionStore(withoutToolsStore(${v}))`), `${name} strips the raw column before adding it back`);
+  }
+  assert.equal(handler(ONE, "DELETE").includes("mission"), false, "DELETE returns no mission");
+  // the other routes keep stripping it
+  const LIST = "app/api/dashboard/outbound-agents/route.ts";
+  for (const name of ["GET", "POST"]) {
+    const body = handler(LIST, name);
+    assert.ok(body.includes("withoutMissionStore(withoutToolsStore("), `list ${name} strips mission`);
+    assert.equal(body.includes("currentAgentMission"), false, `list ${name} does not add mission back`);
+  }
+  const CAMP = src("app/api/dashboard/campaigns/[id]/route.ts");
+  assert.ok(CAMP.includes("agent: agent ? withoutMissionStore(withoutToolsStore(agent)) : null"), "campaigns/[id] strips the agent's mission");
+  assert.equal(CAMP.includes("currentAgentMission"), false, "campaigns/[id] does not add mission back");
+  // worker routes: nothing reads or serves the mission
+  const walk = (dir: string): string[] =>
+    readdirSync(new URL(`../../${dir}`, import.meta.url), { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(`${dir}/${e.name}`) : e.name.endsWith(".ts") ? [`${dir}/${e.name}`] : [],
+    );
+  const workerFiles = walk("app/api/agent");
+  assert.ok(workerFiles.length > 0);
+  for (const f of workerFiles) {
+    const s = src(f);
+    assert.equal(/currentAgentMission|mission\/store|\.mission\b/.test(s), false, `${f}: no mission served to the worker`);
+  }
+}
+// Pure: the PATCH JSON, built as the route builds it from the `returning()`
+// row, carries the same mission as the GET that follows (set, changed, cleared).
+{
+  const patchJson = (u: OutboundAgent, isAdmin: boolean) =>
+    JSON.parse(
+      JSON.stringify({
+        ...withoutMissionStore(withoutToolsStore(u)),
+        voiceConfig: voiceForViewer(currentOutboundVoice(u.voiceConfig, u), isAdmin),
+        personaConfig: currentOutboundPersona(u.personaConfig, u),
+        mission: currentAgentMission(u.mission),
+        campaignCount: 2,
+      }),
+    ) as Record<string, unknown>;
+  for (const isAdmin of [false, true]) {
+    for (const [start, body, want] of [
+      [STORED, { mission: { kind: "qualify_lead", cold: true } }, { version: 1, kind: "qualify_lead", cold: true }],
+      [STORED, { agentName: "Dana" }, STORED],
+      [STORED, { mission: null }, null],
+      [null, { greeting: "Bonjour" }, null],
+      [null, { mission: { kind: "other" } }, { version: 1, kind: "other", cold: false }],
+    ] as const) {
+      const a = row(start);
+      const p = planOutboundAgentPatch(body as Record<string, unknown>, a, isAdmin);
+      assert.ok("set" in p);
+      const updated = stored(a, p.set);
+      const res = patchJson(updated, isAdmin);
+      assert.deepEqual(res.mission, want, `PATCH ${JSON.stringify(body)} returns ${JSON.stringify(want)}`);
+      assert.deepEqual(res.mission, getJson(updated, isAdmin).mission, "PATCH mission === following GET mission");
+      assert.deepEqual(Object.keys(res).sort(), Object.keys(getJson(updated, isAdmin)).sort(), "PATCH and GET return the same keys");
+    }
+  }
 }
 
 console.log("ALL MISSION STORE TESTS PASSED");
