@@ -12,13 +12,17 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  actionErrorKey,
   contactView,
   counterBuckets,
+  dispatchNoticeKey,
   eventLine,
   formatElapsed,
   mergeEvents,
   nextSince,
   tickSkips,
+  type ActionErrorKey,
+  type DispatchMode,
   type LiveContact,
   type LiveEvent,
   type LiveFeed,
@@ -49,6 +53,10 @@ export function CampaignLiveConsole({
   const [forbidden, setForbidden] = useState(false);
   const [offline, setOffline] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A refused start / pause, in words (never a silent no-op).
+  const [actionError, setActionError] = useState<{ action: "pause" | "start"; key: ActionErrorKey } | null>(null);
+  // The call switch as the start answered it, until the next snapshot says it.
+  const [postedMode, setPostedMode] = useState<DispatchMode | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [clock, setClock] = useState(() => Date.now());
 
@@ -178,11 +186,17 @@ export function CampaignLiveConsole({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (res.ok) {
-        const data = (await res.json()) as { campaign: { status: string } };
-        lastStatusRef.current = data.campaign.status;
-        onStatusRef.current?.(data.campaign.status);
+      const body = (await res.json().catch(() => null)) as { campaign?: { status: string }; dispatchMode?: DispatchMode } | null;
+      if (res.ok && body?.campaign) {
+        setActionError(null);
+        if (body.dispatchMode) setPostedMode(body.dispatchMode);
+        lastStatusRef.current = body.campaign.status;
+        onStatusRef.current?.(body.campaign.status);
+      } else {
+        setActionError({ action, key: actionErrorKey(res.status, body) });
       }
+    } catch {
+      setActionError({ action, key: actionErrorKey(null, null) });
     } finally {
       setBusy(false);
       pollNow.current();
@@ -244,6 +258,22 @@ export function CampaignLiveConsole({
           </button>
         )}
       </div>
+
+      {actionError && (
+        <p role="alert" className="text-[12px] font-semibold text-[#b91c1c]">
+          {t(`actionError.${actionError.key}`, { action: actionError.action })}
+        </p>
+      )}
+      {/* Calls switched off or in test mode on this platform: say so, never a silent start. */}
+      {(() => {
+        const key = running ? dispatchNoticeKey(dispatcher.dispatchMode ?? postedMode) : null;
+        return key ? (
+          <p role="status" className="flex items-center gap-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12px] font-semibold text-[#92400e]">
+            <AlertIcon className="h-4 w-4 shrink-0 text-[#b45309]" />
+            {t(key)}
+          </p>
+        ) : null;
+      })()}
 
       {/* Dispatcher health — LOUD when it never ran or stopped running */}
       {tick === null ? (
