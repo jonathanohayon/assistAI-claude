@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { campaigns, outboundAgents } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { withoutToolsStore } from "@/lib/tools/store";
+import { withoutMissionStore } from "@/lib/mission/store";
 import { normalizeAgentFields } from "@/lib/outbound-agents/validate";
 
 // GET — liste des agents sortants du tenant + nb de campagnes qui les utilisent.
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   const isAdmin = await sessionIsAdmin();
   return NextResponse.json({
     agents: rows.map((a) => ({
-      ...withoutToolsStore(a),
+      ...withoutMissionStore(withoutToolsStore(a)),
       voiceConfig: voiceForViewer(currentOutboundVoice(a.voiceConfig, a), isAdmin),
       personaConfig: currentOutboundPersona(a.personaConfig, a),
       campaignCount: usage.get(a.id) ?? 0,
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(
     {
       agent: {
-        ...withoutToolsStore(created),
+        ...withoutMissionStore(withoutToolsStore(created)),
         voiceConfig: voiceForViewer(currentOutboundVoice(created.voiceConfig, created), isAdmin),
         personaConfig: currentOutboundPersona(created.personaConfig, created),
         campaignCount: 0,

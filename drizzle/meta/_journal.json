@@ -344,6 +344,13 @@
       "when": 1794433393893,
       "tag": "0048_events_origin_campaign",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794434204799,
+      "tag": "0049_outbound_agents_mission",
+      "breakpoints": true
     }
   ]
 }
