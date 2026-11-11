@@ -17,8 +17,11 @@
 import type { TileToggles } from "@/lib/tile-toggles";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "@/lib/tools/adapters";
 import type { PlanFeatures } from "@/lib/plan-features";
+import { checkAgentUrlShape } from "@/lib/net/safe-url";
 import {
   CAPABILITY_KEYS,
+  CLIENT_AGENT_MODES,
+  CLIENT_AGENT_OFF,
   effectiveCapabilities,
   OUTBOUND_CAPABILITIES,
   TOOLS_VERSION,
@@ -28,6 +31,8 @@ import {
 } from "@/lib/tools/contract";
 
 export const ORDERS_ASK_MAX = 1000;
+export const CLIENT_AGENT_URL_MAX = 2048;
+export const CLIENT_AGENT_SECRET_MAX = 256;
 
 type Parse<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
@@ -50,11 +55,25 @@ const SHAPE: Record<keyof Omit<Tools, "version">, Record<string, (v: unknown) =>
     enabled: (v) => (typeof v === "boolean" ? null : "must be a boolean"),
     ask: (v) => (typeof v === "string" && v.length <= ORDERS_ASK_MAX ? null : `a string of at most ${ORDERS_ASK_MAX} characters`),
   },
+  // T5. The url's SAFETY (https, DNS…) is checked by the write path
+  // (lib/tools/write.ts), not here: this stays pure.
+  clientAgent: {
+    enabled: (v) => (typeof v === "boolean" ? null : "must be a boolean"),
+    url: (v) =>
+      typeof v === "string" && v.length <= CLIENT_AGENT_URL_MAX ? null : `a string of at most ${CLIENT_AGENT_URL_MAX} characters`,
+    mode: (v) => ((CLIENT_AGENT_MODES as readonly unknown[]).includes(v) ? null : `one of ${CLIENT_AGENT_MODES.join(", ")}`),
+    secret: (v) =>
+      v === null || (typeof v === "string" && v.trim().length > 0 && v.length <= CLIENT_AGENT_SECRET_MAX)
+        ? null
+        : `null or a non-empty string of at most ${CLIENT_AGENT_SECRET_MAX} characters`,
+  },
 };
 
 /** A full Tools value, strict: every key present and valid, no unknown key. */
-export function parseTools(v: unknown): Parse<Tools> {
-  if (!isObj(v)) return { ok: false, errors: ["tools: must be an object"] };
+export function parseTools(input: unknown): Parse<Tools> {
+  if (!isObj(input)) return { ok: false, errors: ["tools: must be an object"] };
+  // Stored before T5: no clientAgent = off (the rest stays valid).
+  const v: Record<string, unknown> = input.clientAgent === undefined ? { ...input, clientAgent: CLIENT_AGENT_OFF } : input;
   const errors: string[] = [];
   if (v.version !== TOOLS_VERSION) errors.push(`tools.version: must be ${TOOLS_VERSION}`);
   for (const k of Object.keys(v)) if (k !== "version" && !(k in SHAPE)) errors.push(`tools.${k}: unknown`);
@@ -77,8 +96,17 @@ export function parseTools(v: unknown): Parse<Tools> {
 export function mergeTools(current: Tools, patch: unknown): Parse<Tools> {
   if (!isObj(patch)) return { ok: false, errors: ["tools: must be an object"] };
   const merged: Record<string, unknown> = { ...current, version: current.version };
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v0] of Object.entries(patch)) {
     if (k === "version") continue;
+    let v = v0;
+    // `secretSet` is the read-only echo of GET (PublicTools): a re-sent
+    // boolean is ignored, never stored. The secret itself: a string sets it,
+    // null clears it, absent keeps it.
+    if (k === "clientAgent" && isObj(v) && typeof v.secretSet === "boolean") {
+      const { secretSet: _s, ...rest } = v;
+      void _s;
+      v = rest;
+    }
     const cur = (current as unknown as Record<string, unknown>)[k];
     merged[k] = isObj(cur) && isObj(v) ? { ...cur, ...v } : v;
   }
@@ -107,6 +135,8 @@ export function currentReceptionistTools(row: ReceptionistToolSettings, toggles:
     // A number served = ON; a parked number = OFF; neither = the stored switch.
     transfer: { ...s.transfer, enabled: row.transferNumber ? true : transferOff ? false : s.transfer.enabled },
     orders: { ...s.orders, enabled: derived.orders.enabled },
+    // T5: stored only (no legacy field), its switch included.
+    clientAgent: s.clientAgent,
   };
 }
 
@@ -184,7 +214,24 @@ export function outboundToolsRefused(current: Tools, next: Tools, enabled: boole
     const turnedOn = next[k].enabled && !current[k].enabled;
     if (turnedOn && (!enabled || !OUTBOUND_CAPABILITIES.includes(k))) out.push(`tools.${k}.enabled`);
   }
+  // T5: the client agent is not an outbound capability (stored, inactive).
+  if (next.clientAgent.enabled && !current.clientAgent.enabled) out.push("tools.clientAgent.enabled");
   return out;
+}
+
+/**
+ * Server gate on the receptionist's client agent (T5): TURNING IT ON while
+ * the CLIENT_AGENT switch is off for this account is refused. Other fields
+ * (its url, mode, secret included), an unchanged re-send and turning it off
+ * pass. Returns the refused paths ([] = allowed).
+ */
+export function clientAgentRefused(current: Tools, next: Tools, enabled: boolean): string[] {
+  return !enabled && next.clientAgent.enabled && !current.clientAgent.enabled ? ["tools.clientAgent.enabled"] : [];
+}
+
+/** The static URL check (no DNS) the capability's prerequisite uses. */
+export function clientAgentUrlOk(tools: Tools): boolean {
+  return tools.clientAgent.url !== "" && checkAgentUrlShape(tools.clientAgent.url).ok;
 }
 
 // ── The ONE capabilities computation the call and the screen share ─────
@@ -194,13 +241,15 @@ export function receptionistCapabilities(
   toggles: TileToggles,
   googleConnected: boolean,
   plan: PlanFeatures,
+  /** T5: the CLIENT_AGENT switch for this account (default off). */
+  clientAgentEnabled = false,
 ): { tools: Tools; capabilities: EffectiveCapabilities } {
   const tools = currentReceptionistTools(row, toggles);
   return {
     tools,
     capabilities: effectiveCapabilities(
-      { recipe: "receptionist", tools },
-      { transferNumber: accountTransferNumber(row), googleConnected },
+      { recipe: "receptionist", tools, clientAgentUrlOk: clientAgentUrlOk(tools) },
+      { transferNumber: accountTransferNumber(row), googleConnected, clientAgentEnabled },
       plan,
     ),
   };

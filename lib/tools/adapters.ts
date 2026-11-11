@@ -5,7 +5,7 @@
 //   outbound: no switches and no tools today (until T4).
 import type { PlanFeatures } from "@/lib/plan-features";
 import type { TileToggles } from "@/lib/tile-toggles";
-import { TOOLS_VERSION, type EffectiveCapabilities, type Tools } from "@/lib/tools/contract";
+import { CLIENT_AGENT_OFF, TOOLS_VERSION, type EffectiveCapabilities, type Tools } from "@/lib/tools/contract";
 
 export function toolsFromTileToggles(t: TileToggles): Tools {
   return {
@@ -14,6 +14,7 @@ export function toolsFromTileToggles(t: TileToggles): Tools {
     contacts: { enabled: t.customers },
     transfer: { enabled: true, when: "always" },
     orders: { enabled: t.orders, ask: "" },
+    clientAgent: CLIENT_AGENT_OFF,
   };
 }
 
@@ -23,6 +24,7 @@ export const OUTBOUND_TOOLS: Tools = {
   contacts: { enabled: false },
   transfer: { enabled: false, when: "always" },
   orders: { enabled: false, ask: "" },
+  clientAgent: CLIENT_AGENT_OFF,
 };
 
 // ── Capabilities → today's payload fields (the call side) ──────────────
@@ -56,4 +58,15 @@ export function outboundCallFeatures(caps: EffectiveCapabilities) {
     whatsapp_recap: false,
     outbound_campaigns: true,
   };
+}
+
+/**
+ * Receptionist (T5): the `clientAgent` key for the worker (T5c reads it) —
+ * ONLY when the capability is active ({} otherwise: CLIENT_AGENT off =
+ * today's payload, byte for byte). The secret only when one is set.
+ */
+export function clientAgentCallField(caps: EffectiveCapabilities, tools: Tools) {
+  if (!caps.clientAgent.active) return {};
+  const { url, secret, mode } = tools.clientAgent;
+  return { clientAgent: { url, ...(secret ? { secret } : {}), mode } };
 }

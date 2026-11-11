@@ -10,6 +10,8 @@ import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS } from "@/lib/plans";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { TOOL_NAMES } from "@/lib/tools/admin-names";
+import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
+import { publicTools } from "@/lib/tools/contract";
 import { accountTransferNumber, outboundCapabilities, receptionistCapabilities } from "@/lib/tools/store";
 import { writeTools } from "@/lib/tools/write";
 import { capabilityInputsFor } from "@/lib/tools/load";
@@ -28,6 +30,13 @@ export const dynamic = "force-dynamic";
 //     (unknown keys included). Receptionist: ALSO writes the CRM tile toggles
 //     and transfer_number — the calls' read source — in one transaction.
 //     Outbound: stored only (inactive until T4). No admin-only field.
+//   T5 ("Ask your agent"): tools.clientAgent { enabled, url, mode, secretSet }
+//     — the secret is WRITE-ONLY (PUT `secret`: a string sets it, null clears
+//     it, absent keeps it; never returned). A url must be a safe https
+//     address (400 unsafe_url { message, fields }). Turning it on while
+//     CLIENT_AGENT is off for the account: 403 client_agent_disabled
+//     { fields }. GET adds clientAgentTool { visible } (server decision,
+//     never the switch value).
 
 type Scope = { userId: string; agentId: string | null };
 
@@ -40,7 +49,7 @@ async function scope(req: NextRequest): Promise<Scope | { error: Response }> {
 
 async function accountOf(userId: string) {
   const [u] = await db
-    .select({ plan: users.subscriptionPlan, google: users.googleRefreshToken })
+    .select({ plan: users.subscriptionPlan, google: users.googleRefreshToken, role: users.role })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
@@ -75,6 +84,8 @@ async function view(s: Scope): Promise<Response> {
   // The KEPT number: served when transfer is on, parked when it is off.
   let transferNumber: string;
   let outboundVisible: boolean | null = null;
+  // T5: receptionist only; never shown for an outbound agent.
+  let clientAgentVisible = false;
   if (s.agentId) {
     const [row] = await outboundRow(s.userId, s.agentId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -86,17 +97,20 @@ async function view(s: Scope): Promise<Response> {
   } else {
     const [row] = await receptionistRow(s.userId);
     if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    result = receptionistCapabilities(row, await getTileToggles(s.userId), googleConnected, plan);
+    clientAgentVisible = clientAgentEnabled(clientAgentMode(), account.role === "admin");
+    result = receptionistCapabilities(row, await getTileToggles(s.userId), googleConnected, plan, clientAgentVisible);
     transferNumber = accountTransferNumber(row);
   }
   return NextResponse.json({
-    tools: result.tools,
+    // The client agent secret never leaves the server: secretSet instead.
+    tools: publicTools(result.tools),
     capabilities: result.capabilities,
     account: { googleConnected, transferNumberSet: Boolean(transferNumber), transferNumber: transferNumber || null },
     upgrade: upgradePlans(result.capabilities, matrix, PLANS),
     // Outbound (T4): the server's decision from OUTBOUND_TOOLS for this
     // account — never the switch value. false = the screen shows no tools.
     ...(outboundVisible === null ? {} : { outboundTools: { visible: outboundVisible } }),
+    clientAgentTool: { visible: clientAgentVisible },
     ...(isAdmin ? { admin: { toolNames: TOOL_NAMES } } : {}),
   });
 }
@@ -113,8 +127,15 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { tools?: unknown } | null;
 
   // T4: the outbound gate needs this account's OUTBOUND_TOOLS decision.
-  const enabled = s.agentId ? (await capabilityInputsFor(s.userId)).account.outboundToolsEnabled : false;
-  const w = await writeTools(s.userId, s.agentId, body?.tools, enabled);
+  // T5: the receptionist gate needs this account's CLIENT_AGENT decision.
+  const inputs = await capabilityInputsFor(s.userId);
+  const w = await writeTools(
+    s.userId,
+    s.agentId,
+    body?.tools,
+    s.agentId ? inputs.account.outboundToolsEnabled : false,
+    s.agentId ? false : inputs.account.clientAgentEnabled,
+  );
   if (!w.ok) return NextResponse.json(w.body, { status: w.status });
   await logEvent({
     source: "web",

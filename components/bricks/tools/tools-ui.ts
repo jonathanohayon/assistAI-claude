@@ -13,7 +13,7 @@ import {
   type EffectiveCapabilities,
   type MissingPrerequisite,
   OUTBOUND_CAPABILITIES,
-  type Tools,
+  type PublicTools,
 } from "@/lib/tools/contract";
 
 /** Which screen the brick is on: the receptionist or an outbound agent. */
@@ -21,7 +21,8 @@ export type ToolsKind = "inbound" | "outbound";
 
 /** GET/PUT /api/dashboard/tools (T3). `admin` is in an admin's response only. */
 export interface ToolsResponse {
-  tools: Tools;
+  /** The client agent's secret is never sent: `clientAgent.secretSet` instead. */
+  tools: PublicTools;
   capabilities: EffectiveCapabilities;
   /** transferNumber: the KEPT number (stored, or parked while transfer is off), E.164; null = none. */
   account: { googleConnected: boolean; transferNumberSet: boolean; transferNumber?: string | null };
@@ -33,6 +34,8 @@ export interface ToolsResponse {
    * the site switch's raw value). false = the editor shows no tools at all.
    */
   outboundTools?: { visible: boolean };
+  /** T5: whether this account's screen shows "Ask your agent" (server decision). */
+  clientAgentTool?: { visible: boolean };
 }
 
 /**
@@ -75,6 +78,9 @@ const ACTION: Record<MissingPrerequisite, PrerequisiteAction> = {
   no_transfer_number: "addNumber",
   // Nothing the customer can do (the outbound screen leaves these out).
   not_available_outbound: null,
+  // T5 ("Ask your agent"): the screen shows that tool only when visible.
+  client_agent_disabled: null,
+  no_agent_url: null,
 };
 
 /**

@@ -22,7 +22,9 @@ import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 import { getTileToggles } from "@/lib/tile-toggles";
-import { receptionistCallFields } from "@/lib/tools/adapters";
+import { clientAgentCallField, receptionistCallFields } from "@/lib/tools/adapters";
+import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
+import { checkAgentUrl } from "@/lib/net/safe-url";
 import { receptionistCapabilities } from "@/lib/tools/store";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -216,11 +218,13 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // Tools brick (T1): ONE function decides what the call gets — the same the
   // screen will show. Orders (record_order) ride on the CRM plan feature and
   // the "Commandes" toggle; transfer on the number (served below).
-  const { capabilities } = receptionistCapabilities(
+  const { capabilities, tools } = receptionistCapabilities(
     tenant.config,
     tileToggles,
     Boolean(tenant.user.googleRefreshToken),
     planFeatures,
+    // T5: the CLIENT_AGENT switch for this account (off = nothing changes).
+    clientAgentEnabled(clientAgentMode(), tenant.user.role === "admin"),
   );
   const { features, ordersEnabled } = receptionistCallFields(capabilities, planFeatures);
 
@@ -340,6 +344,25 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     });
   }
 
+  // "Ask your agent" (T5): served ONLY when active (CLIENT_AGENT on for this
+  // account, switched on, usable url) AND the url passes the full check
+  // (DNS) now — else the key is absent, as on main. The worker (T5c) reads it.
+  let clientAgentField = clientAgentCallField(capabilities, tools);
+  if ("clientAgent" in clientAgentField) {
+    const safe = await checkAgentUrl(tools.clientAgent.url, { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS });
+    if (!safe.ok) {
+      clientAgentField = {};
+      await logEvent({
+        source: "tenant",
+        event: "client_agent_unsafe",
+        message: `Agent du client ignoré pour ${tenant.user.email} : adresse refusée (${safe.code})`,
+        level: "error",
+        userId: tenant.user.id,
+        metadata: { code: safe.code },
+      });
+    }
+  }
+
   const voiceConfig = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
   const engine = toEngineSettings(voiceConfig, { defaultModel: tenant.config.model || "gpt-realtime-2" });
 
@@ -363,6 +386,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     clientProfile: await clientProfilePromise,
     features,
     ordersEnabled,
+    ...clientAgentField,
     updatedAt,
     // Template per-call avec placeholders {date_fr}, {iso_date}, {time},
     // {caller_hint_block} substitués côté worker à chaque appel.

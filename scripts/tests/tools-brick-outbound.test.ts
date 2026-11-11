@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "../../lib/tools/adapters";
-import { effectiveCapabilities, type CapabilityKey, type Tools } from "../../lib/tools/contract";
+import { effectiveCapabilities, publicTools, type CapabilityKey, type Tools } from "../../lib/tools/contract";
 import { ToolsBrick } from "../../components/bricks/tools/ToolsBrick";
 import {
   activeCount,
@@ -49,7 +49,7 @@ function outboundServed(visible: boolean | undefined, tools: Tools, transferNumb
     DEFAULT_MATRIX.premium,
   );
   return {
-    tools,
+    tools: publicTools(tools),
     capabilities,
     account: { googleConnected: false, transferNumberSet: !!transferNumber, transferNumber: transferNumber || null },
     upgrade: {},
@@ -58,7 +58,7 @@ function outboundServed(visible: boolean | undefined, tools: Tools, transferNumb
 }
 
 function render(kind: ToolsKind, served: ToolsResponse, tools: Tools, locale = "en", refused: CapabilityKey[] | null = null) {
-  const brick = createElement(ToolsBrick, { kind, served, tools, onChange: () => {}, returnTo: "/dashboard/campaigns", refused });
+  const brick = createElement(ToolsBrick, { kind, served, tools: publicTools(tools), onChange: () => {}, returnTo: "/dashboard/campaigns", refused });
   return renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, brick));
 }
 
@@ -147,7 +147,7 @@ const en = messages("en").ToolsBrick;
 {
   const tools = toolsFromTileToggles({ calendar: true, customers: true, orders: true });
   const capabilities = effectiveCapabilities({ recipe: "receptionist", tools }, { transferNumber: "+15555550100", googleConnected: true }, DEFAULT_MATRIX.premium);
-  const served: ToolsResponse = { tools, capabilities, account: { googleConnected: true, transferNumberSet: true, transferNumber: "+15555550100" }, upgrade: {} };
+  const served: ToolsResponse = { tools: publicTools(tools), capabilities, account: { googleConnected: true, transferNumberSet: true, transferNumber: "+15555550100" }, upgrade: {} };
   assert.equal(toolsBrickVisible("inbound", served), true, "no outboundTools field needed");
   assert.deepEqual(capabilityList(capabilities).switches.map((v) => v.key), ["booking", "contacts", "transfer", "orders"]);
   assert.deepEqual(capabilityList(capabilities, "inbound"), capabilityList(capabilities));
