@@ -2091,9 +2091,11 @@
         "default": "By model"
       },
       "pace": {
+        "very_slow": "Very slow",
         "slow": "Slow",
         "normal": "Normal",
-        "fast": "Fast"
+        "fast": "Fast",
+        "very_fast": "Very fast"
       },
       "grokReasoning": {
         "high": "High",
@@ -2197,9 +2199,11 @@
     "invalid": "This value can't be saved. Check the field and try again.",
     "paceLabel": "Speaking pace",
     "pace": {
+      "very_slow": "Very slow",
       "slow": "Slow",
       "normal": "Normal",
       "fast": "Fast",
+      "very_fast": "Very fast",
       "custom": "Current (custom)"
     },
     "patienceLabel": "Patience before answering",

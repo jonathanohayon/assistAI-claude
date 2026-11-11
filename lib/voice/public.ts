@@ -47,6 +47,19 @@ export const VOICE_ORDER = [
 ] as const;
 export const DEFAULT_VOICE_ID = "marin";
 
+// ── Pace (V9a): 5 notches ───────────────────────────────────────────────
+
+export const VOICE_PACES = ["very_slow", "slow", "normal", "fast", "very_fast"] as const;
+export type VoicePace = (typeof VOICE_PACES)[number];
+
+/**
+ * Speed factor of each pace (engines without a speed setting get the pace in
+ * words). slow / normal / fast = TODAY's values (applied by the voice agent);
+ * the two ends are folded in when serving (lib/voice/engine.ts).
+ * The two ends are PROVISIONAL until heard: tune them here only.
+ */
+export const PACE_SPEED: Record<VoicePace, number> = { very_slow: 0.8, slow: 0.9, normal: 1, fast: 1.15, very_fast: 1.3 };
+
 // ── Styles ──────────────────────────────────────────────────────────────
 
 export const VOICE_STYLES = ["warm", "professional", "dynamic", "calm"] as const;

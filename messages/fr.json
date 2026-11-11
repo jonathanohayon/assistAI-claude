@@ -2091,9 +2091,11 @@
         "default": "Selon le modèle"
       },
       "pace": {
+        "very_slow": "Très lent",
         "slow": "Lent",
         "normal": "Normal",
-        "fast": "Rapide"
+        "fast": "Rapide",
+        "very_fast": "Très rapide"
       },
       "grokReasoning": {
         "high": "Haut",
@@ -2197,9 +2199,11 @@
     "invalid": "Cette valeur ne peut pas être enregistrée. Vérifiez le champ et réessayez.",
     "paceLabel": "Rythme de parole",
     "pace": {
+      "very_slow": "Très lent",
       "slow": "Lent",
       "normal": "Normal",
       "fast": "Rapide",
+      "very_fast": "Très rapide",
       "custom": "Actuel (personnalisé)"
     },
     "patienceLabel": "Patience avant de répondre",

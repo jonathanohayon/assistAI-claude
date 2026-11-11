@@ -15,7 +15,11 @@ import type { RealtimeProvider } from "@/lib/realtime-provider";
 
 const ALL: RealtimeProvider[] = ["openai", "gemini", "xai"];
 
-export const PACES = ["slow", "normal", "fast"] as const;
+// 5 notches since V9a (lib/voice/public.ts). The worker live today reads
+// only slow / normal / fast: the two ends are folded into fields it already
+// reads when served (lib/voice/engine.ts), never sent as is.
+export { VOICE_PACES as PACES } from "@/lib/voice/public";
+import { VOICE_PACES as PACES } from "@/lib/voice/public";
 export const LANGUAGE_HINTS = ["auto", "fr", "he", "en"] as const;
 export const OPENAI_TURN_MODES = ["server_vad", "semantic_vad"] as const;
 export const OPENAI_EAGERNESS = ["auto", "low", "medium", "high"] as const;
