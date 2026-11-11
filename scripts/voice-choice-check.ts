@@ -10,7 +10,7 @@ import { db } from "../lib/db";
 import { agentConfigs } from "../lib/db/schema";
 import { voicesFor } from "../lib/realtime";
 import { catalogueIdFor } from "../lib/voice/catalogue";
-import { inboundVoiceConfigUpdates } from "../lib/voice/route-writes";
+import { inboundLegacyVoiceUpdates, inboundVoiceConfigUpdates } from "../lib/voice/route-writes";
 
 const A = "00000000-0000-0000-0000-00000000000a";
 let failed = 0;
@@ -76,6 +76,25 @@ async function main() {
   ok("xai: re-sending the same choice → identical", (await served()) === afterChoice);
   await save({ advanced: { voiceOverrides: { xai: "sal" } } }, true);
   ok("xai: an ADMIN's direct override write still works", (await overrides()).xai === "sal");
+
+  // V8e: an ADMIN switches the engine through the legacy field (as the
+  // routes apply it) — the voice follows to its equivalent.
+  const switchEngine = async (realtimeProvider: string | null) => {
+    const [row] = await db.select().from(agentConfigs).where(eq(agentConfigs.userId, A));
+    const updates: Record<string, unknown> = { realtimeProvider };
+    Object.assign(updates, inboundLegacyVoiceUpdates(row, updates as never));
+    await db.update(agentConfigs).set({ ...updates, updatedAt: new Date() } as never).where(eq(agentConfigs.userId, A));
+  };
+  await reset(null);
+  await db.update(agentConfigs).set({ voice: "ash", voiceProfile: null } as never).where(eq(agentConfigs.userId, A));
+  await switchEngine("xai");
+  const sw = JSON.parse(await served());
+  ok("switch openai → xai: ash follows to orion (was rex by gender)", sw.realtimeProvider === "xai" && sw.voiceProfile?.voiceOverrides?.xai === "orion", JSON.stringify(sw.voiceProfile?.voiceOverrides));
+  await switchEngine("gemini");
+  ok("switch xai → gemini: Puck", (await overrides()).gemini === "Puck", JSON.stringify(await overrides()));
+  await switchEngine(null);
+  const sb = JSON.parse(await served());
+  ok("switch back to openai: voice ash, no openai override", sb.voice === "ash" && !("openai" in (sb.voiceProfile?.voiceOverrides ?? {})), `${sb.voice} ${JSON.stringify(sb.voiceProfile?.voiceOverrides)}`);
 
   console.log(failed ? `${failed} FAILED` : "ALL VOICE-CHOICE CHECKS PASSED");
   process.exit(failed ? 1 : 0);
