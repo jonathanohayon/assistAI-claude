@@ -5,24 +5,15 @@ import { useTranslations } from "next-intl";
 import {
   CALL_OUTCOMES,
   EXTRACTION_FIELD_TYPES,
-  GOAL_PRESETS,
   MAX_CONCURRENCY,
   type ExtractionField,
-  type GoalPreset,
 } from "@/lib/campaigns/constants";
 import type { CampaignDraft } from "@/lib/campaigns/types";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
+import { MissionCards } from "@/components/bricks/mission/MissionBrick";
 import { useVoiceLabel } from "@/lib/use-voice-label";
-
-const GOAL_EMOJI: Record<GoalPreset, string> = {
-  cold: "❄️",
-  sales: "💼",
-  lead_gen: "🎯",
-  marketing: "📣",
-  custom: "✨",
-};
 
 const WEEK_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const DAY_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -106,36 +97,12 @@ export function CampaignSetupStep({
             />
           </Field>
 
-          <div>
-            <span className="mb-1.5 block text-[12px] font-semibold text-[#334155]">
-              {t("goalLabel")}
-            </span>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              {GOAL_PRESETS.map((g) => {
-                const active = draft.goalPreset === g;
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => onChange({ goalPreset: g })}
-                    className={`flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 text-center transition ${
-                      active
-                        ? "border-[#f97316] bg-[#fff7ed] shadow-sm"
-                        : "border-[#e2e8f0] bg-white hover:border-[#f97316]/40"
-                    }`}
-                  >
-                    <span className="text-lg">{GOAL_EMOJI[g]}</span>
-                    <span className="text-[11px] font-semibold text-[#334155]">
-                      {t(`goal_${g}`)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-1.5 text-[11px] text-[#94a3b8]">
-              {t(`goalDesc_${draft.goalPreset}`)}
-            </p>
-          </div>
+          {/* M2b: the mission cards replace the goal-preset picker one for
+           *  one; they write goalPreset only when a pick changes it. */}
+          <MissionCards
+            preset={draft.goalPreset}
+            onPresetChange={(goalPreset) => onChange({ goalPreset: goalPreset as CampaignDraft["goalPreset"] })}
+          />
 
           <Field label={t("objectiveLabel")}>
             <textarea

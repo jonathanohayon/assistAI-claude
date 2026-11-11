@@ -29,6 +29,7 @@ import type { CompanySheet } from "@/lib/knowledge/contract";
 import { refusedCapabilities, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
 // The screen holds what GET sends: Tools without the client agent secret.
 import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
+import { missionFromServed, missionRefused, missionSaveBody, type ScreenMission } from "@/components/bricks/mission/mission-ui";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
@@ -59,6 +60,11 @@ export function AgentsWorkspace({
   const [list, setList] = useState<OutboundAgentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // M2b: the agent's default mission for new campaigns, as its GET returns
+  // it (the list leaves it out). `missionBase` = last loaded/saved: the save
+  // sends `mission` only when the user picked a different one.
+  const [mission, setMission] = useState<ScreenMission | null>(null);
+  const [missionBase, setMissionBase] = useState<ScreenMission | null>(null);
 
   // Persona brick state (saved through agentName/language/greeting until P3).
   const [persona, setPersona] = useState<Persona>(() => personaFromOutbound(null));
@@ -160,8 +166,19 @@ export function AgentsWorkspace({
     setToolsRefused(null);
   };
 
+  const loadMission = async (agentId: string) => {
+    const d = await fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ agent?: { mission?: unknown } }>) : null))
+      .catch(() => null);
+    const m = missionFromServed(d?.agent?.mission);
+    setMission(m);
+    setMissionBase(m);
+  };
+
   const openNew = () => {
     setDirty(false);
+    setMission(null);
+    setMissionBase(null);
     setToolsServed(null);
     setTools(null);
     setToolsBase(null);
@@ -205,6 +222,9 @@ export function AgentsWorkspace({
     setTools(null);
     setToolsBase(null);
     void loadTools(a.id);
+    setMission(null);
+    setMissionBase(null);
+    void loadMission(a.id);
     setView("editor");
   };
 

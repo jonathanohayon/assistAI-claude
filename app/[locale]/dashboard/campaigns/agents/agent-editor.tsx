@@ -17,6 +17,8 @@ import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import type { OutboundAgentDraft } from "@/lib/outbound-agents/types";
+import { DefaultMissionControl } from "@/components/bricks/mission/MissionBrick";
+import type { ScreenMission } from "@/components/bricks/mission/mission-ui";
 
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
@@ -47,6 +49,8 @@ export function AgentEditor({
   tools,
   onToolsChange,
   toolsRefused = null,
+  mission = null,
+  onMissionChange,
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
@@ -72,6 +76,9 @@ export function AgentEditor({
   onToolsChange: (next: Tools) => void;
   /** The last tools save was refused for these capabilities (403 outbound_tools_disabled). */
   toolsRefused?: CapabilityKey[] | null;
+  /** The agent's default mission for new campaigns (null = never set). */
+  mission?: ScreenMission | null;
+  onMissionChange?: (next: ScreenMission) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tKnowledge = useTranslations("KnowledgeBrick");
@@ -144,6 +151,12 @@ export function AgentEditor({
     <div className="space-y-4">
       <AgentEditorStyles />
 
+      {/* M2b: one quiet line, the default mission new campaigns start with. */}
+      {onMissionChange && (
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white/70 px-4 py-3">
+          <DefaultMissionControl value={mission} onChange={onMissionChange} />
+        </div>
+      )}
 
       {/* Grille de tuiles (même look que les appels entrants) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
