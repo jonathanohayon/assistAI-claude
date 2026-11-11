@@ -10,16 +10,27 @@ import { readFileSync } from "node:fs";
 
 import { captureMode } from "../../lib/campaigns/capture-mode";
 import {
+  CAPTURE_CATCHUP_CUTOFF_HOURS,
+  CAPTURE_CATCHUP_PER_TICK,
+  CAPTURE_CLAIM_STALE_MINUTES,
+  CAPTURE_MAX_ATTEMPTS,
   CAPTURE_MAX_FIELDS,
+  CAPTURE_OUTSIDE_WINDOW_COUNT_CAP,
   CAPTURE_TRANSCRIPT_CHARS,
   captureDialog,
   captureFields,
   capturePrompt,
   capturedView,
+  catchUpWindow,
+  isPendingClaim,
   runCampaignCapture,
+  runCaptureCatchUp,
   shouldCapture,
   validateCaptured,
+  type CaptureClaim,
   type CaptureDeps,
+  type CatchUpDeps,
+  type CatchUpTickLog,
   type CaptureInput,
   type CapturePayload,
 } from "../../lib/campaigns/capture";
@@ -59,10 +70,19 @@ function harness(reply: string | null | Error, opts: { existing?: Record<string,
       if (reply instanceof Error) throw reply;
       return reply === null ? null : { content: reply, model: "mock-model" };
     },
-    writeIfEmpty: async (id, payload) => {
-      if (!(id in store) || Object.keys(store[id]!).length > 0) return false;
+    claim: async (id) => {
+      if (!(id in store) || Object.keys(store[id]!).length > 0) return null;
+      const c: CaptureClaim = { v: 1, pending: true, claimedAt: "2026-11-12T10:00:00.000Z", token: "mock-token", attempt: 1 };
+      store[id] = c as unknown as Record<string, unknown>;
+      return c;
+    },
+    writeClaimed: async (id, claim, payload) => {
+      if (JSON.stringify(store[id]) !== JSON.stringify(claim)) return false;
       store[id] = payload as unknown as Record<string, unknown>;
       return true;
+    },
+    park: async (id, claim) => {
+      if (JSON.stringify(store[id]) === JSON.stringify(claim)) store[id] = { ...claim, attempt: CAPTURE_MAX_ATTEMPTS };
     },
     log: async (ev) => {
       logs.push(ev);
@@ -86,6 +106,7 @@ async function main() {
     "app/api/dashboard/campaigns/[id]/results/route.ts",
     "lib/campaigns/capture.ts",
     "lib/campaigns/capture-runtime.ts",
+    "app/api/cron/campaign-dispatch/route.ts",
   ]) {
     assert.doesNotMatch(readFileSync(ROOT + p, "utf8"), /\.CAMPAIGN_CAPTURE\b(?!_)/, p);
   }
@@ -161,14 +182,17 @@ async function main() {
     console.log("ok: ON: number parsed, boolean strict, enum only from options, string trimmed+capped, unknown keys dropped, required → missing");
   }
 
-  // 4. nothing found → stored with empty values (the attempt is recorded), shown as null
+  // 4. nothing found → stored with empty values (the attempt is recorded), shown as {values: {}, missing}
   {
     const h = harness(JSON.stringify({ values: { budget: null } }));
     assert.equal(await runCampaignCapture(INPUT, h.deps), "written");
     const p = h.store[INPUT.callRowId] as unknown as CapturePayload;
     assert.deepEqual(p.values, {});
     assert.deepEqual(p.missing, ["budget", "callback_day"]);
-    assert.equal(capturedView(p), null);
+    assert.deepEqual(capturedView(p), { source: "conversation", values: {}, missing: ["budget", "callback_day"] });
+    // nothing found and nothing required: values {} and no missing key
+    assert.deepEqual(capturedView({ v: 1, source: "conversation", at: "x", model: "m", values: {} }), { source: "conversation", values: {} });
+    console.log("ok: nothing found shows captured {source, values: {}, missing}");
   }
 
   // 5. not run: outcome not connected, empty transcript, empty / unusable schema
@@ -200,11 +224,19 @@ async function main() {
     const existing = { v: 1, source: "conversation", at: "2026-11-01T00:00:00.000Z", model: "old", values: { budget: 5 } };
     const h = harness(JSON.stringify({ values: { budget: 999 } }), { existing });
     assert.equal(await runCampaignCapture(INPUT, h.deps), "already_set");
+    assert.equal(h.calls.length, 0, "not claimed → no LLM call");
     assert.deepEqual(h.store[INPUT.callRowId], existing);
-    // the real write is conditional on extracted = '{}' and targets the row id
+    // a claim held by someone else: no LLM call either
+    const other: CaptureClaim = { v: 1, pending: true, claimedAt: "2026-11-12T09:59:00.000Z", token: "other", attempt: 1 };
+    const h2 = harness(JSON.stringify({ values: { budget: 999 } }), { existing: other as unknown as Record<string, unknown> });
+    assert.equal(await runCampaignCapture(INPUT, h2.deps), "already_set");
+    assert.equal(h2.calls.length, 0);
+    // the real claim takes only {} on that row id; the final write needs extracted = that claim
     const rt = readFileSync(ROOT + "lib/campaigns/capture-runtime.ts", "utf8");
     assert.match(rt, /and\(eq\(campaignCalls\.id, callRowId\), sql`\$\{campaignCalls\.extracted\} = '\{\}'::jsonb`\)/);
-    console.log("ok: write-once (non-empty extracted never overwritten)");
+    assert.match(rt, /and\(eq\(campaignCalls\.id, callRowId\), sql`\$\{campaignCalls\.extracted\} = \$\{JSON\.stringify\(claim\)\}::jsonb`\)/);
+    assert.match(rt, /FOR UPDATE OF x SKIP LOCKED/);
+    console.log("ok: write-once through the claim (non-empty or claimed extracted: no LLM call, no write)");
   }
 
   // 7. error path: logged with a reason only, extracted kept {}, never throws
@@ -216,7 +248,9 @@ async function main() {
     ] as const) {
       const h = harness(reply);
       assert.equal(await runCampaignCapture(INPUT, h.deps), "failed", name);
-      assert.deepEqual(h.store[INPUT.callRowId], {}, `${name}: kept {}`);
+      // the claim stays (re-claimed once abandoned, attempt-bounded) and is never shown
+      assert.ok(isPendingClaim(h.store[INPUT.callRowId]), `${name}: claim kept`);
+      assert.equal(capturedView(h.store[INPUT.callRowId]), null, `${name}: shown as null`);
       assert.equal(h.logs.length, 1);
       assert.equal(h.logs[0]!.event, "campaign_capture_failed");
       assert.deepEqual(h.logs[0]!.metadata, { campaignId: INPUT.campaignId, campaignCallId: INPUT.callRowId, reason });
@@ -224,14 +258,14 @@ async function main() {
     }
     // the write itself failing, and the logger failing too: still no throw
     const h = harness(JSON.stringify({ values: { budget: 1 } }));
-    h.deps.writeIfEmpty = async () => {
+    h.deps.writeClaimed = async () => {
       throw new Error("db down");
     };
     h.deps.log = async () => {
       throw new Error("log down");
     };
     assert.equal(await runCampaignCapture(INPUT, h.deps), "failed");
-    console.log("ok: error path logs campaign_capture_failed (no transcript/values) and keeps {}");
+    console.log("ok: error path logs campaign_capture_failed (no transcript/values), keeps the pending claim (shown as null)");
   }
 
   // 8. cost guard + prompt
@@ -295,10 +329,90 @@ async function main() {
     assert.deepEqual(onView.captured, { source: "conversation", values: { budget: 1200 }, missing: ["callback_day"] });
     // the view never exposes model / at / v
     assert.deepEqual(Object.keys(onView.captured as object), ["source", "values", "missing"]);
-    for (const bad of [null, {}, { values: { a: 1 } }, { v: 2, source: "conversation", values: { a: 1 } }, "x"]) {
+    for (const bad of [null, {}, [], { values: { a: 1 } }, { v: 2, source: "conversation", values: { a: 1 } }, "x",
+      { v: 1, source: "conversation", values: [] }]) {
       assert.equal(capturedView(bad), null);
     }
+    // a pending claim is NEVER shown as captured (even if it somehow carried values)
+    const pending = { v: 1, pending: true, claimedAt: "2026-11-12T10:00:00.000Z", token: "t", attempt: 1 };
+    assert.equal(capturedView(pending), null);
+    assert.equal(capturedView({ ...pending, source: "conversation", values: { budget: 1 } }), null);
+    assert.equal((resultsCallView(row(pending), "on") as { captured: unknown }).captured, null);
+    assert.equal(JSON.stringify(resultsCallView(row(pending), "off")), JSON.stringify(mainView(row(pending))), "OFF unchanged for a claim too");
     console.log("ok: results view: OFF byte-identical to origin/main (no `captured` key), ON adds captured | null");
+  }
+
+  // 10. catch-up pass (pure): bounds, window, park, counts, the counts-only tick log
+  {
+    assert.equal(CAPTURE_CATCHUP_PER_TICK, 10);
+    assert.equal(CAPTURE_CATCHUP_CUTOFF_HOURS, 72);
+    assert.equal(CAPTURE_CLAIM_STALE_MINUTES, 10);
+    assert.equal(CAPTURE_MAX_ATTEMPTS, 3);
+    assert.equal(CAPTURE_OUTSIDE_WINDOW_COUNT_CAP, 1000);
+    assert.deepEqual(catchUpWindow(new Date("2026-11-12T10:00:00.000Z")), {
+      nowIso: "2026-11-12T10:00:00.000Z",
+      cutoffIso: "2026-11-09T10:00:00.000Z",
+      staleBeforeIso: "2026-11-12T09:50:00.000Z",
+    });
+    const mk = (id: string, patch: Partial<CaptureInput> = {}) => ({
+      input: { ...INPUT, callRowId: id, ...patch },
+      claim: { v: 1 as const, pending: true as const, claimedAt: "2026-11-12T10:00:00.000Z", token: "tick", attempt: 1 },
+    });
+    const run = async (held: ReturnType<typeof mk>[], outside: number, reply: string | null = JSON.stringify({ values: { budget: 7 } })) => {
+      const h = harness(reply);
+      for (const x of held) h.store[x.input.callRowId] = x.claim as unknown as Record<string, unknown>;
+      const ticks: CatchUpTickLog[] = [];
+      let limitSeen = 0;
+      const deps: CatchUpDeps = {
+        ...h.deps,
+        claimBatch: async (limit, w) => {
+          limitSeen = limit;
+          assert.equal(w.nowIso, "2026-11-12T10:00:00.000Z");
+          return held;
+        },
+        countOutsideWindow: async () => outside,
+        logTick: async (m) => {
+          ticks.push(m);
+        },
+      };
+      const counts = await runCaptureCatchUp(deps);
+      return { h, ticks, counts, limitSeen };
+    };
+    const a = await run([mk("r1"), mk("r2"), mk("r3", { outcome: "no_answer" })], 4);
+    assert.equal(a.limitSeen, CAPTURE_CATCHUP_PER_TICK);
+    assert.deepEqual(a.counts, { claimed: 3, written: 2, skipped: 1, failed: 0 });
+    assert.equal(a.h.calls.length, 2, "one LLM call per capturable held call; the held claim is used (no re-claim)");
+    assert.equal((a.h.store.r1 as unknown as CapturePayload).source, "conversation");
+    assert.deepEqual(a.h.store.r3, { ...mk("r3").claim, attempt: CAPTURE_MAX_ATTEMPTS }, "not capturable: claim parked (exhausted)");
+    // the tick log: exactly {picked, outsideWindow}, two numbers, nothing else
+    assert.deepEqual(a.ticks, [{ picked: 3, outsideWindow: 4 }]);
+    assert.deepEqual(Object.keys(a.ticks[0]!).sort(), ["outsideWindow", "picked"]);
+    for (const v of Object.values(a.ticks[0]!)) assert.equal(typeof v, "number");
+    // nothing to say → no log; outsideWindow alone → a log; the count is capped
+    assert.deepEqual((await run([], 0)).ticks, []);
+    assert.deepEqual((await run([], 2)).ticks, [{ picked: 0, outsideWindow: 2 }]);
+    assert.deepEqual((await run([], 5000)).ticks, [{ picked: 0, outsideWindow: CAPTURE_OUTSIDE_WINDOW_COUNT_CAP }]);
+    // LLM down: counted as failed, the claim stays pending
+    const f = await run([mk("r1")], 0, null);
+    assert.deepEqual(f.counts, { claimed: 1, written: 0, skipped: 0, failed: 1 });
+    assert.ok(isPendingClaim(f.h.store.r1));
+    // a failing claim query: nothing claimed, no throw
+    const h = harness(null);
+    const broken: CatchUpDeps = {
+      ...h.deps,
+      claimBatch: async () => {
+        throw new Error("db down");
+      },
+      countOutsideWindow: async () => 0,
+      logTick: async () => {},
+    };
+    assert.deepEqual(await runCaptureCatchUp(broken), { claimed: 0, written: 0, skipped: 0, failed: 0 });
+    // the cron route: OFF keeps the exact old path; the catch-up only behind captureMode() === "on"
+    const cron = readFileSync(ROOT + "app/api/cron/campaign-dispatch/route.ts", "utf8");
+    assert.match(cron, /if \(captureMode\(\) !== "on"\) \{\n\s+const result = await dispatchDueJobs\(limit\);\n\s+return NextResponse\.json\(\{ ok: true, \.\.\.result \}\);\n\s+\}/);
+    assert.equal(cron.split("runCampaignCaptureCatchUp(").length - 1, 1);
+    assert.doesNotMatch(cron, /dialContact|dialOneNow/, "the catch-up never dials");
+    console.log("ok: catch-up pass: per-tick bound, 72 h window, held claim reused, park, counts, tick log {picked, outsideWindow} only");
   }
 }
 
