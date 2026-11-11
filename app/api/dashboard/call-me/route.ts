@@ -1,11 +1,12 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId, sessionIsAdmin } from "@/lib/api/auth-guards";
 import { callMeAccess, callMeAllowed, callMeMode, callMeTarget } from "@/lib/call-me";
 import { callMeRoomName, dialCallMe } from "@/lib/campaigns/dial";
 import { db } from "@/lib/db";
-import { agentConfigs, events, phoneNumbers } from "@/lib/db/schema";
+import { agentConfigs, events } from "@/lib/db/schema";
+import { oldestTenantNumber } from "@/lib/phone/oldest-number";
 import { accountTransferNumber } from "@/lib/tools/store";
 import { logEvent } from "@/lib/logger";
 
@@ -50,13 +51,8 @@ export async function POST(req: NextRequest) {
   });
   if (!phoneNumber) return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
 
-  const [line] = await db
-    .select({ phoneNumber: phoneNumbers.phoneNumber })
-    .from(phoneNumbers)
-    .where(eq(phoneNumbers.userId, r.userId))
-    .orderBy(asc(phoneNumbers.createdAt))
-    .limit(1);
-  if (!line) return NextResponse.json({ error: "no_tenant_number" }, { status: 400 });
+  const fromNumber = await oldestTenantNumber(r.userId);
+  if (!fromNumber) return NextResponse.json({ error: "no_tenant_number" }, { status: 400 });
 
   const [last] = await db
     .select({ createdAt: events.createdAt })
@@ -68,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   await logEvent({ source: "web", event: "call_me_started", message: "Call-back to the owner started", userId: r.userId });
   try {
-    await dialCallMe({ userId: r.userId, phoneNumber, fromNumber: line.phoneNumber, roomName: callMeRoomName(r.userId) });
+    await dialCallMe({ userId: r.userId, phoneNumber, fromNumber, roomName: callMeRoomName(r.userId) });
   } catch (e) {
     await logEvent({
       source: "web",
