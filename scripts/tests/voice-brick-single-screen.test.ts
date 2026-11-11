@@ -4,11 +4,12 @@
 // Run with:  npx tsx scripts/tests/voice-brick-single-screen.test.ts
 
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { LEGACY_OUTBOUND_VOICE_FIELDS, withVoiceConfig } from "../../components/bricks/voice/legacy-fields";
 import * as store from "../../lib/voice/store";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -45,20 +46,14 @@ const FORBIDDEN: Array<[RegExp, string]> = [
   [/wowSlider(Creativite|Reactivite|Vitesse)/, "the removed créativité/réactivité/speed sliders"],
   [/VOICE_PROFILE_FIELDS/, "a second voice-profile renderer"],
 ];
-function* walk(dir: string): Generator<string> {
-  for (const name of readdirSync(join(ROOT, dir))) {
-    const rel = join(dir, name);
-    if (statSync(join(ROOT, rel)).isDirectory()) yield* walk(rel);
-    else if (/\.tsx?$/.test(name)) yield rel;
-  }
-}
 const BRICK_DIR = "components/bricks/voice/";
-for (const top of ["app", "components"]) {
-  for (const f of walk(top)) {
-    if (f.startsWith(BRICK_DIR) || f.includes("voice-brick-mock")) continue;
-    const src = read(f);
-    for (const [re, what] of FORBIDDEN) assert.doesNotMatch(src, re, `${f} contains ${what}`);
-  }
+const uiScan = scanSources(["app", "components"], { ext: /\.tsx?$/ });
+// "No file matches" is only meaningful if the scan read the real tree.
+assertScanRead(uiScan, "voice-brick forbidden-UI scan", { minFiles: 200, minPerRoot: 30, sentinels: SCREENS });
+for (const f of uiScan.files) {
+  if (f.startsWith(BRICK_DIR) || f.includes("voice-brick-mock")) continue;
+  const src = uiScan.text.get(f)!;
+  for (const [re, what] of FORBIDDEN) assert.doesNotMatch(src, re, `${f} contains ${what}`);
 }
 
 // 4. Browser-safe legacy lists = the server's (the API refuses a mix).
