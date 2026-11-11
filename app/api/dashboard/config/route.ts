@@ -6,7 +6,7 @@ import { sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
-import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
+import { inboundLegacyVoiceUpdates, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
@@ -266,7 +266,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
   }
   if (voiceWrite) Object.assign(updates, voiceWrite.updates);
-  else updates.voiceConfig = inboundVoiceConfigAfterLegacy(current, updates);
+  // V8e: an admin engine switch carries the voice to its equivalent.
+  else Object.assign(updates, inboundLegacyVoiceUpdates(current, updates));
 
   // Persona contract (P3, write-alongside), same pattern. "Automatic" keeps
   // the customer's sentence in personaConfig while the column gets ''.

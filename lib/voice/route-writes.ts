@@ -15,7 +15,7 @@ import {
   planVoiceWrite,
 } from "@/lib/voice/store";
 import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
-import { resolveVoiceChoice } from "@/lib/voice/choice";
+import { resolveVoiceChoice, voiceAfterEngineSwitch, voiceEngineOf } from "@/lib/voice/choice";
 import type { Voice } from "@/lib/voice/contract";
 import type { AgentPersonality } from "@/lib/voice-tuning";
 
@@ -39,7 +39,16 @@ export function inboundVoiceConfigUpdates(
   const current = currentInboundVoice(row.voiceConfig, row);
   const plan = planVoiceWrite(current, body.voiceConfig, isAdmin);
   if (!plan.ok) return { error: { status: plan.status, body: { error: plan.error, fields: plan.fields } } };
-  const voice = resolveVoiceChoice(current, plan.voice, body.voiceConfig, effectiveRealtimeProvider(row.realtimeProvider));
+  // V8e: an engine switch (admin-only, gated above) carries the voice to its
+  // equivalent on the new engine; a voice chosen in the same save wins.
+  const from = effectiveRealtimeProvider(row.realtimeProvider);
+  const to = voiceEngineOf(plan.voice);
+  const voice = resolveVoiceChoice(
+    voiceAfterEngineSwitch(current, from, to),
+    voiceAfterEngineSwitch(plan.voice, from, to),
+    body.voiceConfig,
+    to,
+  );
   const cols = inboundColumnsFromVoice(voice, row.model);
   if (!allowedVoices(cols.model).includes(cols.voice)) {
     return { error: { status: 400, body: { error: "invalid_voice_config", fields: ["voice.voiceId: not supported by this model"] } } };
@@ -53,6 +62,25 @@ export function inboundVoiceConfigAfterLegacy(
   updates: Partial<InboundVoiceColumns>,
 ): Voice {
   return inboundVoiceAfterLegacyWrite(row.voiceConfig, { ...row, ...updates });
+}
+
+/**
+ * Inbound legacy write (admin `realtimeProvider` field): the updates to
+ * store, with V8e applied — when the engine changes, the voice follows to its
+ * equivalent (voice column / per-engine override). Otherwise exactly the
+ * legacy behaviour (voiceConfig refreshed from the merged columns).
+ */
+export function inboundLegacyVoiceUpdates(
+  row: InboundVoiceColumns & { voiceConfig: unknown; model: string },
+  updates: Partial<InboundVoiceColumns>,
+): Record<string, unknown> {
+  const stored = inboundVoiceAfterLegacyWrite(row.voiceConfig, { ...row, ...updates });
+  const from = effectiveRealtimeProvider(row.realtimeProvider);
+  const to = effectiveRealtimeProvider("realtimeProvider" in updates ? updates.realtimeProvider : row.realtimeProvider);
+  if (from === to) return { voiceConfig: stored };
+  const voice = voiceAfterEngineSwitch(stored, from, to);
+  const cols = inboundColumnsFromVoice(voice, (updates.model as string | undefined) ?? row.model);
+  return { voice: cols.voice, voiceProfile: cols.voiceProfile, voiceConfig: voice };
 }
 
 /** Outbound: a `voiceConfig` patch → legacy columns + voiceConfig; null if absent. */

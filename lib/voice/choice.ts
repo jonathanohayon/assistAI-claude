@@ -110,3 +110,32 @@ export function tenantVoiceChoice(voice: Voice, engine: RealtimeProvider, sample
       }),
   };
 }
+
+// ── Engine switch (V8e, admin-only) ────────────────────────────────────
+
+/** The engine a voice runs on ("auto" = OpenAI, as served). */
+export function voiceEngineOf(voice: Voice): RealtimeProvider {
+  return voice.engine === "auto" ? "openai" : voice.engine;
+}
+
+/**
+ * When an admin switches the account's engine, the voice the calls used on
+ * the old engine follows to its closest equivalent on the new one (same
+ * gender; recommended rank ↔ rank — lib/voice/catalogue.ts). Without this,
+ * switching to Grok silently moved every voice to the gender fallback.
+ *   → OpenAI: the voice column takes the equivalent; no OpenAI override.
+ *   → Gemini / Grok: that engine's override takes the equivalent.
+ * The old engine's override is kept, so switching back restores it. A voice
+ * outside the catalogue (an admin's custom name) is left as it is.
+ */
+export function voiceAfterEngineSwitch(voice: Voice, from: RealtimeProvider, to: RealtimeProvider): Voice {
+  if (from === to) return voice;
+  const srcId = catalogueIdFor(from, effectiveEngineVoiceName(voice, from));
+  const target = srcId ? equivalentVoice(srcId, to) : null;
+  if (!target) return voice;
+  const overrides = { ...voice.advanced.voiceOverrides };
+  delete overrides[to];
+  if (to === "openai") return { ...voice, voiceId: target.name, advanced: { ...voice.advanced, voiceOverrides: overrides } };
+  overrides[to] = target.name;
+  return { ...voice, advanced: { ...voice.advanced, voiceOverrides: overrides } };
+}

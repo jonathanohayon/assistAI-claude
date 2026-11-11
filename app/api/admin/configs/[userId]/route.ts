@@ -10,7 +10,7 @@ import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
 import { voicesFor } from "@/lib/realtime";
-import { inboundVoiceConfigAfterLegacy, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
+import { inboundLegacyVoiceUpdates, inboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentInboundVoice } from "@/lib/voice/store";
 import { currentInboundPersona, inboundPersonaAfterLegacy, inboundPersonaUpdates } from "@/lib/persona/store";
 import { parseRealtimeProvider } from "@/lib/realtime-provider";
@@ -192,7 +192,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     return NextResponse.json(voiceWrite.error.body, { status: voiceWrite.error.status });
   }
   if (voiceWrite) Object.assign(updates, voiceWrite.updates);
-  else updates.voiceConfig = inboundVoiceConfigAfterLegacy(currentRow, updates);
+  // V8e: an admin engine switch carries the voice to its equivalent.
+  else Object.assign(updates, inboundLegacyVoiceUpdates(currentRow, updates));
   // Persona contract (P3, write-alongside), same rules as the tenant route.
   const personaWrite = inboundPersonaUpdates(body as Record<string, unknown>, currentRow, true);
   if (personaWrite && "error" in personaWrite) {
