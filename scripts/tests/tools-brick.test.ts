@@ -97,7 +97,8 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     assert.doesNotMatch(read(f), names, `${f}: technical tool name`);
   for (const l of ["fr", "en", "he"]) assert.doesNotMatch(JSON.stringify(JSON.parse(read(`messages/${l}.json`)).ToolsBrick), names, l);
   const brick = read("components/bricks/tools/ToolsBrick.tsx");
-  assert.doesNotMatch(brick, /MoreSettings|defaultDurationMinutes|minNoticeMinutes|\.when\b|orders\.ask/, "no level 2 in T2");
+  // No level 2: no "More settings" disclosure (level 3 is <MoreSettings level={3}>) and none of its fields.
+  assert.doesNotMatch(brick, /<MoreSettings(?![^>]*level=\{3\})|defaultDurationMinutes|minNoticeMinutes|\.when\b|orders\.ask/, "no level 2 in T2");
   assert.match(brick, /\{served\.admin && \(/, "level 3 renders only what the server sent");
   // Tenant code imports only the contract from lib/tools.
   assert.doesNotMatch(brick + read("components/bricks/tools/tools-ui.ts"), /from "@\/lib\/tools\/(?!contract")/);

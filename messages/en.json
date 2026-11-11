@@ -2171,7 +2171,8 @@
     "moreSettings": "More settings",
     "developerModeLabel": "Developer mode",
     "developerModeHint": "Shows technical settings, such as time limits and interruption thresholds, in each section. Your agent works the same either way.",
-    "developerModeSaveError": "Couldn't save. Try again."
+    "developerModeSaveError": "Couldn't save. Try again.",
+    "developerSettings": "Developer settings"
   },
   "VoiceBrick": {
     "voiceLabel": "Voice",
@@ -2217,7 +2218,6 @@
     "termLabel": "Word",
     "sayAsLabel": "Say it as",
     "saidAs": "said “{sayAs}”",
-    "developerTitle": "Developer settings",
     "developerHint": "Time limits for every call. The defaults suit most businesses.",
     "advanced": {
       "minInterruptionMs": "Shortest speech that interrupts",
@@ -2334,7 +2334,6 @@
     "learnedBusy": "Reading the site…",
     "learnedError": "The site couldn't be read. Check the address and try again.",
     "learnedText": "Learned text",
-    "devTitle": "Developer mode",
     "loading": "Loading the sheet…",
     "loadError": "The company sheet couldn't be loaded.",
     "previewTitle": "Full instructions sent to the agent",
@@ -2446,7 +2445,6 @@
     "addNumber": "Add a number",
     "notInPlan": "Not in your plan: {list}.",
     "availableWith": "Available with the {plan} plan",
-    "devTitle": "Developer mode",
     "planMatrix": "Open the plan matrix",
     "tileLabel": "What the agent can do",
     "tileTagline": "Appointments, contacts, transfer, orders",

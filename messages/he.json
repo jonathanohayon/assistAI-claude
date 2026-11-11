@@ -2171,7 +2171,8 @@
     "moreSettings": "הגדרות נוספות",
     "developerModeLabel": "מצב מפתחים",
     "developerModeHint": "מציג הגדרות טכניות, כמו מגבלות זמן וספי הפרעה, בכל אזור. הסוכן שלך פועל באותו אופן בכל מקרה.",
-    "developerModeSaveError": "השמירה נכשלה. נסו שוב."
+    "developerModeSaveError": "השמירה נכשלה. נסו שוב.",
+    "developerSettings": "הגדרות מפתח"
   },
   "VoiceBrick": {
     "voiceLabel": "קול",
@@ -2217,7 +2218,6 @@
     "termLabel": "מילה",
     "sayAsLabel": "לבטא כ־",
     "saidAs": "נאמר „{sayAs}”",
-    "developerTitle": "הגדרות מפתחים",
     "developerHint": "מגבלות זמן לכל שיחה. ברירות המחדל מתאימות לרוב העסקים.",
     "advanced": {
       "minInterruptionMs": "משך דיבור מינימלי לקטיעה",
@@ -2334,7 +2334,6 @@
     "learnedBusy": "קורא את האתר…",
     "learnedError": "לא ניתן היה לקרוא את האתר. בדקו את הכתובת ונסו שוב.",
     "learnedText": "הטקסט שנלמד",
-    "devTitle": "מצב מפתח",
     "loading": "טוען את הכרטיס…",
     "loadError": "לא ניתן היה לטעון את כרטיס העסק.",
     "previewTitle": "ההנחיות המלאות שנשלחות לסוכן",
@@ -2446,7 +2445,6 @@
     "addNumber": "הוספת מספר",
     "notInPlan": "לא כלול בחבילה שלכם: {list}.",
     "availableWith": "זמין בחבילת {plan}",
-    "devTitle": "מצב מפתח",
     "planMatrix": "פתיחת טבלת החבילות",
     "tileLabel": "מה הסוכן יודע לעשות",
     "tileTagline": "פגישות, אנשי קשר, העברה, הזמנות",

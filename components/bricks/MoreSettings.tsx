@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Shared brick primitive #2: the "More settings" disclosure that holds a
- * brick's level-2 fields. Collapsed by default. Native button + region,
- * so keyboard and screen readers get expanded/collapsed for free.
+ * Shared brick primitive #2: THE disclosure of every brick — level 2
+ * ("More settings") and level 3 ("Developer settings", `level={3}`) — and
+ * the dashboard's "Set up your agent" block. One implementation: native
+ * button + region so keyboard and screen readers get expanded/collapsed for
+ * free, 44 px row, chevron, logical (RTL-safe) alignment. Uncontrolled, it is
+ * collapsed on every mount (the bricks); a caller may control it (`open` /
+ * `onOpenChange`, e.g. the checklist's remembered choice).
  */
 
 import { useId, useState, type ReactNode } from "react";
@@ -12,6 +16,7 @@ import { useTranslations } from "next-intl";
 export function MoreSettings({
   children,
   title,
+  level = 2,
   defaultOpen = false,
   open: openProp,
   onOpenChange,
@@ -21,8 +26,10 @@ export function MoreSettings({
   className = "rounded-2xl border border-[var(--color-border)] bg-white",
 }: {
   children: ReactNode;
-  /** Defaults to "More settings" in the current language. */
+  /** Defaults to the level's title: "More settings" (2) / "Developer settings" (3). */
   title?: ReactNode;
+  /** 2 = More settings, 3 = Developer settings. Only the default title differs. */
+  level?: 2 | 3;
   defaultOpen?: boolean;
   /** Controlled mode (e.g. a remembered choice); otherwise the component keeps its own state. */
   open?: boolean;
@@ -57,7 +64,7 @@ export function MoreSettings({
           onClick={() => setOpen(!open)}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-start text-sm font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
-          <span className="min-w-0 flex-1">{title ?? t("moreSettings")}</span>
+          <span className="min-w-0 flex-1">{title ?? (level === 3 ? t("developerSettings") : t("moreSettings"))}</span>
           {summary}
           <svg
             aria-hidden

@@ -2171,7 +2171,8 @@
     "moreSettings": "Plus de réglages",
     "developerModeLabel": "Mode développeur",
     "developerModeHint": "Affiche les réglages techniques, comme les durées limites et les seuils d'interruption, dans chaque section. Votre agent fonctionne de la même façon dans les deux cas.",
-    "developerModeSaveError": "Échec de l'enregistrement. Réessayez."
+    "developerModeSaveError": "Échec de l'enregistrement. Réessayez.",
+    "developerSettings": "Réglages développeur"
   },
   "VoiceBrick": {
     "voiceLabel": "Voix",
@@ -2217,7 +2218,6 @@
     "termLabel": "Mot",
     "sayAsLabel": "À prononcer",
     "saidAs": "dit « {sayAs} »",
-    "developerTitle": "Réglages développeur",
     "developerHint": "Durées limites de chaque appel. Les valeurs par défaut conviennent à la plupart des commerces.",
     "advanced": {
       "minInterruptionMs": "Durée minimale pour couper la parole",
@@ -2334,7 +2334,6 @@
     "learnedBusy": "Lecture du site…",
     "learnedError": "Le site n'a pas pu être lu. Vérifiez l'adresse et réessayez.",
     "learnedText": "Texte appris",
-    "devTitle": "Mode développeur",
     "loading": "Chargement de la fiche…",
     "loadError": "La fiche de l'entreprise n'a pas pu être chargée.",
     "previewTitle": "Consignes complètes envoyées à l'agent",
@@ -2446,7 +2445,6 @@
     "addNumber": "Ajouter un numéro",
     "notInPlan": "Non inclus dans votre forfait : {list}.",
     "availableWith": "Disponible avec le forfait {plan}",
-    "devTitle": "Mode développeur",
     "planMatrix": "Ouvrir la grille des forfaits",
     "tileLabel": "Ce que l'agent sait faire",
     "tileTagline": "Rendez-vous, contacts, transfert, commandes",

@@ -24,6 +24,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
+import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
 import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 
@@ -109,11 +110,8 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
 
       {/* ── Level 3: admin only (the server sends `admin` to admins only) ── */}
       {served.admin && (
-        <section aria-labelledby="tools-dev-title" className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4">
-          <h3 id="tools-dev-title" className="text-sm font-semibold text-[#18181b]">
-            {t("devTitle")}
-          </h3>
-          <dl className="mt-2 flex flex-col gap-2 text-sm">
+        <MoreSettings level={3}>
+          <dl className="flex flex-col gap-2 text-sm">
             {(Object.keys(served.admin.toolNames) as CapabilityKey[]).map((k) => (
               <div key={k}>
                 <dt className="text-xs font-semibold text-[#475569]">{t(`cap.${k}.name`)}</dt>
@@ -127,7 +125,7 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
           <NextLink href="/admin" className={`mt-2 ${LINK}`}>
             {t("planMatrix")}
           </NextLink>
-        </section>
+        </MoreSettings>
       )}
     </div>
   );
