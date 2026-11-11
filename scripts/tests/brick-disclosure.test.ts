@@ -4,7 +4,7 @@
 // Run with:  npx tsx scripts/tests/brick-disclosure.test.ts
 
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { NextIntlClientProvider } from "next-intl";
@@ -12,6 +12,7 @@ import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { MoreSettings } from "../../components/bricks/MoreSettings";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -34,13 +35,12 @@ for (const f of BRICKS) {
 // …and no other settings disclosure exists in the bricks: only MoreSettings
 // builds a collapsible section (<details>, or a button controlling a region).
 // (A list's "show all" toggle, e.g. the voice picker's, isn't a section.)
-const walk = (dir: string): string[] =>
-  readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? walk(join(dir, e.name)) : /\.tsx$/.test(e.name) ? [join(dir, e.name)] : [],
-  );
-for (const f of walk("components/bricks")) {
+const bricksScan = scanSources(["components/bricks"], { ext: /\.tsx$/ });
+// "No second disclosure" is only meaningful if the scan read every brick.
+assertScanRead(bricksScan, "brick-disclosure scan", { minFiles: 8, sentinels: [...BRICKS, "components/bricks/MoreSettings.tsx"] });
+for (const f of bricksScan.files) {
   if (f === "components/bricks/MoreSettings.tsx") continue;
-  assert.doesNotMatch(read(f), /<details\b|role="region"|aria-controls=/, `${f}: a second disclosure`);
+  assert.doesNotMatch(bricksScan.text.get(f)!, /<details\b|role="region"|aria-controls=/, `${f}: a second disclosure`);
 }
 
 // 2. Level 3 renders collapsed: button aria-expanded=false, content in a hidden region.
