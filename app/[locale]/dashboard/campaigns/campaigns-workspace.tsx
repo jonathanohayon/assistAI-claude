@@ -23,6 +23,7 @@ import type {
   CampaignDraft,
   CampaignListItem,
 } from "@/lib/campaigns/types";
+import type { DispatchMode } from "@/lib/campaigns/live-view";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { CampaignAnalytics } from "./campaign-analytics";
@@ -98,6 +99,9 @@ export function CampaignsWorkspace({
     emptyDraft(t("newCampaign")),
   );
   const [activeStatus, setActiveStatus] = useState<string>("draft");
+  // Platform call switch (platform-wide, not per campaign), as the live
+  // console or a start last reported it; null until one of them says.
+  const [dispatchMode, setDispatchMode] = useState<DispatchMode | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   // Feedback de sauvegarde réussie (badge "✓ Enregistré" + bouton Suivant).
@@ -539,6 +543,8 @@ export function CampaignsWorkspace({
                 asUserId={asUserId}
                 status={activeStatus}
                 stats={currentStats}
+                dispatchMode={dispatchMode}
+                onDispatchMode={setDispatchMode}
                 onChanged={(status) => {
                   setActiveStatus(status);
                   void loadList();
@@ -553,6 +559,7 @@ export function CampaignsWorkspace({
                   key={`${draft.id}:${savedRev}`}
                   campaignId={draft.id}
                   asUserId={asUserId}
+                  onDispatchMode={setDispatchMode}
                   onStatusChanged={(status) => {
                     setActiveStatus(status);
                     void loadList();
