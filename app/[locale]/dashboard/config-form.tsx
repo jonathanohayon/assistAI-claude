@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
+import { WHATSAPP_VOICE_AVAILABLE } from "@/lib/channels/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
@@ -533,13 +534,16 @@ export function ConfigForm({
     {
       id: "channels",
       label: t("channelsTile"),
-      tagline: t("channelsTileTagline"),
-      summary: channelsLoaded
-        ? t("channelsTileSummary", {
-            pstn: channelCounts.pstn,
-            wa: channelCounts.whatsapp,
-          })
-        : t("channelsTileTagline"),
+      // WhatsApp is only named when the channel is usable (Channels design:
+      // a channel that can't be used isn't shown, nor advertised).
+      tagline: WHATSAPP_VOICE_AVAILABLE ? t("channelsTileTagline") : t("channelsTileTaglinePhoneOnly"),
+      summary: !channelsLoaded
+        ? WHATSAPP_VOICE_AVAILABLE
+          ? t("channelsTileTagline")
+          : t("channelsTileTaglinePhoneOnly")
+        : WHATSAPP_VOICE_AVAILABLE
+          ? t("channelsTileSummary", { pstn: channelCounts.pstn, wa: channelCounts.whatsapp })
+          : t("channelsTileSummaryPhoneOnly", { pstn: channelCounts.pstn }),
       accent: "from-[#25D366] to-[#128C7E]",
       adminOnly: false,
       icon: (
@@ -791,7 +795,7 @@ export function ConfigForm({
                   />
                 )}
                 {activeTile === "notifs" && (
-                  <NotifsPanel form={form} update={update} t={t} />
+                  <NotifsPanel form={form} update={update} t={t} isAdmin={isAdmin} />
                 )}
                 {activeTile === "tools" && (
                   <div className="pb-28">
@@ -866,7 +870,7 @@ export function ConfigForm({
                   </div>
                 )}
                 {activeTile === "channels" && (
-                  <ChannelsPanel t={t} asUserId={asUserId} />
+                  <ChannelsPanel t={t} asUserId={asUserId} isAdmin={isAdmin} />
                 )}
                 {activeTile === "prompt" &&
                   isAdmin &&

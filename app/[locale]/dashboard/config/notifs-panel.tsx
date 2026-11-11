@@ -8,6 +8,7 @@
  * Utilisé par : config-form.tsx (workspace de la tuile `notifs`).
  */
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { NotifChannelCard } from "./notif-channel-card";
@@ -19,10 +20,13 @@ export function NotifsPanel({
   form,
   update,
   t,
+  isAdmin = false,
 }: {
   form: FormState;
   update: FormUpdater;
   t: Translator;
+  /** Admins also see the ops hint (AdminNotifs, an admin-only namespace). */
+  isAdmin?: boolean;
 }) {
   // État on/off WhatsApp indépendant de la valeur : sinon le champ (disabled
   // quand off) ne peut jamais être rempli puisque "off" dérivait de la valeur
@@ -172,7 +176,15 @@ export function NotifsPanel({
 
       <p className="rounded-xl bg-[#ecfeff]/60 px-4 py-3 text-[11px] leading-relaxed text-[#475569]">
         {t("whatsappFooter")}
+        {isAdmin && <AdminWhatsappSenderHint />}
       </p>
     </div>
   );
+}
+
+/** Ops note for admins only: its namespace is never sent to tenants
+ *  (ADMIN_ONLY_NAMESPACES), so it is only rendered when isAdmin. */
+function AdminWhatsappSenderHint() {
+  const t = useTranslations("AdminNotifs");
+  return <> {t("whatsappSenderHint")}</>;
 }
