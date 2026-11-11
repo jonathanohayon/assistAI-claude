@@ -22,6 +22,7 @@
 // IDS ARE STABLE: never renumber or reuse one. Append new voices at the end
 // of their engine's block (openai 101+, gemini 201+, xai 301+).
 
+import { PROVIDERS } from "@/lib/realtime";
 import type { RealtimeProvider } from "@/lib/realtime-provider";
 import { VOICE_GENDER, type VoiceGender } from "@/lib/voice/public";
 
@@ -36,6 +37,12 @@ export interface CatalogueVoice {
   descriptor: string | null;
   /** Rank among the engine's recommended voices of that gender (1–3), null = not recommended. */
   recommendedRank: 1 | 2 | 3 | null;
+  /**
+   * Usable on a live call. OpenAI's realtime API doesn't offer fable, onyx
+   * or nova (lib/realtime.ts allow-list): never offered, never an
+   * equivalence target.
+   */
+  available: boolean;
 }
 
 const OPENAI_ORDER = ["marin", "cedar", "ballad", "sage", "verse", "alloy", "shimmer", "echo", "fable", "onyx", "nova", "coral", "ash"];
@@ -75,12 +82,13 @@ export const VOICE_CATALOGUE: readonly CatalogueVoice[] = [
   ...OPENAI_ORDER.map((name, i) => ({
     id: `voice-${101 + i}`, engine: "openai" as const, name, gender: VOICE_GENDER[name], descriptor: null,
     recommendedRank: rank(OPENAI_REC, VOICE_GENDER[name], name),
+    available: PROVIDERS.openai.voices.includes(name),
   })),
   ...GEMINI.map(([name, gender, descriptor], i) => ({
-    id: `voice-${201 + i}`, engine: "gemini" as const, name, gender, descriptor, recommendedRank: rank(GEMINI_REC, gender, name),
+    id: `voice-${201 + i}`, engine: "gemini" as const, name, gender, descriptor, recommendedRank: rank(GEMINI_REC, gender, name), available: true,
   })),
   ...GROK.map(([name, gender], i) => ({
-    id: `voice-${301 + i}`, engine: "xai" as const, name, gender, descriptor: null, recommendedRank: rank(GROK_REC, gender, name),
+    id: `voice-${301 + i}`, engine: "xai" as const, name, gender, descriptor: null, recommendedRank: rank(GROK_REC, gender, name), available: true,
   })),
 ];
 
@@ -119,7 +127,7 @@ export function equivalentVoice(id: string, target: RealtimeProvider): Catalogue
   const src = catalogueVoice(id);
   if (!src) return null;
   if (src.engine === target) return src;
-  const pool = engineVoices(target).filter((v) => v.gender === src.gender);
+  const pool = engineVoices(target).filter((v) => v.gender === src.gender && v.available);
   if (src.recommendedRank) return pool.find((v) => v.recommendedRank === src.recommendedRank) ?? null;
   const others = pool.filter((v) => !v.recommendedRank);
   const srcOthers = engineVoices(src.engine).filter((v) => v.gender === src.gender && !v.recommendedRank);

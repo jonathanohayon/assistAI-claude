@@ -14,6 +14,8 @@ import {
   outboundVoiceAfterLegacyWrite,
   planVoiceWrite,
 } from "@/lib/voice/store";
+import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
+import { resolveVoiceChoice } from "@/lib/voice/choice";
 import type { Voice } from "@/lib/voice/contract";
 import type { AgentPersonality } from "@/lib/voice-tuning";
 
@@ -29,16 +31,20 @@ export function inboundVoiceConfigUpdates(
   isAdmin: boolean,
   allowedVoices: (model: string) => readonly string[],
 ): { error: RouteVoiceError } | { updates: Record<string, unknown>; voice: Voice } | null {
+  // V8b: a voice CHOSEN by our catalogue id is resolved here, after the
+  // admin gate saw the caller's own patch (lib/voice/choice.ts).
   if (!("voiceConfig" in body)) return null;
   const conflict = conflictingFields(body, LEGACY_INBOUND_VOICE_FIELDS);
   if (conflict.length) return { error: { status: 400, body: { error: "voice_config_conflict", fields: conflict } } };
-  const plan = planVoiceWrite(currentInboundVoice(row.voiceConfig, row), body.voiceConfig, isAdmin);
+  const current = currentInboundVoice(row.voiceConfig, row);
+  const plan = planVoiceWrite(current, body.voiceConfig, isAdmin);
   if (!plan.ok) return { error: { status: plan.status, body: { error: plan.error, fields: plan.fields } } };
-  const cols = inboundColumnsFromVoice(plan.voice, row.model);
+  const voice = resolveVoiceChoice(current, plan.voice, body.voiceConfig, effectiveRealtimeProvider(row.realtimeProvider));
+  const cols = inboundColumnsFromVoice(voice, row.model);
   if (!allowedVoices(cols.model).includes(cols.voice)) {
     return { error: { status: 400, body: { error: "invalid_voice_config", fields: ["voice.voiceId: not supported by this model"] } } };
   }
-  return { updates: { ...cols, voiceConfig: plan.voice }, voice: plan.voice };
+  return { updates: { ...cols, voiceConfig: voice }, voice };
 }
 
 /** Inbound legacy write: the voice to store next to the merged row. */
