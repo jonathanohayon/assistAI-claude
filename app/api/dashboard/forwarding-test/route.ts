@@ -6,6 +6,7 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers } from "@/lib/db/schema";
 import {
+  CANCEL_TEST_PATCH,
   FORWARDING_TEST_WINDOW_MS,
   forwardingStatus,
   parsePhone,
@@ -16,6 +17,8 @@ import {
 //                            first inbound call to the tenant's number in it
 //                            verifies forwarding (no caller-ID matching)
 //   GET                  → status idle | waiting | detected | expired
+//   DELETE               → cancel: clears the window only (status idle);
+//                          never touches a past verification; idempotent
 // Tenant scope; admins via ?asUserId= like the other dashboard routes.
 
 async function tenantNumber(userId: string): Promise<string | null> {
@@ -107,4 +110,16 @@ export async function POST(req: NextRequest) {
     .where(eq(agentConfigs.userId, s.userId))
     .returning(FIELDS);
   return NextResponse.json(view(updated, number));
+}
+
+export async function DELETE(req: NextRequest) {
+  const s = await scope(req);
+  if ("error" in s) return s.error;
+  const [updated] = await db
+    .update(agentConfigs)
+    .set(CANCEL_TEST_PATCH)
+    .where(eq(agentConfigs.userId, s.userId))
+    .returning(FIELDS);
+  if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json(view(updated, await tenantNumber(s.userId)));
 }

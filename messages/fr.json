@@ -2165,7 +2165,9 @@
     "step2BodyMissed": "Depuis votre téléphone professionnel, composez ces trois codes l'un après l'autre (attendez la confirmation à chaque fois).",
     "kind_busy": "Quand votre ligne est occupée",
     "kind_noAnswer": "Quand vous ne répondez pas",
-    "kind_unreachable": "Quand votre téléphone est éteint ou sans réseau"
+    "kind_unreachable": "Quand votre téléphone est éteint ou sans réseau",
+    "cancelTest": "Annuler le test",
+    "cancelError": "Le test n'a pas pu être annulé. Réessayez."
   },
   "Bricks": {
     "moreSettings": "Plus de réglages",

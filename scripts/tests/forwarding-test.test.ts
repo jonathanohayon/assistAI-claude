@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  CANCEL_TEST_PATCH,
   FORWARDING_TEST_WINDOW_MS,
   forwardingStatus,
   parsePhone,
@@ -44,3 +45,20 @@ assert.equal(parsePhone("abc"), null);
 assert.equal(parsePhone(42), null);
 
 console.log("ALL FORWARDING-TEST TESTS PASSED");
+
+// Cancel: clears the window only — never a past verification or detection.
+assert.deepEqual(Object.keys(CANCEL_TEST_PATCH), ["forwardingTestStartedAt"]);
+assert.equal(CANCEL_TEST_PATCH.forwardingTestStartedAt, null);
+// After a cancel the status is idle, whatever was detected before.
+assert.equal(forwardingStatus({ ...base, ...CANCEL_TEST_PATCH }, at(60_000)), "idle");
+assert.equal(forwardingStatus({ forwardingDetectedAt: at(30_000), ...CANCEL_TEST_PATCH }, at(60_000)), "idle");
+// The call-side matcher needs an OPEN window (startedAt within it) in both its read and its update,
+// so a cleared window can never match.
+{
+  const src = readFileSync(new URL("../../lib/forwarding-test-db.ts", import.meta.url), "utf8");
+  assert.equal(src.match(/gte\(agentConfigs\.forwardingTestStartedAt, windowStart\)/g)?.length, 2);
+  const route = readFileSync(new URL("../../app/api/dashboard/forwarding-test/route.ts", import.meta.url), "utf8");
+  assert.match(route, /export async function DELETE[\s\S]*\.set\(CANCEL_TEST_PATCH\)/);
+}
+console.log("FORWARDING CANCEL OK");
+
