@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { Readable } from "node:stream";
 
-import { agentBrainSaveDecision, servedAgentWebhook } from "../../lib/agent-brain-guard";
+import { agentBrainSaveDecision, brainView, servedAgentWebhook, urlToSave } from "../../lib/agent-brain-guard";
 import {
   checkAgentUrl,
   guardedLookup,
@@ -253,3 +253,24 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+// The url saved and the response a viewer gets (the screen can't see the url).
+{
+  const SAFE_URL = "https://agent.example.com/hook";
+  // tenant: absent or "" keeps the stored url; a real different one stays a change (→ 403 above)
+  assert.equal(urlToSave(undefined, SAFE_URL, false), SAFE_URL);
+  assert.equal(urlToSave("", SAFE_URL, false), SAFE_URL);
+  assert.equal(urlToSave("  ", SAFE_URL, false), SAFE_URL);
+  assert.equal(urlToSave("https://other.example.com/x", SAFE_URL, false), "https://other.example.com/x");
+  // admin: absent keeps, "" clears
+  assert.equal(urlToSave(undefined, SAFE_URL, true), SAFE_URL);
+  assert.equal(urlToSave("", SAFE_URL, true), "");
+  // never the secret's value (nor the url) to a tenant
+  const stored = { enabled: true, url: SAFE_URL, secret: "mock-secret-value-123" };
+  const tenant = brainView(stored, false);
+  assert.deepEqual(tenant, { enabled: true, url: "", urlSet: true, secretSet: true });
+  assert.ok(!JSON.stringify(tenant).includes("mock-secret") && !JSON.stringify(tenant).includes("agent.example.com"));
+  assert.deepEqual(brainView(stored, true), { enabled: true, url: SAFE_URL, urlSet: true, secretSet: true, secret: "mock-secret-value-123" });
+  assert.deepEqual(brainView({ enabled: false, url: "" }, false), { enabled: false, url: "", urlSet: false, secretSet: false });
+  console.log("ok   agent-brain: urlToSave + brainView");
+}
