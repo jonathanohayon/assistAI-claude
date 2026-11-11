@@ -284,7 +284,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
           <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
             {t.rich("secretHelp", {
               code: (chunks) => (
-                <span dir="ltr" className="font-mono text-[var(--color-foreground)]">
+                <span dir="ltr" className="inline-block font-mono break-all text-[var(--color-foreground)]">
                   {chunks}
                 </span>
               ),
