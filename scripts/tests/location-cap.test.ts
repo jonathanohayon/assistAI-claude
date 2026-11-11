@@ -9,6 +9,7 @@
 // admin's own plan never enters the decision.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { planScan, sheetSaveIssues } from "../../components/bricks/knowledge/knowledge-ui";
 import { sanitizeBusinessConfig, type BusinessConfig } from "../../lib/business";
@@ -71,9 +72,33 @@ test("refused only when the new count is above the cap AND above the stored coun
   assert.equal(checkLocationCount(3, 2, 3).ok, true);
   assert.equal(checkLocationCount(4, 3, 3).ok, false);
 });
-test("the refusal is in words", () => {
-  assert.equal(locationCapMessage(1), "Your plan allows 1 location. Remove one before adding another.");
-  assert.equal(locationCapMessage(3), "Your plan allows 3 locations. Remove one before adding another.");
+test("the server/dev string states the plan, with no \"remove one\" advice", () => {
+  assert.equal(locationCapMessage(1), "Your plan includes 1 location.");
+  assert.equal(locationCapMessage(3), "Your plan includes 3 locations.");
+});
+test("the 3 locale files carry the cap strings with ICU plural forms", () => {
+  const forms: Record<string, string[]> = { en: ["one", "other"], fr: ["one", "other"], he: ["one", "two", "other"] };
+  for (const [lang, need] of Object.entries(forms)) {
+    const kb = JSON.parse(readFileSync(new URL(`../../messages/${lang}.json`, import.meta.url), "utf8")).KnowledgeBrick;
+    const issue: string = kb.issue.locationCap;
+    const review: string = kb.reviewLocationCap;
+    assert.ok(typeof kb.seePlans === "string" && kb.seePlans.length > 0, `${lang}: seePlans`);
+    assert.match(issue, /\{cap, plural,/, `${lang}: issue.locationCap plural on cap`);
+    assert.match(review, /\{dropped, plural,/, `${lang}: reviewLocationCap plural on dropped`);
+    assert.match(review, /\{cap, plural,/, `${lang}: reviewLocationCap plural on cap`);
+    for (const f of need) {
+      assert.ok(issue.includes(` ${f} {`) || issue.includes(`,${f} {`), `${lang}: issue.locationCap form ${f}`);
+      assert.ok(review.includes(` ${f} {`), `${lang}: reviewLocationCap form ${f}`);
+    }
+    assert.ok(!/\(s\)|remove one|retirez|הסירו/i.test(issue + review), `${lang}: no "(s)" and no "remove one" advice`);
+  }
+  // en/fr exact wording
+  const en = JSON.parse(readFileSync(new URL("../../messages/en.json", import.meta.url), "utf8")).KnowledgeBrick;
+  assert.equal(en.issue.locationCap, "Your plan includes {cap, plural, one {# location} other {# locations}}.");
+  assert.equal(en.seePlans, "See plans");
+  const fr = JSON.parse(readFileSync(new URL("../../messages/fr.json", import.meta.url), "utf8")).KnowledgeBrick;
+  assert.equal(fr.issue.locationCap, "Votre forfait comprend {cap, plural, one {# établissement} other {# établissements}}.");
+  assert.equal(fr.seePlans, "Voir les forfaits");
 });
 
 // ── The four gate cases, company sheet, tenant AND admin (tenant's row) ──
@@ -175,7 +200,7 @@ console.log("grandfathered: 3 locations on a plan capped at 1");
   test("(c) adding a 4th is refused, with the message", () => {
     const w = planCappedSheetWrite(r, { locations: [...sheet.locations, { ...sheet.locations[0], id: "c4", name: "Mock Centre 4" }] });
     refused(w as never, 1);
-    assert.match((w as { body: { message: string } }).body.message, /allows 1 location\. Remove one before adding another\./);
+    assert.equal((w as { body: { message: string } }).body.message, "Your plan includes 1 location.");
     assert.deepEqual(sheetSaveIssues((w as unknown as { body: { error: string; cap: number } }).body, sheet), [{ key: "locationCap", params: { cap: 1 } }]);
     refused(planConfigBusinessWrite({ ...r.business, centres: [...r.business.centres, centre(4)] }, r.business, "global") as never, 1);
   });
@@ -185,8 +210,9 @@ console.log("grandfathered: 3 locations on a plan capped at 1");
       centres: [centre(1), { ...centre(7), id: "n7", name: "Mock Scanned 7" }, { ...centre(8), id: "n8", name: "Mock Scanned 8" }],
       services: [],
     });
-    const { next, changes, locationsTruncated } = planScan(sheet, draft, new Set(), 1);
+    const { next, changes, locationsTruncated, locationsDropped } = planScan(sheet, draft, new Set(), 1);
     assert.equal(locationsTruncated, true);
+    assert.equal(locationsDropped, 2); // said in the review, never silent
     assert.deepEqual(next.locations.map((l) => l.id), ["c1", "c2", "c3"]);
     assert.equal(changes.filter((c) => c.kind === "locationAdded").length, 0);
     // the save it leads to passes the gate (nothing added)
@@ -195,6 +221,7 @@ console.log("grandfathered: 3 locations on a plan capped at 1");
     const ev = scanResultWithCap({ type: "result", business: draft }, r.business.centres, "global");
     assert.equal(ev.locationCap, 1);
     assert.equal(ev.centresTruncated, true);
+    assert.equal(ev.centresDropped, 2);
   });
 }
 
@@ -207,8 +234,9 @@ test("premium with 1 location, site lists 4 new → the first 2 are added, flagg
     centres: [4, 5, 6, 7].map((n) => ({ ...centre(n), id: `n${n}`, name: `Mock Scanned ${n}` })),
     services: [],
   });
-  const { next, locationsTruncated, changes } = planScan(sheet, draft, new Set(), 3);
+  const { next, locationsTruncated, locationsDropped, changes } = planScan(sheet, draft, new Set(), 3);
   assert.equal(locationsTruncated, true);
+  assert.equal(locationsDropped, 2);
   assert.deepEqual(next.locations.map((l) => l.name), ["Mock Centre 1", "Mock Scanned 4", "Mock Scanned 5"]);
   assert.equal(changes.filter((c) => c.kind === "locationAdded").length, 2);
   assert.equal(planCappedSheetWrite(r, { locations: next.locations }).ok, true);
@@ -224,6 +252,7 @@ test("within the cap: not flagged, and planScan without a cap is unchanged", () 
   const draft = sanitizeBusinessConfig({ identity: { name: "", tagline: "", email: "" }, centres: [centre(1)], services: [] });
   const capped = planScan(sheetOf(r), draft, new Set(), 1);
   assert.equal(capped.locationsTruncated, false);
+  assert.equal(capped.locationsDropped, 0);
   assert.equal(capped.next.locations.length, 1);
   const uncapped = planScan(sheetOf(r), draft);
   assert.deepEqual(uncapped.next, capped.next);

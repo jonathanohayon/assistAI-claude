@@ -43,6 +43,7 @@ interface ScanResultEvent {
   /** The plan's location cap (lib/locations-cap.ts). */
   locationCap?: number;
   centresTruncated?: boolean;
+  centresDropped?: number;
 }
 
 type StreamEvent =

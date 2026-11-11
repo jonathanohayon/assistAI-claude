@@ -2353,7 +2353,7 @@
       "invalidEmail": "l'adresse e-mail n'est pas valide.",
       "notesTooLong": "les notes dépassent 6000 caractères.",
       "invalid": "une valeur n'est pas valide.",
-      "locationCap": "votre offre permet {cap, plural, one {# établissement} other {# établissements}} : retirez-en un avant d'en ajouter un autre."
+      "locationCap": "Votre forfait comprend {cap, plural, one {# établissement} other {# établissements}}."
     },
     "instructionsLabel": "Les consignes de cet agent",
     "instructionsHint": "Ce que cet agent doit faire ou éviter. Elles ne valent que pour lui.",
@@ -2451,7 +2451,8 @@
     "fieldLabel": "{label} :",
     "widenedNote": "Son établissement n'est pas retenu : elle sera proposée dans tous vos établissements.",
     "reviewApplySome": "Appliquer {n} sur {total}",
-    "reviewLocationCap": "Votre offre permet {cap, plural, one {# établissement} other {# établissements}} : le site en liste davantage, les autres ne sont pas ajoutés. Rien de ce que vous avez déjà n'est retiré."
+    "reviewLocationCap": "{dropped, plural, one {# établissement trouvé n'a pas été ajouté} other {# établissements trouvés n'ont pas été ajoutés}} : votre forfait comprend {cap, plural, one {# établissement} other {# établissements}}.",
+    "seePlans": "Voir les forfaits"
   },
   "ToolsBrick": {
     "intro": "Ce que votre réceptionniste peut faire pendant un appel, en plus de parler. Raccrocher est toujours possible.",

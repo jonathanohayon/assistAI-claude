@@ -2353,7 +2353,7 @@
       "invalidEmail": "the email address isn't valid.",
       "notesTooLong": "the notes are longer than 6000 characters.",
       "invalid": "a value isn't valid.",
-      "locationCap": "your plan allows {cap, plural, one {# location} other {# locations}}: remove one before adding another."
+      "locationCap": "Your plan includes {cap, plural, one {# location} other {# locations}}."
     },
     "instructionsLabel": "This agent's instructions",
     "instructionsHint": "What this agent should do or avoid. They apply to this agent only.",
@@ -2451,7 +2451,8 @@
     "fieldLabel": "{label}:",
     "widenedNote": "Its location isn't kept: it will be offered at all your locations.",
     "reviewApplySome": "Apply {n} of {total}",
-    "reviewLocationCap": "Your plan allows {cap, plural, one {# location} other {# locations}}: the site lists more, so the extra ones are left out. Nothing you already have is removed."
+    "reviewLocationCap": "{dropped, plural, one {# location found wasn't added} other {# locations found weren't added}}: your plan includes {cap, plural, one {# location} other {# locations}}.",
+    "seePlans": "See plans"
   },
   "ToolsBrick": {
     "intro": "What your receptionist can do on a call, besides talking. Hanging up is always possible.",

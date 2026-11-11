@@ -22,14 +22,17 @@ import { useLocale, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
 
 import { WebsiteScanWizard } from "@/app/[locale]/dashboard/website-scan-wizard";
-import { HINT, LABEL } from "@/components/bricks/controls";
+import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
+import { Link } from "@/i18n/navigation";
 import type { BusinessConfig } from "@/lib/business";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 
 import { learnedDate, planScan, withSource, type ScanChange, type SheetIssue } from "./knowledge-ui";
 import { BUTTON, GHOST, INPUT, LearnFromSite, LearnReview, SheetCard } from "./SheetCard";
+
+const PLANS_LINK = `cursor-pointer font-semibold text-[#0e7490] underline underline-offset-2 rounded ${FOCUS}`;
 
 /** Outbound, while this agent still reads its own learned text (S5 off for the account). */
 export interface AgentLearned {
@@ -93,6 +96,7 @@ export function KnowledgeBrick({
     /** The plan's location cap from the scan result (undefined: an older server). */
     locationCap?: number;
     locationsTruncated: boolean;
+    locationsDropped: number;
   } | null>(null);
   const [manual, setManual] = useState(false);
   const instructionsId = useId();
@@ -112,7 +116,7 @@ export function KnowledgeBrick({
         <LearnReview
           url={proposal.url}
           changes={proposal.changes}
-          locationCapNote={proposal.locationsTruncated ? proposal.locationCap : undefined}
+          locationCapNote={proposal.locationsTruncated && proposal.locationCap !== undefined ? { cap: proposal.locationCap, dropped: proposal.locationsDropped } : undefined}
           onApply={(skip) => {
             const { next } = planScan(sheet, proposal.draft, skip, proposal.locationCap);
             onSheetChange({ ...next, sources: withSource(next.sources, proposal.url, new Date().toISOString()) });
@@ -132,8 +136,8 @@ export function KnowledgeBrick({
         existingBusiness={{ identity: sheet.identity, centres: [], services: [] }}
         onApply={() => {}}
         onDraft={(draft, lang, url, locationCap) => {
-          const { changes, locationsTruncated } = planScan(sheet, draft, new Set(), locationCap);
-          setProposal({ url: url || scanUrl || "", draft, changes, lang, locationCap, locationsTruncated });
+          const { changes, locationsTruncated, locationsDropped } = planScan(sheet, draft, new Set(), locationCap);
+          setProposal({ url: url || scanUrl || "", draft, changes, lang, locationCap, locationsTruncated, locationsDropped });
         }}
       />
 
@@ -143,7 +147,17 @@ export function KnowledgeBrick({
           <p className="font-semibold">{t("issuesTitle")}</p>
           <ul className="mt-1 list-disc ps-5">
             {issues.map((i, n) => (
-              <li key={n}>{t(`issue.${i.key}`, i.params)}</li>
+              <li key={n}>
+                {t(`issue.${i.key}`, i.params)}
+                {i.key === "locationCap" && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/billing" className={PLANS_LINK}>
+                      {t("seePlans")}
+                    </Link>
+                  </>
+                )}
+              </li>
             ))}
           </ul>
         </div>

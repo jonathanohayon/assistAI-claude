@@ -213,16 +213,18 @@ export function planScan(
   /**
    * The plan's location cap (the scan result's `locationCap`). Given: only
    * the NEW locations that fit in the room left under it are proposed (in
-   * the site's order); the others are left out and `locationsTruncated` is
-   * true. Existing locations are never removed, whatever the cap.
+   * the site's order); the others are left out, `locationsTruncated` is
+   * true and `locationsDropped` says how many (the review says it). Existing locations are never removed, whatever the cap.
    */
   locationCap?: number,
-): { next: CompanySheet; changes: ScanChange[]; locationsTruncated: boolean } {
+): { next: CompanySheet; changes: ScanChange[]; locationsTruncated: boolean; locationsDropped: number } {
   const scanned = sheetFromBusiness(draft);
   let locationsTruncated = false;
+  let locationsDropped = 0;
   if (locationCap !== undefined) {
     const capped = capScannedLocations(sheet.locations, scanned.locations, locationCap);
     locationsTruncated = capped.truncated;
+    locationsDropped = capped.dropped.length;
     scanned.locations = capped.kept;
   }
   const changes: ScanChange[] = [];
@@ -309,7 +311,7 @@ export function planScan(
     if (take("notes")) notes = [notes.trim(), scannedNotes].filter(Boolean).join("\n\n");
   }
 
-  return { next: { ...sheet, identity, locations, services, notes }, changes, locationsTruncated };
+  return { next: { ...sheet, identity, locations, services, notes }, changes, locationsTruncated, locationsDropped };
 }
 
 /** A service added at locations that are all left out: it'd be offered everywhere. */

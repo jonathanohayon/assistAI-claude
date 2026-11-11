@@ -31,8 +31,9 @@ export interface LocationCapRefusal {
   message: string;
 }
 
+/** Server/dev string only: the screen builds its own sentence from `error` + `cap`. */
 export function locationCapMessage(cap: number): string {
-  return `Your plan allows ${cap} location${cap === 1 ? "" : "s"}. Remove one before adding another.`;
+  return `Your plan includes ${cap} location${cap === 1 ? "" : "s"}.`;
 }
 
 export type LocationCountCheck = { ok: true } | { ok: false; status: 403; body: LocationCapRefusal };
@@ -125,7 +126,8 @@ export function planCappedSheetWrite(
 }
 
 /**
- * The scan's `result` event + `locationCap` and `centresTruncated`, against
+ * The scan's `result` event + `locationCap`, `centresTruncated` and
+ * `centresDropped` (how many NEW locations do not fit), against
  * the stored centres. The draft itself is unchanged (it writes nothing): the
  * proposal (planScan) applies the cap when it merges.
  */
@@ -136,6 +138,6 @@ export function scanResultWithCap(
 ): Record<string, unknown> {
   const cap = locationCapFor(plan);
   const business = ev.business as { centres?: Array<{ name: string }> } | undefined;
-  const { truncated } = capScannedLocations(storedCentres, business?.centres ?? [], cap);
-  return { ...ev, locationCap: cap, centresTruncated: truncated };
+  const { truncated, dropped } = capScannedLocations(storedCentres, business?.centres ?? [], cap);
+  return { ...ev, locationCap: cap, centresTruncated: truncated, centresDropped: dropped.length };
 }

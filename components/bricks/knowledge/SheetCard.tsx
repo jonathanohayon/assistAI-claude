@@ -17,6 +17,7 @@ import { newId, structuredCloneCompat } from "@/app/[locale]/dashboard/config/fo
 import { ServiceEditModal } from "@/app/[locale]/dashboard/config/service-edit-modal";
 import { DEFAULT_WEEKLY_HOURS } from "@/app/[locale]/dashboard/config/types";
 import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
+import { Link } from "@/i18n/navigation";
 import type { CompanySheet, SheetLocation, SheetService } from "@/lib/knowledge/contract";
 
 import { hoursSummary, learnedDate, scanCounts, widened, type ScanChange } from "./knowledge-ui";
@@ -138,8 +139,8 @@ export function LearnReview({
 }: {
   url: string;
   changes: ScanChange[];
-  /** Given: the plan's cap left some of the site's new locations out. */
-  locationCapNote?: number;
+  /** Given: the plan's cap left `dropped` of the site's new locations out. */
+  locationCapNote?: { cap: number; dropped: number };
   /** The ids of the lines the customer unticked. */
   onApply: (skip: ReadonlySet<string>) => void;
   onCancel: () => void;
@@ -172,7 +173,10 @@ export function LearnReview({
       <p className="mt-0.5 text-sm text-[#18181b]">{changes.length ? parts.join(", ") : t("reviewNothing")}</p>
       {locationCapNote !== undefined && (
         <p role="status" className="mt-1 text-sm text-[#52525b]">
-          {t("reviewLocationCap", { cap: locationCapNote })}
+          {t("reviewLocationCap", locationCapNote)}{" "}
+          <Link href="/dashboard/billing" className={LINK}>
+            {t("seePlans")}
+          </Link>
         </p>
       )}
       {changes.length > 0 && (
