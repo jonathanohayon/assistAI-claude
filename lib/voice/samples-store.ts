@@ -1,4 +1,5 @@
-// Voice samples (V7) — SERVER-ONLY: storage + rendering on the default engine.
+// Voice samples (V7) — SERVER-ONLY: storage + rendering (default engine;
+// Gemini / Grok voices by our catalogue id since V8c).
 
 import { and, eq } from "drizzle-orm";
 
@@ -6,6 +7,7 @@ import { db } from "@/lib/db";
 import { voiceSamples } from "@/lib/db/schema";
 import { renderOpenerAudio } from "@/lib/greeting-render";
 import { VOICE_STYLE_PRESETS } from "@/lib/voice/contract";
+import { engineSamplePlan, renderEngineSample, type SampleEngine } from "@/lib/voice/engine-samples";
 import { SAMPLE_TEXT, samplePlan, VOICE_SAMPLE_VERSION, type SampleKey } from "@/lib/voice/samples";
 
 /** How the default engine is asked to read a sample: the style's own tuning. */
@@ -61,14 +63,30 @@ export async function generateMissingSamples(
   limit: number,
   render: typeof renderOpenerAudio = renderOpenerAudio,
 ): Promise<GenerateResult> {
+  return generateMissing(samplePlan(), limit, (k) => render({ ...sampleRendering(k), voice: k.voiceId, model: SAMPLE_MODEL }));
+}
+
+/** Same, for the Gemini / Grok voices (keyed by our catalogue id, V8c). */
+export async function generateMissingEngineSamples(
+  engine: SampleEngine,
+  limit: number,
+  render: (k: SampleKey) => Promise<{ pcm: Buffer; sampleRate: number }> = renderEngineSample,
+): Promise<GenerateResult> {
+  return generateMissing(engineSamplePlan(engine), limit, render);
+}
+
+async function generateMissing(
+  plan: SampleKey[],
+  limit: number,
+  render: (k: SampleKey) => Promise<{ pcm: Buffer; sampleRate: number }>,
+): Promise<GenerateResult> {
   const have = new Set((await availableSampleKeys()).map((k) => `${k.voiceId}/${k.style}/${k.language}`));
-  const missing = samplePlan().filter((k) => !have.has(`${k.voiceId}/${k.style}/${k.language}`));
+  const missing = plan.filter((k) => !have.has(`${k.voiceId}/${k.style}/${k.language}`));
   const batch = missing.slice(0, Math.max(0, limit));
   const result: GenerateResult = { generated: 0, failed: [], remaining: missing.length - batch.length };
   for (const k of batch) {
     try {
-      const r = sampleRendering(k);
-      const audio = await render({ ...r, voice: k.voiceId, model: SAMPLE_MODEL });
+      const audio = await render(k);
       await db
         .insert(voiceSamples)
         .values({ ...k, version: VOICE_SAMPLE_VERSION, audioPcm: audio.pcm, sampleRate: audio.sampleRate })
