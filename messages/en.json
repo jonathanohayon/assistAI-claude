@@ -1427,6 +1427,15 @@
         "status_archive": "Campaign archived",
         "raw": "{message}",
         "skipped": "skipped: {reasons}"
+      },
+      "dispatchOff": "Calls are paused on this platform: no calls are placed for now.",
+      "dispatchDry": "Test mode: no calls are placed.",
+      "actionError": {
+        "session": "Your session has expired. Sign in again, then retry.",
+        "forbidden": "This account can’t {action, select, pause {pause} other {start}} this campaign.",
+        "notFound": "This campaign no longer exists. Reload the page.",
+        "changed": "This campaign changed in the meantime. Reload the page, then retry.",
+        "unknown": "Couldn’t {action, select, pause {pause} other {start}} the campaign. Try again."
       }
     },
     "pauseToEdit": "Pause the campaign to change: {fields}"
