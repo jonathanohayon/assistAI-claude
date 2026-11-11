@@ -14,8 +14,11 @@ import {
   durationOrNull,
   encodeCursor,
   figuresFor,
+  filteredPage,
   hashCallId,
+  outcomeForRequest,
   outcomeFromEvents,
+  parseOutcome,
   parseLimit,
   parsePeriod,
   readTranscript,
@@ -244,6 +247,88 @@ assert.equal(textDirection(["שלום", "Bonjour madame comment allez-vous"]), "
   );
 }
 
+// ── Outcome filter: parsing, cursor, paging ─────────────────────────────
+{
+  assert.deepEqual(parseOutcome(null), { outcome: null }, "absent → no filter");
+  for (const o of ["booked", "cancelled", "rescheduled", "transferred", "conversation"] as const) {
+    assert.deepEqual(parseOutcome(o), { outcome: o });
+  }
+  for (const bad of ["", "BOOKED", "booked,cancelled", "rdv", " booked", "message"]) {
+    assert.deepEqual(parseOutcome(bad), { error: "invalid_outcome" }, `invalid outcome ${JSON.stringify(bad)}`);
+  }
+
+  const p = parsePeriod("2026-11-01T00:00:00Z", "2026-11-05T00:00:00Z")!;
+  const plain = { period: p, createdAt: "2026-11-01T10:00:00.123456Z", id: A };
+  const plainEnc = encodeCursor(plain);
+  assert.equal(
+    plainEnc,
+    Buffer.from(`${p.since.toISOString()}|${p.until.toISOString()}|${plain.createdAt}|${A}`).toString("base64url"),
+    "unfiltered cursor keeps the 4-field format",
+  );
+  assert.ok(!("outcome" in decodeCursor(plainEnc)!), "unfiltered cursor decodes without outcome");
+  const filtered = { ...plain, outcome: "booked" as const };
+  assert.deepEqual(decodeCursor(encodeCursor(filtered)), filtered, "cursor carries the outcome");
+  assert.equal(
+    decodeCursor(Buffer.from(`${p.since.toISOString()}|${p.until.toISOString()}|${plain.createdAt}|${A}|nope`).toString("base64url")),
+    null,
+    "unknown outcome in a cursor is refused",
+  );
+
+  const cPlain = decodeCursor(plainEnc);
+  const cBooked = decodeCursor(encodeCursor(filtered));
+  assert.deepEqual(outcomeForRequest(null, null), { outcome: null });
+  assert.deepEqual(outcomeForRequest("booked", null), { outcome: "booked" });
+  assert.deepEqual(outcomeForRequest(null, cBooked), { outcome: "booked" }, "later pages need only ?cursor=");
+  assert.deepEqual(outcomeForRequest("booked", cBooked), { outcome: "booked" }, "same filter repeated is fine");
+  assert.deepEqual(outcomeForRequest("cancelled", cBooked), { error: "invalid_cursor" }, "different filter → invalid_cursor");
+  assert.deepEqual(outcomeForRequest("booked", cPlain), { error: "invalid_cursor" }, "unfiltered cursor with a filter → invalid_cursor");
+  assert.deepEqual(outcomeForRequest(null, cPlain), { outcome: null }, "unfiltered cursor, no filter");
+
+  // filteredPage: keyset desc by (cursorTs, id), full pages, no duplicates.
+  const ts = (m: number) => `2026-11-01T10:${String(m).padStart(2, "0")}:00.000000Z`;
+  const uid = (k: number) => `30000000-0000-4000-8000-${String(k).padStart(12, "0")}`;
+  const rows = [
+    { id: uid(1), cursorTs: ts(1) },
+    { id: uid(2), cursorTs: ts(5) },
+    { id: uid(3), cursorTs: ts(5) }, // same timestamp as 2: id desc
+    { id: uid(4), cursorTs: ts(3) },
+    { id: uid(5), cursorTs: ts(9) },
+    { id: uid(6), cursorTs: ts(2) },
+  ];
+  const outcomeOf = (id: string) => (id === uid(1) ? "conversation" : "booked");
+  const seen: string[] = [];
+  let cur: { createdAt: string; id: string } | null = null;
+  for (;;) {
+    const page: { rows: typeof rows; hasMore: boolean } = filteredPage([...rows].reverse(), outcomeOf, "booked", cur, 2);
+    seen.push(...page.rows.map((r) => r.id));
+    if (!page.hasMore) {
+      assert.ok(page.rows.length >= 1);
+      break;
+    }
+    assert.equal(page.rows.length, 2, "every page but the last is full");
+    const last = page.rows[page.rows.length - 1];
+    cur = { createdAt: last.cursorTs, id: last.id };
+  }
+  assert.deepEqual(seen, [uid(5), uid(3), uid(2), uid(4), uid(6)], "filtered, newest first, id desc on ties");
+
+  // Figures ignore the filter: they are computed from the period's calls, not the filtered page.
+  const calls = [call("c1", "", 0, 10), call("c2", "", 100, 10)];
+  const attached = new Map([
+    ["c1", [ev("book_success", 0)]],
+    ["c2", [ev("call_transfer", 100, { ok: true })]],
+  ]);
+  const fig = figuresFor(calls.map((c) => c.id), attached);
+  const onlyBooked = filteredPage(
+    calls.map((c) => ({ id: c.id, cursorTs: c.createdAt.toISOString() })),
+    (id) => outcomeFromEvents(attached.get(id) ?? []),
+    "booked",
+    null,
+    50,
+  );
+  assert.deepEqual(onlyBooked.rows.map((r) => r.id), ["c1"]);
+  assert.deepEqual(fig, { callsReceived: 2, booked: 1, transferred: 1 }, "figures are period-wide");
+}
+
 // ── Source-level guards ─────────────────────────────────────────────────
 {
   const root = path.resolve(new URL("../..", import.meta.url).pathname);
@@ -293,6 +378,9 @@ assert.equal(textDirection(["שלום", "Bonjour madame comment allez-vous"]), "
     assert.match(src, /await resolveTargetUserId\(req\)/, `${r}: scoped`);
     assert.doesNotMatch(src, /export async function (POST|PUT|PATCH|DELETE)/, `${r}: GET only`);
   }
+  const list = readFileSync(path.join(root, ROUTES[0]), "utf8");
+  assert.match(list, /parseOutcome\(q\.get\("outcome"\)\)/, "list route parses ?outcome=");
+  assert.match(list, /outcomeForRequest\(asked\.outcome, cursor\)/, "list route checks the cursor's filter");
   const detail = readFileSync(path.join(root, ROUTES[1]), "utf8");
   assert.match(detail, /if \(!call\) return NextResponse\.json\(\{ error: "not_found" \}, \{ status: 404 \}\)/);
 

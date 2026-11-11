@@ -58,14 +58,24 @@ export interface CallPeriod {
 }
 
 /**
- * GET /api/dashboard/calls[?since&until&cursor&limit&asUserId]
+ * GET /api/dashboard/calls[?since&until&outcome&cursor&limit&asUserId]
  * - Period: ?since / ?until (ISO 8601). Default: the last 30 days up to now.
  *   At most 366 days. Bad values → 400 { error: "invalid_period" }.
  * - Order: newest first (created_at desc, id desc). limit default 50, max 100.
  * - nextCursor: opaque; pass it back as ?cursor= for the next page. It carries
  *   the period, so the next page keeps the same period (since/until are then
  *   ignored). Bad cursor → 400 { error: "invalid_cursor" }.
- * - figures: computed over exactly `period` (all pages), not over the page.
+ * - figures: computed over exactly `period` (all pages), not over the page,
+ *   and NOT over the outcome filter (the tiles do not move when filtering).
+ * - Outcome filter: ?outcome= with ONE value among booked | cancelled |
+ *   rescheduled | transferred | conversation (the line's `outcome`). Any other
+ *   value (also empty) → 400 { error: "invalid_outcome" }. Applied server-side
+ *   before paging: every page is full. The nextCursor of a filtered list
+ *   carries the filter (later pages need only ?cursor=); a cursor used with a
+ *   different ?outcome, or an unfiltered cursor used with one → 400
+ *   { error: "invalid_cursor" }.
+ * - Without a filter the response is unchanged (no `outcome` key); the key is
+ *   present ONLY when a filter is applied.
  */
 export interface CallListResponse {
   items: CallLine[];
@@ -74,6 +84,8 @@ export interface CallListResponse {
   figures: CallFigures;
   /** The account's primary language (agent config), e.g. "fr" | "he" | "en". */
   accountLanguage: string;
+  /** The applied ?outcome= filter. Present ONLY when filtering; absent otherwise. */
+  outcome?: CallOutcome;
 }
 
 export interface CallTranscriptTurn {

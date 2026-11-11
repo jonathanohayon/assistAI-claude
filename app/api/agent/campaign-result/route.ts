@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { campaignCalls, campaignContacts, campaigns } from "@/lib/db/schema";
 import { CALL_OUTCOMES, type CallOutcome } from "@/lib/campaigns/constants";
 import { campaignCallRow } from "@/lib/campaigns/campaign-call-row";
+import { captureMode } from "@/lib/campaigns/capture-mode";
+import { scheduleCampaignCapture } from "@/lib/campaigns/capture-runtime";
 import { logEvent } from "@/lib/logger";
 
 // POST /api/agent/campaign-result  (x-internal-secret)
@@ -68,20 +70,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "contact_not_found" }, { status: 404 });
   }
 
-  await db.insert(campaignCalls).values(
-    campaignCallRow(
-      {
-        campaignId,
-        contactId,
-        userId: campaign.userId,
-        phoneNumber: contact.phoneNumber,
-        outcome,
-        transcript,
-        durationSeconds,
-      },
-      req,
-    ),
-  );
+  const [inserted] = await db
+    .insert(campaignCalls)
+    .values(
+      campaignCallRow(
+        {
+          campaignId,
+          contactId,
+          userId: campaign.userId,
+          phoneNumber: contact.phoneNumber,
+          outcome,
+          transcript,
+          durationSeconds,
+        },
+        req,
+      ),
+    )
+    .returning({ id: campaignCalls.id });
+
+  // M3a: campaign field capture, after the response (CAMPAIGN_CAPTURE, off by
+  // default: nothing is scheduled, nothing runs).
+  if (captureMode() === "on" && inserted) {
+    scheduleCampaignCapture({
+      callRowId: inserted.id,
+      campaignId,
+      userId: campaign.userId,
+      outcome,
+      transcript,
+      schema: campaign.extractionSchema,
+    });
+  }
 
   // Retry si l'issue est dans retryOn et qu'il reste des tentatives.
   const rules = campaign.retryRules ?? { maxAttempts: 1, retryOn: [], backoffMinutes: 30 };
