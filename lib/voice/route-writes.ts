@@ -92,12 +92,20 @@ export function outboundVoiceConfigUpdates(
   if (!("voiceConfig" in body)) return null;
   const conflict = conflictingFields(body, LEGACY_OUTBOUND_VOICE_FIELDS);
   if (conflict.length) return { error: { status: 400, body: { error: "voice_config_conflict", fields: conflict } } };
-  const plan = planVoiceWrite(currentOutboundVoice(row.voiceConfig, row), body.voiceConfig, isAdmin);
+  const current = currentOutboundVoice(row.voiceConfig, row);
+  const plan = planVoiceWrite(current, body.voiceConfig, isAdmin);
   if (!plan.ok) return { error: { status: plan.status, body: { error: plan.error, fields: plan.fields } } };
-  return {
-    updates: { ...outboundColumnsFromVoice(plan.voice, row.personality as AgentPersonality | null), voiceConfig: plan.voice },
-    voice: plan.voice,
-  };
+  // The agent's speed (the 1–10 "vitesse" slider) is written ONLY by an
+  // explicit `advanced.speed`. A pace write used to clear the speed, which
+  // reset vitesse to step 6 — "Fast" could make an agent SLOWER. Outbound
+  // calls don't use pace (no voice profile served), so it never clears it here.
+  const patch = (body.voiceConfig ?? {}) as { advanced?: Record<string, unknown> };
+  const speedWritten = !!patch.advanced && typeof patch.advanced === "object" && "speed" in patch.advanced;
+  const personality = row.personality as AgentPersonality | null;
+  const voice = speedWritten ? plan.voice : { ...plan.voice, advanced: { ...plan.voice.advanced, speed: current.advanced.speed } };
+  const cols = outboundColumnsFromVoice(voice, personality);
+  if (!speedWritten && personality?.vitesse !== undefined) cols.personality = { ...cols.personality, vitesse: personality.vitesse };
+  return { updates: { ...cols, voiceConfig: voice }, voice };
 }
 
 /** Outbound legacy write: the voice to store next to the merged row. */
