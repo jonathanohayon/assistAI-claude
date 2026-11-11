@@ -9,6 +9,8 @@ import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
+import { servedAgentWebhook } from "@/lib/agent-brain-guard";
+import { alertAdmins } from "@/lib/alerts";
 import { logEvent } from "@/lib/logger";
 import { reportTenantFallback } from "@/lib/tenant-fallback";
 import { resolveInboundTenantWith } from "@/lib/tenant-resolution";
@@ -285,7 +287,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   }
   const brain = await getAgentBrain(tenant.user.id);
   const envOverride = process.env.AGENT_WEBHOOK_URL;
-  const agentWebhook =
+  const candidateWebhook =
     envOverride && envOverride.startsWith("http")
       ? {
           url: envOverride,
@@ -294,6 +296,31 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
             : {}),
         }
       : toWorkerWebhook(brain);
+  // SSRF guard: a webhook (tenant setting OR the global env override) whose
+  // url fails checkAgentUrl is NOT served — the call gets the normal Tamara —
+  // and the admins get one alert per source per day. Neither carries the url.
+  const { webhook: agentWebhook, refused } = await servedAgentWebhook(candidateWebhook);
+  if (refused) {
+    const via = envOverride && envOverride.startsWith("http") ? "env_override" : "tenant_setting";
+    await logEvent({
+      source: "tenant",
+      event: "agent_webhook_unsafe",
+      message: `Cerveau externe ignoré pour ${tenant.user.email} : adresse refusée (${refused})`,
+      level: "error",
+      userId: tenant.user.id,
+      metadata: { via, code: refused },
+    });
+    void alertAdmins({
+      key: via === "env_override" ? "unsafe_agent_webhook:env" : `unsafe_agent_webhook:${tenant.user.id}`,
+      subject: "External agent address refused",
+      body:
+        via === "env_override"
+          ? "The global AGENT_WEBHOOK_URL is not a safe address. Calls use the normal Tamara until it is fixed."
+          : `The external agent address of account ${tenant.user.id} is not a safe address. Its calls use the normal Tamara until it is changed.`,
+      dedupMs: 24 * 60 * 60 * 1000,
+      severity: "warning",
+    });
+  }
   if (agentWebhook) {
     await logEvent({
       source: "tenant",
