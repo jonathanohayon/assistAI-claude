@@ -744,6 +744,12 @@ export const events = pgTable("events", {
   byCampaign: index("events_campaign_created_idx")
     .on(sql`(${t.metadata}->>'campaignId')`, t.createdAt)
     .where(sql`${t.metadata} ? 'campaignId'`),
+  // Same console, worker-side events: the worker's remoteLog carries the
+  // campaign under metadata.origin = { kind: 'campaign', campaignId, ... }
+  // with no top-level campaignId, so the index above never sees them.
+  byOriginCampaign: index("events_origin_campaign_created_idx")
+    .on(sql`(${t.metadata}->'origin'->>'campaignId')`, t.createdAt)
+    .where(sql`(${t.metadata}->'origin'->>'kind') = 'campaign'`),
   // Call type at call end looks up the call's tool events by call id.
   byCallId: index("events_call_id_idx")
     .on(sql`(${t.metadata}->>'callId')`)
