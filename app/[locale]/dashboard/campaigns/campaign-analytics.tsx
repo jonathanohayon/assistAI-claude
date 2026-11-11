@@ -74,7 +74,11 @@ const SUCCESS_COLORS: Record<string, string> = {
   fail: "#ef4444",
 };
 
-const fmtDuration = (s: number) =>
+// The success verdict is an LLM's reading of the transcript, so its explainer
+// is referenced (aria-describedby) by every figure built on it.
+const ESTIMATED_HINT_ID = "campaign-estimated-success-hint";
+
+const fmtDuration =(s: number) =>
   s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "—";
 
 export function CampaignAnalytics({
@@ -206,7 +210,7 @@ export function CampaignAnalytics({
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-[#64748b]">
-                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#e2e8f0] border-t-[#7c3aed]" />
+                <span className="me-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#e2e8f0] border-t-[#7c3aed]" />
                 {t("analyticsLoading")}
               </div>
             ) : error || !data ? (
@@ -229,13 +233,31 @@ export function CampaignAnalytics({
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Kpi label={t("kpiTotal")} value={String(data.aggregates.total)} />
                   <Kpi label={t("kpiConnected")} value={String(data.aggregates.connected)} tone="text-[#16a34a]" />
-                  <Kpi label={t("kpiSuccessRate")} value={`${data.aggregates.successRate}%`} tone="text-[#7c3aed]" />
+                  {/* AI-judged (an LLM reads the transcript against the success
+                      criteria), not a recorded action: labelled as an estimate. */}
+                  <Kpi
+                    label={t("kpiEstimatedSuccessRate")}
+                    value={`${data.aggregates.successRate}%`}
+                    tone="text-[#7c3aed]"
+                    describedBy={ESTIMATED_HINT_ID}
+                  />
                   <Kpi label={t("kpiAvgDuration")} value={fmtDuration(data.aggregates.avgDurationSec)} />
                 </div>
+                {/* One explainer where the estimated figure first appears. */}
+                <p
+                  id={ESTIMATED_HINT_ID}
+                  className="-mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-[#64748b]"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-px h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="8" r="6.5" />
+                    <path d="M8 7v4M8 4.75v.5" strokeLinecap="round" />
+                  </svg>
+                  <span>{t("estimatedSuccessHint")}</span>
+                </p>
 
                 {/* Graphes */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <ChartCard title={t("chartSuccess")}>
+                  <ChartCard title={t("chartEstimatedSuccess")}>
                     <ResponsiveContainer width="100%" height={200}>
                       <RadialBarChart
                         innerRadius="70%"
@@ -252,7 +274,7 @@ export function CampaignAnalytics({
                       {data.aggregates.successRate}%
                     </p>
                     <p className="mt-[88px] text-center text-[11px] text-[#94a3b8]">
-                      {t("successOnConnected", { n: data.aggregates.success, total: data.aggregates.connected })}
+                      {t("estimatedSuccessOnConnected", { n: data.aggregates.success, total: data.aggregates.connected })}
                     </p>
                   </ChartCard>
 
@@ -314,11 +336,22 @@ export function CampaignAnalytics({
   );
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Kpi({
+  label,
+  value,
+  tone,
+  describedBy,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  describedBy?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      aria-describedby={describedBy}
       className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-center"
     >
       <p className={`text-2xl font-extrabold ${tone ?? "text-[#18181b]"}`}>{value}</p>
@@ -396,7 +429,7 @@ function ConversationRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left transition hover:bg-[#f8fafc]"
+        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
       >
         <span dir="ltr" className="font-mono text-[12px] text-[#18181b]">{call.phoneNumber}</span>
         <span
@@ -410,7 +443,7 @@ function ConversationRow({
             className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
             style={{ background: SUCCESS_COLORS[call.success] ?? "#94a3b8" }}
           >
-            {t(`success_${call.success}` as "success_success")}
+            {t(`estimatedSuccess_${call.success}` as "estimatedSuccess_success")}
           </span>
         )}
         {call.sentiment && (
@@ -424,7 +457,7 @@ function ConversationRow({
             {t(`sentiment_${call.sentiment}` as "sentiment_positive")}
           </span>
         )}
-        <span className="ml-auto text-[11px] text-[#94a3b8]">
+        <span className="ms-auto text-[11px] text-[#94a3b8]">
           {fmtDuration(call.durationSeconds)}
         </span>
         <svg
