@@ -16,6 +16,19 @@ export const CAPTURE_MAX_FIELDS = 20;
 /** A captured string is trimmed and capped at this length. */
 export const CAPTURE_STRING_CHARS = 500;
 
+// Catch-up on the campaign-dispatch cron tick (CAMPAIGN_CAPTURE on): a
+// connected call that after() missed is captured later. Bounds:
+/** At most this many calls claimed per tick, oldest first. */
+export const CAPTURE_CATCHUP_PER_TICK = 10;
+/** CUT-OFF (decided by tamaraVP: 72 h, outlasts a weekend incident): only calls created within the last N hours, so turning the switch on never bills every historical call. */
+export const CAPTURE_CATCHUP_CUTOFF_HOURS = 72;
+/** The per-tick log's `outsideWindow` count is bounded by this (a LIMIT in the query): "≥ N" when it equals N. */
+export const CAPTURE_OUTSIDE_WINDOW_COUNT_CAP = 1000;
+/** A pending claim older than this is abandoned (process killed mid-capture) and can be re-claimed. */
+export const CAPTURE_CLAIM_STALE_MINUTES = 10;
+/** At most this many capture attempts (LLM calls) per call, after() included; a call is never retried past it. */
+export const CAPTURE_MAX_ATTEMPTS = 3;
+
 export type Turn = { role: "user" | "assistant"; text: string };
 
 /** Stored in campaign_calls.extracted. */
@@ -27,6 +40,25 @@ export interface CapturePayload {
   values: Record<string, string | number | boolean>;
   /** Required fields the model did not find (or that failed validation). */
   missing?: string[];
+}
+
+/**
+ * Stored in campaign_calls.extracted WHILE a capture runs: the atomic claim.
+ * Taken only from {} (or from an abandoned claim); the final write applies
+ * only where extracted is still exactly this claim. Never shown as captured.
+ */
+export interface CaptureClaim {
+  v: 1;
+  pending: true;
+  claimedAt: string;
+  /** Random per claim statement, so two claims of one row never compare equal. */
+  token: string;
+  /** 1 for the first claim, +1 per re-claim; CAPTURE_MAX_ATTEMPTS = never re-claimed. */
+  attempt: number;
+}
+
+export function isPendingClaim(x: unknown): x is CaptureClaim {
+  return !!x && typeof x === "object" && (x as { pending?: unknown }).pending === true;
 }
 
 /** What the results route shows per call when the switch is on. */
@@ -51,13 +83,18 @@ export interface CaptureInput {
 
 export interface CaptureDeps {
   llm: CaptureLlm;
-  /** Writes `payload` to that row ONLY if its extracted is still {}; true when written. */
-  writeIfEmpty: (callRowId: string, payload: CapturePayload) => Promise<boolean>;
+  /** Atomically claims that row (extracted {} → a pending claim); null when it is not {} (set, or claimed by someone else). */
+  claim: (callRowId: string) => Promise<CaptureClaim | null>;
+  /** Writes `payload` to that row ONLY if its extracted is still exactly `claim`; true when written. */
+  writeClaimed: (callRowId: string, claim: CaptureClaim, payload: CapturePayload) => Promise<boolean>;
+  /** A claimed call that turns out not capturable: its claim is marked exhausted, so it is never picked again. */
+  park: (callRowId: string, claim: CaptureClaim) => Promise<void>;
   /** Metadata carries ids and counts only: never transcript text or values. */
   log: (ev: { event: string; level: "info" | "warn"; message: string; userId: string; metadata: Record<string, unknown> }) => Promise<void>;
   now?: () => Date;
 }
 
+/** already_set: the row was not {} (or the claim was lost): no LLM call, nothing written. */
 export type CaptureResult = "skipped" | "written" | "already_set" | "failed";
 
 /** Schema fields actually used: sanitised, unique keys, enums with options, at most CAPTURE_MAX_FIELDS. */
@@ -163,12 +200,16 @@ export function validateCaptured(
   return { values, missing };
 }
 
-/** Stored extracted → what the results route shows; null when nothing was captured. */
+/**
+ * Stored extracted → what the results route shows. null ONLY when no attempt
+ * was recorded ({}, a pending claim, anything else). An attempt that found
+ * nothing shows `values: {}` (+ the required fields still missing).
+ */
 export function capturedView(extracted: unknown): CapturedView {
-  if (!extracted || typeof extracted !== "object") return null;
+  if (!extracted || typeof extracted !== "object" || Array.isArray(extracted)) return null;
+  if (isPendingClaim(extracted)) return null;
   const e = extracted as Partial<CapturePayload>;
-  if (e.v !== 1 || e.source !== "conversation" || !e.values || typeof e.values !== "object") return null;
-  if (Object.keys(e.values).length === 0) return null;
+  if (e.v !== 1 || e.source !== "conversation" || !e.values || typeof e.values !== "object" || Array.isArray(e.values)) return null;
   return {
     source: "conversation",
     values: e.values,
@@ -176,8 +217,14 @@ export function capturedView(extracted: unknown): CapturedView {
   };
 }
 
-/** Never throws. Writes only to input.callRowId and only if its extracted is still {}. */
-export async function runCampaignCapture(input: CaptureInput, deps: CaptureDeps): Promise<CaptureResult> {
+/**
+ * Never throws. Writes only to input.callRowId, and only through a claim: its
+ * own (taken here from {}), or `held`, one the caller already took (the cron
+ * catch-up). The LLM is called only once the claim is held, so two capturers
+ * of one call (after() and a tick, two ticks) never both call it. On failure
+ * the claim stays: it is re-claimed once abandoned, up to CAPTURE_MAX_ATTEMPTS.
+ */
+export async function runCampaignCapture(input: CaptureInput, deps: CaptureDeps, held?: CaptureClaim): Promise<CaptureResult> {
   const meta = { campaignId: input.campaignId, campaignCallId: input.callRowId };
   const fail = async (reason: string): Promise<CaptureResult> => {
     try {
@@ -194,7 +241,12 @@ export async function runCampaignCapture(input: CaptureInput, deps: CaptureDeps)
     return "failed";
   };
   try {
-    if (!shouldCapture(input)) return "skipped";
+    if (!shouldCapture(input)) {
+      if (held) await deps.park(input.callRowId, held);
+      return "skipped";
+    }
+    const claim = held ?? (await deps.claim(input.callRowId));
+    if (!claim) return "already_set";
     const fields = captureFields(input.schema);
     const res = await deps.llm({ system: capturePrompt(fields), user: `Transcript:\n\n${captureDialog(input.transcript)}` });
     if (!res) return await fail("llm_unavailable");
@@ -213,7 +265,7 @@ export async function runCampaignCapture(input: CaptureInput, deps: CaptureDeps)
       values,
       ...(missing.length ? { missing } : {}),
     };
-    const written = await deps.writeIfEmpty(input.callRowId, payload);
+    const written = await deps.writeClaimed(input.callRowId, claim, payload);
     try {
       await deps.log({
         event: "campaign_capture_done",
@@ -229,4 +281,87 @@ export async function runCampaignCapture(input: CaptureInput, deps: CaptureDeps)
   } catch (e) {
     return await fail(e instanceof Error ? `error:${e.name}` : "error");
   }
+}
+
+/** The catch-up's time bounds at `now`, as ISO strings (pure). */
+export interface CatchUpWindow {
+  nowIso: string;
+  /** Calls created before this are never picked. */
+  cutoffIso: string;
+  /** Pending claims taken before this are abandoned. */
+  staleBeforeIso: string;
+}
+
+export function catchUpWindow(now: Date): CatchUpWindow {
+  const t = now.getTime();
+  return {
+    nowIso: now.toISOString(),
+    cutoffIso: new Date(t - CAPTURE_CATCHUP_CUTOFF_HOURS * 3_600_000).toISOString(),
+    staleBeforeIso: new Date(t - CAPTURE_CLAIM_STALE_MINUTES * 60_000).toISOString(),
+  };
+}
+
+/** One call claimed by the catch-up, with the claim it holds. */
+export interface HeldCapture {
+  input: CaptureInput;
+  claim: CaptureClaim;
+}
+
+export interface CatchUpDeps extends CaptureDeps {
+  /**
+   * Atomically claims up to `limit` capturable calls created after
+   * window.cutoffIso (oldest first): extracted {} or an abandoned claim with
+   * attempts left. Calls claimed by someone else are skipped, never waited on.
+   */
+  claimBatch: (limit: number, window: CatchUpWindow) => Promise<HeldCapture[]>;
+  /**
+   * Calls that would be eligible but are older than window.cutoffIso
+   * (connected, transcript, schema, extracted {}), counted up to
+   * CAPTURE_OUTSIDE_WINDOW_COUNT_CAP.
+   */
+  countOutsideWindow: (window: CatchUpWindow) => Promise<number>;
+  /** The per-tick log: COUNTS ONLY (no ids, transcripts or values). */
+  logTick: (metadata: CatchUpTickLog) => Promise<void>;
+}
+
+/** Metadata of the `campaign_capture_catchup` event: exactly these two numbers. */
+export interface CatchUpTickLog {
+  picked: number;
+  outsideWindow: number;
+}
+
+/** What the cron tick reports when the switch is on: COUNTS only. */
+export interface CatchUpCounts {
+  claimed: number;
+  written: number;
+  skipped: number;
+  failed: number;
+}
+
+/** One catch-up pass. Never throws (a failing claim query counts as nothing claimed). */
+export async function runCaptureCatchUp(deps: CatchUpDeps): Promise<CatchUpCounts> {
+  const counts: CatchUpCounts = { claimed: 0, written: 0, skipped: 0, failed: 0 };
+  const window = catchUpWindow((deps.now ?? (() => new Date()))());
+  let held: HeldCapture[];
+  try {
+    held = await deps.claimBatch(CAPTURE_CATCHUP_PER_TICK, window);
+  } catch (e) {
+    console.error("[capture] catch-up claim failed:", e instanceof Error ? e.name : "error");
+    return counts;
+  }
+  counts.claimed = held.length;
+  // One counts-only event per tick, and only when there is something to say.
+  try {
+    const outsideWindow = Math.min(Math.max(Math.trunc(await deps.countOutsideWindow(window)) || 0, 0), CAPTURE_OUTSIDE_WINDOW_COUNT_CAP);
+    if (held.length > 0 || outsideWindow > 0) await deps.logTick({ picked: held.length, outsideWindow });
+  } catch {
+    // observability must never block the capture
+  }
+  const results = await Promise.all(held.map((h) => runCampaignCapture(h.input, deps, h.claim)));
+  for (const r of results) {
+    if (r === "written") counts.written++;
+    else if (r === "failed") counts.failed++;
+    else counts.skipped++;
+  }
+  return counts;
 }
