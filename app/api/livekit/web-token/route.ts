@@ -1,3 +1,5 @@
+// DEPRECATED path, kept as an alias for one release: the browser now calls
+// the neutral /api/live-test/token (same handler, re-exported there).
 import {
   AccessToken,
   RoomAgentDispatch,
