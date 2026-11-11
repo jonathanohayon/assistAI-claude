@@ -20,7 +20,7 @@ import { PlanAccessControl } from "./PlanAccessControl";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
 // Layout partagé pour /admin/users/[userId]/* — fournit header + nav 4
-// onglets (Config / Calendrier / CRM / Monitoring) pour que l'admin puisse
+// onglets (Config / Calendrier / CRM / Appels) pour que l'admin puisse
 // naviguer dans les vues du tenant comme le tenant le ferait sur son
 // /dashboard. Mirror minimal du dashboard layout sans i18n switcher
 // (admin fr-only) ni trial banner.

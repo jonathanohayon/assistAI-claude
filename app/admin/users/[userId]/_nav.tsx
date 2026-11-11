@@ -12,7 +12,7 @@ const TABS: ReadonlyArray<Tab> = [
   { hrefSuffix: "", label: "Configuration" },
   { hrefSuffix: "/calendar", label: "Calendrier" },
   { hrefSuffix: "/contacts", label: "CRM" },
-  { hrefSuffix: "/logs", label: "Monitoring" },
+  { hrefSuffix: "/logs", label: "Appels" },
   { hrefSuffix: "/finance", label: "Finance" },
 ];
 
