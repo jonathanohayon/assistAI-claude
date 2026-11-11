@@ -154,9 +154,7 @@ export const ADVANCED_LIMITS = {
 } as const;
 
 /** Level 3 for tenants follows their developer mode; admins always see it. */
-export function showLevel3(opts: { isAdmin: boolean; developerMode: boolean }): boolean {
-  return opts.isAdmin || opts.developerMode;
-}
+export { showLevel3 } from "@/components/bricks/level3";
 
 /**
  * Radio group keyboard pattern (WAI-ARIA): one tab stop per group, arrows
