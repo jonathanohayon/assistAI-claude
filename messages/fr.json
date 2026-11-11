@@ -1430,6 +1430,8 @@
       },
       "dispatchOff": "Les appels sont en pause sur cette plateforme : aucun appel n’est passé pour l’instant.",
       "dispatchDry": "Mode test : aucun appel n’est passé.",
+      "dispatchPausedPill": "En pause",
+      "dispatchDryPill": "Mode test",
       "actionError": {
         "session": "Votre session a expiré. Reconnectez-vous puis réessayez.",
         "forbidden": "Ce compte ne peut pas {action, select, pause {mettre en pause} other {lancer}} cette campagne.",

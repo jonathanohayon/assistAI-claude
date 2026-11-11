@@ -7,7 +7,7 @@ import { join } from "node:path";
 
 import { IntlMessageFormat } from "intl-messageformat";
 
-import { actionErrorKey, dispatchNoticeKey } from "../../lib/campaigns/live-view";
+import { actionErrorKey, dispatchNoticeKey, readyPill, showDispatcherAlert } from "../../lib/campaigns/live-view";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -39,7 +39,8 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.match(src, /\} else \{\s*setActionError\(\{ action, key: actionErrorKey\(res\.status, body\) \}\);/);
   assert.match(src, /\} catch \{\s*setActionError\(\{ action, key: actionErrorKey\(null, null\) \}\);/);
   assert.match(src, /role="alert"[^>]*>\s*\{t\(`actionError\.\$\{actionError\.key\}`, \{ action: actionError\.action \}\)\}/);
-  assert.match(src, /running \? dispatchNoticeKey\(dispatcher\.dispatchMode \?\? postedMode\) : null/, "survives a reload via /live");
+  assert.match(src, /const mode = dispatcher\.dispatchMode \?\? postedMode;/, "survives a reload via /live");
+  assert.match(src, /running \? dispatchNoticeKey\(mode\) : null/);
   assert.match(src, /if \(body\.dispatchMode\) setPostedMode\(body\.dispatchMode\)/, "shown right after the start");
 }
 
@@ -57,6 +58,36 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   }
   const fr = JSON.parse(read("messages/fr.json")).DashboardCampaigns.live.actionError;
   assert.notEqual(new IntlMessageFormat(fr.unknown, "fr").format({ action: "pause" }), new IntlMessageFormat(fr.unknown, "fr").format({ action: "start" }));
+}
+
+// 5. While calls are off the screen never contradicts the line: amber pill, no dispatcher alarm
+{
+  // off: amber "paused" pill, both dispatcher alerts (never ran / stale) hidden
+  assert.deepEqual(readyPill("off", []), { key: "dispatchPausedPill", tone: "warn" });
+  assert.equal(showDispatcherAlert("off"), false);
+  // dry: amber "test mode" pill; the dispatcher does run, so its alerts stay
+  assert.deepEqual(readyPill("dry", []), { key: "dispatchDryPill", tone: "warn" });
+  assert.equal(showDispatcherAlert("dry"), true);
+  // on (and a snapshot without the field): today's green pill and alerts
+  assert.deepEqual(readyPill("on", []), { key: "readyToDial", tone: "good" });
+  assert.deepEqual(readyPill(undefined, []), { key: "readyToDial", tone: "good" });
+  assert.equal(showDispatcherAlert("on"), true);
+  assert.equal(showDispatcherAlert(undefined), true);
+  // blockers present: the blocker chips speak, whatever the mode
+  for (const m of ["off", "dry", "on"]) assert.equal(readyPill(m, ["outside_call_window"]), null, m);
+
+  const src = read("app/[locale]/dashboard/campaigns/campaign-live-console.tsx");
+  assert.match(src, /const pill = readyPill\(mode, dispatcher\.blockers\);/);
+  assert.match(src, /\{pill \? \(\s*<Chip tone=\{pill\.tone\}>\{t\(pill\.key\)\}<\/Chip>/);
+  assert.match(src, /\{!showDispatcherAlert\(mode\) \? null : tick === null \? \(/, "gates both never-ran and stale alerts");
+  assert.doesNotMatch(src, /<Chip tone="good">\{t\("readyToDial"\)\}/, "no hard-coded green pill left");
+
+  for (const l of ["fr", "en", "he"]) {
+    const live = JSON.parse(read(`messages/${l}.json`)).DashboardCampaigns.live;
+    for (const k of ["dispatchPausedPill", "dispatchDryPill", "readyToDial"])
+      assert.ok(typeof live[k] === "string" && new IntlMessageFormat(live[k], l).format(), `${l} ${k}`);
+    assert.notEqual(live.dispatchPausedPill, live.dispatchDryPill, l);
+  }
 }
 
 console.log("ALL CAMPAIGN-START-FEEDBACK TESTS PASSED");
