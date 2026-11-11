@@ -295,6 +295,9 @@ export const calls = pgTable("calls", {
     .references(() => users.id, { onDelete: "cascade" }),
 
   fromNumber: text("from_number").notNull().default(""),
+  // Number the caller dialed (the tenant's line), trimmed like from_number.
+  // '' for calls stored before this column existed (no backfill).
+  toNumber: text("to_number").notNull().default(""),
   transcript: jsonb("transcript")
     .$type<Array<{ role: "user" | "assistant"; text: string }>>()
     .notNull()
