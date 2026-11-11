@@ -1,5 +1,4 @@
-import { readdirSync as _readdirSync, readFileSync as _readFileSync } from "node:fs";
-import { join as _join } from "node:path";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 // Unit tests for T5a ("Ask your agent" as a Tools capability): the stored
 // shape and its write-only secret, the CLIENT_AGENT switch and server gate,
 // effectiveCapabilities, the call field (off = absent), the save-time URL
@@ -269,13 +268,15 @@ main().catch((e) => {
 // client-agent secret): every dashboard/admin route that returns an
 // agent_configs / outbound_agents row passes it through withoutToolsStore.
 {
-  const walk = (d: string): string[] =>
-    _readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-      e.isDirectory() ? walk(_join(d, e.name)) : e.name === "route.ts" ? [_join(d, e.name)] : [],
-    );
-  const routes = [...walk("app/api/dashboard"), ...walk("app/api/admin/configs")];
+  const routeScan = scanSources(["app/api/dashboard", "app/api/admin/configs"], { ext: /^route\.ts$/ });
+  // A scan that found no route would pass this guard trivially.
+  assertScanRead(routeScan, "raw Tools store route scan", {
+    minFiles: 30,
+    sentinels: ["app/api/dashboard/tools/route.ts", "app/api/dashboard/config/route.ts"],
+  });
+  const routes = routeScan.files;
   for (const f of routes) {
-    const src = _readFileSync(f, "utf8");
+    const src = routeScan.text.get(f)!;
     const selectsWholeRow = /\.select\(\)\s*\.from\((outboundAgents|agentConfigs)\)/.test(src);
     const returnsRow = /NextResponse\.json\(\{[^)]*\b(agent|config|cfg|updated|created)\b/.test(src) || /agents:\s*rows\.map/.test(src);
     if (selectsWholeRow && returnsRow) {
