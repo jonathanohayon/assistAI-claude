@@ -25,6 +25,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { TranscriptBubbles } from "@/components/calls/TranscriptBubbles";
+
 type Call = {
   id: string;
   phoneNumber: string;
@@ -506,20 +508,9 @@ function ConversationRow({
               {call.transcript.length === 0 ? (
                 <p className="text-[12px] italic text-[#94a3b8]">{t("noTranscript")}</p>
               ) : (
-                <div className="flex flex-col gap-1.5">
-                  {call.transcript.map((m, i) => (
-                    <div
-                      key={i}
-                      className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-[12px] ${
-                        m.role === "assistant"
-                          ? "self-start bg-[#ede9fe] text-[#5b21b6]"
-                          : "self-end bg-[#e2e8f0] text-[#18181b]"
-                      }`}
-                    >
-                      {m.text}
-                    </div>
-                  ))}
-                </div>
+                <TranscriptBubbles
+                  turns={call.transcript.map((m) => ({ fromAgent: m.role === "assistant", text: m.text }))}
+                />
               )}
             </div>
           </motion.div>

@@ -51,7 +51,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       ...withoutMissionStore(withoutToolsStore(agent)),
       voiceConfig: voiceForViewer(currentOutboundVoice(agent.voiceConfig, agent), await sessionIsAdmin()),
       personaConfig: currentOutboundPersona(agent.personaConfig, agent),
-      // M2a: the stored sales mission (null when unset). Only this GET returns it.
+      // M2a: the stored sales mission (null when unset). Only this GET and the
+      // PATCH below return it; every other route strips it.
       mission: currentAgentMission(agent.mission),
       campaignCount: await countCampaigns(agent.id),
     },
@@ -92,6 +93,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       ...withoutMissionStore(withoutToolsStore(updated)),
       voiceConfig: voiceForViewer(currentOutboundVoice(updated.voiceConfig, updated), isAdmin),
       personaConfig: currentOutboundPersona(updated.personaConfig, updated),
+      // Same key and shape as the GET, so the screen re-reads the stored mission after a save.
+      mission: currentAgentMission(updated.mission),
       campaignCount: await countCampaigns(agent.id),
     },
   });
