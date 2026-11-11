@@ -2104,6 +2104,7 @@
     "saveNow": "שמירה",
     "saving": "שומר…",
     "samplesTitle": "דוגמאות האזנה",
+    "samplesMissingKey": "חסר מפתח: הגדירו את <k>{env}</k> בשירות הווב.",
     "samplesCount": "{done} מתוך {total} מוכנות",
     "samplesGenerate": "יצירת דוגמאות קול",
     "samplesRunning": "יוצר…",

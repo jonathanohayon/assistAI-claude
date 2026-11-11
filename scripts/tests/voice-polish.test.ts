@@ -40,7 +40,7 @@ for (const l of ["fr", "en", "he"]) assert.ok(JSON.parse(read(`messages/${l}.jso
   const fields = admin.slice(admin.indexOf("export function VoiceAdminFields"), admin.indexOf("export function VoiceSamplesAdmin"));
   assert.doesNotMatch(fields, /<GenerateSamples \/>/, "samples are no longer at the top of the engine block");
   assert.ok(fields.indexOf('label={tE("label")}') < fields.indexOf("voiceOverrides"), "engine first, then its settings");
-  assert.match(admin, /export function VoiceSamplesAdmin[\s\S]*<AdminBadge size="xs" \/>[\s\S]*<GenerateSamples \/>/, "samples keep the ADMIN badge");
+  assert.match(admin, /export function VoiceSamplesAdmin[\s\S]*<AdminBadge size="xs" \/>[\s\S]*<GenerateSamples key=/, "samples keep the ADMIN badge");
   // Both admin parts stay dynamic imports (supplier names never in a tenant bundle).
   assert.equal(brick.match(/dynamic\(\(\) => import\("\.\/VoiceAdminFields"\)/g)?.length, 2);
 }

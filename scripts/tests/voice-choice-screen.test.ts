@@ -9,6 +9,9 @@ import { choiceVoices, hasDescriptor, selectedChoice, type ServedVoiceChoice } f
 import { engineVoices } from "../../lib/voice/catalogue";
 import { tenantVoiceChoice } from "../../lib/voice/choice";
 import { DEFAULT_VOICE } from "../../lib/voice/contract";
+import { engineSamplePlan } from "../../lib/voice/engine-samples";
+import { samplePlan } from "../../lib/voice/samples";
+import { SAMPLE_TOTALS, sampleEngineOf } from "../../components/bricks/voice/VoiceAdminFields";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -82,6 +85,20 @@ const choice: ServedVoiceChoice = {
 {
   assert.match(read("components/bricks/voice/VoiceAdminFields.tsx"), /\{tE\("changesVoice"\)\}/);
   for (const l of ["fr", "en", "he"]) assert.ok(JSON.parse(read(`messages/${l}.json`)).AdminEngine.changesVoice, l);
+}
+
+// 7. Generate samples per engine: the screen's totals are the server's plans; keys sorted by engine
+{
+  assert.deepEqual(SAMPLE_TOTALS, { openai: samplePlan().length, gemini: engineSamplePlan("gemini").length, xai: engineSamplePlan("xai").length });
+  for (const e of ["gemini", "xai"] as const) for (const k of engineSamplePlan(e)) assert.equal(sampleEngineOf(k.voiceId), e);
+  for (const k of samplePlan()) assert.equal(sampleEngineOf(k.voiceId), "openai");
+  const src = read("components/bricks/voice/VoiceAdminFields.tsx");
+  assert.match(src, /engine === "openai" \? "" : `&engine=\$\{engine\}`/, "OpenAI = the endpoint's default");
+  assert.match(src, /order\.map\(\(e\) => \(\s*<GenerateSamples key=\{e\} engine=\{e\}/, "one button per engine");
+  // A missing key says which variable to set; its NAME comes from the server (no supplier word in messages, which ship to tenants).
+  assert.match(src, /keyInfo && !keyInfo\.keySet \? keyInfo\.env : null/);
+  for (const l of ["fr", "en", "he"]) assert.match(JSON.parse(read(`messages/${l}.json`)).AdminVoiceProfile.samplesMissingKey, /<k>\{env\}<\/k>/, l);
+  assert.match(read("components/bricks/voice/VoiceBrick.tsx"), /<VoiceSamplesAdmin engine=/, "the account's engine by default");
 }
 
 console.log("ALL VOICE-CHOICE-SCREEN TESTS PASSED");

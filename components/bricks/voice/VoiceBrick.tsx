@@ -263,7 +263,7 @@ export function VoiceBrick({
           </div>
           {isAdmin && (
             <div className="mt-5 border-t border-[#e2e8f0] pt-4">
-              <VoiceSamplesAdmin />
+              <VoiceSamplesAdmin engine={(value as { engine?: string }).engine} />
             </div>
           )}
         </MoreSettings>

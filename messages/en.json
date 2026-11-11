@@ -2104,6 +2104,7 @@
     "saveNow": "Save",
     "saving": "Saving…",
     "samplesTitle": "Listen samples",
+    "samplesMissingKey": "Key missing: set <k>{env}</k> on the web service.",
     "samplesCount": "{done} of {total} ready",
     "samplesGenerate": "Generate voice samples",
     "samplesRunning": "Generating…",

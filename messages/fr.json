@@ -2104,6 +2104,7 @@
     "saveNow": "Enregistrer",
     "saving": "Enregistrement…",
     "samplesTitle": "Extraits « Écouter »",
+    "samplesMissingKey": "Clé manquante : définissez <k>{env}</k> sur le service web.",
     "samplesCount": "{done} sur {total} prêts",
     "samplesGenerate": "Générer les extraits de voix",
     "samplesRunning": "Génération…",
