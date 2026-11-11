@@ -103,7 +103,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (rule.to === "running") {
     try {
       const limit = Math.min(Math.max(campaign.concurrency || 3, 1), 50);
-      const r = await dispatchDueJobs(limit, "start");
+      // Only THIS campaign: claimCampaignJobs used to take every running
+      // campaign of every account on a start.
+      const r = await dispatchDueJobs(limit, "start", {}, { campaignId: id });
       mode = "mode" in r ? r.mode : "on";
       dispatch = { claimed: r.claimed, dialed: r.dialed, failed: r.failed };
     } catch (e) {

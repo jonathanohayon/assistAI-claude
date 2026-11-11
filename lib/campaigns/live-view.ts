@@ -2,6 +2,7 @@
 // (GET /api/dashboard/campaigns/:id/live, see lib/campaigns/live.ts).
 // Client-safe and pure. Unit-tested in scripts/tests/campaign-live-view.test.ts.
 
+import type { DispatchMode } from "./dispatch-mode";
 import type { BlockReason, DispatchTick } from "./live";
 
 export interface LiveContact {
@@ -43,6 +44,8 @@ export interface LiveFeed {
     blockers: BlockReason[];
     inFlight: number;
     dueQueued: number;
+    /** Platform call switch: "off" = no calls placed, "dry" = test mode (a viewer-safe word, never the env). */
+    dispatchMode: DispatchMode;
   };
   inProgress: LiveContact[];
   contacts: LiveContact[];
@@ -190,4 +193,53 @@ export function eventLine(e: LiveEvent): EventLine {
       return { key: e.event.replace("campaign_", "status_"), params: {}, contactId: null, tone: "info" };
   }
   return { key: "raw", params: { message: e.message }, contactId, tone: e.level === "error" ? "bad" : "info" };
+}
+
+// ── Start / pause feedback (never a silent no-op) ─────────────────────
+
+export type { DispatchMode };
+
+/** The plain line under the controls when calls aren't really placed; null when they are. */
+export function dispatchNoticeKey(mode: unknown): "dispatchOff" | "dispatchDry" | null {
+  return mode === "off" ? "dispatchOff" : mode === "dry" ? "dispatchDry" : null;
+}
+
+export type ActionErrorKey = "session" | "forbidden" | "notFound" | "changed" | "unknown";
+
+/**
+ * A refused start / pause in plain words: the server's code first, the HTTP
+ * status as a fallback, a generic line for anything else (500, network).
+ */
+export function actionErrorKey(status: number | null, body: unknown): ActionErrorKey {
+  const code = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
+  if (code === "invalid_transition" || status === 409) return "changed";
+  if (code === "not_found" || status === 404) return "notFound";
+  if (code === "Forbidden" || status === 403) return "forbidden";
+  if (code === "Unauthorized" || status === 401) return "session";
+  return "unknown";
+}
+
+export type ReadyPill =
+  | { key: "readyToDial"; tone: "good" }
+  | { key: "dispatchPausedPill" | "dispatchDryPill"; tone: "warn" };
+
+/**
+ * The "no blockers" pill, kept consistent with the platform call switch:
+ * green "ready" only when calls really go out, amber "paused" / "test mode"
+ * otherwise. null while blockers exist (the blocker chips speak instead).
+ */
+export function readyPill(mode: unknown, blockers: readonly unknown[]): ReadyPill | null {
+  if (blockers.length > 0) return null;
+  if (mode === "off") return { key: "dispatchPausedPill", tone: "warn" };
+  if (mode === "dry") return { key: "dispatchDryPill", tone: "warn" };
+  return { key: "readyToDial", tone: "good" };
+}
+
+/**
+ * Whether the dispatcher health alerts (never ran / stale tick) may show.
+ * Hidden while calls are switched off: the pause line already explains why
+ * nothing dials. In test mode the dispatcher does run, so they stay.
+ */
+export function showDispatcherAlert(mode: unknown): boolean {
+  return mode !== "off";
 }

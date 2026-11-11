@@ -47,6 +47,8 @@ export async function dispatchDueJobs(
   limit: number,
   source: DispatchTick["source"] = "cron",
   deps: Partial<DispatchDeps> = {},
+  /** A campaign start: only that campaign. Omitted (cron) = every running campaign. */
+  scope: { campaignId?: string } = {},
 ): Promise<DispatchResult | GatedDispatchResult> {
   const d = { ...DEFAULT_DEPS, ...deps };
   // CAMPAIGN_DISPATCH (lib/campaigns/dispatch-mode.ts): off and dry write
@@ -56,11 +58,11 @@ export async function dispatchDueJobs(
     return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is off" };
   }
   if (mode === "dry") {
-    const wouldDial = await dryRunCounts(limit);
+    const wouldDial = await dryRunCounts(limit, scope.campaignId);
     console.log(`[dispatch] dry run (${source}): ${JSON.stringify(wouldDial)}`);
     return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is dry: nothing claimed or dialled", wouldDial };
   }
-  const jobs = await d.claim(limit);
+  const jobs = await d.claim(limit, scope);
   let dialed = 0;
   let failed = 0;
   const perCampaign = new Map<string, DispatchResult>();
@@ -132,12 +134,12 @@ export async function dispatchDueJobs(
  * timezone, per-campaign concurrency, `limit`), READ-ONLY (no FOR UPDATE, no
  * reap). Counts only.
  */
-async function dryRunCounts(limit: number): Promise<DryRunCounts> {
+async function dryRunCounts(limit: number, campaignId?: string): Promise<DryRunCounts> {
   const n = Math.min(Math.max(Math.trunc(limit) || 1, 1), 50);
   const rows = await db.execute(sql`
     SELECT c.id,
-      ((SELECT count(*) FROM campaign_contacts x
-        WHERE x.campaign_id = c.id AND x.status IN ('claimed', 'calling')) < c.concurrency) AS under_concurrency,
+      GREATEST(c.concurrency - (SELECT count(*) FROM campaign_contacts x
+        WHERE x.campaign_id = c.id AND x.status IN ('claimed', 'calling')), 0)::int AS free_slots,
       (EXTRACT(DOW FROM (now() AT TIME ZONE (c.call_window->>'timezone')))::int
           IN (SELECT jsonb_array_elements_text(c.call_window->'days')::int)
         AND EXTRACT(HOUR FROM (now() AT TIME ZONE (c.call_window->>'timezone')))::int >= (c.call_window->>'startHour')::int
@@ -147,24 +149,22 @@ async function dryRunCounts(limit: number): Promise<DryRunCounts> {
         WHERE cc.campaign_id = c.id AND cc.status = 'queued'
           AND (cc.next_attempt_at IS NULL OR cc.next_attempt_at <= now()))::int AS due
     FROM campaigns c
-    WHERE c.status = 'running'
+    WHERE c.status = 'running' ${campaignId ? sql`AND c.id = ${campaignId}::uuid` : sql``}
     ORDER BY c.created_at
   `);
   const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
   return dryRunTotals(
-    list.map((r) => ({ due: Number(r.due ?? 0), underConcurrency: r.under_concurrency === true, inHours: r.in_hours === true })),
+    list.map((r) => ({ due: Number(r.due ?? 0), freeSlots: Number(r.free_slots ?? 0), inHours: r.in_hours === true })),
     n,
   );
 }
 
 /**
  * Pure: per running campaign → the totals, by claimCampaignJobs' OWN rule
- * (so dry = what on would dial): a campaign is eligible when it is in call
- * hours and its in-flight count is under its concurrency — checked once per
- * batch, so a batch can take MORE than the free slots (known issue, boarded
- * with the per-campaign start fix); then the global `limit`.
+ * (so dry = what on would dial): in call hours, at most the campaign's free
+ * slots (concurrency − in flight), then the global `limit`.
  */
-export function dryRunTotals(campaigns: Array<{ due: number; underConcurrency: boolean; inHours: boolean }>, limit: number): DryRunCounts {
+export function dryRunTotals(campaigns: Array<{ due: number; freeSlots: number; inHours: boolean }>, limit: number): DryRunCounts {
   let left = limit;
   const out: DryRunCounts = { campaignsDue: 0, contactsDue: 0, skippedCallHours: 0, skippedConcurrency: 0 };
   for (const c of campaigns) {
@@ -173,11 +173,8 @@ export function dryRunTotals(campaigns: Array<{ due: number; underConcurrency: b
       out.skippedCallHours += c.due;
       continue;
     }
-    if (!c.underConcurrency) {
-      out.skippedConcurrency += c.due;
-      continue;
-    }
-    const take = Math.min(c.due, left);
+    out.skippedConcurrency += Math.max(0, c.due - c.freeSlots);
+    const take = Math.min(c.due, Math.max(0, c.freeSlots), left);
     if (take > 0) {
       out.campaignsDue++;
       out.contactsDue += take;

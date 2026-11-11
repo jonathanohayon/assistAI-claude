@@ -1427,6 +1427,17 @@
         "status_archive": "הקמפיין הועבר לארכיון",
         "raw": "{message}",
         "skipped": "דולג: {reasons}"
+      },
+      "dispatchOff": "השיחות מושהות בפלטפורמה: כרגע לא מתבצעות שיחות.",
+      "dispatchDry": "מצב בדיקה: לא מתבצעות שיחות.",
+      "dispatchPausedPill": "מושהה",
+      "dispatchDryPill": "מצב בדיקה",
+      "actionError": {
+        "session": "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.",
+        "forbidden": "החשבון הזה לא יכול {action, select, pause {להשהות} other {להפעיל}} את הקמפיין.",
+        "notFound": "הקמפיין הזה כבר לא קיים. רעננו את הדף.",
+        "changed": "הקמפיין השתנה בינתיים. רעננו את הדף ונסו שוב.",
+        "unknown": "לא ניתן {action, select, pause {להשהות} other {להפעיל}} את הקמפיין. נסו שוב."
       }
     },
     "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}"
