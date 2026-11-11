@@ -2405,7 +2405,9 @@
     "emptyValue": "(empty)",
     "before": "before:",
     "after": "after:",
-    "fieldLabel": "{label}:"
+    "fieldLabel": "{label}:",
+    "widenedNote": "Its location isn't kept: it will be offered at all your locations.",
+    "reviewApplySome": "Apply {n} of {total}"
   },
   "ToolsBrick": {
     "intro": "What your receptionist can do on a call, besides talking. Hanging up is always possible.",

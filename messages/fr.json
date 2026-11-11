@@ -2405,7 +2405,9 @@
     "emptyValue": "(vide)",
     "before": "avant :",
     "after": "après :",
-    "fieldLabel": "{label} :"
+    "fieldLabel": "{label} :",
+    "widenedNote": "Son établissement n'est pas retenu : elle sera proposée dans tous vos établissements.",
+    "reviewApplySome": "Appliquer {n} sur {total}"
   },
   "ToolsBrick": {
     "intro": "Ce que votre réceptionniste peut faire pendant un appel, en plus de parler. Raccrocher est toujours possible.",

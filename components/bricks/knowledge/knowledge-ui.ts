@@ -162,87 +162,135 @@ export interface Diff<T> {
   after: T;
 }
 
-/** Every change carries the values themselves, so the customer approves what they see. */
-export type ScanChange =
+/**
+ * Every change carries the values themselves, so the customer approves what
+ * they see, and a stable `id` so each line can be left out (planScan's skip).
+ */
+export type ScanChange = { id: string } & (
   | { kind: "identity"; field: "name" | "tagline" | "email"; before: string; after: string }
   | { kind: "locationAdded"; name: string; address: string; hours: Week }
   | { kind: "locationChanged"; name: string; address?: Diff<string>; hours?: Diff<Week> }
-  | { kind: "serviceAdded"; name: string; durationMinutes: number; priceILS: number }
+  | {
+      kind: "serviceAdded";
+      name: string;
+      durationMinutes: number;
+      priceILS: number;
+      /**
+       * The ids of the ADDED locations (their change ids) this service is
+       * offered at, when it isn't offered everywhere. If all of them are left
+       * out and it has no existing location either, it is offered at every
+       * location (`widensIfSkipped`).
+       */
+      dependsOn: string[];
+      widensIfSkipped: boolean;
+    }
   | { kind: "serviceChanged"; name: string; price?: Diff<number>; duration?: Diff<number>; description?: Diff<string> }
-  | { kind: "notesAdded" };
+  | { kind: "notesAdded" }
+);
 
 const key = (s: string) => s.trim().toLocaleLowerCase().replace(/\s+/g, " ");
 
-export function planScan(sheet: CompanySheet, draft: BusinessConfig): { next: CompanySheet; changes: ScanChange[] } {
+/**
+ * The scan's draft as a proposal. `changes` always lists EVERY change the
+ * site suggests (the review's lines); `next` applies all of them except the
+ * ids in `skip` (the lines the customer unticked).
+ */
+export function planScan(
+  sheet: CompanySheet,
+  draft: BusinessConfig,
+  skip: ReadonlySet<string> = new Set(),
+): { next: CompanySheet; changes: ScanChange[] } {
   const scanned = sheetFromBusiness(draft);
   const changes: ScanChange[] = [];
+  const take = (id: string) => !skip.has(id);
 
   const identity = { ...sheet.identity };
   for (const f of ["name", "tagline", "email"] as const) {
     const after = scanned.identity[f].trim();
     if (!after || after === identity[f].trim()) continue;
-    changes.push({ kind: "identity", field: f, before: identity[f], after });
-    identity[f] = after;
+    const id = `identity:${f}`;
+    changes.push({ id, kind: "identity", field: f, before: identity[f], after });
+    if (take(id)) identity[f] = after;
   }
 
   const locations = sheet.locations.map((l) => ({ ...l }));
-  const locationIdMap = new Map<string, string>(); // scanned id → id in the sheet
-  for (const l of scanned.locations) {
+  const locationIdMap = new Map<string, string>(); // scanned id → id in the sheet (kept locations only)
+  const addedChangeId = new Map<string, string>(); // scanned id → its locationAdded change id
+  scanned.locations.forEach((l, i) => {
     const mine = locations.find((x) => key(x.name) === key(l.name));
     if (!mine) {
-      const id = uniqueId(l.id, locations.map((x) => x.id));
-      locations.push({ ...l, id });
-      locationIdMap.set(l.id, id);
-      changes.push({ kind: "locationAdded", name: l.name, address: l.address, hours: l.hours });
-      continue;
+      const cid = `location+:${i}`;
+      changes.push({ id: cid, kind: "locationAdded", name: l.name, address: l.address, hours: l.hours });
+      addedChangeId.set(l.id, cid);
+      if (take(cid)) {
+        const id = uniqueId(l.id, locations.map((x) => x.id));
+        locations.push({ ...l, id });
+        locationIdMap.set(l.id, id);
+      }
+      return;
     }
     locationIdMap.set(l.id, mine.id);
-    const change: Extract<ScanChange, { kind: "locationChanged" }> = { kind: "locationChanged", name: mine.name };
-    if (l.address.trim() && l.address.trim() !== mine.address.trim()) {
-      change.address = { before: mine.address, after: l.address };
-      mine.address = l.address;
+    const cid = `location~:${mine.id}`;
+    const change: Extract<ScanChange, { kind: "locationChanged" }> = { id: cid, kind: "locationChanged", name: mine.name };
+    if (l.address.trim() && l.address.trim() !== mine.address.trim()) change.address = { before: mine.address, after: l.address };
+    if (JSON.stringify(l.hours) !== JSON.stringify(mine.hours)) change.hours = { before: mine.hours, after: l.hours };
+    if (!change.address && !change.hours) return;
+    changes.push(change);
+    if (take(cid)) {
+      if (change.address) mine.address = change.address.after;
+      if (change.hours) mine.hours = change.hours.after;
     }
-    if (JSON.stringify(l.hours) !== JSON.stringify(mine.hours)) {
-      change.hours = { before: mine.hours, after: l.hours };
-      mine.hours = l.hours;
-    }
-    if (change.address || change.hours) changes.push(change);
-  }
+  });
 
   const services = sheet.services.map((s) => ({ ...s }));
-  for (const s of scanned.services) {
-    const locationIds =
-      s.locationIds === "all" ? ("all" as const) : s.locationIds.map((id) => locationIdMap.get(id)).filter((id): id is string => !!id);
+  scanned.services.forEach((s, i) => {
     const mine = services.find((x) => key(x.name) === key(s.name));
     if (!mine) {
-      services.push({ ...s, id: uniqueId(s.id, services.map((x) => x.id)), locationIds: locationIds.length || locationIds === "all" ? locationIds : "all" });
-      changes.push({ kind: "serviceAdded", name: s.name, durationMinutes: s.durationMinutes, priceILS: s.priceILS });
-      continue;
+      const cid = `service+:${i}`;
+      const dependsOn = s.locationIds === "all" ? [] : s.locationIds.map((id) => addedChangeId.get(id)).filter((x): x is string => !!x);
+      const existingRefs = s.locationIds === "all" ? [] : s.locationIds.filter((id) => !addedChangeId.has(id) && locationIdMap.has(id));
+      changes.push({
+        id: cid,
+        kind: "serviceAdded",
+        name: s.name,
+        durationMinutes: s.durationMinutes,
+        priceILS: s.priceILS,
+        dependsOn,
+        widensIfSkipped: s.locationIds !== "all" && dependsOn.length > 0 && existingRefs.length === 0,
+      });
+      if (take(cid)) {
+        const kept = s.locationIds === "all" ? ("all" as const) : s.locationIds.map((id) => locationIdMap.get(id)).filter((id): id is string => !!id);
+        services.push({ ...s, id: uniqueId(s.id, services.map((x) => x.id)), locationIds: kept === "all" || kept.length ? kept : "all" });
+      }
+      return;
     }
-    const change: Extract<ScanChange, { kind: "serviceChanged" }> = { kind: "serviceChanged", name: mine.name };
-    if (s.priceILS > 0 && s.priceILS !== mine.priceILS) {
-      change.price = { before: mine.priceILS, after: s.priceILS };
-      mine.priceILS = s.priceILS;
+    const cid = `service~:${mine.id}`;
+    const change: Extract<ScanChange, { kind: "serviceChanged" }> = { id: cid, kind: "serviceChanged", name: mine.name };
+    if (s.priceILS > 0 && s.priceILS !== mine.priceILS) change.price = { before: mine.priceILS, after: s.priceILS };
+    if (s.durationMinutes > 0 && s.durationMinutes !== mine.durationMinutes) change.duration = { before: mine.durationMinutes, after: s.durationMinutes };
+    if (s.description.trim() && !mine.description.trim()) change.description = { before: mine.description, after: s.description };
+    if (!change.price && !change.duration && !change.description) return;
+    changes.push(change);
+    if (take(cid)) {
+      if (change.price) mine.priceILS = change.price.after;
+      if (change.duration) mine.durationMinutes = change.duration.after;
+      if (change.description) mine.description = change.description.after;
     }
-    if (s.durationMinutes > 0 && s.durationMinutes !== mine.durationMinutes) {
-      change.duration = { before: mine.durationMinutes, after: s.durationMinutes };
-      mine.durationMinutes = s.durationMinutes;
-    }
-    if (s.description.trim() && !mine.description.trim()) {
-      change.description = { before: mine.description, after: s.description };
-      mine.description = s.description;
-    }
-    if (change.price || change.duration || change.description) changes.push(change);
-  }
+  });
 
   let notes = sheet.notes;
   const scannedNotes = scanned.notes.trim();
   if (scannedNotes && !notes.includes(scannedNotes)) {
-    notes = [notes.trim(), scannedNotes].filter(Boolean).join("\n\n");
-    changes.push({ kind: "notesAdded" });
+    changes.push({ id: "notes", kind: "notesAdded" });
+    if (take("notes")) notes = [notes.trim(), scannedNotes].filter(Boolean).join("\n\n");
   }
 
   return { next: { ...sheet, identity, locations, services, notes }, changes };
+}
+
+/** A service added at locations that are all left out: it'd be offered everywhere. */
+export function widened(c: ScanChange, skip: ReadonlySet<string>): boolean {
+  return c.kind === "serviceAdded" && !skip.has(c.id) && c.widensIfSkipped && c.dependsOn.every((d) => skip.has(d));
 }
 
 function uniqueId(id: string, taken: string[]): string {

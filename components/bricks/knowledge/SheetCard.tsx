@@ -19,7 +19,7 @@ import { DEFAULT_WEEKLY_HOURS } from "@/app/[locale]/dashboard/config/types";
 import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
 import type { CompanySheet, SheetLocation, SheetService } from "@/lib/knowledge/contract";
 
-import { hoursSummary, learnedDate, scanCounts, type ScanChange } from "./knowledge-ui";
+import { hoursSummary, learnedDate, scanCounts, widened, type ScanChange } from "./knowledge-ui";
 
 export const INPUT =
   "w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm text-[#18181b] placeholder:text-[#64748b] focus:border-[#0e7490] focus:outline-none focus:ring-2 focus:ring-[#0e7490]/20";
@@ -137,10 +137,21 @@ export function LearnReview({
 }: {
   url: string;
   changes: ScanChange[];
-  onApply: () => void;
+  /** The ids of the lines the customer unticked. */
+  onApply: (skip: ReadonlySet<string>) => void;
   onCancel: () => void;
 }) {
   const t = useTranslations("KnowledgeBrick");
+  // Every line ticked by default; unticked = not applied.
+  const [skip, setSkip] = useState<ReadonlySet<string>>(() => new Set());
+  const kept = changes.length - skip.size;
+  const toggle = (id: string) =>
+    setSkip((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const n = scanCounts(changes);
   const parts = [
     n.servicesAdded && t("countServicesAdded", { n: n.servicesAdded }),
@@ -158,17 +169,41 @@ export function LearnReview({
       <p className="mt-0.5 text-sm text-[#18181b]">{changes.length ? parts.join(", ") : t("reviewNothing")}</p>
       {changes.length > 0 && (
         <ul className="mt-3 flex flex-col divide-y divide-[#e2e8f0] rounded-xl border border-[#e2e8f0] bg-white">
-          {changes.map((c, i) => (
-            <li key={i} className="px-3 py-2 text-sm text-[#18181b]">
-              <ChangeRow c={c} />
-            </li>
-          ))}
+          {changes.map((c) => {
+            const on = !skip.has(c.id);
+            const boxId = `kb-review-${c.id}`;
+            return (
+              <li key={c.id} className={`flex items-start gap-3 px-3 py-2 text-sm ${on ? "text-[#18181b]" : "text-[#64748b]"}`}>
+                {/* A real checkbox with a 44 px hit area; the label is the whole line. */}
+                <span className="-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center">
+                  <input
+                    id={boxId}
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => toggle(c.id)}
+                    className={`h-5 w-5 cursor-pointer accent-[#be185d] ${FOCUS}`}
+                  />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <label htmlFor={boxId} className={`block cursor-pointer ${on ? "" : "line-through decoration-[#94a3b8]"}`}>
+                    <ChangeRow c={c} />
+                  </label>
+                  {/* Its only new location is unticked: say where it would be offered. */}
+                  {widened(c, skip) && (
+                    <p className="mt-0.5 text-xs text-[#475569]" aria-live="polite">
+                      {t("widenedNote")}
+                    </p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
         {changes.length > 0 && (
-          <button type="button" onClick={onApply} className={BUTTON}>
-            {t("reviewApply")}
+          <button type="button" onClick={() => onApply(skip)} disabled={kept === 0} className={BUTTON}>
+            {kept === changes.length ? t("reviewApply") : t("reviewApplySome", { n: kept, total: changes.length })}
           </button>
         )}
         <button type="button" onClick={onCancel} className={GHOST}>
