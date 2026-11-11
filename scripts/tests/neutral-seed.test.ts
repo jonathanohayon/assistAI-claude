@@ -4,11 +4,12 @@ import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 
 import { DEFAULT_AGENT_NAME, neutralSeed, seedForNewAccount } from "../../lib/neutral-seed";
+import { FIRST_CUSTOMER_FACTS } from "./first-customer-facts";
 
 const LANGS = ["fr", "he", "en"] as const;
 
 // (c) No business fact of any customer, in any language.
-const FACTS = /prestige|johana|j[ée]rusalem|ashdod|natanya|netanya|אשדוד|נתניה|ירושלים|\b\d+\s*(min|minutes|h|heures?|דקות)\b|soins?|épilation|lundi|mercredi|monday|wednesday/i;
+const FACTS = FIRST_CUSTOMER_FACTS;
 for (const l of LANGS) {
   const s = neutralSeed(l);
   for (const t of [s.instructions, s.greeting]) {
@@ -33,12 +34,16 @@ const other = seedForNewAccount("premium", "he", { global: "ADMIN TEMPLATE" }, {
 assert.equal(other.instructions, neutralSeed("he").instructions, "another plan's template doesn't apply");
 assert.equal(seedForNewAccount("global", "fr", { global: "   " }, {}).instructions, neutralSeed("fr").instructions, "blank template → neutral");
 
-// (a) Only account CREATION uses it: one importer, which only inserts.
-const importers = execSync(`grep -rl --include="*.ts" --include="*.tsx" --include="*.mjs" "neutral-seed" app lib scripts auth.ts | grep -v scripts/tests/ || true`, { encoding: "utf8" })
+// (a) Two importers only: account CREATION (inserts only), and the internal
+//     reset endpoint (INTERNAL_SECRET-gated ops: "apply what a new account
+//     gets"). Nothing else may write the neutral seed onto an account.
+const importers = execSync(`grep -rl --include="*.ts" --include="*.tsx" --include="*.mjs" "@/lib/neutral-seed" app lib scripts auth.ts | grep -v scripts/tests/ | sort || true`, { encoding: "utf8" })
   .split("\n")
   .filter(Boolean);
-assert.deepEqual(importers, ["lib/auth/provision-tenant.ts"]);
+assert.deepEqual(importers, ["app/api/admin/internal-apply-default-prompt/route.ts", "lib/auth/provision-tenant.ts"]);
 const provision = execSync("cat lib/auth/provision-tenant.ts", { encoding: "utf8" });
 assert.doesNotMatch(provision, /\.update\(agentConfigs\)/, "provisioning never updates an existing agent config");
+const reset = execSync("cat app/api/admin/internal-apply-default-prompt/route.ts", { encoding: "utf8" });
+assert.match(reset, /const auth = requireInternalSecret\(req\);\s*if \(!auth\.ok\) return auth\.response;/, "the reset is INTERNAL_SECRET-gated");
 
 console.log("ALL NEUTRAL-SEED TESTS PASSED");

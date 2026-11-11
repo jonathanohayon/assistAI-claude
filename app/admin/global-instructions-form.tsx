@@ -21,7 +21,7 @@ Tu es **<Nom>**, secrétaire chaleureuse du centre **<Nom du centre>**.
 …
 
 Le tenant pourra personnaliser depuis son dashboard. Laisse vide pour
-utiliser le persona Johana de fallback.`;
+utiliser la persona neutre (sans fait d'aucun client), dans la langue du compte.`;
 
 const PLACEHOLDER_SUMMARY = `# System prompt OpenAI pour générer le résumé WhatsApp post-appel
 
@@ -42,7 +42,7 @@ Laisse vide pour utiliser le prompt par défaut.`;
 
 const PLACEHOLDER_GREETING = `Salue chaleureusement l'appelant en quelques mots et demande-lui comment tu peux l'aider. Reste sur 1 ou 2 phrases maximum, ton naturel et amical.
 
-Laisse vide pour utiliser la consigne d'accueil hardcodée du plan.`;
+Laisse vide pour utiliser l'accueil neutre, dans la langue du compte.`;
 
 export type GlobalInstructionsSection = "global" | "template" | "summary";
 
@@ -202,7 +202,7 @@ export function GlobalInstructionsForm({
           inscription</strong>, selon le plan choisi. Personnalisable
           ensuite depuis son dashboard. Modifs ici n&apos;affectent{" "}
           <strong>pas</strong> les tenants déjà existants. Laisse vide pour
-          utiliser la persona hardcodée du plan.
+          utiliser la persona neutre, dans la langue du compte.
         </p>
 
         {/* Plan tabs (mirror du switcher Règles communes pour cohérence) */}
@@ -250,7 +250,7 @@ export function GlobalInstructionsForm({
         />
 
         {/* Greeting d'inscription — consigne d'accueil seedée avec la persona.
-            Même cascade : vide ⇒ greeting hardcodé per-plan (initial-config). */}
+            Même cascade : vide ⇒ greeting neutre (lib/neutral-seed.ts). */}
         <div className="mt-5">
           <p className="text-xs font-medium uppercase tracking-wider text-[var(--color-primary)]">
             2b · Consigne d&apos;accueil des nouveaux tenants

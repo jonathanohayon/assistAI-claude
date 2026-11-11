@@ -38,12 +38,12 @@ export const SETTING_KEYS = {
   ONBOARDING_TEMPLATE: "onboarding_persona_template",
   // JSON map plan → persona seedée à l'inscription. Permet à l'admin
   // d'avoir un texte par défaut différent par plan (basique = simple
-  // take_message, globale/premium = Johana multi-centres). Empty pour un
-  // plan donné → fallback INITIAL_INSTRUCTIONS_FOR_PLAN hardcodé.
+  // take_message, globale/premium = multi-centres). Empty pour un plan
+  // donné → the neutral persona (lib/neutral-seed.ts).
   ONBOARDING_TEMPLATE_BY_PLAN: "onboarding_template_by_plan",
   // JSON map plan → consigne d'accueil (greetingInstructions) seedée à
-  // l'inscription d'un nouveau tenant. Empty pour un plan donné →
-  // fallback sur le greeting hardcodé per-plan de lib/initial-config.
+  // l'inscription d'un nouveau tenant. Empty pour un plan donné → the
+  // neutral greeting (lib/neutral-seed.ts).
   ONBOARDING_GREETING_BY_PLAN: "onboarding_greeting_by_plan",
   // JSON map plan → feature flags (Calendar, CRM, etc.). Voir lib/plan-features.ts.
   PLAN_FEATURES: "plan_features",
@@ -234,11 +234,11 @@ export type OnboardingTemplateByPlan = Record<PlanKey, string>;
 
 // Map plan → template d'inscription. Volontairement PAS de fallback sur
 // l'ancien single-key `ONBOARDING_TEMPLATE` : ce dernier était écrit
-// pour TOUS les plans (typiquement la persona globale Johana multi-
+// pour TOUS les plans (typiquement la persona globale multi-
 // centres), donc l'hériter silencieusement reproduit le bug "le basique
 // reçoit la config d'un autre plan". Quand un plan n'a pas de texte
-// dédié, on renvoie "" — le signup tombe alors sur la persona hardcodée
-// per-plan de lib/initial-config.
+// dédié, on renvoie "" — le signup tombe alors sur la persona neutre
+// (lib/neutral-seed.ts).
 export async function getOnboardingTemplateByPlan(): Promise<OnboardingTemplateByPlan> {
   const raw = await getSetting(SETTING_KEYS.ONBOARDING_TEMPLATE_BY_PLAN);
   const out = Object.fromEntries(
@@ -278,8 +278,8 @@ export type OnboardingGreetingByPlan = Record<PlanKey, string>;
 /**
  * Map plan → consigne d'accueil (greetingInstructions) seedée à
  * l'inscription. Même philosophie que le persona template : un plan sans
- * texte dédié renvoie "" et le signup retombe sur le greeting hardcodé
- * per-plan de lib/initial-config (GREETING_WHATSAPP / GLOBAL / PREMIUM).
+ * texte dédié renvoie "" et le signup retombe sur le greeting neutre
+ * (lib/neutral-seed.ts).
  * Ne touche QUE les nouveaux comptes — les tenants existants gardent leur
  * phrase d'accueil (éditable dans leur dashboard).
  */
