@@ -126,16 +126,110 @@ export function calledNumber(line: Pick<CallLine, "toNumber">): string | null {
   return n ? formatPhone(n) : null;
 }
 
+/** The period picker's choices. "30d" is the default (the API's own default length). */
+export type PeriodChoice = "7d" | "30d" | "month";
+export const PERIOD_CHOICES: readonly PeriodChoice[] = ["7d", "30d", "month"];
+export const DEFAULT_PERIOD: PeriodChoice = "30d";
+export const periodKey = (c: PeriodChoice) => `period_${c}`;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Offset (ms) of `timeZone` from UTC at the instant `at`. */
+function tzOffset(at: number, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(new Date(at))
+      .map((p) => [p.type, p.value]),
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return asUtc - Math.floor(at / 1000) * 1000;
+}
+
+/** The 1st of `now`'s month at 00:00 in `timeZone` (the runtime's zone when omitted). */
+function startOfMonth(now: Date, timeZone?: string): Date {
+  if (!timeZone) return new Date(now.getFullYear(), now.getMonth(), 1);
+  const [y, m] = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit" })
+    .format(now)
+    .split("-")
+    .map(Number);
+  const wall = Date.UTC(y, m - 1, 1);
+  // Two passes: the offset at the guess may differ from the offset at the answer (DST).
+  let t = wall - tzOffset(wall, timeZone);
+  t = wall - tzOffset(t, timeZone);
+  return new Date(t);
+}
+
 /**
- * URL of a page of the list. The first page carries no cursor (default period);
- * the next pages carry ONLY the cursor (it holds the period), plus asUserId.
+ * The picked period as the API's ?since / ?until (ISO). until = now.
+ * "7d" / "30d" are rolling; "month" starts on the 1st at 00:00 in the
+ * browser's time zone (or `timeZone`).
  */
-export function listUrl(cursor: string | null, asUserId?: string): string {
+export function periodRange(choice: PeriodChoice, now: Date, timeZone?: string): { since: string; until: string } {
+  const since =
+    choice === "month" ? startOfMonth(now, timeZone) : new Date(now.getTime() - (choice === "7d" ? 7 : 30) * DAY_MS);
+  return { since: since.toISOString(), until: now.toISOString() };
+}
+
+/** The outcome filter: "all" + the five outcomes, with the SAME words (keys) as the line badges. */
+export type OutcomeFilter = "all" | CallOutcome;
+export const OUTCOME_FILTERS: ReadonlyArray<{ id: OutcomeFilter; key: string }> = [
+  { id: "all", key: "filterAll" },
+  ...OUTCOMES.map((o) => ({ id: o, key: outcomeKey(o) })),
+];
+
+/**
+ * URL of a page of the list. Page 1 carries the filter and the period; the
+ * next pages carry ONLY the cursor (it holds both), plus asUserId.
+ */
+export function listUrl(
+  cursor: string | null,
+  asUserId?: string,
+  outcome?: OutcomeFilter,
+  period?: { since: string; until: string },
+): string {
   const p = new URLSearchParams();
-  if (cursor) p.set("cursor", cursor);
+  if (cursor) {
+    p.set("cursor", cursor);
+  } else {
+    if (outcome && outcome !== "all") p.set("outcome", outcome);
+    if (period) {
+      p.set("since", period.since);
+      p.set("until", period.until);
+    }
+  }
   if (asUserId) p.set("asUserId", asUserId);
   const qs = p.toString();
   return `/api/dashboard/calls${qs ? `?${qs}` : ""}`;
+}
+
+/**
+ * The list heading: the filter's name (or "all calls"), plus the number of
+ * calls ONLY once every page is loaded (no next cursor). The API gives no
+ * filtered count, so none is invented; the figures stay period-wide.
+ */
+export function listHeading(
+  outcome: OutcomeFilter,
+  shown: number,
+  complete: boolean,
+): { labelKey: string; count: number | null } {
+  const labelKey = outcome === "all" ? "listHeadingAll" : outcomeKey(outcome);
+  return { labelKey, count: complete && shown > 0 ? shown : null };
+}
+
+/** The empty list: with a filter it names the filter and offers to clear it. */
+export function emptyState(
+  outcome: OutcomeFilter,
+): { kind: "plain" } | { kind: "filtered"; outcomeKey: string } {
+  return outcome === "all" ? { kind: "plain" } : { kind: "filtered", outcomeKey: outcomeKey(outcome) };
 }
 
 export function detailUrl(id: string, asUserId?: string): string {
