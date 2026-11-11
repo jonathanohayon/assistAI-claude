@@ -7,7 +7,15 @@ import { join } from "node:path";
 
 import { IntlMessageFormat } from "intl-messageformat";
 
-import { actionErrorKey, dispatchNoticeKey, readyPill, showDispatcherAlert } from "../../lib/campaigns/live-view";
+import {
+  actionErrorKey,
+  dispatchNoticeKey,
+  launchHeading,
+  MODE_VIEW,
+  modeView,
+  readyPill,
+  showDispatcherAlert,
+} from "../../lib/campaigns/live-view";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -88,6 +96,54 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
       assert.ok(typeof live[k] === "string" && new IntlMessageFormat(live[k], l).format(), `${l} ${k}`);
     assert.notEqual(live.dispatchPausedPill, live.dispatchDryPill, l);
   }
+}
+
+// 6. The launch panel above the console reads the SAME mode table as the pill: they can never disagree
+{
+  // three modes: "ready to launch" only when calls really go out
+  assert.deepEqual(launchHeading("off"), { key: "launchPausedTitle", tone: "warn" });
+  assert.deepEqual(launchHeading("dry"), { key: "launchDryTitle", tone: "warn" });
+  assert.deepEqual(launchHeading("on"), { key: "launchTitle", tone: "good" });
+  assert.deepEqual(launchHeading(null), launchHeading("on"), "not known yet: same fallback as the pill");
+
+  // both read MODE_VIEW: same tone per mode, labels from the same row
+  for (const m of ["off", "dry", "on", undefined, null] as const) {
+    const row = modeView(m);
+    const pill = readyPill(m, [])!;
+    const head = launchHeading(m);
+    assert.equal(pill.tone, head.tone, `tone ${m}`);
+    assert.equal(pill.key, row.pill, `pill ${m}`);
+    assert.equal(head.key, row.launch, `heading ${m}`);
+  }
+  assert.deepEqual(Object.keys(MODE_VIEW).sort(), ["dry", "off", "on"]);
+
+  // wiring: the panel renders launchHeading with the shared amber chip, never a hard-coded title
+  const launch = read("app/[locale]/dashboard/campaigns/campaign-launch.tsx");
+  assert.match(launch, /const heading = launchHeading\(dispatchMode\);/);
+  assert.match(launch, /heading\.tone === "warn"[\s\S]*?TONE_CHIP\.warn[\s\S]*?\{t\(heading\.key\)\}/);
+  assert.doesNotMatch(launch, /t\("launchTitle"\)/, "no hard-coded ready title left");
+  assert.match(launch, /if \(data\.dispatchMode\) onDispatchMode\?\.\(data\.dispatchMode\)/, "a start's answer updates it");
+  // the console hands its mode up; the workspace feeds it to the panel
+  const consoleSrc = read("app/[locale]/dashboard/campaigns/campaign-live-console.tsx");
+  assert.match(consoleSrc, /const seenMode = snap\?\.dispatcher\.dispatchMode \?\? postedMode;/);
+  assert.match(consoleSrc, /if \(seenMode\) onDispatchMode\?\.\(seenMode\)/);
+  assert.match(consoleSrc, /TONE_CHIP\[tone\]/, "console chips use the shared tones");
+  const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
+  assert.match(ws, /<CampaignLaunch[\s\S]*?dispatchMode=\{dispatchMode\}[\s\S]*?onDispatchMode=\{setDispatchMode\}/);
+  assert.match(ws, /<CampaignLiveConsole[\s\S]*?onDispatchMode=\{setDispatchMode\}/);
+
+  // copy: every launch key in fr/en/he, paused and test mode differ, no env/supplier name
+  for (const l of ["fr", "en", "he"]) {
+    const dc = JSON.parse(read(`messages/${l}.json`)).DashboardCampaigns;
+    for (const k of Object.values(MODE_VIEW).map((r) => r.launch))
+      assert.ok(typeof dc[k] === "string" && new IntlMessageFormat(dc[k], l).format(), `${l} ${k}`);
+    assert.notEqual(dc.launchPausedTitle, dc.launchDryTitle, l);
+    assert.notEqual(dc.launchPausedTitle, dc.launchTitle, l);
+    assert.doesNotMatch(JSON.stringify([dc.launchPausedTitle, dc.launchDryTitle]), /CAMPAIGN_DISPATCH|twilio|livekit/i, l);
+  }
+  const fr = JSON.parse(read("messages/fr.json")).DashboardCampaigns;
+  assert.equal(fr.launchPausedTitle, "En pause sur la plateforme");
+  assert.equal(fr.launchDryTitle, "Mode test");
 }
 
 console.log("ALL CAMPAIGN-START-FEEDBACK TESTS PASSED");
