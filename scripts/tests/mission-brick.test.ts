@@ -30,6 +30,7 @@ import {
   missionSaveBody,
   presetForCard,
   presetOnAgentPick,
+  proofOf,
   type ScreenMission,
 } from "../../components/bricks/mission/mission-ui";
 import { SUPPLIERS, TOOL_NAMES } from "../tenant-bundle-match.mjs";
@@ -61,9 +62,14 @@ const cards = (preset: string, locale = "fr", onPresetChange: (p: string) => voi
       assert.ok(out.includes(esc(m.kind[k].name)), `${l}: ${k} name`);
       assert.ok(out.includes(esc(m.kind[k].what)), `${l}: ${k} line`);
       // The success proof, read-only, labelled as an estimate.
-      assert.ok(out.includes(esc(m.proof[SALES_MISSION_TABLE[k].provenBy])), `${l}: ${k} proof`);
+      // Today no switch makes a card's own proof true: every card says "judged from the conversation".
+      assert.ok(out.includes(esc(m.proof.estimated)), `${l}: ${k} proof`);
+      assert.doesNotMatch(m.kind[k].what, /fiche|rappel|passe quelqu|lead sheet|call ?back|on the line|כרטיס|שיחה חוזרת|מעבירים/i, `${l}: ${k} promises nothing the server doesn't do`);
     }
+    for (const p of ["lead_sheet_complete", "transfer_or_callback", "booking_created", "booking_or_transfer"] as const)
+      assert.ok(!out.includes(esc(m.proof[p])), `${l}: no ${p} claim`);
     assert.equal(out.split(esc(m.proofLabel)).length - 1, 3, `${l}: every proof says "estimated"`);
+    assert.equal(out.split(esc(m.proof.estimated)).length - 1, 3, `${l}: all three judged from the conversation`);
     assert.match(m.proofLabel, /estimée|estimated|הערכה/, l);
     assert.doesNotMatch(out, /<input|<textarea/, `${l}: the proof is text, not an input`);
     assert.doesNotMatch(out, /book_for_seller|follow_up/, `${l}: hidden missions`);
@@ -255,5 +261,10 @@ const cards = (preset: string, locale = "fr", onPresetChange: (p: string) => voi
   // Never a pink → cyan gradient.
   for (const f of files) assert.doesNotMatch(read(f), /from-\[#(?:be185d|db2777|ec4899)\][^"`]*to-\[#(?:06b6d4|22d3ee|67e8f9|0e7490)\]/, f);
 }
+
+// The table's own proof shows only once its switch is passed in as provable.
+assert.equal(proofOf("qualify_lead"), "estimated");
+assert.equal(proofOf("qualify_lead", ["lead_sheet_complete"]), SALES_MISSION_TABLE.qualify_lead.provenBy);
+assert.equal(proofOf("announce_offer", ["lead_sheet_complete"]), "estimated", "another switch proves nothing here");
 
 console.log("mission-brick: ok");

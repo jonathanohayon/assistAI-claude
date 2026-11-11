@@ -62,9 +62,15 @@ export function presetForCard(current: string, kind: CardMission, cold = false):
   return "custom";
 }
 
-/** The read-only proof line's message key for a mission. */
-export function proofOf(kind: SalesMission): SalesMissionProof {
-  return SALES_MISSION_TABLE[kind].provenBy;
+/**
+ * The read-only proof line's message key for a mission. The table's proof
+ * (a filled record, a transfer, a booking) is shown only once the switch that
+ * makes it true is on and passed in `provable`; until then every card says
+ * what the server really does: success judged from the conversation.
+ */
+export function proofOf(kind: SalesMission, provable: readonly SalesMissionProof[] = []): SalesMissionProof {
+  const proof = SALES_MISSION_TABLE[kind].provenBy;
+  return provable.includes(proof) ? proof : "estimated";
 }
 
 /** Whether the "cold prospecting" switch is shown for a card. */

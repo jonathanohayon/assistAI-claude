@@ -2671,11 +2671,11 @@
     "kind": {
       "qualify_lead": {
         "name": "Qualifier un prospect",
-        "what": "Pose vos questions et remplit la fiche du prospect."
+        "what": "Annonce la raison de l'appel, puis pose vos questions de qualification."
       },
       "announce_offer": {
         "name": "Annoncer une offre",
-        "what": "Présente votre offre ; si la personne est intéressée, propose de la rappeler ou lui passe quelqu'un."
+        "what": "Présente votre offre et mène la conversation vers la prochaine étape."
       },
       "other": {
         "name": "Autre",
