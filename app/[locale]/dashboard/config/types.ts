@@ -130,7 +130,8 @@ export type ChannelNumber = {
 export type DashboardStats = {
   callsToday: number;
   conversion: number;
-  avgDuration: string;
+  /** Mean call length in seconds (0 = no call); formatted by the hero via ICU. */
+  avgSeconds: number;
   rdv: number;
   /** First attributed booking (YYYY-MM-DD), null if none: label "since …". */
   rdvSince?: string | null;

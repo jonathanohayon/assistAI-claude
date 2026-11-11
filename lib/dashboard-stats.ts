@@ -4,7 +4,7 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 
 import type { DashboardStats } from "@/app/[locale]/dashboard/config/types";
-import { bookingRate, callSecondsSql, formatAvgDuration } from "@/lib/call-stats";
+import { bookingRate, callSecondsSql } from "@/lib/call-stats";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 
@@ -51,7 +51,7 @@ export async function computeDashboardStats(userId: string): Promise<DashboardSt
   return {
     callsToday: todayRow?.count ?? 0,
     conversion: bookingRate(bookings, total),
-    avgDuration: formatAvgDuration(totalRow?.avgSeconds ?? 0),
+    avgSeconds: Math.round(totalRow?.avgSeconds ?? 0),
     rdv: bookings,
     rdvSince: bookingRow?.since ?? null,
     minutesThisMonth: Math.round((monthRow?.totalSeconds ?? 0) / 60),

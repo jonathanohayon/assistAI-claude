@@ -337,6 +337,13 @@
       "when": 1794432688880,
       "tag": "0047_campaign_calls_worker_call_id",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794433393893,
+      "tag": "0048_events_origin_campaign",
+      "breakpoints": true
     }
   ]
 }

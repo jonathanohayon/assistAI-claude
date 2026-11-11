@@ -76,7 +76,12 @@ const SUCCESS_COLORS: Record<string, string> = {
   fail: "#ef4444",
 };
 
-const fmtDuration = (s: number) =>
+// The success verdict and the sentiment are both an LLM's reading of the
+// transcript (lib/campaigns/analyze.ts), so one shared explainer is referenced
+// (aria-describedby) by every figure built on either.
+const ESTIMATED_HINT_ID = "campaign-estimated-hint";
+
+const fmtDuration =(s: number) =>
   s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "—";
 
 export function CampaignAnalytics({
@@ -152,7 +157,7 @@ export function CampaignAnalytics({
       data
         ? Object.entries(data.aggregates.bySentiment).map(([k, v]) => ({
             key: k,
-            name: t(`sentiment_${k}` as "sentiment_positive"),
+            name: t(`estimatedSentiment_${k}` as "estimatedSentiment_positive"),
             value: v,
           }))
         : [],
@@ -208,7 +213,7 @@ export function CampaignAnalytics({
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-[#64748b]">
-                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#e2e8f0] border-t-[#7c3aed]" />
+                <span className="me-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#e2e8f0] border-t-[#7c3aed]" />
                 {t("analyticsLoading")}
               </div>
             ) : error || !data ? (
@@ -231,13 +236,32 @@ export function CampaignAnalytics({
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Kpi label={t("kpiTotal")} value={String(data.aggregates.total)} />
                   <Kpi label={t("kpiConnected")} value={String(data.aggregates.connected)} tone="text-[#16a34a]" />
-                  <Kpi label={t("kpiSuccessRate")} value={`${data.aggregates.successRate}%`} tone="text-[#7c3aed]" />
+                  {/* AI-judged (an LLM reads the transcript against the success
+                      criteria), not a recorded action: labelled as an estimate. */}
+                  <Kpi
+                    label={t("kpiEstimatedSuccessRate")}
+                    value={`${data.aggregates.successRate}%`}
+                    tone="text-[#7c3aed]"
+                    describedBy={ESTIMATED_HINT_ID}
+                  />
                   <Kpi label={t("kpiAvgDuration")} value={fmtDuration(data.aggregates.avgDurationSec)} />
                 </div>
+                {/* One explainer, where the first estimated figure appears; its
+                    copy names both success and sentiment, the two AI judgments. */}
+                <p
+                  id={ESTIMATED_HINT_ID}
+                  className="-mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-[#64748b]"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-px h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="8" r="6.5" />
+                    <path d="M8 7v4M8 4.75v.5" strokeLinecap="round" />
+                  </svg>
+                  <span>{t("estimatedHint")}</span>
+                </p>
 
                 {/* Graphes */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <ChartCard title={t("chartSuccess")}>
+                  <ChartCard title={t("chartEstimatedSuccess")} describedBy={ESTIMATED_HINT_ID}>
                     <ResponsiveContainer width="100%" height={200}>
                       <RadialBarChart
                         innerRadius="70%"
@@ -254,7 +278,7 @@ export function CampaignAnalytics({
                       {data.aggregates.successRate}%
                     </p>
                     <p className="mt-[88px] text-center text-[11px] text-[#94a3b8]">
-                      {t("successOnConnected", { n: data.aggregates.success, total: data.aggregates.connected })}
+                      {t("estimatedSuccessOnConnected", { n: data.aggregates.success, total: data.aggregates.connected })}
                     </p>
                   </ChartCard>
 
@@ -262,7 +286,8 @@ export function CampaignAnalytics({
                     <DonutChart data={outcomeData} colorFor={(k) => OUTCOME_COLORS[k] ?? "#94a3b8"} emptyLabel={t("chartEmpty")} />
                   </ChartCard>
 
-                  <ChartCard title={t("chartSentiment")}>
+                  {/* Sentiment is AI-judged too: same estimate label, same explainer. */}
+                  <ChartCard title={t("chartEstimatedSentiment")} describedBy={ESTIMATED_HINT_ID}>
                     <DonutChart data={sentimentData} colorFor={(k) => SENTIMENT_COLORS[k] ?? "#94a3b8"} emptyLabel={t("chartEmpty")} />
                   </ChartCard>
                 </div>
@@ -316,11 +341,22 @@ export function CampaignAnalytics({
   );
 }
 
-function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Kpi({
+  label,
+  value,
+  tone,
+  describedBy,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  describedBy?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      aria-describedby={describedBy}
       className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-center"
     >
       <p className={`text-2xl font-extrabold ${tone ?? "text-[#18181b]"}`}>{value}</p>
@@ -331,11 +367,22 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: stri
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  describedBy,
+  children,
+}: {
+  title: string;
+  describedBy?: string;
+  children: React.ReactNode;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      role={describedBy ? "group" : undefined}
+      aria-label={describedBy ? title : undefined}
+      aria-describedby={describedBy}
       className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-4"
     >
       <p className="mb-2 text-[12px] font-bold text-[#334155]">{title}</p>
@@ -398,48 +445,51 @@ function ConversationRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left transition hover:bg-[#f8fafc]"
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
       >
         <span dir="ltr" className="font-mono text-[12px] text-[#18181b]">{call.phoneNumber}</span>
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+          className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
           style={{ background: OUTCOME_COLORS[call.outcome] ?? "#94a3b8" }}
         >
           {outcomeLabel(call.outcome)}
         </span>
         {call.success && (
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+            className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
             style={{ background: SUCCESS_COLORS[call.success] ?? "#94a3b8" }}
           >
-            {t(`success_${call.success}` as "success_success")}
+            {t(`estimatedSuccess_${call.success}` as "estimatedSuccess_success")}
           </span>
         )}
         {call.sentiment && (
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+            className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold"
             style={{
               background: `${SENTIMENT_COLORS[call.sentiment]}1a`,
               color: SENTIMENT_COLORS[call.sentiment],
             }}
           >
-            {t(`sentiment_${call.sentiment}` as "sentiment_positive")}
+            {t(`estimatedSentiment_${call.sentiment}` as "estimatedSentiment_positive")}
           </span>
         )}
-        <span className="ml-auto text-[11px] text-[#94a3b8]">
+        {/* Duration + chevron stay together when the badges wrap on a phone. */}
+        <span className="ms-auto flex items-center gap-2 text-[11px] text-[#94a3b8]">
           {fmtDuration(call.durationSeconds)}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </span>
-        <svg
-          viewBox="0 0 24 24"
-          className={`h-4 w-4 shrink-0 text-[#94a3b8] transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
       </button>
       <AnimatePresence initial={false}>
         {open && (

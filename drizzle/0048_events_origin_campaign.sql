@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "events_origin_campaign_created_idx" ON "events" USING btree (("metadata"->'origin'->>'campaignId'),"created_at") WHERE ("events"."metadata"->'origin'->>'kind') = 'campaign';
