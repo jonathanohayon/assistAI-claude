@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Section hero du /dashboard : numéro principal du tenant (ou CTA onboarding
- * si aucun numéro), stats du jour/mois, et card statut cyan "live" avec
+ * Section hero du /dashboard : numéro principal du tenant (or a status line
+ * when there is none; the CTA is in the setup checklist), stats du jour/mois, et card statut cyan "live" avec
  * waveform animée + voix/langue/plan courants.
  *
  * Rendu en haut de ConfigForm (config-form.tsx) — span 2 colonnes en xl+.
@@ -10,16 +10,14 @@
 
 import { useLocale, useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
-
 import { Meta, Stat } from "./shared-ui";
 import type { DashboardStats } from "./types";
+import { splitDuration } from "./stat-format";
 import { formatPhone } from "@/lib/format-phone";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
 export function HeroSection({
   primaryPhone,
-  asUserId,
   stats,
   lastUpdatedLabel,
   planLabel,
@@ -27,8 +25,6 @@ export function HeroSection({
   currentLangLabel,
 }: {
   primaryPhone: string | null;
-  /** Présent en mode "admin agissant sur un tenant" → masque le CTA onboarding. */
-  asUserId?: string;
   stats?: DashboardStats;
   lastUpdatedLabel: string;
   planLabel: string;
@@ -44,6 +40,12 @@ export function HeroSection({
   // real durations). Until then the figures are summary-regex counts and
   // transcript-length estimates, and the labels say so.
   const measured = stats?.rdvSince !== undefined;
+  // Number + unit stats go through ICU messages (never "n min" concatenated):
+  // each locale orders the number and its unit itself, so Hebrew reads
+  // "0 דק׳" instead of the bidi-reordered "min 0".
+  const approx = (value: string, estimated: boolean) =>
+    estimated ? t("statApproxValue", { value }) : value;
+  const avg = stats ? splitDuration(stats.avgSeconds) : null;
   const sinceFmt = new Intl.DateTimeFormat(
     locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR",
     { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" },
@@ -84,29 +86,9 @@ export function HeroSection({
             {formatPhone(primaryPhone)}
           </p>
         ) : (
-          <div className="mt-4">
-            <p className="text-base text-[#475569]">{t("heroNoPhone")}</p>
-            {/* Filet de sécurité : un tenant sans numéro (signup Google
-                arrivé sur le dashboard, onboarding interrompu…) peut
-                relancer le wizard. Masqué en vue admin (asUserId). */}
-            {!asUserId && (
-              <Link
-                href="/onboarding"
-                className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#be185d] to-[#be185d] px-4 py-2 text-sm font-medium text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99]"
-              >
-                {t("heroGetNumber")}
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 rtl:-scale-x-100">
-                  <path
-                    d="M5 12h14M13 5l7 7-7 7"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </Link>
-            )}
-          </div>
+          // No number yet: status text only. The single "get a number" call
+          // to action lives in the setup checklist above (DashboardSetup.numberCta).
+          <p className="mt-4 text-base text-[#475569]">{t("heroNoPhone")}</p>
         )}
 
         {stats && (
@@ -118,20 +100,20 @@ export function HeroSection({
             />
             <Stat
               label={t(measured ? "statMinutesMonth" : "wowStatMinutesMonth")}
-              value={`${measured ? "" : "≈ "}${stats.minutesThisMonth} min`}
+              value={approx(t("statMinutesValue", { count: stats.minutesThisMonth }), !measured)}
               tone="cyan"
             />
             <Stat
               label={t(measured ? "statBookingRate" : "wowStatConversion")}
-              value={`${stats.conversion}%`}
+              value={t("statPercentValue", { rate: stats.conversion })}
               tone="teal"
             />
             <Stat
               label={t(measured ? "statAvgDuration" : "wowStatAvgDuration")}
               value={
-                measured || stats.avgDuration === "—"
-                  ? stats.avgDuration
-                  : `≈ ${stats.avgDuration}`
+                avg
+                  ? approx(t("statDurationValue", avg), !measured)
+                  : "—"
               }
               tone="teal"
             />

@@ -648,7 +648,6 @@ export function ConfigForm({
         {/* ── HERO + LIVE STATUS ──────────────────────────────────────── */}
         <HeroSection
           primaryPhone={primaryPhone}
-          asUserId={asUserId}
           stats={stats}
           lastUpdatedLabel={lastUpdatedLabel}
           planLabel={planLabel}
@@ -680,9 +679,6 @@ export function ConfigForm({
             </h2>
             <p className="mt-1 text-sm text-[#475569]">
               {activeTile ? t("wowTileHintActive") : t("wowTileHintIdle")}
-            </p>
-            <p className="mt-0.5 hidden text-xs text-[#94a3b8] sm:block">
-              {t("wowTileReorderHint")}
             </p>
           </div>
 
