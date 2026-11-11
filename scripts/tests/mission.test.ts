@@ -6,7 +6,7 @@ import { GOAL_PRESETS } from "../../lib/campaigns/constants";
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { readFileSync } from "node:fs";
 
-import { campaignGoalFields, missionForPreset, missionFromCampaign, OUTBOUND_TEST_MISSION, PRESET_TO_MISSION, receptionistMission } from "../../lib/mission/adapters";
+import { campaignGoalFields, missionForPreset, missionFromCampaign, OUTBOUND_TEST_MISSION, PRESET_TO_MISSION, presetForMission, receptionistMission } from "../../lib/mission/adapters";
 import { SALES_MISSION_TABLE, SALES_MISSIONS } from "../../lib/mission/contract";
 import { CAPABILITY_KEYS } from "../../lib/tools/contract";
 import { goldenCases } from "./fixtures/campaign-instructions-cases";
@@ -111,5 +111,23 @@ for (const kind of SALES_MISSIONS) {
   }
 }
 assert.deepEqual(missionOutcome({ ...OUTBOUND_TEST_MISSION, kind: null }, [{ event: "book_success" }]), { status: "not_measured" });
+
+// ── presetForMission: agent's default mission → a new campaign's preset ──
+assert.equal(presetForMission({ kind: "qualify_lead", cold: true }), "cold");
+assert.equal(presetForMission({ kind: "qualify_lead", cold: false }), "lead_gen");
+assert.equal(presetForMission({ kind: "announce_offer", cold: false }), "sales");
+assert.equal(presetForMission({ kind: "other", cold: false }), "custom");
+assert.equal(presetForMission({ kind: "book_for_seller", cold: false }), null, "no preset expresses book_for_seller yet");
+assert.equal(presetForMission({ kind: "follow_up", cold: false }), null, "no preset expresses follow_up yet");
+assert.equal(presetForMission(null), null);
+for (const kind of SALES_MISSIONS) assert.notEqual(presetForMission({ kind, cold: false }), undefined, `${kind} is handled`);
+// round-trip for every preset except "marketing"
+for (const p of GOAL_PRESETS) {
+  if (p === "marketing") continue;
+  assert.equal(presetForMission(missionForPreset(p)), p, `round-trip ${p}`);
+}
+// lossy by design (read side only): marketing reads as announce_offer and comes back as sales
+assert.deepEqual(missionForPreset("marketing"), { kind: "announce_offer", cold: false });
+assert.equal(presetForMission(missionForPreset("marketing")), "sales");
 
 console.log("ALL MISSION TESTS PASSED");
