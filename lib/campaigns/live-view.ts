@@ -2,6 +2,7 @@
 // (GET /api/dashboard/campaigns/:id/live, see lib/campaigns/live.ts).
 // Client-safe and pure. Unit-tested in scripts/tests/campaign-live-view.test.ts.
 
+import type { DispatchMode } from "./dispatch-mode";
 import type { BlockReason, DispatchTick } from "./live";
 
 export interface LiveContact {
@@ -43,8 +44,8 @@ export interface LiveFeed {
     blockers: BlockReason[];
     inFlight: number;
     dueQueued: number;
-    /** Platform call switch for this viewer: "off" = no calls placed, "dry" = test mode. Absent = on. */
-    dispatchMode?: DispatchMode;
+    /** Platform call switch: "off" = no calls placed, "dry" = test mode (a viewer-safe word, never the env). */
+    dispatchMode: DispatchMode;
   };
   inProgress: LiveContact[];
   contacts: LiveContact[];
@@ -196,7 +197,7 @@ export function eventLine(e: LiveEvent): EventLine {
 
 // ── Start / pause feedback (never a silent no-op) ─────────────────────
 
-export type DispatchMode = "on" | "off" | "dry";
+export type { DispatchMode };
 
 /** The plain line under the controls when calls aren't really placed; null when they are. */
 export function dispatchNoticeKey(mode: unknown): "dispatchOff" | "dispatchDry" | null {
