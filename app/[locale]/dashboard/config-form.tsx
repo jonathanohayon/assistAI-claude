@@ -60,6 +60,7 @@ import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
 import {
   activeCount,
+  clientAgentRowVisible,
   clientAgentSaveRefusal,
   toolsSaveBody,
   type ClientAgentRefusal,
@@ -494,7 +495,7 @@ export function ConfigForm({
       label: tTools("tileLabel"),
       tagline: tTools("tileTagline"),
       summary: toolsServed
-        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities) })
+        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities, "inbound", clientAgentRowVisible("inbound", toolsServed)) })
         : "—",
       accent: "from-[#0e7490] to-[#155e75]",
       icon: (

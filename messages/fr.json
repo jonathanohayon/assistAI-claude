@@ -2507,7 +2507,7 @@
     "refusedOutboundAny": "Ces réglages n'ont pas été activés : les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré.",
     "agent": {
       "url": "Adresse de votre agent",
-      "urlHint": "Une adresse sécurisée qui commence par https://. Nous lui envoyons la question et lisons sa réponse.",
+      "urlHint": "Une adresse sécurisée qui commence par <l>https://</l>. Nous lui envoyons la question et lisons sa réponse.",
       "mode": "Comment Tamara l'utilise",
       "modes": {
         "lead": "Tamara mène la conversation",
@@ -2551,7 +2551,7 @@
       },
       "refused": {
         "disabled": "Non activé : interroger votre agent n'est pas encore ouvert pour ce compte.",
-        "unsafeUrl": "Cette adresse ne peut pas être utilisée : indiquez une adresse publique qui commence par https://."
+        "unsafeUrl": "Cette adresse ne peut pas être utilisée : indiquez une adresse publique qui commence par <l>https://</l>."
       }
     }
   }

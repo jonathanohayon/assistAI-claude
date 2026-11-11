@@ -2507,7 +2507,7 @@
     "refusedOutboundAny": "These weren't turned on: abilities on outbound calls aren't open for this account yet. Everything else was saved.",
     "agent": {
       "url": "Your agent's address",
-      "urlHint": "A secure address starting with https://. We send it the question and read its answer.",
+      "urlHint": "A secure address starting with <l>https://</l>. We send it the question and read its answer.",
       "mode": "How Tamara uses it",
       "modes": {
         "lead": "Tamara leads the conversation",
@@ -2551,7 +2551,7 @@
       },
       "refused": {
         "disabled": "Not turned on: asking your agent isn't open for this account yet.",
-        "unsafeUrl": "This address can't be used: enter a public address starting with https://."
+        "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
       }
     }
   }

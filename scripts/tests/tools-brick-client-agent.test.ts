@@ -123,8 +123,14 @@ const en = messages("en").ToolsBrick;
   assert.ok(liveHtml.includes(esc(en.cap.clientAgent.on)));
   assert.ok(liveHtml.includes(`value="${URL_OK}"`));
   assert.ok(liveHtml.includes(esc(en.agent.modeHint.voice)));
-  // The tile count stays the plan capabilities' (unchanged by T5b).
-  assert.equal(activeCount(live.capabilities), activeCount(served(true, stored()).capabilities));
+  // The tile count includes it only where its row is shown.
+  const plain = activeCount(served(true, stored()).capabilities);
+  assert.equal(activeCount(live.capabilities), plain, "default: plan capabilities only");
+  assert.equal(activeCount(live.capabilities, "inbound", true), plain + 1, "row shown and on: counted");
+  assert.equal(activeCount(s.capabilities, "inbound", true), plain, "off: not counted");
+  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /activeCount\(toolsServed\.capabilities, "inbound", clientAgentRowVisible\("inbound", toolsServed\)\)/);
+  // "https://" stays left-to-right inside Hebrew sentences.
+  assert.match(render(s, s.tools, { locale: "he" }), /<bdi dir="ltr">https:\/\/<\/bdi>/);
 }
 
 // 3. Every test reason → our words; nothing the server sent is ever echoed
@@ -261,7 +267,7 @@ const en = messages("en").ToolsBrick;
     const m = messages(l).ToolsBrick.agent;
     const unsafe = render(s, s.tools, { locale: l, refused: "unsafeUrl" });
     assert.match(unsafe, /role="alert"/);
-    assert.ok(unsafe.includes(esc(m.refused.unsafeUrl)), `${l}: unsafe words`);
+    assert.ok(unsafe.includes(esc(m.refused.unsafeUrl.split("<l>")[0])), `${l}: unsafe words`);
     assert.match(unsafe, /aria-invalid="true"/);
     const off = render(s, s.tools, { locale: l, refused: "disabled" });
     assert.ok(off.includes(esc(m.refused.disabled)), `${l}: disabled words`);

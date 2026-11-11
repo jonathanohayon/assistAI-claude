@@ -145,8 +145,11 @@ export function toolsPatch<T extends object>(baseIn: T, nextIn: T): Record<strin
  * Not `active` alone: until T1b a capability can be active on the call
  * while the screen honestly says "Not active yet".
  */
-export function activeCount(caps: EffectiveCapabilities, kind: ToolsKind = "inbound"): number {
-  return capabilityList(caps, kind).switches.filter((v) => v.status === "on").length;
+export function activeCount(caps: EffectiveCapabilities, kind: ToolsKind = "inbound", withClientAgent = false): number {
+  const plan = capabilityList(caps, kind).switches.filter((v) => v.status === "on").length;
+  // T5b: "Ask your agent" counts only where its row is shown.
+  const agent = withClientAgent && caps.clientAgent && capabilityView("clientAgent", caps.clientAgent).status === "on" ? 1 : 0;
+  return plan + agent;
 }
 
 /**

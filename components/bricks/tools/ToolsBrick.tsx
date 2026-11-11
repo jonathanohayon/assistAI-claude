@@ -292,6 +292,8 @@ function Action({ v, hasNumber, onAddNumber }: { v: CapabilityView; hasNumber: b
 
 const BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-4 text-sm font-semibold text-[#18181b] hover:border-[#be185d]/40 disabled:cursor-not-allowed disabled:opacity-60 ${FOCUS}`;
 const ALERT = "rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm text-[#991b1b]";
+// "https://" kept left-to-right inside Hebrew sentences.
+const ltr = (c: React.ReactNode) => <bdi dir="ltr">{c}</bdi>;
 
 /**
  * "Ask your agent" settings: address, mode, signing secret, connection test.
@@ -383,11 +385,11 @@ function ClientAgentSettings({
           className={`mt-1 block min-h-11 w-full rounded-xl border bg-white px-3 text-start text-sm text-[#18181b] ${refused === "unsafeUrl" ? "border-[#dc2626]" : "border-[#cbd5e1]"} ${FOCUS}`}
         />
         <p id={urlHintId} className={HINT}>
-          {t("urlHint")}
+          {t.rich("urlHint", { l: ltr })}
         </p>
         {refused === "unsafeUrl" && (
           <p id={urlErrorId} role="alert" className={`mt-2 ${ALERT}`}>
-            {t("refused.unsafeUrl")}
+            {t.rich("refused.unsafeUrl", { l: ltr })}
           </p>
         )}
       </div>
