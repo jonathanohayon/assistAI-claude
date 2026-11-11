@@ -7,7 +7,7 @@
 // assertScanRead() proves the scan saw the real tree before the guard trusts it.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Repo root, resolved from this file's location: independent of the cwd. */
