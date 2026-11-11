@@ -5,6 +5,7 @@
 // Run with:  npx tsx scripts/tests/notifs-hide-soon.test.ts
 
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -81,6 +82,14 @@ for (const l of ["fr", "en", "he"]) {
   const hint = JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).DashboardConfig.ownerWhatsappHint as string;
   assert.match(hint, /\+972500000000/, `${l}: mock example number`);
   assert.doesNotMatch(hint, /\+97258/, `${l}: no plausible real number`);
+}
+
+// …and not as an example in front-end copy or placeholders. (The public support
+// button uses a real support number ON PURPOSE — components/marketing/SupportFab.tsx —
+// and API error strings are server-side; neither is an "example".)
+{
+  const hits = execSync("git grep -n 972585001007 -- messages 'app/[[]locale]' app/admin ':!app/api' || true", { cwd: new URL("../../", import.meta.url).pathname }).toString().trim();
+  assert.equal(hits, "", `no plausible real example number left:\n${hits}`);
 }
 
 console.log("notifs-hide-soon: ok");

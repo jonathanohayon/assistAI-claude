@@ -57,7 +57,7 @@ export function ApiKeySection() {
     });
   };
 
-  const example = `curl "${origin}/api/v1/transcripts?phone=+972585001007&from=2026-06-01&order=desc" \\\n  -H "Authorization: Bearer ${revealed ?? "<VOTRE_CLE>"}"`;
+  const example = `curl "${origin}/api/v1/transcripts?phone=+972500000000&from=2026-06-01&order=desc" \\\n  -H "Authorization: Bearer ${revealed ?? "<VOTRE_CLE>"}"`;
 
   return (
     <div className="mt-4 space-y-4">

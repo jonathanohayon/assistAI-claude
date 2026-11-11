@@ -93,7 +93,7 @@ export function ApiTranscriptsExplorer({ rows }: { rows: Row[] }) {
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+972585001007"
+            placeholder="+972500000000"
             dir="ltr"
             className={`${inputCls} font-mono`}
           />
