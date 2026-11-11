@@ -2473,6 +2473,11 @@
         "name": "Take orders",
         "what": "Notes an order and sends it to you.",
         "on": "Active."
+      },
+      "clientAgent": {
+        "name": "Ask your agent",
+        "what": "During a call, Tamara asks your own AI agent and uses its answer.",
+        "on": "Active: your agent is asked during calls."
       }
     },
     "statusOff": "Off.",
@@ -2480,7 +2485,9 @@
     "missing": {
       "google_not_connected": "Google account not connected.",
       "no_transfer_number": "add a transfer number.",
-      "not_available_outbound": "not available for outbound calls yet."
+      "not_available_outbound": "not available for outbound calls yet.",
+      "client_agent_disabled": "not open for this account yet.",
+      "no_agent_url": "add your agent's address (https), then save."
     },
     "connectGoogle": "Connect Google",
     "connectGoogleTenantOnly": "The customer connects their Google calendar from their own account.",
@@ -2498,7 +2505,58 @@
     "editNumber": "Edit",
     "tileTaglineOutbound": "Appointments, transfer",
     "refusedOutbound": "Not turned on: {list}. Abilities on outbound calls aren't open for this account yet. Everything else was saved.",
-    "refusedOutboundAny": "These weren't turned on: abilities on outbound calls aren't open for this account yet. Everything else was saved."
+    "refusedOutboundAny": "These weren't turned on: abilities on outbound calls aren't open for this account yet. Everything else was saved.",
+    "agent": {
+      "url": "Your agent's address",
+      "urlHint": "A secure address starting with <l>https://</l>. We send it the question and read its answer.",
+      "mode": "How Tamara uses it",
+      "modes": {
+        "lead": "Tamara leads the conversation",
+        "voice": "Tamara only lends her voice"
+      },
+      "modeHint": {
+        "lead": "Tamara runs the call and asks your agent whenever she needs an answer.",
+        "voice": "Your agent decides what to say; Tamara says its answers word for word."
+      },
+      "secret": "Signing secret",
+      "secretHint": "Lets your agent check that a request really comes from us.",
+      "secretSet": "Set.",
+      "secretUnset": "Not set.",
+      "secretRemoving": "Removed when you save.",
+      "generate": "Generate",
+      "regenerate": "Regenerate",
+      "remove": "Remove",
+      "undo": "Cancel",
+      "confirmRegenerate": "A new secret replaces the current one: your agent will have to use the new one. Continue?",
+      "confirmYes": "Replace it",
+      "confirmNo": "Keep the current one",
+      "newSecretLabel": "Your new secret",
+      "copyNow": "Copy it now: you won't see it again.",
+      "copy": "Copy",
+      "copied": "Copied.",
+      "saveToKeep": "It takes effect when you save.",
+      "testButton": "Test the connection",
+      "testing": "Testing…",
+      "test": {
+        "ok": "Connected in {ms} ms.",
+        "blocked_address": "This address can't be used.",
+        "timeout": "Too slow (over 2.5 s).",
+        "http_status": "Your agent answered with an error.",
+        "bad_shape": "Wrong format.",
+        "too_large": "Answer too large.",
+        "network": "Unreachable.",
+        "no_agent_url": "Add your agent's address first.",
+        "rateLimited": "Try again in a moment.",
+        "disabled": "Not open for this account yet.",
+        "generic": "The test didn't go through. Try again."
+      },
+      "refused": {
+        "disabled": "Not turned on: asking your agent isn't open for this account yet.",
+        "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
+      },
+      "copiedDone": "I've copied it",
+      "saveFirstToTest": "Save first to test."
+    }
   },
   "AgentBrain": {
     "title": "Who answers the phone",
