@@ -6,6 +6,7 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { campaignCalls, campaignContacts, campaigns } from "@/lib/db/schema";
 import { CALL_OUTCOMES, type CallOutcome } from "@/lib/campaigns/constants";
+import { campaignCallRow } from "@/lib/campaigns/campaign-call-row";
 import { logEvent } from "@/lib/logger";
 
 // POST /api/agent/campaign-result  (x-internal-secret)
@@ -67,15 +68,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "contact_not_found" }, { status: 404 });
   }
 
-  await db.insert(campaignCalls).values({
-    campaignId,
-    contactId,
-    userId: campaign.userId,
-    phoneNumber: contact.phoneNumber,
-    outcome,
-    transcript,
-    durationSeconds,
-  });
+  await db.insert(campaignCalls).values(
+    campaignCallRow(
+      {
+        campaignId,
+        contactId,
+        userId: campaign.userId,
+        phoneNumber: contact.phoneNumber,
+        outcome,
+        transcript,
+        durationSeconds,
+      },
+      req,
+    ),
+  );
 
   // Retry si l'issue est dans retryOn et qu'il reste des tentatives.
   const rules = campaign.retryRules ?? { maxAttempts: 1, retryOn: [], backoffMinutes: 30 };

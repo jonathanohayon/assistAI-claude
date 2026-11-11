@@ -12,6 +12,7 @@ import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { withoutToolsStore } from "@/lib/tools/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
+import { campaignCallPublicColumns } from "@/lib/campaigns/campaign-call-row";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .where(eq(campaignContacts.campaignId, id));
 
   const calls = await db
-    .select()
+    .select(campaignCallPublicColumns)
     .from(campaignCalls)
     .where(eq(campaignCalls.campaignId, id))
     .orderBy(desc(campaignCalls.createdAt))
