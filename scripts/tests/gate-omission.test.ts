@@ -13,10 +13,6 @@
 // Where an empty / null value is an INTENDED clear, it is asserted as such
 // and says so.
 //
-// KNOWN BUG blocks assert today's WRONG behaviour on purpose: they keep the
-// suite green and start failing the moment the bug is fixed, so the fix PR
-// has to remove the marker (and turn the block into a normal case).
-//
 // Mock data only. Run with:  npx tsx scripts/tests/gate-omission.test.ts
 
 import assert from "node:assert/strict";
@@ -24,7 +20,7 @@ import { readFileSync } from "node:fs";
 
 import { inheritAdminGlobalsWrite } from "../../lib/admin-gates";
 import { nextBrainSecret } from "../../lib/agent-brain";
-import { agentBrainSaveDecision, urlToSave } from "../../lib/agent-brain-guard";
+import { agentBrainSaveDecision, enabledToSave, urlToSave } from "../../lib/agent-brain-guard";
 import type { Resolver } from "../../lib/net/safe-url";
 import type { Persona } from "../../lib/persona/contract";
 import {
@@ -98,8 +94,8 @@ function legacySave(row: InRow, legacyUpdates: Record<string, unknown>): InRow {
 }
 
 // An admin sets every gated voice value on an xai account, through the route
-// path: the engine switch first, then the rest (see KNOWN BUG V8E-OVERRIDE
-// below for why not in one save).
+// path: the engine switch first, then the rest (an override in the switch's
+// own save is covered by V8E-OVERRIDE below).
 const adminVoiceRow = voiceSave(
   voiceSave(baseRow, { voiceConfig: { engine: "xai" } }, true),
   {
@@ -188,31 +184,40 @@ for (const isAdmin of TENANT_AND_ADMIN) {
   assert.equal(currentInboundVoice(after.voiceConfig, after).engine, "xai");
   assert.deepEqual(currentInboundVoice(after.voiceConfig, after).advanced.voiceOverrides, { xai: "rex", gemini: "Kore" });
 }
-// KNOWN BUG V8E-OVERRIDE: an admin's explicit per-engine override is lost when
-// sent in the SAME save as an engine switch.
-// Body: PUT { voiceConfig: { engine: "xai", advanced: { voiceOverrides: { xai: "rex" } } } }
-// on an OpenAI row (voice "ash").
-// Expected: voiceOverrides.xai = "rex" (what the admin wrote).
-// Actual: "orion" — lib/voice/route-writes.ts inboundVoiceConfigUpdates runs
-// voiceAfterEngineSwitch(plan.voice, from, to), which rewrites overrides[to]
-// with the old voice's equivalent; resolveVoiceChoice only protects a voiceId.
-// When fixed, this block fails: turn it into a normal case.
+// V8E-OVERRIDE (fixed): an admin's explicit per-engine override sent in the
+// SAME save as an engine switch is stored as written; without one, the switch
+// still carries the voice to its equivalent (V8e, voice-engine-switch.test.ts).
+// On an OpenAI row (voice "ash"), through the route helper.
 {
-  const r = inboundVoiceConfigUpdates(
-    { voiceConfig: { engine: "xai", advanced: { voiceOverrides: { xai: "rex" } } } },
-    baseRow,
-    true,
-    voicesFor,
-  );
-  assert.ok(r && "updates" in r);
-  assert.equal(
-    (r.updates.voiceProfile as { voiceOverrides: Record<string, string> }).voiceOverrides.xai,
-    "orion",
-    "KNOWN BUG V8E-OVERRIDE: today the explicit override is replaced",
-  );
+  const overridesOf = (row: InRow) => (row.voiceProfile as { voiceOverrides: Record<string, string> }).voiceOverrides;
+  // explicit override for the target engine → it wins over the switch
+  const explicit = voiceSave(baseRow, { voiceConfig: { engine: "xai", advanced: { voiceOverrides: { xai: "rex" } } } }, true);
+  assert.equal(overridesOf(explicit).xai, "rex", "V8E-OVERRIDE: the explicit override is stored");
+  assert.equal(explicit.realtimeProvider, "xai");
+  assert.equal(effectiveEngineVoiceName(currentInboundVoice(explicit.voiceConfig, explicit), "xai"), "rex");
+  // no override in the patch → the switch writes the equivalent
+  const switched = voiceSave(baseRow, { voiceConfig: { engine: "xai" } }, true);
+  assert.equal(overridesOf(switched).xai, "orion", "V8E: without an explicit override the switch writes the equivalent");
+  // an explicit override for ANOTHER engine doesn't stop the target's switch
+  const other = voiceSave(baseRow, { voiceConfig: { engine: "xai", advanced: { voiceOverrides: { gemini: "Kore" } } } }, true);
+  assert.deepEqual(overridesOf(other), { gemini: "Kore", xai: "orion" }, "V8E: an override for another engine keeps the target's switch");
   // without the switch, the same override is stored as written
   const same = voiceSave({ ...baseRow, realtimeProvider: "xai" }, { voiceConfig: { advanced: { voiceOverrides: { xai: "rex" } } } }, true);
-  assert.equal((same.voiceProfile as { voiceOverrides: Record<string, string> }).voiceOverrides.xai, "rex");
+  assert.equal(overridesOf(same).xai, "rex");
+  // the 4-case set for the switch + override (engine and overrides are admin-only)
+  for (const isAdmin of TENANT_AND_ADMIN) {
+    // other fields pass, the explicit override and engine kept
+    const kept = voiceSave(explicit, { voiceConfig: { patience: 3 } }, isAdmin);
+    assert.equal(overridesOf(kept).xai, "rex", `${who(isAdmin)}: other fields keep the explicit override`);
+    assert.equal(kept.realtimeProvider, "xai");
+    // an unchanged re-send passes and moves nothing
+    const v = currentInboundVoice(explicit.voiceConfig, explicit);
+    const resend = voiceSave(explicit, { voiceConfig: { engine: v.engine, advanced: { voiceOverrides: v.advanced.voiceOverrides } } }, isAdmin);
+    assert.equal(overridesOf(resend).xai, "rex", `${who(isAdmin)}: unchanged re-send keeps the override`);
+  }
+  // a tenant's switch + override → 403
+  const refused = inboundVoiceConfigUpdates({ voiceConfig: { engine: "xai", advanced: { voiceOverrides: { xai: "rex" } } } }, baseRow, false, voicesFor);
+  assert.ok(refused && "error" in refused && refused.error.status === 403, `tenant switch + override → 403: ${JSON.stringify(refused)}`);
 }
 // realtimeProvider (admin legacy field, adminOnlyProviderUpdate): omitted → no update, tenant and admin.
 // INTENDED clear: an admin's explicit `null` = back to "auto" (served as OpenAI).
@@ -319,20 +324,44 @@ const outRow = { agentName: "Dana", language: "fr", greeting: "Bonjour {{name}} 
   const outLegacy = outboundPersonaAfterLegacy(outSet, { agentName: "Noa" });
   assert.deepEqual(outLegacy.aiDisclosure, { enabled: true, text: "Je suis une IA." }, "outbound legacy PATCH keeps the disclosure");
   assert.deepEqual(outLegacy.languages, ["en"]);
-  // KNOWN BUG PERSONA-PRIMARY-IN-LANGUAGES: changing primaryLanguage to one of
-  // the admin-set languages, with `languages` omitted, is refused.
-  // Body: { personaConfig: { primaryLanguage: "he" } } under languages ["he", "en"].
-  // Expected: passes, "he" leaves the list (["en"]), as the legacy path already
-  // does (inboundPersonaAfterLegacy below). Actual: 400 invalid_persona_config
-  // "languages must not repeat the primary language" (lib/persona/store.ts
-  // plan → mergePersona keeps the stored list). A tenant has no way out: a
-  // changed list → 403, [] wipes the admin's list.
-  // When fixed, this block fails: turn it into a normal case.
+  // PERSONA-PRIMARY-IN-LANGUAGES (fixed): a new primaryLanguage that is in the
+  // admin-set list, with `languages` omitted, passes and leaves the list
+  // (["he","en"] + primary he → ["en"]), as the legacy path does. The
+  // automatic removal is not a tenant languages change (no 403).
   for (const isAdmin of TENANT_AND_ADMIN) {
     const r = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "he" } }, inSet, isAdmin);
-    assert.ok(r && "error" in r, `KNOWN BUG PERSONA-PRIMARY-IN-LANGUAGES (${who(isAdmin)}): today refused`);
-    assert.equal(r.error.status, 400);
+    assert.ok(r && "updates" in r, `${who(isAdmin)}: primary → a listed language passes: ${JSON.stringify(r)}`);
+    assert.equal(r.persona.primaryLanguage, "he");
+    assert.deepEqual(r.persona.languages, ["en"], `${who(isAdmin)}: the list keeps the others`);
+    assert.deepEqual((r.updates.personaConfig as Persona).languages, ["en"]);
+    // outbound, same rule (["en"] + primary en → [])
+    const o = outboundPersonaUpdates({ personaConfig: { primaryLanguage: "en" } }, outSet, isAdmin);
+    assert.ok(o && "updates" in o, `${who(isAdmin)} outbound: ${JSON.stringify(o)}`);
+    assert.deepEqual(o.persona.languages, [], `${who(isAdmin)} outbound: the new primary leaves the list`);
+    // a primary NOT in the list keeps the list whole
+    const enOnly = inboundPersonaUpdates({ personaConfig: { languages: ["en"] } }, inRow, true);
+    assert.ok(enOnly && "updates" in enOnly);
+    const he = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "he" } }, { ...inRow, ...enOnly.updates } as typeof inRow, isAdmin);
+    assert.ok(he && "updates" in he, JSON.stringify(he));
+    assert.deepEqual(he.persona.languages, ["en"], `${who(isAdmin)}: a primary outside the list keeps it`);
+    // an unchanged re-send of primary + list passes
+    const same = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "fr", languages: ["he", "en"] } }, inSet, isAdmin);
+    assert.ok(same && "updates" in same, JSON.stringify(same));
+  }
+  // an explicit `languages` in the patch follows today's rules:
+  //   repeating the primary → 400 (tenant and admin)
+  for (const isAdmin of TENANT_AND_ADMIN) {
+    const r = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "he", languages: ["he", "en"] } }, inSet, isAdmin);
+    assert.ok(r && "error" in r && r.error.status === 400, `${who(isAdmin)}: explicit list repeating the primary → 400`);
     assert.match(String(r.error.body.fields?.[0]), /must not repeat the primary/);
+  }
+  //   a tenant's explicit changed list → 403 even with the primary change; an admin's passes
+  {
+    const t = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "he", languages: ["en"] } }, inSet, false);
+    assert.ok(t && "error" in t && t.error.status === 403, `tenant explicit changed list → 403: ${JSON.stringify(t)}`);
+    assert.deepEqual(t.error.body.fields, ["languages"]);
+    const a = inboundPersonaUpdates({ personaConfig: { primaryLanguage: "he", languages: ["en"] } }, inSet, true);
+    assert.ok(a && "updates" in a && JSON.stringify(a.persona.languages) === '["en"]');
   }
   assert.deepEqual(inboundPersonaAfterLegacy(inSet, { primaryLanguage: "he" }).languages, ["en"], "the legacy path drops the new primary");
   // INTENDED clear: `languages: []` empties the list, for a tenant too (persona-languages.test.ts)
@@ -446,7 +475,7 @@ pending.push(
 );
 
 // ════════════════════════════════════════════════════════════════════════
-// Agent brain: lib/agent-brain-guard.ts urlToSave + agentBrainSaveDecision
+// Agent brain: lib/agent-brain-guard.ts urlToSave + enabledToSave + agentBrainSaveDecision
 // (#253/#254) and lib/agent-brain.ts nextBrainSecret, composed EXACTLY as
 // PUT /api/dashboard/agent-brain does (source asserted below).
 // Cases 1–3: safe-url.test.ts, agent-brain-secret.test.ts.
@@ -455,7 +484,7 @@ type Stored = { enabled: boolean; url: string; secret?: string };
 
 /** The route's PUT, I/O removed: body + stored brain → what setAgentBrain stores (or the refusal). */
 async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin: boolean) {
-  const wantsEnabled = body.enabled === true;
+  const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   const url = urlToSave(body.url, current.url, isAdmin);
   const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin, check });
   if (!decision.ok) return decision;
@@ -467,7 +496,8 @@ async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin:
 }
 {
   const route = src("app/api/dashboard/agent-brain/route.ts");
-  assert.match(route, /const wantsEnabled = body\.enabled === true;/);
+  assert.match(route, /const wantsEnabled = enabledToSave\(body\.enabled, current\.enabled\);/);
+  assert.doesNotMatch(route, /body\.enabled === true/);
   assert.match(route, /const url = urlToSave\(body\.url, current\.url, isAdmin\);/);
   assert.match(route, /agentBrainSaveDecision\(\{ currentUrl: current\.url, url, wantsEnabled, isAdmin \}\)/);
   assert.match(route, /enabled: wantsEnabled,\s*url,\s*\.\.\.\(typeof body\.secret === "string" \? \{ secret: body\.secret \} : \{\}\),/);
@@ -495,21 +525,46 @@ pending.push(
     }, "admin: enabling with url \"\" is refused");
     assert.deepEqual(await brainPut({ enabled: false, url: "" }, current, true), { ok: true, stored: { enabled: false, url: "", secret: "mock-secret" } });
 
-    // KNOWN BUG BRAIN-ENABLED-OMITTED: omitting `enabled` turns the external agent OFF.
-    // Expected: a PUT without `enabled` (e.g. an admin's partial save of the url,
-    // or an API caller sending only `secret`) keeps the stored `enabled: true`.
-    // Actual: app/api/dashboard/agent-brain/route.ts parses an ABSENT enabled as
-    // false (`body.enabled === true`) and stores enabled:false. The dashboard
-    // screen always sends `enabled`, so only partial (API / admin) saves hit it.
-    // When fixed, this block fails: replace it with the omission case.
+    // BRAIN-ENABLED-OMITTED (fixed): a PUT without `enabled` (an API caller's
+    // `{ secret }`, an admin's url-only save) keeps the stored enabled value.
     for (const isAdmin of TENANT_AND_ADMIN) {
-      const r = await brainPut({ secret: "mock-secret" }, current, isAdmin);
-      assert.ok(r.ok);
-      assert.equal(r.stored.enabled, false, `KNOWN BUG BRAIN-ENABLED-OMITTED (${who(isAdmin)}): today it turns the agent OFF`);
+      const r = await brainPut({ secret: "x" }, current, isAdmin);
+      assert.deepEqual(r, { ok: true, stored: { ...current, secret: "x" } }, `${who(isAdmin)}: { secret } keeps enabled:true`);
+      // other fields pass with enabled kept OFF too (absent never turns it on)
+      const offRow: Stored = { ...current, enabled: false };
+      assert.deepEqual(await brainPut({ secret: "x" }, offRow, isAdmin), { ok: true, stored: { ...offRow, secret: "x" } }, `${who(isAdmin)}: absent keeps enabled:false`);
+      // an unchanged re-send passes
+      assert.deepEqual(await brainPut({ enabled: true, secret: "mock-secret" }, current, isAdmin), { ok: true, stored: current });
+      // an explicit enabled:false still turns it off
+      assert.deepEqual(await brainPut({ enabled: false, secret: "x" }, current, isAdmin), { ok: true, stored: { ...current, enabled: false, secret: "x" } });
+      // a non-boolean enabled is not a change
+      assert.deepEqual(await brainPut({ enabled: "false" }, current, isAdmin), { ok: true, stored: current }, `${who(isAdmin)}: non-boolean enabled keeps it`);
+      // tenant: a changed url → 403 (gated), enabled omitted or not
+      if (!isAdmin) {
+        assert.deepEqual(await brainPut({ url: "https://other.example.com/hook" }, current, false), {
+          ok: false, status: 403, body: { error: "admin_only", fields: ["url"] },
+        });
+      }
     }
-    const adminPartial = await brainPut({ url: SAFE }, current, true);
-    assert.ok(adminPartial.ok);
-    assert.equal(adminPartial.stored.enabled, false, "KNOWN BUG BRAIN-ENABLED-OMITTED (admin url-only save)");
+    // an admin's url-only save keeps enabled:true
+    const NEW = "https://agent2.example.com/hook";
+    assert.deepEqual(await brainPut({ url: NEW }, current, true), { ok: true, stored: { ...current, url: NEW } }, "admin url-only save keeps enabled:true");
+    // the save decision uses the RESULTING enabled: a partial save on an
+    // enabled webhook still needs a safe url, and turning ON via enabled:true
+    // with an unsafe stored url is still refused
+    const unsafe: Stored = { enabled: false, url: "http://127.0.0.1/hook", secret: "mock-secret" };
+    for (const isAdmin of TENANT_AND_ADMIN) {
+      const on = await brainPut({ enabled: true }, unsafe, isAdmin);
+      assert.ok(!on.ok && on.status === 400 && on.body.error === "unsafe_url", `${who(isAdmin)}: turning ON with an unsafe stored url → 400`);
+      // absent enabled on a disabled unsafe row stays off and passes
+      assert.deepEqual(await brainPut({ secret: "x" }, unsafe, isAdmin), { ok: true, stored: { ...unsafe, secret: "x" } });
+      const stillOn = await brainPut({ secret: "x" }, { ...unsafe, enabled: true }, isAdmin);
+      assert.ok(!stillOn.ok && stillOn.status === 400, `${who(isAdmin)}: a partial save keeping an unsafe webhook ON → 400`);
+    }
+    assert.equal(enabledToSave(undefined, true), true);
+    assert.equal(enabledToSave(null, true), true);
+    assert.equal(enabledToSave(false, true), false);
+    assert.equal(enabledToSave(true, false), true);
   })(),
 );
 

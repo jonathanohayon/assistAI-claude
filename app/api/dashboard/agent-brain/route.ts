@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
-import { agentBrainSaveDecision, brainView, urlToSave } from "@/lib/agent-brain-guard";
+import { agentBrainSaveDecision, brainView, enabledToSave, urlToSave } from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
 
 /**
@@ -41,9 +41,9 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
   }
 
-  const wantsEnabled = body.enabled === true;
-
   const [current, isAdmin] = await Promise.all([getAgentBrain(session.user.id), sessionIsAdmin()]);
+  // An absent `enabled` keeps the stored value (a partial save never turns the agent off).
+  const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   // A tenant's screen doesn't carry the url: absent / "" keeps the stored one.
   const url = urlToSave(body.url, current.url, isAdmin);
   const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin });

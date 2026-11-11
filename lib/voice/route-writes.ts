@@ -43,9 +43,11 @@ export function inboundVoiceConfigUpdates(
   // equivalent on the new engine; a voice chosen in the same save wins.
   const from = effectiveRealtimeProvider(row.realtimeProvider);
   const to = voiceEngineOf(plan.voice);
+  // An override for the target engine written in this same save wins over
+  // the switch: the planned voice is kept as the admin wrote it.
   const voice = resolveVoiceChoice(
     voiceAfterEngineSwitch(current, from, to),
-    voiceAfterEngineSwitch(plan.voice, from, to),
+    patchSetsOverride(body.voiceConfig, to) ? plan.voice : voiceAfterEngineSwitch(plan.voice, from, to),
     body.voiceConfig,
     to,
   );
@@ -54,6 +56,13 @@ export function inboundVoiceConfigUpdates(
     return { error: { status: 400, body: { error: "invalid_voice_config", fields: ["voice.voiceId: not supported by this model"] } } };
   }
   return { updates: { ...cols, voiceConfig: voice }, voice };
+}
+
+/** Does a voiceConfig patch explicitly carry `advanced.voiceOverrides[engine]`? */
+function patchSetsOverride(patch: unknown, engine: string): boolean {
+  const advanced = (patch as { advanced?: unknown } | null)?.advanced;
+  const overrides = advanced && typeof advanced === "object" ? (advanced as { voiceOverrides?: unknown }).voiceOverrides : undefined;
+  return !!overrides && typeof overrides === "object" && Object.prototype.hasOwnProperty.call(overrides, engine);
 }
 
 /** Inbound legacy write: the voice to store next to the merged row. */
