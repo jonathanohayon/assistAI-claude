@@ -77,6 +77,15 @@ export const EVENT_ALERTS: Record<
     subject: () => "Voice agent: Gemini went silent mid-call",
     hint: "Known upstream bug (agents-js #1450); the reply was re-issued. Frequent = move the tenant off Gemini.",
   },
+  // Worker: the tenant config couldn't be loaded (code = app_url_unset |
+  // fetch_failed | http_<status> | missing_instructions). Inbound calls run on
+  // the neutral message-taking fallback with no tools; outbound calls drop.
+  config_fallback_used: {
+    severity: "critical",
+    dedupMs: 3600_000,
+    subject: (code) => `Voice agent: tenant config unavailable (${code})`,
+    hint: "Callers reach a neutral message-taking agent with no booking or transfer, and outbound calls are dropped, until the worker can load /api/agent/config again (web down, INTERNAL_SECRET mismatch on http_401/403, APP_URL missing).",
+  },
   realtime_zombie_detected: {
     severity: "warning",
     dedupMs: 24 * 3600_000,

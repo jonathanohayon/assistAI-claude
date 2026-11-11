@@ -45,6 +45,11 @@ assert.deepEqual(deadKeys(null), []);
 // event alerts: the call-breaking ones are critical
 assert.equal(EVENT_ALERTS.realtime_fatal_error?.severity, "critical");
 assert.equal(EVENT_ALERTS.provider_key_missing?.severity, "critical");
+// The worker's config fallback (no tenant config loaded) alerts at once,
+// deduped per code for an hour.
+assert.equal(EVENT_ALERTS.config_fallback_used?.severity, "critical");
+assert.equal(EVENT_ALERTS.config_fallback_used?.dedupMs, 3600_000);
+assert.match(EVENT_ALERTS.config_fallback_used?.subject("http_503") ?? "", /http_503/);
 assert.equal(EVENT_ALERTS.gemini_silent_gen?.severity, "warning");
 assert.equal(EVENT_ALERTS.realtime_zombie_detected?.severity, "warning");
 assert.match(EVENT_ALERTS.realtime_fatal_error!.subject("invalid_api_key"), /invalid_api_key/);
