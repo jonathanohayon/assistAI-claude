@@ -111,15 +111,26 @@ console.log("ALL VOICE-CHOICE TESTS PASSED");
     const opts = tenantVoiceChoice(currentInboundVoice(null, row(e)), e).options;
     assert.equal(new Set(opts.map((o) => o.number)).size, opts.length);
   }
-  // A sample only when it IS the engine's real voice: OpenAI accounts only.
-  const lookup = (name: string) => (name === "marin" || name === "cedar" ? `/api/voice/samples/${name}/warm/fr?v=1.0` : null);
+  // A sample only when it IS the engine's real voice: the lookup only ever
+  // sees that engine's catalogue voices (OpenAI by name, others by our id).
+  const seen: string[] = [];
+  const lookup = (v: { id: string; name: string; engine: string }) => {
+    seen.push(v.engine);
+    if (v.engine === "openai" && (v.name === "marin" || v.name === "cedar")) return `/api/voice/samples/${v.name}/warm/fr?v=1.0`;
+    if (v.engine === "gemini" && v.name === "Sulafat") return `/api/voice/samples/${v.id}/warm/fr?v=1.0`;
+    return null;
+  };
   const oa = tenantVoiceChoice(currentInboundVoice(null, row("openai", "marin")), "openai", lookup);
   assert.equal(oa.options.find((o) => o.id === catalogueIdFor("openai", "marin"))!.sampleUrl, "/api/voice/samples/marin/warm/fr?v=1.0");
   assert.ok(!("sampleUrl" in oa.options.find((o) => o.id === catalogueIdFor("openai", "sage"))!), "no recorded sample → no key");
-  for (const e of ["gemini", "xai"] as const) {
-    const opts = tenantVoiceChoice(currentInboundVoice(null, row(e, "marin")), e, lookup).options;
-    assert.ok(opts.every((o) => !("sampleUrl" in o)), `${e}: an OpenAI recording would mislead`);
-  }
+  assert.ok(!seen.some((e) => e !== "openai"));
+  seen.length = 0;
+  const gm = tenantVoiceChoice(currentInboundVoice(null, row("gemini", "marin")), "gemini", lookup);
+  assert.ok(!seen.some((e) => e !== "gemini"), "a Gemini account never looks up an OpenAI recording");
+  assert.deepEqual(gm.options.filter((o) => o.sampleUrl).map((o) => o.id), [catalogueIdFor("gemini", "Sulafat")]);
+  assert.ok(!gm.options.some((o) => o.sampleUrl?.includes("marin")));
+  const xa = tenantVoiceChoice(currentInboundVoice(null, row("xai", "marin")), "xai", lookup);
+  assert.ok(xa.options.every((o) => !("sampleUrl" in o)), "no Grok recording yet → no Écouter");
   for (const o of oa.options) for (const k of Object.keys(o)) assert.ok(["id", "number", "gender", "recommended", "sampleUrl"].includes(k), k);
   console.log("ALL VOICE-CHOICE V8c TESTS PASSED");
 }

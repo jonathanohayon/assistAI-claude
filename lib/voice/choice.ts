@@ -79,7 +79,7 @@ export interface VoiceOption {
   number: number;
   gender: VoiceGender;
   recommended: boolean;
-  /** Only when the sample IS the voice the calls use (today: OpenAI accounts, recorded voices). */
+  /** Only when the sample IS the voice the calls use (a recording of this engine's real voice). */
   sampleUrl?: string;
 }
 
@@ -90,8 +90,12 @@ export interface TenantVoiceChoice {
   options: VoiceOption[];
 }
 
-/** Samples are recorded per OpenAI voice name × style × language: url, or null. */
-export type SampleLookup = (voiceName: string) => string | null;
+/**
+ * The sample recorded for THIS catalogue voice (OpenAI voices are keyed by
+ * name, Gemini / Grok voices by our id — so a lookup can only ever return a
+ * recording of that engine's real voice): url, or null.
+ */
+export type SampleLookup = (voice: { id: string; name: string; engine: RealtimeProvider }) => string | null;
 
 export function voiceNumber(v: { engine: RealtimeProvider; name: string; id: string }): number {
   if (v.engine === "openai") return (VOICE_ORDER as readonly string[]).indexOf(v.name) + 1;
@@ -104,8 +108,7 @@ export function tenantVoiceChoice(voice: Voice, engine: RealtimeProvider, sample
     options: engineVoices(engine)
       .filter((v) => v.available)
       .map((v) => {
-        // Samples are rendered on OpenAI: on another engine they'd play a voice the calls don't use.
-        const url = engine === "openai" ? sample(v.name) : null;
+        const url = sample(v);
         return { id: v.id, number: voiceNumber(v), gender: v.gender, recommended: v.recommendedRank !== null, ...(url ? { sampleUrl: url } : {}) };
       }),
   };

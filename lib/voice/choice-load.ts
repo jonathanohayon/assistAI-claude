@@ -19,9 +19,11 @@ export async function voiceChoiceFor(
     : "fr";
   // The agent's style when the viewer can hear it, else today's "warm".
   const style = sampleVisible({ style: voice.style }, isAdmin) ? voice.style : "warm";
-  const samples = engine === "openai" ? await availableSampleKeys() : [];
-  return tenantVoiceChoice(voice, engine, (name) => {
-    const k = samples.find((x) => x.voiceId === name && x.style === style && x.language === language);
+  const samples = await availableSampleKeys();
+  return tenantVoiceChoice(voice, engine, (v) => {
+    // OpenAI recordings are keyed by voice name, Gemini / Grok ones by our id.
+    const key = v.engine === "openai" ? v.name : v.id;
+    const k = samples.find((x) => x.voiceId === key && x.style === style && x.language === language);
     return k ? versionedSampleUrl(k, k.createdAt) : null;
   });
 }
