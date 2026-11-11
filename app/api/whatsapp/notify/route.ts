@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent } from "@/lib/logger";
-import { resolveTenant } from "@/lib/tenant";
+import { outboundCallerUserId } from "@/lib/call-direction";
+import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 // Real-time WhatsApp notification from the agent during a call. Used when
@@ -20,7 +21,15 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const tenantPhone = req.headers.get("x-tenant-phone");
-  const tenant = await resolveTenant(tenantPhone, "whatsapp_notify");
+  // Outbound call (T4): the account id only — never the phone (our caller
+  // id) nor the default-tenant fallback.
+  const outboundUserId = outboundCallerUserId(req.headers);
+  const tenant =
+    outboundUserId !== null
+      ? outboundUserId
+        ? await resolveTenantByUserId(outboundUserId)
+        : null
+      : await resolveTenant(tenantPhone, "whatsapp_notify");
   if (!tenant) {
     return NextResponse.json(
       { error: `Tenant inconnu pour ${tenantPhone || "(numéro absent)"}` },

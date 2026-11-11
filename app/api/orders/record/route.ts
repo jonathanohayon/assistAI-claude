@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
+import { outboundCallerUserId } from "@/lib/call-direction";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { ensureSheet, forceTextPhone, prependRow } from "@/lib/sheets-helpers";
@@ -46,11 +47,18 @@ export async function POST(req: NextRequest) {
   // Routing tenant (mêmes headers que les autres tools agent).
   const phoneHeader = req.headers.get("x-tenant-phone");
   const userIdHeader = req.headers.get("x-tenant-user-id");
-  const tenant = userIdHeader
-    ? await resolveTenantByUserId(userIdHeader)
-    : phoneHeader
-      ? await resolveTenantByPhone(phoneHeader)
-      : null;
+  // Outbound call (T4): the account id only, never the phone.
+  const outboundUserId = outboundCallerUserId(req.headers);
+  const tenant =
+    outboundUserId !== null
+      ? outboundUserId
+        ? await resolveTenantByUserId(outboundUserId)
+        : null
+      : userIdHeader
+        ? await resolveTenantByUserId(userIdHeader)
+        : phoneHeader
+          ? await resolveTenantByPhone(phoneHeader)
+          : null;
   if (!tenant) {
     return NextResponse.json({ error: "unknown_tenant" }, { status: 404 });
   }
