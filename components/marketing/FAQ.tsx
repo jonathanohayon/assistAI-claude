@@ -5,15 +5,19 @@ import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { DEFAULT_FAQ_KEYS } from "@/lib/marketing/home-content";
+
 import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
 
-const FAQ_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"] as const;
-type FaqKey = (typeof FAQ_KEYS)[number];
-
-export function FAQ() {
+export function FAQ({
+  faqKeys = DEFAULT_FAQ_KEYS,
+}: {
+  /** Entries to show, as keys in the `FAQ` namespace (`<key>.question`/`.answer`). */
+  faqKeys?: readonly string[];
+} = {}) {
   const t = useTranslations("FAQ");
   const reduce = useReducedMotionAfterMount();
-  const [openKey, setOpenKey] = useState<FaqKey | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   return (
     <section
@@ -44,7 +48,7 @@ export function FAQ() {
         </Reveal>
 
         <Stagger className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-          {FAQ_KEYS.map((key) => {
+          {faqKeys.map((key) => {
             const isOpen = openKey === key;
             return (
               <StaggerItem key={key}>

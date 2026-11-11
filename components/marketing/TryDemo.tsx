@@ -3,15 +3,27 @@
 import { useTranslations } from "next-intl";
 
 import VoiceAgent from "@/components/VoiceAgent";
+import { DEFAULT_DEMO, type DemoId } from "@/lib/marketing/home-content";
 
 import { Reveal } from "./Reveal";
+
+/** Demo components by id. Imported here (client side), as before, so the
+ *  content object can pick a demo without changing what the page loads. */
+const DEMOS: Record<DemoId, () => React.ReactNode> = {
+  voiceAgent: () => <VoiceAgent />,
+};
 
 /**
  * TryDemo — section dédiée à la démo interactive WebRTC, extraite du Hero.
  * Glass card éditoriale qui héberge le VoiceAgent, posée sur un halo
  * conic rose→cyan en rotation lente (CSS pur, coupé en reduced-motion).
  */
-export function TryDemo() {
+export function TryDemo({
+  demo = DEFAULT_DEMO,
+}: {
+  /** Which demo to mount in the card. */
+  demo?: DemoId;
+} = {}) {
   // Réutilise les keys i18n existantes du namespace Hero pour la démo.
   const t = useTranslations("Hero");
 
@@ -54,7 +66,7 @@ export function TryDemo() {
             />
           </div>
 
-          <VoiceAgent />
+          {DEMOS[demo]()}
         </Reveal>
       </div>
 
