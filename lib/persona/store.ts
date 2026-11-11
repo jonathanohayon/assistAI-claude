@@ -49,6 +49,13 @@ export function currentOutboundPersona(stored: unknown, row: OutboundPersonaColu
   return s.ok ? s.value : personaFromOutbound(row);
 }
 
+function withoutNewPrimary(current: Persona, patch: unknown): Persona {
+  if (!patch || typeof patch !== "object" || "languages" in patch) return current;
+  const primary = (patch as { primaryLanguage?: unknown }).primaryLanguage;
+  if (typeof primary !== "string") return current;
+  return { ...current, languages: current.languages.filter((l) => l !== primary) };
+}
+
 function plan(
   body: Record<string, unknown>,
   legacy: readonly string[],
@@ -58,11 +65,16 @@ function plan(
   if (!("personaConfig" in body)) return null;
   const conflict = legacy.filter((f) => f in body);
   if (conflict.length) return { error: { status: 400, body: { error: "persona_config_conflict", fields: conflict } } };
-  const merged = mergePersona(current, body.personaConfig);
+  // A new primary language that is in the stored list leaves the list when the
+  // patch omits `languages` (as keepUnstored does on the legacy path). The P4
+  // gate compares against that adjusted list, so the automatic removal is not
+  // a tenant change. An explicit `languages` keeps the rules below as they are.
+  const base = withoutNewPrimary(current, body.personaConfig);
+  const merged = mergePersona(base, body.personaConfig);
   if (!merged.ok) return { error: { status: 400, body: { error: "invalid_persona_config", fields: [merged.error] } } };
   // P4 gate: SETTING a non-empty spoken-languages list is admin-only for now
   // (a tenant saving other fields under an admin-set list is fine).
-  const languagesChanged = JSON.stringify(merged.value.languages) !== JSON.stringify(current.languages);
+  const languagesChanged = JSON.stringify(merged.value.languages) !== JSON.stringify(base.languages);
   if (!isAdmin && !LANGUAGES_TENANT_EDITABLE && languagesChanged && merged.value.languages.length > 0) {
     return { error: { status: 403, body: { error: "admin_only", fields: ["languages"] } } };
   }
