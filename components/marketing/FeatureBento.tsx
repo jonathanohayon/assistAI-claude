@@ -99,8 +99,11 @@ function LanguageSwitcher({ reduce }: { reduce: boolean }) {
   return (
     <div className="relative flex h-full min-h-32 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#fdf2f8] to-[#fce7f3] ring-1 ring-[#be185d]/10">
       <AnimatePresence mode="wait">
+        {/* data-reveal: same reduced-motion pin as the Reveal primitives
+            (see globals.css); its SSR start state is blurred too. */}
         <motion.div
           key={idx}
+          data-reveal=""
           initial={
             reduce
               ? { opacity: 0 }
