@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { CLIENT_DEFAULT_VOICE, VOICE_PACES, mergeClientVoice, type ClientVoice } from "../../components/bricks/voice/voice-client";
-import { PACE_SPEED, paceNotch, paceResettable } from "../../components/bricks/voice/voice-ui";
+import { PACE_SPEED, paceFill, paceNotch, paceResettable } from "../../components/bricks/voice/voice-ui";
 import { outboundVoiceConfigUpdates } from "../../lib/voice/route-writes";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
@@ -78,6 +78,17 @@ const voice = (pace: string, speed: number | null): ClientVoice =>
       const personality = save({ voiceConfig: { bargeIn: false } }).updates.personality as { vitesse: number };
       assert.equal(personality.vitesse, vitesse, `stored=${stored} vitesse ${vitesse}`);
     }
+}
+
+// 7. Design review: the track fills from Normal to the thumb (a deviation, not a quantity), mirrored by logical offsets
+{
+  assert.deepEqual(paceFill(2, 5), { insetInlineStart: "50%", width: "0%" }, "empty at Normal");
+  assert.deepEqual(paceFill(4, 5), { insetInlineStart: "50%", width: "50%" }, "Very fast: centre → end");
+  assert.deepEqual(paceFill(1, 5), { insetInlineStart: "25%", width: "25%" }, "Slow: notch → centre");
+  const src = read("components/bricks/voice/VoiceBrick.tsx");
+  assert.match(src, /style=\{paceFill\(index, PACES\.length\)\}/);
+  assert.doesNotMatch(src.slice(src.indexOf("function PaceSlider"), src.indexOf("function SpeedField")), /accent-\[#be185d\]/, "no native fill from the slow end");
+  assert.match(src, /appearance-none bg-transparent \$\{PACE_THUMB\}/);
 }
 
 console.log("ALL VOICE-PACE-SLIDER TESTS PASSED");
