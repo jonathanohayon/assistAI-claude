@@ -83,6 +83,7 @@ const toCallRow = (r: Row): CallRow => ({
   id: String(r.id),
   createdAt: new Date(r.created_at as string),
   fromNumber: String(r.from_number ?? ""),
+  toNumber: String(r.to_number ?? ""),
   summary: String(r.summary ?? ""),
   transcript: r.transcript,
   durationSeconds: Number(r.duration_seconds ?? 0) || 0,
@@ -149,7 +150,7 @@ export async function listCalls(opts: {
     AND ${inboundPredicate()}`;
 
   const pageRes = await db.execute(sql`
-    SELECT c.id, c.created_at, ${CURSOR_TS} AS cursor_ts, c.from_number, c.summary, c.transcript,
+    SELECT c.id, c.created_at, ${CURSOR_TS} AS cursor_ts, c.from_number, c.to_number, c.summary, c.transcript,
            c.duration_seconds, c.call_id
     FROM calls c
     WHERE ${scope}
@@ -189,7 +190,7 @@ export async function listCalls(opts: {
 /** One inbound call of this tenant, or null (not found / other tenant / outbound). */
 export async function getCallDetail(userId: string, id: string): Promise<CallDetailResponse | null> {
   const res = await db.execute(sql`
-    SELECT c.id, c.created_at, c.from_number, c.summary, c.transcript, c.duration_seconds, c.call_id
+    SELECT c.id, c.created_at, c.from_number, c.to_number, c.summary, c.transcript, c.duration_seconds, c.call_id
     FROM calls c
     WHERE c.id = ${id}::uuid AND c.user_id = ${userId} AND ${inboundPredicate()}
     LIMIT 1

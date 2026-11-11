@@ -69,6 +69,7 @@ const call = (id: string, callId: string, endSec: number, dur: number, userId = 
       id: "c1",
       createdAt: T0,
       fromNumber: "+15550000001",
+      toNumber: "+15550009999",
       summary: "La cliente veut un rendez-vous, RDV pris mardi, appointment booked, annuler",
       transcript: [{ role: "user", text: "Je voudrais un rendez-vous" }],
       durationSeconds: 42,
@@ -77,6 +78,7 @@ const call = (id: string, callId: string, endSec: number, dur: number, userId = 
     null,
   );
   assert.equal(line.outcome, "conversation", "no keyword guess");
+  assert.equal(line.toNumber, "+15550009999", "called number passed through");
 }
 
 // ── Duration: never 0 ───────────────────────────────────────────────────
@@ -204,13 +206,13 @@ assert.equal(textDirection(["שלום", "Bonjour madame comment allez-vous"]), "
 // ── Line flags ──────────────────────────────────────────────────────────
 {
   const l = toLine(
-    { id: "c2", createdAt: T0, fromNumber: "", summary: "  ", transcript: [{ role: "user", text: "" }], durationSeconds: 0 },
+    { id: "c2", createdAt: T0, fromNumber: "", toNumber: "", summary: "  ", transcript: [{ role: "user", text: "" }], durationSeconds: 0 },
     [],
     "  ",
   );
   assert.deepEqual(
-    { hasSummary: l.hasSummary, hasTranscript: l.hasTranscript, durationSeconds: l.durationSeconds, contactName: l.contactName },
-    { hasSummary: false, hasTranscript: false, durationSeconds: null, contactName: null },
+    { hasSummary: l.hasSummary, hasTranscript: l.hasTranscript, durationSeconds: l.durationSeconds, contactName: l.contactName, toNumber: l.toNumber },
+    { hasSummary: false, hasTranscript: false, durationSeconds: null, contactName: null, toNumber: "" },
   );
 }
 

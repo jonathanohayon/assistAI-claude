@@ -27,6 +27,8 @@ export interface CallLine {
   createdAt: string;
   /** Caller number as received (E.164 for phone calls); "" when hidden/unknown. */
   fromNumber: string;
+  /** The tenant's number that was called (calls.to_number); "" for old rows or when unknown. */
+  toNumber: string;
   /** Best-effort: latest non-empty name booked under this number for this tenant (client_visits); else null. */
   contactName: string | null;
   outcome: CallOutcome;
