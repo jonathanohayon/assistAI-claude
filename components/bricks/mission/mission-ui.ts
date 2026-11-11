@@ -150,7 +150,10 @@ export function missionNeeds(kind: SalesMission | null, caps: EffectiveCapabilit
     const s = caps[key];
     if (!s) return null;
     const v = capabilityView(key, s);
-    return v.status === "on" ? null : { key, missing: v.missing };
+    if (v.status === "on") return null;
+    // Off: "turn it on" — unless nothing the customer can do would help yet.
+    if (v.status === "off" && v.missing !== "not_available_outbound") return { key, missing: null };
+    return { key, missing: v.missing };
   };
   const out: MissionNeed[] = [];
   for (const k of all) {
