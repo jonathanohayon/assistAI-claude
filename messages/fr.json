@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "Moteur vocal",
+    "changesVoice": "Changer de moteur remplace la voix de ce compte par la plus proche sur le nouveau moteur.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (par défaut)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (expérimental)",

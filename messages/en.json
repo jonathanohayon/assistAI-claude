@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "Voice engine",
+    "changesVoice": "Changing the engine changes this account's voice to the closest one on the new engine.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (default)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (experimental)",

@@ -80,6 +80,8 @@ export function VoiceAdminFields({
           ...(option === "custom" ? [{ id: "custom", label: tE("optionCustom", { model: a.model ?? "" }) }] : []),
         ]}
       />
+      {/* V8e: an engine change moves the account's voice to its closest equivalent. */}
+      <p className="-mt-2 text-xs text-[#475569]">{tE("changesVoice")}</p>
       {value.engine === "xai" && primaryLanguage === "he" && (
         <p role="note" className="text-xs font-semibold text-[#b45309]">
           {tE("xaiHebrewWarning")}

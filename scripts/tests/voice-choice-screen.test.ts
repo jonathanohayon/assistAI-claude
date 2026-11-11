@@ -78,4 +78,10 @@ const choice: ServedVoiceChoice = {
   for (const p of ["app/[locale]/dashboard/page.tsx", "app/admin/users/[userId]/page.tsx"]) assert.match(read(p), /voiceChoice: await voiceChoiceFor\(config,/, p);
 }
 
+// 6. Admin engine picker: one line saying the voice follows the engine (admin-only file, every language)
+{
+  assert.match(read("components/bricks/voice/VoiceAdminFields.tsx"), /\{tE\("changesVoice"\)\}/);
+  for (const l of ["fr", "en", "he"]) assert.ok(JSON.parse(read(`messages/${l}.json`)).AdminEngine.changesVoice, l);
+}
+
 console.log("ALL VOICE-CHOICE-SCREEN TESTS PASSED");

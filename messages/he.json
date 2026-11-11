@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "מנוע קולי",
+    "changesVoice": "החלפת המנוע מחליפה את הקול של החשבון הזה בקול הקרוב ביותר במנוע החדש.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (ברירת מחדל)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (ניסיוני)",
