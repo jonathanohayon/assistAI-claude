@@ -18,6 +18,7 @@ export async function agentBrainSaveDecision(args: {
   currentUrl: string;
   /** The url in the PUT body, trimmed ("" = none). */
   url: string;
+  /** The enabled value the save would STORE (enabledToSave), not the raw body field. */
   wantsEnabled: boolean;
   isAdmin: boolean;
   check?: CheckOptions;
@@ -55,6 +56,15 @@ export function urlToSave(bodyUrl: unknown, currentUrl: string, isAdmin: boolean
   if (typeof bodyUrl !== "string") return currentUrl.trim();
   const url = bodyUrl.trim();
   return url === "" && !isAdmin ? currentUrl.trim() : url;
+}
+
+/**
+ * The enabled flag a PUT saves. Only an explicit boolean changes it; an
+ * absent (or non-boolean) `enabled` keeps the stored value — a partial save
+ * (`{ secret }`, an admin's `{ url }`) must not switch the customer's agent off.
+ */
+export function enabledToSave(bodyEnabled: unknown, currentEnabled: boolean): boolean {
+  return typeof bodyEnabled === "boolean" ? bodyEnabled : currentEnabled;
 }
 
 /**

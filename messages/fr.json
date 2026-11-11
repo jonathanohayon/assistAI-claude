@@ -2472,6 +2472,11 @@
         "name": "Prendre des commandes",
         "what": "Note une commande et vous l'envoie.",
         "on": "Actif."
+      },
+      "clientAgent": {
+        "name": "Interroger votre agent",
+        "what": "Pendant un appel, Tamara pose la question à votre propre agent IA et utilise sa réponse.",
+        "on": "Actif : votre agent est interrogé pendant les appels."
       }
     },
     "statusOff": "Éteint.",
@@ -2479,7 +2484,9 @@
     "missing": {
       "google_not_connected": "compte Google non connecté.",
       "no_transfer_number": "ajoutez un numéro de transfert.",
-      "not_available_outbound": "pas encore disponible pour les appels sortants."
+      "not_available_outbound": "pas encore disponible pour les appels sortants.",
+      "client_agent_disabled": "pas encore ouvert pour ce compte.",
+      "no_agent_url": "ajoutez l'adresse de votre agent (https), puis enregistrez."
     },
     "connectGoogle": "Connecter Google",
     "connectGoogleTenantOnly": "Le client doit connecter son agenda Google depuis son compte.",
@@ -2497,7 +2504,58 @@
     "editNumber": "Modifier",
     "tileTaglineOutbound": "Rendez-vous, transfert",
     "refusedOutbound": "Non activé : {list}. Les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré.",
-    "refusedOutboundAny": "Ces réglages n'ont pas été activés : les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré."
+    "refusedOutboundAny": "Ces réglages n'ont pas été activés : les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré.",
+    "agent": {
+      "url": "Adresse de votre agent",
+      "urlHint": "Une adresse sécurisée qui commence par <l>https://</l>. Nous lui envoyons la question et lisons sa réponse.",
+      "mode": "Comment Tamara l'utilise",
+      "modes": {
+        "lead": "Tamara mène la conversation",
+        "voice": "Tamara prête seulement sa voix"
+      },
+      "modeHint": {
+        "lead": "Tamara conduit l'appel et interroge votre agent quand elle a besoin d'une réponse.",
+        "voice": "Votre agent décide quoi dire ; Tamara dit ses réponses mot pour mot."
+      },
+      "secret": "Secret de signature",
+      "secretHint": "Permet à votre agent de vérifier qu'une demande vient bien de nous.",
+      "secretSet": "Défini.",
+      "secretUnset": "Non défini.",
+      "secretRemoving": "Supprimé à l'enregistrement.",
+      "generate": "Générer",
+      "regenerate": "Régénérer",
+      "remove": "Supprimer",
+      "undo": "Annuler",
+      "confirmRegenerate": "Un nouveau secret remplace l'actuel : votre agent devra utiliser le nouveau. Continuer ?",
+      "confirmYes": "Le remplacer",
+      "confirmNo": "Garder l'actuel",
+      "newSecretLabel": "Votre nouveau secret",
+      "copyNow": "Copiez-le maintenant : vous ne le reverrez plus.",
+      "copy": "Copier",
+      "copied": "Copié.",
+      "saveToKeep": "Il prend effet quand vous enregistrez.",
+      "testButton": "Tester la connexion",
+      "testing": "Test en cours…",
+      "test": {
+        "ok": "Connecté en {ms} ms.",
+        "blocked_address": "Cette adresse ne peut pas être utilisée.",
+        "timeout": "Trop lent (plus de 2,5 s).",
+        "http_status": "Votre agent a répondu par une erreur.",
+        "bad_shape": "Format incorrect.",
+        "too_large": "Réponse trop volumineuse.",
+        "network": "Injoignable.",
+        "no_agent_url": "Ajoutez d'abord l'adresse de votre agent.",
+        "rateLimited": "Réessayez dans un instant.",
+        "disabled": "Pas encore ouvert pour ce compte.",
+        "generic": "Le test n'a pas abouti. Réessayez."
+      },
+      "refused": {
+        "disabled": "Non activé : interroger votre agent n'est pas encore ouvert pour ce compte.",
+        "unsafeUrl": "Cette adresse ne peut pas être utilisée : indiquez une adresse publique qui commence par <l>https://</l>."
+      },
+      "copiedDone": "C'est copié",
+      "saveFirstToTest": "Enregistrez d'abord pour tester."
+    }
   },
   "AgentBrain": {
     "title": "Qui répond au téléphone",

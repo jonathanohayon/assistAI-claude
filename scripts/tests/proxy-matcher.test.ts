@@ -43,6 +43,7 @@ const MUST_MATCH = [
 // is what caused the 401 regression. _next/static & favicon are infra excludes.
 const MUST_NOT_MATCH = [
   "/api/livekit/web-token", // the endpoint that returned 401
+  "/api/live-test/token", // its neutral path (same handler)
   "/api/admin/auth/session", // NextAuth — reads/rotates the session cookie
   "/api/admin/auth/callback/credentials", // NextAuth login callback
   "/api/auth/login", // legacy Google OAuth flow
