@@ -30,7 +30,7 @@ import {
 const API = "/api/dashboard/agent-brain";
 
 export function AgentBrainSection() {
-  const [state, setState] = useState<BrainState>({ view: EMPTY_BRAIN_VIEW, storedUrl: "" });
+  const [state, setState] = useState<BrainState>({ view: EMPTY_BRAIN_VIEW });
   const [urlDraft, setUrlDraft] = useState("");
   const [secretDraft, setSecretDraft] = useState("");
   const [loaded, setLoaded] = useState(false);

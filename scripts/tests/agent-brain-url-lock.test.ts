@@ -32,9 +32,32 @@ const LOCALES = ["fr", "en", "he"] as const;
 const MOCK_URL = "https://agent.example.test/hook";
 const MOCK_SECRET = "mock-secret-0123456789abcdef";
 
-const served = (urlEditable: boolean | undefined, brain: BrainResponse["brain"]): BrainResponse => ({
-  brain,
-  ...(urlEditable === undefined ? {} : { urlEditable }),
+/**
+ * A server answer in the #254 shape (lib/agent-brain-guard brainView): the url
+ * and the secret value only for an admin; urlSet / secretSet for everyone.
+ * `urlEditable: undefined` = an older server that doesn't send the flag.
+ */
+function served(
+  urlEditable: boolean | undefined,
+  stored: { enabled: boolean; url: string; secret?: string },
+): BrainResponse {
+  const admin = urlEditable === true;
+  return {
+    brain: {
+      enabled: stored.enabled,
+      url: admin ? stored.url : "",
+      urlSet: Boolean(stored.url),
+      secretSet: Boolean(stored.secret),
+      ...(admin && stored.secret ? { secret: stored.secret } : {}),
+    },
+    ...(urlEditable === undefined ? {} : { urlEditable }),
+  };
+}
+// Belt and braces: even if a server echoed the values to a tenant again, the
+// screen must not show them.
+const leakyTenant = (stored: { enabled: boolean; url: string; secret?: string }): BrainResponse => ({
+  brain: { ...stored, urlSet: Boolean(stored.url), secretSet: Boolean(stored.secret) },
+  urlEditable: false,
 });
 
 function render(d: BrainResponse, locale = "en", extra: Partial<AgentBrainViewProps> = {}) {
@@ -71,6 +94,8 @@ const esc = (s: string) => s.replace(/'/g, "&#x27;").replace(/"/g, "&quot;");
 for (const l of LOCALES) {
   const m = messages(l).AgentBrain;
   const html = render(served(false, { enabled: true, url: MOCK_URL, secret: MOCK_SECRET }), l);
+  const leaky = render(leakyTenant({ enabled: true, url: MOCK_URL, secret: MOCK_SECRET }), l);
+  assert.equal(leaky, html, `${l}: an echoed url/secret changes nothing on screen`);
   assert.equal(urlInputs(html), 0, `${l}: no url input`);
   assert.ok(!html.includes(MOCK_URL) && !html.includes("agent.example.test"), `${l}: never the url`);
   assert.ok(!html.includes(m.urlLabel), `${l}: no url label`);
@@ -106,11 +131,16 @@ assert.equal(toBrainState(served(undefined, { enabled: true, url: MOCK_URL })).v
 }
 
 // 4. The secret is never in the view, the state or the markup, whoever looks
-for (const editable of [true, false]) {
-  const st = toBrainState(served(editable, { enabled: true, url: MOCK_URL, secret: MOCK_SECRET }));
+for (const d of [
+  served(true, { enabled: true, url: MOCK_URL, secret: MOCK_SECRET }),
+  served(false, { enabled: true, url: MOCK_URL, secret: MOCK_SECRET }),
+  leakyTenant({ enabled: true, url: MOCK_URL, secret: MOCK_SECRET }),
+]) {
+  const st = toBrainState(d);
   assert.ok(!JSON.stringify(st).includes(MOCK_SECRET), "no secret in state");
   assert.equal(st.view.secretSet, true);
 }
+assert.ok(!JSON.stringify(toBrainState(leakyTenant({ enabled: true, url: MOCK_URL }))).includes(MOCK_URL), "tenant state: no url");
 assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" })).view.secretSet, false);
 // The component source has no path to the value either.
 {
@@ -119,18 +149,22 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
   assert.doesNotMatch(src, /clipboard/, "no copy-secret path");
 }
 
-// 5. PUT body: a tenant sends the stored url back unchanged; an admin what they typed
+// 5. PUT body: a tenant's never carries a non-empty url; an admin's carries what they typed
 {
-  const tenant = toBrainState(served(false, { enabled: true, url: MOCK_URL }));
-  assert.deepEqual(brainPutBody(tenant, { enabled: false, url: "https://other.example.test/x" }), {
-    enabled: false,
-    url: MOCK_URL,
-  });
-  assert.deepEqual(brainPutBody(tenant, { enabled: true, secret: "  s3cret " }), {
-    enabled: true,
-    url: MOCK_URL,
-    secret: "s3cret",
-  });
+  for (const d of [served(false, { enabled: true, url: MOCK_URL }), leakyTenant({ enabled: true, url: MOCK_URL })]) {
+    const tenant = toBrainState(d);
+    for (const next of [
+      { enabled: false, url: "https://other.example.test/x" },
+      { enabled: true, url: MOCK_URL },
+      { enabled: true },
+      { enabled: true, secret: "  s3cret " },
+    ]) {
+      const body = brainPutBody(tenant, next);
+      assert.ok(!("url" in body) || body.url === "", `tenant body never carries a url: ${JSON.stringify(body)}`);
+    }
+    assert.deepEqual(brainPutBody(tenant, { enabled: false, url: "https://other.example.test/x" }), { enabled: false });
+    assert.deepEqual(brainPutBody(tenant, { enabled: true, secret: "  s3cret " }), { enabled: true, secret: "s3cret" });
+  }
   const admin = toBrainState(served(true, { enabled: false, url: MOCK_URL }));
   assert.deepEqual(brainPutBody(admin, { enabled: true, url: " https://new.example.test/a " }), {
     enabled: true,

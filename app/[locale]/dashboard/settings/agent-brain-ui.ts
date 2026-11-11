@@ -12,7 +12,7 @@
 
 /** The GET / PUT /api/dashboard/agent-brain answer, as received (untrusted shape). */
 export type BrainResponse = {
-  brain?: { enabled?: unknown; url?: unknown; secret?: unknown } | null;
+  brain?: { enabled?: unknown; url?: unknown; urlSet?: unknown; secretSet?: unknown; secret?: unknown } | null;
   urlEditable?: unknown;
   error?: unknown;
   message?: unknown;
@@ -40,43 +40,43 @@ export const EMPTY_BRAIN_VIEW: BrainView = {
   url: "",
 };
 
-export type BrainState = {
-  view: BrainView;
-  /**
-   * The stored url, kept out of the view. A tenant's save must send it back
-   * unchanged (the server treats a different or missing url as a change and
-   * answers 403 admin_only); it is never rendered.
-   */
-  storedUrl: string;
-};
+export type BrainState = { view: BrainView };
 
+/**
+ * Server shape since #254: a tenant gets `{ enabled, url: "", urlSet,
+ * secretSet }`; an admin the same plus `url` and `secret`. The url is read
+ * only when `urlEditable`; the secret value is never read at all.
+ */
 export function toBrainState(d: BrainResponse | null | undefined): BrainState {
   const b = d?.brain ?? null;
-  const storedUrl = typeof b?.url === "string" ? b.url.trim() : "";
   const urlEditable = d?.urlEditable === true;
+  const url = urlEditable && typeof b?.url === "string" ? b.url.trim() : "";
   return {
-    storedUrl,
     view: {
       enabled: b?.enabled === true,
       urlEditable,
-      urlConfigured: storedUrl !== "",
-      secretSet: typeof b?.secret === "string" && b.secret !== "",
-      url: urlEditable ? storedUrl : "",
+      urlConfigured: b?.urlSet === true || url !== "",
+      secretSet: b?.secretSet === true,
+      url,
     },
   };
 }
 
 /**
- * The PUT body. A tenant always sends the stored url back (no change); an
- * admin sends what they typed. A secret is sent only when one was typed.
+ * The PUT body. A tenant never sends `url` (absent keeps the stored one on
+ * the server; a different one would be a 403); an admin sends what they
+ * typed. A secret is sent only when one was typed.
  */
 export function brainPutBody(
   state: BrainState,
   next: { enabled: boolean; url?: string; secret?: string },
-): { enabled: boolean; url: string; secret?: string } {
-  const url = state.view.urlEditable && typeof next.url === "string" ? next.url.trim() : state.storedUrl;
+): { enabled: boolean; url?: string; secret?: string } {
   const secret = next.secret?.trim();
-  return { enabled: next.enabled, url, ...(secret ? { secret } : {}) };
+  return {
+    enabled: next.enabled,
+    ...(state.view.urlEditable && typeof next.url === "string" ? { url: next.url.trim() } : {}),
+    ...(secret ? { secret } : {}),
+  };
 }
 
 export type BrainErrorKey = "adminOnly" | "unsafeUrl" | "generic";
