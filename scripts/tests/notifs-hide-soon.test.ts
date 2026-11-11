@@ -76,4 +76,11 @@ assert.match(configForm, /summary: form\.ownerWhatsapp \? t\("wowNotifsSummaryAc
 // The card no longer has a "coming soon" mode to fall back on.
 assert.doesNotMatch(read("app/[locale]/dashboard/config/notif-channel-card.tsx"), /comingSoon/);
 
+// The example number in the WhatsApp hint is an obviously fake one (never a plausible real person's number).
+for (const l of ["fr", "en", "he"]) {
+  const hint = JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).DashboardConfig.ownerWhatsappHint as string;
+  assert.match(hint, /\+972500000000/, `${l}: mock example number`);
+  assert.doesNotMatch(hint, /\+97258/, `${l}: no plausible real number`);
+}
+
 console.log("notifs-hide-soon: ok");
