@@ -48,6 +48,7 @@ import {
   patienceToScreen,
   choiceVoices,
   hasDescriptor,
+  paceFill,
   paceNotch,
   paceResettable,
   pickerVoices,
@@ -517,6 +518,13 @@ function TestActions({
 }
 
 
+/** The pace thumb (the native track is transparent; ours is drawn behind it). */
+const PACE_THUMB = [
+  "[&::-webkit-slider-runnable-track]:bg-transparent [&::-moz-range-track]:bg-transparent",
+  "[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#be185d] [&::-webkit-slider-thumb]:shadow",
+  "[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#be185d] [&::-moz-range-thumb]:shadow",
+].join(" ");
+
 /**
  * Pace (V9b): five notches, Very slow … Very fast, "Normal" marked in the
  * centre; the value in words, never a number. A legacy custom speed sits on
@@ -556,21 +564,30 @@ function PaceSlider({ value, onPace }: { value: ClientVoice; onPace: (pace: Pace
           )}
         </div>
       </div>
-      <input
-        id={id}
-        type="range"
-        min={0}
-        max={PACES.length - 1}
-        step={1}
-        value={index}
-        aria-valuetext={words}
-        onChange={(e) => commit(Number(e.target.value))}
-        onPointerUp={touch}
-        onKeyUp={touch}
-        className={`mt-1 h-11 w-full cursor-pointer accent-[#be185d] ${FOCUS}`}
-      />
-      {/* Notches under the track (thumb half-width inset); Normal's is taller and darker. */}
-      <div aria-hidden className="flex justify-between px-2">
+      {/* Pace is a deviation from Normal, not a quantity: the track fills from
+          the centre mark to the thumb (empty at Normal). Our own track behind a
+          transparent native one; `inset-inline-start` mirrors it in RTL like
+          the native range. Insets = thumb half-width (10 px). */}
+      <div className="relative mt-1 h-11">
+        <div aria-hidden className="absolute inset-x-2.5 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#e2e8f0]">
+          <div data-pace-fill className="absolute inset-y-0 rounded-full bg-[#be185d]" style={paceFill(index, PACES.length)} />
+        </div>
+        <input
+          id={id}
+          type="range"
+          min={0}
+          max={PACES.length - 1}
+          step={1}
+          value={index}
+          aria-valuetext={words}
+          onChange={(e) => commit(Number(e.target.value))}
+          onPointerUp={touch}
+          onKeyUp={touch}
+          className={`relative h-11 w-full cursor-pointer appearance-none bg-transparent ${PACE_THUMB} ${FOCUS}`}
+        />
+      </div>
+      {/* Notches under the track, aligned with the thumb stops; Normal's is taller and darker. */}
+      <div aria-hidden className="flex justify-between px-2.5">
         {PACES.map((p) => (
           <span key={p} className={p === "normal" ? "h-3 w-0.5 rounded bg-[#18181b]" : "h-2 w-px bg-[#94a3b8]"} />
         ))}

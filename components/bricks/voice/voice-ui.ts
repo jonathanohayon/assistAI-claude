@@ -102,6 +102,15 @@ export function paceNotch(v: Pick<ClientVoice, "pace" | "advanced">): { index: n
 /** The exact speed in developer settings (contract bounds). */
 export const SPEED_LIMITS = { min: 0.25, max: 4 } as const;
 
+/**
+ * The filled part of the pace track: from the centre (Normal) to the notch,
+ * as logical offsets so right-to-left mirrors it. Empty at Normal.
+ */
+export function paceFill(index: number, notches: number): { insetInlineStart: string; width: string } {
+  const at = (index / (notches - 1)) * 100;
+  return { insetInlineStart: `${Math.min(at, 50)}%`, width: `${Math.abs(at - 50)}%` };
+}
+
 /** "Reset" shows only when the slider isn't on plain Normal. */
 export const paceResettable = (v: Pick<ClientVoice, "pace" | "advanced">): boolean => v.pace !== "normal" || v.advanced.speed !== null;
 
