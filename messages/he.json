@@ -371,7 +371,8 @@
     "tipBusinessCta": "עסק",
     "forwardingTitle": "הפנו את המספר הרגיל שלכם",
     "forwardingDesc": "שומרים על המספר שהלקוחות מכירים: מפנים אותו לתמרה ובודקים בשיחת ניסיון.",
-    "forwardingCta": "הגדרת הפניה"
+    "forwardingCta": "הגדרת הפניה",
+    "nextStep": "השלב הבא: {step}"
   },
   "SocialProof": {
     "facts": {

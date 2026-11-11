@@ -371,7 +371,8 @@
     "tipBusinessCta": "Business",
     "forwardingTitle": "Forward your usual number",
     "forwardingDesc": "Keep the number your clients know: forward it to Tamara, then check it with a test call.",
-    "forwardingCta": "Set up forwarding"
+    "forwardingCta": "Set up forwarding",
+    "nextStep": "Next: {step}"
   },
   "SocialProof": {
     "facts": {

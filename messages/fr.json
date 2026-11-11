@@ -371,7 +371,8 @@
     "tipBusinessCta": "Business",
     "forwardingTitle": "Renvoyez votre numéro habituel",
     "forwardingDesc": "Gardez le numéro que vos clients connaissent : renvoyez-le vers Tamara, puis vérifiez avec un appel test.",
-    "forwardingCta": "Configurer le renvoi"
+    "forwardingCta": "Configurer le renvoi",
+    "nextStep": "Prochaine étape : {step}"
   },
   "SocialProof": {
     "facts": {

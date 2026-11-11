@@ -13,29 +13,52 @@ export function MoreSettings({
   children,
   title,
   defaultOpen = false,
+  open: openProp,
+  onOpenChange,
+  summary,
+  whenClosed,
+  headingLevel = 3,
+  className = "rounded-2xl border border-[var(--color-border)] bg-white",
 }: {
   children: ReactNode;
   /** Defaults to "More settings" in the current language. */
-  title?: string;
+  title?: ReactNode;
   defaultOpen?: boolean;
+  /** Controlled mode (e.g. a remembered choice); otherwise the component keeps its own state. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Non-interactive content inside the toggle row, after the title (e.g. a progress bar). */
+  summary?: ReactNode;
+  /** Shown under the row, OUTSIDE the toggle, only while closed (e.g. the next step and its link). */
+  whenClosed?: ReactNode;
+  headingLevel?: 2 | 3;
+  /** The container's look; the row and panel behave the same. */
+  className?: string;
 }) {
   const t = useTranslations("Bricks");
-  const [open, setOpen] = useState(defaultOpen);
+  const [ownOpen, setOwnOpen] = useState(defaultOpen);
+  const open = openProp ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOwnOpen(next);
+    onOpenChange?.(next);
+  };
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const panelId = useId();
   const buttonId = useId();
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-white">
-      <h3 className="m-0">
+    <div className={className}>
+      <Heading className="m-0">
         <button
           id={buttonId}
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen(!open)}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-start text-sm font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
-          {title ?? t("moreSettings")}
+          <span className="min-w-0 flex-1">{title ?? t("moreSettings")}</span>
+          {summary}
           <svg
             aria-hidden
             viewBox="0 0 24 24"
@@ -51,7 +74,8 @@ export function MoreSettings({
             <path d="m6 9 6 6 6-6" />
           </svg>
         </button>
-      </h3>
+      </Heading>
+      {!open && whenClosed}
       <div
         id={panelId}
         role="region"
