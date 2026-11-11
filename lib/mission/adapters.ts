@@ -25,6 +25,28 @@ export function missionForPreset(preset: string): { kind: SalesMission; cold: bo
     : { kind: "other", cold: false };
 }
 
+/**
+ * The reverse: an agent's default mission → the preset that prefills a NEW
+ * campaign's draft (the front calls it; nothing server-side does yet).
+ * Lossy by design, read side only: "marketing" reads as announce_offer and
+ * comes back as "sales". book_for_seller and follow_up have no preset yet
+ * (mapping pending tamaraVP) → null, as is a missing mission.
+ */
+export function presetForMission(m: { kind: SalesMission; cold: boolean } | null): GoalPreset | null {
+  if (!m) return null;
+  switch (m.kind) {
+    case "qualify_lead":
+      return m.cold ? "cold" : "lead_gen";
+    case "announce_offer":
+      return "sales";
+    case "other":
+      return "custom";
+    case "book_for_seller":
+    case "follow_up":
+      return null;
+  }
+}
+
 /** A campaign's goal (campaigns row). */
 export function missionFromCampaign(c: {
   goalPreset: string;
