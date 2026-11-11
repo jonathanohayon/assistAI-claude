@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
+import { CallsView } from "@/app/[locale]/dashboard/logs/calls-view";
 import { LogsView } from "@/app/[locale]/dashboard/logs/logs-view";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
@@ -29,6 +30,9 @@ export default async function AdminTenantLogsPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
+      <div className="mb-8">
+        <CallsView asUserId={target.id} />
+      </div>
       <LogsView asUserId={target.id} showEngine />
     </main>
   );
