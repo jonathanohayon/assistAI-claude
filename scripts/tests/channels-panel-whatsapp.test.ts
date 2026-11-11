@@ -15,6 +15,7 @@ import { ChannelsPanel } from "../../app/[locale]/dashboard/config/channels-pane
 import { ADMIN_ONLY_NAMESPACES } from "../../i18n/public-namespaces";
 import { WHATSAPP_VOICE_AVAILABLE } from "../../lib/channels/contract";
 import { PATTERN } from "../tenant-bundle-match.mjs";
+import { IntlMessageFormat } from "intl-messageformat";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -78,5 +79,37 @@ assert.doesNotMatch(tile, /twilio/i);
 assert.match(admin, /twilio\.com/, "the admin stub keeps its link");
 assert.match(panel, /dynamic\(\s*\(\) => import\("\.\/channels-whatsapp-admin"\)/);
 assert.doesNotMatch(panel, /^import [^;]*channels-whatsapp-admin/m, "no static import of the admin tile");
+
+// Design review (tamaraVP): while WhatsApp can't be used, the Channels TILE (and the open
+// panel's header, which reuses its summary) doesn't advertise it either.
+{
+  const msgs = (l: string) => JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8"));
+  const src = readFileSync(join(new URL("../../", import.meta.url).pathname, "app/[locale]/dashboard/config-form.tsx"), "utf8");
+  assert.match(src, /tagline: WHATSAPP_VOICE_AVAILABLE \? t\("channelsTileTagline"\) : t\("channelsTileTaglinePhoneOnly"\)/);
+  assert.match(src, /: t\("channelsTileSummaryPhoneOnly", \{ pstn: channelCounts\.pstn \}\)/);
+  const fr = msgs("fr").DashboardConfig;
+  assert.equal(fr.channelsTileTaglinePhoneOnly, "Les numéros de téléphone de l'agent");
+  const n = (l: string, pstn: number) => new IntlMessageFormat(msgs(l).DashboardConfig.channelsTileSummaryPhoneOnly, l).format({ pstn }) as string;
+  assert.deepEqual([n("fr", 0), n("fr", 1), n("fr", 2)], ["0 numéro", "1 numéro", "2 numéros"]);
+  for (const l of ["fr", "en", "he"]) {
+    const dc = msgs(l).DashboardConfig;
+    assert.doesNotMatch(dc.channelsTileTaglinePhoneOnly + n(l, 2), /whatsapp/i, `${l}: no WhatsApp while unavailable`);
+  }
+  // …and the WhatsApp wording returns with the flag (the original keys are kept).
+  assert.match(msgs("fr").DashboardConfig.channelsTileTagline, /WhatsApp/);
+}
+
+// Design review: the logs latency labels on a tenant page never say "Worker" (our internal word).
+{
+  const msgs = (l: string) => JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8"));
+  const values = (o: unknown): string[] => (typeof o === "string" ? [o] : o && typeof o === "object" ? Object.values(o).flatMap(values) : []);
+  for (const l of ["fr", "en", "he"]) assert.ok(!values(msgs(l).DashboardLogs.latency).some((v) => /\bWorker\b/.test(v)), `${l}: no "Worker"`);
+  const fr = msgs("fr").DashboardLogs.latency;
+  assert.equal(fr.hop.phoneToWorker, "Téléphone → Tamara");
+  assert.equal(fr.setup.workerToCallServer, "Tamara → réseau téléphonique");
+  assert.equal(fr.setupShort.workerToCallServer, "Connexion");
+  const en = msgs("en").DashboardLogs.latency;
+  assert.deepEqual([en.hop.phoneToWorker, en.setup.workerToCallServer, en.setupShort.workerToCallServer], ["Phone → Tamara", "Tamara → phone network", "Connection"]);
+}
 
 console.log("ALL CHANNELS-PANEL-WHATSAPP TESTS PASSED");

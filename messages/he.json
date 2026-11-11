@@ -891,6 +891,8 @@
     "channelsTile": "ערוצים",
     "channelsTileTagline": "מספרי טלפון ו-WhatsApp של הסוכן",
     "channelsTileSummary": "{pstn, plural, one {# טלפון} other {# טלפונים}} · {wa} WhatsApp",
+    "channelsTileTaglinePhoneOnly": "מספרי הטלפון של הסוכן",
+    "channelsTileSummaryPhoneOnly": "{pstn, plural, one {מספר אחד} other {# מספרים}}",
     "channelsNumbersTitle": "מספרים מקושרים",
     "channelsNumbersSubtitle": "המספרים שדרכם הסוכן מקבל שיחות",
     "channelsLoading": "טוען מספרים…",
@@ -1731,42 +1733,42 @@
         }
       },
       "hop": {
-        "phoneToWorker": "טלפון/Web → Worker",
-        "workerToCallServer": "Worker → שרת השיחות (חיבור)",
-        "workerToWebConfig": "Worker → Web (הגדרות)",
-        "workerToEngine": "Worker → מנוע הקול",
+        "phoneToWorker": "טלפון → תמרה",
+        "workerToCallServer": "תמרה → רשת הטלפון",
+        "workerToWebConfig": "תמרה → Web (הגדרות)",
+        "workerToEngine": "תמרה → מנוע הקול",
         "greeting": "ברכת פתיחה (אתחול E2E)",
         "transcription": "תמלול (STT)",
         "endOfUtterance": "סוף משפט (LLM)",
         "firstAudio": "צליל ראשון (TTS)"
       },
       "setup": {
-        "phoneToWorker": "טלפון/Web → Worker",
-        "workerToCallServer": "Worker → שרת השיחות",
-        "workerToWebConfig": "Worker → Web (הגדרות)",
-        "workerToEngine": "Worker → מנוע הקול"
+        "phoneToWorker": "טלפון → תמרה",
+        "workerToCallServer": "תמרה → רשת הטלפון",
+        "workerToWebConfig": "תמרה → Web (הגדרות)",
+        "workerToEngine": "תמרה → מנוע הקול"
       },
       "setupShort": {
-        "phoneToWorker": "Worker",
+        "phoneToWorker": "תמרה",
         "workerToCallServer": "חיבור",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "מנוע הקול"
       },
       "series": {
         "transcription": {
-          "label": "STT → Worker (תמלול)",
-          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד סיום ה-STT. חזרה מנוע הקול → Worker."
+          "label": "STT → תמרה (תמלול)",
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד סיום ה-STT. חזרה מנוע הקול → תמרה."
         },
         "eou": {
-          "label": "LLM → Worker (סוף משפט)",
-          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד שה-LLM מתחיל לענות. חזרה מנוע הקול → Worker."
+          "label": "LLM → תמרה (סוף משפט)",
+          "hint": "הזמן מרגע שהמשתמש סיים לדבר ועד שה-LLM מתחיל לענות. חזרה מנוע הקול → תמרה."
         },
         "firstAudio": {
-          "label": "Audio → Worker (מקטע ראשון)",
-          "hint": "הזמן מתחילת ה-LLM ועד הצליל הראשון שנשמע. חזרה מנוע הקול → Worker."
+          "label": "Audio → תמרה (מקטע ראשון)",
+          "hint": "הזמן מתחילת ה-LLM ועד הצליל הראשון שנשמע. חזרה מנוע הקול → תמרה."
         },
         "ttft": {
-          "label": "Worker → משתמש (TTFA כולל)",
+          "label": "תמרה → משתמש (TTFA כולל)",
           "hint": "ההשהיה הסופית שהמשתמש מרגיש: המשתמש מסיים לדבר → הסוכן משמיע את הצליל הראשון."
         }
       },

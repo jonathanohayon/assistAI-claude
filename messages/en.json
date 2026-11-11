@@ -891,6 +891,8 @@
     "channelsTile": "Channels",
     "channelsTileTagline": "Agent phone & WhatsApp numbers",
     "channelsTileSummary": "{pstn, plural, one {# phone} other {# phones}} · {wa} WhatsApp",
+    "channelsTileTaglinePhoneOnly": "The agent's phone numbers",
+    "channelsTileSummaryPhoneOnly": "{pstn, plural, one {# number} other {# numbers}}",
     "channelsNumbersTitle": "Linked numbers",
     "channelsNumbersSubtitle": "The numbers your agent receives calls on",
     "channelsLoading": "Loading numbers…",
@@ -1731,42 +1733,42 @@
         }
       },
       "hop": {
-        "phoneToWorker": "Phone/Web → Worker",
-        "workerToCallServer": "Worker → call server (connect)",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → voice engine",
+        "phoneToWorker": "Phone → Tamara",
+        "workerToCallServer": "Tamara → phone network",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → voice engine",
         "greeting": "Greeting (E2E init)",
         "transcription": "Transcription (STT)",
         "endOfUtterance": "End of utterance (LLM)",
         "firstAudio": "First audio (TTS)"
       },
       "setup": {
-        "phoneToWorker": "Phone/Web → Worker",
-        "workerToCallServer": "Worker → call server",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → voice engine"
+        "phoneToWorker": "Phone → Tamara",
+        "workerToCallServer": "Tamara → phone network",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → voice engine"
       },
       "setupShort": {
-        "phoneToWorker": "Worker",
-        "workerToCallServer": "Connect",
+        "phoneToWorker": "Tamara",
+        "workerToCallServer": "Connection",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "Voice engine"
       },
       "series": {
         "transcription": {
-          "label": "STT → Worker (transcription)",
-          "hint": "Time from the caller finishing speaking to STT done. Return leg voice engine → Worker."
+          "label": "STT → Tamara (transcription)",
+          "hint": "Time from the caller finishing speaking to STT done. Return leg voice engine → Tamara."
         },
         "eou": {
-          "label": "LLM → Worker (end of utterance)",
-          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg voice engine → Worker."
+          "label": "LLM → Tamara (end of utterance)",
+          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg voice engine → Tamara."
         },
         "firstAudio": {
-          "label": "Audio → Worker (1st chunk)",
-          "hint": "Time from LLM start to the first audible sound. Return leg voice engine → Worker."
+          "label": "Audio → Tamara (1st chunk)",
+          "hint": "Time from LLM start to the first audible sound. Return leg voice engine → Tamara."
         },
         "ttft": {
-          "label": "Worker → Caller (total TTFA)",
+          "label": "Tamara → Caller (total TTFA)",
           "hint": "Final perceived latency: the caller stops speaking → the agent plays its first sound."
         }
       },

@@ -891,6 +891,8 @@
     "channelsTile": "Canaux",
     "channelsTileTagline": "Numéros téléphone & WhatsApp de l'agent",
     "channelsTileSummary": "{pstn, plural, one {# téléphone} other {# téléphones}} · {wa} WhatsApp",
+    "channelsTileTaglinePhoneOnly": "Les numéros de téléphone de l'agent",
+    "channelsTileSummaryPhoneOnly": "{pstn, plural, one {# numéro} other {# numéros}}",
     "channelsNumbersTitle": "Numéros rattachés",
     "channelsNumbersSubtitle": "Les numéros sur lesquels votre agent reçoit des appels",
     "channelsLoading": "Chargement des numéros…",
@@ -1731,42 +1733,42 @@
         }
       },
       "hop": {
-        "phoneToWorker": "Téléphone/Web → Worker",
-        "workerToCallServer": "Worker → serveur d'appels (connexion)",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → moteur vocal",
+        "phoneToWorker": "Téléphone → Tamara",
+        "workerToCallServer": "Tamara → réseau téléphonique",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → moteur vocal",
         "greeting": "Accueil (init E2E)",
         "transcription": "Transcription (STT)",
         "endOfUtterance": "Fin de phrase (LLM)",
         "firstAudio": "Premier son (TTS)"
       },
       "setup": {
-        "phoneToWorker": "Téléphone/Web → Worker",
-        "workerToCallServer": "Worker → serveur d'appels",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → moteur vocal"
+        "phoneToWorker": "Téléphone → Tamara",
+        "workerToCallServer": "Tamara → réseau téléphonique",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → moteur vocal"
       },
       "setupShort": {
-        "phoneToWorker": "Worker",
+        "phoneToWorker": "Tamara",
         "workerToCallServer": "Connexion",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "Moteur vocal"
       },
       "series": {
         "transcription": {
-          "label": "STT → Worker (transcription)",
-          "hint": "Temps entre la fin de parole de l’utilisateur et la fin du STT. Retour moteur vocal → Worker."
+          "label": "STT → Tamara (transcription)",
+          "hint": "Temps entre la fin de parole de l’utilisateur et la fin du STT. Retour moteur vocal → Tamara."
         },
         "eou": {
-          "label": "LLM → Worker (fin de phrase)",
-          "hint": "Temps entre la fin de parole de l’utilisateur et le début de la réponse du LLM. Retour moteur vocal → Worker."
+          "label": "LLM → Tamara (fin de phrase)",
+          "hint": "Temps entre la fin de parole de l’utilisateur et le début de la réponse du LLM. Retour moteur vocal → Tamara."
         },
         "firstAudio": {
-          "label": "Audio → Worker (1er segment)",
-          "hint": "Temps entre le début du LLM et le 1er son audible. Retour moteur vocal → Worker."
+          "label": "Audio → Tamara (1er segment)",
+          "hint": "Temps entre le début du LLM et le 1er son audible. Retour moteur vocal → Tamara."
         },
         "ttft": {
-          "label": "Worker → Utilisateur (TTFA total)",
+          "label": "Tamara → Utilisateur (TTFA total)",
           "hint": "Latence finale perçue : l’utilisateur finit de parler → l’agent émet son 1er son."
         }
       },
