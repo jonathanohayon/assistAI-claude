@@ -14,8 +14,18 @@
  * total du rendu. ~250 lignes suffisent pour ce niveau de feature.
  */
 
+import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import type { LatencyTopology } from "./latency-topology-admin";
+
+// Admin-only: names suppliers; fetched only when a point carries a topology,
+// which the API sends to admins only.
+const LatencyTopologyAdmin = dynamic(
+  () => import("./latency-topology-admin").then((m) => m.LatencyTopologyAdmin),
+  { ssr: false, loading: () => null },
+);
 
 type Origin = "sip" | "web";
 
@@ -30,8 +40,8 @@ interface LatencyPoint {
     greeting: number | null;
   };
   latencies: {
-    twilioToWorker: number | null;
-    workerToLivekit: number | null;
+    phoneToWorker: number | null;
+    workerToCallServer: number | null;
     workerToWebConfig: number | null;
     workerToEngine: number | null;
     greeting: number | null;
@@ -47,13 +57,7 @@ interface LatencyPoint {
     firstAudio: number[];
   };
   /** Topologie infra — où tourne chaque composant. Snapshot par appel. */
-  topology?: {
-    twilio?: string;
-    worker?: string;
-    web?: string;
-    livekit?: string;
-    engine?: string;
-  };
+  topology?: LatencyTopology;
 }
 
 interface ChartData {
@@ -93,8 +97,8 @@ const COLOR_BY_ORIGIN: Record<Origin, { fill: string; stroke: string }> = {
 
 // Labels resolved at render time via t(`hop.${key}`).
 const HOP_KEYS: ReadonlyArray<keyof LatencyPoint["latencies"]> = [
-  "twilioToWorker",
-  "workerToLivekit",
+  "phoneToWorker",
+  "workerToCallServer",
   "workerToWebConfig",
   "workerToEngine",
   "greeting",
@@ -581,8 +585,8 @@ const SETUP_SERIES: ReadonlyArray<{
   key: keyof LatencyPoint["latencies"];
   color: string;
 }> = [
-  { key: "twilioToWorker", color: "#06b6d4" },
-  { key: "workerToLivekit", color: "#0e7490" },
+  { key: "phoneToWorker", color: "#06b6d4" },
+  { key: "workerToCallServer", color: "#0e7490" },
   { key: "workerToWebConfig", color: "#ec4899" },
   { key: "workerToEngine", color: "#be185d" },
 ];
@@ -999,40 +1003,7 @@ function CallDetailPanel({
         {/* Topologie infra — où tourne chaque composant pour cet appel.
             Aide à expliquer une latence (e.g. worker EU ↔ OpenAI US =
             ~120ms RTT incompressible). */}
-        {point.topology && (
-          <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-            <p className="mb-2 text-[9px] font-semibold uppercase tracking-widest text-[#475569]">
-              {t("topologyHeading")}
-            </p>
-            <dl className="grid grid-cols-1 gap-1 text-[11px]">
-              {(
-                [
-                  ["Twilio", point.topology.twilio, "#ec4899"],
-                  ["Worker", point.topology.worker, "#be185d"],
-                  ["Web", point.topology.web, "#22d3ee"],
-                  ["LiveKit", point.topology.livekit, "#0e7490"],
-                  [t("topologyEngine"), point.topology.engine, "#7c3aed"],
-                ] as const
-              ).map(([label, value, color]) => (
-                <div
-                  key={label}
-                  className="flex items-baseline justify-between gap-2"
-                >
-                  <dt className="flex items-center gap-1.5 text-[#475569]">
-                    <span
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="font-medium">{label}</span>
-                  </dt>
-                  <dd className="truncate font-mono text-[10px] tabular-nums text-[#18181b]">
-                    {value || "—"}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
+        {point.topology && <LatencyTopologyAdmin topology={point.topology} />}
       </div>
     </aside>
   );

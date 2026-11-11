@@ -159,7 +159,7 @@
     },
     "step3": {
       "title": "Hook up your number",
-      "desc": "A dedicated Twilio number, or redirect from your existing line. Keep your number."
+      "desc": "A dedicated number, or redirect from your existing line. Keep your number."
     },
     "step4": {
       "title": "Your clients talk to the AI",
@@ -421,7 +421,7 @@
     },
     "q5": {
       "question": "How do I install Tamara on my line?",
-      "answer": "Two options. Either we provision a dedicated Twilio number for you (included in every plan), or you set up a forward from your existing line — keeping your usual number. Setup takes five minutes from the dashboard, no technician needed."
+      "answer": "Two options. Either we provision a dedicated number for you (included in every plan), or you set up a forward from your existing line — keeping your usual number. Setup takes five minutes from the dashboard, no technician needed."
     },
     "q6": {
       "question": "Is my data secure?",
@@ -639,7 +639,7 @@
     "languageFr": "French",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "we'll assign you a dedicated Twilio number — included in the free trial."
+    "subtitleWhatsapp": "we'll assign you a dedicated number — included in the free trial."
   },
   "Dashboard": {
     "header": "Dashboard",
@@ -768,7 +768,7 @@
     "ownerWhatsappHint": "International format, e.g., +972585001007. Leave blank to disable.",
     "reminderTitle": "Appointment reminder (day before)",
     "reminderHint": "Automatically sends a WhatsApp reminder to the client the day before their appointment (around 6 PM). The number is taken from the appointment booked by the agent.",
-    "whatsappFooter": "The caller also receives a summary if Twilio detects she accepts WhatsApp messages from her call number. Configure TWILIO_WHATSAPP_FROM on Railway to enable sending.",
+    "whatsappFooter": "The caller also receives a summary if she accepts WhatsApp messages on her call number.",
     "voiceTitle": "Voice",
     "voiceSubtitleAdmin": "Technical parameters of the voice engine. Admin-only.",
     "voiceSubtitleUser": "Pick your agent's voice and speech speed.",
@@ -823,7 +823,7 @@
     "wowComingSoon": "Soon",
     "wowPersonalityTitle": "Voice personality",
     "wowNoiseTitle": "Noise reduction",
-    "wowNoiseSubtitle": "Real-time primary-speaker isolation via ai-coustics Quail Voice Focus 2.1 L. Filters background chatter, engine noise, open-plan offices. Crank it up if your clients call from noisy environments.",
+    "wowNoiseSubtitle": "Real-time primary-speaker isolation. Filters background chatter, engine noise, open-plan offices. Crank it up if your clients call from noisy environments.",
     "wowNoiseMin": "Light",
     "wowNoiseMax": "Aggressive",
     "wowReset": "Reset",
@@ -891,6 +891,8 @@
     "channelsTile": "Channels",
     "channelsTileTagline": "Agent phone & WhatsApp numbers",
     "channelsTileSummary": "{pstn, plural, one {# phone} other {# phones}} · {wa} WhatsApp",
+    "channelsTileTaglinePhoneOnly": "The agent's phone numbers",
+    "channelsTileSummaryPhoneOnly": "{pstn, plural, one {# number} other {# numbers}}",
     "channelsNumbersTitle": "Linked numbers",
     "channelsNumbersSubtitle": "The numbers your agent receives calls on",
     "channelsLoading": "Loading numbers…",
@@ -901,8 +903,9 @@
     "channelsEmptyBody": "Once a number is provisioned, it will appear here with its channel.",
     "channelsWhatsappTitle": "WhatsApp Business",
     "channelsWhatsappSubtitle": "Receive and handle WhatsApp messages through the agent",
-    "channelsWhatsappExplainer": "Enabling WhatsApp goes through registering a WhatsApp Sender with Twilio (brand verification by Meta). Start the process from the Twilio docs; the channel will be active once verification completes.",
+    "channelsWhatsappExplainer": "Enabling WhatsApp goes through registering your number as a WhatsApp Business sender (brand verification by Meta). Start the process from the docs; the channel will be active once verification completes.",
     "channelsActivateWhatsapp": "Enable WhatsApp",
+    "channelsWhatsappAvailableBody": "WhatsApp is available for your agent. Contact us to turn it on for your number.",
     "channelsStatusActive": "Active",
     "channelsStatusPending": "Pending verification",
     "businessCentresTitle": "Locations",
@@ -1537,7 +1540,7 @@
     "passwordMismatch": "Passwords don't match.",
     "passwordError": "Error. Please try again.",
     "dangerZone": "Danger zone",
-    "dangerDesc": "Deleting your account is permanent. Your data (config, calls, contacts, appointments via the app) will be erased and your Twilio numbers released. Irreversible action.",
+    "dangerDesc": "Deleting your account is permanent. Your data (config, calls, contacts, appointments via the app) will be erased and your phone numbers released. Irreversible action.",
     "adminCannotDelete": "⚠️ As an admin, you can't self-delete from this menu (risk of locking out the instance). Ask another admin to delete you from the /admin panel.",
     "deleteButton": "Delete my account",
     "confirmRetypeEmailPre": "To confirm, retype your email",
@@ -1695,7 +1698,7 @@
       "chartAria": "Latency per call chart",
       "originSip": "SIP (phone)",
       "originWeb": "Web LiveTest",
-      "legendSip": "SIP (Twilio phone)",
+      "legendSip": "SIP (phone)",
       "callDetails": "Call details",
       "callNotFound": "Call not found — close this panel.",
       "closeDetail": "Close details",
@@ -1730,42 +1733,42 @@
         }
       },
       "hop": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit (connect)",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → voice engine",
+        "phoneToWorker": "Phone → Tamara",
+        "workerToCallServer": "Tamara → phone network",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → voice engine",
         "greeting": "Greeting (E2E init)",
         "transcription": "Transcription (STT)",
         "endOfUtterance": "End of utterance (LLM)",
         "firstAudio": "First audio (TTS)"
       },
       "setup": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit",
-        "workerToWebConfig": "Worker → Web (config)",
-        "workerToEngine": "Worker → voice engine"
+        "phoneToWorker": "Phone → Tamara",
+        "workerToCallServer": "Tamara → phone network",
+        "workerToWebConfig": "Tamara → Web (config)",
+        "workerToEngine": "Tamara → voice engine"
       },
       "setupShort": {
-        "twilioToWorker": "Worker",
-        "workerToLivekit": "LiveKit",
+        "phoneToWorker": "Tamara",
+        "workerToCallServer": "Connection",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "Voice engine"
       },
       "series": {
         "transcription": {
-          "label": "STT → Worker (transcription)",
-          "hint": "Time from the caller finishing speaking to STT done. Return leg voice engine → Worker."
+          "label": "STT → Tamara (transcription)",
+          "hint": "Time from the caller finishing speaking to STT done. Return leg voice engine → Tamara."
         },
         "eou": {
-          "label": "LLM → Worker (end of utterance)",
-          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg voice engine → Worker."
+          "label": "LLM → Tamara (end of utterance)",
+          "hint": "Time from the caller finishing speaking to the LLM starting its reply. Return leg voice engine → Tamara."
         },
         "firstAudio": {
-          "label": "Audio → Worker (1st chunk)",
-          "hint": "Time from LLM start to the first audible sound. Return leg voice engine → Worker."
+          "label": "Audio → Tamara (1st chunk)",
+          "hint": "Time from LLM start to the first audible sound. Return leg voice engine → Tamara."
         },
         "ttft": {
-          "label": "Worker → Caller (total TTFA)",
+          "label": "Tamara → Caller (total TTFA)",
           "hint": "Final perceived latency: the caller stops speaking → the agent plays its first sound."
         }
       },
@@ -1841,7 +1844,7 @@
       "ctaButton": "Create a new account →",
       "footer": "Thanks for trying Tamara.",
       "phoneLineWithPhone": "Your number {phone} has been released.",
-      "phoneLineGeneric": "Your Twilio number has been released.",
+      "phoneLineGeneric": "Your phone number has been released.",
       "signature": "— The Tamara team"
     },
     "welcome": {
@@ -2600,5 +2603,8 @@
     "contractTitle": "Contract expected by voice clients",
     "urlPlaceholder": "<your-url>",
     "replyWithin": "within 2 s"
+  },
+  "AdminNotifs": {
+    "whatsappSenderHint": "Configure TWILIO_WHATSAPP_FROM on Railway to enable sending."
   }
 }
