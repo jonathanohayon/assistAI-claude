@@ -14,6 +14,12 @@ import type { ReactNode } from "react";
  *   <Stagger>                            — container qui orchestre ses enfants
  *     <StaggerItem>…</StaggerItem>
  *   </Stagger>
+ *
+ * Reduced motion: the server HTML always carries the full start state (blur +
+ * offset) because the preference is unknown during SSR. `data-reveal` lets
+ * globals.css pin these elements to their final state under
+ * `prefers-reduced-motion: reduce`, from the first paint, with no hydration
+ * mismatch. Do not remove the attribute.
  */
 
 /** Easing signature Tamara — expo-out doux, déjà utilisé dans le Hero. */
@@ -36,6 +42,7 @@ export function Reveal({
   const reduce = useReducedMotionAfterMount();
   return (
     <motion.div
+      data-reveal=""
       className={className}
       initial={reduce ? { opacity: 0 } : { opacity: 0, y, filter: "blur(6px)" }}
       whileInView={
@@ -105,6 +112,7 @@ export function StaggerItem({
   const reduce = useReducedMotionAfterMount();
   return (
     <motion.div
+      data-reveal=""
       className={className}
       variants={reduce ? staggerItemReduced : staggerItem}
     >
