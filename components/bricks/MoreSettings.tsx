@@ -1,9 +1,11 @@
 "use client";
 
 /**
- * Shared brick primitive #2: the "More settings" disclosure that holds a
- * brick's level-2 fields. Collapsed by default. Native button + region,
- * so keyboard and screen readers get expanded/collapsed for free.
+ * Shared brick primitive #2: THE disclosure of every brick — level 2
+ * ("More settings") and level 3 ("Developer settings", `level={3}`). One
+ * implementation: collapsed on every mount (no remembered state), native
+ * button + region so keyboard and screen readers get expanded/collapsed for
+ * free, 44 px row, chevron, logical (RTL-safe) alignment.
  */
 
 import { useId, useState, type ReactNode } from "react";
@@ -12,11 +14,14 @@ import { useTranslations } from "next-intl";
 export function MoreSettings({
   children,
   title,
+  level = 2,
   defaultOpen = false,
 }: {
   children: ReactNode;
-  /** Defaults to "More settings" in the current language. */
+  /** Defaults to the level's title: "More settings" (2) / "Developer settings" (3). */
   title?: string;
+  /** 2 = More settings, 3 = Developer settings. Only the default title differs. */
+  level?: 2 | 3;
   defaultOpen?: boolean;
 }) {
   const t = useTranslations("Bricks");
@@ -35,7 +40,7 @@ export function MoreSettings({
           onClick={() => setOpen((o) => !o)}
           className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-start text-sm font-semibold text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
-          {title ?? t("moreSettings")}
+          {title ?? (level === 3 ? t("developerSettings") : t("moreSettings"))}
           <svg
             aria-hidden
             viewBox="0 0 24 24"

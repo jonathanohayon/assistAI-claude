@@ -191,13 +191,7 @@ export function VoiceBrick({
 
       {/* ── Level 3 ─────────────────────────────────────────── */}
       {showLevel3({ isAdmin, developerMode: dev.on }) && (
-        <section
-          aria-labelledby="voice-dev-title"
-          className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4"
-        >
-          <h3 id="voice-dev-title" className="text-sm font-semibold text-[#18181b]">
-            {t("developerTitle")}
-          </h3>
+        <MoreSettings level={3}>
           <p className={HINT}>{t("developerHint")}</p>
           <div className="mt-4 grid grid-cols-1 gap-4">
             {OUR_ADVANCED_FIELDS.map((k) => (
@@ -221,7 +215,7 @@ export function VoiceBrick({
               />
             </div>
           )}
-        </section>
+        </MoreSettings>
       )}
     </div>
   );

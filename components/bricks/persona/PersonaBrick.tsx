@@ -184,10 +184,8 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
 
       {/* ── Level 3 ─────────────────────────────────────────── */}
       {showVariables && (
-        <section aria-labelledby="persona-dev-title" className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4">
-          <h3 id="persona-dev-title" className="text-sm font-semibold text-[#18181b]">
-            {t("variablesTitle")}
-          </h3>
+        <MoreSettings level={3}>
+          <h4 className="text-sm font-semibold text-[#18181b]">{t("variablesTitle")}</h4>
           <p className={HINT}>{t("variablesHint")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {variables.map((v) => (
@@ -204,7 +202,7 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
               </button>
             ))}
           </div>
-        </section>
+        </MoreSettings>
       )}
     </div>
   );
