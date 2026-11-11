@@ -148,6 +148,11 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.match(paused("fr"), /^Appels en pause/);
   assert.match(paused("en"), /^Calls paused/);
   assert.match(paused("he"), /^השיחות מושהות/);
+  // …and the console pill says the same (it reads the same MODE_VIEW row).
+  const pill = (l: string) => JSON.parse(read(`messages/${l}.json`)).DashboardCampaigns.live.dispatchPausedPill as string;
+  assert.equal(pill("fr"), "Appels en pause");
+  assert.equal(pill("en"), "Calls paused");
+  assert.equal(pill("he"), "השיחות מושהות");
 }
 
 console.log("ALL CAMPAIGN-START-FEEDBACK TESTS PASSED");

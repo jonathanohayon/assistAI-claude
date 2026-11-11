@@ -1432,7 +1432,7 @@
       },
       "dispatchOff": "השיחות מושהות בפלטפורמה: כרגע לא מתבצעות שיחות.",
       "dispatchDry": "מצב בדיקה: לא מתבצעות שיחות.",
-      "dispatchPausedPill": "מושהה",
+      "dispatchPausedPill": "השיחות מושהות",
       "dispatchDryPill": "מצב בדיקה",
       "actionError": {
         "session": "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.",
