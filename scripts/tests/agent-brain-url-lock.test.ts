@@ -209,4 +209,19 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
   assert.ok(he.includes(messages("he").AgentBrain.configuredByTeam));
 }
 
+// Live bug guard (until the server fix): PUT treats an OMITTED `enabled` as false and switches the
+// customer's agent off. Every save from this section must carry `enabled`, including a secret-only save.
+{
+  const src = read("app/[locale]/dashboard/settings/agent-brain-section.tsx");
+  const saves = src.match(/save\(\{[^}]*\}\)/g) ?? [];
+  assert.ok(saves.length >= 3, "the section's save calls were found");
+  for (const call of saves) assert.match(call, /\benabled\b/, `every save carries enabled: ${call}`);
+  assert.match(src, /save\(\{ enabled: state\.view\.enabled, url: urlDraft, secret: secretDraft \}\)/, "secret-only save keeps the current value");
+  for (const urlEditable of [true, false]) {
+    const st = toBrainState(served(urlEditable, { enabled: true, url: MOCK_URL }));
+    assert.equal(brainPutBody(st, { enabled: true, secret: "x" }).enabled, true);
+    assert.ok("enabled" in brainPutBody(st, { enabled: false }));
+  }
+}
+
 console.log("agent-brain-url-lock: ok");
