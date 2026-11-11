@@ -333,6 +333,36 @@ export interface Cursor {
   period: Period;
   createdAt: string;
   id: string;
+  /** The ?outcome= filter of the first page; absent = unfiltered list. */
+  outcome?: CallOutcome;
+}
+
+export const CALL_OUTCOMES: readonly CallOutcome[] = ["booked", "cancelled", "rescheduled", "transferred", "conversation"];
+
+const isOutcome = (v: string): v is CallOutcome => (CALL_OUTCOMES as readonly string[]).includes(v);
+
+/**
+ * ?outcome= → the filter. null param (absent) = no filter; any value that is
+ * not exactly one CallOutcome (including "") is an error.
+ */
+export function parseOutcome(v: string | null): { outcome: CallOutcome | null } | { error: "invalid_outcome" } {
+  if (v === null) return { outcome: null };
+  return isOutcome(v) ? { outcome: v } : { error: "invalid_outcome" };
+}
+
+/**
+ * The filter applied to a request: a cursor carries its own filter (later
+ * pages need only ?cursor=); an explicit ?outcome= must then be the same
+ * value, and a cursor without a filter cannot be reused with one.
+ */
+export function outcomeForRequest(
+  requested: CallOutcome | null,
+  cursor: Cursor | null,
+): { outcome: CallOutcome | null } | { error: "invalid_cursor" } {
+  if (!cursor) return { outcome: requested };
+  const carried = cursor.outcome ?? null;
+  if (requested !== null && requested !== carried) return { error: "invalid_cursor" };
+  return { outcome: carried };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -340,9 +370,11 @@ const PG_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 
 export const isUuid = (v: string) => UUID_RE.test(v);
 
+// Unfiltered cursor: 4 fields (unchanged format). Filtered: a 5th field, the outcome.
 export function encodeCursor(c: Cursor): string {
-  const body = [c.period.since.toISOString(), c.period.until.toISOString(), c.createdAt, c.id].join("|");
-  return Buffer.from(body, "utf8").toString("base64url");
+  const parts = [c.period.since.toISOString(), c.period.until.toISOString(), c.createdAt, c.id];
+  if (c.outcome) parts.push(c.outcome);
+  return Buffer.from(parts.join("|"), "utf8").toString("base64url");
 }
 
 export function decodeCursor(raw: string): Cursor | null {
@@ -352,9 +384,35 @@ export function decodeCursor(raw: string): Cursor | null {
   } catch {
     return null;
   }
-  if (parts.length !== 4) return null;
-  const [s, u, createdAt, id] = parts;
+  if (parts.length !== 4 && parts.length !== 5) return null;
+  const [s, u, createdAt, id, outcome] = parts;
   const period = parsePeriod(s, u);
   if (!period || !PG_TS_RE.test(createdAt) || !isUuid(id)) return null;
-  return { period, createdAt, id };
+  if (outcome === undefined) return { period, createdAt, id };
+  return isOutcome(outcome) ? { period, createdAt, id, outcome } : null;
+}
+
+/** Keyset order of the list: created_at desc, id desc (Postgres cursor text + lowercase uuid). */
+export function keysetBefore(a: { cursorTs: string; id: string }, b: { createdAt: string; id: string }): boolean {
+  if (a.cursorTs !== b.createdAt) return a.cursorTs < b.createdAt;
+  return a.id.toLowerCase() < b.id.toLowerCase();
+}
+
+/**
+ * Filtered page over the period's listed calls (any order in): keep the
+ * calls whose outcome is `outcome`, sort newest first, start after the
+ * cursor, take limit + 1 to know whether a next page exists.
+ */
+export function filteredPage<T extends { id: string; cursorTs: string }>(
+  calls: T[],
+  outcomeOf: (id: string) => CallOutcome,
+  outcome: CallOutcome,
+  cursor: Pick<Cursor, "createdAt" | "id"> | null,
+  limit: number,
+): { rows: T[]; hasMore: boolean } {
+  const sorted = calls
+    .filter((c) => outcomeOf(c.id) === outcome)
+    .filter((c) => !cursor || keysetBefore(c, cursor))
+    .sort((a, b) => (keysetBefore(a, { createdAt: b.cursorTs, id: b.id }) ? 1 : keysetBefore(b, { createdAt: a.cursorTs, id: a.id }) ? -1 : 0));
+  return { rows: sorted.slice(0, limit), hasMore: sorted.length > limit };
 }
