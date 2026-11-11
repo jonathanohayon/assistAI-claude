@@ -41,6 +41,7 @@ export function AgentEditor({
   sheetIssues,
   outboundUsesCompanySheet,
   savedKey,
+  dirty = false,
   toolsServed,
   tools,
   onToolsChange,
@@ -61,6 +62,8 @@ export function AgentEditor({
   outboundUsesCompanySheet: boolean;
   /** Changes after each save (the level-3 preview reloads). */
   savedKey?: number;
+  /** Unsaved changes: the Live Test (saved agent) says to save first. */
+  dirty?: boolean;
   /** Tools brick: null for a new (unsaved) agent, or while loading. */
   toolsServed: ToolsResponse | null;
   tools: Tools | null;
@@ -182,18 +185,8 @@ export function AgentEditor({
                 isAdmin={isAdmin}
                 asUserId={asUserId ?? null}
                 primaryLanguage={draft.language}
-                testAction={
-                  draft.id
-                    ? {
-                        label: "tryIt",
-                        onClick: () => {
-                          const el = document.getElementById("agent-live-test");
-                          el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                          el?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
-                        },
-                      }
-                    : undefined
-                }
+                // The agent's Live Test is below the editor at every width; a new agent has none yet.
+                liveTestLink={draft.id ? { targetId: "agent-live-test", direction: "down" } : undefined}
               />
             )}
             {active.id === "persona" && (
@@ -260,7 +253,7 @@ export function AgentEditor({
        *  fois l'agent enregistré (le worker lit la config depuis la base). */}
       {draft.id ? (
         <div id="agent-live-test" className="scroll-mt-24 overflow-hidden rounded-[2rem] border border-white/40 bg-white/70 p-4 shadow-[0_4px_24px_-8px_rgba(99,102,241,0.18)] backdrop-blur-xl sm:p-5">
-          <LiveTestPanelLK dirty={false} asUserId={asUserId} agentId={draft.id} />
+          <LiveTestPanelLK dirty={dirty} asUserId={asUserId} agentId={draft.id} />
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-4 text-center text-[12px] text-[#64748b]">

@@ -138,8 +138,12 @@ export function AgentsWorkspace({
     };
   }, [qs, tKnowledge]);
 
-  const set = (patch: Partial<OutboundAgentDraft>) =>
+  // Unsaved changes: the Live Test runs on the SAVED agent, so it says so.
+  const [dirty, setDirty] = useState(false);
+  const set = (patch: Partial<OutboundAgentDraft>) => {
     setDraft((d) => ({ ...d, ...patch }));
+    setDirty(true);
+  };
 
   const toolsUrl = (agentId: string) =>
     `/api/dashboard/tools?${new URLSearchParams({ ...(asUserId ? { asUserId } : {}), agentId })}`;
@@ -153,6 +157,7 @@ export function AgentsWorkspace({
   };
 
   const openNew = () => {
+    setDirty(false);
     setToolsServed(null);
     setTools(null);
     setToolsBase(null);
@@ -168,6 +173,7 @@ export function AgentsWorkspace({
   };
 
   const openEdit = (a: OutboundAgentListItem) => {
+    setDirty(false);
     const servedPersona = (a as OutboundAgentListItem & { personaConfig?: Persona }).personaConfig ?? personaFromOutbound(a);
     setPersona(servedPersona);
     setPersonaBase(servedPersona);
@@ -277,6 +283,7 @@ export function AgentsWorkspace({
       }
       setJustSaved(true);
       setSavedKey((n) => n + 1);
+      setDirty(false);
       setTimeout(() => setJustSaved(false), 1800);
       await loadList();
     } catch {
@@ -396,20 +403,28 @@ export function AgentsWorkspace({
                     if (!personaSaveIssue(next, GREETING_VARIABLES.outbound)) setError(null);
                   }}
                   voice={voice}
-                  onVoiceChange={setVoice}
+                  onVoiceChange={(v) => {
+                    setVoice(v);
+                    setDirty(true);
+                  }}
                   isAdmin={isAdmin}
                   asUserId={asUserId}
                   sheet={sheet}
                   onSheetChange={(next) => {
                     setSheet(next);
                     setIssues([]);
+                    setDirty(true);
                   }}
                   sheetIssues={issues}
                   outboundUsesCompanySheet={usesSheet}
                   savedKey={savedKey}
                   toolsServed={toolsServed}
                   tools={tools}
-                  onToolsChange={setTools}
+                  onToolsChange={(next) => {
+                    setTools(next);
+                    setDirty(true);
+                  }}
+                  dirty={dirty}
                 />
                 {draft.id && (
                   <button
