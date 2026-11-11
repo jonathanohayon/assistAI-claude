@@ -42,3 +42,20 @@ export function parseCallEndBody(raw: unknown): CallEndInput {
     callId: parseCallId(b.callId),
   };
 }
+
+/** Values of the calls row inserted at call end. `toNumber` is stored as
+ *  parsed (trimmed, not otherwise normalised), exactly like `fromNumber`;
+ *  '' when the worker sent none (web LiveTest, older workers). */
+export function callInsertValues(input: CallEndInput, userId: string, callId: string | null) {
+  return {
+    userId,
+    fromNumber: input.fromNumber,
+    toNumber: input.toNumber,
+    transcript: input.transcript,
+    summary: "",
+    durationSeconds: input.durationSeconds,
+    realtimeProvider: input.realtimeProvider,
+    realtimeModel: input.realtimeModel,
+    callId: callId ?? "",
+  };
+}
