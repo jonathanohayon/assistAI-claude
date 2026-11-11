@@ -159,7 +159,7 @@
     },
     "step3": {
       "title": "Rebranchez votre numéro",
-      "desc": "Un numéro Twilio dédié, ou redirection de votre ligne existante. Vous gardez votre numéro."
+      "desc": "Un numéro dédié, ou redirection de votre ligne existante. Vous gardez votre numéro."
     },
     "step4": {
       "title": "Vos clients parlent à l'IA",
@@ -421,7 +421,7 @@
     },
     "q5": {
       "question": "Comment installer Tamara sur ma ligne ?",
-      "answer": "Deux options. Soit on vous attribue un numéro Twilio dédié (inclus dans tous les plans), soit vous configurez une redirection depuis votre ligne existante — vous gardez votre numéro habituel. L'installation prend cinq minutes depuis le dashboard, sans technicien."
+      "answer": "Deux options. Soit on vous attribue un numéro dédié (inclus dans tous les plans), soit vous configurez une redirection depuis votre ligne existante — vous gardez votre numéro habituel. L'installation prend cinq minutes depuis le dashboard, sans technicien."
     },
     "q6": {
       "question": "Mes données sont-elles sécurisées ?",
@@ -639,7 +639,7 @@
     "languageFr": "Français",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "on vous attribue un numéro Twilio dédié — inclus dans l'essai gratuit."
+    "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit."
   },
   "Dashboard": {
     "header": "Dashboard",
@@ -768,7 +768,7 @@
     "ownerWhatsappHint": "Format international, ex: +972585001007. Laissez vide pour désactiver.",
     "reminderTitle": "Rappel de RDV (J-1)",
     "reminderHint": "Envoie automatiquement un rappel WhatsApp au client la veille de son rendez-vous (vers 18h). Le numéro est repris du rendez-vous pris par l'agent.",
-    "whatsappFooter": "La cliente reçoit aussi un récap si Twilio détecte qu'elle accepte les messages WhatsApp depuis son numéro d'appel. Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi.",
+    "whatsappFooter": "La cliente reçoit aussi un récap si elle accepte les messages WhatsApp sur son numéro d'appel.",
     "voiceTitle": "Voix",
     "voiceSubtitleAdmin": "Paramètres techniques du moteur vocal. Visible admin uniquement.",
     "voiceSubtitleUser": "Choisissez la voix de votre agent et sa vitesse de parole.",
@@ -823,7 +823,7 @@
     "wowComingSoon": "Bientôt",
     "wowPersonalityTitle": "Personnalité de la voix",
     "wowNoiseTitle": "Réduction de bruit",
-    "wowNoiseSubtitle": "Isolation du locuteur principal en temps réel via ai-coustics Quail Voice Focus 2.1 L. Filtre les conversations parasites, bruit moteur, plateau ouvert. Augmentez l'intensité si vos clients appellent depuis des environnements bruyants.",
+    "wowNoiseSubtitle": "Isolation du locuteur principal en temps réel. Filtre les conversations parasites, bruit moteur, plateau ouvert. Augmentez l'intensité si vos clients appellent depuis des environnements bruyants.",
     "wowNoiseMin": "Léger",
     "wowNoiseMax": "Agressif",
     "wowReset": "Réinitialiser",
@@ -901,7 +901,7 @@
     "channelsEmptyBody": "Une fois un numéro provisionné, il apparaîtra ici avec son canal.",
     "channelsWhatsappTitle": "WhatsApp Business",
     "channelsWhatsappSubtitle": "Recevez et traitez les messages WhatsApp via l'agent",
-    "channelsWhatsappExplainer": "L'activation WhatsApp passe par l'enregistrement d'un WhatsApp Sender chez Twilio (vérification de votre marque par Meta). Lancez la procédure depuis la documentation Twilio ; le canal sera actif une fois la vérification terminée.",
+    "channelsWhatsappExplainer": "L'activation WhatsApp passe par l'enregistrement de votre numéro comme expéditeur WhatsApp Business (vérification de votre marque par Meta). Lancez la procédure depuis la documentation ; le canal sera actif une fois la vérification terminée.",
     "channelsActivateWhatsapp": "Activer WhatsApp",
     "channelsStatusActive": "Actif",
     "channelsStatusPending": "Vérification en cours",
@@ -1537,7 +1537,7 @@
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "passwordError": "Erreur. Réessayez.",
     "dangerZone": "Zone dangereuse",
-    "dangerDesc": "Supprimer votre compte est définitif. Vos données (config, appels, contacts, RDV via l'app) seront effacées et vos numéros Twilio libérés. Action irréversible.",
+    "dangerDesc": "Supprimer votre compte est définitif. Vos données (config, appels, contacts, RDV via l'app) seront effacées et vos numéros de téléphone libérés. Action irréversible.",
     "adminCannotDelete": "⚠️ En tant qu'admin, vous ne pouvez pas vous self-supprimer depuis ce menu (risque de lock-out de l'instance). Demandez à un autre admin de vous supprimer via le panneau /admin.",
     "deleteButton": "Supprimer mon compte",
     "confirmRetypeEmailPre": "Pour confirmer, retapez votre email",
@@ -1695,7 +1695,7 @@
       "chartAria": "Graphique de latence par appel",
       "originSip": "SIP (tél.)",
       "originWeb": "Web LiveTest",
-      "legendSip": "SIP (téléphone Twilio)",
+      "legendSip": "SIP (téléphone)",
       "callDetails": "Détails de l’appel",
       "callNotFound": "Appel introuvable — fermez ce panneau.",
       "closeDetail": "Fermer le détail",
@@ -1730,8 +1730,8 @@
         }
       },
       "hop": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit (connexion)",
+        "phoneToWorker": "Téléphone/Web → Worker",
+        "workerToCallServer": "Worker → serveur d'appels (connexion)",
         "workerToWebConfig": "Worker → Web (config)",
         "workerToEngine": "Worker → moteur vocal",
         "greeting": "Accueil (init E2E)",
@@ -1740,14 +1740,14 @@
         "firstAudio": "Premier son (TTS)"
       },
       "setup": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit",
+        "phoneToWorker": "Téléphone/Web → Worker",
+        "workerToCallServer": "Worker → serveur d'appels",
         "workerToWebConfig": "Worker → Web (config)",
         "workerToEngine": "Worker → moteur vocal"
       },
       "setupShort": {
-        "twilioToWorker": "Worker",
-        "workerToLivekit": "LiveKit",
+        "phoneToWorker": "Worker",
+        "workerToCallServer": "Connexion",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "Moteur vocal"
       },
@@ -1841,7 +1841,7 @@
       "ctaButton": "Créer un nouveau compte →",
       "footer": "Merci d'avoir essayé Tamara.",
       "phoneLineWithPhone": "Votre numéro {phone} a été libéré.",
-      "phoneLineGeneric": "Votre numéro Twilio a été libéré.",
+      "phoneLineGeneric": "Votre numéro de téléphone a été libéré.",
       "signature": "— L'équipe Tamara"
     },
     "welcome": {
@@ -2528,5 +2528,8 @@
     "probeUnreachable": "Injoignable depuis le navigateur (souvent du CORS). Le serveur appelle votre agent directement et n'est pas concerné.",
     "contractTitle": "Ce que Tamara envoie à votre agent",
     "contractFoot": "Au-delà de 2 secondes, le tour est traité comme un silence : une phrase d'attente est prononcée à votre place."
+  },
+  "AdminNotifs": {
+    "whatsappSenderHint": "Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi."
   }
 }

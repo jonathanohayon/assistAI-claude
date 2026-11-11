@@ -5,7 +5,35 @@
 //     admin response only).
 // Pure, so scripts/tests/tenant-bundle-match.test.ts can probe it.
 
-export const SUPPLIERS = ["openai", "grok", "gemini", "xai", "realtime"];
+// Every company behind the product (package.json dependencies, env var
+// prefixes in lib/): voice engines, telephony, media, hosting, scraping.
+// Deliberately NOT here:
+//   - "google": Google Calendar / Sheets / sign-in is a tenant-facing
+//     integration by design. Google's MODEL names (gemini…) are listed.
+//   - "whatsapp" / "meta": a channel the tenant chooses and sees.
+//   - "claude": a common French first name (Jean-Claude in a tenant's own
+//     contacts or call logs); the company name "anthropic" is listed.
+//   - "resend": an English word in copy ("Resend code").
+//   - "hyp": the payment page the tenant is sent to names it; as a bare
+//     substring it would also hit "hyphen".
+export const SUPPLIERS = [
+  "openai",
+  "grok",
+  "gemini",
+  "xai",
+  "realtime",
+  "twilio",
+  "livekit",
+  "elevenlabs",
+  "anthropic",
+  "deepgram",
+  "cartesia",
+  "railway",
+  "ai-coustics",
+  "aicoustics",
+  "krisp",
+  "jina",
+];
 export const TOOL_NAMES = [
   "list_available_dates",
   "check_availability",
@@ -22,8 +50,17 @@ export const TOOL_NAMES = [
   "get_opening_hours",
   "get_centre_info",
 ];
-// Tool names are whole snake_case words; supplier names match anywhere.
-export const PATTERN = new RegExp(`${SUPPLIERS.join("|")}|\\b(?:${TOOL_NAMES.join("|")})\\b`, "gi");
+// Supplier names that are the start of an ordinary word get a guard:
+// recharts ships "cartesian" in every chart chunk.
+export const SUPPLIER_GUARDS = { cartesia: "(?!n)" };
+const supplierAlternatives = SUPPLIERS.map((s) => s + (SUPPLIER_GUARDS[s] ?? ""));
+// Model ids that name no supplier word on their own (gpt-4o, gpt-5…).
+export const MODEL_IDS = ["gpt-[0-9a-z]"];
+// Tool names and model ids are whole words; supplier names match anywhere.
+export const PATTERN = new RegExp(
+  `${supplierAlternatives.join("|")}|\\b(?:${MODEL_IDS.join("|")})|\\b(?:${TOOL_NAMES.join("|")})\\b`,
+  "gi",
+);
 
 // A match inside a long base64 run (per-request encoded bytes, e.g. a
 // serialized payload) is random letters, not a word: "…/UqxaiMcjn…" flaked

@@ -159,7 +159,7 @@
     },
     "step3": {
       "title": "חברו את המספר",
-      "desc": "מספר Twilio ייעודי, או הפניה מהקו הקיים. אתם שומרים על המספר שלכם."
+      "desc": "מספר ייעודי, או הפניה מהקו הקיים. אתם שומרים על המספר שלכם."
     },
     "step4": {
       "title": "הלקוחות מדברים עם ה-AI",
@@ -421,7 +421,7 @@
     },
     "q5": {
       "question": "איך מתקינים את תמרה על הקו שלי?",
-      "answer": "שתי אפשרויות. או שאנחנו מקצים לך מספר Twilio ייעודי (כלול בכל החבילות), או שאתה מגדיר הפניה מהקו הקיים שלך — ושומר על המספר הרגיל. ההתקנה לוקחת חמש דקות מהדאשבורד, בלי טכנאי."
+      "answer": "שתי אפשרויות. או שאנחנו מקצים לך מספר ייעודי (כלול בכל החבילות), או שאתה מגדיר הפניה מהקו הקיים שלך — ושומר על המספר הרגיל. ההתקנה לוקחת חמש דקות מהדאשבורד, בלי טכנאי."
     },
     "q6": {
       "question": "האם הנתונים שלי בטוחים?",
@@ -639,7 +639,7 @@
     "languageFr": "צרפתית",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "נקצה לך מספר Twilio ייעודי — כלול בניסיון החינם."
+    "subtitleWhatsapp": "נקצה לך מספר ייעודי — כלול בניסיון החינם."
   },
   "Dashboard": {
     "header": "דאשבורד",
@@ -768,7 +768,7 @@
     "ownerWhatsappHint": "פורמט בינלאומי, למשל: +972585001007. השאירי ריק כדי לכבות.",
     "reminderTitle": "תזכורת לתור (יום לפני)",
     "reminderHint": "שולח אוטומטית תזכורת ב-WhatsApp ללקוח יום לפני התור (בסביבות 18:00). המספר נלקח מהתור שנקבע על ידי הסוכן.",
-    "whatsappFooter": "הלקוחה גם מקבלת סיכום אם Twilio מזהה שהיא מקבלת הודעות WhatsApp מהמספר שלה. הגדירי TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה.",
+    "whatsappFooter": "הלקוחה גם מקבלת סיכום אם היא מקבלת הודעות WhatsApp במספר שממנו התקשרה.",
     "voiceTitle": "קול",
     "voiceSubtitleAdmin": "פרמטרים טכניים של מנוע הקול. לאדמין בלבד.",
     "voiceSubtitleUser": "בחרי את הקול של הסוכן ואת מהירות הדיבור.",
@@ -823,7 +823,7 @@
     "wowComingSoon": "בקרוב",
     "wowPersonalityTitle": "אישיות הקול",
     "wowNoiseTitle": "הפחתת רעש",
-    "wowNoiseSubtitle": "בידוד הדובר העיקרי בזמן אמת באמצעות ai-coustics Quail Voice Focus 2.1 L. מסנן שיחות רקע, רעש מנוע, משרד פתוח. העלה את העוצמה אם הלקוחות שלך מתקשרים מסביבות רועשות.",
+    "wowNoiseSubtitle": "בידוד הדובר העיקרי בזמן אמת. מסנן שיחות רקע, רעש מנוע, משרד פתוח. העלה את העוצמה אם הלקוחות שלך מתקשרים מסביבות רועשות.",
     "wowNoiseMin": "קל",
     "wowNoiseMax": "אגרסיבי",
     "wowReset": "איפוס",
@@ -901,7 +901,7 @@
     "channelsEmptyBody": "לאחר הקצאת מספר, הוא יופיע כאן יחד עם הערוץ שלו.",
     "channelsWhatsappTitle": "WhatsApp Business",
     "channelsWhatsappSubtitle": "קבלו וטפלו בהודעות WhatsApp דרך הסוכן",
-    "channelsWhatsappExplainer": "הפעלת WhatsApp מתבצעת באמצעות רישום WhatsApp Sender ב-Twilio (אימות המותג שלכם על ידי Meta). התחילו את התהליך מתיעוד Twilio; הערוץ יופעל לאחר השלמת האימות.",
+    "channelsWhatsappExplainer": "הפעלת WhatsApp מתבצעת באמצעות רישום המספר שלכם כשולח WhatsApp Business (אימות המותג שלכם על ידי Meta). התחילו את התהליך מהתיעוד; הערוץ יופעל לאחר השלמת האימות.",
     "channelsActivateWhatsapp": "הפעלת WhatsApp",
     "channelsStatusActive": "פעיל",
     "channelsStatusPending": "ממתין לאימות",
@@ -1537,7 +1537,7 @@
     "passwordMismatch": "הסיסמאות אינן תואמות.",
     "passwordError": "שגיאה. נסה שוב.",
     "dangerZone": "אזור מסוכן",
-    "dangerDesc": "מחיקת החשבון היא סופית. הנתונים שלך (הגדרות, שיחות, אנשי קשר, פגישות דרך האפליקציה) יימחקו ומספרי ה-Twilio ישוחררו. פעולה בלתי הפיכה.",
+    "dangerDesc": "מחיקת החשבון היא סופית. הנתונים שלך (הגדרות, שיחות, אנשי קשר, פגישות דרך האפליקציה) יימחקו ומספרי הטלפון שלך ישוחררו. פעולה בלתי הפיכה.",
     "adminCannotDelete": "⚠️ כאדמין, אינך יכול למחוק את עצמך מהתפריט הזה (סיכון לנעילה של המערכת). בקשי מאדמין אחר למחוק אותך דרך לוח /admin.",
     "deleteButton": "מחיקת החשבון שלי",
     "confirmRetypeEmailPre": "כדי לאשר, הקלידי שוב את האימייל שלך",
@@ -1695,7 +1695,7 @@
       "chartAria": "גרף השהיה לכל שיחה",
       "originSip": "SIP (טלפון)",
       "originWeb": "Web LiveTest",
-      "legendSip": "SIP (טלפון Twilio)",
+      "legendSip": "SIP (טלפון)",
       "callDetails": "פרטי השיחה",
       "callNotFound": "השיחה לא נמצאה — סגרו את החלונית.",
       "closeDetail": "סגירת הפרטים",
@@ -1730,8 +1730,8 @@
         }
       },
       "hop": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit (חיבור)",
+        "phoneToWorker": "טלפון/Web → Worker",
+        "workerToCallServer": "Worker → שרת השיחות (חיבור)",
         "workerToWebConfig": "Worker → Web (הגדרות)",
         "workerToEngine": "Worker → מנוע הקול",
         "greeting": "ברכת פתיחה (אתחול E2E)",
@@ -1740,14 +1740,14 @@
         "firstAudio": "צליל ראשון (TTS)"
       },
       "setup": {
-        "twilioToWorker": "Twilio/Web → Worker",
-        "workerToLivekit": "Worker → LiveKit",
+        "phoneToWorker": "טלפון/Web → Worker",
+        "workerToCallServer": "Worker → שרת השיחות",
         "workerToWebConfig": "Worker → Web (הגדרות)",
         "workerToEngine": "Worker → מנוע הקול"
       },
       "setupShort": {
-        "twilioToWorker": "Worker",
-        "workerToLivekit": "LiveKit",
+        "phoneToWorker": "Worker",
+        "workerToCallServer": "חיבור",
         "workerToWebConfig": "Web (config)",
         "workerToEngine": "מנוע הקול"
       },
@@ -1841,7 +1841,7 @@
       "ctaButton": "יצירת חשבון חדש →",
       "footer": "תודה שניסית את Tamara.",
       "phoneLineWithPhone": "המספר {phone} שוחרר.",
-      "phoneLineGeneric": "מספר ה-Twilio שלך שוחרר.",
+      "phoneLineGeneric": "מספר הטלפון שלך שוחרר.",
       "signature": "— צוות Tamara"
     },
     "welcome": {
@@ -2528,5 +2528,8 @@
     "probeUnreachable": "לא ניתן להגיע מהדפדפן (לרוב בגלל CORS). השרת פונה לסוכן שלכם ישירות ולא מושפע מכך.",
     "contractTitle": "מה תמרה שולחת לסוכן שלכם",
     "contractFoot": "אחרי 2 שניות התור נחשב לשתיקה: משפט המתנה נאמר במקומכם."
+  },
+  "AdminNotifs": {
+    "whatsappSenderHint": "הגדירו TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה."
   }
 }

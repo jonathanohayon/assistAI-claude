@@ -9,26 +9,15 @@
 // Worker publie les transcripts sur le data channel reliable → bulles
 // utilisateur/agent en temps réel à droite.
 
-import {
-  Room,
-  RoomEvent,
-  Track,
-  type RemoteAudioTrack,
-  type RemoteTrack,
-} from "livekit-client";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+// Types only: the room SDK itself is loaded on demand in startSession.
+import type { TestRoom } from "./live-test/connect-test-room";
 
 type Status = "idle" | "connecting" | "connected" | "ending" | "error";
 
 type TranscriptEntry = { role: "user" | "assistant"; text: string };
-
-type WebTokenResponse = {
-  url: string;
-  token: string;
-  roomName: string;
-  identity: string;
-};
 
 interface Props {
   /** True si le form a des modifs non sauvegardées — affiche un warning
@@ -50,7 +39,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
-  const roomRef = useRef<Room | null>(null);
+  const roomRef = useRef<TestRoom | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
@@ -77,73 +66,17 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
     setTranscript([]);
     setStatus("connecting");
     try {
-      const res = await fetch("/api/livekit/web-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(asUserId ? { asUserId } : {}),
-          ...(agentId ? { agentId } : {}),
-        }),
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(`Token endpoint ${res.status}: ${t || "no body"}`);
-      }
-      const { url, token } = (await res.json()) as WebTokenResponse;
-
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-        audioCaptureDefaults: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true,
+      const { connectTestRoom } = await import("./live-test/connect-test-room");
+      await connectTestRoom({
+        asUserId,
+        agentId,
+        audioEl: () => audioElRef.current,
+        onTranscript: (line) => setTranscript((prev) => [...prev, line]),
+        onDisconnected: () => setStatus("idle"),
+        onCreated: (room) => {
+          roomRef.current = room;
         },
       });
-      roomRef.current = room;
-
-      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-          if (track.kind !== Track.Kind.Audio) return;
-          const audioTrack = track as RemoteAudioTrack;
-          const el = audioElRef.current;
-          if (!el) return;
-          audioTrack.attach(el);
-          void el.play().catch(() => {
-            // autoplay may be silently blocked
-          });
-        },
-      );
-
-      room.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
-        try {
-          const text = new TextDecoder().decode(payload);
-          const msg = JSON.parse(text) as {
-            type?: string;
-            role?: "user" | "assistant";
-            text?: string;
-          };
-          if (
-            msg.type === "transcript" &&
-            (msg.role === "user" || msg.role === "assistant") &&
-            typeof msg.text === "string" &&
-            msg.text.trim()
-          ) {
-            setTranscript((prev) => [
-              ...prev,
-              { role: msg.role!, text: msg.text!.trim() },
-            ]);
-          }
-        } catch {
-          // non-JSON payload
-        }
-      });
-
-      room.on(RoomEvent.Disconnected, () => {
-        setStatus("idle");
-      });
-
-      await room.connect(url, token);
-      await room.localParticipant.setMicrophoneEnabled(true);
       setStatus("connected");
     } catch (e) {
       setError((e as Error).message);
@@ -162,7 +95,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
     const room = roomRef.current;
     if (!room) return;
     const next = !isMuted;
-    void room.localParticipant.setMicrophoneEnabled(!next);
+    void room.setMicrophoneEnabled(!next);
     setIsMuted(next);
   }, [isMuted]);
 

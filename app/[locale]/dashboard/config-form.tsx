@@ -773,7 +773,7 @@ export function ConfigForm({
                   />
                 )}
                 {activeTile === "notifs" && (
-                  <NotifsPanel form={form} update={update} t={t} />
+                  <NotifsPanel form={form} update={update} t={t} isAdmin={isAdmin} />
                 )}
                 {activeTile === "tools" && (
                   <div className="pb-28">

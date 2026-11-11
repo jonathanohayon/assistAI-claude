@@ -8,8 +8,11 @@ import { readFileSync } from "node:fs";
 
 import { ADMIN_ONLY_NAMESPACES } from "../../i18n/public-namespaces";
 import { PLANS } from "../../lib/plans";
+import { PATTERN } from "../tenant-bundle-match.mjs";
 
-const SUPPLIER = /openai|grok|gemini|xai|realtime/i;
+// The bundle guard's own list (suppliers, model ids, tool names), without
+// the global flag so each assertion starts from the beginning.
+const SUPPLIER = new RegExp((PATTERN as RegExp).source, "i");
 const read = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
 
 // 1. Translations: every namespace a tenant can receive (keys AND values).
