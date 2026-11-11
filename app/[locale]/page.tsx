@@ -2,21 +2,8 @@ import { setRequestLocale } from "next-intl/server";
 
 import { DEFAULT_PLAN_PRICING, type PlanPricingMap } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
-import { CTA } from "@/components/marketing/CTA";
-import { RespectReducedMotion } from "@/components/marketing/RespectReducedMotion";
-import { FAQ } from "@/components/marketing/FAQ";
-import { FeatureBento } from "@/components/marketing/FeatureBento";
-import { Footer } from "@/components/marketing/Footer";
-import { Hero } from "@/components/marketing/Hero";
-import { Industries } from "@/components/marketing/Industries";
-import { IntegrationsStrip } from "@/components/marketing/IntegrationsStrip";
-import { Journey } from "@/components/marketing/Journey";
-import { Nav } from "@/components/marketing/Nav";
-import { Pricing } from "@/components/marketing/Pricing";
-import { Proof } from "@/components/marketing/Proof";
-import { SupportFab } from "@/components/marketing/SupportFab";
-import { TrustStrip } from "@/components/marketing/TrustStrip";
-import { TryDemo } from "@/components/marketing/TryDemo";
+import { HomePage } from "@/components/marketing/HomePage";
+import { RECEPTIONIST_HOME } from "@/lib/marketing/home-content";
 
 // ISR : la landing reste cachée/statique mais se régénère toutes les 10 min
 // pour refléter les tarifs édités dans /admin sans redéploiement.
@@ -42,24 +29,7 @@ export default async function Home({
   } catch {
     pricing = DEFAULT_PLAN_PRICING;
   }
-  return (
-    <RespectReducedMotion>
-      <main className="noise-grain relative flex flex-col overflow-x-hidden">
-        <Nav />
-        <Hero />
-        <IntegrationsStrip />
-        <TryDemo />
-        <Journey />
-        <FeatureBento />
-        <Industries />
-        <Proof />
-        <Pricing pricing={pricing} />
-        <TrustStrip />
-        <FAQ />
-        <CTA />
-        <Footer />
-        <SupportFab />
-      </main>
-    </RespectReducedMotion>
-  );
+  // The sections, their order and their content come from the content
+  // object (lib/marketing/home-content.ts).
+  return <HomePage content={RECEPTIONIST_HOME} pricing={pricing} />;
 }
