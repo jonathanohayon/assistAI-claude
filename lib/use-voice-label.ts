@@ -3,26 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
+import { VOICE_ORDER } from "@/lib/voice/public";
 import { VOICE_GENDER } from "@/lib/voice-tuning";
 
-// Customer-facing voice names. Supplier voice ids ("marin", "cedar"…) never
-// reach the UI: each voice gets a stable Tamara number from its position here.
-// Append only — reordering would rename every customer's voice.
-export const VOICE_ORDER = [
-  "marin",
-  "cedar",
-  "coral",
-  "sage",
-  "shimmer",
-  "nova",
-  "ballad",
-  "verse",
-  "alloy",
-  "echo",
-  "ash",
-  "fable",
-  "onyx",
-] as const;
+// Customer-facing voice names: the stable numbers live in lib/voice/public.ts
+// (VOICE_ORDER, append only), shared with the server's voice choice (V8c).
+export { VOICE_ORDER } from "@/lib/voice/public";
 
 /** Returns `(voiceId) => "Voice 1 · female"` in the active locale. */
 export function useVoiceLabel() {

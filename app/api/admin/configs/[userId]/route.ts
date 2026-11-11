@@ -17,6 +17,7 @@ import { parseRealtimeProvider } from "@/lib/realtime-provider";
 import { parseTransferNumber } from "@/lib/transfer-number";
 import { legacyTransferWriteUpdates } from "@/lib/tools/legacy-sync";
 import { withoutToolsStore } from "@/lib/tools/store";
+import { voiceChoiceFor } from "@/lib/voice/choice-load";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 interface Ctx {
@@ -48,6 +49,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       ? {
           ...withoutToolsStore(cfg),
           voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg),
+          voiceChoice: await voiceChoiceFor(cfg, true),
           personaConfig: currentInboundPersona(cfg.personaConfig, cfg),
         }
       : null,
@@ -222,6 +224,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({
     ...withoutToolsStore(updated),
     voiceConfig: currentInboundVoice(updated.voiceConfig, updated),
+    // V8c: recomputed after the write — which of OUR ids is now selected.
+    voiceChoice: await voiceChoiceFor(updated, true),
     personaConfig: currentInboundPersona(updated.personaConfig, updated),
   });
 }

@@ -15,7 +15,7 @@
 import type { RealtimeProvider } from "@/lib/realtime-provider";
 import { catalogueIdFor, catalogueVoice, engineVoices, equivalentVoice } from "@/lib/voice/catalogue";
 import type { Voice } from "@/lib/voice/contract";
-import { VOICE_GENDER, type VoiceGender } from "@/lib/voice/public";
+import { VOICE_GENDER, VOICE_ORDER, type VoiceGender } from "@/lib/voice/public";
 
 /**
  * `next` = the merged voice; `engine` = the account's engine. A voice is
@@ -75,22 +75,38 @@ export function effectiveEngineVoiceName(voice: Voice, engine: RealtimeProvider)
 
 export interface VoiceOption {
   id: string;
+  /** Customer-facing "Voice N": OpenAI = today's VOICE_ORDER position (names unchanged); others = stable per engine. */
+  number: number;
   gender: VoiceGender;
   recommended: boolean;
+  /** Only when the sample IS the voice the calls use (today: OpenAI accounts, recorded voices). */
+  sampleUrl?: string;
 }
 
 export interface TenantVoiceChoice {
   /** Our id of the voice the calls use now (null = not in the catalogue). */
   current: string | null;
-  /** The voices of the account's engine. */
+  /** The usable voices of the account's engine. */
   options: VoiceOption[];
 }
 
-export function tenantVoiceChoice(voice: Voice, engine: RealtimeProvider): TenantVoiceChoice {
+/** Samples are recorded per OpenAI voice name × style × language: url, or null. */
+export type SampleLookup = (voiceName: string) => string | null;
+
+export function voiceNumber(v: { engine: RealtimeProvider; name: string; id: string }): number {
+  if (v.engine === "openai") return (VOICE_ORDER as readonly string[]).indexOf(v.name) + 1;
+  return Number(v.id.slice("voice-".length)) - (v.engine === "gemini" ? 200 : 300);
+}
+
+export function tenantVoiceChoice(voice: Voice, engine: RealtimeProvider, sample: SampleLookup = () => null): TenantVoiceChoice {
   return {
     current: catalogueIdFor(engine, effectiveEngineVoiceName(voice, engine)),
     options: engineVoices(engine)
       .filter((v) => v.available)
-      .map((v) => ({ id: v.id, gender: v.gender, recommended: v.recommendedRank !== null })),
+      .map((v) => {
+        // Samples are rendered on OpenAI: on another engine they'd play a voice the calls don't use.
+        const url = engine === "openai" ? sample(v.name) : null;
+        return { id: v.id, number: voiceNumber(v), gender: v.gender, recommended: v.recommendedRank !== null, ...(url ? { sampleUrl: url } : {}) };
+      }),
   };
 }
