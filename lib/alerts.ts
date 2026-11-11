@@ -8,20 +8,18 @@
 // (23:00–07:00 Israel); "critical" always goes out.
 // Recipients: ADMIN_ALERT_EMAIL (comma-separated) if set, else every
 // role=admin user. Dedup per key in app_settings, so a flood of identical
-// errors sends ONE email per window.
+// errors sends ONE email per window — claimed atomically (lib/alert-ledger.ts).
 
 import { eq } from "drizzle-orm";
 
-import { type AlertLedger, recordAlert, shouldSendAlert } from "@/lib/alert-dedup";
+import { claimAlertSlot } from "@/lib/alert-ledger";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { sendAdminAlertEmail } from "@/lib/email";
 import { logEvent } from "@/lib/logger";
 import { type AlertSeverity, shouldDeliver } from "@/lib/monitoring-rules";
-import { getSetting, setSetting } from "@/lib/settings";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
-const LEDGER_SETTING = "admin_alert_ledger";
 const LEDGER_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function recipients(): Promise<string[]> {
@@ -66,15 +64,22 @@ async function sendAlertWhatsApp(to: string, text: string): Promise<boolean> {
   return r.ok;
 }
 
-async function readLedger(): Promise<AlertLedger> {
-  try {
-    const raw = await getSetting(LEDGER_SETTING);
-    const parsed = raw ? (JSON.parse(raw) as AlertLedger) : {};
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
+/** The side effects of alertAdmins, injectable so tests never send for real. */
+export type AlertDeps = {
+  emailRecipients: () => Promise<string[]>;
+  whatsappRecipients: () => Promise<string[]>;
+  sendEmail: (to: string, msg: { subject: string; body: string }) => Promise<{ ok: boolean }>;
+  sendWhatsApp: (to: string, text: string) => Promise<boolean>;
+  /** Clock override for tests; default Date.now. */
+  now?: () => number;
+};
+
+const defaultDeps: AlertDeps = {
+  emailRecipients: recipients,
+  whatsappRecipients,
+  sendEmail: sendAdminAlertEmail,
+  sendWhatsApp: sendAlertWhatsApp,
+};
 
 /**
  * Sends one alert for `key` unless one went out within `dedupMs`.
@@ -88,30 +93,25 @@ export async function alertAdmins(args: {
   dedupMs: number;
   /** Default "critical" (always sent). "warning" waits outside quiet hours. */
   severity?: AlertSeverity;
-}): Promise<boolean> {
+}, deps: AlertDeps = defaultDeps): Promise<boolean> {
   try {
-    const now = Date.now();
+    const now = deps.now ? deps.now() : Date.now();
     // Not recorded during quiet hours: a PERIODIC check (cron) re-detects and
     // sends it after 07:00; a one-off event warning raised at night is dropped.
     if (!shouldDeliver(args.severity ?? "critical", new Date(now))) return false;
-    const ledger = await readLedger();
-    if (!shouldSendAlert(ledger, args.key, now, args.dedupMs)) return false;
-    // Record BEFORE sending: two concurrent triggers then send at most twice,
-    // never thousands of times.
-    await setSetting(
-      LEDGER_SETTING,
-      JSON.stringify(recordAlert(ledger, args.key, now, LEDGER_KEEP_MS)),
-    );
+    // Atomic check-and-record, BEFORE sending (lib/alert-ledger.ts): of any
+    // number of concurrent triggers for one key, exactly one gets the slot.
+    if (!(await claimAlertSlot(args.key, now, args.dedupMs, LEDGER_KEEP_MS))) return false;
 
-    const to = await recipients();
+    const to = await deps.emailRecipients();
     const results = await Promise.all(
       to.map((addr) =>
-        sendAdminAlertEmail(addr, { subject: args.subject, body: args.body }),
+        deps.sendEmail(addr, { subject: args.subject, body: args.body }),
       ),
     );
-    const waTo = await whatsappRecipients();
+    const waTo = await deps.whatsappRecipients();
     const waText = `⚠️ ${args.subject}\n\n${args.body}`;
-    const waResults = await Promise.all(waTo.map((n) => sendAlertWhatsApp(n, waText).catch(() => false)));
+    const waResults = await Promise.all(waTo.map((n) => deps.sendWhatsApp(n, waText).catch(() => false)));
     await logEvent({
       source: "web",
       event: "admin_alert_sent",
