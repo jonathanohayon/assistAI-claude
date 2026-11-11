@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Section hero du /dashboard : numéro principal du tenant (or a status line
- * when there is none; the CTA is in the setup checklist), stats du jour/mois, et card statut cyan "live" avec
+ * Section hero du /dashboard : numéro principal du tenant (or "no number
+ * yet" with a link to the checklist's onboarding step), stats du jour/mois, et card statut cyan "live" avec
  * waveform animée + voix/langue/plan courants.
  *
  * Rendu en haut de ConfigForm (config-form.tsx) — span 2 colonnes en xl+.
@@ -15,6 +15,7 @@ import type { DashboardStats } from "./types";
 import { splitDuration } from "./stat-format";
 import { formatPhone } from "@/lib/format-phone";
 import { useVoiceLabel } from "@/lib/use-voice-label";
+import { Link } from "@/i18n/navigation";
 
 export function HeroSection({
   primaryPhone,
@@ -34,6 +35,7 @@ export function HeroSection({
   currentLangLabel: string;
 }) {
   const t = useTranslations("DashboardConfig");
+  const tSetup = useTranslations("DashboardSetup");
   const voiceLabel = useVoiceLabel();
   const locale = useLocale();
   // `rdvSince` only exists once stats come from book_success events (and
@@ -86,9 +88,20 @@ export function HeroSection({
             {formatPhone(primaryPhone)}
           </p>
         ) : (
-          // No number yet: status text only. The single "get a number" call
-          // to action lives in the setup checklist above (DashboardSetup.numberCta).
-          <p className="mt-4 text-base text-[#475569]">{t("heroNoPhone")}</p>
+          // No number yet. Provisioning is a single synchronous request (it
+          // either inserts the phone_numbers row or rolls back), so there is
+          // no "pending" state to show: no row always means "no number yet".
+          // The link reuses the checklist's wording and target, so there is
+          // still one "get a number" call to action.
+          <p className="mt-4 text-base text-[#475569]">
+            {t("heroNoNumber")} ·{" "}
+            <Link
+              href="/onboarding"
+              className="font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {tSetup("numberCta")}
+            </Link>
+          </p>
         )}
 
         {stats && (

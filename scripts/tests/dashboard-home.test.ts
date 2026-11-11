@@ -54,20 +54,62 @@ const renderHome = (locale: string, stats: DashboardStats) =>
     ),
   );
 
-const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
 const estimated: DashboardStats = { callsToday: 0, conversion: 0, avgSeconds: 245, rdv: 0, minutesThisMonth: 0 };
 const measured: DashboardStats = { ...estimated, minutesThisMonth: 12, rdvSince: null };
 
-// 1. Exactly one "get a number" call to action: the setup checklist's.
+// 1. One "get a number" call to action: one wording (the checklist's) and one
+// target (/onboarding), whether it is clicked from the checklist or the hero.
+const heroOnly = (locale: string) =>
+  renderToStaticMarkup(
+    createElement(
+      Intl,
+      { locale, messages: messagesFor(locale), timeZone: "UTC" },
+      createElement(HeroSection, {
+        primaryPhone: null,
+        lastUpdatedLabel: "",
+        planLabel: "Pro",
+        voice: "shimmer",
+        currentLangLabel: "—",
+      }),
+    ),
+  );
+// Links whose own text (the label before any icon) is `label`.
+const ctaLinks = (html: string, label: string) =>
+  [...html.matchAll(/<a\b[^>]*href="([^"]*)"[^>]*>([^<]*)(?:<(?!\/a>)[\s\S]*?)?<\/a>/g)].filter(
+    (a) => a[2] === label,
+  );
 for (const locale of ["fr", "en", "he"]) {
   const m = messagesFor(locale);
   const html = renderHome(locale, estimated);
-  assert.equal(count(html, `>${m.DashboardSetup.numberCta}<`), 1, `${locale}: one get-a-number CTA`);
-  assert.equal(m.DashboardConfig.heroGetNumber, undefined, `${locale}: hero CTA key removed`);
-  assert.ok(html.includes(m.DashboardConfig.heroNoPhone), `${locale}: hero still says there is no number`);
+  const links = ctaLinks(html, m.DashboardSetup.numberCta);
+  assert.equal(links.length, 2, `${locale}: checklist step + hero link`);
+  const targets = new Set(links.map((a) => a[1]));
+  assert.equal(targets.size, 1, `${locale}: both links share one target`);
+  assert.match([...targets][0], /\/onboarding$/, `${locale}: target is onboarding`);
+  assert.equal(m.DashboardConfig.heroGetNumber, undefined, `${locale}: no second CTA wording`);
 }
 
-// 2. Hebrew stats: number first, then the unit (no "min" concatenated).
+// 2. No number: the hero says "no number yet", never "being provisioned".
+// Provisioning is synchronous (phone_numbers row or rollback), so a tenant
+// without a row has never got one and there is no pending state to show.
+{
+  const expected: Record<string, string> = {
+    fr: "Pas encore de numéro",
+    en: "No number yet",
+    he: "עדיין אין מספר",
+  };
+  for (const locale of ["fr", "en", "he"]) {
+    const m = messagesFor(locale);
+    assert.equal(m.DashboardConfig.heroNoNumber, expected[locale], `${locale}: no-number wording`);
+    assert.equal(m.DashboardConfig.heroNoPhone, undefined, `${locale}: provisioning key removed`);
+    const hero = heroOnly(locale);
+    assert.ok(hero.includes(`${expected[locale]} ·`), `${locale}: hero says there is no number yet`);
+    assert.equal(ctaLinks(hero, m.DashboardSetup.numberCta).length, 1, `${locale}: hero links to the step`);
+    assert.doesNotMatch(hero, /provisionnement|provisioned|בהקצאה/, `${locale}: no provisioning wording`);
+  }
+}
+
+// 3. Hebrew stats: number first, then the unit (no "min" concatenated).
 {
   const he = renderHome("he", measured);
   assert.ok(he.includes(">12 דק׳<"), "he: minutes = number then unit");
@@ -89,7 +131,7 @@ for (const locale of ["fr", "en", "he"]) {
   assert.doesNotMatch(heroSrc, /\} min`/, "no string-concatenated unit");
 }
 
-// 3. The tile reorder hint is gone (key and usage); drag and drop stays.
+// 4. The tile reorder hint is gone (key and usage); drag and drop stays.
 {
   for (const locale of ["fr", "en", "he"]) {
     assert.equal(messagesFor(locale).DashboardConfig.wowTileReorderHint, undefined, `${locale}: reorder hint key removed`);

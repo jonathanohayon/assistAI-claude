@@ -789,7 +789,7 @@
     "saveButton": "Save",
     "heroEyebrow": "Your assistant",
     "heroLive": "Online 24/7",
-    "heroNoPhone": "Number being provisioned",
+    "heroNoNumber": "No number yet",
     "heroVoiceLabel": "Voice",
     "heroLanguageLabel": "Language",
     "speedSlow": "Slow",
