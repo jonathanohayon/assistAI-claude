@@ -2665,5 +2665,38 @@
     "noTranscript": "Pas de conversation enregistrée pour cet appel.",
     "moreDetails": "Plus de détails",
     "calledNumber": "Numéro appelé"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "Ce que l'appel doit obtenir.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualifier un prospect",
+        "what": "Annonce la raison de l'appel, puis pose vos questions de qualification."
+      },
+      "announce_offer": {
+        "name": "Annoncer une offre",
+        "what": "Présente votre offre et mène la conversation vers la prochaine étape."
+      },
+      "other": {
+        "name": "Autre",
+        "what": "Votre propre objectif, décrit ci-dessous."
+      }
+    },
+    "proofLabel": "Réussite (estimée) :",
+    "proof": {
+      "lead_sheet_complete": "la fiche du prospect est remplie, champs obligatoires compris.",
+      "booking_created": "un rendez-vous est réservé.",
+      "transfer_or_callback": "l'appel est passé à une personne, ou la personne demande à être rappelée.",
+      "booking_or_transfer": "un rendez-vous est réservé, ou l'appel est passé à une personne.",
+      "estimated": "jugée d'après la conversation."
+    },
+    "coldLabel": "Prospection à froid",
+    "coldHint": "La personne ne vous connaît pas encore : seule l'ouverture de l'appel change.",
+    "needsOff": "à activer dans « {tools} ».",
+    "defaultLabel": "Mission par défaut des nouvelles campagnes",
+    "defaultNone": "Choisir…",
+    "defaultColdOption": "Prospection à froid",
+    "saveRefused": "La mission n'a pas été enregistrée. Réessayez."
   }
 }

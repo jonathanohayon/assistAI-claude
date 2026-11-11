@@ -29,6 +29,7 @@ import type { CompanySheet } from "@/lib/knowledge/contract";
 import { refusedCapabilities, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
 // The screen holds what GET sends: Tools without the client agent secret.
 import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
+import { missionFromServed, missionRefused, missionSaveBody, type ScreenMission } from "@/components/bricks/mission/mission-ui";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
@@ -52,6 +53,7 @@ export function AgentsWorkspace({
   const t = useTranslations("DashboardCampaigns");
   const tPersona = useTranslations("PersonaBrick");
   const tKnowledge = useTranslations("KnowledgeBrick");
+  const tMission = useTranslations("MissionBrick");
   const locale = useLocale();
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -59,6 +61,11 @@ export function AgentsWorkspace({
   const [list, setList] = useState<OutboundAgentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // M2b: the agent's default mission for new campaigns, as its GET returns
+  // it (the list leaves it out). `missionBase` = last loaded/saved: the save
+  // sends `mission` only when the user picked a different one.
+  const [mission, setMission] = useState<ScreenMission | null>(null);
+  const [missionBase, setMissionBase] = useState<ScreenMission | null>(null);
 
   // Persona brick state (saved through agentName/language/greeting until P3).
   const [persona, setPersona] = useState<Persona>(() => personaFromOutbound(null));
@@ -160,8 +167,19 @@ export function AgentsWorkspace({
     setToolsRefused(null);
   };
 
+  const loadMission = async (agentId: string) => {
+    const d = await fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ agent?: { mission?: unknown } }>) : null))
+      .catch(() => null);
+    const m = missionFromServed(d?.agent?.mission);
+    setMission(m);
+    setMissionBase(m);
+  };
+
   const openNew = () => {
     setDirty(false);
+    setMission(null);
+    setMissionBase(null);
     setToolsServed(null);
     setTools(null);
     setToolsBase(null);
@@ -205,6 +223,9 @@ export function AgentsWorkspace({
     setTools(null);
     setToolsBase(null);
     void loadTools(a.id);
+    setMission(null);
+    setMissionBase(null);
+    void loadMission(a.id);
     setView("editor");
   };
 
@@ -239,26 +260,63 @@ export function AgentsWorkspace({
           setSheetBase(sdata.companySheet);
         }
       }
-      // 2. The agent.
+      // 2. The agent. `mission` is sent only when the user picked another
+      //    default (missionSaveBody): any other save leaves it untouched,
+      //    even a kind the control doesn't offer. The create route doesn't
+      //    read it, so a new agent gets it in a PATCH right after.
       const editing = !!draft.id;
+      const missionBody = missionSaveBody(missionBase, mission);
       const res = await fetch(
         `/api/dashboard/outbound-agents${editing ? `/${draft.id}` : ""}${qs}`,
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
-            withPersonaConfig(
-              withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
-              LEGACY_OUTBOUND_PERSONA_FIELDS,
-              personaBase ? personaPatch(personaBase, persona) : persona,
-            ),
+            {
+              ...withPersonaConfig(
+                withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
+                LEGACY_OUTBOUND_PERSONA_FIELDS,
+                personaBase ? personaPatch(personaBase, persona) : persona,
+              ),
+              ...(editing ? missionBody : {}),
+            },
           ),
         },
       );
-      if (!res.ok) throw new Error("save");
-      const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
+      if (!res.ok) {
+        // A refused mission: one line in our words, never the reasons.
+        if (missionRefused(res.status, await res.json().catch(() => null))) {
+          setError(tMission("saveRefused"));
+          return;
+        }
+        throw new Error("save");
+      }
+      const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice; mission?: unknown } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
       const agentId = data.agent?.id ?? draft.id;
+      // The stored mission, re-read from the PATCH answer (#282).
+      let servedMission: unknown = data.agent?.mission;
+      let missionSaved = editing;
+      if (!editing && agentId && missionBody.mission !== undefined) {
+        const mres = await fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(missionBody),
+        });
+        const mdata = (await mres.json().catch(() => null)) as { agent?: { mission?: unknown } } | null;
+        if (!mres.ok) {
+          setError(missionRefused(mres.status, mdata) ? tMission("saveRefused") : t("createAgentError"));
+        } else {
+          servedMission = mdata?.agent?.mission;
+          missionSaved = true;
+        }
+      }
+      // A refused pick stays on screen (unsaved) next to its error line.
+      if (missionSaved) {
+        const m = missionFromServed(servedMission);
+        setMission(m);
+        setMissionBase(m);
+      }
       // The agent's switches, once it exists.
       if (agentId && tools && toolsBase) {
         const tchanges = toolsPatch(toolsBase, tools);
@@ -431,6 +489,11 @@ export function AgentsWorkspace({
                   sheetIssues={issues}
                   outboundUsesCompanySheet={usesSheet}
                   savedKey={savedKey}
+                  mission={mission}
+                  onMissionChange={(next) => {
+                    setMission(next);
+                    setDirty(true);
+                  }}
                   toolsServed={toolsServed}
                   tools={tools}
                   onToolsChange={(next) => {

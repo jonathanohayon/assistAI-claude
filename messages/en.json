@@ -2665,5 +2665,38 @@
     "noTranscript": "No conversation was saved for this call.",
     "moreDetails": "More details",
     "calledNumber": "Number called"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "What the call should achieve.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualify a lead",
+        "what": "States the reason for the call, then asks your qualifying questions."
+      },
+      "announce_offer": {
+        "name": "Announce an offer",
+        "what": "Presents your offer and steers the conversation towards the next step."
+      },
+      "other": {
+        "name": "Other",
+        "what": "Your own goal, described below."
+      }
+    },
+    "proofLabel": "Success (estimated):",
+    "proof": {
+      "lead_sheet_complete": "the lead sheet is filled in, required fields included.",
+      "booking_created": "an appointment is booked.",
+      "transfer_or_callback": "the call is passed to a person, or they ask to be called back.",
+      "booking_or_transfer": "an appointment is booked, or the call is passed to a person.",
+      "estimated": "judged from the conversation."
+    },
+    "coldLabel": "Cold prospecting",
+    "coldHint": "They don't know you yet: only the opening of the call changes.",
+    "needsOff": "turn it on in “{tools}”.",
+    "defaultLabel": "Default mission for new campaigns",
+    "defaultNone": "Choose…",
+    "defaultColdOption": "Cold prospecting",
+    "saveRefused": "The mission wasn't saved. Try again."
   }
 }

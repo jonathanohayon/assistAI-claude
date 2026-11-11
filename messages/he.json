@@ -2665,5 +2665,38 @@
     "noTranscript": "לא נשמר תמליל לשיחה הזו.",
     "moreDetails": "פרטים נוספים",
     "calledNumber": "המספר שחויג"
+  },
+  "MissionBrick": {
+    "cardsLabel": "משימה",
+    "cardsHint": "מה השיחה צריכה להשיג.",
+    "kind": {
+      "qualify_lead": {
+        "name": "סינון ליד",
+        "what": "מציגים את סיבת השיחה, ואז שואלים את שאלות הסינון שלכם."
+      },
+      "announce_offer": {
+        "name": "הצגת הצעה",
+        "what": "מציגים את ההצעה שלכם ומובילים את השיחה לשלב הבא."
+      },
+      "other": {
+        "name": "אחר",
+        "what": "מטרה משלכם, שמתוארת בהמשך."
+      }
+    },
+    "proofLabel": "הצלחה (הערכה):",
+    "proof": {
+      "lead_sheet_complete": "כרטיס הליד מולא, כולל שדות החובה.",
+      "booking_created": "נקבעה פגישה.",
+      "transfer_or_callback": "השיחה הועברה לאדם, או שהתבקשה שיחה חוזרת.",
+      "booking_or_transfer": "נקבעה פגישה, או שהשיחה הועברה לאדם.",
+      "estimated": "לפי מהלך השיחה."
+    },
+    "coldLabel": "פנייה קרה",
+    "coldHint": "האדם עדיין לא מכיר אתכם: רק פתיחת השיחה משתנה.",
+    "needsOff": "אפשר להפעיל במסך „{tools}”.",
+    "defaultLabel": "משימת ברירת מחדל לקמפיינים חדשים",
+    "defaultNone": "בחרו…",
+    "defaultColdOption": "פנייה קרה",
+    "saveRefused": "המשימה לא נשמרה. נסו שוב."
   }
 }
