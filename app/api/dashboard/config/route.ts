@@ -158,7 +158,7 @@ export async function PUT(req: NextRequest) {
     const cleaned = body.ownerWhatsapp.replace(/[\s()-]/g, "");
     if (cleaned && !/^\+?\d{6,15}$/.test(cleaned)) {
       return NextResponse.json(
-        { error: "WhatsApp invalide (format E.164 attendu, ex: +972585001007)" },
+        { error: "WhatsApp invalide (format E.164 attendu, ex: +972500000000)" },
         { status: 400 },
       );
     }
