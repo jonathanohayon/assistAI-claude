@@ -5,6 +5,9 @@ import { engineSamplePlan } from "@/lib/voice/engine-samples";
 import { samplePlan, type SampleKey } from "@/lib/voice/samples";
 
 export type SampleRenderEngine = "openai" | "gemini" | "xai";
+
+/** Environment variables as read (process.env, or a plain record in tests). */
+export type EnvVars = Record<string, string | undefined>;
 export const SAMPLE_RENDER_ENGINES: readonly SampleRenderEngine[] = ["openai", "gemini", "xai"];
 
 /**
@@ -25,7 +28,7 @@ export interface EngineSampleStatus {
   total: number;
 }
 
-export function sampleKeyStatus(engine: SampleRenderEngine, env: NodeJS.ProcessEnv = process.env): { keySet: boolean; env: string } {
+export function sampleKeyStatus(engine: SampleRenderEngine, env: EnvVars = process.env): { keySet: boolean; env: string } {
   const names = KEY_ENV[engine];
   const set = names.find((n) => (env[n] ?? "").trim().length > 0);
   return { keySet: Boolean(set), env: set ?? names[0] };
@@ -37,7 +40,7 @@ export function enginePlan(engine: SampleRenderEngine): SampleKey[] {
 
 export function sampleEngineStatus(
   available: ReadonlyArray<Pick<SampleKey, "voiceId" | "style" | "language">>,
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvVars = process.env,
 ): Record<SampleRenderEngine, EngineSampleStatus> {
   const have = new Set(available.map((k) => `${k.voiceId}/${k.style}/${k.language}`));
   const out = {} as Record<SampleRenderEngine, EngineSampleStatus>;

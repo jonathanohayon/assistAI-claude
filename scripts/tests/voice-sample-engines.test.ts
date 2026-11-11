@@ -6,13 +6,13 @@ import assert from "node:assert/strict";
 import { sampleEngineStatus, sampleKeyStatus } from "../../lib/voice/sample-engines";
 
 const SECRET = "sk-SUPER-SECRET-value-123";
-const env = { OPENAI_API_KEY: SECRET, GEMINI_API_KEY: `${SECRET}-g`, XAI_API_KEY: "  " } as unknown as NodeJS.ProcessEnv;
+const env = { OPENAI_API_KEY: SECRET, GEMINI_API_KEY: `${SECRET}-g`, XAI_API_KEY: "  " };
 
 // Which variable the render path actually reads (first one set wins).
 assert.deepEqual(sampleKeyStatus("openai", env), { keySet: true, env: "OPENAI_API_KEY" });
 assert.deepEqual(sampleKeyStatus("gemini", env), { keySet: true, env: "GEMINI_API_KEY" }, "GOOGLE_API_KEY unset → the fallback in use");
-assert.deepEqual(sampleKeyStatus("gemini", { GOOGLE_API_KEY: "x" } as unknown as NodeJS.ProcessEnv), { keySet: true, env: "GOOGLE_API_KEY" });
-assert.deepEqual(sampleKeyStatus("gemini", {} as unknown as NodeJS.ProcessEnv), { keySet: false, env: "GOOGLE_API_KEY" }, "missing → the one to set");
+assert.deepEqual(sampleKeyStatus("gemini", { GOOGLE_API_KEY: "x" }), { keySet: true, env: "GOOGLE_API_KEY" });
+assert.deepEqual(sampleKeyStatus("gemini", {}), { keySet: false, env: "GOOGLE_API_KEY" }, "missing → the one to set");
 assert.deepEqual(sampleKeyStatus("xai", env), { keySet: false, env: "XAI_API_KEY" }, "blank counts as missing");
 
 // Ready counts.
