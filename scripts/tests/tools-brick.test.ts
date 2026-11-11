@@ -55,9 +55,13 @@ const S = (over: Partial<CapabilityState> & { met?: boolean; missing?: Capabilit
     assert.equal(v.status === "off", !s.requested, v.key);
   }
   const out = capabilityList(effectiveCapabilities({ recipe: "outbound", tools: OUTBOUND_TOOLS }, { transferNumber: "+000", googleConnected: true }, DEFAULT_MATRIX.premium));
-  assert.ok(out.switches.every((v) => v.status === "off"), "outbound: everything off until T4");
-  // …and each says why, even with its switch off.
+  assert.ok(out.switches.every((v) => v.status === "off"), "outbound: everything off while OUTBOUND_TOOLS is off");
   assert.ok(out.switches.every((v) => v.missing === "not_available_outbound"));
+  // T4b: the outbound screen never lists a capability the call can't use.
+  const outCaps = effectiveCapabilities({ recipe: "outbound", tools: OUTBOUND_TOOLS }, { transferNumber: "+000", googleConnected: true }, DEFAULT_MATRIX.premium);
+  assert.deepEqual(capabilityList(outCaps, "outbound"), { switches: [], notInPlan: [] });
+  const outOn = effectiveCapabilities({ recipe: "outbound", tools: OUTBOUND_TOOLS }, { transferNumber: "+000", googleConnected: true, outboundToolsEnabled: true }, DEFAULT_MATRIX.premium);
+  assert.deepEqual(capabilityList(outOn, "outbound").switches.map((v) => v.key), ["booking", "transfer"]);
 }
 
 // 4. Save patch: only what changed, key by key

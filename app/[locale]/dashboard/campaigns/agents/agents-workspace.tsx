@@ -26,8 +26,8 @@ import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import { sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
-import { toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import type { Tools } from "@/lib/tools/contract";
+import { refusedCapabilities, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
@@ -85,6 +85,8 @@ export function AgentsWorkspace({
   const [toolsServed, setToolsServed] = useState<ToolsResponse | null>(null);
   const [tools, setTools] = useState<Tools | null>(null);
   const [toolsBase, setToolsBase] = useState<Tools | null>(null);
+  // A refused tools save (403 outbound_tools_disabled): shown in words next to the switches.
+  const [toolsRefused, setToolsRefused] = useState<CapabilityKey[] | null>(null);
 
   const loadList = useCallback(async () => {
     try {
@@ -154,6 +156,7 @@ export function AgentsWorkspace({
     setToolsServed(d);
     setTools(d?.tools ?? null);
     setToolsBase(d?.tools ?? null);
+    setToolsRefused(null);
   };
 
   const openNew = () => {
@@ -265,10 +268,19 @@ export function AgentsWorkspace({
             body: JSON.stringify({ tools: tchanges }),
           });
           const tdata = (await tres.json().catch(() => null)) as ToolsResponse | null;
-          if (!tres.ok || !tdata?.tools) throw new Error("tools");
-          setToolsServed(tdata);
-          setTools(tdata.tools);
-          setToolsBase(tdata.tools);
+          const refused = refusedCapabilities(tres.status, tdata);
+          if (refused) {
+            // The server kept the saved switches: show those, and say why in
+            // words next to them. The rest of the agent was saved.
+            setTools(toolsBase);
+            setToolsRefused(refused);
+          } else {
+            if (!tres.ok || !tdata?.tools) throw new Error("tools");
+            setToolsServed(tdata);
+            setTools(tdata.tools);
+            setToolsBase(tdata.tools);
+            setToolsRefused(null);
+          }
         }
       } else if (agentId && !editing) {
         void loadTools(agentId);
@@ -422,8 +434,10 @@ export function AgentsWorkspace({
                   tools={tools}
                   onToolsChange={(next) => {
                     setTools(next);
+                    setToolsRefused(null);
                     setDirty(true);
                   }}
+                  toolsRefused={toolsRefused}
                   dirty={dirty}
                 />
                 {draft.id && (

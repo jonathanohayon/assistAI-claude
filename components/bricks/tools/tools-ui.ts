@@ -12,8 +12,12 @@ import {
   type CapabilityState,
   type EffectiveCapabilities,
   type MissingPrerequisite,
+  OUTBOUND_CAPABILITIES,
   type Tools,
 } from "@/lib/tools/contract";
+
+/** Which screen the brick is on: the receptionist or an outbound agent. */
+export type ToolsKind = "inbound" | "outbound";
 
 /** GET/PUT /api/dashboard/tools (T3). `admin` is in an admin's response only. */
 export interface ToolsResponse {
@@ -24,6 +28,29 @@ export interface ToolsResponse {
   /** For a capability the plan doesn't include: the plan that does. */
   upgrade: Partial<Record<CapabilityKey, string>>;
   admin?: { toolNames: Record<CapabilityKey, string[]> };
+  /**
+   * Outbound agent only (T4): the server's decision for this account (never
+   * the site switch's raw value). false = the editor shows no tools at all.
+   */
+  outboundTools?: { visible: boolean };
+}
+
+/**
+ * Whether the Tools brick (and its tile) exists on this screen. The
+ * receptionist always has it; an outbound agent only when the server says
+ * so — a missing answer (new agent, still loading, error) counts as no.
+ */
+export function toolsBrickVisible(kind: ToolsKind, served: ToolsResponse | null | undefined): boolean {
+  if (kind === "inbound") return true;
+  return served?.outboundTools?.visible === true;
+}
+
+/**
+ * The capabilities a screen lists. Outbound: booking and transfer only —
+ * the others are not shown at all (no row, no "not available" line).
+ */
+export function shownCapabilities(kind: ToolsKind): readonly CapabilityKey[] {
+  return kind === "outbound" ? OUTBOUND_CAPABILITIES : CAPABILITY_KEYS;
 }
 
 export type CapabilityStatus =
@@ -46,7 +73,7 @@ export interface CapabilityView {
 const ACTION: Record<MissingPrerequisite, PrerequisiteAction> = {
   google_not_connected: "connectGoogle",
   no_transfer_number: "addNumber",
-  // Nothing the customer can do: outbound tools come with T4.
+  // Nothing the customer can do (the outbound screen leaves these out).
   not_available_outbound: null,
 };
 
@@ -67,11 +94,17 @@ export function capabilityView(key: CapabilityKey, s: CapabilityState): Capabili
  * doesn't include, which are never shown as switches but gathered in ONE
  * line at the bottom ("Available with the … plan").
  */
-export function capabilityList(caps: EffectiveCapabilities): { switches: CapabilityView[]; notInPlan: CapabilityKey[] } {
+export function capabilityList(
+  caps: EffectiveCapabilities,
+  kind: ToolsKind = "inbound",
+): { switches: CapabilityView[]; notInPlan: CapabilityKey[] } {
   const switches: CapabilityView[] = [];
   const notInPlan: CapabilityKey[] = [];
-  for (const key of CAPABILITY_KEYS) {
+  for (const key of shownCapabilities(kind)) {
     const s = caps[key];
+    // Never a switch the call can't use: a capability the server still
+    // reports as unavailable outbound is left out, not shown as "off".
+    if (kind === "outbound" && s.prerequisite.missing === "not_available_outbound") continue;
     if (!s.planIncluded) notInPlan.push(key);
     else switches.push(capabilityView(key, s));
   }
@@ -103,8 +136,21 @@ export function toolsPatch<T extends object>(baseIn: T, nextIn: T): Record<strin
  * Not `active` alone: until T1b a capability can be active on the call
  * while the screen honestly says "Not active yet".
  */
-export function activeCount(caps: EffectiveCapabilities): number {
-  return capabilityList(caps).switches.filter((v) => v.status === "on").length;
+export function activeCount(caps: EffectiveCapabilities, kind: ToolsKind = "inbound"): number {
+  return capabilityList(caps, kind).switches.filter((v) => v.status === "on").length;
+}
+
+/**
+ * A refused tools save, in the brick's terms. 403 outbound_tools_disabled →
+ * the capabilities the server would not turn on (from `fields`, e.g.
+ * "tools.booking.enabled"); anything else → null (the caller's generic
+ * error). The screen shows words for these keys, never the server's code.
+ */
+export function refusedCapabilities(status: number, body: unknown): CapabilityKey[] | null {
+  const b = body as { error?: unknown; fields?: unknown } | null;
+  if (status !== 403 || b?.error !== "outbound_tools_disabled") return null;
+  const fields = Array.isArray(b.fields) ? b.fields : [];
+  return CAPABILITY_KEYS.filter((k) => fields.includes(`tools.${k}.enabled`));
 }
 
 /**

@@ -2478,10 +2478,11 @@
     "tileSummary": "{n, plural, =0 {Aucune capacité active} one {# capacité active} other {# capacités actives}}",
     "loading": "Chargement…",
     "saveError": "Les capacités n'ont pas été enregistrées. Réessayez.",
-    "saveAgentFirst": "Enregistrez l'agent pour régler ce qu'il sait faire.",
-    "offOutbound": "Pas encore disponible pour les appels sortants.",
     "googleNotice": "Connectez votre compte Google pour activer : {list}.",
     "transferOnTo": "Actif : vers <n>{number}</n>.",
-    "editNumber": "Modifier"
+    "editNumber": "Modifier",
+    "tileTaglineOutbound": "Rendez-vous, transfert",
+    "refusedOutbound": "Non activé : {list}. Les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré.",
+    "refusedOutboundAny": "Ces réglages n'ont pas été activés : les capacités pendant les appels sortants ne sont pas encore ouvertes pour ce compte. Le reste a bien été enregistré."
   }
 }

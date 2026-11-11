@@ -17,6 +17,10 @@
  * The state comes from the server's effectiveCapabilities (the function the
  * call uses); only the switch reflects the customer's unsaved intent.
  * Tenant-safe: no supplier word, no technical tool name in this file.
+ *
+ * Outbound (T4): rendered only when the server says this account's outbound
+ * calls may use tools (`outboundTools.visible`), and then only booking and
+ * transfer — contacts and orders are not shown at all.
  */
 
 import NextLink from "next/link";
@@ -28,7 +32,17 @@ import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
 import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 
-import { capabilityList, capabilityView, inSentence, localPhone, waitingForGoogle, type CapabilityView, type ToolsResponse } from "./tools-ui";
+import {
+  capabilityList,
+  capabilityView,
+  inSentence,
+  localPhone,
+  shownCapabilities,
+  toolsBrickVisible,
+  waitingForGoogle,
+  type CapabilityView,
+  type ToolsResponse,
+} from "./tools-ui";
 
 const LINK = `inline-flex min-h-11 cursor-pointer items-center rounded-lg text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline ${FOCUS}`;
 
@@ -45,13 +59,17 @@ export interface ToolsBrickProps {
   returnTo: string;
   /** Admin acting for a tenant: no OAuth from here (it would connect the admin's account). */
   asUserId?: string | null;
+  /** The last save was refused for these capabilities (403 outbound_tools_disabled). */
+  refused?: CapabilityKey[] | null;
 }
 
-export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnTo, asUserId }: ToolsBrickProps) {
+export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnTo, asUserId, refused }: ToolsBrickProps) {
   const t = useTranslations("ToolsBrick");
   const tPlans = useTranslations("Plans");
   const locale = useLocale();
-  const { switches, notInPlan } = capabilityList(served.capabilities);
+  // Outbound without the server's go-ahead: nothing at all (the editor hides the tile too).
+  if (!toolsBrickVisible(kind, served)) return null;
+  const { switches, notInPlan } = capabilityList(served.capabilities, kind);
   const number = served.account.transferNumber ? localPhone(served.account.transferNumber) : null;
   // The switch shows the customer's intent before saving; plan and
   // prerequisites stay the server's.
@@ -84,6 +102,15 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
         );
       })()}
 
+      {/* A refused save, in plain words next to the switches (never the server's code). */}
+      {refused && (
+        <p role="alert" className="rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#991b1b]">
+          {refused.length
+            ? t("refusedOutbound", { list: refused.map((k) => inSentence(t(`cap.${k}.name`), locale)).join(", ") })
+            : t("refusedOutboundAny")}
+        </p>
+      )}
+
       <ul className="flex flex-col divide-y divide-[#f1f5f9] rounded-2xl border border-[#e2e8f0] bg-white">
         {switches.map((s) => (
           <CapabilityRow
@@ -112,7 +139,7 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
       {served.admin && (
         <MoreSettings level={3}>
           <dl className="flex flex-col gap-2 text-sm">
-            {(Object.keys(served.admin.toolNames) as CapabilityKey[]).map((k) => (
+            {shownCapabilities(kind).filter((k) => k in served.admin!.toolNames).map((k) => (
               <div key={k}>
                 <dt className="text-xs font-semibold text-[#475569]">{t(`cap.${k}.name`)}</dt>
                 <dd dir="ltr" className="font-mono text-xs text-[#18181b]">
@@ -185,8 +212,6 @@ function StatusWords({ v, number }: { v: CapabilityView; number: string | null }
     return (
       <span className="text-[#475569]">
         {t("statusOff")}
-        {/* Outbound until T4: say it now, not only once the switch is on. */}
-        {v.missing === "not_available_outbound" && <> {t("offOutbound")}</>}
       </span>
     );
   if (v.status === "on")
