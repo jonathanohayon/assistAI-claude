@@ -43,3 +43,6 @@ next-env.d.ts
 
 # throwaway local databases (scripts/alert-ledger-claim-db.sh)
 /.tmp/
+
+# calls-routes-db.test.ts reference copies of lib/calls (removed on exit)
+/scripts/tests/.calls-main-ref-*
