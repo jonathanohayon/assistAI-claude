@@ -102,4 +102,12 @@ const choice: ServedVoiceChoice = {
   assert.match(read("components/bricks/voice/VoiceBrick.tsx"), /<VoiceSamplesAdmin engine=/, "the account's engine by default");
 }
 
+// 8. Design review: every engine row has the same layout (no flex-wrap, so text length can't move the button)
+{
+  const src = read("components/bricks/voice/VoiceAdminFields.tsx");
+  assert.match(src, /data-samples-row className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"/);
+  assert.doesNotMatch(src.slice(src.indexOf("function GenerateSamples")), /flex-wrap/);
+  assert.match(src, /min-h-11 shrink-0 cursor-pointer/, "the button never shrinks");
+}
+
 console.log("ALL VOICE-CHOICE-SCREEN TESTS PASSED");

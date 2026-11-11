@@ -336,8 +336,9 @@ function GenerateSamples({
 
   return (
     <div className="rounded-xl border border-[#e2e8f0] bg-white p-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
+      {/* Same layout on every engine row: button below on phone, on the right from sm (never wrapped by text length). */}
+      <div data-samples-row className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 sm:flex-1">
           <p className="text-xs font-semibold text-[#18181b]">
             {tP("samplesTitle")} · {tP(`engine.${engine}`)}
           </p>
@@ -358,7 +359,7 @@ function GenerateSamples({
           onClick={() => void run()}
           disabled={!!busy || !!missingKey || (existing >= total && !progress)}
           aria-busy={running}
-          className="min-h-11 cursor-pointer rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+          className="min-h-11 shrink-0 cursor-pointer rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
           {running ? tP("samplesRunning") : tP("samplesGenerate")}
         </button>
