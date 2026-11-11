@@ -130,9 +130,13 @@ export async function GET(req: NextRequest) {
       origin: m.toNumber ? "sip" : "web",
       // 8 hops + total
       latencies: {
-        // 1. SIP/web → worker (LiveKit signaling propagation)
+        // 1. Phone/web → worker (signaling propagation)
+        phoneToWorker: setup.sipWait ?? null,
+        // 2. Worker → call server (room connect handshake)
+        workerToCallServer: setup.connect ?? null,
+        // Legacy names, served for ONE release while the screen switches to
+        // the neutral ones above — then removed (they name suppliers).
         twilioToWorker: setup.sipWait ?? null,
-        // 2. Worker → LiveKit (room.connect handshake)
         workerToLivekit: setup.connect ?? null,
         // 3. Worker → web (HTTP /api/agent/config)
         workerToWebConfig: setup.configFetch ?? null,
