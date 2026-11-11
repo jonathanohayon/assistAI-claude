@@ -24,7 +24,7 @@ import {
 import { personaFromOutbound } from "@/lib/persona/adapters";
 import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
 import { useVoiceLabel } from "@/lib/use-voice-label";
-import { sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
+import { sheetPatch, sheetSaveIssues, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import { refusedCapabilities, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
 // The screen holds what GET sends: Tools without the client agent secret.
@@ -228,9 +228,9 @@ export function AgentsWorkspace({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ companySheet: changes }),
           });
-          const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[] } | null;
+          const sdata = (await sres.json().catch(() => null)) as { companySheet?: CompanySheet; fields?: string[]; error?: string; cap?: number } | null;
           if (!sres.ok || !sdata?.companySheet) {
-            setIssues(sheetIssues(sdata?.fields ?? [], sheet));
+            setIssues(sheetSaveIssues(sdata, sheet));
             setError(tKnowledge("issuesTitle"));
             return;
           }

@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
-import { currentCompanySheet, planSheetWrite } from "@/lib/knowledge/store";
+import { currentCompanySheet } from "@/lib/knowledge/store";
+import { planCappedSheetWrite } from "@/lib/locations-cap";
 import { outboundSheetEnabled } from "@/lib/knowledge/outbound-sheet";
 import { logEvent } from "@/lib/logger";
 
@@ -16,6 +17,9 @@ import { logEvent } from "@/lib/logger";
 //     agent_configs.business (the calls' read source), through the business
 //     sanitizer. 400 invalid_company_sheet { fields } — including anything the
 //     sanitizer would otherwise drop silently.
+//     403 location_cap { field: "centres", cap, message } when the save ADDS
+//     a location beyond the plan's cap (the TENANT's plan, also under
+//     ?asUserId=); edits and deletions always pass (lib/locations-cap.ts).
 
 async function scope(req: NextRequest) {
   const r = await resolveTargetUserId(req);
@@ -26,7 +30,7 @@ async function scope(req: NextRequest) {
 
 async function load(userId: string) {
   const [row] = await db
-    .select({ companySheet: users.companySheet, business: agentConfigs.business })
+    .select({ companySheet: users.companySheet, business: agentConfigs.business, plan: users.subscriptionPlan })
     .from(users)
     .innerJoin(agentConfigs, eq(agentConfigs.userId, users.id))
     .where(eq(users.id, userId))
@@ -52,8 +56,11 @@ export async function PUT(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { companySheet?: unknown } | null;
   const row = await load(s.userId);
   if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const plan = planSheetWrite(currentCompanySheet(row.companySheet, row.business), body?.companySheet);
-  if (!plan.ok) return NextResponse.json({ error: plan.error, fields: plan.fields }, { status: plan.status });
+  const plan = planCappedSheetWrite(row, body?.companySheet);
+  if (!plan.ok) {
+    if ("body" in plan) return NextResponse.json(plan.body, { status: plan.status });
+    return NextResponse.json({ error: plan.error, fields: plan.fields }, { status: plan.status });
+  }
 
   // ::jsonb casts: postgres-js serialises JS arrays/objects as text[] otherwise
   // (same fix as the business editor in /api/dashboard/config).
