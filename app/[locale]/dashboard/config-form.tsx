@@ -59,7 +59,8 @@ import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
 import { activeCount, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import type { Tools } from "@/lib/tools/contract";
+// The screen holds what GET sends: Tools without the client agent secret.
+import type { PublicTools as Tools } from "@/lib/tools/contract";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { businessFromSheet, sheetFromBusiness, sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";

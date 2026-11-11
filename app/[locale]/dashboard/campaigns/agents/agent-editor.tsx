@@ -10,7 +10,8 @@ import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
 import { activeCount, toolsBrickVisible, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import type { CapabilityKey, Tools } from "@/lib/tools/contract";
+// The screen holds what GET sends: Tools without the client agent secret.
+import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
 import type { SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";

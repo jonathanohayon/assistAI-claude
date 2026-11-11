@@ -6,6 +6,7 @@ import { agentConfigs, users } from "@/lib/db/schema";
 import { featuresForPlan, type PlanFeatures } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import type { CapabilityAccount } from "@/lib/tools/contract";
+import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 import { outboundToolsEnabled, outboundToolsMode } from "@/lib/tools/outbound-switch";
 import { accountTransferNumber } from "@/lib/tools/store";
 
@@ -37,6 +38,7 @@ export async function capabilityInputsFor(
       googleConnected: Boolean(user?.google),
       transferNumber: cfg ? accountTransferNumber(cfg) : "",
       outboundToolsEnabled: outboundToolsEnabled(outboundToolsMode(env), user?.role === "admin"),
+      clientAgentEnabled: clientAgentEnabled(clientAgentMode(env), user?.role === "admin"),
     },
   };
 }

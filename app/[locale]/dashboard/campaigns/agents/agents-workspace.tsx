@@ -27,7 +27,8 @@ import { useVoiceLabel } from "@/lib/use-voice-label";
 import { sheetIssues, sheetPatch, type SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import { refusedCapabilities, toolsPatch, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import type { CapabilityKey, Tools } from "@/lib/tools/contract";
+// The screen holds what GET sends: Tools without the client agent secret.
+import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
 
 const ACCENT_AGENTS = "from-[#4f46e5] to-[#7c3aed]";
 
