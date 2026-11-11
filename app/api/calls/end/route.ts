@@ -5,7 +5,7 @@ import { callIdFromRequest } from "@/lib/call-id";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
-import { parseCallEndBody } from "@/lib/call-end-body";
+import { callInsertValues, parseCallEndBody } from "@/lib/call-end-body";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
     return auth.response;
   }
 
-  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds, realtimeProvider, realtimeModel, callId: bodyCallId } =
-    parseCallEndBody(await req.json().catch(() => ({})));
+  const parsed = parseCallEndBody(await req.json().catch(() => ({})));
+  const { fromNumber, toNumber, userId, channel, transcript, durationSeconds, callId: bodyCallId } = parsed;
   // Call id (LiveKit room name): body field or the x-call-id header the worker
   // sends with every request. Ties this call to its own tool events.
   const callId = bodyCallId ?? callIdFromRequest(req);
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
   const [callRow] = await db
     .insert(calls)
-    .values({ userId: user.id, fromNumber, transcript, summary: "", durationSeconds, realtimeProvider, realtimeModel, callId: callId ?? "" })
+    .values(callInsertValues(parsed, user.id, callId))
     .returning();
 
   await logEvent({
