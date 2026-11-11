@@ -217,6 +217,16 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* Reveal / StaggerItem (components/marketing/Reveal.tsx) render their
+   * start state (blur + offset + opacity 0) in the server HTML. Pin them to
+   * their final state here so reduced-motion users never see that state.
+   * !important beats the inline styles motion writes. */
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 /* Soft gradient utility used in hero — mesh marque Tamara. Trois radials
