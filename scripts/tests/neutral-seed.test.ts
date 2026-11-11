@@ -2,6 +2,8 @@
 // Run with:  npx tsx scripts/tests/neutral-seed.test.ts
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { DEFAULT_AGENT_NAME, neutralSeed, seedForNewAccount } from "../../lib/neutral-seed";
 import { FIRST_CUSTOMER_FACTS } from "./first-customer-facts";
@@ -37,10 +39,22 @@ assert.equal(seedForNewAccount("global", "fr", { global: "   " }, {}).instructio
 // (a) Two importers only: account CREATION (inserts only), and the internal
 //     reset endpoint (INTERNAL_SECRET-gated ops: "apply what a new account
 //     gets"). Nothing else may write the neutral seed onto an account.
-const importers = execSync(`grep -rl --include="*.ts" --include="*.tsx" --include="*.mjs" "@/lib/neutral-seed" app lib scripts auth.ts | grep -v scripts/tests/ | sort || true`, { encoding: "utf8" })
-  .split("\n")
-  .filter(Boolean);
+// Import lines of any form (alias or relative path), searched in Node: no shell quoting.
+const IMPORT_RE = /\bfrom\s+["'][^"']*neutral-seed["']|\bimport\(\s*["'][^"']*neutral-seed["']\s*\)/;
+const walk = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) return e.name === "node_modules" || p === "scripts/tests" ? [] : walk(p);
+    return /\.(ts|tsx|mjs)$/.test(e.name) ? [p] : [];
+  });
+const importers = [...walk("app"), ...walk("lib"), ...walk("scripts"), "auth.ts"]
+  .filter((f) => f !== "lib/neutral-seed.ts" && IMPORT_RE.test(readFileSync(f, "utf8")))
+  .sort();
 assert.deepEqual(importers, ["app/api/admin/internal-apply-default-prompt/route.ts", "lib/auth/provision-tenant.ts"]);
+// The search catches every import form (probe on strings, not files).
+for (const line of [`import { x } from "@/lib/neutral-seed";`, `import { x } from "../neutral-seed";`, `import { x } from '../../lib/neutral-seed';`, `await import("../neutral-seed")`])
+  assert.match(line, IMPORT_RE, line);
+assert.doesNotMatch("// see lib/neutral-seed.ts", IMPORT_RE, "a comment isn't an import");
 const provision = execSync("cat lib/auth/provision-tenant.ts", { encoding: "utf8" });
 assert.doesNotMatch(provision, /\.update\(agentConfigs\)/, "provisioning never updates an existing agent config");
 const reset = execSync("cat app/api/admin/internal-apply-default-prompt/route.ts", { encoding: "utf8" });
