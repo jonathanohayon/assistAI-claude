@@ -69,9 +69,14 @@ const voice = (pace: string, speed: number | null): ClientVoice =>
   for (const stored of [false, true])
     for (let vitesse = 1; vitesse <= 10; vitesse++) {
       const row = { voice: "marin", personality: { vitesse }, noiseReductionLevel: 5, voiceConfig: null as unknown };
-      if (stored) row.voiceConfig = (outboundVoiceConfigUpdates({ voiceConfig: { noiseReduction: 6 } }, row, false) as { voice: unknown }).voice;
-      const r = outboundVoiceConfigUpdates({ voiceConfig: { bargeIn: false } }, row, false) as { updates: { personality: { vitesse: number } } };
-      assert.equal(r.updates.personality.vitesse, vitesse, `stored=${stored} vitesse ${vitesse}`);
+      const save = (body: Record<string, unknown>) => {
+        const r = outboundVoiceConfigUpdates(body, row, false);
+        assert.ok(r && "updates" in r, "the save is accepted");
+        return r;
+      };
+      if (stored) row.voiceConfig = save({ voiceConfig: { noiseReduction: 6 } }).voice;
+      const personality = save({ voiceConfig: { bargeIn: false } }).updates.personality as { vitesse: number };
+      assert.equal(personality.vitesse, vitesse, `stored=${stored} vitesse ${vitesse}`);
     }
 }
 
