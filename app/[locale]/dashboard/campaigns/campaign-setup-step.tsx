@@ -22,6 +22,9 @@ const GOAL_EMOJI: Record<GoalPreset, string> = {
   lead_gen: "🎯",
   marketing: "📣",
   custom: "✨",
+  // TODO(tamaraHenry): M2d presets, admin-only server-side — hide them for tenants.
+  book_for_seller: "📅",
+  follow_up: "🔁",
 };
 
 const WEEK_DAYS = [0, 1, 2, 3, 4, 5, 6];

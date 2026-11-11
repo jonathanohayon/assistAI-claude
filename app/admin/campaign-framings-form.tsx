@@ -10,6 +10,9 @@ const PRESET_LABEL: Record<GoalPreset, string> = {
   lead_gen: "Génération de leads (lead_gen)",
   marketing: "Marketing",
   custom: "Personnalisé (custom)",
+  // TODO(tamaraHenry): M2d labels (minimal, for the Record type).
+  book_for_seller: "Rendez-vous pour un conseiller (book_for_seller)",
+  follow_up: "Suivi (follow_up)",
 };
 
 type Framings = Record<GoalPreset, string>;
