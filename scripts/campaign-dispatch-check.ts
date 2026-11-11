@@ -67,7 +67,7 @@ async function main() {
     ok("dry: no row touched", diff(before, after).length === 0, diff(before, after).join(","));
     ok("dry: 0 dialled", dials === 0 && r.claimed === 0);
     const w = "wouldDial" in r ? r.wouldDial : null;
-    ok("dry: counts", JSON.stringify(w) === JSON.stringify({ campaignsDue: 1, contactsDue: 3, skippedCallHours: 1, skippedConcurrency: 0 }), JSON.stringify(w));
+    ok("dry: counts", JSON.stringify(w) === JSON.stringify({ campaignsDue: 1, contactsDue: 2, skippedCallHours: 1, skippedConcurrency: 1 }), JSON.stringify(w));
     dryWould = w?.contactsDue ?? -1;
     ok("dry: no number, name or title in the response", !/\+972|\d{8,}|[A-Za-z]{3,} [A-Za-z]{3,}/.test(JSON.stringify(w)));
     const limited = await dispatchDueJobs(1, "cron", { env: { CAMPAIGN_DISPATCH: "dry" }, dial });
@@ -87,8 +87,8 @@ async function main() {
   // ON: dials what's due (mock dialer), today's path.
   {
     const r = await dispatchDueJobs(10, "cron", { env: { CAMPAIGN_DISPATCH: "on" }, dial });
-    // Today's claim checks concurrency once per batch: all 3 of d1 go in one tick
-    // (concurrency 2) — known issue, boarded. None of d2 (outside call hours).
+    // Concurrency 2 → 2 of d1's 3 due contacts in one tick; none of d2
+    // (outside call hours).
     ok("on: dialled exactly what dry predicted", dials === dryWould && r.claimed === dryWould && r.dialed === dryWould && !("mode" in r), `${dials} vs dry ${dryWould}: ${JSON.stringify(r)}`);
     const calling = await db.select().from(campaignContacts).where(eq(campaignContacts.status, "calling"));
     ok("on: those contacts are 'calling', none of the closed campaign", calling.length === dryWould && calling.every((c) => c.campaignId === id("d1")));
