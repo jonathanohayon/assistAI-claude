@@ -97,6 +97,14 @@ const en = messages("en").ToolsBrick;
   assert.ok(!html.includes(en.missing.not_available_outbound), "no 'not available' line");
   assert.equal((html.match(/role="switch"/g) ?? []).length, 2);
   assert.equal((html.match(/aria-checked="false"/g) ?? []).length, 2, "off by default");
+  // Design review: on an outbound call nobody is "the caller" (we called them).
+  for (const l of ["fr", "en", "he"]) {
+    const out = render("outbound", served, OFF, l);
+    const msgs = messages(l) as { ToolsBrick: { cap: { transfer: { what: string; whatOutbound: string } } } };
+    assert.ok(out.includes(msgs.ToolsBrick.cap.transfer.whatOutbound.replace(/'/g, "&#x27;")), `${l}: outbound transfer line`);
+    assert.doesNotMatch(out, /appelant|caller|המתקשר/i, `${l}: no "caller" on outbound`);
+    assert.match(msgs.ToolsBrick.cap.transfer.whatOutbound, /navigateur ne transfère pas|browser test does not transfer|הבדיקה בדפדפן לא מעבירה/, `${l}: keeps the browser-test sentence`);
+  }
 
   // Switched on (unsaved): each says why it isn't active yet.
   const on = render("outbound", served, ALL_ON);
@@ -146,6 +154,7 @@ const en = messages("en").ToolsBrick;
   const html = render("inbound", served, tools);
   assert.equal((html.match(/role="switch"/g) ?? []).length, 4);
   for (const k of ["booking", "contacts", "transfer", "orders"]) assert.ok(html.includes(en.cap[k].name), k);
+  assert.ok(html.includes(en.cap.transfer.what), "receptionist keeps its 'caller' sentence");
   assert.ok(html.includes(en.intro));
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /tTools\("tileTagline"\)/, "receptionist tile tagline unchanged");
 }

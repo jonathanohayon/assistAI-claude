@@ -2465,6 +2465,7 @@
       "transfer": {
         "name": "Transférer à une personne",
         "what": "Passe l'appel à votre numéro quand l'appelant demande quelqu'un. Fonctionne pendant les appels téléphoniques ; le test dans le navigateur ne transfère pas.",
+        "whatOutbound": "Passe l'appel à votre numéro quand la personne appelée veut parler à quelqu'un. Fonctionne pendant les appels téléphoniques ; le test dans le navigateur ne transfère pas.",
         "on": "Actif : vers votre numéro de transfert."
       },
       "orders": {

@@ -179,3 +179,12 @@ export function localPhone(e164: string): string {
 /** "Book appointments" → "book appointments" inside a sentence (no-op for Hebrew). */
 export const inSentence = (name: string, locale: string): string =>
   name.charAt(0).toLocaleLowerCase(locale) + name.slice(1);
+
+/**
+ * The message key for a capability's one-line description on this screen.
+ * Outbound wording where the receptionist's would be wrong: on an outbound
+ * call nobody is "the caller" (we called them), so transfer has its own line.
+ */
+export function capabilityWhatKey(key: CapabilityKey, kind: ToolsKind): string {
+  return kind === "outbound" && key === "transfer" ? "cap.transfer.whatOutbound" : `cap.${key}.what`;
+}

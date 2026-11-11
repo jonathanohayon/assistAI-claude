@@ -2465,6 +2465,7 @@
       "transfer": {
         "name": "Transfer to a person",
         "what": "Passes the call to your number when the caller asks for someone. Works on phone calls; the browser test does not transfer.",
+        "whatOutbound": "Hands the call to your number when the person called wants to talk to someone. Works on phone calls; the browser test does not transfer.",
         "on": "Active: to your transfer number."
       },
       "orders": {

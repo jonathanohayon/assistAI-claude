@@ -35,12 +35,14 @@ import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 import {
   capabilityList,
   capabilityView,
+  capabilityWhatKey,
   inSentence,
   localPhone,
   shownCapabilities,
   toolsBrickVisible,
   waitingForGoogle,
   type CapabilityView,
+  type ToolsKind,
   type ToolsResponse,
 } from "./tools-ui";
 
@@ -119,6 +121,7 @@ export function ToolsBrick({ kind, served, tools, onChange, onAddNumber, returnT
             checked={tools[s.key].enabled}
             onToggle={(enabled) => onChange({ ...tools, [s.key]: { ...tools[s.key], enabled } })}
             number={s.key === "transfer" ? number : null}
+            kind={kind}
             action={<Action v={view(s)} hasNumber={!!number} onAddNumber={onAddNumber} />}
           />
         ))}
@@ -164,6 +167,7 @@ function CapabilityRow({
   onToggle,
   action,
   number,
+  kind,
 }: {
   v: CapabilityView;
   checked: boolean;
@@ -171,6 +175,8 @@ function CapabilityRow({
   action: React.ReactNode;
   /** Transfer: the account's number, local format. */
   number: string | null;
+  /** Which screen: the description can differ (outbound has no "caller"). */
+  kind: ToolsKind;
 }) {
   const t = useTranslations("ToolsBrick");
   const labelId = `tools-${v.key}-label`;
@@ -181,7 +187,7 @@ function CapabilityRow({
         <p id={labelId} className={LABEL}>
           {t(`cap.${v.key}.name`)}
         </p>
-        <p className={HINT}>{t(`cap.${v.key}.what`)}</p>
+        <p className={HINT}>{t(capabilityWhatKey(v.key, kind))}</p>
         {/* The state in words first; colour only repeats it. */}
         <p id={statusId} className="mt-1 text-sm" aria-live="polite">
           <StatusWords v={v} number={number} />
