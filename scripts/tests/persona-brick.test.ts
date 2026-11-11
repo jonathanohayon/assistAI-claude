@@ -3,7 +3,7 @@
 // Run with:  npx tsx scripts/tests/persona-brick.test.ts
 
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { effectiveGreeting } from "../../lib/ai-disclosure";
@@ -25,6 +25,7 @@ import {
   variablesIn,
   withPersonaConfig,
 } from "../../components/bricks/persona/persona-ui";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -119,21 +120,19 @@ for (const f of [
 assert.ok(!existsSync(join(ROOT, "app/[locale]/dashboard/config/ai-disclosure-field.tsx")), "old disclosure field removed");
 
 // 6. No personality slider, no old persona panel copy, no "coming soon" on these screens
-function* walk(dir: string): Generator<string> {
-  for (const name of readdirSync(join(ROOT, dir))) {
-    const rel = join(dir, name);
-    if (statSync(join(ROOT, rel)).isDirectory()) yield* walk(rel);
-    else if (/\.tsx?$/.test(name)) yield rel;
-  }
-}
+const uiScan = scanSources(["app", "components"], { ext: /\.tsx?$/ });
+// "No file matches" is only meaningful if the scan read the real tree.
+assertScanRead(uiScan, "persona-brick UI scan", {
+  minFiles: 200,
+  minPerRoot: 30,
+  sentinels: ["components/bricks/persona/PersonaBrick.tsx", "app/[locale]/dashboard/config/persona-panel.tsx"],
+});
 const personaPanels: string[] = [];
-for (const top of ["app", "components"]) {
-  for (const f of walk(top)) {
-    if (f.includes("voice-brick-mock")) continue;
-    const src = read(f);
-    assert.doesNotMatch(src, /PersonalitySlider|PERSONALITY_SLIDER|wowSlider|PERSONALITY_DEFAULT/, `${f}: personality slider code`);
-    if (/function PersonaPanel\b/.test(src)) personaPanels.push(f);
-  }
+for (const f of uiScan.files) {
+  if (f.includes("voice-brick-mock")) continue;
+  const src = uiScan.text.get(f)!;
+  assert.doesNotMatch(src, /PersonalitySlider|PERSONALITY_SLIDER|wowSlider|PERSONALITY_DEFAULT/, `${f}: personality slider code`);
+  if (/function PersonaPanel\b/.test(src)) personaPanels.push(f);
 }
 assert.deepEqual(personaPanels, ["app/[locale]/dashboard/config/persona-panel.tsx"], "only the receptionist panel wrapper remains (it renders the brick)");
 const personaScreens = ["components/bricks/persona/PersonaBrick.tsx", "app/[locale]/dashboard/config/persona-panel.tsx"];
