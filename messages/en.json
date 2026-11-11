@@ -2306,7 +2306,8 @@
     "nameHint": "The first name your agent gives on the phone. Optional.",
     "nameHintOutbound": "The first name said on the phone, also shown in the agents list.",
     "namePlaceholder": "e.g. Sarah",
-    "languageLabel": "Main language",
+    "languageLabel": "Default language",
+    "languageHint": "The agent answers in the caller's language, unless “Stay in the main language” is on.",
     "greetingLabel": "First sentence",
     "greetingAuto": "Automatic",
     "greetingCustom": "My sentence",
@@ -2328,7 +2329,7 @@
       "name": "Contact's name",
       "phone": "Contact's phone"
     },
-    "languagesLabel": "Other spoken languages",
+    "languagesLabel": "Other languages spoken",
     "languagesHint": "Your agent switches to one of these if the caller speaks it.",
     "variableExplained": "{token} is replaced by {meaning}.",
     "variableMeaning": {

@@ -2306,7 +2306,8 @@
     "nameHint": "השם שהסוכן שלך אומר בטלפון. לא חובה.",
     "nameHintOutbound": "השם שנאמר בטלפון, מוצג גם ברשימת הסוכנים.",
     "namePlaceholder": "למשל שרה",
-    "languageLabel": "שפה ראשית",
+    "languageLabel": "שפת ברירת מחדל",
+    "languageHint": "הסוכן עונה בשפה של המתקשר, אלא אם האפשרות ״להישאר בשפה הראשית״ מופעלת.",
     "greetingLabel": "משפט פתיחה",
     "greetingAuto": "אוטומטי",
     "greetingCustom": "המשפט שלי",
@@ -2328,7 +2329,7 @@
       "name": "שם איש הקשר",
       "phone": "טלפון איש הקשר"
     },
-    "languagesLabel": "שפות נוספות",
+    "languagesLabel": "שפות נוספות שהסוכן מדבר",
     "languagesHint": "הסוכן שלך עובר לאחת מהשפות האלה אם המתקשר מדבר בה.",
     "variableExplained": "{token} מוחלף ב{meaning}.",
     "variableMeaning": {
