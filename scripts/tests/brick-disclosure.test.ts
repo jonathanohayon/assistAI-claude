@@ -56,7 +56,8 @@ for (const [locale, title] of [
   const html = renderToStaticMarkup(
     createElement(Intl, { locale, messages: messages(locale), timeZone: "UTC" }, createElement(More, { level: 3 }, createElement("p", { id: "secret" }, "MOCK LEVEL 3 CONTENT"))),
   );
-  assert.match(html, new RegExp(`aria-expanded="false"[^>]*>${title}`), `${locale}: titled and collapsed`);
+  // The title may be wrapped (MoreSettings puts it in a span next to an optional summary).
+  assert.match(html, new RegExp(`aria-expanded="false"[^>]*>(?:<span[^>]*>)?${title}`), `${locale}: titled and collapsed`);
   // The content sits inside the region that carries `hidden`.
   const region = /<div[^>]*role="region"[^>]*>/.exec(html)?.[0] ?? "";
   assert.match(region, /\bhidden=""/, `${locale}: region hidden`);
@@ -65,7 +66,7 @@ for (const [locale, title] of [
 // Level 2 keeps its title.
 assert.match(
   renderToStaticMarkup(createElement(Intl, { locale: "fr", messages: messages("fr"), timeZone: "UTC" }, createElement(More, {}, "x"))),
-  /aria-expanded="false"[^>]*>Plus de réglages/,
+  /aria-expanded="false"[^>]*>(?:<span[^>]*>)?Plus de réglages/,
 );
 
 console.log("ALL BRICK-DISCLOSURE TESTS PASSED");

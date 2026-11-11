@@ -3,7 +3,10 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
+
+import { SETUP_OPEN_KEY, defaultOpen, nextStep, resolveOpen } from "./setup-checklist-ui";
 
 const DISMISS_KEY = "tamara.setupCongratsDismissed";
 
@@ -238,6 +241,28 @@ export function SetupChecklist({
     }
   }, []);
 
+  // Open/closed: open when nothing is done yet, collapsed otherwise; the
+  // customer's last choice is remembered in this browser. SSR renders the
+  // default; the remembered choice is read after mount.
+  const [open, setOpen] = useState(() => defaultOpen(done));
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
+      setOpen(resolveOpen(localStorage.getItem(SETUP_OPEN_KEY), done));
+    } catch {
+      /* localStorage indispo → défaut */
+    }
+  }, [done]);
+  const choose = (next: boolean) => {
+    setOpen(next);
+    try {
+      localStorage.setItem(SETUP_OPEN_KEY, next ? "1" : "0");
+    } catch {
+      /* best-effort */
+    }
+  };
+  const next = nextStep(items);
+
   const tips: { id: string; icon: (p: SvgProps) => React.JSX.Element; title: string; desc: string; cta: string; href: string }[] = [
     {
       id: "voice",
@@ -329,89 +354,92 @@ export function SetupChecklist({
     );
   }
 
+  const progress = (
+    <span className="shrink-0 text-end">
+      <span className="block text-xs font-medium text-[var(--color-muted-foreground)]">{t("progress", { done, total })}</span>
+      <span
+        className="mt-1.5 block h-1.5 w-24 overflow-hidden rounded-full bg-[var(--color-muted)] sm:w-40"
+        role="progressbar"
+        aria-valuenow={done}
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-label={t("progress", { done, total })}
+      >
+        <span
+          className="block h-full rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] transition-[width] duration-500"
+          style={{ width: `${(done / total) * 100}%` }}
+        />
+      </span>
+    </span>
+  );
+
+  // Collapsed: the next step and its action, so the customer can act without opening.
+  const nextLine = next && (
+    <div className="flex flex-col gap-2 border-t border-[var(--color-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="min-w-0 text-sm text-[var(--color-foreground)]">{t("nextStep", { step: next.title })}</p>
+      <StepCta item={next} />
+    </div>
+  );
+
   return (
-    <section
-      className="mb-6 overflow-hidden rounded-3xl border border-[var(--color-border)] bg-white/85 backdrop-blur-sm"
-      aria-label={t("title")}
-    >
-      <header className="flex flex-col gap-3 border-b border-[var(--color-border)] px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-        <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold text-[var(--color-foreground)]">
-            {t("title")}
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-            {t("subtitle")}
-          </p>
-        </div>
-        <div className="shrink-0">
-          <p className="text-xs font-medium text-[var(--color-muted-foreground)]">
-            {t("progress", { done, total })}
-          </p>
-          <div
-            className="mt-1.5 h-1.5 w-40 overflow-hidden rounded-full bg-[var(--color-muted)]"
-            role="progressbar"
-            aria-valuenow={done}
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-label={t("progress", { done, total })}
-          >
-            <div
-              className="h-full rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] transition-[width] duration-500"
-              style={{ width: `${(done / total) * 100}%` }}
-            />
-          </div>
-        </div>
-      </header>
+    <section className="mb-6" aria-label={t("title")}>
+      <MoreSettings
+        headingLevel={2}
+        className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-white/85 backdrop-blur-sm"
+        title={<span className="font-display text-lg font-semibold">{t("title")}</span>}
+        summary={progress}
+        whenClosed={nextLine}
+        open={open}
+        onOpenChange={choose}
+      >
+        <p className="text-sm text-[var(--color-muted-foreground)]">{t("subtitle")}</p>
+        <ul className="-mx-4 divide-y divide-[var(--color-border)]">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+                <span
+                  className={
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl " +
+                    (item.done ? "bg-emerald-100 text-emerald-600" : "bg-[var(--color-muted)] text-[var(--color-primary)]")
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
 
-      <ul className="divide-y divide-[var(--color-border)]">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li
-              key={item.id}
-              className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6"
-            >
-              <span
-                className={
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl " +
-                  (item.done
-                    ? "bg-emerald-100 text-emerald-600"
-                    : "bg-[var(--color-muted)] text-[var(--color-primary)]")
-                }
-              >
-                <Icon className="h-5 w-5" />
-              </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[var(--color-foreground)]">{item.title}</p>
+                  <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{item.desc}</p>
+                </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--color-foreground)]">
-                  {item.title}
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-                  {item.desc}
-                </p>
-              </div>
-
-              <div className="shrink-0">
-                {item.done ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                    <CheckIcon className="h-3.5 w-3.5" />
-                    {t("done")}
-                  </span>
-                ) : (
-                  <Link
-                    href={item.href}
-                    className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
-                  >
-                    {item.ctaLabel}
-                    <ArrowIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
-                  </Link>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                <div className="shrink-0">
+                  {item.done ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      {t("done")}
+                    </span>
+                  ) : (
+                    <StepCta item={item} />
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </MoreSettings>
     </section>
+  );
+}
+
+function StepCta({ item }: { item: ChecklistItem }) {
+  return (
+    <Link
+      href={item.href}
+      className="group inline-flex min-h-11 items-center gap-1.5 self-start rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+    >
+      {item.ctaLabel}
+      <ArrowIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
+    </Link>
   );
 }
 
