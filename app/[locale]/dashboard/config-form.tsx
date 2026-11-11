@@ -37,7 +37,7 @@ import { CONFIG_FORM_CSS } from "./config/config-form-css";
 import { HeroSection } from "./config/hero-section";
 import { NotifsPanel } from "./config/notifs-panel";
 import { PersonaPanel } from "./config/persona-panel";
-import { AddTile, AdminBadge, Tile, type TileDef } from "./config/shared-ui";
+import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
   DashboardStats,
@@ -689,7 +689,6 @@ export function ConfigForm({
                 }}
               />
             ))}
-            <AddTile delay={300 + orderedTiles.length * 60} />
           </div>
 
           {activeTile && (

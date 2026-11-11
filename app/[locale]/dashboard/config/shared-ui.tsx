@@ -2,7 +2,7 @@
 
 /**
  * Petits composants UI réutilisés à travers le formulaire de configuration
- * (/dashboard) : AdminBadge, Tile/AddTile (grille de tuiles), EmptyState,
+ * (/dashboard) : AdminBadge, Tile (grille de tuiles), EmptyState,
  * RadioCard, Tag, Stat, Meta — plus le type TileDef.
  *
  * Utilisé par : config-form.tsx (tuiles, hero), persona-panel,
@@ -10,9 +10,8 @@
  * AdminBadge est aussi ré-exporté par config-form.tsx (export historique).
  */
 
-import { useTranslations } from "next-intl";
 
-// ─── Tile + AddTile ─────────────────────────────────────────────────────
+// ─── Tile ─────────────────────────────────────────────────────
 
 export type TileDef = {
   id: string;
@@ -172,24 +171,6 @@ export function Tile({
   );
 }
 
-/** Tuile placeholder "bientôt disponible" en fin de grille. */
-export function AddTile({ delay = 0 }: { delay?: number }) {
-  const t = useTranslations("DashboardConfig");
-  return (
-    <div
-      className="anim-bounce-in flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-white/30 p-4 text-[#94a3b8] backdrop-blur"
-      style={{ animationDelay: `${delay}ms` }}
-      title={t("wowAddTileTitle")}
-    >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-dashed border-[#cbd5e1]">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </span>
-      <p className="text-center text-[11px] font-medium">{t("wowComingSoon")}</p>
-    </div>
-  );
-}
 
 // ─── Empty state ─────────────────────────────────────────────────────────
 

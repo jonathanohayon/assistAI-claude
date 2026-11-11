@@ -597,8 +597,6 @@ export function WowDashboard() {
                 delay={300 + i * 60}
               />
             ))}
-            {/* Placeholder "Bientôt" — illustre l'extensibilité du système */}
-            <AddTile delay={300 + TILES.length * 60} />
           </div>
 
           {/* Zone d'expand — contenu de la tuile active */}
@@ -940,24 +938,6 @@ function Tile({
   );
 }
 
-function AddTile({ delay = 0 }: { delay?: number }) {
-  return (
-    <div
-      className="anim-bounce-in flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-white/30 p-4 text-[#94a3b8] backdrop-blur"
-      style={{ animationDelay: `${delay}ms` }}
-      title="Tuiles supplémentaires à venir"
-    >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-dashed border-[#cbd5e1]">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </span>
-      <p className="text-[11px] font-medium text-center">
-        Bientôt
-      </p>
-    </div>
-  );
-}
 
 function NotifsPanel({
   notifs,
