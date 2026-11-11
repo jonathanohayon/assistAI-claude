@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { campaignContacts } from "@/lib/db/schema";
 import { claimCampaignJobs } from "@/lib/campaigns/claim";
 import { dialContact } from "@/lib/campaigns/dial";
+import { dispatchMode, type DryRunCounts } from "@/lib/campaigns/dispatch-mode";
 import {
   campaignBlockers,
   DISPATCH_TICK_KEY,
@@ -23,6 +24,18 @@ export interface DispatchResult {
   failed: number;
 }
 
+/** Off / dry results (on returns exactly the DispatchResult as before). */
+export type GatedDispatchResult =
+  | (DispatchResult & { mode: "off"; reason: string })
+  | (DispatchResult & { mode: "dry"; reason: string; wouldDial: DryRunCounts });
+
+export interface DispatchDeps {
+  claim: typeof claimCampaignJobs;
+  dial: typeof dialContact;
+  env: Record<string, string | undefined>;
+}
+const DEFAULT_DEPS: DispatchDeps = { claim: claimCampaignJobs, dial: dialContact, env: process.env };
+
 async function requeue(contactId: string): Promise<void> {
   await db
     .update(campaignContacts)
@@ -33,8 +46,21 @@ async function requeue(contactId: string): Promise<void> {
 export async function dispatchDueJobs(
   limit: number,
   source: DispatchTick["source"] = "cron",
-): Promise<DispatchResult> {
-  const jobs = await claimCampaignJobs(limit);
+  deps: Partial<DispatchDeps> = {},
+): Promise<DispatchResult | GatedDispatchResult> {
+  const d = { ...DEFAULT_DEPS, ...deps };
+  // CAMPAIGN_DISPATCH (lib/campaigns/dispatch-mode.ts): off and dry write
+  // NOTHING — no claim, no reap, no status, no event, no tick — and dial no one.
+  const mode = dispatchMode(d.env);
+  if (mode === "off") {
+    return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is off" };
+  }
+  if (mode === "dry") {
+    const wouldDial = await dryRunCounts(limit);
+    console.log(`[dispatch] dry run (${source}): ${JSON.stringify(wouldDial)}`);
+    return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is dry: nothing claimed or dialled", wouldDial };
+  }
+  const jobs = await d.claim(limit);
   let dialed = 0;
   let failed = 0;
   const perCampaign = new Map<string, DispatchResult>();
@@ -51,7 +77,7 @@ export async function dispatchDueJobs(
     //   campaign__<campaignId>__<contactId>__<attempts>
     const roomName = `campaign__${job.campaignId}__${job.contactId}__${job.attempts}`;
     try {
-      await dialContact({
+      await d.dial({
         phoneNumber: job.phoneNumber,
         fromNumber: job.fromNumber || undefined,
         roomName,
@@ -98,6 +124,67 @@ export async function dispatchDueJobs(
   }
 
   return { claimed: jobs.length, dialed, failed };
+}
+
+/**
+ * Dry run: what claimCampaignJobs WOULD pick now — the same conditions
+ * (running campaign, queued, backoff due, call hours in the campaign's
+ * timezone, per-campaign concurrency, `limit`), READ-ONLY (no FOR UPDATE, no
+ * reap). Counts only.
+ */
+async function dryRunCounts(limit: number): Promise<DryRunCounts> {
+  const n = Math.min(Math.max(Math.trunc(limit) || 1, 1), 50);
+  const rows = await db.execute(sql`
+    SELECT c.id,
+      ((SELECT count(*) FROM campaign_contacts x
+        WHERE x.campaign_id = c.id AND x.status IN ('claimed', 'calling')) < c.concurrency) AS under_concurrency,
+      (EXTRACT(DOW FROM (now() AT TIME ZONE (c.call_window->>'timezone')))::int
+          IN (SELECT jsonb_array_elements_text(c.call_window->'days')::int)
+        AND EXTRACT(HOUR FROM (now() AT TIME ZONE (c.call_window->>'timezone')))::int >= (c.call_window->>'startHour')::int
+        AND EXTRACT(HOUR FROM (now() AT TIME ZONE (c.call_window->>'timezone')))::int < (c.call_window->>'endHour')::int
+      ) AS in_hours,
+      (SELECT count(*) FROM campaign_contacts cc
+        WHERE cc.campaign_id = c.id AND cc.status = 'queued'
+          AND (cc.next_attempt_at IS NULL OR cc.next_attempt_at <= now()))::int AS due
+    FROM campaigns c
+    WHERE c.status = 'running'
+    ORDER BY c.created_at
+  `);
+  const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
+  return dryRunTotals(
+    list.map((r) => ({ due: Number(r.due ?? 0), underConcurrency: r.under_concurrency === true, inHours: r.in_hours === true })),
+    n,
+  );
+}
+
+/**
+ * Pure: per running campaign → the totals, by claimCampaignJobs' OWN rule
+ * (so dry = what on would dial): a campaign is eligible when it is in call
+ * hours and its in-flight count is under its concurrency — checked once per
+ * batch, so a batch can take MORE than the free slots (known issue, boarded
+ * with the per-campaign start fix); then the global `limit`.
+ */
+export function dryRunTotals(campaigns: Array<{ due: number; underConcurrency: boolean; inHours: boolean }>, limit: number): DryRunCounts {
+  let left = limit;
+  const out: DryRunCounts = { campaignsDue: 0, contactsDue: 0, skippedCallHours: 0, skippedConcurrency: 0 };
+  for (const c of campaigns) {
+    if (!c.due) continue;
+    if (!c.inHours) {
+      out.skippedCallHours += c.due;
+      continue;
+    }
+    if (!c.underConcurrency) {
+      out.skippedConcurrency += c.due;
+      continue;
+    }
+    const take = Math.min(c.due, left);
+    if (take > 0) {
+      out.campaignsDue++;
+      out.contactsDue += take;
+      left -= take;
+    }
+  }
+  return out;
 }
 
 /**

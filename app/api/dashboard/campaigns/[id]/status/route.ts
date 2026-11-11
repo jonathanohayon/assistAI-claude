@@ -7,6 +7,7 @@ import { logEvent } from "@/lib/logger";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
+import type { DispatchMode } from "@/lib/campaigns/dispatch-mode";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
 
 interface Ctx {
@@ -96,14 +97,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   // Au démarrage, on compose immédiatement les contacts dus (dans la fenêtre
   // horaire). Le cron /api/cron/campaign-dispatch prend le relais ensuite.
   let dispatch: { claimed: number; dialed: number; failed: number } | { error: string } | undefined;
+  // CAMPAIGN_DISPATCH: off / dry → the start dials nothing; the screen says
+  // so from `dispatchMode` (a viewer-safe word, never the env name or value).
+  let mode: DispatchMode | undefined;
   if (rule.to === "running") {
     try {
       const limit = Math.min(Math.max(campaign.concurrency || 3, 1), 50);
-      dispatch = await dispatchDueJobs(limit, "start");
+      const r = await dispatchDueJobs(limit, "start");
+      mode = "mode" in r ? r.mode : "on";
+      dispatch = { claimed: r.claimed, dialed: r.dialed, failed: r.failed };
     } catch (e) {
-      dispatch = { error: e instanceof Error ? e.message : "dispatch_failed" };
+      // A raw exception can carry a provider's text: logged here, a code to the browser.
+      console.error("[campaign start] dispatch failed:", e instanceof Error ? e.message : e);
+      dispatch = { error: "dispatch_failed" };
     }
   }
 
-  return NextResponse.json({ campaign: updated, dispatch });
+  return NextResponse.json({ campaign: updated, dispatch, ...(mode ? { dispatchMode: mode } : {}) });
 }

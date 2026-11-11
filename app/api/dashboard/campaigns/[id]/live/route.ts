@@ -12,6 +12,7 @@ import {
   type CallWindow,
   type DispatchTick,
 } from "@/lib/campaigns/live";
+import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
 import { getSetting } from "@/lib/settings";
 
 interface Ctx {
@@ -130,6 +131,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     },
     counts,
     dispatcher: {
+      // CAMPAIGN_DISPATCH as a viewer-safe word (never the env name/value).
+      dispatchMode: dispatchMode(),
       lastTick,
       // Live, not from the last tick: what would block a dial right now.
       blockers: campaignBlockers(
