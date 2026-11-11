@@ -53,6 +53,7 @@ export function AgentsWorkspace({
   const t = useTranslations("DashboardCampaigns");
   const tPersona = useTranslations("PersonaBrick");
   const tKnowledge = useTranslations("KnowledgeBrick");
+  const tMission = useTranslations("MissionBrick");
   const locale = useLocale();
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
 
@@ -259,26 +260,63 @@ export function AgentsWorkspace({
           setSheetBase(sdata.companySheet);
         }
       }
-      // 2. The agent.
+      // 2. The agent. `mission` is sent only when the user picked another
+      //    default (missionSaveBody): any other save leaves it untouched,
+      //    even a kind the control doesn't offer. The create route doesn't
+      //    read it, so a new agent gets it in a PATCH right after.
       const editing = !!draft.id;
+      const missionBody = missionSaveBody(missionBase, mission);
       const res = await fetch(
         `/api/dashboard/outbound-agents${editing ? `/${draft.id}` : ""}${qs}`,
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
-            withPersonaConfig(
-              withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
-              LEGACY_OUTBOUND_PERSONA_FIELDS,
-              personaBase ? personaPatch(personaBase, persona) : persona,
-            ),
+            {
+              ...withPersonaConfig(
+                withVoiceConfig(draft, LEGACY_OUTBOUND_VOICE_FIELDS, voicePatch(voiceBase, voice)),
+                LEGACY_OUTBOUND_PERSONA_FIELDS,
+                personaBase ? personaPatch(personaBase, persona) : persona,
+              ),
+              ...(editing ? missionBody : {}),
+            },
           ),
         },
       );
-      if (!res.ok) throw new Error("save");
-      const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice } };
+      if (!res.ok) {
+        // A refused mission: one line in our words, never the reasons.
+        if (missionRefused(res.status, await res.json().catch(() => null))) {
+          setError(tMission("saveRefused"));
+          return;
+        }
+        throw new Error("save");
+      }
+      const data = (await res.json()) as { agent: OutboundAgentListItem & { voiceConfig?: ServedVoice; mission?: unknown } };
       if (!editing && data.agent?.id) set({ id: data.agent.id });
       const agentId = data.agent?.id ?? draft.id;
+      // The stored mission, re-read from the PATCH answer (#282).
+      let servedMission: unknown = data.agent?.mission;
+      let missionSaved = editing;
+      if (!editing && agentId && missionBody.mission !== undefined) {
+        const mres = await fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(missionBody),
+        });
+        const mdata = (await mres.json().catch(() => null)) as { agent?: { mission?: unknown } } | null;
+        if (!mres.ok) {
+          setError(missionRefused(mres.status, mdata) ? tMission("saveRefused") : t("createAgentError"));
+        } else {
+          servedMission = mdata?.agent?.mission;
+          missionSaved = true;
+        }
+      }
+      // A refused pick stays on screen (unsaved) next to its error line.
+      if (missionSaved) {
+        const m = missionFromServed(servedMission);
+        setMission(m);
+        setMissionBase(m);
+      }
       // The agent's switches, once it exists.
       if (agentId && tools && toolsBase) {
         const tchanges = toolsPatch(toolsBase, tools);
@@ -451,6 +489,11 @@ export function AgentsWorkspace({
                   sheetIssues={issues}
                   outboundUsesCompanySheet={usesSheet}
                   savedKey={savedKey}
+                  mission={mission}
+                  onMissionChange={(next) => {
+                    setMission(next);
+                    setDirty(true);
+                  }}
                   toolsServed={toolsServed}
                   tools={tools}
                   onToolsChange={(next) => {

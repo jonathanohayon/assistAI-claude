@@ -13,7 +13,7 @@
 // capability is missing.
 
 import type { GoalPreset } from "@/lib/campaigns/constants";
-import { missionForPreset } from "@/lib/mission/adapters";
+import { missionForPreset, presetForMission } from "@/lib/mission/adapters";
 import {
   MISSION_VERSION,
   SALES_MISSIONS,
@@ -162,4 +162,23 @@ export function missionNeeds(kind: SalesMission | null, caps: EffectiveCapabilit
     if (missing.every((n) => n !== null)) out.push(...(missing as MissionNeed[]));
   }
   return out;
+}
+
+// ── A new campaign starts from its agent's default mission ──
+
+/**
+ * The preset a campaign draft takes when it picks an agent: the agent's
+ * default (presetForMission, #282) for a NEW draft whose cards haven't been
+ * touched; otherwise — an existing campaign, a card already picked, or no
+ * mapping (no mission, book_for_seller, follow_up) — the current preset,
+ * unchanged.
+ */
+export function presetOnAgentPick(opts: {
+  isNew: boolean;
+  cardPicked: boolean;
+  current: string;
+  agentMission: unknown;
+}): string {
+  if (!opts.isNew || opts.cardPicked) return opts.current;
+  return presetForMission(missionFromServed(opts.agentMission)) ?? opts.current;
 }
