@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { agentConfigs, outboundAgents } from "@/lib/db/schema";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
 import { getTileToggles, setTileTogglesIn } from "@/lib/tile-toggles";
+import { clientAgentSecretRefused, sealClientAgentSecretWrite } from "@/lib/tools/client-agent-secret";
 import {
   clientAgentRefused,
   currentOutboundTools,
@@ -50,6 +51,8 @@ export async function writeTools(
 ): Promise<ToolsWriteResult> {
   const unsafe = await clientAgentUrlRefusal(patch);
   if (unsafe) return unsafe;
+  const sealedLooking = clientAgentSecretRefused(patch);
+  if (sealedLooking.length) return { ok: false, status: 400, body: { error: "invalid_tools", fields: sealedLooking } };
   if (agentId) {
     const where = and(eq(outboundAgents.id, agentId), eq(outboundAgents.userId, userId));
     const [row] = await db.select({ toolsConfig: outboundAgents.toolsConfig }).from(outboundAgents).where(where).limit(1);
@@ -58,7 +61,7 @@ export async function writeTools(
     if (!plan.ok) return { ok: false, status: 400, body: { error: "invalid_tools", fields: plan.errors } };
     const refused = outboundToolsRefused(currentOutboundTools(row.toolsConfig), plan.value, outboundToolsEnabled);
     if (refused.length) return { ok: false, status: 403, body: { error: "outbound_tools_disabled", fields: refused } };
-    await db.update(outboundAgents).set({ toolsConfig: jsonb(plan.value), updatedAt: new Date() } as never).where(where);
+    await db.update(outboundAgents).set({ toolsConfig: jsonb(sealClientAgentSecretWrite(plan.value, patch)), updatedAt: new Date() } as never).where(where);
     return { ok: true };
   }
   return db.transaction(async (tx): Promise<ToolsWriteResult> => {
@@ -82,7 +85,8 @@ export async function writeTools(
     await tx
       .update(agentConfigs)
       .set({
-        toolsConfig: jsonb(plan.columns.toolsConfig),
+        // E1: a secret the patch provides is stored sealed (SECRETS_KEY set).
+        toolsConfig: jsonb(sealClientAgentSecretWrite(plan.columns.toolsConfig, patch)),
         transferNumber: plan.columns.transferNumber,
         transferNumberParked: plan.columns.transferNumberParked,
         updatedAt: new Date(),

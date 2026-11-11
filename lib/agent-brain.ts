@@ -16,6 +16,8 @@
  */
 import { randomBytes } from "node:crypto";
 
+import { openSecret, sealForStorage } from "@/lib/crypto/secret-box";
+import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
 import { getSetting, setSetting } from "@/lib/settings";
 
 const SETTING = "tenant_agent_brain";
@@ -27,6 +29,12 @@ export interface AgentBrain {
   url: string;
   /** Secret HMAC optionnel — signe les requêtes pour que le tenant les vérifie. */
   secret?: string;
+  /**
+   * E1: a secret IS stored but can't be opened (sealed, key missing/wrong).
+   * The webhook is then NOT served (toWorkerWebhook); the screen still shows
+   * "secret set" (it is stored); the admins got one alert.
+   */
+  secretUnreadable?: true;
 }
 
 export const DEFAULT_AGENT_BRAIN: AgentBrain = { enabled: false, url: "" };
@@ -44,16 +52,30 @@ async function readMap(): Promise<BrainMap> {
   }
 }
 
-export async function getAgentBrain(userId: string): Promise<AgentBrain> {
-  const map = await readMap();
-  const entry = map[userId];
-  return {
+/**
+ * The brain as stored, the secret OPENED (E1: plain or sealed both read).
+ * A sealed secret that can't be opened is never returned: `secretUnreadable`.
+ */
+export function brainFromEntry(
+  entry: Partial<AgentBrain> | undefined,
+  report: UnreadableReporter = reportUnreadableSecret,
+  env: Record<string, string | undefined> = process.env,
+): AgentBrain {
+  const base = {
     enabled: entry?.enabled === true,
     url: typeof entry?.url === "string" ? entry.url : "",
-    ...(typeof entry?.secret === "string" && entry.secret
-      ? { secret: entry.secret }
-      : {}),
   };
+  const stored = typeof entry?.secret === "string" && entry.secret ? entry.secret : null;
+  if (!stored) return base;
+  const opened = openSecret(stored, env);
+  if (opened.ok) return { ...base, secret: opened.value };
+  report("agent_brain", opened.reason);
+  return { ...base, secretUnreadable: true };
+}
+
+export async function getAgentBrain(userId: string): Promise<AgentBrain> {
+  const map = await readMap();
+  return brainFromEntry(map[userId]);
 }
 
 /**
@@ -76,6 +98,15 @@ export function nextBrainSecret(args: {
   return (args.generate ?? (() => randomBytes(24).toString("hex")))();
 }
 
+/** E1: a NEW secret (provided or generated) is sealed when SECRETS_KEY is set; the kept one stays as stored. */
+export function storedBrainSecret(
+  secret: string,
+  existing: string | undefined,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  return secret === existing ? existing : sealForStorage(secret, env);
+}
+
 export async function setAgentBrain(
   userId: string,
   next: AgentBrain,
@@ -86,16 +117,14 @@ export async function setAgentBrain(
   // enverrait chaque tour dans le vide, et l'appelant n'entendrait que la
   // phrase d'attente sans qu'aucun réglage n'ait l'air faux.
   const enabled = next.enabled && url.startsWith("http");
-  const secret = nextBrainSecret({
-    existing:
-      typeof map[userId]?.secret === "string" ? map[userId]?.secret : undefined,
-    provided: next.secret,
-    enabled,
-  });
+  // The STORED value (plain or sealed) is what "keep the existing" keeps:
+  // never opened and re-written here (E1 rewrites no existing secret).
+  const existing = typeof map[userId]?.secret === "string" && map[userId]?.secret ? map[userId]?.secret : undefined;
+  const secret = nextBrainSecret({ existing, provided: next.secret, enabled });
   map[userId] = {
     enabled,
     url,
-    ...(secret ? { secret } : {}),
+    ...(secret ? { secret: storedBrainSecret(secret, existing) } : {}),
   };
   await setSetting(SETTING, JSON.stringify(map));
   return getAgentBrain(userId);
@@ -109,6 +138,8 @@ export function toWorkerWebhook(
   brain: AgentBrain,
 ): { url: string; secret?: string } | undefined {
   if (!brain.enabled || !brain.url.startsWith("http")) return undefined;
+  // E1 fail closed: a stored secret we can't open → not served (Tamara answers).
+  if (brain.secretUnreadable) return undefined;
   return {
     url: brain.url,
     ...(brain.secret ? { secret: brain.secret } : {}),

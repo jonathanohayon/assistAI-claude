@@ -23,6 +23,7 @@ import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
 import { getTileToggles } from "@/lib/tile-toggles";
 import { clientAgentCallField, receptionistCallFields } from "@/lib/tools/adapters";
+import { openClientAgentTools } from "@/lib/tools/client-agent-secret";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 import { checkAgentUrl } from "@/lib/net/safe-url";
 import { receptionistCapabilities } from "@/lib/tools/store";
@@ -347,7 +348,10 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // "Ask your agent" (T5): served ONLY when active (CLIENT_AGENT on for this
   // account, switched on, usable url) AND the url passes the full check
   // (DNS) now — else the key is absent, as on main. The worker (T5c) reads it.
-  let clientAgentField = clientAgentCallField(capabilities, tools);
+  // E1: the secret is opened only to serve; a sealed one that can't be
+  // opened = the client agent is NOT served (fail closed, admins alerted).
+  const opened = capabilities.clientAgent.active ? openClientAgentTools(tools) : { tools, unreadable: false };
+  let clientAgentField = opened.unreadable ? {} : clientAgentCallField(capabilities, opened.tools);
   if ("clientAgent" in clientAgentField) {
     const safe = await checkAgentUrl(tools.clientAgent.url, { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS });
     if (!safe.ok) {

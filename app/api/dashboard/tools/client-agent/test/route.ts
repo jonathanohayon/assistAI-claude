@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
+import { openStoredSecret } from "@/lib/crypto/unreadable-secret";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
@@ -60,7 +61,10 @@ export async function POST(req: NextRequest) {
   const stored = parsed?.ok ? parsed.value.clientAgent : CLIENT_AGENT_OFF;
   const url = typeof b.url === "string" ? b.url.trim() : stored.url;
   const secret =
-    typeof b.secret === "string" ? b.secret || null : b.secret === null ? null : url === stored.url ? stored.secret : null;
+    typeof b.secret === "string" ? b.secret || null : b.secret === null ? null : url === stored.url
+          ? // E1: the stored secret opened; unreadable = absent (reported).
+            openStoredSecret("client_agent", stored.secret)
+          : null;
   const language =
     typeof b.language === "string" && LANGUAGES.includes(b.language)
       ? b.language

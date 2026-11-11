@@ -14,6 +14,7 @@
 // - No admin-only field: unknown keys are refused (400), so neither the plan
 //   matrix nor technical tool names can be written through `tools`.
 
+import { isSealed } from "@/lib/crypto/secret-box";
 import type { TileToggles } from "@/lib/tile-toggles";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "@/lib/tools/adapters";
 import type { PlanFeatures } from "@/lib/plan-features";
@@ -33,6 +34,8 @@ import {
 export const ORDERS_ASK_MAX = 1000;
 export const CLIENT_AGENT_URL_MAX = 2048;
 export const CLIENT_AGENT_SECRET_MAX = 256;
+/** E1: a sealed CLIENT_AGENT_SECRET_MAX-character secret is ~420 characters. */
+export const SEALED_SECRET_MAX = 2048;
 
 type Parse<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
@@ -62,8 +65,11 @@ const SHAPE: Record<keyof Omit<Tools, "version">, Record<string, (v: unknown) =>
     url: (v) =>
       typeof v === "string" && v.length <= CLIENT_AGENT_URL_MAX ? null : `a string of at most ${CLIENT_AGENT_URL_MAX} characters`,
     mode: (v) => ((CLIENT_AGENT_MODES as readonly unknown[]).includes(v) ? null : `one of ${CLIENT_AGENT_MODES.join(", ")}`),
+    // E1: a stored secret may be SEALED (longer than the plain limit).
     secret: (v) =>
-      v === null || (typeof v === "string" && v.trim().length > 0 && v.length <= CLIENT_AGENT_SECRET_MAX)
+      v === null ||
+      (typeof v === "string" && v.trim().length > 0 && v.length <= CLIENT_AGENT_SECRET_MAX) ||
+      (isSealed(v) && v.length <= SEALED_SECRET_MAX)
         ? null
         : `null or a non-empty string of at most ${CLIENT_AGENT_SECRET_MAX} characters`,
   },

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
+import { sealForStorage } from "@/lib/crypto/secret-box";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { normalizeE164 } from "@/lib/phone-utils";
@@ -108,7 +109,8 @@ export async function POST(req: NextRequest) {
     googleSheetId: string;
     role?: string;
   } = {
-    googleRefreshToken: refreshToken,
+    // E1: sealed when SECRETS_KEY is set.
+    googleRefreshToken: sealForStorage(refreshToken),
     googleCalendarId: calendarId || "primary",
     googleSheetId: sheetId || "",
   };

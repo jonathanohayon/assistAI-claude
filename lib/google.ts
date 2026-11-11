@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { outboundCallerUserId } from "@/lib/call-direction";
+import { openStoredSecret } from "@/lib/crypto/unreadable-secret";
 import { resolveTenantByPhone } from "@/lib/tenant";
 
 // On utilise les packages éclatés `@googleapis/calendar` + `@googleapis/
@@ -104,10 +105,12 @@ export async function getTenantGoogleClients(
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!me?.refreshToken) return null;
+  // E1: a sealed token that can't be opened = not connected (reported once).
+  const refreshToken = openStoredSecret("google", me?.refreshToken);
+  if (!me || !refreshToken) return null;
   return {
-    calendar: getCalendarFor(me.refreshToken),
-    sheets: getSheetsFor(me.refreshToken),
+    calendar: getCalendarFor(refreshToken),
+    sheets: getSheetsFor(refreshToken),
     calendarId: me.calendarId || "primary",
     sheetId: me.sheetId || null,
   };

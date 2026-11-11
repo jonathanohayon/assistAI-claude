@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
+import { openStoredSecret } from "@/lib/crypto/unreadable-secret";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getSheetsFor } from "@/lib/google";
@@ -43,7 +44,9 @@ async function loadUser(userId: string) {
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  return me ?? null;
+  if (!me) return null;
+  // E1: the usable token (a sealed one that can't be opened = not connected).
+  return { ...me, refreshToken: openStoredSecret("google", me.refreshToken) };
 }
 
 export async function GET(req: NextRequest) {
