@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 
 import { voicesFor } from "../../lib/realtime";
 import { catalogueIdFor, engineVoices, equivalentVoice, recommendedVoices } from "../../lib/voice/catalogue";
-import { effectiveEngineVoiceName, tenantVoiceChoice } from "../../lib/voice/choice";
+import { effectiveEngineVoiceName, tenantVoiceChoice, voiceNumber } from "../../lib/voice/choice";
+import { VOICE_ORDER } from "../../lib/voice/public";
 import { inboundVoiceConfigUpdates } from "../../lib/voice/route-writes";
 import { currentInboundVoice } from "../../lib/voice/store";
 
@@ -75,7 +76,7 @@ assert.deepEqual(overridesOf(save(row("xai", "ash"), { voiceId: "ash" })), {});
 // ── Tenant view: our ids, gender, recommended — no engine, no voice name ──
 const view = tenantVoiceChoice(ashOnGrok, "xai");
 assert.equal(view.options.length, 28);
-for (const o of view.options) assert.deepEqual(Object.keys(o).sort(), ["gender", "id", "recommended"]);
+for (const o of view.options) assert.deepEqual(Object.keys(o).sort(), ["gender", "id", "number", "recommended"]);
 assert.equal(view.options.filter((o) => o.recommended).length, 6);
 const json = JSON.stringify(view);
 for (const leak of [/openai|gemini|grok|xai/i, /"(eve|rex|ara|orion|marin|ash|Sulafat)"/]) assert.doesNotMatch(json, leak);
@@ -95,3 +96,30 @@ for (const engine of ["xai", "gemini", "openai"] as const) {
 assert.equal(equivalentVoice(catalogueIdFor("xai", "carina")!, "openai")!.name !== "nova", true, "never an unavailable target");
 
 console.log("ALL VOICE-CHOICE TESTS PASSED");
+
+// ── V8c: numbers and samples in the tenant view ────────────────────────
+{
+  // PINNED: OpenAI customers keep today's "Voice N" (lib/use-voice-label order).
+  assert.deepEqual([...VOICE_ORDER], ["marin", "cedar", "coral", "sage", "shimmer", "nova", "ballad", "verse", "alloy", "echo", "ash", "fable", "onyx"]);
+  for (const v of engineVoices("openai")) assert.equal(voiceNumber(v), VOICE_ORDER.indexOf(v.name as never) + 1, v.name);
+  for (const e of ["gemini", "xai"] as const) {
+    const nums = engineVoices(e).map(voiceNumber);
+    assert.deepEqual(nums, nums.map((_, i) => i + 1), `${e}: numbered 1..n in catalogue order`);
+  }
+  // Numbers are unique within the options shown.
+  for (const e of ["openai", "gemini", "xai"] as const) {
+    const opts = tenantVoiceChoice(currentInboundVoice(null, row(e)), e).options;
+    assert.equal(new Set(opts.map((o) => o.number)).size, opts.length);
+  }
+  // A sample only when it IS the engine's real voice: OpenAI accounts only.
+  const lookup = (name: string) => (name === "marin" || name === "cedar" ? `/api/voice/samples/${name}/warm/fr?v=1.0` : null);
+  const oa = tenantVoiceChoice(currentInboundVoice(null, row("openai", "marin")), "openai", lookup);
+  assert.equal(oa.options.find((o) => o.id === catalogueIdFor("openai", "marin"))!.sampleUrl, "/api/voice/samples/marin/warm/fr?v=1.0");
+  assert.ok(!("sampleUrl" in oa.options.find((o) => o.id === catalogueIdFor("openai", "sage"))!), "no recorded sample → no key");
+  for (const e of ["gemini", "xai"] as const) {
+    const opts = tenantVoiceChoice(currentInboundVoice(null, row(e, "marin")), e, lookup).options;
+    assert.ok(opts.every((o) => !("sampleUrl" in o)), `${e}: an OpenAI recording would mislead`);
+  }
+  for (const o of oa.options) for (const k of Object.keys(o)) assert.ok(["id", "number", "gender", "recommended", "sampleUrl"].includes(k), k);
+  console.log("ALL VOICE-CHOICE V8c TESTS PASSED");
+}

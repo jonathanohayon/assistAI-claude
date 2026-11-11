@@ -20,8 +20,7 @@ import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-
 import { parseTransferNumber } from "@/lib/transfer-number";
 import { legacyTransferWriteUpdates } from "@/lib/tools/legacy-sync";
 import { withoutToolsStore } from "@/lib/tools/store";
-import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
-import { tenantVoiceChoice } from "@/lib/voice/choice";
+import { voiceChoiceFor } from "@/lib/voice/choice-load";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 export async function GET() {
@@ -52,10 +51,7 @@ export async function GET() {
     voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
     // V8b: the voice choice as OUR ids for the account's engine (no engine
     // name, no engine voice name) — what the picker sends back as voiceId.
-    voiceChoice: tenantVoiceChoice(
-      currentInboundVoice(row.config.voiceConfig, row.config),
-      effectiveRealtimeProvider(row.config.realtimeProvider),
-    ),
+    voiceChoice: await voiceChoiceFor(row.config, row.role === "admin"),
     personaConfig: currentInboundPersona(row.config.personaConfig, row.config),
   });
 }
@@ -304,6 +300,8 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({
     ...withoutToolsStore(updated),
     voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin),
+    // V8c: recomputed after the write — which of OUR ids is now selected.
+    voiceChoice: await voiceChoiceFor(updated, isAdmin),
     personaConfig: currentInboundPersona(updated.personaConfig, updated),
   });
 }

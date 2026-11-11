@@ -24,6 +24,27 @@ export const VOICE_GENDER: Record<string, VoiceGender> = {
 };
 
 export const VOICE_IDS = Object.keys(VOICE_GENDER);
+
+/**
+ * Customer-facing voice numbers ("Voice 1"…): each voice's position here.
+ * Supplier voice ids never reach the UI. APPEND ONLY — reordering would
+ * rename every customer's voice. (Moved from lib/use-voice-label.ts.)
+ */
+export const VOICE_ORDER = [
+  "marin",
+  "cedar",
+  "coral",
+  "sage",
+  "shimmer",
+  "nova",
+  "ballad",
+  "verse",
+  "alloy",
+  "echo",
+  "ash",
+  "fable",
+  "onyx",
+] as const;
 export const DEFAULT_VOICE_ID = "marin";
 
 // ── Styles ──────────────────────────────────────────────────────────────
