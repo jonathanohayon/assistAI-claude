@@ -29,6 +29,7 @@ import {
   missionNeeds,
   presetForPick,
   proofOf,
+  provableFor,
   shownCardFor,
   takesCold,
   type AnyCardMission,
@@ -111,7 +112,7 @@ export function MissionCards({
               <span className="text-xs leading-relaxed text-[#475569]">{t(`kind.${kind}.what`)}</span>
               {/* Read-only: what will count as success, as an estimate (no tool proves it today). */}
               <span id={proofId} className="text-xs leading-relaxed text-[#334155]">
-                <span className="font-semibold">{t("proofLabel")}</span> {t(`proof.${proofOf(kind)}`)}
+                <span className="font-semibold">{t("proofLabel")}</span> {t(`proof.${proofOf(kind, provableFor(kind, capabilities))}`)}
               </span>
               {readOnly && (
                 <span id={lockedId} className="flex items-center gap-1 text-xs font-semibold text-[#be185d]">

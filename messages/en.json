@@ -2673,11 +2673,11 @@
     "kind": {
       "qualify_lead": {
         "name": "Qualify a lead",
-        "what": "Asks your questions and fills in the lead sheet."
+        "what": "States the reason for the call, then asks your qualifying questions."
       },
       "announce_offer": {
         "name": "Announce an offer",
-        "what": "Presents your offer; if they're interested, offers a callback or puts someone on the line."
+        "what": "Presents your offer and steers the conversation towards the next step."
       },
       "other": {
         "name": "Other",
@@ -2685,11 +2685,11 @@
       },
       "book_for_seller": {
         "name": "Book an appointment for the seller",
-        "what": "Offers a time slot and books the appointment with your seller."
+        "what": "Offers the person an appointment with your seller."
       },
       "follow_up": {
         "name": "Follow up",
-        "what": "Gets back in touch with someone who already spoke with you, then books an appointment or puts someone on the line."
+        "what": "Gets back in touch with someone who already spoke with you and leads to the next step."
       }
     },
     "proofLabel": "Success (estimated):",

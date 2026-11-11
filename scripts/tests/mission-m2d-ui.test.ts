@@ -28,6 +28,7 @@ import {
   presetForPick,
   presetOnAgentPick,
   presetRefusal,
+  provableFor,
   shownCardFor,
 } from "../../components/bricks/mission/mission-ui";
 import { GOAL_EMOJI } from "../../app/[locale]/dashboard/campaigns/campaign-list";
@@ -44,8 +45,8 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").repl
 function html(el: ReactElement, locale = "fr") {
   return renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, el));
 }
-const served = (tools = OUTBOUND_TOOLS, outboundToolsEnabled = true) =>
-  effectiveCapabilities({ recipe: "outbound", tools }, { transferNumber: "", googleConnected: false, outboundToolsEnabled }, DEFAULT_MATRIX.premium);
+const served = (tools = OUTBOUND_TOOLS, outboundToolsEnabled = true, googleConnected = true) =>
+  effectiveCapabilities({ recipe: "outbound", tools }, { transferNumber: "", googleConnected, outboundToolsEnabled }, DEFAULT_MATRIX.premium);
 const cards = (preset: string, opts: { isAdmin?: boolean; locale?: string; caps?: ReturnType<typeof served> | null } = {}) =>
   html(
     createElement(MissionCards, { preset, onPresetChange: () => {}, isAdmin: opts.isAdmin ?? false, capabilities: opts.caps ?? null }),
@@ -139,7 +140,25 @@ const ids = (out: string) => [...out.matchAll(/data-id="([a-z_]+)"/g)].map((m) =
     assert.ok(blocked.includes(esc(tb.missing.not_available_outbound)), `${l}: the Tools brick's reason`);
     const unknown = cards("book_for_seller", { isAdmin: true, locale: l, caps: null });
     assert.ok(!unknown.includes(esc(tb.statusPending)), `${l}: no agent / loading → no line`);
+    // The proof: "judged from the conversation" until booking is effective, then the booking.
+    const mb = messages(l).MissionBrick;
+    for (const out of [off, blocked, unknown]) {
+      assert.ok(out.includes(esc(mb.proof.estimated)) && !out.includes(esc(mb.proof.booking_created)), `${l}: no booking claim while off`);
+    }
+    const on = cards("book_for_seller", { isAdmin: true, locale: l, caps: served(bookingOn) });
+    assert.ok(!on.includes(esc(tb.statusPending)), `${l}: booking on → no line`);
+    assert.ok(on.includes(esc(mb.proof.booking_created)), `${l}: booking on → the booking proof`);
+    assert.ok(on.includes(esc(mb.proof.booking_or_transfer)), `${l}: follow_up gated the same way (booking is one of its anyOf)`);
+    assert.ok(!off.includes(esc(mb.proof.booking_or_transfer)), `${l}: follow_up, nothing on → estimated`);
+    // No card text promises a filled record, a call-back, a transfer or a booking.
+    for (const k of ADMIN_MISSION_CARDS) {
+      assert.doesNotMatch(mb.kind[k].what, /fiche|rappel|passe l|réserve|lead sheet|call ?back|on the line|books|transfer|כרטיס|שיחה חוזרת|מעבירים|קובעים/i, `${l}: ${k} promises nothing`);
+    }
   }
+  assert.deepEqual(provableFor("book_for_seller", served()), []);
+  assert.deepEqual(provableFor("book_for_seller", served(bookingOn)), ["booking_created"]);
+  assert.deepEqual(provableFor("book_for_seller", null), []);
+  assert.deepEqual(provableFor("qualify_lead", served(bookingOn)), [], "the 3 cards stay unwired");
   // The editor feeds the picked agent's capabilities from the Tools brick's GET.
   const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
   assert.match(ws, /\/api\/dashboard\/tools\?/);

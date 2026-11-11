@@ -2673,11 +2673,11 @@
     "kind": {
       "qualify_lead": {
         "name": "Qualifier un prospect",
-        "what": "Pose vos questions et remplit la fiche du prospect."
+        "what": "Annonce la raison de l'appel, puis pose vos questions de qualification."
       },
       "announce_offer": {
         "name": "Annoncer une offre",
-        "what": "Présente votre offre ; si la personne est intéressée, propose de la rappeler ou lui passe quelqu'un."
+        "what": "Présente votre offre et mène la conversation vers la prochaine étape."
       },
       "other": {
         "name": "Autre",
@@ -2685,11 +2685,11 @@
       },
       "book_for_seller": {
         "name": "Prendre un rendez-vous pour le vendeur",
-        "what": "Propose un créneau et réserve le rendez-vous avec votre vendeur."
+        "what": "Propose à la personne un rendez-vous avec votre vendeur."
       },
       "follow_up": {
         "name": "Relancer",
-        "what": "Reprend contact avec quelqu'un qui a déjà échangé avec vous, puis réserve un rendez-vous ou passe l'appel à une personne."
+        "what": "Reprend contact avec quelqu'un qui a déjà échangé avec vous et mène vers la prochaine étape."
       }
     },
     "proofLabel": "Réussite (estimée) :",

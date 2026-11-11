@@ -139,9 +139,27 @@ export function presetRefusal(status: number, body: unknown): PresetRefusalKind 
   return null;
 }
 
-/** The read-only proof line's message key for a mission. */
-export function proofOf(kind: SalesMission): SalesMissionProof {
-  return SALES_MISSION_TABLE[kind].provenBy;
+/**
+ * The read-only proof line's message key for a mission. The table's proof
+ * (a filled record, a transfer, a booking) is shown only once the switch that
+ * makes it true is on and passed in `provable`; until then every card says
+ * what the server really does: success judged from the conversation.
+ */
+export function proofOf(kind: SalesMission, provable: readonly SalesMissionProof[] = []): SalesMissionProof {
+  const proof = SALES_MISSION_TABLE[kind].provenBy;
+  return provable.includes(proof) ? proof : "estimated";
+}
+
+/**
+ * The proofs a card may claim (`proofOf`'s `provable`), from the agent's
+ * capabilities. Only the two admin-only cards are wired (M2d): their proof
+ * (a booking; a booking or a transfer) shows once the "Not active yet" line
+ * has nothing to say for a KNOWN set of capabilities. Unknown (no agent,
+ * loading) or any other card → [] ("judged from the conversation").
+ */
+export function provableFor(kind: SalesMission, caps: EffectiveCapabilities | null | undefined): SalesMissionProof[] {
+  if (!adminCardForPreset(kind) || !caps) return [];
+  return missionNeeds(kind, caps).length === 0 ? [SALES_MISSION_TABLE[kind].provenBy] : [];
 }
 
 /** Whether the "cold prospecting" switch is shown for a card. */
