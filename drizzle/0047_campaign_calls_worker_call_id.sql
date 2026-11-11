@@ -1,0 +1,2 @@
+ALTER TABLE "campaign_calls" ADD COLUMN IF NOT EXISTS "worker_call_id" text;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "campaign_calls_worker_call_id_idx" ON "campaign_calls" USING btree ("worker_call_id");

@@ -1,5 +1,5 @@
 {
-  "id": "ee555a5d-2e33-464f-b3a8-100ca2fa48ba",
+  "id": "9cca0b6f-0983-4b6d-ac21-7df975374941",
   "prevId": "a526cde8-53f9-4995-bd91-dcbd8c305aa5",
   "version": "7",
   "dialect": "postgresql",
@@ -614,9 +614,31 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "worker_call_id": {
+          "name": "worker_call_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "campaign_calls_worker_call_id_idx": {
+          "name": "campaign_calls_worker_call_id_idx",
+          "columns": [
+            {
+              "expression": "worker_call_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "campaign_calls_campaign_id_campaigns_id_fk": {
           "name": "campaign_calls_campaign_id_campaigns_id_fk",
@@ -1236,28 +1258,6 @@
           ],
           "isUnique": false,
           "where": "\"events\".\"metadata\" ? 'campaignId'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "events_origin_campaign_created_idx": {
-          "name": "events_origin_campaign_created_idx",
-          "columns": [
-            {
-              "expression": "(\"metadata\"->'origin'->>'campaignId')",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "(\"events\".\"metadata\"->'origin'->>'kind') = 'campaign'",
           "concurrently": false,
           "method": "btree",
           "with": {}

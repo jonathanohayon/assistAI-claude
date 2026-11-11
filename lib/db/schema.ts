@@ -550,7 +550,15 @@ export const campaignCalls = pgTable("campaign_calls", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-});
+  // The worker's call id (x-call-id on /api/agent/campaign-result: a hash of
+  // the LiveKit room name, lib/call-id.ts). Same value as events.metadata->>'callId',
+  // so a campaign call can be joined to its tool events. NULL for rows written
+  // before this column, or when the header was absent/malformed. Not read yet.
+  // Never returned by the dashboard routes (excluded in campaigns/[id] GET).
+  workerCallId: text("worker_call_id"),
+}, (t) => ({
+  byWorkerCallId: index("campaign_calls_worker_call_id_idx").on(t.workerCallId),
+}));
 
 // One row per tenant-owned phone number. The agent looks up the called
 // number on each inbound call to know which tenant's persona to load.

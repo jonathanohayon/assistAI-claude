@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const cleaned = raw.replace(/[\s()-]/g, "");
   if (!/^\+?\d{6,15}$/.test(cleaned)) {
     return NextResponse.json(
-      { error: "Format E.164 attendu (ex: +972585001007)" },
+      { error: "Format E.164 attendu (ex: +972500000000)" },
       { status: 400 },
     );
   }

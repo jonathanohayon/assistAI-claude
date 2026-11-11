@@ -74,7 +74,7 @@ const campaignOrigin = (campaignId: string, contactId: string) => ({
 
 // 3. The migration is idempotent and matches the schema index
 {
-  const mig = read("drizzle/0047_events_origin_campaign.sql");
+  const mig = read("drizzle/0048_events_origin_campaign.sql");
   assert.match(mig, /CREATE INDEX IF NOT EXISTS "events_origin_campaign_created_idx"/);
   assert.match(mig, /\("metadata"->'origin'->>'campaignId'\),"created_at"\)/);
   assert.match(mig, /WHERE \("events"\."metadata"->'origin'->>'kind'\) = 'campaign'/);
