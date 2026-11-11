@@ -429,18 +429,19 @@ function ConversationRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
+        aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
       >
         <span dir="ltr" className="font-mono text-[12px] text-[#18181b]">{call.phoneNumber}</span>
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+          className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
           style={{ background: OUTCOME_COLORS[call.outcome] ?? "#94a3b8" }}
         >
           {outcomeLabel(call.outcome)}
         </span>
         {call.success && (
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+            className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
             style={{ background: SUCCESS_COLORS[call.success] ?? "#94a3b8" }}
           >
             {t(`estimatedSuccess_${call.success}` as "estimatedSuccess_success")}
@@ -448,7 +449,7 @@ function ConversationRow({
         )}
         {call.sentiment && (
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+            className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold"
             style={{
               background: `${SENTIMENT_COLORS[call.sentiment]}1a`,
               color: SENTIMENT_COLORS[call.sentiment],
@@ -457,20 +458,22 @@ function ConversationRow({
             {t(`sentiment_${call.sentiment}` as "sentiment_positive")}
           </span>
         )}
-        <span className="ms-auto text-[11px] text-[#94a3b8]">
+        {/* Duration + chevron stay together when the badges wrap on a phone. */}
+        <span className="ms-auto flex items-center gap-2 text-[11px] text-[#94a3b8]">
           {fmtDuration(call.durationSeconds)}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </span>
-        <svg
-          viewBox="0 0 24 24"
-          className={`h-4 w-4 shrink-0 text-[#94a3b8] transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
       </button>
       <AnimatePresence initial={false}>
         {open && (
