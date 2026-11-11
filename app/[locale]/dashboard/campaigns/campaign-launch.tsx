@@ -187,9 +187,16 @@ export function CampaignLaunch({
               role="status"
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold ring-1 ${TONE_CHIP.warn}`}
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 shrink-0" aria-hidden>
-                <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-              </svg>
+              {heading.key === "launchDryTitle" ? (
+                // Flask: test mode, the dispatcher runs but dials nothing.
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+                  <path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3M7.5 14h9" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+                  <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+                </svg>
+              )}
               {t(heading.key)}
             </p>
           ) : (
