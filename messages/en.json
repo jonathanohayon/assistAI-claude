@@ -1447,7 +1447,9 @@
         "unknown": "Couldn’t {action, select, pause {pause} other {start}} the campaign. Try again."
       }
     },
-    "pauseToEdit": "Pause the campaign to change: {fields}"
+    "pauseToEdit": "Pause the campaign to change: {fields}",
+    "goal_book_for_seller": "Appointment for the seller",
+    "goal_follow_up": "Follow-up"
   },
   "DashboardCalendar": {
     "header": "Calendar",
@@ -2664,5 +2666,49 @@
     "noTranscript": "No conversation was saved for this call.",
     "moreDetails": "More details",
     "calledNumber": "Number called"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "What the call should achieve.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualify a lead",
+        "what": "Asks your questions and fills in the lead sheet."
+      },
+      "announce_offer": {
+        "name": "Announce an offer",
+        "what": "Presents your offer; if they're interested, offers a callback or puts someone on the line."
+      },
+      "other": {
+        "name": "Other",
+        "what": "Your own goal, described below."
+      },
+      "book_for_seller": {
+        "name": "Book an appointment for the seller",
+        "what": "Offers a time slot and books the appointment with your seller."
+      },
+      "follow_up": {
+        "name": "Follow up",
+        "what": "Gets back in touch with someone who already spoke with you, then books an appointment or puts someone on the line."
+      }
+    },
+    "proofLabel": "Success (estimated):",
+    "proof": {
+      "lead_sheet_complete": "the lead sheet is filled in, required fields included.",
+      "booking_created": "an appointment is booked.",
+      "transfer_or_callback": "the call is passed to a person, or they ask to be called back.",
+      "booking_or_transfer": "an appointment is booked, or the call is passed to a person.",
+      "estimated": "judged from the conversation."
+    },
+    "coldLabel": "Cold prospecting",
+    "coldHint": "They don't know you yet: only the opening of the call changes.",
+    "needsOff": "turn it on in “{tools}”.",
+    "defaultLabel": "Default mission for new campaigns",
+    "defaultNone": "Choose…",
+    "defaultColdOption": "Cold prospecting",
+    "saveRefused": "The mission wasn't saved. Try again.",
+    "lockedByTeam": "Set by our team: you can only pick another mission.",
+    "presetAdminOnly": "This mission is reserved for our team. Pick another one.",
+    "presetNeedsBooking": "This mission needs appointment booking: turn it on for the chosen agent, then try again."
   }
 }

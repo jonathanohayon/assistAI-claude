@@ -1447,7 +1447,9 @@
         "unknown": "Impossible de {action, select, pause {mettre en pause} other {lancer}} la campagne. Réessayez."
       }
     },
-    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}"
+    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}",
+    "goal_book_for_seller": "Rendez-vous pour le vendeur",
+    "goal_follow_up": "Relance"
   },
   "DashboardCalendar": {
     "header": "Calendrier",
@@ -2664,5 +2666,49 @@
     "noTranscript": "Pas de conversation enregistrée pour cet appel.",
     "moreDetails": "Plus de détails",
     "calledNumber": "Numéro appelé"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "Ce que l'appel doit obtenir.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualifier un prospect",
+        "what": "Pose vos questions et remplit la fiche du prospect."
+      },
+      "announce_offer": {
+        "name": "Annoncer une offre",
+        "what": "Présente votre offre ; si la personne est intéressée, propose de la rappeler ou lui passe quelqu'un."
+      },
+      "other": {
+        "name": "Autre",
+        "what": "Votre propre objectif, décrit ci-dessous."
+      },
+      "book_for_seller": {
+        "name": "Prendre un rendez-vous pour le vendeur",
+        "what": "Propose un créneau et réserve le rendez-vous avec votre vendeur."
+      },
+      "follow_up": {
+        "name": "Relancer",
+        "what": "Reprend contact avec quelqu'un qui a déjà échangé avec vous, puis réserve un rendez-vous ou passe l'appel à une personne."
+      }
+    },
+    "proofLabel": "Réussite (estimée) :",
+    "proof": {
+      "lead_sheet_complete": "la fiche du prospect est remplie, champs obligatoires compris.",
+      "booking_created": "un rendez-vous est réservé.",
+      "transfer_or_callback": "l'appel est passé à une personne, ou la personne demande à être rappelée.",
+      "booking_or_transfer": "un rendez-vous est réservé, ou l'appel est passé à une personne.",
+      "estimated": "jugée d'après la conversation."
+    },
+    "coldLabel": "Prospection à froid",
+    "coldHint": "La personne ne vous connaît pas encore : seule l'ouverture de l'appel change.",
+    "needsOff": "à activer dans « {tools} ».",
+    "defaultLabel": "Mission par défaut des nouvelles campagnes",
+    "defaultNone": "Choisir…",
+    "defaultColdOption": "Prospection à froid",
+    "saveRefused": "La mission n'a pas été enregistrée. Réessayez.",
+    "lockedByTeam": "Choisie par notre équipe : vous pouvez seulement choisir une autre mission.",
+    "presetAdminOnly": "Cette mission est réservée à notre équipe. Choisissez-en une autre.",
+    "presetNeedsBooking": "Cette mission a besoin de la prise de rendez-vous : activez-la pour l'agent choisi, puis réessayez."
   }
 }
