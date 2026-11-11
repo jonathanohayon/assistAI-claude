@@ -1564,6 +1564,7 @@
     "apiCopied": "הועתק",
     "apiEndpointLabel": "נקודת קצה",
     "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<המפתח_שלך>",
     "developerSection": "תצוגה"
   },
   "DashboardBilling": {

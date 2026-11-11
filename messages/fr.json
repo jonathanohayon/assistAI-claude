@@ -1564,6 +1564,7 @@
     "apiCopied": "Copié",
     "apiEndpointLabel": "Point d’accès",
     "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<VOTRE_CLE>",
     "developerSection": "Affichage"
   },
   "DashboardBilling": {
