@@ -2352,7 +2352,8 @@
       "unknownLocation": "„{service}” מקושר לסניף שכבר לא קיים.",
       "invalidEmail": "כתובת האימייל אינה תקינה.",
       "notesTooLong": "ההערות ארוכות מ־6000 תווים.",
-      "invalid": "ערך אחד אינו תקין."
+      "invalid": "ערך אחד אינו תקין.",
+      "locationCap": "החבילה שלכם כוללת {cap, plural, one {סניף אחד} two {שני סניפים} other {# סניפים}}."
     },
     "instructionsLabel": "ההנחיות של הסוכן הזה",
     "instructionsHint": "מה הסוכן הזה צריך לעשות או להימנע ממנו. חלות עליו בלבד.",
@@ -2449,7 +2450,9 @@
     "after": "אחרי:",
     "fieldLabel": "{label}:",
     "widenedNote": "הסניף שלו לא נשמר: השירות יוצע בכל הסניפים שלכם.",
-    "reviewApplySome": "החלה של {n} מתוך {total}"
+    "reviewApplySome": "החלה של {n} מתוך {total}",
+    "reviewLocationCap": "{dropped, plural, one {סניף אחד שנמצא לא נוסף} two {שני סניפים שנמצאו לא נוספו} other {# סניפים שנמצאו לא נוספו}}: החבילה שלכם כוללת {cap, plural, one {סניף אחד} two {שני סניפים} other {# סניפים}}.",
+    "seePlans": "לצפייה בחבילות"
   },
   "ToolsBrick": {
     "intro": "מה פקידת הקבלה שלכם יכולה לעשות בשיחה, מעבר לדיבור. ניתוק השיחה תמיד אפשרי.",

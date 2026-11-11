@@ -10,13 +10,24 @@
  * sauvegarde via PUT /api/dashboard/config) se fait côté client après revue.
  * Scoped with resolveTargetUserId (?asUserId= for admins), so the scan is
  * logged for the tenant it was made for.
+ *
+ * Location cap (lib/locations-cap.ts): the scan is never refused. Its
+ * `result` event also carries `locationCap` (the tenant's plan cap) and
+ * `centresTruncated` (true when the site lists more NEW locations than the
+ * room left under the cap, against the stored ones); the proposal then adds
+ * only the first ones that fit and never removes an existing location.
  */
 
+import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
-import { extractSheetDraft } from "@/lib/knowledge/learn";
+import { sanitizeBusinessConfig } from "@/lib/business";
+import { db } from "@/lib/db";
+import { agentConfigs, users } from "@/lib/db/schema";
+import { extractSheetDraft, type ScanEvent } from "@/lib/knowledge/learn";
+import { scanResultWithCap } from "@/lib/locations-cap";
 
 // Node runtime (cheerio + dns + fetch streaming). Jamais caché (POST).
 export const dynamic = "force-dynamic";
@@ -38,12 +49,21 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "URL manquante" }, { status: 400 });
   }
 
+  const [account] = await db
+    .select({ business: agentConfigs.business, plan: users.subscriptionPlan })
+    .from(users)
+    .leftJoin(agentConfigs, eq(agentConfigs.userId, users.id))
+    .where(eq(users.id, userId))
+    .limit(1);
+  const storedCentres = sanitizeBusinessConfig(account?.business).centres;
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (obj: unknown) => {
-        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      const send = (obj: ScanEvent) => {
+        const ev = obj.type === "result" ? scanResultWithCap(obj, storedCentres, account?.plan) : obj;
+        controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n"));
       };
       try {
         // The one learning service (Knowledge S2): crawl + extraction agents.

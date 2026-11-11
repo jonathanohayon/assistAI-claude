@@ -330,6 +330,13 @@
       "when": 1794432077264,
       "tag": "0046_calls_to_number",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794432688880,
+      "tag": "0047_campaign_calls_worker_call_id",
+      "breakpoints": true
     }
   ]
 }
