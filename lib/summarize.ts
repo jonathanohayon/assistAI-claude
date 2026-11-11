@@ -2,6 +2,8 @@
 // Returns two variants: one for the client (warm, branded) and one for the
 // owner (factual, action-oriented).
 
+import { sanitizeBusinessConfig } from "@/lib/business";
+
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = process.env.SUMMARY_MODEL ?? "gpt-5.4-mini";
 
@@ -20,7 +22,7 @@ export const DEFAULT_SUMMARY_PROMPT = `Tu reçois la transcription d'un appel t�
 Génère un objet JSON strictement de la forme :
 {
   "summary": "résumé factuel en 3-6 lignes (qui a appelé, motif, ce qui a été fait, prochaines étapes)",
-  "for_client": "message WhatsApp à envoyer à la cliente. Chaleureux, en {target_language}, signé 'Le salon Prestige'. Inclure le récap du RDV pris ou des actions effectuées. 4-7 lignes max. Pas de markdown.",
+  "for_client": "message WhatsApp à envoyer à la cliente. Chaleureux, en {target_language}. Ne signe pas le message : la signature est ajoutée ensuite. Inclure le récap du RDV pris ou des actions effectuées. 4-7 lignes max. Pas de markdown.",
   "for_owner": "message WhatsApp à envoyer au propriétaire. Factuel, en {target_language}. Liste : prénom cliente / motif / action / RDV (date+heure+prestation) / téléphone si donné. 4-8 lignes. Pas de markdown."
 }
 
@@ -29,6 +31,37 @@ Règles :
 - for_client ET for_owner doivent être ENTIÈREMENT en {target_language}, c'est la langue choisie par le tenant — n'écris pas dans une autre langue même si l'appel a eu lieu dans une autre.
 - Sois sobre. Pas d'emojis sauf un seul à la fin de for_client.
 - Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
+
+/**
+ * The name the client recap is signed with: the tenant's OWN business name
+ * (agent_configs.business.identity.name, the company sheet the calls read),
+ * '' when it has none. One line, no newline.
+ */
+export function summarySignature(business: unknown): string {
+  return sanitizeBusinessConfig(business).identity.name.replace(/\s+/g, " ").trim();
+}
+
+/** The client recap + its signature line ('' name = no signature at all). */
+export function signClientMessage(text: string, name: string): string {
+  const body = text.trimEnd();
+  if (!name) return body;
+  return body ? `${body}\n\n— ${name}` : `— ${name}`;
+}
+
+/**
+ * The system prompt sent to the model. The default prompt never signs (the
+ * code signs, see summarizeCall); an admin per-plan prompt may use
+ * {business_name}, replaced by the tenant's own name ('' when none).
+ */
+export function buildSummarySystemPrompt(
+  customSystemPrompt: string | null | undefined,
+  targetLanguage: string | null | undefined,
+  businessName: string,
+): string {
+  return ((customSystemPrompt && customSystemPrompt.trim()) || DEFAULT_SUMMARY_PROMPT)
+    .replaceAll("{target_language}", LANG_LABEL[targetLanguage ?? "fr"] ?? "français")
+    .replaceAll("{business_name}", businessName);
+}
 
 const LANG_LABEL: Record<string, string> = {
   fr: "français",
@@ -44,7 +77,12 @@ export async function summarizeCall(
   /** Langue cible pour for_client / for_owner. 'fr' | 'he' | 'en'.
    *  Substitué via {target_language} placeholder dans le prompt. */
   targetLanguage?: string | null,
+  /** The tenant's own business name (summarySignature). Signs the client
+   *  recap when the default prompt is used; '' / absent = no signature. */
+  businessName?: string | null,
 ): Promise<CallSummary> {
+  const name = (businessName ?? "").trim();
+  const usesDefaultPrompt = !(customSystemPrompt && customSystemPrompt.trim());
   const apiKey =
     process.env.REALTIME_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
   if (!apiKey) {
@@ -70,13 +108,7 @@ export async function summarizeCall(
       messages: [
         {
           role: "system",
-          content: (
-            (customSystemPrompt && customSystemPrompt.trim()) ||
-            DEFAULT_SUMMARY_PROMPT
-          ).replaceAll(
-            "{target_language}",
-            LANG_LABEL[targetLanguage ?? "fr"] ?? "français",
-          ),
+          content: buildSummarySystemPrompt(customSystemPrompt, targetLanguage, name),
         },
         {
           role: "user",
@@ -104,7 +136,11 @@ export async function summarizeCall(
 
   return {
     raw: parsed.summary ?? "",
-    forClient: parsed.for_client ?? "",
+    // Default prompt: the model writes no signature, the code adds the
+    // tenant's own name (or none). Admin prompt: its text decides.
+    forClient: usesDefaultPrompt
+      ? signClientMessage(parsed.for_client ?? "", name)
+      : (parsed.for_client ?? ""),
     forOwner: parsed.for_owner ?? "",
   };
 }

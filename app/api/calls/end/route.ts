@@ -22,7 +22,7 @@ import {
   forceTextPhone,
   prependRow,
 } from "@/lib/sheets-helpers";
-import { summarizeCall } from "@/lib/summarize";
+import { summarizeCall, summarySignature } from "@/lib/summarize";
 import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
 import { checkTwilioMessageStatus, sendWhatsApp } from "@/lib/whatsapp";
 
@@ -165,7 +165,9 @@ export async function POST(req: NextRequest) {
     // (cfg.primaryLanguage) pour que for_client / for_owner soient en
     // FR/HE/EN selon le choix du tenant. Fallback fr si non set.
     const targetLang = cfg.primaryLanguage ?? "fr";
-    summary = await summarizeCall(transcript, customPrompt, targetLang);
+    // Signed with the tenant's OWN business name (company sheet, read from
+    // agent_configs.business), or not signed at all when it has none.
+    summary = await summarizeCall(transcript, customPrompt, targetLang, summarySignature(cfg.business));
     await logEvent({
       source: "summary",
       event: "summary_generated",
