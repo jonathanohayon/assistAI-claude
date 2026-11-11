@@ -31,7 +31,7 @@ export async function connectTestRoom(opts: {
   onDisconnected: () => void;
   onCreated: (room: TestRoom) => void;
 }): Promise<TestRoom> {
-  const res = await fetch("/api/livekit/web-token", {
+  const res = await fetch("/api/live-test/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

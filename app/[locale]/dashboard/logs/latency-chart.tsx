@@ -39,7 +39,6 @@ interface LatencyPoint {
     p95: number | null;
     greeting: number | null;
   };
-  // Neutral client-side names; see fromApi for the API's field names.
   latencies: {
     phoneToWorker: number | null;
     workerToCallServer: number | null;
@@ -66,27 +65,6 @@ interface ChartData {
   serverTime: string;
   sinceMs: number;
   untilMs: number;
-}
-
-/**
- * The API still names two hops after suppliers (backend rename pending);
- * map them to the neutral client names in this one place.
- */
-function fromApi(data: ChartData): ChartData {
-  return {
-    ...data,
-    points: data.points.map((p) => {
-      const { twilioToWorker, workerToLivekit, ...rest } = p.latencies as unknown as Record<string, number | null>;
-      return {
-        ...p,
-        latencies: {
-          ...rest,
-          phoneToWorker: p.latencies.phoneToWorker ?? twilioToWorker ?? null,
-          workerToCallServer: p.latencies.workerToCallServer ?? workerToLivekit ?? null,
-        } as LatencyPoint["latencies"],
-      };
-    }),
-  };
 }
 
 type Period = "1h" | "24h" | "7d" | "30d";
@@ -197,7 +175,7 @@ export function LatencyChart({ asUserId }: { asUserId?: string } = {}) {
             setError(body?.error ?? `HTTP ${res.status}`);
           return;
         }
-        const json = fromApi((await res.json()) as ChartData);
+        const json = (await res.json()) as ChartData;
         if (!aborted) {
           setData(json);
           setError(null);

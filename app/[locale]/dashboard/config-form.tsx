@@ -847,7 +847,7 @@ export function ConfigForm({
                   </div>
                 )}
                 {activeTile === "channels" && (
-                  <ChannelsPanel t={t} asUserId={asUserId} />
+                  <ChannelsPanel t={t} asUserId={asUserId} isAdmin={isAdmin} />
                 )}
                 {activeTile === "prompt" &&
                   isAdmin &&

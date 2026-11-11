@@ -903,6 +903,7 @@
     "channelsWhatsappSubtitle": "Recevez et traitez les messages WhatsApp via l'agent",
     "channelsWhatsappExplainer": "L'activation WhatsApp passe par l'enregistrement de votre numéro comme expéditeur WhatsApp Business (vérification de votre marque par Meta). Lancez la procédure depuis la documentation ; le canal sera actif une fois la vérification terminée.",
     "channelsActivateWhatsapp": "Activer WhatsApp",
+    "channelsWhatsappAvailableBody": "WhatsApp est disponible pour votre agent. Contactez-nous pour l'activer sur votre numéro.",
     "channelsStatusActive": "Actif",
     "channelsStatusPending": "Vérification en cours",
     "businessCentresTitle": "Centres / Lieux",

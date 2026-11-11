@@ -24,11 +24,11 @@ interface Props {
    *  car le worker fetch la config depuis la DB (pas les valeurs UI). */
   dirty: boolean;
   /** Si fourni : admin teste en tant que ce tenant cible. L'endpoint
-   *  /api/livekit/web-token vérifie le rôle admin et scope la room
+   *  /api/live-test/token vérifie le rôle admin et scope la room
    *  + metadata participant sur le bon userId. */
   asUserId?: string;
   /** Si fourni : teste un AGENT SORTANT précis (sa voix/persona/connaissance)
-   *  au lieu de la config entrante. Passé à /api/livekit/web-token. */
+   *  au lieu de la config entrante. Passé à /api/live-test/token. */
   agentId?: string;
 }
 

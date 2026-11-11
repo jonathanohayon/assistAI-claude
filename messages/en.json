@@ -903,6 +903,7 @@
     "channelsWhatsappSubtitle": "Receive and handle WhatsApp messages through the agent",
     "channelsWhatsappExplainer": "Enabling WhatsApp goes through registering your number as a WhatsApp Business sender (brand verification by Meta). Start the process from the docs; the channel will be active once verification completes.",
     "channelsActivateWhatsapp": "Enable WhatsApp",
+    "channelsWhatsappAvailableBody": "WhatsApp is available for your agent. Contact us to turn it on for your number.",
     "channelsStatusActive": "Active",
     "channelsStatusPending": "Pending verification",
     "businessCentresTitle": "Locations",
