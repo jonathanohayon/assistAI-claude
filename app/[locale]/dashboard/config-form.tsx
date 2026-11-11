@@ -53,7 +53,7 @@ import {
 } from "@/components/bricks/persona/persona-ui";
 import { personaFromInbound } from "@/lib/persona/adapters";
 import { GREETING_VARIABLES, type Persona } from "@/lib/persona/contract";
-import { hydrateVoice, voicePatch, type ServedVoiceChoice } from "@/components/bricks/voice/voice-ui";
+import { hydrateVoice, selectedChoice, voicePatch, type ServedVoiceChoice } from "@/components/bricks/voice/voice-ui";
 import { withVoiceConfig } from "@/components/bricks/voice/legacy-fields";
 import type { ClientVoice } from "@/components/bricks/voice/voice-client";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
@@ -125,6 +125,7 @@ export function ConfigForm({
   const tKnowledge = useTranslations("KnowledgeBrick");
   const tTools = useTranslations("ToolsBrick");
   const voiceLabel = useVoiceLabel();
+  const tVoices = useTranslations("Voices");
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
@@ -438,12 +439,15 @@ export function ConfigForm({
   };
 
   // ─── TILES — métadata + summary dynamiques ───────────────────────────
+  // V8c: the receptionist's voice as the picker shows it (the server's number).
+  const chosenVoice = voiceChoice ? voiceChoice.options.find((o) => o.id === selectedChoice(voiceChoice, voice.voiceId)) : undefined;
+  const voiceSummary = chosenVoice ? tVoices("display", { n: chosenVoice.number, gender: chosenVoice.gender }) : voiceLabel(voice.voiceId);
   const TILES = [
     {
       id: "voice",
       label: t("voiceTitle"),
       tagline: t("wowTagVoice"),
-      summary: voiceLabel(voice.voiceId),
+      summary: voiceSummary,
       accent: "from-[#06b6d4] to-[#0e7490]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">

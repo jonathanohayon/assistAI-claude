@@ -71,6 +71,9 @@ const choice: ServedVoiceChoice = {
   assert.doesNotMatch(brick + read("components/bricks/voice/voice-ui.ts"), /from "@\/lib\/voice\/(choice|catalogue|choice-load)"/);
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /choice=\{voiceChoice\}/);
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /setVoiceChoice\(saved\.voiceChoice\)/, "a save refreshes the choice");
+  // The tile summary says the same "Voice N" as the picker (not the OpenAI equivalent's number).
+  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /summary: voiceSummary/);
+  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /n: chosenVoice\.number/);
   assert.doesNotMatch(read("app/[locale]/dashboard/campaigns/agents/agent-editor.tsx"), /choice=/, "outbound keeps today's list");
   for (const p of ["app/[locale]/dashboard/page.tsx", "app/admin/users/[userId]/page.tsx"]) assert.match(read(p), /voiceChoice: await voiceChoiceFor\(config,/, p);
 }
