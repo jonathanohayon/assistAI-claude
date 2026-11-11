@@ -23,12 +23,14 @@
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import type { CallDetailResponse, CallListResponse } from "@/lib/calls/contract";
+import type { CallDetailResponse, CallListResponse, CallOutcome } from "@/lib/calls/contract";
 import {
   attachEvents,
   CALL_PAGE_EVENTS,
   encodeCursor,
   figuresFor,
+  filteredPage,
+  outcomeFromEvents,
   readTranscript,
   toActions,
   toLine,
@@ -143,11 +145,14 @@ export async function listCalls(opts: {
   period: Period;
   limit: number;
   cursor: Cursor | null;
+  /** Only calls with this outcome (the cursor must carry the same; see contract). */
+  outcome?: CallOutcome | null;
 }): Promise<CallListResponse> {
   const { userId, period, limit, cursor } = opts;
   const scope = sql`c.user_id = ${userId}
     AND c.created_at >= ${period.since.toISOString()} AND c.created_at < ${period.until.toISOString()}
     AND ${inboundPredicate()}`;
+  if (opts.outcome) return listFiltered(userId, period, limit, cursor, opts.outcome, scope);
 
   const pageRes = await db.execute(sql`
     SELECT c.id, c.created_at, ${CURSOR_TS} AS cursor_ts, c.from_number, c.to_number, c.summary, c.transcript,
@@ -184,6 +189,56 @@ export async function listCalls(opts: {
     period: { since: period.since.toISOString(), until: period.until.toISOString() },
     figures,
     accountLanguage: await accountLanguage(userId),
+  };
+}
+
+// Filtered list. The outcome is a JS fact of the joined events, so it cannot
+// be a SQL WHERE: load every listed call of the period (as the unfiltered
+// path does for the figures), join their events once, filter, then page by
+// the same keyset in JS. Only the page's rows load the full fields.
+async function listFiltered(
+  userId: string,
+  period: Period,
+  limit: number,
+  cursor: Cursor | null,
+  outcome: CallOutcome,
+  scope: SQL,
+): Promise<CallListResponse> {
+  const allRes = await db.execute(sql`
+    SELECT c.id, c.call_id, c.created_at, ${CURSOR_TS} AS cursor_ts, c.duration_seconds FROM calls c WHERE ${scope}
+  `);
+  const allRows = rowsOf(allRes);
+  const all = allRows.map((r) => toJoinCall(r, userId));
+  const events = await loadEventsFor(userId, all);
+  const figures = figuresFor(all.map((c) => c.id), events);
+
+  const { rows: pageKeys, hasMore } = filteredPage(
+    allRows.map((r) => ({ id: String(r.id), cursorTs: String(r.cursor_ts) })),
+    (id) => outcomeFromEvents(events.get(id) ?? []),
+    outcome,
+    cursor,
+    limit,
+  );
+  const ids = pageKeys.map((k) => k.id);
+  const fullRes = ids.length
+    ? await db.execute(sql`
+        SELECT c.id, c.created_at, c.from_number, c.to_number, c.summary, c.transcript, c.duration_seconds
+        FROM calls c
+        WHERE ${scope} AND c.id IN (${sql.join(ids.map((x) => sql`${x}::uuid`), sql`, `)})
+      `)
+    : [];
+  const byId = new Map(rowsOf(fullRes).map((r) => [String(r.id), toCallRow(r)]));
+  const rows = ids.map((x) => byId.get(x)).filter((r): r is CallRow => !!r);
+  const names = await contactNames(userId, rows.map((r) => r.fromNumber));
+
+  const last = pageKeys[pageKeys.length - 1];
+  return {
+    items: rows.map((row) => toLine(row, events.get(row.id) ?? [], names.get(row.fromNumber) ?? null)),
+    nextCursor: hasMore && last ? encodeCursor({ period, createdAt: last.cursorTs, id: last.id, outcome }) : null,
+    period: { since: period.since.toISOString(), until: period.until.toISOString() },
+    figures,
+    accountLanguage: await accountLanguage(userId),
+    outcome,
   };
 }
 

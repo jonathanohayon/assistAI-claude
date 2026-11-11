@@ -2,11 +2,19 @@
 // trap, outbound exclusion, scope, figures and keyset pagination. Mock data
 // only (+1555 numbers, example.com).
 // Run with:  npx tsx scripts/tests/calls-routes-db.test.ts
+// The outcome filter part also loads lib/calls/{query,core}.ts as they are on
+// CALLS_ROUTES_MAIN_REF (default origin/main, via git show) to prove the
+// unfiltered response is byte-identical to the code before the filter (the
+// copies live in a git-ignored scripts/tests/.calls-main-ref-* folder, removed
+// on exit).
 // Runs only when CALLS_ROUTES_TEST_DB_URL points at a THROWAWAY, migrated
 // database (it inserts rows and truncates the tables it uses); otherwise it is
 // skipped, so plain `npm test` never touches a database.
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 const url = process.env.CALLS_ROUTES_TEST_DB_URL;
 if (!url) {
@@ -21,6 +29,35 @@ async function main() {
   const { resolveScopeUserId } = await import("../../lib/admin-impersonate");
   const { getCallDetail, listCalls } = await import("../../lib/calls/query");
   const { decodeCursor, hashCallId, parsePeriod } = await import("../../lib/calls/core");
+
+  // The reference listCalls: main's query.ts + core.ts, same DB module.
+  const root = path.resolve(new URL("../..", import.meta.url).pathname);
+  const ref = process.env.CALLS_ROUTES_MAIN_REF || "origin/main";
+  // Inside the repo (git-ignored) so the copies resolve the same node_modules.
+  const refDir = mkdtempSync(path.join(root, "scripts/tests/.calls-main-ref-"));
+  process.on("exit", () => rmSync(refDir, { recursive: true, force: true }));
+  const fromRef = (f: string) =>
+    execFileSync("git", ["show", `${ref}:${f}`], { cwd: root, encoding: "utf8" })
+      .replaceAll('"@/lib/calls/core"', '"./core"')
+      .replaceAll('"@/', `"${root}/`);
+  writeFileSync(path.join(refDir, "core.ts"), fromRef("lib/calls/core.ts"));
+  writeFileSync(path.join(refDir, "query.ts"), fromRef("lib/calls/query.ts"));
+  const mainQuery = (await import(path.join(refDir, "query.ts"))) as typeof import("../../lib/calls/query");
+  const mainCore = (await import(path.join(refDir, "core.ts"))) as typeof import("../../lib/calls/core");
+  /** Walks every unfiltered page with this code and with main's; each response must be byte-identical. */
+  const assertSameAsMain = async (userId: string, p: ReturnType<typeof parsePeriod> & object, limit: number, label: string) => {
+    let rawCursor: string | null = null;
+    let pages = 0;
+    for (;;) {
+      const mine = await listCalls({ userId, period: p, limit, cursor: rawCursor ? decodeCursor(rawCursor) : null });
+      const theirs = await mainQuery.listCalls({ userId, period: p, limit, cursor: rawCursor ? mainCore.decodeCursor(rawCursor) : null });
+      assert.equal(JSON.stringify(mine), JSON.stringify(theirs), `${label}: page ${pages + 1} byte-identical to ${ref}`);
+      assert.ok(!("outcome" in mine), `${label}: no outcome key without a filter`);
+      pages++;
+      if (!mine.nextCursor) return pages;
+      rawCursor = mine.nextCursor;
+    }
+  };
 
   const exec = (q: ReturnType<typeof sql>) => db.execute(q);
   await exec(sql`DELETE FROM events`);
@@ -222,6 +259,77 @@ async function main() {
     "same timestamp: id desc",
   );
 
+  // ── Unfiltered = main, on everything above ──
+  assert.equal(await assertSameAsMain(A, period, 50, "tenant A"), 1);
+  assert.ok((await assertSameAsMain(A, period, 1, "tenant A, limit 1")) > 1);
+  assert.equal(await assertSameAsMain(B, period, 50, "tenant B"), 1);
+  assert.ok((await assertSameAsMain(C, cPeriod, 3, "tenant C, keyset")) > 1);
+
+  // ── Outcome filter: 7 calls of D with mixed outcomes, limit 2 ──
+  const D = "00000000-0000-4000-8000-00000000000d";
+  await exec(sql`INSERT INTO users (id, email, password_hash, role) VALUES (${D}, 'tenant-d@example.com', 'x', 'user')`);
+  const did = (k: number) => `40000000-0000-4000-8000-${String(k).padStart(12, "0")}`;
+  const plan: Array<[number, string | null, Record<string, unknown>]> = [
+    [1, "book_success", {}],
+    [2, null, {}],
+    [3, "book_success", {}],
+    [4, "cancel_success", {}],
+    [5, "book_success", {}],
+    [6, "call_transfer", { ok: true }],
+    [7, "book_success", {}],
+  ];
+  for (const [k, event, meta] of plan) {
+    const cid = `call-_+1555000${String(k).padStart(4, "0")}_d`;
+    // Two calls at the same microsecond (keyset tie on id).
+    const end = k === 5 ? 3000 + 3 * 10 : 3000 + k * 10;
+    await addCall({ id: did(k), user: D, callId: cid, endMin: end, from: `+1555000${String(k).padStart(4, "0")}`, to: "+15550009999" });
+    if (event) await addEvent(D, event, end - 0.5, { callId: cid, ...meta });
+  }
+  const dPeriod = parsePeriod(T(2900), T(3200))!;
+  const unfiltered = await listCalls({ userId: D, period: dPeriod, limit: 50, cursor: null });
+  assert.equal(unfiltered.items.length, 7);
+  const bookedIds = unfiltered.items.filter((i) => i.outcome === "booked").map((i) => i.id);
+  assert.equal(bookedIds.length, 4);
+
+  const walk = async (o: "booked" | "cancelled" | "rescheduled" | "transferred" | "conversation", limit: number) => {
+    const got: string[] = [];
+    let cur: ReturnType<typeof decodeCursor> = null;
+    for (;;) {
+      const p = await listCalls({ userId: D, period: dPeriod, limit, cursor: cur, outcome: o });
+      assert.equal(p.outcome, o, "the applied filter is echoed");
+      assert.deepEqual(p.figures, unfiltered.figures, "figures are period-wide, independent of the filter");
+      assert.ok(p.items.every((i) => i.outcome === o), "only the asked outcome");
+      got.push(...p.items.map((i) => i.id));
+      if (!p.nextCursor) return got;
+      assert.equal(p.items.length, limit, "every page before the last is full");
+      cur = decodeCursor(p.nextCursor);
+      assert.ok(cur);
+      assert.equal(cur.outcome, o, "the cursor carries the filter");
+      assert.deepEqual(cur.period, dPeriod, "the cursor still carries the period");
+    }
+  };
+  const booked = await walk("booked", 2);
+  assert.deepEqual(booked, bookedIds, "complete, same order as the unfiltered list");
+  assert.equal(new Set(booked).size, booked.length, "no duplicates");
+  const firstBooked = await listCalls({ userId: D, period: dPeriod, limit: 2, cursor: null, outcome: "booked" });
+  assert.equal(firstBooked.items.length, 2);
+  assert.ok(firstBooked.nextCursor);
+  assert.deepEqual(await walk("conversation", 2), [did(2)]);
+  assert.deepEqual(await walk("cancelled", 2), [did(4)]);
+  assert.deepEqual(await walk("transferred", 2), [did(6)]);
+  assert.deepEqual(await walk("rescheduled", 2), []);
+  assert.deepEqual(unfiltered.figures, { callsReceived: 7, booked: 4, transferred: 1 });
+  // Full rows on the filtered page (fields loaded for the page ids).
+  const line = firstBooked.items[0];
+  assert.equal(line.id, did(7));
+  assert.equal(line.fromNumber, "+15550000007");
+  assert.equal(line.toNumber, "+15550009999");
+  assert.equal(line.hasTranscript, true);
+  // The tenant scope holds under the filter.
+  assert.deepEqual((await listCalls({ userId: A, period: dPeriod, limit: 50, cursor: null, outcome: "booked" })).items, []);
+  assert.ok((await assertSameAsMain(D, dPeriod, 2, "tenant D, limit 2")) > 1);
+
+  rmSync(refDir, { recursive: true, force: true });
   await exec(sql`DELETE FROM events`);
   await exec(sql`DELETE FROM users`); // cascades to calls, client_visits, agent_configs
   console.log("ALL CALLS-ROUTES DB TESTS PASSED");

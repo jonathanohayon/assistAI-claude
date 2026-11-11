@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
-import { decodeCursor, parseLimit, parsePeriod } from "@/lib/calls/core";
+import { decodeCursor, outcomeForRequest, parseLimit, parseOutcome, parsePeriod } from "@/lib/calls/core";
 import { listCalls } from "@/lib/calls/query";
 
-// GET /api/dashboard/calls[?since&until&cursor&limit&asUserId] — the tenant's
+// GET /api/dashboard/calls[?since&until&outcome&cursor&limit&asUserId] — the tenant's
 // inbound calls, newest first, with the period's figures. Shape:
 // lib/calls/contract.ts CallListResponse. Read-only: no LLM, no network, no
 // write. Tenant-scoped (admins via asUserId, like the other dashboard routes).
@@ -21,5 +21,13 @@ export async function GET(req: NextRequest) {
   const period = cursor?.period ?? parsePeriod(q.get("since"), q.get("until"));
   if (!period) return NextResponse.json({ error: "invalid_period" }, { status: 400 });
 
-  return NextResponse.json(await listCalls({ userId: r.userId, period, limit: parseLimit(q.get("limit")), cursor }));
+  // A cursor also carries its outcome filter (absent ?outcome= = no filter).
+  const asked = parseOutcome(q.get("outcome"));
+  if ("error" in asked) return NextResponse.json({ error: asked.error }, { status: 400 });
+  const applied = outcomeForRequest(asked.outcome, cursor);
+  if ("error" in applied) return NextResponse.json({ error: applied.error }, { status: 400 });
+
+  return NextResponse.json(
+    await listCalls({ userId: r.userId, period, limit: parseLimit(q.get("limit")), cursor, outcome: applied.outcome }),
+  );
 }
