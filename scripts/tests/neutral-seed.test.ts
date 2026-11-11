@@ -47,9 +47,12 @@ const walk = (dir: string): string[] =>
     if (e.isDirectory()) return e.name === "node_modules" || p === "scripts/tests" ? [] : walk(p);
     return /\.(ts|tsx|mjs)$/.test(e.name) ? [p] : [];
   });
-const importers = [...walk("app"), ...walk("lib"), ...walk("scripts"), "auth.ts"]
-  .filter((f) => f !== "lib/neutral-seed.ts" && IMPORT_RE.test(readFileSync(f, "utf8")))
-  .sort();
+const scanned = [...walk("app"), ...walk("lib"), ...walk("scripts"), "auth.ts"];
+// The scan really read the repo: a wrong cwd/root would give an empty list
+// and a misleading result (the old `grep … || true` hid an error that way).
+assert.ok(scanned.length > 100, `scanned only ${scanned.length} files — wrong working directory?`);
+assert.ok(scanned.includes("lib/auth/provision-tenant.ts"), "the known importer is in the scan");
+const importers = scanned.filter((f) => f !== "lib/neutral-seed.ts" && IMPORT_RE.test(readFileSync(f, "utf8"))).sort();
 assert.deepEqual(importers, ["app/api/admin/internal-apply-default-prompt/route.ts", "lib/auth/provision-tenant.ts"]);
 // The search catches every import form (probe on strings, not files).
 for (const line of [`import { x } from "@/lib/neutral-seed";`, `import { x } from "../neutral-seed";`, `import { x } from '../../lib/neutral-seed';`, `await import("../neutral-seed")`])
