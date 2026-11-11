@@ -33,13 +33,13 @@ import {
   VOICE_IDS,
   VOICE_PACES as PACES,
   VOICE_STYLES,
-  isCustomPace,
   mergeClientVoice,
   type ClientVoice,
 } from "./voice-client";
 
 import {
   ADVANCED_LIMITS,
+  SPEED_LIMITS,
   KEY_TERM_MAX,
   OUR_ADVANCED_FIELDS,
   PRONUNCIATION_MAX,
@@ -48,11 +48,14 @@ import {
   patienceToScreen,
   choiceVoices,
   hasDescriptor,
+  paceNotch,
+  paceResettable,
   pickerVoices,
   screenToPatience,
   selectedChoice,
   showLevel3,
   type GenderFilter,
+  type Pace,
   type ServedVoiceChoice,
 } from "./voice-ui";
 
@@ -101,6 +104,13 @@ export interface VoiceBrickProps {
    * the server's sample (the real voice). Absent: today's voice list.
    */
   choice?: ServedVoiceChoice | null;
+  /**
+   * Show the pace slider (level 1). Only where the call honours `pace`:
+   * the receptionist today. Outbound agents don't (their call reads the
+   * legacy speed column), so no control there — and their save never
+   * touches that speed.
+   */
+  showPace?: boolean;
 }
 
 export function VoiceBrick({
@@ -113,6 +123,7 @@ export function VoiceBrick({
   sampleUrl,
   primaryLanguage,
   choice,
+  showPace = false,
 }: VoiceBrickProps) {
   const t = useTranslations("VoiceBrick");
   const dev = useDeveloperMode(asUserId);
@@ -173,6 +184,9 @@ export function VoiceBrick({
         />
       )}
 
+      {/* Pace (V9b): level 1, the same on every engine. */}
+      {showPace && <PaceSlider value={value} onPace={(pace) => apply({ pace })} />}
+
       <TestActions sample={sample} liveTestLink={liveTestLink} />
 
       {error && (
@@ -183,18 +197,6 @@ export function VoiceBrick({
 
       {/* ── Level 2 ─────────────────────────────────────────── */}
       <MoreSettings>
-        <ChipGroup
-          label={t("paceLabel")}
-          options={[
-            ...PACES.map((p) => ({ id: p as string, label: t(`pace.${p}`) })),
-            ...(isCustomPace(value) ? [{ id: "custom", label: t("pace.custom") }] : []),
-          ]}
-          selected={isCustomPace(value) ? "custom" : value.pace}
-          onPick={(pace) => {
-            if (pace !== "custom") apply({ pace });
-          }}
-        />
-
         <Slider
           label={t("patienceLabel")}
           hint={t("patienceHint")}
@@ -260,6 +262,8 @@ export function VoiceBrick({
                 onChange={(n) => applyAdvanced({ [k]: n })}
               />
             ))}
+            {/* The exact speed (a legacy custom value shows "Custom" on the slider). Empty = follows the pace. */}
+            <SpeedField value={value.advanced.speed} onChange={(speed) => applyAdvanced({ speed })} />
           </div>
           {isAdmin && (
             <div className="mt-5 border-t border-[#e2e8f0] pt-4">
@@ -512,6 +516,118 @@ function TestActions({
   );
 }
 
+
+/**
+ * Pace (V9b): five notches, Very slow … Very fast, "Normal" marked in the
+ * centre; the value in words, never a number. A legacy custom speed sits on
+ * the nearest notch and reads "Custom" until the slider or Reset is touched
+ * (the exact number stays in developer settings). Native range input: in
+ * right-to-left it runs from the right (Very slow) to the left (Very fast)
+ * and the arrow keys follow what the eye sees.
+ */
+function PaceSlider({ value, onPace }: { value: ClientVoice; onPace: (pace: Pace) => void }) {
+  const t = useTranslations("VoiceBrick");
+  const id = useId();
+  const { index, custom } = paceNotch(value);
+  const words = custom ? t("pace.custom") : t(`pace.${PACES[index]}`);
+  const commit = (i: number) => onPace(PACES[i]);
+  // Touching the slider clears a custom speed even when the notch doesn't move.
+  const touch = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    if (custom) commit(Number(e.currentTarget.value));
+  };
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className={LABEL}>
+          {t("paceLabel")}
+        </label>
+        <div className="flex items-baseline gap-3">
+          <span className="text-sm font-semibold text-[#18181b]" aria-hidden>
+            {words}
+          </span>
+          {paceResettable(value) && (
+            <button
+              type="button"
+              onClick={() => onPace("normal")}
+              className={`min-h-11 cursor-pointer rounded-lg px-1 text-sm font-semibold text-[#be185d] underline-offset-4 hover:underline ${FOCUS}`}
+            >
+              {t("paceReset")}
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={PACES.length - 1}
+        step={1}
+        value={index}
+        aria-valuetext={words}
+        onChange={(e) => commit(Number(e.target.value))}
+        onPointerUp={touch}
+        onKeyUp={touch}
+        className={`mt-1 h-11 w-full cursor-pointer accent-[#be185d] ${FOCUS}`}
+      />
+      {/* Notches under the track (thumb half-width inset); Normal's is taller and darker. */}
+      <div aria-hidden className="flex justify-between px-2">
+        {PACES.map((p) => (
+          <span key={p} className={p === "normal" ? "h-3 w-0.5 rounded bg-[#18181b]" : "h-2 w-px bg-[#94a3b8]"} />
+        ))}
+      </div>
+      <div aria-hidden className="mt-1 grid grid-cols-3 text-xs text-[#475569]">
+        <span className="text-start">{t("pace.very_slow")}</span>
+        <span className="text-center">{t("pace.normal")}</span>
+        <span className="text-end">{t("pace.very_fast")}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Developer settings: the exact speed, or empty to follow the pace. */
+function SpeedField({ value, onChange }: { value: number | null; onChange: (speed: number | null) => void }) {
+  const t = useTranslations("VoiceBrick");
+  const id = useId();
+  const [editing, setEditing] = useState<string | null>(null);
+  const draft = editing ?? (value === null ? "" : String(value));
+  const commit = () => {
+    setEditing(null);
+    const raw = draft.trim().replace(",", ".");
+    if (raw === "") {
+      if (value !== null) onChange(null);
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    const clamped = Math.min(SPEED_LIMITS.max, Math.max(SPEED_LIMITS.min, Math.round(n * 100) / 100));
+    if (clamped !== value) onChange(clamped);
+  };
+  return (
+    <div>
+      <label htmlFor={id} className="text-xs font-semibold text-[#18181b]">
+        {t("advanced.speed")}
+      </label>
+      <p id={`${id}-hint`} className="mt-0.5 text-xs leading-snug text-[#475569]">
+        {t("advancedHint.speed")}
+      </p>
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        dir="ltr"
+        value={draft}
+        placeholder={t("speedFollowsPace")}
+        aria-describedby={`${id}-hint`}
+        onChange={(e) => setEditing(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+        }}
+        className={`mt-1 min-h-11 w-full rounded-xl border border-[#e2e8f0] bg-white px-3 text-sm text-[#18181b] ${FOCUS}`}
+      />
+    </div>
+  );
+}
 
 function Slider({
   label,

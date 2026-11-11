@@ -33,7 +33,8 @@ export {
 } from "@/lib/voice/public";
 import { VOICE_STYLES } from "@/lib/voice/public";
 
-export const VOICE_PACES = ["slow", "normal", "fast"] as const;
+/** Slowest → fastest; "normal" is the centre notch (V9). */
+export const VOICE_PACES = ["very_slow", "slow", "normal", "fast", "very_fast"] as const;
 
 /** Tenant-visible defaults (= today's behaviour). */
 export const CLIENT_DEFAULT_VOICE: ClientVoice = {

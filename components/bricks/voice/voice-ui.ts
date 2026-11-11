@@ -2,7 +2,7 @@
 // (voice-client.ts). Pure and client-safe: no supplier names (the admin
 // engine mapping lives in voice-admin.ts, loaded for admins only).
 
-import { CLIENT_DEFAULT_VOICE, RECOMMENDED_VOICE_IDS, VOICE_GENDER, type ClientVoice, type VoiceGender } from "./voice-client";
+import { CLIENT_DEFAULT_VOICE, RECOMMENDED_VOICE_IDS, VOICE_GENDER, VOICE_PACES, type ClientVoice, type VoiceGender } from "./voice-client";
 
 /**
  * Six recommended voices shown first, three female and three male,
@@ -79,6 +79,32 @@ export function choiceVoices(
   if (sel && !list.includes(sel) && inGender(sel)) list.push(sel);
   return list;
 }
+
+// ── Pace slider (V9b) ────────────────────────────────────────────────
+export type Pace = (typeof VOICE_PACES)[number];
+
+/**
+ * The speed each notch stands for, to place a legacy custom speed on the
+ * nearest notch. Mirror of the contract's per-pace speed factor (V9a).
+ */
+export const PACE_SPEED: Record<Pace, number> = { very_slow: 0.8, slow: 0.9, normal: 1, fast: 1.15, very_fast: 1.3 };
+
+/** Where the slider sits: the pace's notch, or the nearest one to a custom speed (shown as "Custom"). */
+export function paceNotch(v: Pick<ClientVoice, "pace" | "advanced">): { index: number; custom: boolean } {
+  const speed = v.advanced.speed;
+  if (speed === null) return { index: Math.max(0, VOICE_PACES.indexOf(v.pace as Pace)), custom: false };
+  let best = 0;
+  VOICE_PACES.forEach((p, i) => {
+    if (Math.abs(PACE_SPEED[p] - speed) < Math.abs(PACE_SPEED[VOICE_PACES[best]] - speed)) best = i;
+  });
+  return { index: best, custom: true };
+}
+
+/** The exact speed in developer settings (contract bounds). */
+export const SPEED_LIMITS = { min: 0.25, max: 4 } as const;
+
+/** "Reset" shows only when the slider isn't on plain Normal. */
+export const paceResettable = (v: Pick<ClientVoice, "pace" | "advanced">): boolean => v.pace !== "normal" || v.advanced.speed !== null;
 
 /**
  * Patience on screen: 1 = answers quickly … 5 = waits longest. The contract
