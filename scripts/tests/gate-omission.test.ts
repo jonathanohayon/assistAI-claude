@@ -37,6 +37,7 @@ import { voicesFor } from "../../lib/realtime";
 import { adminOnlyProviderUpdate } from "../../lib/realtime-provider";
 import { DEFAULT_TILE_TOGGLES } from "../../lib/tile-toggles";
 import {
+  clientAgentRefused,
   currentOutboundTools,
   currentReceptionistTools,
   outboundToolsRefused,
@@ -45,6 +46,7 @@ import {
   type ReceptionistToolSettings,
 } from "../../lib/tools/store";
 import { OUTBOUND_TOOLS } from "../../lib/tools/adapters";
+import { clientAgentUrlRefusal } from "../../lib/tools/write";
 import { catalogueIdFor } from "../../lib/voice/catalogue";
 import { effectiveEngineVoiceName } from "../../lib/voice/choice";
 import type { Voice } from "../../lib/voice/contract";
@@ -61,6 +63,8 @@ const src = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), 
 const TENANT_AND_ADMIN = [false, true] as const;
 const who = (isAdmin: boolean) => (isAdmin ? "admin" : "tenant");
 const pending: Promise<void>[] = [];
+const SAFE = "https://agent.example.com/hook";
+const check = { resolver: (async () => [{ address: "93.184.215.14", family: 4 }]) as Resolver };
 
 // ════════════════════════════════════════════════════════════════════════
 // Voice (receptionist): lib/voice/route-writes.ts inboundVoiceConfigUpdates
@@ -402,8 +406,44 @@ const outRow = { agentName: "Dana", language: "fr", greeting: "Bonjour {{name}} 
   const w = src("lib/tools/write.ts");
   assert.match(w, /planOutboundToolsWrite\(row\.toolsConfig, patch\)/);
   assert.match(w, /outboundToolsRefused\(currentOutboundTools\(row\.toolsConfig\), plan\.value, outboundToolsEnabled\)/);
-  assert.match(w, /planReceptionistToolsWrite\(row, await getTileToggles\(userId\), patch\)/);
+  assert.match(w, /planReceptionistToolsWrite\(row, toggles, patch\)/);
+  assert.match(w, /clientAgentRefused\(currentReceptionistTools\(row, toggles\), plan\.tools, clientAgentEnabled\)/);
+  assert.match(w, /const unsafe = await clientAgentUrlRefusal\(patch\);/);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// Tools — client agent (T5, #255): the CLIENT_AGENT switch gate
+// (clientAgentRefused) and the url safety check (clientAgentUrlRefusal), as
+// writeTools runs them. Cases 1–3: client-agent-tool.test.ts.
+// ════════════════════════════════════════════════════════════════════════
+pending.push(
+  (async () => {
+    const T = DEFAULT_TILE_TOGGLES;
+    const CA = { enabled: true, url: SAFE, mode: "voice", secret: "mock-secret" };
+    // the agent set while the switch was on
+    const set = planReceptionistToolsWrite({ toolsConfig: null, transferNumber: "", transferNumberParked: null }, T, { clientAgent: CA });
+    assert.ok(set.ok);
+    const row: ReceptionistToolSettings = { toolsConfig: set.columns.toolsConfig, transferNumber: "", transferNumberParked: null };
+    for (const switchOn of [false, true]) {
+      for (const patch of [{}, { booking: { enabled: false } }, { clientAgent: {} }, { clientAgent: { mode: "lead" } }, { clientAgent: { secretSet: true } }]) {
+        // omitted url → no safety check to fail
+        assert.equal(await clientAgentUrlRefusal(patch, check), null, JSON.stringify(patch));
+        const w = planReceptionistToolsWrite(row, T, patch);
+        assert.ok(w.ok, JSON.stringify(w));
+        assert.deepEqual(clientAgentRefused(currentReceptionistTools(row, T), w.tools, switchOn), [], `switch ${switchOn}: ${JSON.stringify(patch)}`);
+        const ca = w.columns.toolsConfig.clientAgent;
+        assert.equal(ca.enabled, true, "omitting clientAgent.enabled keeps it");
+        assert.equal(ca.url, SAFE, "omitting clientAgent.url keeps it");
+        assert.equal(ca.secret, "mock-secret", "omitting clientAgent.secret keeps it");
+        if (!("clientAgent" in patch && "mode" in (patch.clientAgent as object))) assert.equal(ca.mode, "voice");
+      }
+    }
+    // INTENDED clears: `secret: null` clears the secret, `url: ""` clears the url
+    const clear = planReceptionistToolsWrite(row, T, { clientAgent: { secret: null, url: "" } });
+    assert.ok(clear.ok && clear.columns.toolsConfig.clientAgent.secret === null && clear.columns.toolsConfig.clientAgent.url === "");
+    assert.equal(await clientAgentUrlRefusal({ clientAgent: { url: "" } }, check), null);
+  })(),
+);
 
 // ════════════════════════════════════════════════════════════════════════
 // Agent brain: lib/agent-brain-guard.ts urlToSave + agentBrainSaveDecision
@@ -411,8 +451,6 @@ const outRow = { agentName: "Dana", language: "fr", greeting: "Bonjour {{name}} 
 // PUT /api/dashboard/agent-brain does (source asserted below).
 // Cases 1–3: safe-url.test.ts, agent-brain-secret.test.ts.
 // ════════════════════════════════════════════════════════════════════════
-const SAFE = "https://agent.example.com/hook";
-const check = { resolver: (async () => [{ address: "93.184.215.14", family: 4 }]) as Resolver };
 type Stored = { enabled: boolean; url: string; secret?: string };
 
 /** The route's PUT, I/O removed: body + stored brain → what setAgentBrain stores (or the refusal). */
