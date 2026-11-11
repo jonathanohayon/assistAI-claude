@@ -1,78 +1,85 @@
-// Voice brick V9b: the pace slider. Mock data only.
+// Unit tests for the 5-notch pace (V9a): today's 3 paces unchanged, the two
+// ends folded into fields the live worker reads, the clamp respected.
 // Run with:  npx tsx scripts/tests/voice-pace.test.ts
-
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
-import { CLIENT_DEFAULT_VOICE, VOICE_PACES, mergeClientVoice, type ClientVoice } from "../../components/bricks/voice/voice-client";
-import { PACE_SPEED, paceNotch, paceResettable } from "../../components/bricks/voice/voice-ui";
-import { outboundVoiceConfigUpdates } from "../../lib/voice/route-writes";
+import { DEFAULT_VOICE, mergeVoice, VOICE_STYLES, type Voice } from "../../lib/voice/contract";
+import { END_PACE_WORDS, toEngineSettings } from "../../lib/voice/engine";
+import { inboundColumnsFromVoice } from "../../lib/voice/store";
+import { fromInboundColumns } from "../../lib/voice/adapters";
+import { PACE_SPEED, VOICE_PACES } from "../../lib/voice/public";
 
-const ROOT = new URL("../../", import.meta.url).pathname;
-const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
-const voice = (pace: string, speed: number | null): ClientVoice =>
-  ({ ...CLIENT_DEFAULT_VOICE, pace, advanced: { ...CLIENT_DEFAULT_VOICE.advanced, speed } }) as ClientVoice;
+const WORKER_PACE_FACTOR = { slow: 0.9, normal: 1, fast: 1.15 } as const; // worker src/voice-profile.ts
+const clamp = (s: number) => Math.min(1.5, Math.max(0.5, Math.round(s * 100) / 100)); // worker clampSpeed
+const ctx = { defaultModel: "gpt-realtime-2" };
+const voice = (pace: string, engine: Voice["engine"] = "auto", extra: Partial<Voice> = {}): Voice => {
+  const m = mergeVoice({ ...DEFAULT_VOICE, engine, ...extra }, { pace });
+  assert.ok(m.ok, JSON.stringify(m));
+  return m.value;
+};
 
-// 1. Five notches, slowest → fastest, Normal in the centre
-{
-  assert.deepEqual([...VOICE_PACES], ["very_slow", "slow", "normal", "fast", "very_fast"]);
-  assert.equal(VOICE_PACES.indexOf("normal"), 2);
-  const speeds = VOICE_PACES.map((p) => PACE_SPEED[p]);
-  assert.ok(speeds.every((s, i) => i === 0 || s > speeds[i - 1]), "speeds increase");
-}
+// The order and today's values.
+assert.deepEqual([...VOICE_PACES], ["very_slow", "slow", "normal", "fast", "very_fast"]);
+for (const p of ["slow", "normal", "fast"] as const) assert.equal(PACE_SPEED[p], WORKER_PACE_FACTOR[p], `${p} keeps today's factor`);
+const f = VOICE_PACES.map((p) => PACE_SPEED[p]);
+assert.ok(f.every((x, i) => i === 0 || x > f[i - 1]), "factors increase very_slow → very_fast");
 
-// 2. Where the slider sits; a legacy custom speed → nearest notch, "Custom"
-{
-  assert.deepEqual(paceNotch(voice("fast", null)), { index: 3, custom: false });
-  assert.deepEqual(paceNotch(voice("normal", 1.13)), { index: 3, custom: true }, "1.13 is nearest Fast (1.15)");
-  assert.deepEqual(paceNotch(voice("normal", 0.5)), { index: 0, custom: true });
-  assert.deepEqual(paceNotch(voice("normal", 2)), { index: 4, custom: true });
-}
-
-// 3. Reset only off plain Normal; touching the slider or Reset clears a custom speed
-{
-  assert.equal(paceResettable(voice("normal", null)), false);
-  assert.equal(paceResettable(voice("slow", null)), true);
-  assert.equal(paceResettable(voice("normal", 1.13)), true, "custom on the Normal notch can be reset");
-  const r = mergeClientVoice(voice("normal", 1.13), { pace: "normal" });
-  assert.ok(r.ok && r.value.advanced.speed === null && r.value.pace === "normal");
-  const slider = read("components/bricks/voice/VoiceBrick.tsx");
-  assert.match(slider, /onPointerUp=\{touch\}/);
-  assert.match(slider, /onKeyUp=\{touch\}/);
-  assert.match(slider, /if \(custom\) commit\(Number\(e\.currentTarget\.value\)\)/);
-}
-
-// 4. Words, never a number; no chips; level 1; native range (RTL mirrors it)
-{
-  const src = read("components/bricks/voice/VoiceBrick.tsx");
-  assert.match(src, /aria-valuetext=\{words\}/);
-  assert.doesNotMatch(src, /label=\{t\("paceLabel"\)\}\s*options=/, "the pace chips are gone");
-  assert.ok(src.indexOf("{showPace && <PaceSlider") < src.indexOf("      <MoreSettings>"), "pace is level 1");
-  assert.match(src, /type="range"\s*min=\{0\}\s*max=\{PACES\.length - 1\}/);
-  for (const l of ["fr", "en", "he"]) {
-    const vb = JSON.parse(read(`messages/${l}.json`)).VoiceBrick;
-    for (const p of [...VOICE_PACES, "custom"]) assert.ok(vb.pace[p] && !/\d/.test(vb.pace[p]), `${l} pace.${p} in words`);
-    assert.ok(vb.paceReset && vb.advanced.speed && vb.advancedHint.speed && vb.speedFollowsPace, l);
+// slow / normal / fast: served exactly as before (pace as is, base speed, the worker applies the factor).
+for (const p of ["slow", "normal", "fast"] as const) {
+  for (const engine of ["auto", "gemini", "xai"] as const) {
+    const e = toEngineSettings(voice(p, engine), ctx);
+    assert.equal(e.voiceProfile.pace, p);
+    assert.equal(e.speed, 1);
+    assert.equal(e.voiceProfile.speakingStyle, "");
   }
 }
 
-// 5. Receptionist only; outbound shows no pace control (its call doesn't read `pace`)
-{
-  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /<VoiceBrick[\s\S]*?\bshowPace\b[\s\S]*?\/>/);
-  assert.doesNotMatch(read("app/[locale]/dashboard/campaigns/agents/agent-editor.tsx"), /showPace/);
-  assert.match(read("components/bricks/voice/VoiceBrick.tsx"), /showPace = false/);
+// The two ends, OpenAI: served pace "normal" + the factor in the speed → the
+// live worker produces exactly base × factor.
+for (const p of ["very_slow", "very_fast"] as const) {
+  const e = toEngineSettings(voice(p), ctx);
+  assert.equal(e.voiceProfile.pace, "normal");
+  assert.equal(clamp(e.speed * WORKER_PACE_FACTOR[e.voiceProfile.pace as "normal"]), PACE_SPEED[p]);
+}
+// …Gemini / Grok: pace "normal" + the stronger sentence first in the style line; speed untouched.
+for (const engine of ["gemini", "xai"] as const) {
+  for (const p of ["very_slow", "very_fast"] as const) {
+    const e = toEngineSettings(voice(p, engine, { advanced: { ...DEFAULT_VOICE.advanced, speakingStyle: "Ton chaleureux." } }), ctx);
+    assert.equal(e.voiceProfile.pace, "normal");
+    assert.equal(e.voiceProfile.speakingStyle, `${END_PACE_WORDS[p]} Ton chaleureux.`);
+    assert.equal(e.speed, 1);
+  }
 }
 
-// 6. Outbound: saving another field keeps the legacy speed EXACTLY (every slider step, with or without a stored voice)
-{
-  for (const stored of [false, true])
-    for (let vitesse = 1; vitesse <= 10; vitesse++) {
-      const row = { voice: "marin", personality: { vitesse }, noiseReductionLevel: 5, voiceConfig: null as unknown };
-      if (stored) row.voiceConfig = (outboundVoiceConfigUpdates({ voiceConfig: { noiseReduction: 6 } }, row, false) as { voice: unknown }).voice;
-      const r = outboundVoiceConfigUpdates({ voiceConfig: { bargeIn: false } }, row, false) as { updates: { personality: { vitesse: number } } };
-      assert.equal(r.updates.personality.vitesse, vitesse, `stored=${stored} vitesse ${vitesse}`);
-    }
+// The legacy columns keep the REAL pace (folded only when serving), and read back exactly.
+for (const p of VOICE_PACES) {
+  const cols = inboundColumnsFromVoice(voice(p), "gpt-realtime-2");
+  assert.equal((cols.voiceProfile as { pace: string }).pace, p);
+  assert.equal(cols.speed, 1, "base speed in the column");
+  const back = fromInboundColumns({ ...cols, realtimeProvider: null });
+  assert.equal(back.pace, p);
 }
+
+// Legacy custom speeds: kept exactly while untouched; any pace write clears them (the screen's "Custom").
+for (const speed of [1.13, 0.87, 1.5]) {
+  const v: Voice = { ...DEFAULT_VOICE, advanced: { ...DEFAULT_VOICE.advanced, speed } };
+  assert.equal(toEngineSettings(v, ctx).speed, speed, `${speed} served exactly`);
+  assert.equal(voice("very_fast", "auto", { advanced: v.advanced }).advanced.speed, null);
+}
+
+// The worst combinations stay inside the worker's 0.5–1.5 clamp (preset base speed, every style).
+let lo = Infinity;
+let hi = -Infinity;
+for (const style of VOICE_STYLES) {
+  for (const p of VOICE_PACES) {
+    const e = toEngineSettings(voice(p, "auto", { style }), ctx);
+    const finalSpeed = e.speed * WORKER_PACE_FACTOR[e.voiceProfile.pace as keyof typeof WORKER_PACE_FACTOR];
+    lo = Math.min(lo, finalSpeed);
+    hi = Math.max(hi, finalSpeed);
+    assert.ok(finalSpeed >= 0.5 && finalSpeed <= 1.5, `${style} + ${p} = ${finalSpeed}`);
+  }
+}
+assert.equal(Math.round(hi * 1000) / 1000, 1.404, "very_fast + dynamic");
+assert.equal(Math.round(lo * 1000) / 1000, 0.736, "very_slow + calm");
 
 console.log("ALL VOICE-PACE TESTS PASSED");

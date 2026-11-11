@@ -2091,9 +2091,11 @@
         "default": "By model"
       },
       "pace": {
+        "very_slow": "Very slow",
         "slow": "Slow",
         "normal": "Normal",
-        "fast": "Fast"
+        "fast": "Fast",
+        "very_fast": "Very fast"
       },
       "grokReasoning": {
         "high": "High",

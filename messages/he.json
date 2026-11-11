@@ -2091,9 +2091,11 @@
         "default": "לפי המודל"
       },
       "pace": {
+        "very_slow": "איטי מאוד",
         "slow": "איטי",
         "normal": "רגיל",
-        "fast": "מהיר"
+        "fast": "מהיר",
+        "very_fast": "מהיר מאוד"
       },
       "grokReasoning": {
         "high": "גבוה",

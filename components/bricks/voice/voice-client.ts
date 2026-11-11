@@ -31,10 +31,10 @@ export {
   VOICE_STYLES,
   type VoiceGender,
 } from "@/lib/voice/public";
-import { VOICE_STYLES } from "@/lib/voice/public";
+import { VOICE_PACES, VOICE_STYLES } from "@/lib/voice/public";
 
-/** Slowest → fastest; "normal" is the centre notch (V9). */
-export const VOICE_PACES = ["very_slow", "slow", "normal", "fast", "very_fast"] as const;
+// The 5 paces (V9a), from the one tenant-safe source.
+export { VOICE_PACES } from "@/lib/voice/public";
 
 /** Tenant-visible defaults (= today's behaviour). */
 export const CLIENT_DEFAULT_VOICE: ClientVoice = {
