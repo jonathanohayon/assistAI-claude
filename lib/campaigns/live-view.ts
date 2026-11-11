@@ -218,3 +218,28 @@ export function actionErrorKey(status: number | null, body: unknown): ActionErro
   if (code === "Unauthorized" || status === 401) return "session";
   return "unknown";
 }
+
+export type ReadyPill =
+  | { key: "readyToDial"; tone: "good" }
+  | { key: "dispatchPausedPill" | "dispatchDryPill"; tone: "warn" };
+
+/**
+ * The "no blockers" pill, kept consistent with the platform call switch:
+ * green "ready" only when calls really go out, amber "paused" / "test mode"
+ * otherwise. null while blockers exist (the blocker chips speak instead).
+ */
+export function readyPill(mode: unknown, blockers: readonly unknown[]): ReadyPill | null {
+  if (blockers.length > 0) return null;
+  if (mode === "off") return { key: "dispatchPausedPill", tone: "warn" };
+  if (mode === "dry") return { key: "dispatchDryPill", tone: "warn" };
+  return { key: "readyToDial", tone: "good" };
+}
+
+/**
+ * Whether the dispatcher health alerts (never ran / stale tick) may show.
+ * Hidden while calls are switched off: the pause line already explains why
+ * nothing dials. In test mode the dispatcher does run, so they stay.
+ */
+export function showDispatcherAlert(mode: unknown): boolean {
+  return mode !== "off";
+}

@@ -1430,6 +1430,8 @@
       },
       "dispatchOff": "Calls are paused on this platform: no calls are placed for now.",
       "dispatchDry": "Test mode: no calls are placed.",
+      "dispatchPausedPill": "Paused",
+      "dispatchDryPill": "Test mode",
       "actionError": {
         "session": "Your session has expired. Sign in again, then retry.",
         "forbidden": "This account can’t {action, select, pause {pause} other {start}} this campaign.",

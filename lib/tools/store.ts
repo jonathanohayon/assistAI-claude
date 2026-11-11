@@ -18,7 +18,9 @@ import type { TileToggles } from "@/lib/tile-toggles";
 import { OUTBOUND_TOOLS, toolsFromTileToggles } from "@/lib/tools/adapters";
 import type { PlanFeatures } from "@/lib/plan-features";
 import {
+  CAPABILITY_KEYS,
   effectiveCapabilities,
+  OUTBOUND_CAPABILITIES,
   TOOLS_VERSION,
   TRANSFER_WHEN,
   type EffectiveCapabilities,
@@ -169,6 +171,22 @@ export function planOutboundToolsWrite(stored: unknown, patch: unknown): Parse<T
   return mergeTools(currentOutboundTools(stored), patch);
 }
 
+/**
+ * Server gate on an outbound tools write (T4): TURNING ON a capability
+ * outbound calls can't use — the OUTBOUND_TOOLS switch is off for this
+ * account, or it isn't an outbound capability (contacts, orders) — is
+ * refused. Other fields, an unchanged re-send and turning one OFF pass.
+ * Returns the refused paths ([] = allowed).
+ */
+export function outboundToolsRefused(current: Tools, next: Tools, enabled: boolean): string[] {
+  const out: string[] = [];
+  for (const k of CAPABILITY_KEYS) {
+    const turnedOn = next[k].enabled && !current[k].enabled;
+    if (turnedOn && (!enabled || !OUTBOUND_CAPABILITIES.includes(k))) out.push(`tools.${k}.enabled`);
+  }
+  return out;
+}
+
 // ── The ONE capabilities computation the call and the screen share ─────
 
 export function receptionistCapabilities(
@@ -190,13 +208,13 @@ export function receptionistCapabilities(
 
 export function outboundCapabilities(
   stored: unknown,
-  googleConnected: boolean,
+  account: { googleConnected: boolean; transferNumber: string; outboundToolsEnabled: boolean },
   plan: PlanFeatures,
 ): { tools: Tools; capabilities: EffectiveCapabilities } {
   const tools = currentOutboundTools(stored);
   return {
     tools,
-    capabilities: effectiveCapabilities({ recipe: "outbound", tools }, { transferNumber: "", googleConnected }, plan),
+    capabilities: effectiveCapabilities({ recipe: "outbound", tools }, account, plan),
   };
 }
 

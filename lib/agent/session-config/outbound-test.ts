@@ -19,7 +19,7 @@ import { outboundAgents } from "@/lib/db/schema";
 import { getCampaignGoalFramings } from "@/lib/settings";
 import { personalityToRealtime, type AgentPersonality } from "@/lib/voice-tuning";
 import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
-import { outboundCallFeatures } from "@/lib/tools/adapters";
+import { outboundCallFeatures, outboundToolFields } from "@/lib/tools/adapters";
 import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
 import { campaignGoalFields, OUTBOUND_TEST_MISSION } from "@/lib/mission/adapters";
@@ -56,7 +56,7 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
   const accountSheet = await accountSheetForOutbound(agent.userId);
   // Tools (T1): the same function as the receptionist and the screen.
   const toolInputs = await capabilityInputsFor(agent.userId);
-  const { capabilities } = outboundCapabilities(agent.toolsConfig, toolInputs.account.googleConnected, toolInputs.plan);
+  const { capabilities } = outboundCapabilities(agent.toolsConfig, toolInputs.account, toolInputs.plan);
   // Mission (M1): no campaign goal in a test → preset "sales", so the agent
   // still presents its offer (OUTBOUND_TEST_MISSION, as before).
   const goal = campaignGoalFields(OUTBOUND_TEST_MISSION);
@@ -121,6 +121,8 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
     primaryLanguage: persona.language || "fr",
     greetingFallbackTemplate: "",
     features: outboundCallFeatures(capabilities),
+    // T4: account id + transfer number, only when a tool is active (off = today).
+    ...outboundToolFields(capabilities, agent.userId, toolInputs.account.transferNumber),
     updatedAt: new Date().toISOString(),
   });
 }
