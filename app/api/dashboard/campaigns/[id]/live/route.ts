@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, sql } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/api/auth-guards";
@@ -13,6 +13,7 @@ import {
   type DispatchTick,
 } from "@/lib/campaigns/live";
 import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
+import { campaignEventsWhere, eventContactId } from "@/lib/campaigns/live-events";
 import { getSetting } from "@/lib/settings";
 
 interface Ctx {
@@ -77,8 +78,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       .from(events)
       .where(
         and(
-          sql`${events.metadata} ? 'campaignId'`,
-          sql`(${events.metadata}->>'campaignId') = ${id}`,
+          // Web events (top-level campaignId) AND worker events (metadata.origin).
+          campaignEventsWhere(id),
           since ? gt(events.createdAt, since) : undefined,
         ),
       )
@@ -157,7 +158,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       event: e.event,
       level: e.level,
       message: e.message,
-      contactId: (e.metadata as Record<string, unknown>)?.contactId ?? null,
+      contactId: eventContactId(e.metadata),
       data: e.metadata,
     })),
   });
