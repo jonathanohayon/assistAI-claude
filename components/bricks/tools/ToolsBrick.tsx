@@ -30,7 +30,8 @@ import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 import { FOCUS, HINT, LABEL } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
-import type { CapabilityKey, Tools } from "@/lib/tools/contract";
+// The screen holds what GET sends: Tools without the client agent secret.
+import type { CapabilityKey, PublicTools as Tools } from "@/lib/tools/contract";
 
 import {
   capabilityList,
