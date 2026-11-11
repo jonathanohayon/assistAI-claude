@@ -38,6 +38,9 @@ import {
   getSpokenPhoneDirectiveByPlan,
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
+
+/** DNS budget of the serve-time webhook check (call setup path). */
+const SERVE_DNS_TIMEOUT_MS = 500;
 import {
   resolveDefaultTenant,
   resolveTenantByPhone,
@@ -299,7 +302,10 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // SSRF guard: a webhook (tenant setting OR the global env override) whose
   // url fails checkAgentUrl is NOT served — the call gets the normal Tamara —
   // and the admins get one alert per source per day. Neither carries the url.
-  const { webhook: agentWebhook, refused } = await servedAgentWebhook(candidateWebhook);
+  // A short DNS budget here: this runs while the call is being set up (the
+  // worker gives the whole config fetch 5 s). A slow or failed lookup means
+  // the webhook is not served — the safe outcome (the normal Tamara answers).
+  const { webhook: agentWebhook, refused } = await servedAgentWebhook(candidateWebhook, { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS });
   if (refused) {
     const via = envOverride && envOverride.startsWith("http") ? "env_override" : "tenant_setting";
     await logEvent({
