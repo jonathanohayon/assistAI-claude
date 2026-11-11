@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
-import { agentBrainSaveDecision } from "@/lib/agent-brain-guard";
+import { agentBrainSaveDecision, brainView, urlToSave } from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
 
 /**
@@ -24,7 +24,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const [brain, isAdmin] = await Promise.all([getAgentBrain(session.user.id), sessionIsAdmin()]);
-  return NextResponse.json({ brain, urlEditable: isAdmin });
+  // Never the secret's value (nor the url) to a tenant: brainView.
+  return NextResponse.json({ brain: brainView(brain, isAdmin), urlEditable: isAdmin });
 }
 
 export async function PUT(request: Request) {
@@ -40,10 +41,11 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
   }
 
-  const url = typeof body.url === "string" ? body.url.trim() : "";
   const wantsEnabled = body.enabled === true;
 
   const [current, isAdmin] = await Promise.all([getAgentBrain(session.user.id), sessionIsAdmin()]);
+  // A tenant's screen doesn't carry the url: absent / "" keeps the stored one.
+  const url = urlToSave(body.url, current.url, isAdmin);
   const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin });
   if (!decision.ok) {
     await logEvent({
@@ -74,5 +76,5 @@ export async function PUT(request: Request) {
     metadata: { enabled: brain.enabled, url: brain.url },
   });
 
-  return NextResponse.json({ brain, urlEditable: isAdmin });
+  return NextResponse.json({ brain: brainView(brain, isAdmin), urlEditable: isAdmin });
 }
