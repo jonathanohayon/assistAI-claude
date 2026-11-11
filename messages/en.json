@@ -1870,7 +1870,7 @@
       "ending": "Closing…",
       "error": "Error"
     },
-    "saveFirst": "Save before testing: the agent reads the saved configuration.",
+    "saveFirst": "Save to test your changes.",
     "startAria": "Start the voice test",
     "stopAria": "Stop the test",
     "hintLive": "Speak, or click to stop",
@@ -2256,7 +2256,7 @@
       "idleHangupSec": "After this much silence, Tamara says goodbye and hangs up.",
       "maxDurationMin": "At this length, Tamara politely wraps up the call."
     },
-    "tryIt": "Try it"
+    "liveTestLink": "Test it live"
   },
   "PersonaBrick": {
     "nameLabel": "Agent name",

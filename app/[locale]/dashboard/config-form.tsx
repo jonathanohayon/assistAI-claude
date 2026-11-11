@@ -741,14 +741,8 @@ export function ConfigForm({
                     isAdmin={isAdmin}
                     asUserId={asUserId ?? null}
                     primaryLanguage={form.primaryLanguage}
-                    testAction={{
-                      label: "tryIt",
-                      onClick: () => {
-                        const el = document.getElementById("live-test");
-                        el?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        el?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
-                      },
-                    }}
+                    // Below xl the Live Test sits above the tiles; from xl it is beside them (no link).
+                    liveTestLink={{ targetId: "live-test", direction: "up", className: "xl:hidden" }}
                   />
                 )}
                 {activeTile === "persona" && (

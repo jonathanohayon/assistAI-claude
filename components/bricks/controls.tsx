@@ -39,7 +39,8 @@ export function Segmented({
   onPick,
 }: {
   label: string;
-  options: Array<{ id: string; label: string }>;
+  /** `accent`: optional text-colour class for that option (e.g. a gender colour), with a dot. */
+  options: Array<{ id: string; label: string; accent?: { text: string; dot: string } }>;
   selected: string;
   onPick: (id: string) => void;
 }) {
@@ -61,10 +62,11 @@ export function Segmented({
             data-id={o.id}
             tabIndex={active ? 0 : -1}
             onClick={() => onPick(o.id)}
-            className={`min-h-9 cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors ${FOCUS} ${
-              active ? "bg-white text-[#18181b] shadow-sm" : "text-[#475569] hover:text-[#18181b]"
-            }`}
+            className={`inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${FOCUS} ${
+              active ? "bg-white shadow-sm" : "hover:bg-white/60"
+            } ${o.accent ? o.accent.text : active ? "text-[#18181b]" : "text-[#475569] hover:text-[#18181b]"}`}
           >
+            {o.accent && <span aria-hidden className={`h-2 w-2 rounded-full ${o.accent.dot}`} />}
             {o.label}
           </button>
         );

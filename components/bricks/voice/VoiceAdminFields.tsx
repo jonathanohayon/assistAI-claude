@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Voice brick — ADMIN-ONLY level-3 fields: engine and model, per-engine voice
- * overrides, turn detection, reasoning, language hint, fillers, speaking
- * style. Loaded with next/dynamic from VoiceBrick for admins only, and its
- * copy lives in the admin namespaces (AdminEngine, AdminVoiceProfile), so
- * supplier names never reach a tenant's browser.
+ * Voice brick — ADMIN-ONLY level-3 parts, loaded with next/dynamic from
+ * VoiceBrick for admins only; copy in the admin namespaces (AdminEngine,
+ * AdminVoiceProfile), so supplier names never reach a tenant's browser.
+ *   VoiceAdminFields  — engine + model, then the engine-dependent settings
+ *                       (shown FIRST in "Developer settings": most consequential);
+ *   VoiceSamplesAdmin — the voice samples + "Generate" (shown LAST: maintenance).
  */
 
 import { useId, useState, useSyncExternalStore } from "react";
@@ -67,8 +68,6 @@ export function VoiceAdminFields({
         <h4 className="text-sm font-semibold text-[#18181b]">{tP("title")}</h4>
         <AdminBadge size="xs" />
       </div>
-
-      <GenerateSamples />
 
       <Select
         label={tE("label")}
@@ -234,6 +233,18 @@ function TextField({
 }
 
 const SAMPLE_TOTAL = samplePlan().length;
+
+/** Admin: the voice samples block, last in "Developer settings" (maintenance, not a setting). */
+export function VoiceSamplesAdmin() {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <AdminBadge size="xs" />
+      </div>
+      <GenerateSamples />
+    </div>
+  );
+}
 
 /** Admin: render every missing Listen sample (72), with progress; safe to re-click. */
 function GenerateSamples() {

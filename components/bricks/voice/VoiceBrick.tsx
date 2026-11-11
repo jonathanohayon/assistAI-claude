@@ -20,7 +20,7 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ChipGroup, FOCUS, HINT, LABEL, SELECTED, Segmented, ToggleRow, radioKeys } from "@/components/bricks/controls";
+import { ChipGroup, FOCUS, HINT, LABEL, Segmented, ToggleRow, radioKeys } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 import { useVoiceSample } from "./use-voice-samples";
@@ -29,6 +29,7 @@ import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import {
   STYLE_SELECTOR_TENANT_VISIBLE,
+  VOICE_GENDER,
   VOICE_IDS,
   VOICE_PACES as PACES,
   VOICE_STYLES,
@@ -56,6 +57,20 @@ const VoiceAdminFields = dynamic(() => import("./VoiceAdminFields").then((m) => 
   ssr: false,
   loading: () => null,
 });
+const VoiceSamplesAdmin = dynamic(() => import("./VoiceAdminFields").then((m) => m.VoiceSamplesAdmin), {
+  ssr: false,
+  loading: () => null,
+});
+
+/**
+ * Gender colours (never colour alone: the label says "féminine / masculine").
+ * Feminine = rose family, masculine = cyan/teal; separate tints, never a
+ * gradient between them (brand rule). Text shades are AA on their tint.
+ */
+const GENDER_TONE = {
+  f: { card: "border-[#fbcfe8] border-s-[#db2777] bg-[#fdf2f8]", text: "text-[#9d174d]", chip: { text: "text-[#be185d]", dot: "bg-[#db2777]" } },
+  m: { card: "border-[#a5f3fc] border-s-[#0e7490] bg-[#ecfeff]", text: "text-[#155e75]", chip: { text: "text-[#0e7490]", dot: "bg-[#0e7490]" } },
+} as const;
 
 export interface VoiceBrickProps {
   value: ClientVoice;
@@ -65,9 +80,13 @@ export interface VoiceBrickProps {
   asUserId?: string | null;
   /** Voices offered (default: all). */
   availableVoices?: readonly string[];
-  /** "Try it": opens the screen's existing browser test call. Hidden when
-   *  absent. (No "Call me" until the phone call-back exists.) */
-  testAction?: { label: "tryIt"; onClick: () => void; busy?: boolean };
+  /**
+   * A quiet link to the screen's Live Test panel, for layouts where it isn't
+   * beside the brick. No "Try it" button: the panel is the one place to test.
+   * `direction`: where the panel is; `className`: when the link shows (e.g.
+   * "xl:hidden" when the panel sits beside the form from xl).
+   */
+  liveTestLink?: { targetId: string; direction: "up" | "down"; className?: string };
   /** Sample override (mock pages). Default: the shared sample list
    *  (V7) in the agent's language. Listen only shows when a sample exists. */
   sampleUrl?: (voiceId: string, style: ClientVoice["style"]) => string | null;
@@ -80,7 +99,7 @@ export function VoiceBrick({
   isAdmin,
   asUserId,
   availableVoices = VOICE_IDS,
-  testAction,
+  liveTestLink,
   sampleUrl,
   primaryLanguage,
 }: VoiceBrickProps) {
@@ -123,10 +142,7 @@ export function VoiceBrick({
         />
       )}
 
-      <TestActions
-        sample={sampleFor(value.voiceId, value.style)}
-        testAction={testAction}
-      />
+      <TestActions sample={sampleFor(value.voiceId, value.style)} liveTestLink={liveTestLink} />
 
       {error && (
         <p role="alert" className="text-xs font-semibold text-[#b91c1c]">
@@ -192,6 +208,14 @@ export function VoiceBrick({
       {/* ── Level 3 ─────────────────────────────────────────── */}
       {showLevel3({ isAdmin, developerMode: dev.on }) && (
         <MoreSettings level={3}>
+          {/* Order, most consequential first (admin): 1. engine + model,
+              2. engine-dependent settings, 3. our call limits (all a tenant
+              in developer mode sees), 4. voice samples (maintenance). */}
+          {isAdmin && (
+            <div className="border-b border-[#e2e8f0] pb-5">
+              <VoiceAdminFields value={value} onPatch={apply} primaryLanguage={primaryLanguage ?? null} />
+            </div>
+          )}
           <p className={HINT}>{t("developerHint")}</p>
           <div className="mt-4 grid grid-cols-1 gap-4">
             {OUR_ADVANCED_FIELDS.map((k) => (
@@ -208,11 +232,7 @@ export function VoiceBrick({
           </div>
           {isAdmin && (
             <div className="mt-5 border-t border-[#e2e8f0] pt-4">
-              <VoiceAdminFields
-                value={value}
-                onPatch={apply}
-                primaryLanguage={primaryLanguage ?? null}
-              />
+              <VoiceSamplesAdmin />
             </div>
           )}
         </MoreSettings>
@@ -250,8 +270,8 @@ function VoicePicker({
           label={t("genderFilter")}
           options={[
             { id: "all", label: t("genderAll") },
-            { id: "f", label: t("genderF") },
-            { id: "m", label: t("genderM") },
+            { id: "f", label: t("genderF"), accent: GENDER_TONE.f.chip },
+            { id: "m", label: t("genderM"), accent: GENDER_TONE.m.chip },
           ]}
           selected={gender}
           onPick={(g) => setGender(g as GenderFilter)}
@@ -267,6 +287,7 @@ function VoicePicker({
         {voices.map((v) => {
           const active = v === value;
           const desc = t.has(`desc.${v}`) ? t(`desc.${v}`) : null;
+          const tone = GENDER_TONE[VOICE_GENDER[v] === "m" ? "m" : "f"];
           return (
             <button
               key={v}
@@ -277,14 +298,20 @@ function VoicePicker({
               data-id={v}
               tabIndex={active || (!voices.includes(value) && v === voices[0]) ? 0 : -1}
               onClick={() => onPick(v)}
-              className={`flex min-h-12 cursor-pointer items-center rounded-xl border px-3 py-2 text-start transition-colors duration-150 ${FOCUS} ${
-                active ? SELECTED : "border-[#e2e8f0] bg-white text-[#18181b] hover:border-[#be185d]/40"
+              className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border border-s-4 px-3 py-2 text-start text-[#18181b] transition-shadow duration-150 ${FOCUS} ${tone.card} ${
+                active ? "ring-2 ring-[#18181b] ring-offset-2" : "hover:shadow-sm"
               }`}
             >
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{desc ?? voiceLabel(v)}</span>
-                <span className={`block truncate text-xs ${active ? "text-white/90" : "text-[#475569]"}`}>{voiceLabel(v)}</span>
+                <span className={`block truncate text-xs font-medium ${tone.text}`}>{voiceLabel(v)}</span>
               </span>
+              {/* Selected: one treatment on both tints (dark ring + check). */}
+              {active && (
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-[#18181b]">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
             </button>
           );
         })}
@@ -306,10 +333,10 @@ function VoicePicker({
 
 function TestActions({
   sample,
-  testAction,
+  liveTestLink,
 }: {
   sample: string | null;
-  testAction?: VoiceBrickProps["testAction"];
+  liveTestLink?: VoiceBrickProps["liveTestLink"];
 }) {
   const t = useTranslations("VoiceBrick");
   // The sample being played; a new sample (voice or style changed) is
@@ -324,7 +351,7 @@ function TestActions({
     audio.current = null;
   }, [sample]);
 
-  if (!sample && !testAction) return null;
+  if (!sample && !liveTestLink) return null;
 
   const toggle = () => {
     if (!sample) return;
@@ -362,18 +389,23 @@ function TestActions({
           {playing ? t("stop") : t("listen")}
         </button>
       )}
-      {testAction && (
-        <button
-          type="button"
-          onClick={testAction.onClick}
-          disabled={testAction.busy}
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-br from-[#be185d] to-[#db2777] px-4 text-sm font-semibold text-white shadow-sm disabled:cursor-wait disabled:opacity-60 ${FOCUS}`}
+      {liveTestLink && (
+        <a
+          href={`#${liveTestLink.targetId}`}
+          onClick={(e) => {
+            const el = document.getElementById(liveTestLink.targetId);
+            if (!el) return;
+            e.preventDefault();
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            el.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+          }}
+          className={`inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-sm font-semibold text-[#0e7490] underline-offset-4 hover:underline ${FOCUS} ${liveTestLink.className ?? ""}`}
         >
-          <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2z" />
+          {t("liveTestLink")}
+          <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 ${liveTestLink.direction === "up" ? "rotate-180" : ""}`}>
+            <path d="M12 5v14M6 13l6 6 6-6" />
           </svg>
-          {t(testAction.label)}
-        </button>
+        </a>
       )}
     </div>
   );

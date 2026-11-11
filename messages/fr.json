@@ -1870,7 +1870,7 @@
       "ending": "Fermeture…",
       "error": "Erreur"
     },
-    "saveFirst": "Enregistrez avant de tester : l'agent lit la configuration enregistrée.",
+    "saveFirst": "Sauvegardez pour tester vos changements.",
     "startAria": "Démarrer le test vocal",
     "stopAria": "Arrêter le test",
     "hintLive": "Parlez, ou cliquez pour arrêter",
@@ -2256,7 +2256,7 @@
       "idleHangupSec": "Après ce silence, Tamara dit au revoir et raccroche.",
       "maxDurationMin": "Arrivé à cette durée, Tamara conclut l'appel poliment."
     },
-    "tryIt": "Essayer"
+    "liveTestLink": "Tester en direct"
   },
   "PersonaBrick": {
     "nameLabel": "Nom de l'agent",
