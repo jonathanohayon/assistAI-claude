@@ -2,7 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaignContacts, campaigns, phoneNumbers } from "@/lib/db/schema";
+import { campaignContacts, campaigns } from "@/lib/db/schema";
+import { oldestTenantNumber } from "@/lib/phone/oldest-number";
 import { dialOneNow } from "@/lib/campaigns/dispatch";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
@@ -44,15 +45,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!campaign)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  // Caller-id : numéro de la campagne, sinon 1er numéro du tenant.
+  // Caller-id: the campaign's number, else the tenant's OLDEST number
+  // (same line as call-me, see lib/phone/oldest-number.ts).
   let fromNumber = campaign.fromNumber?.trim() || "";
   if (!fromNumber) {
-    const [num] = await db
-      .select({ phoneNumber: phoneNumbers.phoneNumber })
-      .from(phoneNumbers)
-      .where(eq(phoneNumbers.userId, r.userId))
-      .limit(1);
-    fromNumber = num?.phoneNumber ?? "";
+    fromNumber = (await oldestTenantNumber(r.userId)) ?? "";
   }
   if (!fromNumber) {
     return NextResponse.json({ error: "no_caller_id" }, { status: 409 });
