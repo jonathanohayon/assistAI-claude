@@ -184,14 +184,7 @@ export function KnowledgeBrick({
       </MoreSettings>
 
       {/* ── Level 3 ─────────────────────────────────────────── */}
-      {showDev && (
-        <section aria-labelledby="kb-dev-title" className="rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4">
-          <h3 id="kb-dev-title" className="text-sm font-semibold text-[#18181b]">
-            {t("devTitle")}
-          </h3>
-          <div className="mt-3">{devPanel}</div>
-        </section>
-      )}
+      {showDev && <MoreSettings level={3}>{devPanel}</MoreSettings>}
     </div>
   );
 }
