@@ -29,4 +29,11 @@ const status = readFileSync(new URL("../../app/api/dashboard/campaigns/[id]/stat
 assert.match(status, /dispatch = \{ error: "dispatch_failed" \}/);
 assert.doesNotMatch(status, /error: e instanceof Error \? e\.message/);
 
+// Every tenant-facing campaign view carries the same word from the same helper.
+for (const f of ["app/api/dashboard/campaigns/[id]/route.ts", "app/api/dashboard/campaigns/[id]/live/route.ts"]) {
+  const src = readFileSync(new URL(`../../${f}`, import.meta.url), "utf8");
+  assert.match(src, /dispatchMode: dispatchMode\(\)/, `${f} serves dispatchMode`);
+  assert.doesNotMatch(src, /process\.env\.CAMPAIGN_DISPATCH/, `${f} never reads the env itself`);
+}
+
 console.log("ALL CAMPAIGN-DISPATCH-MODE TESTS PASSED");

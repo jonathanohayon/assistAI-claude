@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
 
 interface Ctx {
@@ -81,7 +82,9 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       )[0] ?? null)
     : null;
 
-  return NextResponse.json({ campaign, agent, contacts, calls, counts });
+  // CAMPAIGN_DISPATCH as a viewer-safe word (never the env name or value):
+  // the launch panel must not say "ready" while calls are off.
+  return NextResponse.json({ campaign, agent, contacts, calls, counts, dispatchMode: dispatchMode() });
 }
 
 // PATCH — partial update. What may change depends on the status
