@@ -1,8 +1,7 @@
 // Unit tests for lib/voice/catalogue.ts (V8a).
 // Run with:  npx tsx scripts/tests/voice-catalogue.test.ts
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 import { REALTIME_PROVIDERS } from "../../lib/realtime-provider";
 import {
@@ -82,14 +81,15 @@ assert.equal(catalogueIdFor("openai", "nope"), null);
 assert.equal(equivalentVoice("voice-999", "xai"), null);
 
 // The catalogue carries engine names: tenant code must not import it.
-const walk = (dir: string): string[] =>
-  readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
-    const p = join(dir, d.name);
-    return d.isDirectory() ? (d.name === "node_modules" ? [] : walk(p)) : /\.(ts|tsx)$/.test(d.name) ? [p] : [];
-  });
-const tenantFiles = [...walk("app/[locale]"), ...walk("components")];
-assert.ok(tenantFiles.length > 50, `scanned ${tenantFiles.length} tenant files`);
+const tenantScan = scanSources(["app/[locale]", "components"], { ext: /\.(ts|tsx)$/ });
+// An empty scan would pass "no importer" trivially: prove it read the real tree.
+assertScanRead(tenantScan, "voice-catalogue tenant scan", {
+  minFiles: 100,
+  minPerRoot: 30,
+  sentinels: ["app/[locale]/dashboard/config-form.tsx", "components/bricks/voice/VoiceBrick.tsx"],
+});
+const tenantFiles = tenantScan.files;
 const IMPORT_RE = /(?:from\s*|import\s*\(?\s*)["'][^"']*\bvoice\/catalogue["']/;
-assert.deepEqual(tenantFiles.filter((f) => IMPORT_RE.test(readFileSync(f, "utf8"))), [], "tenant code imports the catalogue");
+assert.deepEqual(tenantFiles.filter((f) => IMPORT_RE.test(tenantScan.text.get(f)!)), [], "tenant code imports the catalogue");
 
 console.log("ALL VOICE-CATALOGUE TESTS PASSED");

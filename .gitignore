@@ -40,3 +40,6 @@ next-env.d.ts
 
 # Claude Code session state
 .claude/
+
+# throwaway local databases (scripts/alert-ledger-claim-db.sh)
+/.tmp/
