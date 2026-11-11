@@ -22,6 +22,7 @@ import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
 import { outboundCallFeatures } from "@/lib/tools/adapters";
 import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
+import { campaignGoalFields, OUTBOUND_TEST_MISSION } from "@/lib/mission/adapters";
 import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/outbound-test-config?agentId=  (x-internal-secret)
@@ -56,6 +57,9 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
   // Tools (T1): the same function as the receptionist and the screen.
   const toolInputs = await capabilityInputsFor(agent.userId);
   const { capabilities } = outboundCapabilities(agent.toolsConfig, toolInputs.account.googleConnected, toolInputs.plan);
+  // Mission (M1): no campaign goal in a test → preset "sales", so the agent
+  // still presents its offer (OUTBOUND_TEST_MISSION, as before).
+  const goal = campaignGoalFields(OUTBOUND_TEST_MISSION);
   const persona = {
     agentName: agent.agentName,
     voice: agent.voice,
@@ -63,7 +67,7 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
     instructions: agentKnowledge.instructions,
     greeting: agent.greeting,
     knowledge: outboundKnowledgeText(agentKnowledge.knowledge, accountSheet),
-    successCriteria: "",
+    successCriteria: goal.successCriteria,
   };
 
   // Pas d'objectif de campagne en test → preset "sales" pour que l'agent
@@ -80,7 +84,7 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
   // The session instructions: ONE pure function (also used by the prompt
   // preview). No campaign in a test → "sales" preset, no contact.
   const instructions = outboundSessionInstructions({
-    campaign: { goalPreset: "sales", objective: "", persona },
+    campaign: { goalPreset: goal.goalPreset, objective: goal.objective, persona },
     contact: {},
     framings,
     primaryLanguage: persona.language || "fr",

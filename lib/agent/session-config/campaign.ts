@@ -22,6 +22,7 @@ import { outboundModel, servedOutboundVoice } from "@/lib/voice/serve";
 import { outboundCallFeatures } from "@/lib/tools/adapters";
 import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
+import { campaignGoalFields, missionFromCampaign } from "@/lib/mission/adapters";
 import { toEngineSettings } from "@/lib/voice/engine";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
@@ -76,6 +77,9 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
   // Tools (T1): the same function as the receptionist and the screen.
   const toolInputs = await capabilityInputsFor(campaign.userId);
   const { capabilities } = outboundCapabilities(agent?.toolsConfig ?? null, toolInputs.account.googleConnected, toolInputs.plan);
+  // Mission (M1): the campaign's goal through the Mission contract —
+  // identical instructions (route snapshots).
+  const goal = campaignGoalFields(missionFromCampaign(campaign));
   const persona = agent
     ? {
         agentName: agent.agentName,
@@ -84,7 +88,7 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
         instructions: agentKnowledge.instructions,
         greeting: agent.greeting,
         knowledge: outboundKnowledgeText(agentKnowledge.knowledge, accountSheet),
-        successCriteria: campaign.successCriteria,
+        successCriteria: goal.successCriteria,
       }
     : {
         // Campagne sans agent associé : défauts sûrs (la persona embarquée
@@ -93,7 +97,7 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
         agentName: "Sarah",
         voice: "marin",
         language: "fr",
-        successCriteria: campaign.successCriteria,
+        successCriteria: goal.successCriteria,
         ...(accountSheet ? { knowledge: outboundKnowledgeText("", accountSheet) } : {}),
       };
   // Framings de prompt éditables par l'admin (override des défauts par preset).
@@ -113,7 +117,7 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
   // The session instructions: ONE pure function (also used by the prompt
   // preview) — campaign framing, spoken languages (P4), disclosure (P5).
   const instructions = outboundSessionInstructions({
-    campaign: { goalPreset: campaign.goalPreset, objective: campaign.objective, persona },
+    campaign: { goalPreset: goal.goalPreset, objective: goal.objective, persona },
     contact: { contactName: contact.contactName, phoneNumber: contact.phoneNumber, vars: contact.vars },
     framings,
     primaryLanguage: persona.language || "fr",
