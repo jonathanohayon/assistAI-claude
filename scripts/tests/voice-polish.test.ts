@@ -40,7 +40,7 @@ for (const l of ["fr", "en", "he"]) assert.ok(JSON.parse(read(`messages/${l}.jso
   const fields = admin.slice(admin.indexOf("export function VoiceAdminFields"), admin.indexOf("export function VoiceSamplesAdmin"));
   assert.doesNotMatch(fields, /<GenerateSamples \/>/, "samples are no longer at the top of the engine block");
   assert.ok(fields.indexOf('label={tE("label")}') < fields.indexOf("voiceOverrides"), "engine first, then its settings");
-  assert.match(admin, /export function VoiceSamplesAdmin[\s\S]*<AdminBadge size="xs" \/>[\s\S]*<GenerateSamples \/>/, "samples keep the ADMIN badge");
+  assert.match(admin, /export function VoiceSamplesAdmin[\s\S]*<AdminBadge size="xs" \/>[\s\S]*<GenerateSamples key=/, "samples keep the ADMIN badge");
   // Both admin parts stay dynamic imports (supplier names never in a tenant bundle).
   assert.equal(brick.match(/dynamic\(\(\) => import\("\.\/VoiceAdminFields"\)/g)?.length, 2);
 }
@@ -49,8 +49,14 @@ for (const l of ["fr", "en", "he"]) assert.ok(JSON.parse(read(`messages/${l}.jso
 {
   const tones = brick.slice(brick.indexOf("const GENDER_TONE"), brick.indexOf("} as const;", brick.indexOf("const GENDER_TONE")));
   assert.doesNotMatch(tones, /from-|to-|gradient/, "no gradient between the gender colours");
-  assert.match(brick, /const tone = GENDER_TONE\[VOICE_GENDER\[v\] === "m" \? "m" : "f"\];/);
-  assert.match(brick, /\{voiceLabel\(v\)\}<\/span>/, "the gender words stay (voiceLabel says féminine/masculine)");
+  // Each card's tint follows its gender (by name today, by the server's gender in choice mode).
+  assert.match(brick, /gender: VOICE_GENDER\[v\] === "m" \? "m" : "f"/);
+  assert.match(brick, /const tone = GENDER_TONE\[v\.gender\];/);
+  // The gender words stay on every card (never colour alone): the second line.
+  assert.match(brick, /\{v\.sub\}<\/span>/);
+  assert.match(brick, /sub: voiceLabel\(v\)/, "today's list: voiceLabel says féminine/masculine");
+  assert.match(brick, /sub: tv\("display", \{ n: o\.number, gender: o\.gender \}\)/, "choice, with descriptor");
+  assert.match(brick, /sub: o\.gender === "m" \? t\("genderM"\) : t\("genderF"\)/, "choice, without descriptor");
   const lum = (hex: string) => {
     const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];

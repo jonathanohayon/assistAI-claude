@@ -30,6 +30,7 @@ import { getTileToggles } from "@/lib/tile-toggles";
 import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { voiceChoiceFor } from "@/lib/voice/choice-load";
 import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
 import { currentCompanySheet } from "@/lib/knowledge/store";
 import { currentInboundPersona } from "@/lib/persona/store";
@@ -217,6 +218,8 @@ export default async function DashboardPage(props: {
           // The account's company sheet (S4), else built from the business JSON.
           companySheet: currentCompanySheet(me?.companySheet, config.business),
           voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), isAdmin) as ServedVoice,
+          // V8c: our ids only (tenant-safe), same as GET /api/dashboard/config.
+          voiceChoice: await voiceChoiceFor(config, isAdmin),
           instructions: config.instructions,
           greetingInstructions: config.greetingInstructions,
           maxResponseTokens: config.maxResponseTokens,

@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "Moteur vocal",
+    "changesVoice": "Changer de moteur remplace la voix de ce compte par la plus proche sur le nouveau moteur.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (par défaut)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (expérimental)",
@@ -2103,6 +2104,7 @@
     "saveNow": "Enregistrer",
     "saving": "Enregistrement…",
     "samplesTitle": "Extraits « Écouter »",
+    "samplesMissingKey": "Clé manquante : définissez <k>{env}</k> sur le service web.",
     "samplesCount": "{done} sur {total} prêts",
     "samplesGenerate": "Générer les extraits de voix",
     "samplesRunning": "Génération…",
@@ -2245,6 +2247,21 @@
       "echo": "Pro et neutre",
       "fable": "Conteuse",
       "onyx": "Grave et ferme"
+    },
+    "voiceDesc": {
+      "voice-101": "Souriante, posée",
+      "voice-102": "Grave, apaisante",
+      "voice-103": "Posée et grave",
+      "voice-104": "Calme, conseil",
+      "voice-105": "Énergique, nette",
+      "voice-106": "Neutre et pro",
+      "voice-107": "Douce, lumineuse",
+      "voice-108": "Pro et neutre",
+      "voice-109": "Conteuse",
+      "voice-110": "Grave et ferme",
+      "voice-111": "Vive, lumineuse",
+      "voice-112": "Chaude et douce",
+      "voice-113": "Calme, réfléchie"
     },
     "fewerVoices": "Voir moins",
     "bargeInOn": "Tamara s'arrête dès que la personne parle.",

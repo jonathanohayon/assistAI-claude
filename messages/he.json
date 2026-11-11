@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "מנוע קולי",
+    "changesVoice": "החלפת המנוע מחליפה את הקול של החשבון הזה בקול הקרוב ביותר במנוע החדש.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (ברירת מחדל)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (ניסיוני)",
@@ -2103,6 +2104,7 @@
     "saveNow": "שמירה",
     "saving": "שומר…",
     "samplesTitle": "דוגמאות האזנה",
+    "samplesMissingKey": "חסר מפתח: הגדירו את <k>{env}</k> בשירות הווב.",
     "samplesCount": "{done} מתוך {total} מוכנות",
     "samplesGenerate": "יצירת דוגמאות קול",
     "samplesRunning": "יוצר…",
@@ -2245,6 +2247,21 @@
       "echo": "מקצועי וניטרלי",
       "fable": "מספר סיפורים",
       "onyx": "עמוק ותקיף"
+    },
+    "voiceDesc": {
+      "voice-101": "חם ויציב",
+      "voice-102": "עמוק ומרגיע",
+      "voice-103": "רגוע ועמוק",
+      "voice-104": "שקט ומייעץ",
+      "voice-105": "אנרגטי וצלול",
+      "voice-106": "ניטרלי ומקצועי",
+      "voice-107": "רך ומאיר",
+      "voice-108": "מקצועי וניטרלי",
+      "voice-109": "מספר סיפורים",
+      "voice-110": "עמוק ותקיף",
+      "voice-111": "מאיר ונמרץ",
+      "voice-112": "חם ועדין",
+      "voice-113": "שקט ומהורהר"
     },
     "fewerVoices": "להצגת פחות",
     "bargeInOn": "תמרה עוצרת ברגע שהמתקשר מדבר.",

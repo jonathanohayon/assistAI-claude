@@ -1911,6 +1911,7 @@
   },
   "AdminEngine": {
     "label": "Voice engine",
+    "changesVoice": "Changing the engine changes this account's voice to the closest one on the new engine.",
     "optionOpenai2": "OpenAI gpt-realtime-2 (default)",
     "optionOpenai21": "OpenAI gpt-realtime-2.1",
     "optionGemini": "Gemini 3.8 Live (experimental)",
@@ -2103,6 +2104,7 @@
     "saveNow": "Save",
     "saving": "Saving…",
     "samplesTitle": "Listen samples",
+    "samplesMissingKey": "Key missing: set <k>{env}</k> on the web service.",
     "samplesCount": "{done} of {total} ready",
     "samplesGenerate": "Generate voice samples",
     "samplesRunning": "Generating…",
@@ -2245,6 +2247,21 @@
       "echo": "Pro and neutral",
       "fable": "Storyteller",
       "onyx": "Deep and firm"
+    },
+    "voiceDesc": {
+      "voice-101": "Warm and steady",
+      "voice-102": "Deep, reassuring",
+      "voice-103": "Composed, deep",
+      "voice-104": "Calm, advisory",
+      "voice-105": "Energetic, clear",
+      "voice-106": "Neutral and pro",
+      "voice-107": "Soft and bright",
+      "voice-108": "Pro and neutral",
+      "voice-109": "Storyteller",
+      "voice-110": "Deep and firm",
+      "voice-111": "Bright, lively",
+      "voice-112": "Warm and gentle",
+      "voice-113": "Calm, thoughtful"
     },
     "fewerVoices": "See fewer",
     "bargeInOn": "Tamara stops as soon as the caller speaks.",

@@ -21,7 +21,7 @@ import type { PERSONALITY_KEYS } from "@/lib/personality";
  *  passée en prop `t` à la plupart des sous-composants. */
 export type Translator = ReturnType<typeof useTranslations<"DashboardConfig">>;
 
-import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import type { ServedVoice, ServedVoiceChoice } from "@/components/bricks/voice/voice-ui";
 import type { Persona } from "@/lib/persona/contract";
 
 export type Personality = Partial<
@@ -33,6 +33,8 @@ export type FormState = {
    *  fields). The voice is saved only through `voiceConfig`; the legacy voice
    *  columns are not part of this form (voice_config_conflict). */
   voiceConfig: ServedVoice;
+  /** The voice choice as our ids for the account's engine (V8c, tenant-safe). */
+  voiceChoice?: ServedVoiceChoice | null;
   /** Persona brick settings as served (P3); absent → derived from the
    *  legacy fields below, which this screen never sends. */
   personaConfig?: Persona;

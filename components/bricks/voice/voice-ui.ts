@@ -31,6 +31,56 @@ export function pickerVoices(
 }
 
 /**
+ * The voice choice as the server serves it (V8c, receptionist): OUR ids for
+ * the account's engine — no engine name, no engine voice name. Mirror of
+ * lib/voice/choice.ts (server-only, not importable here).
+ */
+export interface ServedVoiceOption {
+  id: string;
+  /** Customer-facing "Voice N", from the server (never a list position). */
+  number: number;
+  gender: VoiceGender;
+  recommended: boolean;
+  /** Only when it plays the voice the calls really use. */
+  sampleUrl?: string;
+}
+export interface ServedVoiceChoice {
+  current: string | null;
+  options: ServedVoiceOption[];
+}
+
+/** Our ids 101–199 are the voices with a descriptor in our copy; others show number + gender only. */
+export const hasDescriptor = (id: string): boolean => /^voice-1\d\d$/.test(id);
+
+/** The selected option: the unsaved pick if it is one of ours, else what the calls use now. */
+export function selectedChoice(choice: ServedVoiceChoice, voiceId: string): string | null {
+  return choice.options.some((o) => o.id === voiceId) ? voiceId : choice.current;
+}
+
+/**
+ * Short list = the server's recommended voices, female | male per row; the
+ * rest only with "all voices"; the selected one always shows.
+ */
+export function choiceVoices(
+  choice: ServedVoiceChoice,
+  opts: { gender: GenderFilter; showAll: boolean; selected: string | null },
+): ServedVoiceOption[] {
+  const inGender = (o: ServedVoiceOption) => opts.gender === "all" || o.gender === opts.gender;
+  const rec = choice.options.filter((o) => o.recommended && inGender(o));
+  const f = rec.filter((o) => o.gender === "f");
+  const m = rec.filter((o) => o.gender === "m");
+  const interleaved: ServedVoiceOption[] = [];
+  for (let i = 0; i < Math.max(f.length, m.length); i++) {
+    if (f[i]) interleaved.push(f[i]);
+    if (m[i]) interleaved.push(m[i]);
+  }
+  const list = opts.showAll ? [...interleaved, ...choice.options.filter((o) => !o.recommended && inGender(o))] : interleaved;
+  const sel = choice.options.find((o) => o.id === opts.selected);
+  if (sel && !list.includes(sel) && inGender(sel)) list.push(sel);
+  return list;
+}
+
+/**
  * Patience on screen: 1 = answers quickly … 5 = waits longest. The contract
  * keeps today's sensitivity scale (1 waits longest, 5 answers soonest), so
  * the screen shows it flipped.

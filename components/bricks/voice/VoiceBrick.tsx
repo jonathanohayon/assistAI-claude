@@ -46,10 +46,14 @@ import {
   addKeyTerm,
   addPronunciation,
   patienceToScreen,
+  choiceVoices,
+  hasDescriptor,
   pickerVoices,
   screenToPatience,
+  selectedChoice,
   showLevel3,
   type GenderFilter,
+  type ServedVoiceChoice,
 } from "./voice-ui";
 
 // Admin-only: names suppliers, so it is fetched only when an admin opens it.
@@ -91,6 +95,12 @@ export interface VoiceBrickProps {
    *  (V7) in the agent's language. Listen only shows when a sample exists. */
   sampleUrl?: (voiceId: string, style: ClientVoice["style"]) => string | null;
   primaryLanguage?: string | null;
+  /**
+   * Receptionist (V8c): the server's voice choice for the account's engine.
+   * The picker then lists OUR ids and sends one as voiceId; Listen plays only
+   * the server's sample (the real voice). Absent: today's voice list.
+   */
+  choice?: ServedVoiceChoice | null;
 }
 
 export function VoiceBrick({
@@ -102,6 +112,7 @@ export function VoiceBrick({
   liveTestLink,
   sampleUrl,
   primaryLanguage,
+  choice,
 }: VoiceBrickProps) {
   const t = useTranslations("VoiceBrick");
   const dev = useDeveloperMode(asUserId);
@@ -123,14 +134,34 @@ export function VoiceBrick({
 
   const styleVisible = isAdmin || STYLE_SELECTOR_TENANT_VISIBLE;
 
+  // Choice mode: the voice name as served, to send back when the customer
+  // re-picks the voice the calls already use (no change, nothing to save).
+  const servedName = useRef(value.voiceId);
+  useEffect(() => {
+    if (choice && !choice.options.some((o) => o.id === value.voiceId)) servedName.current = value.voiceId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when a new choice is served
+  }, [choice]);
+  const chosen = choice ? selectedChoice(choice, value.voiceId) : null;
+  const sample = choice
+    ? (choice.options.find((o) => o.id === chosen)?.sampleUrl ?? null)
+    : sampleFor(value.voiceId, value.style);
+
   return (
     <div className="flex flex-col gap-5">
       {/* ── Level 1 ─────────────────────────────────────────── */}
-      <VoicePicker
-        value={value.voiceId}
-        available={availableVoices}
-        onPick={(voiceId) => apply({ voiceId })}
-      />
+      {choice ? (
+        <ChoicePicker
+          choice={choice}
+          value={chosen}
+          onPick={(id) => apply({ voiceId: id === choice.current ? servedName.current : id })}
+        />
+      ) : (
+        <VoicePicker
+          value={value.voiceId}
+          available={availableVoices}
+          onPick={(voiceId) => apply({ voiceId })}
+        />
+      )}
 
       {styleVisible && (
         <ChipGroup
@@ -142,7 +173,7 @@ export function VoiceBrick({
         />
       )}
 
-      <TestActions sample={sampleFor(value.voiceId, value.style)} liveTestLink={liveTestLink} />
+      <TestActions sample={sample} liveTestLink={liveTestLink} />
 
       {error && (
         <p role="alert" className="text-xs font-semibold text-[#b91c1c]">
@@ -232,7 +263,7 @@ export function VoiceBrick({
           </div>
           {isAdmin && (
             <div className="mt-5 border-t border-[#e2e8f0] pt-4">
-              <VoiceSamplesAdmin />
+              <VoiceSamplesAdmin engine={(value as { engine?: string }).engine} />
             </div>
           )}
         </MoreSettings>
@@ -243,6 +274,16 @@ export function VoiceBrick({
 
 // ─── Level 1 parts ──────────────────────────────────────────────────────
 
+interface PickerItem {
+  id: string;
+  gender: "f" | "m";
+  /** First line: the descriptor, or "Voice N" when there is none. */
+  title: string;
+  /** Second line: "Voice N · gender", or the gender alone. */
+  sub: string;
+}
+
+/** Today's list (outbound agents, previews): voices by name. */
 function VoicePicker({
   value,
   available,
@@ -254,11 +295,72 @@ function VoicePicker({
 }) {
   const t = useTranslations("VoiceBrick");
   const voiceLabel = useVoiceLabel();
+  const item = (v: string): PickerItem => {
+    const desc = t.has(`desc.${v}`) ? t(`desc.${v}`) : null;
+    return { id: v, gender: VOICE_GENDER[v] === "m" ? "m" : "f", title: desc ?? voiceLabel(v), sub: voiceLabel(v) };
+  };
+  return (
+    <PickerGrid
+      value={value}
+      total={available.length}
+      shortCount={pickerVoices(available, { gender: "all", showAll: false, selected: value }).length}
+      list={(gender, showAll) => pickerVoices(available, { gender, showAll, selected: value }).map(item)}
+      onPick={onPick}
+    />
+  );
+}
+
+/** Receptionist (V8c): the server's choice, our ids, the server's numbers. */
+function ChoicePicker({
+  choice,
+  value,
+  onPick,
+}: {
+  choice: ServedVoiceChoice;
+  value: string | null;
+  onPick: (id: string) => void;
+}) {
+  const t = useTranslations("VoiceBrick");
+  const tv = useTranslations("Voices");
+  const item = (o: ServedVoiceChoice["options"][number]): PickerItem => {
+    // Descriptors are written for one voice family only; elsewhere number + gender.
+    const desc = hasDescriptor(o.id) && t.has(`voiceDesc.${o.id}`) ? t(`voiceDesc.${o.id}`) : null;
+    return desc
+      ? { id: o.id, gender: o.gender, title: desc, sub: tv("display", { n: o.number, gender: o.gender }) }
+      : { id: o.id, gender: o.gender, title: tv("display", { n: o.number, gender: "other" }), sub: o.gender === "m" ? t("genderM") : t("genderF") };
+  };
+  return (
+    <PickerGrid
+      value={value}
+      total={choice.options.length}
+      shortCount={choiceVoices(choice, { gender: "all", showAll: false, selected: value }).length}
+      list={(gender, showAll) => choiceVoices(choice, { gender, showAll, selected: value }).map(item)}
+      onPick={onPick}
+    />
+  );
+}
+
+function PickerGrid({
+  value,
+  total,
+  shortCount,
+  list,
+  onPick,
+}: {
+  value: string | null;
+  total: number;
+  shortCount: number;
+  list: (gender: GenderFilter, showAll: boolean) => PickerItem[];
+  onPick: (id: string) => void;
+}) {
+  const t = useTranslations("VoiceBrick");
   const [gender, setGender] = useState<GenderFilter>("all");
   const [showAll, setShowAll] = useState(false);
   const labelId = useId();
-  const voices = pickerVoices(available, { gender, showAll, selected: value });
-  const hidden = available.length - pickerVoices(available, { gender: "all", showAll: false, selected: value }).length;
+  const items = list(gender, showAll);
+  const ids = items.map((i) => i.id);
+  const hidden = total - shortCount;
+  const focusId = value && ids.includes(value) ? value : ids[0];
 
   return (
     <div>
@@ -281,30 +383,29 @@ function VoicePicker({
       <div
         role="radiogroup"
         aria-labelledby={labelId}
-        onKeyDown={radioKeys(voices, voices.includes(value) ? value : voices[0], onPick)}
+        onKeyDown={radioKeys(ids, focusId ?? "", onPick)}
         className="mt-3 grid grid-cols-2 gap-2"
       >
-        {voices.map((v) => {
-          const active = v === value;
-          const desc = t.has(`desc.${v}`) ? t(`desc.${v}`) : null;
-          const tone = GENDER_TONE[VOICE_GENDER[v] === "m" ? "m" : "f"];
+        {items.map((v) => {
+          const active = v.id === value;
+          const tone = GENDER_TONE[v.gender];
           return (
             <button
-              key={v}
+              key={v.id}
               type="button"
               role="radio"
               aria-checked={active}
-              aria-label={desc ? `${desc}, ${voiceLabel(v)}` : voiceLabel(v)}
-              data-id={v}
-              tabIndex={active || (!voices.includes(value) && v === voices[0]) ? 0 : -1}
-              onClick={() => onPick(v)}
+              aria-label={`${v.title}, ${v.sub}`}
+              data-id={v.id}
+              tabIndex={v.id === focusId ? 0 : -1}
+              onClick={() => onPick(v.id)}
               className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border border-s-4 px-3 py-2 text-start text-[#18181b] transition-shadow duration-150 ${FOCUS} ${tone.card} ${
                 active ? "ring-2 ring-[#18181b] ring-offset-2" : "hover:shadow-sm"
               }`}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">{desc ?? voiceLabel(v)}</span>
-                <span className={`block truncate text-xs font-medium ${tone.text}`}>{voiceLabel(v)}</span>
+                <span className="block truncate text-sm font-semibold">{v.title}</span>
+                <span className={`block truncate text-xs font-medium ${tone.text}`}>{v.sub}</span>
               </span>
               {/* Selected: one treatment on both tints (dark ring + check). */}
               {active && (
@@ -324,7 +425,7 @@ function VoicePicker({
           aria-expanded={showAll}
           className={`mt-2 min-h-11 cursor-pointer rounded-lg px-1 text-sm font-semibold text-[#be185d] underline-offset-4 hover:underline ${FOCUS}`}
         >
-          {showAll ? t("fewerVoices") : t("allVoices", { count: available.length })}
+          {showAll ? t("fewerVoices") : t("allVoices", { count: total })}
         </button>
       )}
     </div>
