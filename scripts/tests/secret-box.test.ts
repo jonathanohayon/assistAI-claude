@@ -8,14 +8,24 @@ import {
   isSealed,
   keyringFromEnv,
   openSecret,
+  SEALED_SECRET_REFUSED_MESSAGE,
+  sealedSecretRefusal,
   sealForStorage,
   sealSecret,
+  setKeyProblemReporter,
 } from "../../lib/crypto/secret-box";
 import {
+  createKeyProblemReporter,
   createUnreadableReporter,
+  type KeyProblemAlert,
   openStoredSecret,
   type UnreadableAlert,
 } from "../../lib/crypto/unreadable-secret";
+
+// No real admin alert from a unit test: a recording reporter (the import
+// above installed the default one).
+let keyProblems: string[][] = [];
+setKeyProblemReporter((p) => keyProblems.push(p));
 
 const newKey = () => randomBytes(32).toString("base64");
 const A = { SECRETS_KEY: newKey(), SECRETS_KEY_ID: "ka" };
@@ -169,6 +179,108 @@ assert.ok(isSealed(sealForStorage(PLAIN, A)));
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+// a misconfigured key is LOUD: problems reach the reporter on a seal / open
+// attempt (names only), the write stays plain; a valid key reports nothing
+{
+  keyProblems = [];
+  const badKey = Buffer.from("short").toString("base64");
+  assert.equal(
+    sealForStorage(PLAIN, { SECRETS_KEY: badKey, SECRETS_KEY_ID: "ka" }),
+    PLAIN,
+  );
+  assert.equal(keyProblems.length, 1);
+  assert.deepEqual(keyProblems[0], [
+    "SECRETS_KEY must be base64 of exactly 32 bytes",
+  ]);
+  // an id without a key, a previous key without an id
+  keyProblems = [];
+  assert.equal(
+    sealForStorage(PLAIN, {
+      SECRETS_KEY_ID: "ka",
+      SECRETS_KEY_PREVIOUS: newKey(),
+    }),
+    PLAIN,
+  );
+  assert.deepEqual(keyProblems[0], [
+    "SECRETS_KEY is missing (SECRETS_KEY_ID is set)",
+    "SECRETS_KEY_PREVIOUS_ID is missing (SECRETS_KEY_PREVIOUS is set)",
+  ]);
+  // an open attempt reports too (plain passthrough unchanged, sealed fails closed)
+  keyProblems = [];
+  assert.deepEqual(
+    openSecret(PLAIN, { SECRETS_KEY: badKey, SECRETS_KEY_ID: "ka" }),
+    { ok: true, value: PLAIN },
+  );
+  assert.equal(keyProblems.length, 1);
+  // valid keys and no keys report nothing
+  keyProblems = [];
+  sealForStorage(PLAIN, A);
+  openSecret(sealSecret(PLAIN, A), {
+    ...B,
+    SECRETS_KEY_PREVIOUS: A.SECRETS_KEY,
+    SECRETS_KEY_PREVIOUS_ID: "ka",
+  });
+  sealForStorage(PLAIN, NONE);
+  openSecret(PLAIN, NONE);
+  assert.equal(keyProblems.length, 0);
+  // a reporter that throws never breaks a write
+  setKeyProblemReporter(() => {
+    throw new Error("boom");
+  });
+  assert.equal(
+    sealForStorage(PLAIN, { SECRETS_KEY: badKey, SECRETS_KEY_ID: "ka" }),
+    PLAIN,
+  );
+  setKeyProblemReporter((p) => keyProblems.push(p));
+}
+
+// the misconfigured-key ALERT: once (dedup), env var names only, never a value
+async function keyProblemAlertTests() {
+  const sent: KeyProblemAlert[] = [];
+  let t = 0;
+  const reporter = createKeyProblemReporter(
+    async (a) => {
+      sent.push(a);
+    },
+    () => t,
+  );
+  setKeyProblemReporter(reporter);
+  const bad = { SECRETS_KEY: "not-a-valid-key-value", SECRETS_KEY_ID: "ka" };
+  for (let i = 0; i < 20; i++) assert.equal(sealForStorage(PLAIN, bad), PLAIN);
+  await flush();
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].key, "secrets_key_misconfigured");
+  assert.ok(
+    sent[0].body.includes("SECRETS_KEY must be base64 of exactly 32 bytes"),
+  );
+  assert.ok(!JSON.stringify(sent[0]).includes(bad.SECRETS_KEY));
+  // re-alerts only after the window
+  t += 7 * 60 * 60 * 1000;
+  sealForStorage(PLAIN, bad);
+  await flush();
+  assert.equal(sent.length, 2);
+  // a valid key: no alert
+  const sentOk: KeyProblemAlert[] = [];
+  setKeyProblemReporter(
+    createKeyProblemReporter(async (a) => void sentOk.push(a)),
+  );
+  assert.ok(isSealed(sealForStorage(PLAIN, A)));
+  await flush();
+  assert.equal(sentOk.length, 0);
+  setKeyProblemReporter((p) => keyProblems.push(p));
+}
+
+// a PROVIDED secret already in the sealed format is refused (tools + agent brain share it)
+assert.deepEqual(sealedSecretRefusal(sealSecret(PLAIN, A), "secret"), {
+  error: "invalid_secret",
+  message: SEALED_SECRET_REFUSED_MESSAGE,
+  fields: ["secret"],
+});
+assert.ok(sealedSecretRefusal("  enc:v1:x:y:z:w", "secret"));
+assert.equal(sealedSecretRefusal(PLAIN, "secret"), null);
+assert.equal(sealedSecretRefusal(undefined, "secret"), null);
+assert.equal(sealedSecretRefusal(null, "secret"), null);
+
 // the alert: sent ONCE per kind (dedup), plain text, no value, no ciphertext
 async function alertTests() {
   const sent: UnreadableAlert[] = [];
@@ -233,10 +345,12 @@ async function alertTests() {
   ]);
 }
 
-alertTests().then(
-  () => console.log("ALL SECRET-BOX TESTS PASSED"),
-  (e) => {
-    console.error(e);
-    process.exit(1);
-  },
-);
+alertTests()
+  .then(keyProblemAlertTests)
+  .then(
+    () => console.log("ALL SECRET-BOX TESTS PASSED"),
+    (e) => {
+      console.error(e);
+      process.exit(1);
+    },
+  );

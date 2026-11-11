@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
+import { sealedSecretRefusal } from "@/lib/crypto/secret-box";
 import { agentBrainSaveDecision, brainView, urlToSave } from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
 
@@ -40,6 +41,9 @@ export async function PUT(request: Request) {
   } catch {
     return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
   }
+  // E1: a secret already in the sealed format is refused (same as tools).
+  const sealedLooking = sealedSecretRefusal(body.secret, "secret");
+  if (sealedLooking) return NextResponse.json(sealedLooking, { status: 400 });
 
   const wantsEnabled = body.enabled === true;
 

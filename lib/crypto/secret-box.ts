@@ -49,13 +49,14 @@ function decodeKey(raw: string): Buffer | null {
 }
 
 function readKey(env: Env, keyVar: string, idVar: string, problems: string[]): { kid: string; key: Buffer } | null {
-  const rawKey = env[keyVar];
-  const rawId = env[idVar];
-  if (!rawKey?.trim() && !rawId?.trim()) return null;
+  const rawKey = (env[keyVar] ?? "").trim();
+  const kid = (env[idVar] ?? "").trim();
+  if (!rawKey && !kid) return null;
   const key = rawKey ? decodeKey(rawKey) : null;
-  const kid = (rawId ?? "").trim();
-  if (!key) problems.push(`${keyVar} must be base64 of 32 bytes`);
-  if (!KID_RE.test(kid)) problems.push(`${idVar} must be 1-32 characters [A-Za-z0-9_-]`);
+  if (!rawKey) problems.push(`${keyVar} is missing (${idVar} is set)`);
+  else if (!key) problems.push(`${keyVar} must be base64 of exactly 32 bytes`);
+  if (!kid) problems.push(`${idVar} is missing (${keyVar} is set)`);
+  else if (!KID_RE.test(kid)) problems.push(`${idVar} must be 1-32 characters [A-Za-z0-9_-]`);
   return key && KID_RE.test(kid) ? { kid, key } : null;
 }
 
@@ -69,6 +70,32 @@ export function keyringFromEnv(env: Env = process.env): Keyring {
   return { current, byId, problems };
 }
 
+// ── A misconfigured key must be LOUD ───────────────────────────────────
+// keyringFromEnv stays pure; the seal / open entry points report its
+// problems (env var NAMES and what is wrong, never a value) to ONE reporter,
+// which alerts the admins once (lib/crypto/unreadable-secret.ts installs the
+// default; tests install their own).
+
+export type KeyProblemReporter = (problems: string[]) => void;
+let keyProblemReporter: KeyProblemReporter | null = null;
+
+export function setKeyProblemReporter(r: KeyProblemReporter | null): void {
+  keyProblemReporter = r;
+}
+
+/** The keyring for a seal / open attempt; problems (if any) are reported, never thrown. */
+function ringForUse(env: Env): Keyring {
+  const ring = keyringFromEnv(env);
+  if (ring.problems.length && keyProblemReporter) {
+    try {
+      keyProblemReporter(ring.problems);
+    } catch {
+      // reporting must never break a read or a write
+    }
+  }
+  return ring;
+}
+
 const b64u = (b: Buffer) => b.toString("base64url");
 const aad = (kid: string) => Buffer.from(`${PREFIX}${V1}:${kid}`, "utf8");
 
@@ -79,12 +106,12 @@ export function isSealed(stored: unknown): stored is string {
 
 /** Whether new writes are sealed under this environment. */
 export function sealingEnabled(env: Env = process.env): boolean {
-  return keyringFromEnv(env).current !== null;
+  return ringForUse(env).current !== null;
 }
 
 /** Seals with the current key. Throws when no key is set: use sealForStorage on write paths. */
 export function sealSecret(plain: string, env: Env = process.env): string {
-  const { current } = keyringFromEnv(env);
+  const { current } = ringForUse(env);
   if (!current) throw new Error("SECRETS_KEY is not set");
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv("aes-256-gcm", current.key, iv, { authTagLength: TAG_BYTES });
@@ -100,6 +127,7 @@ export function sealForStorage(plain: string, env: Env = process.env): string {
 
 /** Plain → as is. Sealed → the plain value, or { ok: false } (never a partial value). Never throws. */
 export function openSecret(stored: string, env: Env = process.env): OpenResult {
+  const ring = ringForUse(env);
   if (!isSealed(stored)) return { ok: true, value: stored };
   const parts = stored.split(":");
   if (parts[1] !== V1) return { ok: false, reason: "unsupported_version" };
@@ -109,7 +137,6 @@ export function openSecret(stored: string, env: Env = process.env): OpenResult {
   const iv = Buffer.from(ivS, "base64url");
   const tag = Buffer.from(tagS, "base64url");
   if (iv.length !== IV_BYTES || tag.length !== TAG_BYTES) return { ok: false, reason: "malformed" };
-  const ring = keyringFromEnv(env);
   if (ring.byId.size === 0) return { ok: false, reason: "no_key" };
   const key = ring.byId.get(kid);
   if (!key) return { ok: false, reason: "unknown_kid" };
@@ -123,4 +150,16 @@ export function openSecret(stored: string, env: Env = process.env): OpenResult {
   } catch {
     return { ok: false, reason: "auth_failed" };
   }
+}
+
+/** Refusal for a secret a request PROVIDES already in the sealed format (it would read as unreadable). */
+export const SEALED_SECRET_REFUSED_MESSAGE = "This secret is not accepted. Enter the secret itself.";
+
+export function sealedSecretRefusal(
+  provided: unknown,
+  field: string,
+): { error: "invalid_secret"; message: string; fields: string[] } | null {
+  return typeof provided === "string" && isSealed(provided.trim())
+    ? { error: "invalid_secret", message: SEALED_SECRET_REFUSED_MESSAGE, fields: [field] }
+    : null;
 }

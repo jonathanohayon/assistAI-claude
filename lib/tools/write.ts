@@ -52,7 +52,7 @@ export async function writeTools(
   const unsafe = await clientAgentUrlRefusal(patch);
   if (unsafe) return unsafe;
   const sealedLooking = clientAgentSecretRefused(patch);
-  if (sealedLooking.length) return { ok: false, status: 400, body: { error: "invalid_tools", fields: sealedLooking } };
+  if (sealedLooking) return { ok: false, status: 400, body: sealedLooking };
   if (agentId) {
     const where = and(eq(outboundAgents.id, agentId), eq(outboundAgents.userId, userId));
     const [row] = await db.select({ toolsConfig: outboundAgents.toolsConfig }).from(outboundAgents).where(where).limit(1);

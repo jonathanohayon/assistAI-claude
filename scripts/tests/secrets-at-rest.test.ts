@@ -15,8 +15,11 @@ import {
 import { brainView } from "../../lib/agent-brain-guard";
 import {
   isSealed,
+  SEALED_SECRET_REFUSED_MESSAGE,
+  sealedSecretRefusal,
   sealForStorage,
   sealSecret,
+  setKeyProblemReporter,
 } from "../../lib/crypto/secret-box";
 import {
   createUnreadableReporter,
@@ -53,6 +56,11 @@ const S = "mock-hmac-secret-abcdef";
 let alerts = 0;
 const report = createUnreadableReporter(async () => {
   alerts++;
+});
+// (the reporter swallows throws, so count instead of asserting inside it)
+let keyProblemCalls = 0;
+setKeyProblemReporter(() => {
+  keyProblemCalls++;
 });
 let quietCalls = 0;
 const quiet = createUnreadableReporter(async () => {
@@ -117,6 +125,15 @@ async function main() {
     brainFromEntry({ enabled: true, url: URL, secret: sealed }, report, OTHER);
     await flush();
     assert.equal(alerts - before, 1, "one alert per kind");
+    // the agent-brain PUT refuses a provided secret already in the sealed format (400),
+    // a plain or absent one passes on to the save
+    assert.deepEqual(sealedSecretRefusal(sealed, "secret"), {
+      error: "invalid_secret",
+      message: SEALED_SECRET_REFUSED_MESSAGE,
+      fields: ["secret"],
+    });
+    assert.equal(sealedSecretRefusal(S, "secret"), null);
+    assert.equal(sealedSecretRefusal(undefined, "secret"), null);
     // readable: the view is unchanged from today
     assert.deepEqual(brainView(brain, true), {
       enabled: true,
@@ -246,15 +263,19 @@ async function main() {
           ).clientAgent.secret,
         ),
     );
-    // a patch may not send a sealed-looking value
+    // a patch may not send a sealed-looking value (same refusal as the agent-brain PUT)
     assert.deepEqual(
       clientAgentSecretRefused({ clientAgent: { secret: sealSecret(S, KEY) } }),
-      ["tools.clientAgent.secret"],
+      {
+        error: "invalid_secret",
+        message: SEALED_SECRET_REFUSED_MESSAGE,
+        fields: ["tools.clientAgent.secret"],
+      },
     );
-    assert.deepEqual(clientAgentSecretRefused(patch), []);
-    assert.deepEqual(
+    assert.equal(clientAgentSecretRefused(patch), null);
+    assert.equal(
       clientAgentSecretRefused({ clientAgent: { mode: "lead" } }),
-      [],
+      null,
     );
     // unreadable → NOT served at all; the screen still says secretSet
     const before = alerts;
@@ -290,6 +311,7 @@ async function main() {
 
   await flush();
   assert.equal(quietCalls, 0, "a readable or plain secret never alerts");
+  assert.equal(keyProblemCalls, 0, "valid keys: no misconfiguration alert");
 }
 
 main().then(

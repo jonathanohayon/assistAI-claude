@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { getAppOrigin } from "@/lib/app-origin";
-import { sealForStorage } from "@/lib/crypto/secret-box";
+import { sealForStorage } from "@/lib/crypto/unreadable-secret";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getOAuthClient } from "@/lib/google";

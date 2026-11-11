@@ -3,7 +3,7 @@
 // (lib/crypto/secret-box.ts). Writes seal ONLY a secret the patch provides
 // (the kept one stays as stored: E1 rewrites no existing secret); serving
 // opens it, and an unreadable one means the client agent is NOT served.
-import { isSealed, openSecret, sealForStorage } from "@/lib/crypto/secret-box";
+import { isSealed, openSecret, sealedSecretRefusal, sealForStorage } from "@/lib/crypto/secret-box";
 import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
 import type { Tools } from "@/lib/tools/contract";
 
@@ -18,8 +18,8 @@ export function providedClientAgentSecret(patch: unknown): string | null | undef
 }
 
 /** A patch may not send a value in the sealed format (it would read as an unreadable secret). */
-export function clientAgentSecretRefused(patch: unknown): string[] {
-  return isSealed(providedClientAgentSecret(patch)) ? ["tools.clientAgent.secret"] : [];
+export function clientAgentSecretRefused(patch: unknown) {
+  return sealedSecretRefusal(providedClientAgentSecret(patch), "tools.clientAgent.secret");
 }
 
 /** The Tools value to STORE: the secret the patch provided is sealed when SECRETS_KEY is set. */
