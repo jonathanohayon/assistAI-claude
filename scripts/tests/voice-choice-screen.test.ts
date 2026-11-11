@@ -96,7 +96,8 @@ const choice: ServedVoiceChoice = {
   assert.match(src, /engine === "openai" \? "" : `&engine=\$\{engine\}`/, "OpenAI = the endpoint's default");
   assert.match(src, /order\.map\(\(e\) => \(\s*<GenerateSamples key=\{e\} engine=\{e\}/, "one button per engine");
   // A missing key says which variable to set; its NAME comes from the server (no supplier word in messages, which ship to tenants).
-  assert.match(src, /keyInfo && !keyInfo\.keySet \? keyInfo\.env : null/);
+  assert.match(src, /keyInfo && !keyInfo\.keySet \? keyInfo\.env : refusedEnv/);
+  assert.match(src, /json\?\.error === "missing_key" && json\.env\) setRefusedEnv\(json\.env\)/, "the route's refusal shows the same line");
   for (const l of ["fr", "en", "he"]) assert.match(JSON.parse(read(`messages/${l}.json`)).AdminVoiceProfile.samplesMissingKey, /<k>\{env\}<\/k>/, l);
   assert.match(read("components/bricks/voice/VoiceBrick.tsx"), /<VoiceSamplesAdmin engine=/, "the account's engine by default");
 }

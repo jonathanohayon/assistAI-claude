@@ -248,7 +248,7 @@ export const sampleEngineOf = (voiceId: string): SampleEngine =>
 const engineOf = (e: string | undefined): SampleEngine => (e === "gemini" || e === "xai" ? e : "openai");
 
 /** GET /api/voice/samples, admin response: per engine, whether its key is set and which variable to set (never a value). */
-type EngineKeys = Partial<Record<SampleEngine, { keySet: boolean; env: string }>>;
+type EngineKeys = Partial<Record<SampleEngine, { keySet: boolean; env: string; total?: number }>>;
 
 /**
  * Admin: the voice samples block, last in "Developer settings" (maintenance,
@@ -293,7 +293,7 @@ function GenerateSamples({
 }: {
   engine: SampleEngine;
   /** Absent: the server didn't say (older server) — the button stays usable. */
-  keyInfo?: { keySet: boolean; env: string };
+  keyInfo?: { keySet: boolean; env: string; total?: number };
   busy: SampleEngine | null;
   setBusy: (e: SampleEngine | null) => void;
 }) {
@@ -301,11 +301,13 @@ function GenerateSamples({
   const voiceLabel = useVoiceLabel();
   const samples = useSyncExternalStore(subscribeSamples, getSamples, getSamples);
   const [progress, setProgress] = useState<GenerateProgress | null>(null);
+  // The generate route's own "missing_key" answer (the key went missing after the page loaded).
+  const [refusedEnv, setRefusedEnv] = useState<string | null>(null);
   const running = busy === engine;
-  const total = SAMPLE_TOTALS[engine];
+  const total = keyInfo?.total ?? SAMPLE_TOTALS[engine];
   const keysOf = (keys: Iterable<string>) => new Set([...keys].filter((k) => sampleEngineOf(k.split("/")[0]) === engine));
   const existing = progress?.done ?? keysOf(samples.byKey.keys()).size;
-  const missingKey = keyInfo && !keyInfo.keySet ? keyInfo.env : null;
+  const missingKey = keyInfo && !keyInfo.keySet ? keyInfo.env : refusedEnv;
 
   const run = async () => {
     if (busy || missingKey) return;
@@ -321,8 +323,9 @@ function GenerateSamples({
           // OpenAI is the endpoint's default (no engine parameter).
           const qs = engine === "openai" ? "" : `&engine=${engine}`;
           const res = await fetch(`/api/admin/voice-samples/generate?limit=6${qs}`, { method: "POST" });
-          const body = res.ok ? ((await res.json().catch(() => null)) as GenerateResponse | null) : null;
-          return { ok: res.ok, status: res.status, body };
+          const json = (await res.json().catch(() => null)) as (GenerateResponse & { error?: string; env?: string }) | null;
+          if (res.status === 400 && json?.error === "missing_key" && json.env) setRefusedEnv(json.env);
+          return { ok: res.ok, status: res.status, body: res.ok ? json : null };
         },
         onProgress: setProgress,
       });
