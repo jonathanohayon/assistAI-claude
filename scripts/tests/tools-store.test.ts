@@ -1,9 +1,9 @@
 // Unit tests for lib/tools/store.ts + upgrade.ts (brick T3).
 // Run with:  npx tsx scripts/tests/tools-store.test.ts
 import assert from "node:assert/strict";
-import { execSync } from "node:child_process";
 
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
+import { assertScanRead, scanSources } from "./helpers/source-scan";
 import { PLANS } from "../../lib/plans";
 import { DEFAULT_TILE_TOGGLES } from "../../lib/tile-toggles";
 import { OUTBOUND_TOOLS, receptionistCallFields, toolsFromTileToggles } from "../../lib/tools/adapters";
@@ -130,9 +130,15 @@ assert.equal(mergeTools(toolsFromTileToggles(T), { version: 99 }).ok, true, "ver
 }
 
 // ── Technical tool names: imported by the tools route only ─────────────
-const importers = execSync(`grep -rl --include="*.ts" --include="*.tsx" "tools/admin-names" app components lib i18n || true`, { encoding: "utf8" })
-  .split("\n")
-  .filter(Boolean);
+// Searched in Node (no `grep || true` hiding a failed search), and the scan
+// must prove it read the real tree before "only one importer" means anything.
+const importScan = scanSources(["app", "components", "lib", "i18n"], { ext: /\.tsx?$/ });
+assertScanRead(importScan, "tools/admin-names importer scan", {
+  minFiles: 300,
+  minPerRoot: 3,
+  sentinels: ["app/api/dashboard/tools/route.ts", "lib/tools/admin-names.ts", "components/bricks/tools/ToolsBrick.tsx"],
+});
+const importers = importScan.files.filter((f) => importScan.text.get(f)!.includes("tools/admin-names"));
 assert.deepEqual(importers, ["app/api/dashboard/tools/route.ts"]);
 
 console.log("ALL TOOLS-STORE TESTS PASSED");
