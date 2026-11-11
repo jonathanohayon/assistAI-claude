@@ -652,7 +652,7 @@
     "trialExpired": "תקופת הניסיון הסתיימה: תמרה מושהית. הצטרפו לתוכנית כדי להפעיל אותה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום.",
     "trialRemainingMessage": "תקופת ניסיון: נותרו {label}",
     "trialSubscribeButton": "הצטרפות",
-    "tabConfiguration": "שיחות נכנסות",
+    "tabConfiguration": "פקידת קבלה",
     "tabOutbound": "שיחות יוצאות",
     "tabCalendar": "יומן",
     "tabContacts": "אנשי קשר",

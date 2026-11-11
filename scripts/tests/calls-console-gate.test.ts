@@ -151,4 +151,13 @@ assert.equal(fetches, 0, "rendering never fetches");
   assert.match(messages("he").Dashboard.tabLogs, /[֐-׿]/);
 }
 
+// Design review (tamaraVP): the receptionist's settings tab is named after the agent it configures,
+// so it no longer reads like the Calls tab ("Appels entrants" next to "Appels").
+{
+  const tab = (l: string) => JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).Dashboard.tabConfiguration as string;
+  assert.equal(tab("fr"), "Réceptionniste");
+  assert.equal(tab("en"), "Receptionist");
+  assert.equal(tab("he"), "פקידת קבלה");
+}
+
 console.log("calls-console-gate: ok");
