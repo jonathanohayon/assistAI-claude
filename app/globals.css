@@ -171,6 +171,20 @@ body {
   font-family: var(--font-heebo), "Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", "Arial Hebrew", system-ui, sans-serif;
 }
 
+/* …but LTR content (URLs, code samples, secrets, ids) stays monospace in
+ * every locale (design rule). `:lang(he)` above sets Heebo on EVERY element of
+ * a Hebrew page and, being unlayered, beats Tailwind's `.font-mono` utility —
+ * so LTR mono content is put back on --font-mono explicitly, with a more
+ * specific selector. --font-mono still falls back to Heebo for any Hebrew
+ * glyph inside it. */
+:lang(he) .font-mono:is([dir="ltr"], [dir="ltr"] *),
+:lang(he) [dir="ltr"] :is(code, kbd, samp),
+:lang(he) :is(code, kbd, samp)[dir="ltr"],
+.he-text .font-mono:is([dir="ltr"], [dir="ltr"] *),
+[lang="he"] .font-mono:is([dir="ltr"], [dir="ltr"] *) {
+  font-family: var(--font-mono);
+}
+
 /* Hébreu rend plus petit que le latin à taille égale (x-height différente).
  * On bump les très petites tailles pour rester lisible. */
 :lang(he) .text-\[10px\],
