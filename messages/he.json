@@ -1294,6 +1294,8 @@
     "sheetsLoad": "טעינת Sheet",
     "sheetsNotConnected": "חברו את Google בהגדרות כדי לייבא מ-Sheets.",
     "launchTitle": "מוכנים להשקה",
+    "launchPausedTitle": "השיחות מושהות בפלטפורמה",
+    "launchDryTitle": "מצב בדיקה",
     "launchNoContentWarning": "לקמפיין הזה אין מטרה ואין ידע עסקי — הסוכן לא יידע מה למכור ועלול לאלתר. הוסיפו מטרה או סרקו אתר בהגדרות לפני ההשקה.",
     "detailQueued": "בתור",
     "detailInFlight": "בתהליך",
@@ -1430,7 +1432,7 @@
       },
       "dispatchOff": "השיחות מושהות בפלטפורמה: כרגע לא מתבצעות שיחות.",
       "dispatchDry": "מצב בדיקה: לא מתבצעות שיחות.",
-      "dispatchPausedPill": "מושהה",
+      "dispatchPausedPill": "השיחות מושהות",
       "dispatchDryPill": "מצב בדיקה",
       "actionError": {
         "session": "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.",

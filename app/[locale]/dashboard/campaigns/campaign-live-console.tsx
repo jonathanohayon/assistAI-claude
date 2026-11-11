@@ -23,6 +23,7 @@ import {
   showDispatcherAlert,
   nextSince,
   tickSkips,
+  TONE_CHIP,
   type ActionErrorKey,
   type DispatchMode,
   type LiveContact,
@@ -42,11 +43,14 @@ export function CampaignLiveConsole({
   campaignId,
   asUserId,
   onStatusChanged,
+  onDispatchMode,
 }: {
   campaignId: string;
   /** Admin acting on a tenant's campaign (/admin/users/[id]). */
   asUserId?: string;
   onStatusChanged?: (status: string) => void;
+  /** Reports the platform call switch as this console sees it, for the launch panel above. */
+  onDispatchMode?: (mode: DispatchMode) => void;
 }) {
   const t = useTranslations("DashboardCampaigns.live");
   const locale = useLocale();
@@ -70,6 +74,12 @@ export function CampaignLiveConsole({
   useEffect(() => {
     onStatusRef.current = onStatusChanged;
   });
+
+  // Share the call switch with the launch panel: the snapshot first, then the start's answer.
+  const seenMode = snap?.dispatcher.dispatchMode ?? postedMode;
+  useEffect(() => {
+    if (seenMode) onDispatchMode?.(seenMode);
+  }, [seenMode, onDispatchMode]);
 
   // ─── Polling: only while visible; backoff on errors ───────────────────
   const pollNow = useRef<() => void>(() => {});
@@ -452,14 +462,8 @@ function ConsoleTitle({ t, live }: { t: T; live: boolean }) {
   );
 }
 
-function Chip({ tone, children }: { tone: "good" | "warn" | "info"; children: React.ReactNode }) {
-  const cls =
-    tone === "good"
-      ? "bg-[#f0fdf4] text-[#166534] ring-[#bbf7d0]"
-      : tone === "warn"
-        ? "bg-[#fffbeb] text-[#92400e] ring-[#fde68a]"
-        : "bg-[#f1f5f9] text-[#334155] ring-[#e2e8f0]";
-  return <span className={`rounded-full px-3 py-1 text-[12px] font-medium ring-1 ${cls}`}>{children}</span>;
+function Chip({ tone, children }: { tone: keyof typeof TONE_CHIP; children: React.ReactNode }) {
+  return <span className={`rounded-full px-3 py-1 text-[12px] font-medium ring-1 ${TONE_CHIP[tone]}`}>{children}</span>;
 }
 
 const COUNTER_TONE = {

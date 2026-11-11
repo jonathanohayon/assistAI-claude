@@ -219,6 +219,34 @@ export function actionErrorKey(status: number | null, body: unknown): ActionErro
   return "unknown";
 }
 
+// ── Platform call switch: ONE table for every place that shows it ─────
+
+export type ModeTone = "good" | "warn";
+
+/**
+ * How each platform call-switch mode reads on screen. The console pill and
+ * the launch panel heading both read this table (through `readyPill` and
+ * `launchHeading`), so they can never disagree. `pill` keys live under
+ * DashboardCampaigns.live, `launch` keys under DashboardCampaigns.
+ */
+export const MODE_VIEW = {
+  on: { tone: "good", pill: "readyToDial", launch: "launchTitle" },
+  off: { tone: "warn", pill: "dispatchPausedPill", launch: "launchPausedTitle" },
+  dry: { tone: "warn", pill: "dispatchDryPill", launch: "launchDryTitle" },
+} as const satisfies Record<DispatchMode, { tone: ModeTone; pill: string; launch: string }>;
+
+/** The MODE_VIEW row for a mode; unknown (not loaded yet) reads as "on", today's behaviour. */
+export function modeView(mode: unknown): (typeof MODE_VIEW)[DispatchMode] {
+  return MODE_VIEW[mode === "off" || mode === "dry" ? mode : "on"];
+}
+
+/** Chip colours per tone, shared by the console chips and the launch heading. */
+export const TONE_CHIP = {
+  good: "bg-[#f0fdf4] text-[#166534] ring-[#bbf7d0]",
+  warn: "bg-[#fffbeb] text-[#92400e] ring-[#fde68a]",
+  info: "bg-[#f1f5f9] text-[#334155] ring-[#e2e8f0]",
+} as const;
+
 export type ReadyPill =
   | { key: "readyToDial"; tone: "good" }
   | { key: "dispatchPausedPill" | "dispatchDryPill"; tone: "warn" };
@@ -230,9 +258,22 @@ export type ReadyPill =
  */
 export function readyPill(mode: unknown, blockers: readonly unknown[]): ReadyPill | null {
   if (blockers.length > 0) return null;
-  if (mode === "off") return { key: "dispatchPausedPill", tone: "warn" };
-  if (mode === "dry") return { key: "dispatchDryPill", tone: "warn" };
-  return { key: "readyToDial", tone: "good" };
+  const v = modeView(mode);
+  return { key: v.pill, tone: v.tone } as ReadyPill;
+}
+
+export type LaunchHeading =
+  | { key: "launchTitle"; tone: "good" }
+  | { key: "launchPausedTitle" | "launchDryTitle"; tone: "warn" };
+
+/**
+ * The launch panel heading above the console: "ready to launch" only when
+ * calls really go out, amber "paused on the platform" / "test mode" otherwise.
+ * Never null: the panel always has a heading, blockers or not.
+ */
+export function launchHeading(mode: unknown): LaunchHeading {
+  const v = modeView(mode);
+  return { key: v.launch, tone: v.tone } as LaunchHeading;
 }
 
 /**
