@@ -20,6 +20,8 @@ import { adminOnlyProviderUpdate, withoutAdminOnlyFields } from "@/lib/realtime-
 import { parseTransferNumber } from "@/lib/transfer-number";
 import { legacyTransferWriteUpdates } from "@/lib/tools/legacy-sync";
 import { withoutToolsStore } from "@/lib/tools/store";
+import { effectiveRealtimeProvider } from "@/lib/realtime-provider";
+import { tenantVoiceChoice } from "@/lib/voice/choice";
 import { mergeVoiceProfile } from "@/lib/voice-profile";
 
 export async function GET() {
@@ -48,6 +50,12 @@ export async function GET() {
   return NextResponse.json({
     ...withoutToolsStore(config),
     voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
+    // V8b: the voice choice as OUR ids for the account's engine (no engine
+    // name, no engine voice name) — what the picker sends back as voiceId.
+    voiceChoice: tenantVoiceChoice(
+      currentInboundVoice(row.config.voiceConfig, row.config),
+      effectiveRealtimeProvider(row.config.realtimeProvider),
+    ),
     personaConfig: currentInboundPersona(row.config.personaConfig, row.config),
   });
 }
