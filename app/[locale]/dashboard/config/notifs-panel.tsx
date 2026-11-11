@@ -2,8 +2,11 @@
 
 /**
  * Tuile "Notifications" : cartes des canaux owner (WhatsApp branché en DB,
- * Email/SMS en state local "coming soon") + toggle du rappel de RDV J-1
+ * Email en state local) + toggle du rappel de RDV J-1
  * envoyé automatiquement au client par WhatsApp (cron).
+ *
+ * SMS is not offered: a channel that can't be used is not rendered at all
+ * (no "soon" badge, no disabled row). Add its card back once it ships.
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `notifs`).
  */
@@ -34,9 +37,7 @@ export function NotifsPanel({
   // DB ; l'extinction vide le numéro.
   const [whatsappOn, setWhatsappOn] = useState(Boolean(form.ownerWhatsapp));
 
-  // Local-only state for SMS/Email (pas encore en DB)
-  const [smsOn, setSmsOn] = useState(false);
-  const [smsValue, setSmsValue] = useState("");
+  // Local-only state for Email (pas encore en DB)
   const [emailOn, setEmailOn] = useState(false);
   const [emailValue, setEmailValue] = useState("");
 
@@ -79,22 +80,6 @@ export function NotifsPanel({
         placeholder="contact@..."
         inputType="email"
         testEndpoint="/api/dashboard/notifications/email-test"
-      />
-      <NotifChannelCard
-        label="SMS"
-        color="#3B82F6"
-        comingSoon
-        icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        }
-        on={smsOn}
-        onToggle={setSmsOn}
-        value={smsValue}
-        onChangeValue={setSmsValue}
-        placeholder="+972..."
-        inputType="tel"
       />
       {/* Rappel de RDV J-1 — WhatsApp au client la veille (cron). Pas de
           champ contact : le numéro vient de l'événement Google Calendar. */}

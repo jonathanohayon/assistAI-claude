@@ -1,0 +1,79 @@
+// Notifications panel: a channel that can't be used is not shown at all.
+// SMS has no sender yet, so no SMS card, no "soon" badge, no disabled row,
+// in fr/en/he, for a tenant and for an admin. The tile summary on /dashboard
+// does not mention it either. Renders the REAL NotifsPanel. Mock data only.
+// Run with:  npx tsx scripts/tests/notifs-hide-soon.test.ts
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { NextIntlClientProvider, useTranslations } from "next-intl";
+import { createElement, type ComponentProps } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import { NotifsPanel } from "../../app/[locale]/dashboard/config/notifs-panel";
+import type { FormState } from "../../app/[locale]/dashboard/config/types";
+
+type ProviderProps = ComponentProps<typeof NextIntlClientProvider>;
+
+const ROOT = new URL("../../", import.meta.url).pathname;
+const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+const messages = (l: string) => JSON.parse(read(`messages/${l}.json`));
+
+// Only the fields the panel and its cards read; everything else is unused here.
+const form = {
+  ownerWhatsapp: "+972500000000",
+  transferNumber: "",
+  reminderEnabled: true,
+  ownerDigestEnabled: true,
+  ownerDigestHour: 20,
+} as unknown as FormState;
+
+function Panel({ isAdmin }: { isAdmin: boolean }) {
+  const t = useTranslations("DashboardConfig");
+  return createElement(NotifsPanel, { form, update: () => {}, t, isAdmin });
+}
+
+function render(locale: string, isAdmin: boolean) {
+  return renderToStaticMarkup(
+    createElement(
+      NextIntlClientProvider,
+      { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps,
+      createElement(Panel, { isAdmin }),
+    ),
+  );
+}
+
+// The badge words as they shipped before (fr/en/he), so a revived badge is caught.
+const SOON = /Bientôt|\bSoon\b|בקרוב/i;
+
+for (const locale of ["fr", "en", "he"]) {
+  for (const isAdmin of [false, true]) {
+    const html = render(locale, isAdmin);
+    const who = `${locale}/${isAdmin ? "admin" : "tenant"}`;
+    // Sanity: the panel did render its real channels.
+    assert.match(html, />WhatsApp</, `${who}: WhatsApp card rendered`);
+    assert.match(html, />Email</, `${who}: Email card rendered`);
+    // The unavailable channel and its badge are absent from the DOM.
+    assert.doesNotMatch(html, /\bSMS\b/, `${who}: no SMS card`);
+    assert.doesNotMatch(html, SOON, `${who}: no "soon" badge`);
+    // No dead switch left behind: every toggle can be used.
+    assert.doesNotMatch(html, /role="switch"[^>]*disabled/, `${who}: no disabled switch`);
+  }
+  // The badge key itself is gone from the catalogue.
+  assert.equal(messages(locale).DashboardConfig.wowComingSoon, undefined, `${locale}: wowComingSoon removed`);
+  // Tile summary on /dashboard: neither string mentions SMS.
+  const dc = messages(locale).DashboardConfig;
+  for (const k of ["wowNotifsSummaryActive", "wowNotifsSummaryInactive", "wowTagNotifs"]) {
+    assert.doesNotMatch(dc[k], /SMS/i, `${locale}: ${k} mentions SMS`);
+  }
+}
+
+// The summary is computed from WhatsApp only, never counts SMS.
+const configForm = read("app/[locale]/dashboard/config-form.tsx");
+assert.match(configForm, /summary: form\.ownerWhatsapp \? t\("wowNotifsSummaryActive"\) : t\("wowNotifsSummaryInactive"\)/);
+// The card no longer has a "coming soon" mode to fall back on.
+assert.doesNotMatch(read("app/[locale]/dashboard/config/notif-channel-card.tsx"), /comingSoon/);
+
+console.log("notifs-hide-soon: ok");

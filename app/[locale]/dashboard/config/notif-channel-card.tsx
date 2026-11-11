@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Carte d'un canal de notification owner (WhatsApp / Email / SMS) :
+ * Carte d'un canal de notification owner (WhatsApp / Email) :
  * toggle on/off, champ de saisie du contact et bouton "Tester" qui POST
  * {to: value} sur testEndpoint (statuts envoi/envoyé/erreur auto-resetés).
  *
@@ -22,7 +22,6 @@ export function NotifChannelCard({
   placeholder,
   inputType,
   hint,
-  comingSoon = false,
   testEndpoint,
 }: {
   label: string;
@@ -35,10 +34,9 @@ export function NotifChannelCard({
   placeholder: string;
   inputType: string;
   hint?: string;
-  comingSoon?: boolean;
   /** Si fourni, POST {to: value} sur cet endpoint quand l'utilisateur
-   *  clique sur Tester. Sans endpoint, le bouton reste désactivé (les
-   *  canaux "coming soon" SMS/Email tombent sur cette branche). */
+   *  clique sur Tester. Without an endpoint the Test button stays disabled.
+   *  There is no "coming soon" state: an unusable channel is not rendered. */
   testEndpoint?: string;
 }) {
   const t = useTranslations("DashboardConfig");
@@ -71,7 +69,6 @@ export function NotifChannelCard({
     if (
       !on ||
       testStatus !== "idle" ||
-      comingSoon ||
       !testEndpoint ||
       !value.trim()
     )
@@ -105,11 +102,9 @@ export function NotifChannelCard({
   return (
     <div
       className={`flex flex-col gap-3 rounded-2xl border-2 p-4 transition-all duration-300 ${
-        on && !comingSoon
+        on
           ? "border-[#22d3ee]/40 bg-white shadow-[0_4px_20px_-8px_rgba(34,211,238,0.35)]"
-          : comingSoon
-            ? "border-[#e2e8f0] bg-white/50 opacity-70"
-            : "border-[#cbd5e1] bg-white hover:border-[#22d3ee]/30 hover:shadow-[0_2px_12px_-4px_rgba(34,211,238,0.2)]"
+          : "border-[#cbd5e1] bg-white hover:border-[#22d3ee]/30 hover:shadow-[0_2px_12px_-4px_rgba(34,211,238,0.2)]"
       }`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -117,27 +112,20 @@ export function NotifChannelCard({
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all"
             style={{
-              backgroundColor: on && !comingSoon ? color : "#f1f5f9",
-              color: on && !comingSoon ? "white" : "#94a3b8",
+              backgroundColor: on ? color : "#f1f5f9",
+              color: on ? "white" : "#94a3b8",
               boxShadow:
-                on && !comingSoon ? `0 4px 16px -4px ${color}66` : "none",
+                on ? `0 4px 16px -4px ${color}66` : "none",
             }}
           >
             {icon}
           </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold text-[#18181b]">
-                {label}
-              </p>
-              {comingSoon && (
-                <span className="shrink-0 rounded-full bg-[#f1f5f9] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#94a3b8] ring-1 ring-inset ring-[#cbd5e1]">
-                  {t("wowComingSoon")}
-                </span>
-              )}
-            </div>
+            <p className="truncate text-sm font-semibold text-[#18181b]">
+              {label}
+            </p>
             <p className="text-[11px] text-[#475569]">
-              {on && !comingSoon ? (
+              {on ? (
                 <span className="inline-flex items-center gap-1 font-medium text-[#0e7490]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#22d3ee] motion-safe:animate-pulse" />
                   {t("wowChannelActive")}
@@ -152,23 +140,20 @@ export function NotifChannelCard({
         <button
           type="button"
           role="switch"
-          aria-checked={on && !comingSoon}
+          aria-checked={on}
           aria-label={t("wowToggleAria", { action: on ? t("wowToggleDisable") : t("wowToggleEnable"), label })}
-          onClick={() => !comingSoon && onToggle(!on)}
-          disabled={comingSoon}
-          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
-            on && !comingSoon
+          onClick={() => onToggle(!on)}
+          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2 ${
+            on
               ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_16px_-2px_rgba(34,211,238,0.6)]"
-              : comingSoon
-                ? "bg-[#e2e8f0]"
-                : "bg-[#94a3b8] hover:bg-[#64748b]"
+              : "bg-[#94a3b8] hover:bg-[#64748b]"
           }`}
         >
           <span
             aria-hidden
             className="block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{
-              transform: on && !comingSoon ? "translateX(20px)" : "translateX(0)",
+              transform: on ? "translateX(20px)" : "translateX(0)",
             }}
           />
         </button>
@@ -180,7 +165,7 @@ export function NotifChannelCard({
           value={value}
           onChange={(e) => onChangeValue(e.target.value)}
           placeholder={placeholder}
-          disabled={!on || comingSoon}
+          disabled={!on}
           className="min-w-0 flex-1 rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 font-mono text-xs text-[#18181b] transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15 disabled:cursor-not-allowed disabled:opacity-40"
         />
         <button
@@ -189,7 +174,6 @@ export function NotifChannelCard({
           disabled={
             !on ||
             testStatus !== "idle" ||
-            comingSoon ||
             !testEndpoint ||
             !value.trim()
           }
