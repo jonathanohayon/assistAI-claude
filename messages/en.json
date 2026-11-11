@@ -2465,6 +2465,7 @@
       "transfer": {
         "name": "Transfer to a person",
         "what": "Passes the call to your number when the caller asks for someone. Works on phone calls; the browser test does not transfer.",
+        "whatOutbound": "Hands the call to your number when the person called wants to talk to someone. Works on phone calls; the browser test does not transfer.",
         "on": "Active: to your transfer number."
       },
       "orders": {
@@ -2491,10 +2492,11 @@
     "tileSummary": "{n, plural, =0 {No active capability} one {# active capability} other {# active capabilities}}",
     "loading": "Loading…",
     "saveError": "The capabilities weren't saved. Try again.",
-    "saveAgentFirst": "Save the agent to set what it can do.",
-    "offOutbound": "Not available for outbound calls yet.",
     "googleNotice": "Connect your Google account to turn on: {list}.",
     "transferOnTo": "Active: to <n>{number}</n>.",
-    "editNumber": "Edit"
+    "editNumber": "Edit",
+    "tileTaglineOutbound": "Appointments, transfer",
+    "refusedOutbound": "Not turned on: {list}. Abilities on outbound calls aren't open for this account yet. Everything else was saved.",
+    "refusedOutboundAny": "These weren't turned on: abilities on outbound calls aren't open for this account yet. Everything else was saved."
   }
 }

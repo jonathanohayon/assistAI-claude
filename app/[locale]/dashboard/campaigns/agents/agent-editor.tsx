@@ -9,8 +9,8 @@ import { PersonaBrick } from "@/components/bricks/persona/PersonaBrick";
 import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { SessionPreview } from "@/components/bricks/knowledge/SessionPreview";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
-import { activeCount, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
-import type { Tools } from "@/lib/tools/contract";
+import { activeCount, toolsBrickVisible, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { CapabilityKey, Tools } from "@/lib/tools/contract";
 import type { SheetIssue } from "@/components/bricks/knowledge/knowledge-ui";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import type { Persona } from "@/lib/persona/contract";
@@ -45,6 +45,7 @@ export function AgentEditor({
   toolsServed,
   tools,
   onToolsChange,
+  toolsRefused = null,
 }: {
   draft: OutboundAgentDraft;
   set: (patch: Partial<OutboundAgentDraft>) => void;
@@ -68,6 +69,8 @@ export function AgentEditor({
   toolsServed: ToolsResponse | null;
   tools: Tools | null;
   onToolsChange: (next: Tools) => void;
+  /** The last tools save was refused for these capabilities (403 outbound_tools_disabled). */
+  toolsRefused?: CapabilityKey[] | null;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const tKnowledge = useTranslations("KnowledgeBrick");
@@ -75,6 +78,10 @@ export function AgentEditor({
   const voiceLabel = useVoiceLabel();
   const [activeTile, setActiveTile] = useState<TileId | null>("voice");
 
+  // The Tools tile exists only when the server lets this account's outbound
+  // calls use tools: no answer yet (new agent, loading) or visible=false →
+  // no tile at all, never an empty one.
+  const showTools = toolsBrickVisible("outbound", toolsServed);
   const TILES: TileDef[] = [
     {
       id: "voice",
@@ -100,14 +107,18 @@ export function AgentEditor({
       accent: "from-[#be185d] to-[#ec4899]",
       icon: <IconPerson />,
     },
-    {
-      id: "tools",
-      label: tTools("tileLabel"),
-      tagline: tTools("tileTagline"),
-      summary: toolsServed ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities) }) : "—",
-      accent: "from-[#0e7490] to-[#155e75]",
-      icon: <IconTools />,
-    },
+    ...(showTools && toolsServed
+      ? [
+          {
+            id: "tools" as const,
+            label: tTools("tileLabel"),
+            tagline: tTools("tileTaglineOutbound"),
+            summary: tTools("tileSummary", { n: activeCount(toolsServed.capabilities, "outbound") }),
+            accent: "from-[#0e7490] to-[#155e75]",
+            icon: <IconTools />,
+          },
+        ]
+      : []),
     {
       id: "notifs",
       label: t("sectionNotifs"),
@@ -228,21 +239,17 @@ export function AgentEditor({
                   {tKnowledge("loading")}
                 </p>
               ))}
-            {active.id === "tools" &&
-              (toolsServed && tools ? (
-                <ToolsBrick
-                  kind="outbound"
-                  served={toolsServed}
-                  tools={tools}
-                  onChange={onToolsChange}
-                  returnTo="/dashboard/campaigns"
-                  asUserId={asUserId ?? null}
-                />
-              ) : (
-                <p className="text-sm text-[#475569]" aria-busy={!!draft.id}>
-                  {draft.id ? tTools("loading") : tTools("saveAgentFirst")}
-                </p>
-              ))}
+            {active.id === "tools" && toolsServed && tools && (
+              <ToolsBrick
+                kind="outbound"
+                served={toolsServed}
+                tools={tools}
+                onChange={onToolsChange}
+                returnTo="/dashboard/campaigns"
+                asUserId={asUserId ?? null}
+                refused={toolsRefused}
+              />
+            )}
             {active.id === "notifs" && <NotifsPanel draft={draft} set={set} t={t} />}
             {active.id === "channels" && <ChannelsPanel draft={draft} set={set} t={t} asUserId={asUserId} />}
           </div>
