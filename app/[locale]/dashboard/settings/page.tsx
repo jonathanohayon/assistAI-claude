@@ -9,7 +9,7 @@ import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 import { AgentBrainSection } from "./agent-brain-section";
-import { AgentUrlSection } from "./agent-url-section";
+import { AgentUrlCard } from "./agent-url-section";
 import { ApiKeySection } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
@@ -192,17 +192,9 @@ export default async function SettingsPage(props: {
           <AgentBrainSection />
         </div>
 
-        {/* URL publique de l'agent — à coller dans un client vocal. */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="font-display text-lg text-[var(--color-foreground)]">
-            Agent joignable
-          </h2>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            Donnez à votre agent une voix et un numéro depuis un service vocal
-            externe, en lui fournissant cette URL.
-          </p>
-          <AgentUrlSection />
-        </div>
+        {/* Public agent URL, to paste into a voice client. Level-3 content:
+            rendered only in developer mode (admins always). */}
+        <AgentUrlCard isAdmin={isAdmin} />
 
         {/* Danger zone */}
         <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm sm:p-6">

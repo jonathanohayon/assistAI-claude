@@ -71,7 +71,7 @@ export function AgentBrainSection() {
         body: JSON.stringify(brainPutBody(state, next)),
       });
       const d = (await res.json().catch(() => null)) as BrainResponse | null;
-      const err = brainSaveError(res.status, d);
+      const err = brainSaveError(res.status, d, { urlEditable: state.view.urlEditable });
       if (err) {
         setError(err);
         return false;

@@ -7,7 +7,7 @@
 //     (an admin); a tenant only learns whether one is configured;
 //   - the signing secret is write-only: the view keeps "set / not set",
 //     never the value;
-//   - a refused save maps to one of three message keys, never to the
+//   - a refused save maps to one of our message keys, never to the
 //     server's own `message` or error code.
 
 /** The GET / PUT /api/dashboard/agent-brain answer, as received (untrusted shape). */
@@ -79,16 +79,24 @@ export function brainPutBody(
   };
 }
 
-export type BrainErrorKey = "adminOnly" | "unsafeUrl" | "generic";
+export type BrainErrorKey = "adminOnly" | "unsafeUrl" | "unsafeUrlTenant" | "generic";
 
 /**
- * A refused save → the message key to show. null when the save went through.
+ * A refused save -> the message key to show. null when the save went through.
  * The server's `message` is deliberately ignored.
+ *
+ * An unsafe url reads differently by role: an admin (`urlEditable`) can fix
+ * the address themselves, so one short line; a tenant can't see or edit it,
+ * so they are told who can (the Tamara team) or to turn the agent off.
  */
-export function brainSaveError(status: number, body: BrainResponse | null | undefined): BrainErrorKey | null {
+export function brainSaveError(
+  status: number,
+  body: BrainResponse | null | undefined,
+  opts: { urlEditable: boolean },
+): BrainErrorKey | null {
   const code = typeof body?.error === "string" ? body.error : null;
   if (status >= 200 && status < 300 && !code) return null;
   if (status === 403 && code === "admin_only") return "adminOnly";
-  if (status === 400 && code === "unsafe_url") return "unsafeUrl";
+  if (status === 400 && code === "unsafe_url") return opts.urlEditable ? "unsafeUrl" : "unsafeUrlTenant";
   return "generic";
 }
