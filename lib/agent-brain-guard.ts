@@ -72,12 +72,17 @@ export function enabledToSave(bodyEnabled: unknown, currentEnabled: boolean): bo
  * a tenant gets `secretSet` / `urlSet` (url kept as "" so the current screen
  * still renders).
  */
-export function brainView(brain: { enabled: boolean; url: string; secret?: string }, isAdmin: boolean) {
+export function brainView(
+  brain: { enabled: boolean; url: string; secret?: string; secretUnreadable?: true },
+  isAdmin: boolean,
+) {
   return {
     enabled: brain.enabled,
     url: isAdmin ? brain.url : "",
     urlSet: Boolean(brain.url),
-    secretSet: Boolean(brain.secret),
+    // E1: a stored-but-unreadable secret is still "set" (it IS stored; the
+    // admins were alerted). Its value is never shown, not even to an admin.
+    secretSet: Boolean(brain.secret) || brain.secretUnreadable === true,
     ...(isAdmin && brain.secret ? { secret: brain.secret } : {}),
   };
 }

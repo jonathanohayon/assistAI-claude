@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { getAppOrigin } from "@/lib/app-origin";
+import { sealForStorage } from "@/lib/crypto/unreadable-secret";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getOAuthClient } from "@/lib/google";
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
 
     await db
       .update(users)
-      .set({ googleRefreshToken: tokens.refresh_token })
+      .set({ googleRefreshToken: sealForStorage(tokens.refresh_token) })
       .where(eq(users.id, session.user.id));
 
     await logEvent({
