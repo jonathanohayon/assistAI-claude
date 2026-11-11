@@ -11,8 +11,9 @@ import { useTranslations } from "next-intl";
 
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { EMPHASIS_SLOT, heroTitleTokens } from "@/lib/hero-title";
+import { DEFAULT_HERO_STATS, type HeroStat } from "@/lib/marketing/home-content";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
 
 import { EASE } from "./Reveal";
@@ -36,7 +37,12 @@ const SPARKLES = [
  * le contenu remonte et fade pendant que la vidéo zoome légèrement quand
  * on quitte le hero. La démo VoiceAgent vit dans `<TryDemo />` (#demo).
  */
-export function Hero() {
+export function Hero({
+  stats = DEFAULT_HERO_STATS,
+}: {
+  /** Stats under the subtitle (value + `Hero.stats` label key + delay). */
+  stats?: readonly HeroStat[];
+} = {}) {
   const t = useTranslations("Hero");
   // Not useReducedMotion(): it's null during SSR and made the first client
   // render differ from the server HTML (hydration error with reduce motion on).
@@ -313,26 +319,17 @@ export function Hero() {
 
         {/* Stats inline — rangée resserrée */}
         <div className="mt-8 flex flex-wrap items-end justify-center gap-x-4 gap-y-3 sm:gap-x-6">
-          <Stat
-            value="24/7"
-            label={t("stats.availability")}
-            delay={0.85}
-            reduce={!!reduce}
-          />
-          <Divider />
-          <Stat
-            value="3"
-            label={t("stats.languages")}
-            delay={1.01}
-            reduce={!!reduce}
-          />
-          <Divider />
-          <Stat
-            value="∞"
-            label={t("stats.calls")}
-            delay={1.09}
-            reduce={!!reduce}
-          />
+          {stats.map((stat, i) => (
+            <Fragment key={stat.labelKey}>
+              {i > 0 ? <Divider /> : null}
+              <Stat
+                value={stat.value}
+                label={t(`stats.${stat.labelKey}`)}
+                delay={stat.delay}
+                reduce={!!reduce}
+              />
+            </Fragment>
+          ))}
         </div>
 
         {/* CTAs — 2 seulement : signup magnétique + live demo cyan */}

@@ -6,20 +6,28 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { agentConfigs, outboundAgents } from "@/lib/db/schema";
 import { getTileToggles, setTileTogglesIn } from "@/lib/tile-toggles";
-import { planOutboundToolsWrite, planReceptionistToolsWrite } from "@/lib/tools/store";
+import { currentOutboundTools, outboundToolsRefused, planOutboundToolsWrite, planReceptionistToolsWrite } from "@/lib/tools/store";
 
-export type ToolsWriteResult = { ok: true } | { ok: false; status: 400 | 404; body: { error: string; fields?: string[] } };
+export type ToolsWriteResult = { ok: true } | { ok: false; status: 400 | 403 | 404; body: { error: string; fields?: string[] } };
 
 // ::jsonb cast: postgres-js would serialise the object as text otherwise.
 const jsonb = (v: unknown) => sql`${JSON.stringify(v)}::jsonb`;
 
-export async function writeTools(userId: string, agentId: string | null, patch: unknown): Promise<ToolsWriteResult> {
+export async function writeTools(
+  userId: string,
+  agentId: string | null,
+  patch: unknown,
+  /** Outbound only: OUTBOUND_TOOLS allows tools for this account (T4). */
+  outboundToolsEnabled = false,
+): Promise<ToolsWriteResult> {
   if (agentId) {
     const where = and(eq(outboundAgents.id, agentId), eq(outboundAgents.userId, userId));
     const [row] = await db.select({ toolsConfig: outboundAgents.toolsConfig }).from(outboundAgents).where(where).limit(1);
     if (!row) return { ok: false, status: 404, body: { error: "not_found" } };
     const plan = planOutboundToolsWrite(row.toolsConfig, patch);
     if (!plan.ok) return { ok: false, status: 400, body: { error: "invalid_tools", fields: plan.errors } };
+    const refused = outboundToolsRefused(currentOutboundTools(row.toolsConfig), plan.value, outboundToolsEnabled);
+    if (refused.length) return { ok: false, status: 403, body: { error: "outbound_tools_disabled", fields: refused } };
     await db.update(outboundAgents).set({ toolsConfig: jsonb(plan.value), updatedAt: new Date() } as never).where(where);
     return { ok: true };
   }

@@ -6,6 +6,7 @@ import { OAuth2Client } from "google-auth-library";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { outboundCallerUserId } from "@/lib/call-direction";
 import { resolveTenantByPhone } from "@/lib/tenant";
 
 // On utilise les packages éclatés `@googleapis/calendar` + `@googleapis/
@@ -157,6 +158,17 @@ export async function resolveAgentCallerGoogle(
   if (req) {
     const secret = req.headers.get("x-internal-secret");
     const expected = process.env.INTERNAL_SECRET;
+    // Outbound call (T4, lib/call-direction.ts): the account id ONLY — the
+    // phone is our caller id (maybe the trunk's default number), never an
+    // identity. No account id, or no valid secret → refused, never a
+    // session / demo / phone fallback.
+    const outboundUserId = outboundCallerUserId(req.headers);
+    if (outboundUserId !== null) {
+      if (!expected || secret !== expected || !outboundUserId) return { mode: "unknown_tenant", dialedPhone: "" };
+      const clients = await getTenantGoogleClients(outboundUserId);
+      if (!clients) return { mode: "user_no_google" };
+      return { mode: "tenant", userId: outboundUserId, ...clients };
+    }
     if (expected && secret === expected) {
       // Routing : priorité x-tenant-phone (SIP). Sinon x-tenant-user-id
       // (web LiveTest, où il n'y a pas de phone dialed). Sinon

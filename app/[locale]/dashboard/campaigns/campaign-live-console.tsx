@@ -19,6 +19,8 @@ import {
   eventLine,
   formatElapsed,
   mergeEvents,
+  readyPill,
+  showDispatcherAlert,
   nextSince,
   tickSkips,
   type ActionErrorKey,
@@ -217,6 +219,9 @@ export function CampaignLiveConsole({
   const { campaign, dispatcher } = snap;
   const buckets = counterBuckets(snap.counts);
   const tick = dispatcher.lastTick;
+  // Platform call switch as last seen: the live snapshot first, then the start's answer.
+  const mode = dispatcher.dispatchMode ?? postedMode;
+  const pill = readyPill(mode, dispatcher.blockers);
   const tickStale = tick ? now.getTime() - Date.parse(tick.at) > STALE_TICK_MS : false;
   const running = campaign.status === "running";
   const paused = campaign.status === "paused";
@@ -266,7 +271,7 @@ export function CampaignLiveConsole({
       )}
       {/* Calls switched off or in test mode on this platform: say so, never a silent start. */}
       {(() => {
-        const key = running ? dispatchNoticeKey(dispatcher.dispatchMode ?? postedMode) : null;
+        const key = running ? dispatchNoticeKey(mode) : null;
         return key ? (
           <p role="status" className="flex items-center gap-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12px] font-semibold text-[#92400e]">
             <AlertIcon className="h-4 w-4 shrink-0 text-[#b45309]" />
@@ -275,8 +280,9 @@ export function CampaignLiveConsole({
         ) : null;
       })()}
 
-      {/* Dispatcher health — LOUD when it never ran or stopped running */}
-      {tick === null ? (
+      {/* Dispatcher health — LOUD when it never ran or stopped running.
+          Not while calls are off: the pause line above already says why nothing dials. */}
+      {!showDispatcherAlert(mode) ? null : tick === null ? (
         <div role="alert" className="flex gap-3 rounded-xl border-2 border-[#dc2626] bg-[#fef2f2] p-3">
           <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#dc2626]" />
           <div>
@@ -304,8 +310,8 @@ export function CampaignLiveConsole({
 
       {/* Blockers as plain-language chips */}
       <div className="flex flex-wrap gap-2">
-        {dispatcher.blockers.length === 0 ? (
-          <Chip tone="good">{t("readyToDial")}</Chip>
+        {pill ? (
+          <Chip tone={pill.tone}>{t(pill.key)}</Chip>
         ) : (
           dispatcher.blockers.map((b) => (
             <Chip key={b} tone={b === "concurrency_full" ? "info" : "warn"}>
