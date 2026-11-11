@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/api/auth-guards";
+import { sampleKeyStatus } from "@/lib/voice/sample-engines";
 import { generateMissingEngineSamples, generateMissingSamples } from "@/lib/voice/samples-store";
 
 export const maxDuration = 300;
@@ -15,8 +16,12 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
   const limit = Math.min(Math.max(Number(req.nextUrl.searchParams.get("limit")) || 6, 1), 12);
-  const engine = req.nextUrl.searchParams.get("engine");
+  const raw = req.nextUrl.searchParams.get("engine");
+  if (raw && raw !== "gemini" && raw !== "xai") return NextResponse.json({ error: "unknown_engine" }, { status: 400 });
+  const engine = raw as "gemini" | "xai" | null;
+  // A missing key is said up front, by variable NAME (never a value).
+  const key = sampleKeyStatus(engine ?? "openai");
+  if (!key.keySet) return NextResponse.json({ error: "missing_key", env: key.env }, { status: 400 });
   if (engine === "gemini" || engine === "xai") return NextResponse.json(await generateMissingEngineSamples(engine, limit));
-  if (engine) return NextResponse.json({ error: "unknown_engine" }, { status: 400 });
   return NextResponse.json(await generateMissingSamples(limit));
 }
