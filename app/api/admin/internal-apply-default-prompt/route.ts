@@ -5,13 +5,15 @@ import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
-import { getInitialInstructionsForPlan } from "@/lib/initial-config";
-import { SETTING_KEYS, setSetting } from "@/lib/settings";
+import { seedForNewAccount } from "@/lib/neutral-seed";
+import { PLANS, type PlanKey } from "@/lib/plans";
+import { SETTING_KEYS, getOnboardingGreetingByPlan, getOnboardingTemplateByPlan, setSetting } from "@/lib/settings";
 
-// Internal-only: overwrite a tenant's instructions + greeting with the
-// canonical Johana persona from lib/initial-config.ts. Used when a tenant
-// row was customized BEFORE the strict-rules version landed and we need
-// to bring it back in sync. Gated by INTERNAL_SECRET.
+// Internal-only: reset a tenant's instructions + greeting to what a NEW
+// account of the same plan and language gets today (seedForNewAccount: the
+// admin's per-plan template/greeting, else the neutral persona of
+// lib/neutral-seed.ts — no customer's business fact). Gated by
+// INTERNAL_SECRET. Running it rewrites that tenant's agent: an ops action.
 //
 // POST { email?: string; userId?: string; clearGlobal?: boolean }
 // clearGlobal=true also wipes the admin app_settings.global_instructions
@@ -30,17 +32,17 @@ export async function POST(req: NextRequest) {
   const body = parsed.data;
 
   let userId = body.userId;
-  let resolvedUser: { id: string; subscriptionPlan: string } | null = null;
+  let resolvedUser: { id: string; subscriptionPlan: string; locale: string } | null = null;
   if (body.userId) {
     const [u] = await db
-      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan })
+      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan, locale: users.locale })
       .from(users)
       .where(eq(users.id, body.userId))
       .limit(1);
     if (u) resolvedUser = u;
   } else if (body.email) {
     const [u] = await db
-      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan })
+      .select({ id: users.id, subscriptionPlan: users.subscriptionPlan, locale: users.locale })
       .from(users)
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);
@@ -66,10 +68,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Reset PLAN-AWARE : un user basique récupère la persona basique,
-  // pas la Johana multi-centres. Évite de re-injecter la config d'un
-  // autre plan via ce endpoint de "réparation".
-  const defaults = getInitialInstructionsForPlan(resolvedUser.subscriptionPlan);
+  // Same seed as a new account of this plan and language (provision-tenant).
+  // Language stays as the tenant set it: only instructions + greeting reset.
+  const plan: PlanKey = PLANS.some((p) => p.key === resolvedUser.subscriptionPlan)
+    ? (resolvedUser.subscriptionPlan as PlanKey)
+    : PLANS[0].key;
+  const [templatesByPlan, greetingsByPlan] = await Promise.all([getOnboardingTemplateByPlan(), getOnboardingGreetingByPlan()]);
+  const defaults = seedForNewAccount(plan, resolvedUser.locale, templatesByPlan, greetingsByPlan);
   const [updated] = await db
     .update(agentConfigs)
     .set({
