@@ -173,7 +173,7 @@ export function missionNeeds(kind: SalesMission | null, caps: EffectiveCapabilit
  * The preset a campaign draft takes when it picks an agent: the agent's
  * default (presetForMission, #282) for a NEW draft whose cards haven't been
  * touched; otherwise — an existing campaign, a card already picked, or no
- * mapping (no mission, book_for_seller, follow_up) — the current preset,
+ * card (no mission, book_for_seller, follow_up) — the current preset,
  * unchanged.
  */
 export function presetOnAgentPick(opts: {
@@ -183,5 +183,10 @@ export function presetOnAgentPick(opts: {
   agentMission: unknown;
 }): string {
   if (!opts.isNew || opts.cardPicked) return opts.current;
-  return presetForMission(missionFromServed(opts.agentMission)) ?? opts.current;
+  // Only the missions a tenant can pick: an agent storing an admin-only kind
+  // (book_for_seller, follow_up) must not start a draft on a preset the
+  // server refuses for tenants (#288), whatever presetForMission maps it to.
+  const mission = missionFromServed(opts.agentMission);
+  if (!mission || !isCard(mission.kind)) return opts.current;
+  return presetForMission(mission) ?? opts.current;
 }
