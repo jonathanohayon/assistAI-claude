@@ -1,80 +1,99 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useEffect, useId, useRef, useState } from "react";
+
+import {
+  brainPutBody,
+  brainSaveError,
+  EMPTY_BRAIN_VIEW,
+  toBrainState,
+  type BrainErrorKey,
+  type BrainResponse,
+  type BrainState,
+  type BrainView,
+} from "./agent-brain-ui";
 
 /**
- * Choix du cerveau de l'agent : la persona Tamara, ou l'agent du tenant.
+ * Who answers the phone: the Tamara persona, or the account's own agent.
  *
- * Le réglage est explicite parce que ses conséquences le sont : en mode
- * externe, la persona configurée plus haut dans cette page n'est plus utilisée
- * du tout. Le dire ici évite qu'un tenant modifie sa persona pendant des
- * heures sans comprendre pourquoi son agent n'en tient aucun compte.
+ * The setting is explicit because its consequences are: in external mode the
+ * persona configured above is not used at all. Saying so here keeps a tenant
+ * from editing the persona for hours without understanding why their agent
+ * ignores it.
+ *
+ * Since #253 the webhook url is admin-only (SSRF): a tenant never sees an
+ * input for it, only a calm "configured by the Tamara team" line when one
+ * exists. The signing secret is write-only for everyone.
  */
 
-type Brain = { enabled: boolean; url: string; secret?: string };
+const API = "/api/dashboard/agent-brain";
 
 export function AgentBrainSection() {
-  const [brain, setBrain] = useState<Brain>({ enabled: false, url: "" });
+  const [state, setState] = useState<BrainState>({ view: EMPTY_BRAIN_VIEW });
+  const [urlDraft, setUrlDraft] = useState("");
+  const [secretDraft, setSecretDraft] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<BrainErrorKey | null>(null);
   const [saved, setSaved] = useState(false);
-  const [probe, setProbe] = useState<string | null>(null);
-  const [showSecret, setShowSecret] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [probe, setProbe] = useState<Probe | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const apply = (d: BrainResponse | null) => {
+    // The raw answer (which may carry the secret) is dropped right here.
+    const next = toBrainState(d);
+    setState(next);
+    setUrlDraft(next.view.url);
+  };
 
   useEffect(() => {
-    fetch("/api/dashboard/agent-brain")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { brain: Brain } | null) => {
-        if (d?.brain) setBrain(d.brain);
+    fetch(API)
+      .then((r) => (r.ok ? (r.json() as Promise<BrainResponse>) : null))
+      .then((d) => {
+        apply(d);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    };
   }, []);
 
-  const save = async (next: Brain) => {
+  const save = async (next: { enabled: boolean; url?: string; secret?: string }) => {
     setBusy(true);
     setError(null);
     setSaved(false);
     try {
-      const res = await fetch("/api/dashboard/agent-brain", {
+      const res = await fetch(API, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
+        body: JSON.stringify(brainPutBody(state, next)),
       });
-      const d = (await res.json()) as { brain?: Brain; error?: string; message?: string };
-      if (!res.ok || d.error) {
-        // unsafe_url carries one plain message; other errors are plain text.
-        setError(d.message ?? d.error ?? "Enregistrement impossible.");
-        return;
+      const d = (await res.json().catch(() => null)) as BrainResponse | null;
+      const err = brainSaveError(res.status, d);
+      if (err) {
+        setError(err);
+        return false;
       }
-      if (d.brain) setBrain(d.brain);
+      apply(d);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaved(false), 2500);
+      return true;
+    } catch {
+      setError("generic");
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
-  const copySecret = async () => {
-    if (!brain.secret) return;
-    try {
-      await navigator.clipboard.writeText(brain.secret);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard can be refused (insecure context, permissions): reveal the
-      // value instead so it can be selected by hand.
-      setShowSecret(true);
-    }
-  };
-
-  /** Vérifie que le endpoint répond au contrat avant de compter dessus. */
+  /** Checks the endpoint answers the contract before relying on it (admin only). */
   const test = async () => {
-    setProbe("…");
+    setProbe({ kind: "pending" });
     try {
-      const res = await fetch(brain.url, {
+      const res = await fetch(urlDraft, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -85,171 +104,236 @@ export function AgentBrainSection() {
           history: [],
         }),
       });
-      const data = (await res.json().catch(() => null)) as {
-        reply?: unknown;
-      } | null;
+      const data = (await res.json().catch(() => null)) as { reply?: unknown } | null;
       setProbe(
         typeof data?.reply === "string" && data.reply.trim()
-          ? `Réponse : « ${data.reply.slice(0, 120)} »`
-          : `HTTP ${res.status} — pas de champ "reply" exploitable.`,
+          ? { kind: "reply", reply: data.reply.slice(0, 120) }
+          : { kind: "noReply", status: res.status },
       );
     } catch {
-      // Un échec ici est souvent du CORS : le navigateur ne peut pas joindre
-      // un endpoint qui n'autorise pas cette origine, alors que le worker,
-      // lui, appelle depuis le serveur et n'a pas cette contrainte.
-      setProbe(
-        "Injoignable depuis le navigateur (souvent du CORS). Le worker appelle depuis le serveur et n'est pas concerné.",
-      );
+      // Often CORS: the browser can't reach an endpoint that doesn't allow
+      // this origin, while the worker calls server-side and isn't affected.
+      setProbe({ kind: "unreachable" });
     }
   };
 
-  if (!loaded) {
-    return (
-      <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">
-        Chargement…
-      </p>
-    );
+  if (!loaded) return <AgentBrainLoading />;
+
+  return (
+    <AgentBrainView
+      view={state.view}
+      urlDraft={urlDraft}
+      secretDraft={secretDraft}
+      busy={busy}
+      saved={saved}
+      error={error}
+      probe={probe}
+      onToggle={(enabled) => void save({ enabled, url: urlDraft })}
+      onUrlChange={setUrlDraft}
+      onSaveUrl={() => void save({ enabled: state.view.enabled, url: urlDraft })}
+      onTest={() => void test()}
+      onSecretChange={setSecretDraft}
+      onSaveSecret={async () => {
+        if (!secretDraft.trim()) return;
+        const ok = await save({ enabled: state.view.enabled, url: urlDraft, secret: secretDraft });
+        if (ok) setSecretDraft("");
+      }}
+    />
+  );
+}
+
+function AgentBrainLoading() {
+  const t = useTranslations("AgentBrain");
+  return <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">{t("loading")}</p>;
+}
+
+export type Probe =
+  | { kind: "pending" }
+  | { kind: "reply"; reply: string }
+  | { kind: "noReply"; status: number }
+  | { kind: "unreachable" };
+
+export type AgentBrainViewProps = {
+  view: BrainView;
+  urlDraft: string;
+  secretDraft: string;
+  busy: boolean;
+  saved: boolean;
+  error: BrainErrorKey | null;
+  probe: Probe | null;
+  onToggle: (enabled: boolean) => void;
+  onUrlChange: (url: string) => void;
+  onSaveUrl: () => void;
+  onTest: () => void;
+  onSecretChange: (secret: string) => void;
+  onSaveSecret: () => void;
+};
+
+/**
+ * The section itself, stateless so a test can render it to static HTML.
+ * It receives a BrainView: there is no secret value to render, and no url
+ * unless the viewer may edit it.
+ */
+export function AgentBrainView(props: AgentBrainViewProps) {
+  const { view, busy, error } = props;
+  const t = useTranslations("AgentBrain");
+  const ids = useId();
+  const secretStatusId = `${ids}-secret-status`;
+  // A tenant without a webhook has nothing to switch on: the server would
+  // refuse it. Say who can connect one instead of offering a dead switch.
+  const canToggle = view.urlEditable || view.urlConfigured || view.enabled;
+
+  const btn =
+    "min-h-10 rounded-lg px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50";
+  const btnPrimary = `${btn} bg-[var(--color-foreground)] text-white`;
+  const btnGhost = `${btn} border border-[var(--color-border)] hover:bg-[var(--color-muted)]`;
+
+  // A tenant with no webhook can't set one up: no form at all (no switch,
+  // secret, signature sentence or contract), just who can connect one. The
+  // section's title and lead sentence come from the page. Kept as a full
+  // view if the agent is somehow on, so it can still be switched off.
+  if (!view.urlEditable && !view.urlConfigured && !view.enabled) {
+    return <p className="mt-4 text-sm text-[var(--color-foreground)]">{t("connectViaTeam")}</p>;
   }
 
   return (
     <div className="mt-4 space-y-4">
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3">
-        <label className="flex cursor-pointer items-start gap-3">
+        <label className={`flex items-start gap-3 ${canToggle ? "cursor-pointer" : ""}`}>
           <input
             type="checkbox"
-            checked={brain.enabled}
-            disabled={busy}
-            onChange={(e) => save({ ...brain, enabled: e.target.checked })}
+            checked={view.enabled}
+            disabled={busy || !canToggle}
+            onChange={(e) => props.onToggle(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
           />
           <span>
-            <span className="block text-sm font-medium text-[var(--color-foreground)]">
-              Utiliser mon propre agent
-            </span>
-            <span className="mt-0.5 block text-xs text-[var(--color-muted-foreground)]">
-              Tamara garde la voix, le numéro et la téléphonie ; c&apos;est
-              votre agent qui décide des réponses.
-            </span>
+            <span className="block text-sm font-medium text-[var(--color-foreground)]">{t("toggleLabel")}</span>
+            <span className="mt-0.5 block text-xs text-[var(--color-muted-foreground)]">{t("toggleHint")}</span>
           </span>
         </label>
 
-        {brain.enabled && (
+        {view.enabled && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-            Tant que ce mode est actif, la persona configurée plus haut
-            n&apos;est pas utilisée.
+            {t("personaUnused")}
           </p>
         )}
 
-        <div className="mt-4">
-          <label
-            htmlFor="brain-url"
-            className="block text-xs font-medium text-[var(--color-foreground)]"
-          >
-            URL de votre agent
-          </label>
-          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-            <input
-              id="brain-url"
-              type="url"
-              dir="ltr"
-              spellCheck={false}
-              placeholder="https://api.votreboite.com/agent/reply"
-              value={brain.url}
-              onChange={(e) => setBrain({ ...brain, url: e.target.value })}
-              className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 font-mono text-xs"
-            />
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => save(brain)}
-                disabled={busy}
-                className="rounded-lg bg-[var(--color-foreground)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
-              >
-                {saved ? "Enregistré" : "Enregistrer"}
-              </button>
-              <button
-                type="button"
-                onClick={test}
-                disabled={!brain.url.startsWith("http")}
-                className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[var(--color-muted)] disabled:opacity-50"
-              >
-                Tester
-              </button>
+        {view.urlEditable ? (
+          <div className="mt-4">
+            <label htmlFor={`${ids}-url`} className="block text-xs font-medium text-[var(--color-foreground)]">
+              {t("urlLabel")}
+            </label>
+            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+              <input
+                id={`${ids}-url`}
+                type="url"
+                dir="ltr"
+                spellCheck={false}
+                autoComplete="off"
+                placeholder="https://api.example.com/agent/reply"
+                value={props.urlDraft}
+                onChange={(e) => props.onUrlChange(e.target.value)}
+                className="min-h-10 min-w-0 flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 font-mono text-xs"
+              />
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={props.onSaveUrl} disabled={busy} className={btnPrimary}>
+                  {t("save")}
+                </button>
+                <button
+                  type="button"
+                  onClick={props.onTest}
+                  disabled={!props.urlDraft.startsWith("http")}
+                  className={btnGhost}
+                >
+                  {t("test")}
+                </button>
+              </div>
             </div>
           </div>
+        ) : view.urlConfigured ? (
+          <p className="mt-4 rounded-lg bg-[var(--color-muted)] px-3 py-2 text-xs text-[var(--color-foreground)]">
+            {t("configuredByTeam")}
+          </p>
+        ) : (
+          <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">{t("connectViaTeam")}</p>
+        )}
 
-          {brain.secret && (
-            <div className="mt-4">
-              <label
-                htmlFor="brain-secret"
-                className="block text-xs font-medium text-[var(--color-foreground)]"
-              >
-                Secret de signature
-              </label>
-              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="brain-secret"
-                  readOnly
-                  dir="ltr"
-                  type={showSecret ? "text" : "password"}
-                  value={brain.secret}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-2 font-mono text-xs"
-                />
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSecret((v) => !v)}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[var(--color-muted)]"
-                  >
-                    {showSecret ? "Masquer" : "Afficher"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copySecret}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs font-medium hover:bg-[var(--color-muted)]"
-                  >
-                    {copied ? "Copié" : "Copier"}
-                  </button>
-                </div>
-              </div>
-              <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
-                Vérifiez{" "}
-                <span dir="ltr" className="font-mono text-[var(--color-foreground)]">
-                  X-Tamara-Signature = HMAC-SHA256(corps brut de la requête, ce secret)
-                </span>{" "}
-                avant de traiter la requête.
-              </p>
-            </div>
-          )}
-
-          {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-          {probe && (
-            <p className="mt-2 rounded-lg bg-[var(--color-muted)] px-3 py-2 text-[11px] break-words text-[var(--color-foreground)]">
-              {probe}
-            </p>
-          )}
+        {/* Write-only signing secret: its state, never its value. */}
+        <div className="mt-4">
+          <label htmlFor={`${ids}-secret`} className="block text-xs font-medium text-[var(--color-foreground)]">
+            {t("secretLabel")}
+          </label>
+          <p id={secretStatusId} className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+            {view.secretSet ? t("secretSet") : t("secretNotSet")}
+          </p>
+          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+            <input
+              id={`${ids}-secret`}
+              type="password"
+              dir="ltr"
+              autoComplete="new-password"
+              spellCheck={false}
+              placeholder={t("secretPlaceholder")}
+              aria-describedby={secretStatusId}
+              value={props.secretDraft}
+              onChange={(e) => props.onSecretChange(e.target.value)}
+              className="min-h-10 min-w-0 flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 font-mono text-xs"
+            />
+            <button
+              type="button"
+              onClick={props.onSaveSecret}
+              disabled={busy || !props.secretDraft.trim()}
+              className={`${btnGhost} shrink-0`}
+            >
+              {t("secretSave")}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
+            {t.rich("secretHelp", {
+              code: (chunks) => (
+                <span dir="ltr" className="inline-block font-monotext-[var(--color-foreground)]">
+                  {chunks}
+                </span>
+              ),
+            })}
+          </p>
         </div>
+
+        {error && (
+          <p role="alert" className="mt-3 text-xs text-red-700">
+            {t(`errors.${error}`)}
+          </p>
+        )}
+        <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-700 empty:hidden">
+          {props.saved ? t("saved") : ""}
+        </p>
+        {props.probe && (
+          <p className="mt-2 rounded-lg bg-[var(--color-muted)] px-3 py-2 text-[11px] break-words text-[var(--color-foreground)]">
+            {props.probe.kind === "pending"
+              ? "…"
+              : props.probe.kind === "reply"
+                ? t("probeReply", { reply: props.probe.reply })
+                : props.probe.kind === "noReply"
+                  ? t("probeNoReply", { status: props.probe.status })
+                  : t("probeUnreachable")}
+          </p>
+        )}
       </div>
 
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-xs">
-        <p className="font-medium text-[var(--color-foreground)]">
-          Ce que Tamara envoie à votre agent
-        </p>
+        <p className="font-medium text-[var(--color-foreground)]">{t("contractTitle")}</p>
         <pre
           dir="ltr"
           className="mt-2 overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 font-mono text-[11px] leading-relaxed"
         >
-{`POST ${brain.url || "<votre-url>"}
+          {`POST ${(view.urlEditable && props.urlDraft) || "<agent-url>"}
 { "call_id": "…", "turn_id": 3, "language": "fr",
   "transcript": "…", "history": [{ "role": "user", "text": "…" }] }
 
-→ 200 { "reply": "…" }   sous 2 s`}
+→ 200 { "reply": "…" }   < 2 s`}
         </pre>
-        <p className="mt-2 text-[var(--color-muted-foreground)]">
-          Au-delà de 2 secondes, le tour est traité comme un silence : une
-          phrase d&apos;attente est prononcée à votre place.
-        </p>
+        <p className="mt-2 text-[var(--color-muted-foreground)]">{t("contractFoot")}</p>
       </div>
     </div>
   );
