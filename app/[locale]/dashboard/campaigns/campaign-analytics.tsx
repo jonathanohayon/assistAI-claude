@@ -74,9 +74,10 @@ const SUCCESS_COLORS: Record<string, string> = {
   fail: "#ef4444",
 };
 
-// The success verdict is an LLM's reading of the transcript, so its explainer
-// is referenced (aria-describedby) by every figure built on it.
-const ESTIMATED_HINT_ID = "campaign-estimated-success-hint";
+// The success verdict and the sentiment are both an LLM's reading of the
+// transcript (lib/campaigns/analyze.ts), so one shared explainer is referenced
+// (aria-describedby) by every figure built on either.
+const ESTIMATED_HINT_ID = "campaign-estimated-hint";
 
 const fmtDuration =(s: number) =>
   s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "—";
@@ -154,7 +155,7 @@ export function CampaignAnalytics({
       data
         ? Object.entries(data.aggregates.bySentiment).map(([k, v]) => ({
             key: k,
-            name: t(`sentiment_${k}` as "sentiment_positive"),
+            name: t(`estimatedSentiment_${k}` as "estimatedSentiment_positive"),
             value: v,
           }))
         : [],
@@ -243,7 +244,8 @@ export function CampaignAnalytics({
                   />
                   <Kpi label={t("kpiAvgDuration")} value={fmtDuration(data.aggregates.avgDurationSec)} />
                 </div>
-                {/* One explainer where the estimated figure first appears. */}
+                {/* One explainer, where the first estimated figure appears; its
+                    copy names both success and sentiment, the two AI judgments. */}
                 <p
                   id={ESTIMATED_HINT_ID}
                   className="-mt-2 flex items-start gap-1.5 text-[11px] leading-snug text-[#64748b]"
@@ -252,12 +254,12 @@ export function CampaignAnalytics({
                     <circle cx="8" cy="8" r="6.5" />
                     <path d="M8 7v4M8 4.75v.5" strokeLinecap="round" />
                   </svg>
-                  <span>{t("estimatedSuccessHint")}</span>
+                  <span>{t("estimatedHint")}</span>
                 </p>
 
                 {/* Graphes */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <ChartCard title={t("chartEstimatedSuccess")}>
+                  <ChartCard title={t("chartEstimatedSuccess")} describedBy={ESTIMATED_HINT_ID}>
                     <ResponsiveContainer width="100%" height={200}>
                       <RadialBarChart
                         innerRadius="70%"
@@ -282,7 +284,8 @@ export function CampaignAnalytics({
                     <DonutChart data={outcomeData} colorFor={(k) => OUTCOME_COLORS[k] ?? "#94a3b8"} emptyLabel={t("chartEmpty")} />
                   </ChartCard>
 
-                  <ChartCard title={t("chartSentiment")}>
+                  {/* Sentiment is AI-judged too: same estimate label, same explainer. */}
+                  <ChartCard title={t("chartEstimatedSentiment")} describedBy={ESTIMATED_HINT_ID}>
                     <DonutChart data={sentimentData} colorFor={(k) => SENTIMENT_COLORS[k] ?? "#94a3b8"} emptyLabel={t("chartEmpty")} />
                   </ChartCard>
                 </div>
@@ -362,11 +365,22 @@ function Kpi({
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  describedBy,
+  children,
+}: {
+  title: string;
+  describedBy?: string;
+  children: React.ReactNode;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      role={describedBy ? "group" : undefined}
+      aria-label={describedBy ? title : undefined}
+      aria-describedby={describedBy}
       className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-4"
     >
       <p className="mb-2 text-[12px] font-bold text-[#334155]">{title}</p>
@@ -455,7 +469,7 @@ function ConversationRow({
               color: SENTIMENT_COLORS[call.sentiment],
             }}
           >
-            {t(`sentiment_${call.sentiment}` as "sentiment_positive")}
+            {t(`estimatedSentiment_${call.sentiment}` as "estimatedSentiment_positive")}
           </span>
         )}
         {/* Duration + chevron stay together when the badges wrap on a phone. */}
