@@ -103,7 +103,7 @@ async function main() {
     // origin/main route (bare select() with origin/main's schema).
     const mainSchemaPath = process.env.CAMPAIGN_CALLS_MAIN_SCHEMA!;
     const mainSchema = (await import(mainSchemaPath)) as typeof import("../../lib/db/schema");
-    assert.equal((await columnInfo()).length, 0, "origin/main state has no worker_call_id yet");
+    assert.equal((await columnInfo()).length, 0, "before (pre-#277) state has no worker_call_id yet");
     await seed();
     const calls = await db
       .select()
@@ -111,7 +111,7 @@ async function main() {
       .where(eq(mainSchema.campaignCalls.campaignId, input.campaignId))
       .orderBy(asc(mainSchema.campaignCalls.createdAt));
     writeFileSync(SNAPSHOT, await NextResponse.json({ calls }).text());
-    console.log(`ok: origin/main snapshot written (${calls.length} calls)`);
+    console.log(`ok: before snapshot written (${calls.length} calls)`);
     return;
   }
 
@@ -145,8 +145,8 @@ async function main() {
       .orderBy(asc(campaignCalls.createdAt));
     const branchBytes = await NextResponse.json({ calls }).text();
     const mainBytes = readFileSync(SNAPSHOT, "utf8");
-    assert.equal(branchBytes, mainBytes, "dashboard calls JSON byte-identical to origin/main");
-    console.log(`ok: upgrade: old rows NULL; dashboard calls JSON byte-identical to origin/main (${mainBytes.length} bytes)`);
+    assert.equal(branchBytes, mainBytes, "dashboard calls JSON byte-identical to the pre-#277 tree");
+    console.log(`ok: upgrade: old rows NULL; dashboard calls JSON byte-identical to the pre-#277 tree (${mainBytes.length} bytes)`);
   } else {
     await seed();
   }
