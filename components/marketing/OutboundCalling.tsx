@@ -8,6 +8,8 @@ import {
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import type { SectionHeading } from "@/lib/marketing/home-content";
+
 import { Reveal, Stagger, StaggerItem, EASE } from "./Reveal";
 
 // Section marketing « Appels sortants » — vaisseau amiral de la landing.
@@ -60,7 +62,13 @@ const PHONE_ICON = (
   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
 );
 
-export function OutboundCalling() {
+export function OutboundCalling({
+  copy,
+}: {
+  /** A landing page's heading. With it, the section is the live campaign
+   *  panel alone (the page carries its own use cases). */
+  copy?: SectionHeading;
+} = {}) {
   const t = useTranslations("OutboundCalling");
   const reduce = useReducedMotionAfterMount() ?? false;
 
@@ -130,18 +138,19 @@ export function OutboundCalling() {
               aria-hidden
               className="h-1.5 w-1.5 rounded-full bg-[#22d3ee] motion-safe:animate-pulse"
             />
-            {t("kicker")}
+            {copy ? copy.kicker : t("kicker")}
           </span>
           <h2 className="mt-4 font-display text-4xl tracking-tight text-white sm:text-5xl lg:text-6xl">
-            {t("title")}
+            {copy ? copy.title : t("title")}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-white/70 sm:text-lg">
-            {t("subtitle")}
+            {copy ? copy.subtitle : t("subtitle")}
           </p>
         </Reveal>
 
-        <div className="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start lg:gap-8">
+        <div className={copy ? "mx-auto mt-14 max-w-3xl" : "mt-14 grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start lg:gap-8"}>
           {/* Cas d'usage — cartes glassy sombres */}
+          {copy ? null : (
           <Stagger className="flex flex-col gap-4 lg:col-span-2">
             {USE_CASES.map((u) => (
               <StaggerItem key={u.key}>
@@ -178,6 +187,7 @@ export function OutboundCalling() {
               </StaggerItem>
             ))}
           </Stagger>
+          )}
 
           {/* Carte « campagne en direct » : la liste de numéros appelés */}
           <motion.div
@@ -193,7 +203,7 @@ export function OutboundCalling() {
                 ? { duration: 0.2 }
                 : { duration: 0.7, delay: 0.1, ease: EASE }
             }
-            className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_64px_-24px_rgba(34,211,238,0.25)] backdrop-blur-xl lg:col-span-3"
+            className={`overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_24px_64px_-24px_rgba(34,211,238,0.25)] backdrop-blur-xl ${copy ? "" : "lg:col-span-3"}`}
           >
             {/* Header de la carte */}
             <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-5 py-4 sm:px-6">

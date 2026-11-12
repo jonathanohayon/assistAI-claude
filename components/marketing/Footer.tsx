@@ -5,16 +5,22 @@ import Link from "next/link";
 
 import { Logo } from "@/components/ui/Logo";
 
-export function Footer() {
+export function Footer({
+  anchorBase = "",
+}: {
+  /** Prefix of the home-section links: "" on the home, "/" elsewhere (the
+   *  sections live on the home page). */
+  anchorBase?: string;
+} = {}) {
   const t = useTranslations("Footer");
 
   const CATEGORIES = [
     {
       title: t("categories.product"),
       links: [
-        { label: t("links.demo"), href: "#demo" },
-        { label: t("links.features"), href: "#features" },
-        { label: t("links.how"), href: "#how" },
+        { label: t("links.demo"), href: `${anchorBase}#demo` },
+        { label: t("links.features"), href: `${anchorBase}#features` },
+        { label: t("links.how"), href: `${anchorBase}#how` },
       ],
     },
     {
@@ -27,9 +33,9 @@ export function Footer() {
     {
       title: t("categories.industries"),
       links: [
-        { label: t("links.medical"), href: "#industries" },
-        { label: t("links.beauty"), href: "#industries" },
-        { label: t("links.barbers"), href: "#industries" },
+        { label: t("links.medical"), href: `${anchorBase}#industries` },
+        { label: t("links.beauty"), href: `${anchorBase}#industries` },
+        { label: t("links.barbers"), href: `${anchorBase}#industries` },
       ],
     },
   ];
