@@ -14,6 +14,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 // Types only: the room SDK itself is loaded on demand in startSession.
 import type { TestRoom } from "./live-test/connect-test-room";
+import {
+  type LiveTestError,
+  liveTestErrorMessage,
+  toLiveTestError,
+} from "./live-test/live-test-error";
 
 type Status = "idle" | "connecting" | "connected" | "ending" | "error";
 
@@ -36,7 +41,9 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
   const tl = useTranslations("LiveTest");
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // A code only: the line shown is ours (LiveTest.errors.*), never the
+  // server's text or the SDK's message.
+  const [error, setError] = useState<LiveTestError | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
   const roomRef = useRef<TestRoom | null>(null);
@@ -79,7 +86,7 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
       });
       setStatus("connected");
     } catch (e) {
-      setError((e as Error).message);
+      setError(toLiveTestError(e));
       setStatus("error");
       void teardown();
     }
@@ -101,6 +108,13 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
 
   // Cleanup on unmount
   useEffect(() => () => void teardown(), [teardown]);
+
+  const errorLine = error
+    ? (() => {
+        const m = liveTestErrorMessage(error);
+        return tl(m.key, m.values);
+      })()
+    : null;
 
   const isLive = status === "connected";
   const isConnecting = status === "connecting";
@@ -321,12 +335,12 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
             aria-label="Transcript"
             className="flex max-h-[280px] min-h-[180px] flex-col gap-2 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white/80 p-3 backdrop-blur"
           >
-            {error && (
+            {errorLine && (
               <p
                 role="alert"
-                className="rounded-lg border border-[#dc2626]/30 bg-[#fee2e2] px-3 py-2 text-xs text-[#991b1b]"
+                className="rounded-lg border border-[#dc2626]/30 bg-[#fee2e2] px-3 py-2 text-start text-xs text-[#991b1b]"
               >
-                {error}
+                {errorLine}
               </p>
             )}
 
