@@ -32,8 +32,8 @@ export interface ScreenMission {
 }
 
 /**
- * The cards offered today. book_for_seller and follow_up stay hidden until
- * M2d (no preset maps to them yet).
+ * The cards every account is offered. book_for_seller and follow_up are
+ * admin-only (M2d): see ADMIN_MISSION_CARDS / cardsFor.
  */
 export const MISSION_CARDS = ["qualify_lead", "announce_offer", "other"] as const satisfies readonly SalesMission[];
 export type CardMission = (typeof MISSION_CARDS)[number];
@@ -62,6 +62,83 @@ export function presetForCard(current: string, kind: CardMission, cold = false):
   return "custom";
 }
 
+// ── M2d: the two admin-only cards (book_for_seller, follow_up) ──
+
+/**
+ * The cards only an admin can pick. Each one writes the preset of the same
+ * name (identity) and reads back as itself. The server refuses them for a
+ * tenant (403 preset_admin_only, lib/campaigns/preset-gate.ts).
+ */
+export const ADMIN_MISSION_CARDS = ["book_for_seller", "follow_up"] as const satisfies readonly SalesMission[];
+export type AdminCardMission = (typeof ADMIN_MISSION_CARDS)[number];
+export type AnyCardMission = CardMission | AdminCardMission;
+
+/** The stored preset IS one of the admin-only cards (exact match, identity mapping). */
+export function adminCardForPreset(preset: string): AdminCardMission | null {
+  return (ADMIN_MISSION_CARDS as readonly string[]).includes(preset) ? (preset as AdminCardMission) : null;
+}
+
+/**
+ * The cards a screen lists, in order ("Other" stays last):
+ * - admin: the 3 cards + the 2 admin-only ones;
+ * - tenant: the 3 cards, plus the stored admin-only one when an admin set
+ *   it (shown read-only and selected, see `lockedCard`).
+ */
+export function cardsFor(isAdmin: boolean, preset: string): readonly AnyCardMission[] {
+  const stored = adminCardForPreset(preset);
+  const extra: readonly AdminCardMission[] = isAdmin ? ADMIN_MISSION_CARDS : stored ? [stored] : [];
+  return ["qualify_lead", "announce_offer", ...extra, "other"];
+}
+
+/** The card a stored preset shows: an admin-only preset reads as itself (for everyone), else `cardForPreset`. */
+export function shownCardFor(preset: string): { kind: AnyCardMission; cold: boolean } {
+  const admin = adminCardForPreset(preset);
+  return admin ? { kind: admin, cold: false } : cardForPreset(preset);
+}
+
+/** A tenant's campaign stored on an admin-only preset: that card is read-only (null = nothing locked). */
+export function lockedCard(isAdmin: boolean, preset: string): AdminCardMission | null {
+  return isAdmin ? null : adminCardForPreset(preset);
+}
+
+/**
+ * The preset a pick writes, admin-only cards included.
+ * - An admin-only card: identity for an admin; for a tenant, never a write
+ *   (the current preset, unchanged).
+ * - Leaving an admin-only preset for one of the 3 cards: that card's preset
+ *   (`presetForCard` alone would read follow_up / book_for_seller as "Other"
+ *   and keep them on an "Other" pick).
+ * - Otherwise `presetForCard`, unchanged.
+ */
+export function presetForPick(
+  current: string,
+  kind: AnyCardMission,
+  opts: { isAdmin: boolean; cold?: boolean },
+): GoalPreset | (string & {}) {
+  const cold = opts.cold ?? false;
+  const admin = adminCardForPreset(kind);
+  if (admin) return opts.isAdmin ? admin : current;
+  if (adminCardForPreset(current)) {
+    if (kind === "qualify_lead") return cold ? "cold" : "lead_gen";
+    if (kind === "announce_offer") return "sales";
+    return "custom";
+  }
+  return presetForCard(current, kind as CardMission, cold);
+}
+
+/**
+ * A refused campaign save → which line to show (our words; the server's
+ * reasons are never shown). null = not a preset refusal.
+ */
+export type PresetRefusalKind = "admin_only" | "needs_booking";
+export function presetRefusal(status: number, body: unknown): PresetRefusalKind | null {
+  if (status !== 403) return null;
+  const error = (body as { error?: unknown } | null)?.error;
+  if (error === "preset_admin_only") return "admin_only";
+  if (error === "capability_missing") return "needs_booking";
+  return null;
+}
+
 /**
  * The read-only proof line's message key for a mission. The table's proof
  * (a filled record, a transfer, a booking) is shown only once the switch that
@@ -71,6 +148,18 @@ export function presetForCard(current: string, kind: CardMission, cold = false):
 export function proofOf(kind: SalesMission, provable: readonly SalesMissionProof[] = []): SalesMissionProof {
   const proof = SALES_MISSION_TABLE[kind].provenBy;
   return provable.includes(proof) ? proof : "estimated";
+}
+
+/**
+ * The proofs a card may claim (`proofOf`'s `provable`), from the agent's
+ * capabilities. Only the two admin-only cards are wired (M2d): their proof
+ * (a booking; a booking or a transfer) shows once the "Not active yet" line
+ * has nothing to say for a KNOWN set of capabilities. Unknown (no agent,
+ * loading) or any other card → [] ("judged from the conversation").
+ */
+export function provableFor(kind: SalesMission, caps: EffectiveCapabilities | null | undefined): SalesMissionProof[] {
+  if (!adminCardForPreset(kind) || !caps) return [];
+  return missionNeeds(kind, caps).length === 0 ? [SALES_MISSION_TABLE[kind].provenBy] : [];
 }
 
 /** Whether the "cold prospecting" switch is shown for a card. */

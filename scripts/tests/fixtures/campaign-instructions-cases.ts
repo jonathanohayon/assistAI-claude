@@ -2,12 +2,14 @@
 // The goldens (campaign-instructions-golden.json) were captured on
 // origin/main with:
 //   npx tsx scripts/tests/fixtures/campaign-instructions-cases.ts > scripts/tests/fixtures/campaign-instructions-golden.json
-import { GOAL_PRESETS } from "../../../lib/campaigns/constants";
 import { buildCampaignInstructions, DEFAULT_GOAL_FRAMINGS } from "../../../lib/campaigns/prompt";
 import { outboundSessionInstructions } from "../../../lib/agent/session-instructions";
 import { campaignGoalFields, missionFromCampaign, OUTBOUND_TEST_MISSION } from "../../../lib/mission/adapters";
 
-export const PRESETS = [...GOAL_PRESETS, "legacy_unknown"];
+// The presets of the M2a capture (37 goldens, unchanged since). The M2d
+// presets have one golden each (NEW_PRESET_CASES), appended after them.
+export const PRESETS = ["cold", "sales", "lead_gen", "marketing", "custom", "legacy_unknown"];
+export const NEW_PRESETS = ["book_for_seller", "follow_up"];
 
 const persona = {
   agentName: "  Léa ",
@@ -47,6 +49,14 @@ export function goldenCases(): Record<string, string> {
   // Outbound test / preview inputs: preset "sales", objective "", successCriteria "", contact {}.
   const t = campaignGoalFields(OUTBOUND_TEST_MISSION);
   out["outbound test"] = buildCampaignInstructions({ goalPreset: t.goalPreset, objective: t.objective, persona: { ...persona, successCriteria: t.successCriteria } }, {}, framings);
+  // M2d: one golden per new preset — a campaign with objective, criteria and
+  // vars, served with the default framings (no admin override).
+  for (const goalPreset of NEW_PRESETS) {
+    const c = { goalPreset, objective: "  Appeler {{name}} ({{phone}}) à {{ville}}.  ", successCriteria: " Un RDV pour {{offre}}. ", extractionSchema: [] };
+    const g = campaignGoalFields(missionFromCampaign(c));
+    const campaign = { goalPreset: g.goalPreset, objective: g.objective, persona: { ...persona, successCriteria: g.successCriteria } };
+    out[`${goalPreset} default`] = buildCampaignInstructions(campaign, contact, DEFAULT_GOAL_FRAMINGS);
+  }
   return out;
 }
 

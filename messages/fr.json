@@ -1447,7 +1447,9 @@
         "unknown": "Impossible de {action, select, pause {mettre en pause} other {lancer}} la campagne. Réessayez."
       }
     },
-    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}"
+    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}",
+    "goal_book_for_seller": "Rendez-vous pour un vendeur",
+    "goal_follow_up": "Relance"
   },
   "DashboardCalendar": {
     "header": "Calendrier",
@@ -2694,6 +2696,14 @@
       "other": {
         "name": "Autre",
         "what": "Votre propre objectif, décrit ci-dessous."
+      },
+      "book_for_seller": {
+        "name": "Prendre un rendez-vous pour un vendeur",
+        "what": "Propose à la personne un rendez-vous avec votre vendeur."
+      },
+      "follow_up": {
+        "name": "Relancer un client",
+        "what": "Reprend contact avec quelqu'un qui a déjà échangé avec vous et mène vers la prochaine étape."
       }
     },
     "proofLabel": "Réussite (estimée) :",
@@ -2706,10 +2716,22 @@
     },
     "coldLabel": "Prospection à froid",
     "coldHint": "La personne ne vous connaît pas encore : seule l'ouverture de l'appel change.",
-    "needsOff": "à activer dans « {tools} ».",
     "defaultLabel": "Mission par défaut des nouvelles campagnes",
     "defaultNone": "Choisir…",
     "defaultColdOption": "Prospection à froid",
-    "saveRefused": "La mission n'a pas été enregistrée. Réessayez."
+    "saveRefused": "La mission n'a pas été enregistrée. Réessayez.",
+    "lockedByTeam": "Choisie par notre équipe : vous pouvez seulement choisir une autre mission.",
+    "presetAdminOnly": "Cette mission est réservée à notre équipe. Choisissez-en une autre.",
+    "presetNeedsBooking": "Cette mission a besoin de la prise de rendez-vous : activez-la pour l'agent choisi, puis réessayez.",
+    "capNoun": {
+      "booking": "la prise de rendez-vous",
+      "transfer": "le transfert vers une personne"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} n'est pas encore disponible pour les appels sortants.",
+      "google_not_connected": "{cap} attend la connexion de Google Agenda.",
+      "no_transfer_number": "{cap} attend un numéro de transfert.",
+      "off": "il faut activer {cap} dans « {tools} »."
+    }
   }
 }

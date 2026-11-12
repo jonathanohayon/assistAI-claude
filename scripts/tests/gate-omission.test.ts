@@ -19,6 +19,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { inheritAdminGlobalsWrite } from "../../lib/admin-gates";
+import { planCampaignPatch } from "../../lib/campaigns/patch-plan";
+import { createGoalPreset, patchPresetGateInput, presetGateRefusal } from "../../lib/campaigns/preset-gate";
 import { nextBrainSecret } from "../../lib/agent-brain";
 import { agentBrainSaveDecision, enabledToSave, urlToSave } from "../../lib/agent-brain-guard";
 import type { Resolver } from "../../lib/net/safe-url";
@@ -587,6 +589,30 @@ for (const current of [true, false]) {
   const admin = src("app/api/admin/configs/[userId]/route.ts");
   assert.match(admin, /if \(body\.inheritAdminGlobals != null\) \{\s*updates\.inheritAdminGlobals = Boolean\(body\.inheritAdminGlobals\);/);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// Campaign goalPreset (M2d, admin-only presets): planCampaignPatch →
+// patchPresetGateInput → presetGateRefusal, as PATCH /api/dashboard/campaigns/[id]
+// runs them. Create: an absent preset → "custom". Cases 1–3 and the booking
+// rule: campaign-preset-gate.test.ts.
+// ════════════════════════════════════════════════════════════════════════
+for (const stored of ["book_for_seller", "follow_up"]) {
+  for (const isAdmin of TENANT_AND_ADMIN) {
+    for (const body of [{}, { objective: "Mock" }, { goalPreset: undefined, concurrency: 3 }]) {
+      const row = { status: "draft", goalPreset: stored, agentId: null as string | null, objective: "", concurrency: 2 };
+      const plan = planCampaignPatch(row, body);
+      assert.ok(plan.ok && !("goalPreset" in plan.changes), `${who(isAdmin)} omit goalPreset ${JSON.stringify(body)}`);
+      const gate = patchPresetGateInput(row, plan.ok ? plan.changes : {}, null);
+      assert.equal(gate.preset, stored);
+      pending.push(
+        presetGateRefusal({ ...gate, isAdmin, bookingActive: async () => false }).then((r) =>
+          assert.equal(r, null, `${who(isAdmin)} omitting goalPreset keeps ${stored}`),
+        ),
+      );
+    }
+  }
+}
+assert.equal(createGoalPreset({ name: "Mock" }), "custom", "create: an absent preset is custom, not an admin-only one");
 
 Promise.all(pending).then(
   () => console.log("ALL GATE-OMISSION TESTS PASSED"),
