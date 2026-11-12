@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 import { EMAIL_TEST_ERRORS } from "../../lib/email-test/policy";
+import { LIVE_TEST_ERRORS } from "../../lib/live-test/policy";
 import { PATTERN } from "../tenant-bundle-match.mjs";
 
 // The live-test token has a neutral path, same handler as the old alias.
@@ -35,6 +36,24 @@ assert.ok(codes.length >= 7);
 for (const c of codes) assert.ok((EMAIL_TEST_ERRORS as readonly string[]).includes(c), `non-neutral code ${c}`);
 for (const c of EMAIL_TEST_ERRORS) assert.doesNotMatch(c, SUPPLIER);
 assert.equal([...handler.matchAll(/NextResponse\.json\(/g)].length, 2, "only fail() and the 200 build responses");
+
+// The live-test token route: the handler that builds every response names no
+// supplier and no env var; every error goes through fail() with a listed code.
+// (The deprecated route file's own path names the supplier; that is the alias
+// kept for one release, not a response.)
+{
+  const src = code("lib/live-test/handler.ts");
+  assert.doesNotMatch(src, SUPPLIER, "live-test handler names a supplier");
+  assert.doesNotMatch(src, /process\.env|[A-Z][A-Z0-9]*_(API_KEY|URL|SECRET|TOKEN)\b/, "live-test handler names an env var");
+  const route = code("app/api/livekit/web-token/route.ts");
+  assert.doesNotMatch(route, /NextResponse|process\.env/, "the route only delegates to the handler");
+  assert.match(route, /handleLiveTestToken\(req, liveTestDeps\)/);
+  const used = [...src.matchAll(/fail\("([A-Za-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(used.length >= 5);
+  for (const c of used) assert.ok((LIVE_TEST_ERRORS as readonly string[]).includes(c), `non-neutral code ${c}`);
+  for (const c of LIVE_TEST_ERRORS) assert.doesNotMatch(c, SUPPLIER);
+  assert.equal([...src.matchAll(/NextResponse\.json\(/g)].length, 2, "only fail() and the 200 build responses");
+}
 
 // The WhatsApp test route answers with neutral codes only: every error string
 // in the route and its logic is one of the codes, never a supplier or an env
