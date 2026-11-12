@@ -98,10 +98,28 @@ export const inBase64Run = (text, index, length) => {
     (run.match(/[0-9]/g) ?? []).length >= 2
   );
 };
+// The same for base64url tokens (per-request ids, nonces: "-" and "_" instead
+// of "+" and "/"): "…3xTeA6OxAiOLnwd7L79P0…" flaked on a settings page. A run
+// of 40+ token characters with no separator word in it is random, not copy.
+export const inBase64UrlRun = (text, index, length) => {
+  let s = index, e = index + length;
+  while (s > 0 && /[A-Za-z0-9_-]/.test(text[s - 1])) s--;
+  while (e < text.length && /[A-Za-z0-9_-]/.test(text[e])) e++;
+  const run = text.slice(s, e);
+  return (
+    run.length >= 40 &&
+    // No identifier-like segment: a word-separated name (xai_api_key…) is never skipped.
+    !/[a-z]{3,}[_-][a-z]{3,}/i.test(run) &&
+    (run.match(/[A-Z]/g) ?? []).length >= 5 &&
+    (run.match(/[a-z]/g) ?? []).length >= 5 &&
+    (run.match(/[0-9]/g) ?? []).length >= 3
+  );
+};
 export const hits = (text) => {
   const out = new Map();
   for (const m of text.matchAll(PATTERN)) {
     if (inBase64Run(text, m.index, m[0].length)) continue;
+    if (inBase64UrlRun(text, m.index, m[0].length)) continue;
     const ctx = text.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30).replace(/\s+/g, " ");
     const key = m[0].toLowerCase();
     if (!out.has(key)) out.set(key, []);

@@ -125,8 +125,31 @@ export type ContractCopy = SectionHeading & {
 /** Nav of a landing page (in-page anchors + the sign-up door). */
 export type NavCopy = { links: readonly LinkCopy[]; signupHref: string };
 
+/** What the hero shows beside its copy. `video`: the home's full-bleed
+ *  video hero (centred copy, stats). The other kinds are a landing page's
+ *  own door: copy on the start side, the visual on the end side (below it on
+ *  phones). `panel`: the live campaign card on the dark command-centre
+ *  background (the sales landing). */
+export const HERO_MEDIA_KINDS = ["video", "panel"] as const;
+export type HeroMediaKind = (typeof HERO_MEDIA_KINDS)[number];
+
+export type VideoHeroSlot = { media: "video"; stats: readonly HeroStat[]; copy?: HeroCopy };
+export type PanelHeroSlot = { media: "panel"; copy: HeroCopy };
+/** A landing page's hero: its own copy and visual, no video, no stats. */
+export type DoorHeroSlot = PanelHeroSlot;
+export type HeroSlot = VideoHeroSlot | DoorHeroSlot;
+
+/** Every media kind has a hero shape, and every shape names a kind. */
+type _MediaKindsMatch = [HeroSlot["media"]] extends [HeroMediaKind]
+  ? [HeroMediaKind] extends [HeroSlot["media"]]
+    ? true
+    : never
+  : never;
+const _mediaKindsMatch: _MediaKindsMatch = true;
+void _mediaKindsMatch;
+
 export type HomeContent = {
-  hero?: { stats: readonly HeroStat[]; copy?: HeroCopy };
+  hero?: HeroSlot;
   proofStrip?: { baked: "IntegrationsStrip" } | { label: string; facts: readonly string[] };
   /** The page's visual right under the proof strip (landing pages). */
   showcase?: { baked: "OutboundCalling"; copy: SectionHeading } | { baked: "ConnectDiagram"; copy: ConnectDiagramCopy };
@@ -163,7 +186,7 @@ void _slotsMatchContent;
 
 /** The receptionist home (salons and clinics): today's public page. */
 export const RECEPTIONIST_HOME = {
-  hero: { stats: DEFAULT_HERO_STATS },
+  hero: { media: "video", stats: DEFAULT_HERO_STATS },
   proofStrip: { baked: "IntegrationsStrip" },
   demo: { demo: DEFAULT_DEMO },
   how: { baked: "Journey" },

@@ -55,8 +55,9 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
       ],
       signupHref: SALES_SIGNUP_HREF,
     },
+    // The live campaign card is the hero's visual, so no showcase section repeats it.
     hero: {
-      stats: [],
+      media: "panel",
       copy: {
         badge: t({ fr: "Appels sortants", en: "Outbound calls", he: "שיחות יוצאות" }),
         title: t({ fr: "Aucun lead ne reste {emphasis}.", en: "No lead goes {emphasis}.", he: "אף ליד לא נשאר {emphasis}." }),
@@ -83,18 +84,6 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
         t({ fr: "Vos leads par fichier ou copier-coller", en: "Your leads by file or copy-paste", he: "הלידים שלכם מקובץ או בהעתק-הדבק" }),
         t({ fr: "Français, anglais, hébreu", en: "French, English, Hebrew", he: "צרפתית, אנגלית, עברית" }),
       ],
-    },
-    showcase: {
-      baked: "OutboundCalling",
-      copy: {
-        kicker: t({ fr: "Vos campagnes", en: "Your campaigns", he: "הקמפיינים שלכם" }),
-        title: t({ fr: "Tamara compose, vous suivez.", en: "Tamara dials, you follow along.", he: "תמרה מחייגת, אתם עוקבים." }),
-        subtitle: t({
-          fr: "Chaque appel passe de la file d'attente à son résultat, sous vos yeux.",
-          en: "Every call moves from the queue to its result, in front of you.",
-          he: "כל שיחה עוברת מהתור לתוצאה שלה, מול העיניים שלכם.",
-        }),
-      },
     },
     how: {
       kicker: t({ fr: "Comment ça marche", en: "How it works", he: "איך זה עובד" }),

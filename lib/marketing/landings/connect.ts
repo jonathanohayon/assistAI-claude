@@ -121,6 +121,7 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
       signupHref: CONNECT_SIGNUP_HREF,
     },
     hero: {
+      media: "video",
       stats: [],
       copy: {
         badge: t({ fr: "Aperçu · Pour les agents IA", en: "Preview · For AI agents", he: "תצוגה מקדימה · לסוכני AI" }),

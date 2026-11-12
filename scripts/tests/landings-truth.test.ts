@@ -216,4 +216,16 @@ for (const l of LANDING_LOCALES) {
   assert.equal(JSON.stringify(c).split("call_mock_0001").length - 1, 1, `${l}: one sample request on the page`);
 }
 
+// 8. Door heroes (VP review): no landing page plays the home's video; /sales
+// shows the live campaign card in its hero, so no showcase section repeats it.
+for (const l of LANDING_LOCALES) {
+  const sales = buildSalesContent(l);
+  assert.equal(sales.hero?.media, "panel", `sales/${l}: the campaign card is the hero visual`);
+  assert.equal("showcase" in sales, false, `sales/${l}: the campaign card does not repeat lower down`);
+  for (const p of PAGES) {
+    const c = p.render(l, OFF) as { hero?: { media?: string } };
+    assert.notEqual(c.hero?.media, "video", `${p.name}/${l}: no video hero`);
+  }
+}
+
 console.log("landings-truth: ok");
