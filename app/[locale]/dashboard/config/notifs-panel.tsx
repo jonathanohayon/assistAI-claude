@@ -25,11 +25,18 @@ export function NotifsPanel({
   form,
   update,
   t,
+  ownerWhatsappSaved = "",
+  asUserId = null,
   isAdmin = false,
 }: {
   form: FormState;
   update: FormUpdater;
   t: Translator;
+  /** The owner number as last loaded/saved: the WhatsApp test only goes
+   *  there (PR #301), so Test waits until the typed number is saved. */
+  ownerWhatsappSaved?: string;
+  /** Admin on a tenant page: the test targets that tenant (?asUserId). */
+  asUserId?: string | null;
   /** Admins also see the ops hint (AdminNotifs, an admin-only namespace). */
   isAdmin?: boolean;
 }) {
@@ -58,8 +65,8 @@ export function NotifsPanel({
         onChangeValue={(v) => update("ownerWhatsapp", v)}
         placeholder="+972..."
         inputType="tel"
+        test={{ saved: ownerWhatsappSaved, asUserId }}
         hint={t("ownerWhatsappHint")}
-        testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
       <TransferNumberField form={form} update={update} t={t} />
       {/* Rappel de RDV J-1 — WhatsApp au client la veille (cron). Pas de
