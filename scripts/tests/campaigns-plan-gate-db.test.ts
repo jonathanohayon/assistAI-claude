@@ -180,7 +180,10 @@ async function main() {
     process.exit(0);
   }
   assert.equal(PHASE, "branch");
-  const main = JSON.parse(readFileSync(SNAP, "utf8")) as typeof run;
+  // The live-test token's signer-missing 500 was renamed to the neutral
+  // "not_configured" (fix/web-token-limit): a deliberate change, not a gate
+  // regression. A no-op once main carries it.
+  const main = JSON.parse(readFileSync(SNAP, "utf8").replaceAll('"LiveKit not configured"', '"not_configured"')) as typeof run;
 
   // 1. Admin (own account and ?asUserId on a plan without the feature) and an
   //    entitled plan: byte-identical to main, dials included.
