@@ -1447,7 +1447,9 @@
         "unknown": "Impossible de {action, select, pause {mettre en pause} other {lancer}} la campagne. Réessayez."
       }
     },
-    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}"
+    "pauseToEdit": "Mettez la campagne en pause pour modifier : {fields}",
+    "goal_book_for_seller": "Rendez-vous pour un vendeur",
+    "goal_follow_up": "Relance"
   },
   "DashboardCalendar": {
     "header": "Calendrier",
@@ -2609,7 +2611,21 @@
     "rotate": "Régénérer",
     "contractTitle": "Contrat attendu par les clients vocaux",
     "urlPlaceholder": "<votre-url>",
-    "replyWithin": "sous 2 s"
+    "replyWithin": "sous 2 s",
+    "loading": "Chargement…",
+    "emptyText": "Aucune URL pour l'instant : créez-la pour qu'un service vocal externe fasse répondre votre agent au téléphone.",
+    "create": "Créer l'URL",
+    "activeSince": "Active depuis le {date}",
+    "onceWarning": "Copiez cette URL maintenant : elle ne sera plus jamais affichée.",
+    "confirmTitle": "Régénérer l'URL ?",
+    "confirmBody": "L'URL actuelle cessera de fonctionner immédiatement, partout où elle est collée. Il faudra coller la nouvelle dans votre service vocal.",
+    "confirmYes": "Oui, régénérer",
+    "cancel": "Annuler",
+    "errorLoad": "Impossible de charger l'état de l'URL. Réessayez.",
+    "errorCreate": "Impossible de créer l'URL. Réessayez.",
+    "errorRegenerate": "Impossible de régénérer l'URL. Réessayez.",
+    "retry": "Réessayer",
+    "copiedDone": "C'est copié"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi."
@@ -2694,6 +2710,14 @@
       "other": {
         "name": "Autre",
         "what": "Votre propre objectif, décrit ci-dessous."
+      },
+      "book_for_seller": {
+        "name": "Prendre un rendez-vous pour un vendeur",
+        "what": "Propose à la personne un rendez-vous avec votre vendeur."
+      },
+      "follow_up": {
+        "name": "Relancer un client",
+        "what": "Reprend contact avec quelqu'un qui a déjà échangé avec vous et mène vers la prochaine étape."
       }
     },
     "proofLabel": "Réussite (estimée) :",
@@ -2706,10 +2730,22 @@
     },
     "coldLabel": "Prospection à froid",
     "coldHint": "La personne ne vous connaît pas encore : seule l'ouverture de l'appel change.",
-    "needsOff": "à activer dans « {tools} ».",
     "defaultLabel": "Mission par défaut des nouvelles campagnes",
     "defaultNone": "Choisir…",
     "defaultColdOption": "Prospection à froid",
-    "saveRefused": "La mission n'a pas été enregistrée. Réessayez."
+    "saveRefused": "La mission n'a pas été enregistrée. Réessayez.",
+    "lockedByTeam": "Choisie par notre équipe : vous pouvez seulement choisir une autre mission.",
+    "presetAdminOnly": "Cette mission est réservée à notre équipe. Choisissez-en une autre.",
+    "presetNeedsBooking": "Cette mission a besoin de la prise de rendez-vous : activez-la pour l'agent choisi, puis réessayez.",
+    "capNoun": {
+      "booking": "la prise de rendez-vous",
+      "transfer": "le transfert vers une personne"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} n'est pas encore disponible pour les appels sortants.",
+      "google_not_connected": "{cap} attend la connexion de Google Agenda.",
+      "no_transfer_number": "{cap} attend un numéro de transfert.",
+      "off": "il faut activer {cap} dans « {tools} »."
+    }
   }
 }

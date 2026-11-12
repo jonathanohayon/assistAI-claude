@@ -40,7 +40,9 @@ import {
   snapshot,
 } from "@/lib/campaigns/edit-guard";
 import { StatusPill } from "./_ui";
-import { presetOnAgentPick } from "@/components/bricks/mission/mission-ui";
+import { presetOnAgentPick, presetRefusal } from "@/components/bricks/mission/mission-ui";
+import type { ToolsResponse } from "@/components/bricks/tools/tools-ui";
+import type { EffectiveCapabilities } from "@/lib/tools/contract";
 
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
@@ -73,16 +75,20 @@ export function CampaignsWorkspace({
   onClose,
   asUserId,
   variant = "modal",
+  isAdmin = false,
 }: {
   open: boolean;
   onClose: () => void;
   asUserId?: string;
+  /** The signed-in user is an admin (server page): the two admin-only mission cards (M2d). */
+  isAdmin?: boolean;
   // "modal" = overlay portal (ouvert depuis une tuile). "page" = rendu inline
   // dans le flux du layout dashboard (onglet « Appels sortants »), sans
   // backdrop ni fixed inset, pour laisser la nav visible au-dessus.
   variant?: "modal" | "page";
 }) {
   const t = useTranslations("DashboardCampaigns");
+  const tMission = useTranslations("MissionBrick");
   // Agents sortants du tenant (pour le sélecteur d'agent de l'étape Setup).
   const [agents, setAgents] = useState<OutboundAgentListItem[]>([]);
 
@@ -126,6 +132,28 @@ export function CampaignsWorkspace({
   useEffect(() => setMounted(true), []);
 
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+
+  // The picked agent's effective capabilities (the Tools brick's GET, the
+  // same computation as the call and the server's preset gate), for the
+  // mission cards' "Not active yet" line. Keyed by agent: a stale answer
+  // never shows, and no agent = unknown (no line).
+  const [agentCaps, setAgentCaps] = useState<{ agentId: string; caps: EffectiveCapabilities } | null>(null);
+  const capsAgentId = view === "editor" ? draft.agentId : null;
+  useEffect(() => {
+    if (!capsAgentId) return;
+    let cancelled = false;
+    const params = new URLSearchParams({ ...(asUserId ? { asUserId } : {}), agentId: capsAgentId });
+    fetch(`/api/dashboard/tools?${params}`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : null))
+      .then((d) => {
+        if (!cancelled && d?.capabilities) setAgentCaps({ agentId: capsAgentId, caps: d.capabilities });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [capsAgentId, asUserId]);
+  const capabilities = agentCaps && agentCaps.agentId === draft.agentId ? agentCaps.caps : null;
 
   // setState uniquement après await → pas de setState synchrone (lint
   // react-hooks/set-state-in-effect). `loading` part à true (état initial,
@@ -314,6 +342,15 @@ export function CampaignsWorkspace({
         if (fields) {
           setJustSaved(false);
           setSaveError(t("pauseToEdit", { fields: pauseToEditLabels(fields, (k) => t(k)) }));
+          return false;
+        }
+      }
+      if (res.status === 403) {
+        // M2d preset gate: one line in our words, never the server's reasons.
+        const refusal = presetRefusal(res.status, await res.json().catch(() => null));
+        if (refusal) {
+          setJustSaved(false);
+          setSaveError(tMission(refusal === "admin_only" ? "presetAdminOnly" : "presetNeedsBooking"));
           return false;
         }
       }
@@ -543,6 +580,8 @@ export function CampaignsWorkspace({
                 onChange={setupChange}
                 agents={agents}
                 fromNumbers={fromNumbers}
+                isAdmin={isAdmin}
+                capabilities={capabilities}
               />
             )}
 
@@ -599,9 +638,9 @@ export function CampaignsWorkspace({
           {/* Footer (editor / setup) — sauver + feedback + Suivant */}
           {view === "editor" && tab === "setup" && (
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
-              <span className="min-w-0 truncate text-[12px] font-semibold">
+              <span className="line-clamp-2 min-w-0 text-[12px] font-semibold">
                 {saveError ? (
-                  <span className="text-[#dc2626]">{saveError}</span>
+                  <span role="alert" className="text-[#dc2626]">{saveError}</span>
                 ) : justSaved ? (
                   <span className="inline-flex items-center gap-1.5 text-[#16a34a]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
