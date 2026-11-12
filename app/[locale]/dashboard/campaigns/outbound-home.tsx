@@ -56,6 +56,7 @@ export function OutboundHome({ asUserId, isAdmin = false }: { asUserId?: string;
         open
         variant="page"
         asUserId={asUserId}
+        isAdmin={isAdmin}
         onClose={() => setView("hub")}
       />
     );

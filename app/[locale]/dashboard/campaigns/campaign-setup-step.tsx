@@ -10,6 +10,7 @@ import {
 } from "@/lib/campaigns/constants";
 import type { CampaignDraft } from "@/lib/campaigns/types";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
+import type { EffectiveCapabilities } from "@/lib/tools/contract";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
 import { MissionCards } from "@/components/bricks/mission/MissionBrick";
@@ -23,11 +24,17 @@ export function CampaignSetupStep({
   onChange,
   agents,
   fromNumbers,
+  isAdmin = false,
+  capabilities = null,
 }: {
   draft: CampaignDraft;
   onChange: (patch: Partial<CampaignDraft>) => void;
   agents: OutboundAgentListItem[];
   fromNumbers: string[];
+  /** M2d: admins also get the two admin-only mission cards. */
+  isAdmin?: boolean;
+  /** The picked agent's effective capabilities (GET /api/dashboard/tools?agentId=); null = unknown. */
+  capabilities?: EffectiveCapabilities | null;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const voiceLabel = useVoiceLabel();
@@ -101,6 +108,8 @@ export function CampaignSetupStep({
            *  one; they write goalPreset only when a pick changes it. */}
           <MissionCards
             preset={draft.goalPreset}
+            isAdmin={isAdmin}
+            capabilities={capabilities}
             onPresetChange={(goalPreset) => onChange({ goalPreset: goalPreset as CampaignDraft["goalPreset"] })}
           />
 

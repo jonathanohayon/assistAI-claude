@@ -8,6 +8,9 @@ export const GOAL_PRESETS = [
   "lead_gen",
   "marketing",
   "custom",
+  // M2d: admin-only at first (lib/campaigns/preset-gate.ts).
+  "book_for_seller",
+  "follow_up",
 ] as const;
 export type GoalPreset = (typeof GOAL_PRESETS)[number];
 

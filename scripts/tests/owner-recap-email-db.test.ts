@@ -222,6 +222,25 @@ async function main() {
   assert.ok(!dump.includes("owner@example.com"), "no recipient address in the failure event");
   assert.ok(!dump.includes("haircut") && !dump.includes("Dana"), "no recap body in the failure event");
 
+  // ── 4. Worker-facing payloads never carry the address or the switch ───
+  await exec(sql`INSERT INTO phone_numbers (user_id, phone_number) VALUES (${T.on}, '+15550100010')`);
+  const configGET = (await import("../../app/api/agent/config/route")).GET;
+  const sessionGET = (await import("../../app/api/agent/session-config/route")).GET;
+  const H = { "x-internal-secret": "mock-internal-secret" };
+  for (const [label, route, q] of [
+    ["config phone", configGET, "phone=%2B15550100010"],
+    ["config web", configGET, `userId=${T.on}`],
+    ["session phone", sessionGET, "origin=phone&phone=%2B15550100010"],
+    ["session web", sessionGET, `origin=web&userId=${T.on}`],
+    ["session call_me", sessionGET, `origin=call_me&userId=${T.on}`],
+  ] as const) {
+    const res = await route(new NextRequest(`http://localhost/x?${q}`, { headers: H }));
+    const text = await res.text();
+    assert.equal(res.status, 200, `${label}: served`);
+    assert.ok(text.includes('"instructions"'), `${label}: a real config payload`);
+    assert.ok(!text.includes("ownerRecapEmail") && !text.includes("owner@example.com"), `${label}: no owner recap email field or address`);
+  }
+
   console.log("ALL OWNER-RECAP-EMAIL DB TESTS PASSED");
   process.exit(0);
 }

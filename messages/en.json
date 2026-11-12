@@ -520,7 +520,8 @@
     "orDivider": "or with an email",
     "continueWithGoogle": "Continue with Google",
     "backHome": "← Back",
-    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”."
+    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”.",
+    "errRateLimited": "Too many attempts. Please try again later."
   },
   "Login": {
     "title": "Sign in",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "Cancel signup and return home",
     "restartConfirm": "Delete this signup and start over?\n\nThe account will be permanently deleted. You can re-register with the same or another email.",
     "restartButton": "Start over with another email",
-    "errNetwork": "Network error"
+    "errNetwork": "Network error",
+    "errResendRateLimited": "Too many code requests. Please try again later."
   },
   "Onboarding": {
     "trialLabel": "Free trial — 60 call minutes or 24h",
@@ -766,6 +768,19 @@
     "whatsappSubtitle": "After every call, a summary is sent via WhatsApp to the caller and the owner.",
     "ownerWhatsappLabel": "Owner's WhatsApp number",
     "ownerWhatsappHint": "International format, e.g., +972500000000. Leave blank to disable.",
+    "whatsappTestNeedsSaved": "Save a number to send a test.",
+    "whatsappTestSaveFirst": "Save the number before testing it.",
+    "whatsappTestSent": "Test message sent to {number}.",
+    "whatsappTestInvalidNumber": "This number isn't valid. Use the international format, e.g. +972500000000.",
+    "whatsappTestUnauthorized": "Your session has expired. Sign in again, then retry.",
+    "whatsappTestForbidden": "You don't have access to this account's settings.",
+    "whatsappTestRecipientNotAllowed": "The test can only go to the number saved on this account.",
+    "whatsappTestNoSavedNumber": "No number saved yet: save one before testing.",
+    "whatsappTestRateLimited": "Too many tests in a row. Try again in {minutes} min.",
+    "whatsappTestRateLimitedNoTime": "Too many tests in a row. Try again a bit later.",
+    "whatsappTestSendFailed": "The test message wasn't sent. Please try again in a moment.",
+    "whatsappTestNotConfigured": "The test message wasn't sent: WhatsApp sending isn't set up yet.",
+    "whatsappTestFailed": "The test couldn't be sent. Please try again in a moment.",
     "reminderTitle": "Appointment reminder (day before)",
     "reminderHint": "Automatically sends a WhatsApp reminder to the client the day before their appointment (around 6 PM). The number is taken from the appointment booked by the agent.",
     "whatsappFooter": "The caller also receives a summary if she accepts WhatsApp messages on her call number.",
@@ -1447,7 +1462,9 @@
         "unknown": "Couldn’t {action, select, pause {pause} other {start}} the campaign. Try again."
       }
     },
-    "pauseToEdit": "Pause the campaign to change: {fields}"
+    "pauseToEdit": "Pause the campaign to change: {fields}",
+    "goal_book_for_seller": "Meeting for a salesperson",
+    "goal_follow_up": "Follow-up"
   },
   "DashboardCalendar": {
     "header": "Calendar",
@@ -1907,7 +1924,17 @@
     "muted": "Mic muted",
     "conversation": "Conversation",
     "emptyLive": "Listening… speak to your agent.",
-    "emptyIdle": "Click the mic to start a test."
+    "emptyIdle": "Click the mic to start a test.",
+    "errors": {
+      "notConfigured": "Live testing isn't available right now.",
+      "rateLimited": "Too many tests in a row. Try again in {minutes} min.",
+      "rateLimitedNoTime": "Too many tests in a row. Try again a little later.",
+      "unavailable": "Live testing is temporarily unavailable. Try again in a moment.",
+      "planRequired": "Live testing this agent isn't included in your plan.",
+      "unauthorized": "Your session has expired. Please sign in again.",
+      "connectFailed": "The connection didn't go through. Check your network and microphone, then try again.",
+      "failed": "The test couldn't start. Please try again."
+    }
   },
   "Voices": {
     "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
@@ -2617,7 +2644,21 @@
     "rotate": "Regenerate",
     "contractTitle": "Contract expected by voice clients",
     "urlPlaceholder": "<your-url>",
-    "replyWithin": "within 2 s"
+    "replyWithin": "within 2 s",
+    "loading": "Loading…",
+    "emptyText": "No URL yet: create one so an external voice service can have your agent answer the phone.",
+    "create": "Create URL",
+    "activeSince": "Active since {date}",
+    "onceWarning": "Copy this URL now — it will never be shown again.",
+    "confirmTitle": "Regenerate the URL?",
+    "confirmBody": "The current URL stops working immediately, wherever it is pasted. You will need to paste the new one into your voice service.",
+    "confirmYes": "Yes, regenerate",
+    "cancel": "Cancel",
+    "errorLoad": "We couldn't load the URL status. Please try again.",
+    "errorCreate": "We couldn't create the URL. Please try again.",
+    "errorRegenerate": "We couldn't regenerate the URL. Please try again.",
+    "retry": "Try again",
+    "copiedDone": "I've copied it"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "Configure TWILIO_WHATSAPP_FROM on Railway to enable sending."
@@ -2702,6 +2743,14 @@
       "other": {
         "name": "Other",
         "what": "Your own goal, described below."
+      },
+      "book_for_seller": {
+        "name": "Book a meeting for a salesperson",
+        "what": "Offers the person an appointment with your seller."
+      },
+      "follow_up": {
+        "name": "Follow up with a customer",
+        "what": "Gets back in touch with someone who already spoke with you and leads to the next step."
       }
     },
     "proofLabel": "Success (estimated):",
@@ -2714,10 +2763,29 @@
     },
     "coldLabel": "Cold prospecting",
     "coldHint": "They don't know you yet: only the opening of the call changes.",
-    "needsOff": "turn it on in “{tools}”.",
     "defaultLabel": "Default mission for new campaigns",
     "defaultNone": "Choose…",
     "defaultColdOption": "Cold prospecting",
-    "saveRefused": "The mission wasn't saved. Try again."
+    "saveRefused": "The mission wasn't saved. Try again.",
+    "lockedByTeam": "Set by our team: you can only pick another mission.",
+    "presetAdminOnly": "This mission is reserved for our team. Pick another one.",
+    "presetNeedsBooking": "This mission needs appointment booking: turn it on for the chosen agent, then try again.",
+    "capNoun": {
+      "booking": "booking",
+      "transfer": "transfer to a person"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} isn't available for outbound calls yet.",
+      "google_not_connected": "{cap} is waiting for Google Calendar to be connected.",
+      "no_transfer_number": "{cap} is waiting for a transfer number.",
+      "off": "turn on {cap} in “{tools}”."
+    }
+  },
+  "ClientConfirm": {
+    "booked": "Your appointment on {date} at {time} is confirmed.",
+    "cancelled": "Your appointment on {date} at {time} is cancelled.",
+    "cancelledNoDate": "Your appointment is cancelled.",
+    "rescheduled": "Your appointment has been moved to {date} at {time}.",
+    "place": "Location: {place}"
   }
 }
