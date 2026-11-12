@@ -43,6 +43,7 @@ import { NotifsPanel } from "./config/notifs-panel";
 import {
   ownerEmailSaveBody,
   ownerEmailSaveError,
+  ownerEmailCardMode,
   ownerEmailUrl,
   type OwnerEmailErrorKey,
   type OwnerEmailSettings,
@@ -183,6 +184,9 @@ export function ConfigForm({
   const [ownerEmail, setOwnerEmail] = useState<OwnerEmailSettings | null>(null);
   const [ownerEmailBase, setOwnerEmailBase] = useState<OwnerEmailSettings | null>(null);
   const [ownerEmailError, setOwnerEmailError] = useState<OwnerEmailErrorKey | null>(null);
+  // The server's "a verified sender is configured" flag (GET .../notifications/email).
+  // Missing = not configured: a tenant never sees the card in that state.
+  const [ownerEmailSenderConfigured, setOwnerEmailSenderConfigured] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -338,6 +342,7 @@ export function ConfigForm({
       .then((r) => (r.ok ? (r.json() as Promise<OwnerEmailSettings>) : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         const loaded = { ownerRecapEmail: d.ownerRecapEmail ?? "", ownerRecapEmailEnabled: d.ownerRecapEmailEnabled === true };
+        setOwnerEmailSenderConfigured((d as { senderConfigured?: unknown }).senderConfigured === true);
         setOwnerEmail(loaded);
         setOwnerEmailBase(loaded);
       })
@@ -858,8 +863,9 @@ export function ConfigForm({
                     ownerWhatsappSaved={ownerWhatsappBase}
                     asUserId={asUserId ?? null}
                     ownerEmail={
-                      ownerEmail && ownerEmailBase
+                      ownerEmail && ownerEmailBase && ownerEmailCardMode(isAdmin, ownerEmailSenderConfigured) !== "hidden"
                         ? {
+                            senderNotice: ownerEmailCardMode(isAdmin, ownerEmailSenderConfigured) === "adminNotice",
                             value: ownerEmail,
                             base: ownerEmailBase,
                             onChange: (next) => {

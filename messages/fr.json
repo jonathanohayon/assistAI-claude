@@ -1021,7 +1021,7 @@
     "ownerEmailTitle": "Récap par email",
     "ownerEmailLabel": "Adresse email du propriétaire",
     "ownerEmailPlaceholder": "vous@exemple.com",
-    "ownerEmailStateOn": "Un email part à cette adresse après chaque appel.",
+    "ownerEmailStateOn": "Le récap de vos appels part à cette adresse.",
     "ownerEmailStateNeedsAddress": "Ajoutez une adresse pour recevoir le récap.",
     "ownerEmailStateOff": "Désactivé : aucun email n'est envoyé.",
     "ownerEmailStateUnsaved": "Pas encore enregistré : rien ne change avant d'enregistrer.",
@@ -1066,7 +1066,8 @@
     "transferNone": "Aucun transfert : Tamara prend un message.",
     "transferInvalid": "Numéro invalide. Exemple : 050 000 0000 ou +972 50 000 0000.",
     "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp.",
-    "errVoiceSave": "Les réglages de voix n'ont pas pu être enregistrés. Vérifiez les valeurs et réessayez."
+    "errVoiceSave": "Les réglages de voix n'ont pas pu être enregistrés. Vérifiez les valeurs et réessayez.",
+    "ownerEmailSenderNotConfigured": "L'adresse d'expédition n'est pas configurée : ce récap n'est pas encore proposé aux comptes et aucun email ne part."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",

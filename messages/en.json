@@ -1021,7 +1021,7 @@
     "ownerEmailTitle": "Recap by email",
     "ownerEmailLabel": "Owner's email address",
     "ownerEmailPlaceholder": "you@example.com",
-    "ownerEmailStateOn": "An email goes to this address after each call.",
+    "ownerEmailStateOn": "The recap of your calls is sent to this address.",
     "ownerEmailStateNeedsAddress": "Add an address to receive the recap.",
     "ownerEmailStateOff": "Off: no email is sent.",
     "ownerEmailStateUnsaved": "Not saved yet: nothing changes until you save.",
@@ -1066,7 +1066,8 @@
     "transferNone": "No transfer: Tamara takes a message.",
     "transferInvalid": "Invalid number. Example: 050 000 0000 or +972 50 000 0000.",
     "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp.",
-    "errVoiceSave": "The voice settings could not be saved. Check the highlighted values and try again."
+    "errVoiceSave": "The voice settings could not be saved. Check the highlighted values and try again.",
+    "ownerEmailSenderNotConfigured": "The sending address isn't configured: this recap isn't offered to accounts yet and no email is sent."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",

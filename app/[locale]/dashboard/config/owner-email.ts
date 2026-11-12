@@ -174,3 +174,15 @@ export const setOwnerEmailAddress = (v: OwnerEmailSettings, address: string): Ow
   ...v,
   ownerRecapEmail: address,
 });
+
+/**
+ * Whether the card is offered (VP release condition, #313): with no verified
+ * sender configured on the server, a tenant never sees the card (switching it
+ * on would mean emails from a default sender), and an admin sees it with one
+ * line saying why. A missing or non-boolean field counts as not configured.
+ */
+export type OwnerEmailCardMode = "hidden" | "adminNotice" | "normal";
+export function ownerEmailCardMode(isAdmin: boolean, senderConfigured: unknown): OwnerEmailCardMode {
+  if (senderConfigured === true) return "normal";
+  return isAdmin ? "adminNotice" : "hidden";
+}

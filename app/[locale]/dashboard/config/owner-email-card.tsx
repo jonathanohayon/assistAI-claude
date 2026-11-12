@@ -38,6 +38,7 @@ export function OwnerEmailCard({
   recapFeatureOn = true,
   locale,
   asUserId,
+  senderNotice = false,
   t,
 }: {
   /** What is on screen (unsaved edits included). */
@@ -52,6 +53,8 @@ export function OwnerEmailCard({
   locale: string;
   /** Admin on a tenant page: the test targets that tenant. */
   asUserId?: string | null;
+  /** Admin only: the server has no sender configured, so the card is not offered to tenants yet. */
+  senderNotice?: boolean;
   t: Translator;
 }) {
   const id = useId();
@@ -206,6 +209,13 @@ export function OwnerEmailCard({
         </p>
       )}
 
+      {/* Admin only, sender not configured: nothing is sent whatever is saved,
+          so this line replaces the state line (it must not claim a recap goes out). */}
+      {senderNotice ? (
+        <p id={stateId} data-state="ownerEmailSenderNotConfigured" className="text-[11px] font-medium leading-relaxed text-[#9a3412]">
+          {t("ownerEmailSenderNotConfigured")}
+        </p>
+      ) : (
       <p
         id={stateId}
         data-state={stateKey}
@@ -219,6 +229,7 @@ export function OwnerEmailCard({
       >
         {t(stateKey)}
       </p>
+      )}
 
       <p id={testNoteId} aria-live="polite" className="text-[11px] leading-relaxed text-[#475569] empty:hidden">
         {testResult ? (

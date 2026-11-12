@@ -15,6 +15,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NotifsPanel } from "../../app/[locale]/dashboard/config/notifs-panel";
 import {
   OWNER_EMAIL_DEFAULTS,
+  ownerEmailCardMode,
   ownerEmailSaveBody,
   ownerEmailSaveError,
   ownerEmailStateKey,
@@ -53,7 +54,7 @@ const S = (ownerRecapEmail: string, ownerRecapEmailEnabled: boolean): OwnerEmail
   ownerRecapEmailEnabled,
 });
 
-function Panel(props: { value: OwnerEmailSettings; base: OwnerEmailSettings; error: OwnerEmailErrorKey | null; locale: string }) {
+function Panel(props: { value: OwnerEmailSettings; base: OwnerEmailSettings; error: OwnerEmailErrorKey | null; locale: string; senderNotice?: boolean }) {
   const t = useTranslations("DashboardConfig");
   return createElement(NotifsPanel, {
     form,
@@ -318,6 +319,37 @@ for (const l of LOCALES) {
   const src = read("app/[locale]/dashboard/config/owner-email.ts");
   for (const k of new Set(src.match(/"ownerEmail[A-Za-z]+"/g)!.map((s) => s.slice(1, -1))))
     assert.ok(fr.includes(k), `catalogue has ${k}`);
+}
+
+// 10. Release condition (VP, #313): no configured sender → tenants never see the
+//     card; an admin sees it with one line saying why, instead of the state line.
+{
+  assert.equal(ownerEmailCardMode(false, true), "normal");
+  assert.equal(ownerEmailCardMode(true, true), "normal");
+  for (const missing of [false, undefined, null, "true", 1]) {
+    assert.equal(ownerEmailCardMode(false, missing), "hidden", `tenant, senderConfigured=${String(missing)}`);
+    assert.equal(ownerEmailCardMode(true, missing), "adminNotice", `admin, senderConfigured=${String(missing)}`);
+  }
+  for (const l of LOCALES) {
+    const dc = messages(l).DashboardConfig;
+    const html = renderToStaticMarkup(
+      createElement(
+        NextIntlClientProvider,
+        { locale: l, messages: messages(l), timeZone: "UTC", onError: (e: Error) => { throw e; } } as unknown as ProviderProps,
+        createElement(Panel, { value: S(ADDR, true), base: S(ADDR, true), error: null, locale: l, senderNotice: true }),
+      ),
+    );
+    const c = card(html);
+    assert.ok(c.includes('data-state="ownerEmailSenderNotConfigured"'), `${l}: the notice replaces the state line`);
+    assert.ok(!c.includes(esc(dc.ownerEmailStateOn)), `${l}: never claims a recap goes out`);
+  }
+  // config-form: the card is passed only when the mode isn't "hidden", and the flag is read strictly.
+  const cf = readFileSync(join(ROOT, "app/[locale]/dashboard/config-form.tsx"), "utf8");
+  assert.match(cf, /ownerEmailCardMode\(isAdmin, ownerEmailSenderConfigured\) !== "hidden"/);
+  assert.match(cf, /senderConfigured === true\)/);
+  // The copy promises the recap, not one email per call.
+  assert.equal(messages("fr").DashboardConfig.ownerEmailStateOn, "Le récap de vos appels part à cette adresse.");
+  assert.equal(messages("en").DashboardConfig.ownerEmailStateOn, "The recap of your calls is sent to this address.");
 }
 
 console.log("owner-email-card: ok");

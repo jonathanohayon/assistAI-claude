@@ -53,6 +53,8 @@ export function NotifsPanel({
     recapFeatureOn?: boolean;
     locale: string;
     asUserId?: string | null;
+    /** Admin only: no sender configured on the server (the card is hidden from tenants then). */
+    senderNotice?: boolean;
   } | null;
 }) {
   // État on/off WhatsApp indépendant de la valeur : sinon le champ (disabled
