@@ -20,12 +20,12 @@ import { Reveal, Stagger, StaggerItem, EASE } from "./Reveal";
 
 // Contacts de démo (fictifs) appelés dans la « campagne en direct ».
 const CONTACTS = [
-  { name: "Daniel Cohen", phone: "+972 54 812 4471" },
-  { name: "Marie Dubois", phone: "+33 6 24 88 19 03" },
-  { name: "Yossi Levi", phone: "+972 52 337 9920" },
-  { name: "Sophie Martin", phone: "+33 7 61 45 92 10" },
-  { name: "Noa Friedman", phone: "+972 58 901 2256" },
-  { name: "Lucas Bernard", phone: "+33 6 09 73 51 88" },
+  { name: "Daniel Cohen", phone: "+972 50 000 0001" },
+  { name: "Marie Dubois", phone: "+33 6 00 00 00 01" },
+  { name: "Yossi Levi", phone: "+972 50 000 0002" },
+  { name: "Sophie Martin", phone: "+33 6 00 00 00 02" },
+  { name: "Noa Friedman", phone: "+972 50 000 0003" },
+  { name: "Lucas Bernard", phone: "+33 6 00 00 00 03" },
 ] as const;
 
 type RowState = "queued" | "calling" | "connected" | "qualified";
