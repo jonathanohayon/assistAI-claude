@@ -41,6 +41,11 @@ async function main() {
   for (let n = 1; n <= 13; n++) {
     await exec(sql`INSERT INTO users (id, email, password_hash, role) VALUES (${id(n)}, ${`tenant-${n}@example.com`}, 'x', 'user')`);
   }
+  // Saved recap addresses (agent_configs.owner_recap_email), switch OFF on purpose:
+  // a test may go to a saved address before it is switched on.
+  await exec(sql`DELETE FROM agent_configs`);
+  await exec(sql`INSERT INTO agent_configs (user_id, instructions, greeting_instructions, owner_recap_email, owner_recap_email_enabled)
+    VALUES (${id(6)}, 'x', 'x', ' Recap-6@Example.com ', false), (${id(7)}, 'x', 'x', '', false), (${ADMIN}, 'x', 'x', 'admin-recap@example.com', true)`);
   const resetLedger = () => exec(sql`DELETE FROM app_settings WHERE key = ${EMAIL_TEST_LEDGER_SETTING}`);
 
   const sent: string[] = [];
@@ -73,6 +78,18 @@ async function main() {
   assert.equal((await post(ADMIN, "tenant-3@example.com", `?asUserId=${id(3)}`)).status, 200);
   assert.deepEqual((await post(ADMIN, "admin@example.com", `?asUserId=${id(3)}`)).json, { error: "recipient_not_allowed" });
   assert.deepEqual((await post(id(2), "tenant-3@example.com", `?asUserId=${id(3)}`)).json, { error: "forbidden" });
+
+  // Saved recap address passes (switch OFF), normalised; login still passes.
+  sent.length = 0;
+  assert.equal((await post(id(6), "RECAP-6@example.com ")).status, 200);
+  assert.equal((await post(id(6), "tenant-6@example.com")).status, 200);
+  assert.deepEqual(sent, ["recap-6@example.com", "tenant-6@example.com"]);
+  // Empty saved address (and no agent config at all, tenant-1): only the login email.
+  assert.deepEqual((await post(id(7), "recap-6@example.com")).json, { error: "recipient_not_allowed" });
+  assert.equal((await post(id(7), "tenant-7@example.com")).status, 200);
+  // Admin ?asUserId: the TENANT's recap address passes, the admin's own recap address does not.
+  assert.equal((await post(ADMIN, "recap-6@example.com", `?asUserId=${id(6)}`)).status, 200);
+  assert.deepEqual((await post(ADMIN, "admin-recap@example.com", `?asUserId=${id(6)}`)).json, { error: "recipient_not_allowed" });
 
   // Sequential: tenant-1 has 1 → 4 more pass, the 6th → 429 account.
   for (let i = 0; i < EMAIL_TEST_PER_ACCOUNT_LIMIT - 1; i++) assert.equal((await post(id(1), "tenant-1@example.com")).status, 200);

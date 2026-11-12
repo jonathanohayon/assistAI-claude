@@ -520,7 +520,8 @@
     "orDivider": "or with an email",
     "continueWithGoogle": "Continue with Google",
     "backHome": "← Back",
-    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”."
+    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”.",
+    "errRateLimited": "Too many attempts. Please try again later."
   },
   "Login": {
     "title": "Sign in",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "Cancel signup and return home",
     "restartConfirm": "Delete this signup and start over?\n\nThe account will be permanently deleted. You can re-register with the same or another email.",
     "restartButton": "Start over with another email",
-    "errNetwork": "Network error"
+    "errNetwork": "Network error",
+    "errResendRateLimited": "Too many code requests. Please try again later."
   },
   "Onboarding": {
     "trialLabel": "Free trial — 60 call minutes or 24h",
@@ -766,6 +768,19 @@
     "whatsappSubtitle": "After every call, a summary is sent via WhatsApp to the caller and the owner.",
     "ownerWhatsappLabel": "Owner's WhatsApp number",
     "ownerWhatsappHint": "International format, e.g., +972500000000. Leave blank to disable.",
+    "whatsappTestNeedsSaved": "Save a number to send a test.",
+    "whatsappTestSaveFirst": "Save the number before testing it.",
+    "whatsappTestSent": "Test message sent to {number}.",
+    "whatsappTestInvalidNumber": "This number isn't valid. Use the international format, e.g. +972500000000.",
+    "whatsappTestUnauthorized": "Your session has expired. Sign in again, then retry.",
+    "whatsappTestForbidden": "You don't have access to this account's settings.",
+    "whatsappTestRecipientNotAllowed": "The test can only go to the number saved on this account.",
+    "whatsappTestNoSavedNumber": "No number saved yet: save one before testing.",
+    "whatsappTestRateLimited": "Too many tests in a row. Try again in {minutes} min.",
+    "whatsappTestRateLimitedNoTime": "Too many tests in a row. Try again a bit later.",
+    "whatsappTestSendFailed": "The test message wasn't sent. Please try again in a moment.",
+    "whatsappTestNotConfigured": "The test message wasn't sent: WhatsApp sending isn't set up yet.",
+    "whatsappTestFailed": "The test couldn't be sent. Please try again in a moment.",
     "reminderTitle": "Appointment reminder (day before)",
     "reminderHint": "Automatically sends a WhatsApp reminder to the client the day before their appointment (around 6 PM). The number is taken from the appointment booked by the agent.",
     "whatsappFooter": "The caller also receives a summary if she accepts WhatsApp messages on her call number.",
@@ -1812,6 +1827,14 @@
       "signature": "— The Tamara team",
       "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a purely transactional email."
     },
+    "ownerRecap": {
+      "subject": "📞 New call received",
+      "eyebrow": "Call recap",
+      "heading": "📞 New call received",
+      "caller": "Caller: {number}",
+      "unknownNumber": "unknown number",
+      "footer": "You receive this email because call recaps by email are switched on for your account. You can change the address or switch them off anytime from your dashboard."
+    },
     "verification": {
       "subject": "Your verification code: {code}",
       "heading": "Your Tamara code",
@@ -1901,7 +1924,17 @@
     "muted": "Mic muted",
     "conversation": "Conversation",
     "emptyLive": "Listening… speak to your agent.",
-    "emptyIdle": "Click the mic to start a test."
+    "emptyIdle": "Click the mic to start a test.",
+    "errors": {
+      "notConfigured": "Live testing isn't available right now.",
+      "rateLimited": "Too many tests in a row. Try again in {minutes} min.",
+      "rateLimitedNoTime": "Too many tests in a row. Try again a little later.",
+      "unavailable": "Live testing is temporarily unavailable. Try again in a moment.",
+      "planRequired": "Live testing this agent isn't included in your plan.",
+      "unauthorized": "Your session has expired. Please sign in again.",
+      "connectFailed": "The connection didn't go through. Check your network and microphone, then try again.",
+      "failed": "The test couldn't start. Please try again."
+    }
   },
   "Voices": {
     "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
@@ -2747,5 +2780,12 @@
       "no_transfer_number": "{cap} is waiting for a transfer number.",
       "off": "turn on {cap} in “{tools}”."
     }
+  },
+  "ClientConfirm": {
+    "booked": "Your appointment on {date} at {time} is confirmed.",
+    "cancelled": "Your appointment on {date} at {time} is cancelled.",
+    "cancelledNoDate": "Your appointment is cancelled.",
+    "rescheduled": "Your appointment has been moved to {date} at {time}.",
+    "place": "Location: {place}"
   }
 }

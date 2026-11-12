@@ -30,6 +30,9 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
 import { UpsellModal } from "./campaigns/upsell-modal";
+// Client-safe module: importing a VALUE from lib/plan-features would bundle
+// its tool-name descriptions into the tenant's dashboard chunks.
+import { canUseOutboundCampaigns } from "@/lib/outbound-access";
 import type { PlanFeatures } from "@/lib/plan-features";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
@@ -162,6 +165,9 @@ export function ConfigForm({
   const [toolsBase, setToolsBase] = useState<Tools | null>(null);
   // "Ask your agent": the last save refused for it, shown next to its row.
   const [clientAgentRefused, setClientAgentRefused] = useState<ClientAgentRefusal | null>(null);
+  // The owner WhatsApp number as last loaded/saved: the WhatsApp test only
+  // goes to the saved number, so its Test button compares against this.
+  const [ownerWhatsappBase, setOwnerWhatsappBase] = useState(initial.ownerWhatsapp);
   // The transfer number is written by the tools PUT too (switching transfer
   // off clears the served number): the config only sends it when edited.
   const [transferBase, setTransferBase] = useState(initial.transferNumber);
@@ -218,7 +224,7 @@ export function ConfigForm({
   // Centre d'appels sortant : visible sur tous les plans, mais workspace
   // ouvrable seulement si la feature est active (plan premium) OU admin.
   // Sinon clic → modal d'upsell.
-  const campaignsEnabled = isAdmin || features?.outbound_campaigns === true;
+  const campaignsEnabled = canUseOutboundCampaigns(isAdmin, features);
   const [upsellOpen, setUpsellOpen] = useState(false);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
@@ -432,6 +438,7 @@ export function ConfigForm({
         personaConfig?: Persona;
       } | null;
       setTransferBase(transferNumber);
+      setOwnerWhatsappBase(rest.ownerWhatsapp);
       // A new transfer number changes the prerequisites: refresh the tools state.
       if (transferNumber !== transferBase) {
         const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
@@ -791,7 +798,7 @@ export function ConfigForm({
                   />
                 )}
                 {activeTile === "notifs" && (
-                  <NotifsPanel form={form} update={update} t={t} isAdmin={isAdmin} />
+                  <NotifsPanel form={form} update={update} t={t} ownerWhatsappSaved={ownerWhatsappBase} asUserId={asUserId ?? null} isAdmin={isAdmin} />
                 )}
                 {activeTile === "tools" && (
                   <div className="pb-28">

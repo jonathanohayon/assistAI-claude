@@ -104,7 +104,14 @@ export function VerifyForm({ email }: VerifyFormProps) {
     };
     if (!res.ok || !data.ok) {
       if (data.cooldownSeconds) setResendCooldown(data.cooldownSeconds);
-      setError(data.error ?? t("errResendFallback"));
+      // Neutral codes from the route (lib/verification-limits/resend.ts).
+      setError(
+        data.error === "rate_limited"
+          ? t("errResendRateLimited")
+          : data.error === "cooldown"
+            ? t("resendIn", { seconds: data.cooldownSeconds ?? 60 })
+            : t("errResendFallback"),
+      );
       return;
     }
     setInfo(t("resendSuccess"));

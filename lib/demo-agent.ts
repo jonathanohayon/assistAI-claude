@@ -1,7 +1,8 @@
 // Public landing demo agent, built server-side from the demo account's
-// config. Shared by /api/demo-config (what the page shows) and /api/session
-// (what an anonymous session is allowed to run): an anonymous caller can no
-// longer supply its own instructions.
+// config, for /api/session (what a demo session runs): a demo caller can't
+// supply its own instructions. Never sent to the browser: the public
+// /api/demo-config route that returned it was removed (the demo page no
+// longer needs it, see lib/demo-session.ts).
 
 import { eq } from "drizzle-orm";
 

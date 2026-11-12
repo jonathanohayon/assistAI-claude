@@ -29,7 +29,8 @@ npm run dev            # http://localhost:3000
 | --- | --- |
 | `npm run dev` | Serveur de dev |
 | `npm run build` | Build prod (à faire passer avant toute PR) |
-| `npm test` | Tests unitaires (`scripts/tests/*.test.ts`, runner tsx) |
+| `npm test` | Tests unitaires (`scripts/tests/**/*.test.ts`, runner `scripts/run-unit-tests.mjs`) |
+| `npm run test:db` | Suites DB opt-in (`scripts/*-db.sh`, Postgres jetable, une à la fois) ; `-- --list`, `-- --only <nom>` |
 | `npx tsc --noEmit` | Type-check strict |
 | `npx eslint .` | Lint (0 erreur attendu) |
 | `npm run db:generate` | Génère une migration après modif de `lib/db/schema.ts` |
