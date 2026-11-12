@@ -638,9 +638,9 @@ export function CampaignsWorkspace({
           {/* Footer (editor / setup) — sauver + feedback + Suivant */}
           {view === "editor" && tab === "setup" && (
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-6 py-3.5">
-              <span className="min-w-0 truncate text-[12px] font-semibold">
+              <span className="line-clamp-2 min-w-0 text-[12px] font-semibold">
                 {saveError ? (
-                  <span className="text-[#dc2626]">{saveError}</span>
+                  <span role="alert" className="text-[#dc2626]">{saveError}</span>
                 ) : justSaved ? (
                   <span className="inline-flex items-center gap-1.5 text-[#16a34a]">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">

@@ -217,4 +217,11 @@ const ids = (out: string) => [...out.matchAll(/data-id="([a-z_]+)"/g)].map((m) =
   assert.match(ws, /tMission\(refusal === "admin_only" \? "presetAdminOnly" : "presetNeedsBooking"\)/);
 }
 
+// 7. The refusal line is announced and never cut to one line
+{
+  const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
+  assert.match(ws, /<span role="alert" className="text-\[#dc2626\]">\{saveError\}<\/span>/);
+  assert.doesNotMatch(ws.slice(ws.indexOf("{saveError ? (") - 200, ws.indexOf("{saveError ? (")), /\btruncate\b/);
+}
+
 console.log("mission-m2d-ui: OK");
