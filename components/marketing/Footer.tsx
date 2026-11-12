@@ -7,10 +7,13 @@ import { Logo } from "@/components/ui/Logo";
 
 export function Footer({
   anchorBase = "",
+  tagline,
 }: {
   /** Prefix of the home-section links: "" on the home, "/" elsewhere (the
    *  sections live on the home page). */
   anchorBase?: string;
+  /** The page's own one-line description; omitted = the home's (Footer.tagline). */
+  tagline?: string;
 } = {}) {
   const t = useTranslations("Footer");
 
@@ -47,7 +50,7 @@ export function Footer({
           <div className="col-span-2">
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#475569]">
-              {t("tagline")}
+              {tagline ?? t("tagline")}
             </p>
             {/* Compliance badges */}
             <div className="mt-5 flex flex-wrap gap-1.5">

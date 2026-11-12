@@ -71,7 +71,7 @@ export function HomePage({ content }: { content: HomeContent }) {
       <main className="noise-grain relative flex flex-col overflow-x-hidden">
         <Nav nav={content.nav} />
         {HOME_SLOT_ORDER.map((id) => renderSlot(id, content))}
-        <Footer anchorBase={content.nav ? "/" : ""} />
+        <Footer anchorBase={content.nav ? "/" : ""} tagline={content.footerTagline} />
         <SupportFab />
       </main>
     </RespectReducedMotion>

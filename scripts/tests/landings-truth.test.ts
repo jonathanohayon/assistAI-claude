@@ -136,4 +136,18 @@ for (const s of [
   "French, English, Hebrew",
 ]) assert.ok(en.includes(s), `en has: ${s}`);
 
+// 5. Footer line (VP review): every landing page has its own neutral line, never "receptionist".
+{
+  for (const p of PAGES)
+    for (const l of ["fr", "en", "he"] as const) {
+      const tag = p.render(l).footerTagline;
+      assert.ok(tag && tag.length > 0, `${p.name} ${l}: footer line set`);
+      assert.doesNotMatch(tag!, /r[ée]ceptionn|receptionist|פקיד/i, `${p.name} ${l}: not the receptionist line`);
+    }
+  assert.equal(buildSalesContent("fr").footerTagline, "Tamara, votre agent vocal IA");
+  assert.equal(buildSalesContent("en").footerTagline, "Tamara, your AI voice agent");
+  const footer = readFileSync(join(new URL("../../", import.meta.url).pathname, "components/marketing/Footer.tsx"), "utf8");
+  assert.match(footer, /\{tagline \?\? t\("tagline"\)\}/, "the home keeps its own line");
+}
+
 console.log("landings-truth: ok");
