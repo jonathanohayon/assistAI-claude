@@ -101,15 +101,11 @@ export type TalkCopy = SectionHeading & { button: string };
 
 export type CtaCopy = SectionHeading & { primary: LinkCopy; secondary: LinkCopy };
 
-/** The /connect visual: caller → Tamara → your agent, with a sample request
- *  and reply (mock values; code stays LTR in every locale). */
+/** The /connect visual: caller → Tamara → your agent (the sample request and
+ *  reply are in the contract section). */
 export type ConnectDiagramCopy = SectionHeading & {
   actors: { caller: string; tamara: string; agent: string };
   links: { voice: string; ask: string; answer: string };
-  requestLabel: string;
-  request: string;
-  replyLabel: string;
-  reply: string;
 };
 
 /** A titled part of the contract, with an optional code sample. */
@@ -149,10 +145,12 @@ export type HomeContent = {
   cta?: Record<string, never> | { copy: CtaCopy };
   /** Page chrome, not a slot: the nav's links. Omitted = the home's nav. */
   nav?: NavCopy;
+  /** Page chrome, not a slot: the footer's one-line description. Omitted = the home's own (Footer.tagline). */
+  footerTagline?: string;
 };
 
-/** Slot keys of HomeContent (`nav` is chrome, rendered outside the slots). */
-type ContentSlotKey = Exclude<keyof HomeContent, "nav">;
+/** Slot keys of HomeContent (`nav` and `footerTagline` are chrome, rendered outside the slots). */
+type ContentSlotKey = Exclude<keyof HomeContent, "nav" | "footerTagline">;
 
 /** Every slot id must be a slot key of HomeContent and vice versa. */
 type _SlotsMatchContent = [HomeSlotId] extends [ContentSlotKey]

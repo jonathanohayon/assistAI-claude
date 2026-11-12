@@ -488,7 +488,8 @@
       "barbers": "Barbershops"
     },
     "copyright": "© {year} Tamara · AI receptionist",
-    "status": "All services online"
+    "status": "All services online",
+    "copyrightPlain": "© {year} Tamara"
   },
   "LocaleSwitcher": {
     "label": "Language"

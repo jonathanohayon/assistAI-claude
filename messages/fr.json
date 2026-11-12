@@ -488,7 +488,8 @@
       "barbers": "Coiffeurs"
     },
     "copyright": "© {year} Tamara · Réceptionniste IA",
-    "status": "Tous les services en ligne"
+    "status": "Tous les services en ligne",
+    "copyrightPlain": "© {year} Tamara"
   },
   "LocaleSwitcher": {
     "label": "Langue"

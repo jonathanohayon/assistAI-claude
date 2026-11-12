@@ -15,7 +15,7 @@
 
 import type { HomeContent } from "@/lib/marketing/home-content";
 
-import { sixModules } from "./modules";
+import { LANDING_FOOTER_TAGLINE, sixModules } from "./modules";
 import { LANDING_SWITCHES, type LandingLocale, type LandingMeta, type LandingSwitches, type Localized } from "./switches";
 
 /** Every CTA of this page opens sign-up through the "sales" door. */
@@ -45,6 +45,7 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
   const trialLabel = t({ fr: "Lancer une campagne d'essai", en: "Start a trial campaign", he: "להפעיל קמפיין ניסיון" });
 
   return {
+    footerTagline: t(LANDING_FOOTER_TAGLINE),
     nav: {
       links: [
         { href: "#how", label: t({ fr: "Comment ça marche", en: "How it works", he: "איך זה עובד" }) },

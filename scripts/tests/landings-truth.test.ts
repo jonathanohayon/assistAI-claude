@@ -189,4 +189,31 @@ for (const s of [
   "Every request signed with your secret",
 ]) assert.ok(connectEn.includes(s), `connect en has: ${s}`);
 
+// 6. Footer line (VP review): every landing page has its own neutral line, never "receptionist".
+{
+  for (const p of PAGES)
+    for (const l of ["fr", "en", "he"] as const) {
+      const tag = (p.render(l, OFF) as { footerTagline?: string }).footerTagline;
+      assert.ok(tag && tag.length > 0, `${p.name} ${l}: footer line set`);
+      assert.doesNotMatch(tag!, /r[ée]ceptionn|receptionist|פקיד/i, `${p.name} ${l}: not the receptionist line`);
+    }
+  assert.equal(buildSalesContent("fr").footerTagline, "Tamara, votre agent vocal IA");
+  assert.equal(buildSalesContent("en").footerTagline, "Tamara, your AI voice agent");
+  const footer = readFileSync(join(new URL("../../", import.meta.url).pathname, "components/marketing/Footer.tsx"), "utf8");
+  assert.match(footer, /\{tagline \?\? t\("tagline"\)\}/, "the home keeps its own line");
+  assert.match(footer, /t\(tagline \? "copyrightPlain" : "copyright"/, "a landing page gets the plain copyright");
+  for (const l of ["fr", "en", "he"]) {
+    const f = JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).Footer;
+    assert.doesNotMatch(f.copyrightPlain, /r[ée]ceptionn|receptionist|פקיד/i, `${l}: copyrightPlain is neutral`);
+  }
+}
+
+// 7. Connect (VP review): the sample request appears once, in the contract section; the hero keeps the diagram only.
+for (const l of LANDING_LOCALES) {
+  const c = buildConnectContent(l) as { showcase?: { copy?: Record<string, unknown> } };
+  const sc = c.showcase!.copy!;
+  for (const k of ["request", "reply", "requestLabel", "replyLabel"]) assert.equal(k in sc, false, `${l}: no ${k} beside the diagram`);
+  assert.equal(JSON.stringify(c).split("call_mock_0001").length - 1, 1, `${l}: one sample request on the page`);
+}
+
 console.log("landings-truth: ok");

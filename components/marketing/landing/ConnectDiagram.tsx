@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import type { ConnectDiagramCopy } from "@/lib/marketing/home-content";
 
 import { Reveal } from "../Reveal";
-import { CodeBlock } from "./CodeBlock";
 import { SectionHeader } from "./SectionHeader";
 
 const ICON = {
@@ -64,7 +63,7 @@ function Link2({ forward, back }: { forward: string; back?: string }) {
 
 /**
  * /connect visual: the caller talks to Tamara; Tamara asks the customer's
- * agent and says its answer. A sample request and reply sit beside it.
+ * agent and says its answer. The sample request and reply are in the contract section.
  */
 export function ConnectDiagram({ copy }: { copy: ConnectDiagramCopy }) {
   const { actors, links } = copy;
@@ -78,7 +77,8 @@ export function ConnectDiagram({ copy }: { copy: ConnectDiagramCopy }) {
       <div aria-hidden className="pointer-events-none absolute bottom-[5%] end-[-10%] h-96 w-96 rounded-full bg-[#22d3ee]/20 blur-3xl" />
       <div className="relative mx-auto w-full max-w-6xl px-6">
         <SectionHeader heading={copy} id="flow-title" tone="dark" />
-        <div className="mt-14 grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
+        {/* The diagram only: the sample request and reply live in the contract section (VP review). */}
+        <div className="mx-auto mt-14 w-full max-w-3xl">
           <Reveal>
             <figure className="rounded-[2rem] border border-white/10 bg-white/5 px-5 py-8 backdrop-blur-xl sm:px-8">
               <figcaption className="sr-only">{copy.subtitle}</figcaption>
@@ -90,10 +90,6 @@ export function ConnectDiagram({ copy }: { copy: ConnectDiagramCopy }) {
                 <Actor icon={ICON.agent} label={actors.agent} accent="cyan" />
               </div>
             </figure>
-          </Reveal>
-          <Reveal delay={0.1} className="flex min-w-0 flex-col gap-4">
-            <CodeBlock label={copy.requestLabel} code={copy.request} />
-            <CodeBlock label={copy.replyLabel} code={copy.reply} />
           </Reveal>
         </div>
       </div>

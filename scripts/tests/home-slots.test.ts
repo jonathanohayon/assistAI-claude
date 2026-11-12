@@ -37,7 +37,7 @@ assert.deepEqual(
 // The receptionist home fills exactly its own slots, with the component it
 // had before, and nothing of a landing page (no nav override, no showcase).
 assert.deepEqual(Object.keys(RECEPTIONIST_HOME).sort(), [...HOME_OWN_SLOTS].sort());
-for (const id of [...LANDING_ONLY_SLOTS, "nav"]) assert.equal(id in RECEPTIONIST_HOME, false, `home has no ${id}`);
+for (const id of [...LANDING_ONLY_SLOTS, "nav", "footerTagline"]) assert.equal(id in RECEPTIONIST_HOME, false, `home has no ${id}`);
 assert.equal("copy" in RECEPTIONIST_HOME.hero, false);
 assert.equal("copy" in RECEPTIONIST_HOME.cta, false);
 assert.equal(RECEPTIONIST_HOME.proofStrip?.baked, "IntegrationsStrip");
@@ -54,7 +54,7 @@ assert.equal("outbound" in RECEPTIONIST_HOME, false);
 // when the content has no `nav` (the home).
 const homePage = src("components/marketing/HomePage.tsx");
 assert.match(homePage, /<RespectReducedMotion>\s*<main className="noise-grain relative flex flex-col overflow-x-hidden">\s*<Nav nav=\{content\.nav\} \/>\s*\{HOME_SLOT_ORDER\.map\(/);
-assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} \/>\s*<SupportFab \/>\s*<\/main>\s*<\/RespectReducedMotion>/);
+assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} tagline=\{content\.footerTagline\} \/>\s*<SupportFab \/>\s*<\/main>\s*<\/RespectReducedMotion>/);
 // For the home's shape of each slot, the renderer is the component it had
 // before, with the same props.
 const renderers: Record<string, RegExp> = {

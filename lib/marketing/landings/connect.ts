@@ -19,7 +19,7 @@
 
 import type { HomeContent } from "@/lib/marketing/home-content";
 
-import { sixModules } from "./modules";
+import { LANDING_FOOTER_TAGLINE, sixModules } from "./modules";
 import type { LandingLocale, LandingMeta, LandingSwitches, Localized } from "./switches";
 import { LANDING_SWITCHES } from "./switches";
 
@@ -110,6 +110,7 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
   const connectLabel = t({ fr: "Brancher mon agent", en: "Connect my agent", he: "לחבר את הסוכן שלי" });
 
   return {
+    footerTagline: t(LANDING_FOOTER_TAGLINE),
     nav: {
       links: [
         { href: "#how", label: t({ fr: "Comment ça marche", en: "How it works", he: "איך זה עובד" }) },
@@ -170,10 +171,6 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
           ask: t({ fr: "Question", en: "Question", he: "שאלה" }),
           answer: t({ fr: "Réponse", en: "Answer", he: "תשובה" }),
         },
-        requestLabel: t({ fr: "Tamara envoie", en: "Tamara sends", he: "תמרה שולחת" }),
-        request: sampleRequest(l),
-        replyLabel: t({ fr: "Votre agent répond", en: "Your agent answers", he: "הסוכן שלכם עונה" }),
-        reply: sampleReply(l),
       },
     },
     how: {

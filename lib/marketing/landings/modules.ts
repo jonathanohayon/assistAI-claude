@@ -64,3 +64,10 @@ export function sixModules(l: LandingLocale): ModulesCopy {
     items: MODULES.map((m) => ({ id: m.id, title: m.title[l], body: m.body[l] })),
   };
 }
+
+/** The landing pages' footer line (VP review): neutral, never "receptionist". The home keeps its own. */
+export const LANDING_FOOTER_TAGLINE: Localized = {
+  fr: "Tamara, votre agent vocal IA",
+  en: "Tamara, your AI voice agent",
+  he: "תמרה, סוכנת הקול ה-AI שלכם",
+};
