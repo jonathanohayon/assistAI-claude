@@ -158,4 +158,13 @@ test("the call setup never builds an error from the server's text", () => {
   assert.match(src, /new LiveTestError\("connect_failed"\)/);
 });
 
+// The config form (which hosts the panel) is a client component: a VALUE
+// import from lib/plan-features bundles its tool-name descriptions.
+test("config-form imports lib/plan-features for types only", () => {
+  const src = read("app/[locale]/dashboard/config-form.tsx");
+  for (const m of src.matchAll(/^import\s+(.+?)\s+from\s+"@\/lib\/plan-features";/gm)) {
+    assert.match(m[1], /^type\s/, `value import: ${m[0]}`);
+  }
+});
+
 console.log("ALL LIVE-TEST-ERRORS TESTS PASSED");
