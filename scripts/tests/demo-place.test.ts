@@ -3,7 +3,7 @@
 // prompt. The DB-backed end-to-end check is scripts/demo-sheet-db.sh.
 // Run with:  npx tsx scripts/tests/demo-place.test.ts
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 import { anonymousDemoInstructions } from "../../lib/demo-instructions";
 import {
@@ -20,6 +20,7 @@ import {
   demoPersonaInstructions,
   demoSheetBlock,
 } from "../../lib/demo-place";
+import * as tools from "../../lib/demo-tools";
 import { CENTERS, labelFor } from "../../lib/schedule";
 
 async function main() {
@@ -89,17 +90,16 @@ async function main() {
   assert.match(loader, /demoSheetBlock\(langParam\)/);
   assert.match(loader, /demoPersonaInstructions\(cfg\.instructions\)/);
 
-  // Once the canned tools (lib/demo-tools.ts, PR #322) are on this tree, they
-  // must answer with this same place, week and slots.
-  if (existsSync("lib/demo-tools.ts")) {
-    // A variable specifier: the module does not exist on main yet.
-    const spec = "../../lib/demo-tools";
-    const tools = (await import(spec)) as Record<string, unknown>;
-    assert.deepEqual(tools.DEMO_PLACE, DEMO_PLACE, "demo-tools place");
-    assert.equal(tools.DEMO_PLACE_ID, DEMO_PLACE_ID, "demo-tools place id");
-    assert.deepEqual(tools.DEMO_OPEN_DAYS, DEMO_OPEN_DAYS, "demo-tools open days");
-    assert.deepEqual(tools.DEMO_SLOTS, DEMO_SLOTS, "demo-tools slots");
-  }
+  // The canned tools answer with this same place, week and slots: one object, not a copy.
+  assert.equal(tools.DEMO_PLACE, DEMO_PLACE, "demo-tools place");
+  assert.equal(tools.DEMO_PLACE_ID, DEMO_PLACE_ID, "demo-tools place id");
+  assert.equal(tools.DEMO_OPEN_DAYS, DEMO_OPEN_DAYS, "demo-tools open days");
+  assert.equal(tools.DEMO_SLOTS, DEMO_SLOTS, "demo-tools slots");
+  const now = Date.UTC(2030, 0, 1, 5, 0); // a Tuesday, 07:00 in Asia/Jerusalem
+  const answer = tools.runDemoTool("check_availability", { date: "2030-01-01" }, now, "en");
+  assert.equal(answer.body.label, DEMO_PLACE.en);
+  assert.deepEqual(answer.body.available_slots, [...DEMO_SLOTS]);
+  assert.equal(readFileSync("lib/demo-tools.ts", "utf8").match(/notre salon du centre-ville/), null, "one definition of the place");
 
   console.log("ALL DEMO-PLACE TESTS PASSED");
 }

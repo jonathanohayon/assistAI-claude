@@ -6,7 +6,7 @@
 // spoken to any visitor. So the demo never renders a stored account's
 // `business` block (centres, centresRules, services, hours, prices): those
 // facts come only from this file, the same fictional place the canned demo
-// tools answer with (lib/demo-tools.ts, PR #322). No real business, street or
+// tools answer with (lib/demo-tools.ts imports it from here). No real business, street or
 // town. Open days follow the page's language: fr/en Monday to Friday, he
 // Sunday to Thursday, Saturday always closed. Free slots around 10:00 /
 // 11:30 / 15:00, closing at 18:00.
