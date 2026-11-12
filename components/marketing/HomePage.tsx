@@ -1,6 +1,5 @@
 import { Fragment, type ReactNode } from "react";
 
-import type { PlanPricingMap } from "@/lib/plan-pricing";
 import {
   HOME_SLOT_ORDER,
   type HomeContent,
@@ -29,15 +28,13 @@ import { SupportFab } from "./SupportFab";
 import { TrustStrip } from "./TrustStrip";
 import { TryDemo } from "./TryDemo";
 
-type SlotContext = { pricing: PlanPricingMap };
-
 /** One renderer per slot. The mapped type makes it exhaustive: a new slot in
  *  HomeContent does not compile until it has a renderer here. A slot with
  *  two shapes (the home's baked component, or a landing page's copy) picks
  *  its component from the shape; the home's shape renders exactly what it
  *  did before. */
 const RENDERERS: {
-  [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>, ctx: SlotContext) => ReactNode;
+  [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>) => ReactNode;
 } = {
   hero: (slot) => <Hero stats={slot.stats} copy={slot.copy} />,
   proofStrip: (slot) => ("facts" in slot ? <FactStrip label={slot.label} facts={slot.facts} /> : <IntegrationsStrip />),
@@ -48,17 +45,18 @@ const RENDERERS: {
   modules: (slot) => <SixModules {...slot} />,
   useCases: (slot) => ("items" in slot ? <LandingUseCases {...slot} /> : <Industries />),
   proof: () => <Proof />,
-  pricing: (_slot, ctx) => <Pricing pricing={ctx.pricing} />,
+  // Prices are fetched on the client (the page is prerendered).
+  pricing: () => <Pricing />,
   talk: (slot) => <TalkToUs {...slot} />,
   trust: () => <TrustStrip />,
   faq: (slot) => ("items" in slot ? <FAQ heading={slot} items={slot.items} /> : <FAQ faqKeys={slot.keys} />),
   cta: (slot) => ("copy" in slot ? <CTA copy={slot.copy} /> : <CTA />),
 };
 
-function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent, ctx: SlotContext) {
+function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent) {
   const slot = content[id];
   if (!slot) return null;
-  return <Fragment key={id}>{RENDERERS[id](slot as NonNullable<HomeContent[K]>, ctx)}</Fragment>;
+  return <Fragment key={id}>{RENDERERS[id](slot as NonNullable<HomeContent[K]>)}</Fragment>;
 }
 
 /**
@@ -67,19 +65,12 @@ function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent, ctx: Slot
  * landing pages (/sales, /connect) are other content objects on this same
  * skeleton.
  */
-export function HomePage({
-  content,
-  pricing,
-}: {
-  content: HomeContent;
-  pricing: PlanPricingMap;
-}) {
-  const ctx: SlotContext = { pricing };
+export function HomePage({ content }: { content: HomeContent }) {
   return (
     <RespectReducedMotion>
       <main className="noise-grain relative flex flex-col overflow-x-hidden">
         <Nav nav={content.nav} />
-        {HOME_SLOT_ORDER.map((id) => renderSlot(id, content, ctx))}
+        {HOME_SLOT_ORDER.map((id) => renderSlot(id, content))}
         <Footer anchorBase={content.nav ? "/" : ""} />
         <SupportFab />
       </main>
