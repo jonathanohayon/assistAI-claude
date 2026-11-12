@@ -15,6 +15,7 @@ import {
 import { PricingComparison } from "@/components/marketing/PricingComparison";
 import { PUBLIC_PLANS } from "@/lib/plans";
 import { type PlanPricingMap } from "@/lib/plan-pricing";
+import { fetchPublicPlanPricing } from "@/lib/public-plan-pricing";
 
 function BillingToggle({
   value,
@@ -163,7 +164,23 @@ function CurrencyDropdown({
   );
 }
 
-export function Pricing({ pricing }: { pricing: PlanPricingMap }) {
+// The landing is prerendered, so the grid is fetched on the client
+// (GET /api/public/plan-pricing). Until it arrives, or if it fails, the cards
+// show a placeholder: the page never displays the hard-coded defaults.
+function usePublicPlanPricing(): PlanPricingMap | null {
+  const [pricing, setPricing] = useState<PlanPricingMap | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchPublicPlanPricing(fetch, ctrl.signal).then((p) => {
+      if (!ctrl.signal.aborted && p) setPricing(p);
+    });
+    return () => ctrl.abort();
+  }, []);
+  return pricing;
+}
+
+export function Pricing() {
+  const pricing = usePublicPlanPricing();
   const t = useTranslations("Pricing");
   const tCard = useTranslations("Pricing.card");
   const locale = useLocale();
