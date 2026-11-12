@@ -34,13 +34,11 @@ export default async function SignupPage(props: {
   async function handleSignup(formData: FormData) {
     "use server";
 
-    // Client IP for the per-IP signup cap: the FIRST X-Forwarded-For entry
-    // (lib/rate-limit.ts clientIp), the same rule as the repo's other IP caps.
-    // Trust assumption: in production the app is only reachable through
-    // Railway's edge proxy and that proxy puts the client address it saw first
-    // in X-Forwarded-For. If a client could
-    // reach the app directly or prepend its own entries, it could rotate this
-    // value; the route-wide hourly ceiling still bounds the total.
+    // Client IP for the per-IP signup cap: lib/rate-limit.ts clientIp
+    // (X-Real-IP, else the first X-Forwarded-For entry). BEST-EFFORT: it
+    // relies on Railway's edge overwriting those headers (see the sources on
+    // clientIp). If a client could set them, it could rotate this value; the
+    // route-wide hourly ceiling still bounds the total.
     const ip = clientIp(await headers());
     const outcome = await signupWithEmail(
       { email: formData.get("email"), password: formData.get("password"), locale, ip },
