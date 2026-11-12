@@ -4,6 +4,8 @@
 
 import { Room, RoomEvent, Track, type RemoteAudioTrack, type RemoteTrack } from "livekit-client";
 
+import { LiveTestError, liveTestErrorFromResponse } from "./live-test-error";
+
 type WebTokenResponse = {
   url: string;
   token: string;
@@ -31,20 +33,43 @@ export async function connectTestRoom(opts: {
   onDisconnected: () => void;
   onCreated: (room: TestRoom) => void;
 }): Promise<TestRoom> {
-  const res = await fetch("/api/live-test/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...(opts.asUserId ? { asUserId: opts.asUserId } : {}),
-      ...(opts.agentId ? { agentId: opts.agentId } : {}),
-    }),
-  });
+  // Every failure leaves here as a LiveTestError (a code, no server text).
+  let res: Response;
+  try {
+    res = await fetch("/api/live-test/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...(opts.asUserId ? { asUserId: opts.asUserId } : {}),
+        ...(opts.agentId ? { agentId: opts.agentId } : {}),
+      }),
+    });
+  } catch {
+    throw new LiveTestError("connect_failed");
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`Token endpoint ${res.status}: ${t || "no body"}`);
+    throw liveTestErrorFromResponse(res.status, t, res.headers.get("Retry-After"));
   }
-  const { url, token } = (await res.json()) as WebTokenResponse;
+  let url: string;
+  let token: string;
+  try {
+    ({ url, token } = (await res.json()) as WebTokenResponse);
+  } catch {
+    throw new LiveTestError("failed");
+  }
+  try {
+    return await joinRoom(url, token, opts);
+  } catch {
+    throw new LiveTestError("connect_failed");
+  }
+}
 
+async function joinRoom(
+  url: string,
+  token: string,
+  opts: Parameters<typeof connectTestRoom>[0],
+): Promise<TestRoom> {
   const room = new Room({
     adaptiveStream: true,
     dynacast: true,

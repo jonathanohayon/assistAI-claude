@@ -21,6 +21,7 @@ import { Resend } from "resend";
 
 import type { PlanFeatures } from "@/lib/plan-features";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
+import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
 import { ltrIsolate } from "@/lib/phone-utils";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
@@ -640,6 +641,41 @@ export async function sendNotificationTestEmail(
     return { ok: true, id: res.data?.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Post-call owner recap (lib/owner-recap-email-send.ts): the same recap
+//   as the owner WhatsApp one, signed with the tenant's own business name.
+//   Sent only when the owner switched it on and set an address.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendOwnerRecapEmail(
+  to: string,
+  opts: { forOwner: string; fromNumber: string; businessName: string; locale?: string | null },
+): Promise<SendResult> {
+  const locale = normalizeLocale(opts.locale);
+  const t = await getTranslations({ locale, namespace: "Email.ownerRecap" });
+  const { subject, text, html } = renderOwnerRecapEmail(
+    { locale, forOwner: opts.forOwner, fromNumber: opts.fromNumber, businessName: opts.businessName },
+    (key, vars) => t(key, vars),
+  );
+  const client = getResend();
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+
+  if (!client) {
+    // No recipient and no body in the logs: the recap is customer data.
+    console.warn(`[email] owner recap not sent (no email key configured), subject: ${subject}`);
+    return { ok: true, fallback: "console_log" };
+  }
+
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "send error" };
   }
 }
 

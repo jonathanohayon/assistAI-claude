@@ -5,19 +5,31 @@ import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { DEFAULT_FAQ_KEYS } from "@/lib/marketing/home-content";
+import { DEFAULT_FAQ_KEYS, type FaqItem, type SectionHeading } from "@/lib/marketing/home-content";
 
 import { EASE, Reveal, Stagger, StaggerItem } from "./Reveal";
 
 export function FAQ({
   faqKeys = DEFAULT_FAQ_KEYS,
+  heading,
+  items,
 }: {
   /** Entries to show, as keys in the `FAQ` namespace (`<key>.question`/`.answer`). */
   faqKeys?: readonly string[];
+  /** A landing page's own heading; omitted = the `FAQ` messages. */
+  heading?: SectionHeading;
+  /** A landing page's own entries (resolved text); replace `faqKeys`. */
+  items?: readonly FaqItem[];
 } = {}) {
   const t = useTranslations("FAQ");
   const reduce = useReducedMotionAfterMount();
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const entries =
+    items ??
+    faqKeys.map((key) => ({ id: key, question: t(`${key}.question`), answer: t(`${key}.answer`) }));
+  const kicker = heading ? heading.kicker : t("kicker");
+  const title = heading ? heading.title : t("title");
+  const subtitle = heading ? heading.subtitle : t("subtitle");
 
   return (
     <section
@@ -37,18 +49,18 @@ export function FAQ({
       <div className="mx-auto w-full max-w-5xl px-6">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#0e7490]">
-            {t("kicker")}
+            {kicker}
           </p>
           <h2 className="mt-3 font-display text-4xl tracking-tight text-[#be185d] sm:text-5xl lg:text-6xl">
-            {t("title")}
+            {title}
           </h2>
           <p className="mt-5 text-base leading-relaxed text-slate-600 sm:text-lg">
-            {t("subtitle")}
+            {subtitle}
           </p>
         </Reveal>
 
         <Stagger className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-          {faqKeys.map((key) => {
+          {entries.map(({ id: key, question, answer }) => {
             const isOpen = openKey === key;
             return (
               <StaggerItem key={key}>
@@ -76,7 +88,7 @@ export function FAQ({
                     className="flex w-full cursor-pointer items-start justify-between gap-4 px-6 py-5 text-start"
                   >
                     <span className="text-base font-extrabold leading-snug text-[#18181b] sm:text-lg">
-                      {t(`${key}.question`)}
+                      {question}
                     </span>
                     <motion.span
                       aria-hidden
@@ -122,7 +134,7 @@ export function FAQ({
                       >
                         <div className="px-6 pb-5 pt-0">
                           <p className="text-sm leading-relaxed text-[#475569]">
-                            {t(`${key}.answer`)}
+                            {answer}
                           </p>
                         </div>
                       </motion.div>

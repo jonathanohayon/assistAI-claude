@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 
+import type { NavCopy } from "@/lib/marketing/home-content";
+
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 const NAV_LINKS = [
@@ -17,11 +19,25 @@ const NAV_LINKS = [
   { href: "#demo", labelKey: "demo" },
 ] as const;
 
-export function Nav() {
+export function Nav({
+  nav,
+  overLight = false,
+}: {
+  /** A landing page's own links and sign-up door; omitted = the home's. */
+  nav?: NavCopy;
+  /** The hero under the nav is light (a landing door): the white bar and its
+   *  teal links from the top, not only once scrolled. Omitted on the home. */
+  overLight?: boolean;
+} = {}) {
   const t = useTranslations("Nav");
+  const links = nav ? nav.links : NAV_LINKS.map((l) => ({ href: l.href, label: t(`links.${l.labelKey}`) }));
+  const signupHref = nav ? nav.signupHref : "/signup";
   // The drawer slides in from the burger's side: right in LTR, left in RTL.
   const offscreen = useLocale() === "he" ? "-100%" : "100%";
   const [scrolled, setScrolled] = useState(false);
+  // White links over a dark hero; the white bar with teal links once
+  // scrolled, or from the top over a light hero.
+  const darkText = scrolled || overLight;
   const [open, setOpen] = useState(false);
   const { scrollY, scrollYProgress } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
@@ -61,7 +77,9 @@ export function Nav() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled || open
+        // Over a light door the bar is white from the top: teal links on the
+        // pink mesh measured 3.5:1, on the white bar 5.36:1.
+        darkText || open
           ? "border-b border-[var(--color-border)]/60 bg-white/80 backdrop-blur-lg"
           : "border-b border-transparent bg-transparent"
       }`}
@@ -83,20 +101,20 @@ export function Nav() {
          *  - scrolled (background nav blanc) : deep teal palette.
          *  Hover magenta dans les 2 cas. */}
         <nav className="hidden items-center gap-9 text-base lg:flex">
-          {NAV_LINKS.map((l) => (
+          {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
               className={`font-semibold transition-colors hover:text-[#ec4899] ${
-                scrolled ? "text-[#0e7490]" : "text-white"
+                darkText ? "text-[#0e7490]" : "text-white"
               }`}
               style={
-                scrolled
+                darkText
                   ? undefined
                   : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
               }
             >
-              {t(`links.${l.labelKey}`)}
+              {l.label}
             </a>
           ))}
         </nav>
@@ -106,10 +124,10 @@ export function Nav() {
           <Link
             href="/login"
             className={`hidden rounded-full px-4 py-2 text-base font-semibold transition-colors hover:text-[#ec4899] sm:inline-flex ${
-              scrolled ? "text-[#0e7490]" : "text-white"
+              darkText ? "text-[#0e7490]" : "text-white"
             }`}
             style={
-              scrolled
+              darkText
                 ? undefined
                 : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
             }
@@ -117,7 +135,7 @@ export function Nav() {
             {t("login")}
           </Link>
           <Link
-            href="/signup"
+            href={signupHref}
             className="group/cta relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#db2777] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.05] active:scale-[0.97] lg:inline-flex"
             style={{
               boxShadow:
@@ -196,14 +214,14 @@ export function Nav() {
           className="fixed end-0 top-[64px] bottom-0 z-50 w-[60vw] max-w-[220px] overflow-y-auto border-s border-[var(--color-border)]/40 bg-white/55 backdrop-blur-xl shadow-xl lg:hidden"
         >
             <nav className="flex flex-col gap-1 px-5 py-5 text-sm">
-              {NAV_LINKS.map((l) => (
+              {links.map((l) => (
                 <a
                   key={l.href}
                   href={l.href}
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-3 py-3 text-base text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)]"
                 >
-                  {t(`links.${l.labelKey}`)}
+                  {l.label}
                 </a>
               ))}
               <div className="mt-2 flex flex-col gap-2 border-t border-[var(--color-border)]/60 pt-3">
@@ -215,7 +233,7 @@ export function Nav() {
                   {t("login")}
                 </Link>
                 <Link
-                  href="/signup"
+                  href={signupHref}
                   onClick={() => setOpen(false)}
                   className="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#be185d] via-[#c81e63] to-[#db2777] px-4 py-3 text-base font-bold text-white"
                   style={{

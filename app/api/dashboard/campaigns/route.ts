@@ -11,11 +11,14 @@ import {
 import { logEvent } from "@/lib/logger";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
+import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { createGoalPreset, presetGateRefusal } from "@/lib/campaigns/preset-gate";
+import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
 import {
   normalizeCallWindow,
   normalizeConcurrency,
   normalizeExtractionSchema,
-  normalizeGoalPreset,
   normalizeRetryRules,
 } from "@/lib/campaigns/validate";
 
@@ -94,6 +97,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const parsed = await parseJsonBody<Record<string, unknown>>(req);
   if (!parsed.ok) return parsed.response;
@@ -117,12 +123,25 @@ export async function POST(req: NextRequest) {
     if (owned.some((p) => p.phoneNumber === candidate)) fromNumber = candidate;
   }
 
+  // M2d: admin-only presets + book_for_seller needs effective booking.
+  // An absent goalPreset creates "custom", never an admin-only preset.
+  const goalPreset = createGoalPreset(body);
+  const agentId = await validateAgentId(r.userId, body.agentId);
+  const refusal = await presetGateRefusal({
+    preset: goalPreset,
+    presetChanged: true,
+    agentChanged: false,
+    isAdmin: await sessionIsAdmin(),
+    bookingActive: () => outboundBookingActive(r.userId, agentId),
+  });
+  if (refusal) return NextResponse.json(refusal.body, { status: refusal.status });
+
   const [created] = await db
     .insert(campaigns)
     .values({
       userId: r.userId,
       name,
-      goalPreset: normalizeGoalPreset(body.goalPreset),
+      goalPreset,
       objective:
         typeof body.objective === "string" ? body.objective.slice(0, 4000) : "",
       successCriteria:
@@ -131,7 +150,7 @@ export async function POST(req: NextRequest) {
           : "",
       status: "draft",
       fromNumber,
-      agentId: await validateAgentId(r.userId, body.agentId),
+      agentId,
       extractionSchema: normalizeExtractionSchema(body.extractionSchema),
       concurrency: normalizeConcurrency(body.concurrency),
       retryRules: normalizeRetryRules(body.retryRules),

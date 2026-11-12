@@ -3,10 +3,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { loadDemoAgent } from "@/lib/demo-agent";
 import { anonymousDemoInstructions } from "@/lib/demo-instructions";
+import {
+  DEMO_SESSION_BUCKET,
+  DEMO_SESSION_GLOBAL,
+  DEMO_SESSION_PER_IP,
+  DEMO_SESSION_WINDOW_MS,
+  demoSessionResponse,
+  demoSessionVoice,
+} from "@/lib/demo-session";
 import { clamp } from "@/lib/numbers";
-import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/rate-limit";
+import { consumeRateLimit } from "@/lib/rate-limit-db";
 import {
   DEFAULT_REALTIME_MODEL,
+  PROVIDERS,
   REALTIME_INSTRUCTIONS,
   REALTIME_TOOLS,
   REALTIME_TRANSCRIPTION_MODEL,
@@ -14,11 +24,20 @@ import {
   configFor,
   defaultVoiceFor,
   providerFor,
+  transportFor,
   voicesFor,
   webrtcUrl,
 } from "@/lib/realtime";
+import { limiterKey } from "@/lib/verification-limits/policy";
 
 interface SessionBody {
+  /**
+   * The public landing demo (components/VoiceAgent.tsx), signed in or not.
+   * It sends only this flag and primaryLanguage: the server picks the demo
+   * model, voice, instructions and tools, and answers with the token and the
+   * SDP URL only (lib/demo-session.ts). Anonymous callers always get the demo.
+   */
+  demo?: boolean;
   model?: string;
   voice?: string;
   // Optional full overrides for live testing from the dashboard. Lets the
@@ -40,9 +59,10 @@ interface SessionBody {
   primaryLanguage?: string;
 }
 
-// Anonymous callers (the public landing demo) mint OpenAI client secrets on
-// our account: bound them per IP. Logged-in dashboard users are not limited.
-const anonymousSessions = createRateLimiter({ limit: 5, windowMs: 10 * 60_000 });
+const RATE_LIMITED = {
+  error: "rate_limited",
+  message: "Too many demo sessions, try again later.",
+} as const;
 
 export async function POST(req: NextRequest) {
   // body optionnel : tous les champs ont des défauts (model, voice, etc.).
@@ -53,13 +73,33 @@ export async function POST(req: NextRequest) {
   // route is an open OpenAI Realtime proxy billed to us.
   const session = await auth();
   const anonymous = !session?.user?.id;
-  if (anonymous && !anonymousSessions.hit(clientIp(req.headers))) {
-    return NextResponse.json(
-      { error: "rate_limited", message: "Too many demo sessions, try again later." },
-      { status: 429 },
-    );
+  // Anonymous callers (the public landing demo) mint client secrets on our
+  // account: bounded per IP and route-wide in the shared DB limiter (fails
+  // closed). Logged-in users are not limited.
+  if (anonymous) {
+    let allowed = false;
+    try {
+      const rl = await consumeRateLimit({
+        bucket: DEMO_SESSION_BUCKET,
+        accountId: limiterKey(clientIp(req.headers)),
+        windowMs: DEMO_SESSION_WINDOW_MS,
+        perAccount: DEMO_SESSION_PER_IP,
+        global: DEMO_SESSION_GLOBAL,
+      });
+      if (!rl.ok) {
+        return NextResponse.json(RATE_LIMITED, {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        });
+      }
+      allowed = true;
+    } catch (e) {
+      console.error("[session] demo rate limiter unavailable", e);
+    }
+    if (!allowed) return NextResponse.json(RATE_LIMITED, { status: 429 });
   }
-  const demo = anonymous
+  const isDemo = anonymous || body.demo === true;
+  const demo = isDemo
     ? await loadDemoAgent(body.primaryLanguage ?? null)
     : null;
 
@@ -68,8 +108,8 @@ export async function POST(req: NextRequest) {
   // allowlist silently rewrote unknown ids to DEFAULT, which broke gpt-realtime-2
   // and any new alias OpenAI ships. If OpenAI rejects, the resilient fetch
   // below surfaces the error to the client triage panel.
-  // Anonymous callers are pinned to the demo account's model.
-  const requestedModel = anonymous
+  // Demo sessions are pinned to the demo account's model.
+  const requestedModel = isDemo
     ? (demo?.model ?? "").trim()
     : (body.model ?? "").trim();
   const model = requestedModel || DEFAULT_REALTIME_MODEL;
@@ -78,21 +118,29 @@ export async function POST(req: NextRequest) {
   // liste par modèle. La liste PROVIDERS est centralisée dans lib/realtime.ts
   // et facile à mettre à jour quand OpenAI ajoute une voix.
   const allowedVoices = voicesFor(model);
-  const voice = allowedVoices.includes(body.voice ?? "")
-    ? (body.voice as string)
-    : defaultVoiceFor(model);
-
   const provider = providerFor(model);
   const config = configFor(model);
+  const voice = isDemo
+    ? demoSessionVoice({
+        demoVoice: demo?.voice,
+        allowed: allowedVoices,
+        // The demo browser used to send the OpenAI catalogue default.
+        catalogueDefault: PROVIDERS.openai.defaultVoice,
+        routeDefault: defaultVoiceFor(model),
+      })
+    : allowedVoices.includes(body.voice ?? "")
+      ? (body.voice as string)
+      : defaultVoiceFor(model);
 
   if (!config.apiKey) {
+    if (isDemo) return sessionError(true, `no API key for provider ${provider}`);
     return NextResponse.json(
       { error: `Clé API manquante pour le provider ${provider}` },
       { status: 500 },
     );
   }
 
-  const instructions = anonymous
+  const instructions = isDemo
     ? anonymousDemoInstructions(demo?.instructions ?? null, body.primaryLanguage ?? null)
     : typeof body.instructions === "string" &&
         body.instructions.trim().length > 0
@@ -103,17 +151,18 @@ export async function POST(req: NextRequest) {
   // level — it must be applied via a `session.update` event after the
   // WebRTC data channel opens. We strip it here and echo the requested
   // value back so the browser can send the update itself.
+  // The demo takes none of the tuning fields from the body.
   const requestedTemperature =
-    typeof body.temperature === "number"
+    !isDemo && typeof body.temperature === "number"
       ? clamp(body.temperature, 0, 2)
       : null;
   const requestedSpeed =
-    typeof body.speed === "number" ? clamp(body.speed, 0.25, 2) : null;
+    !isDemo && typeof body.speed === "number" ? clamp(body.speed, 0.25, 2) : null;
 
   // Réactivité 1-10 → silence_duration_ms 1200..200 (linéaire). 1 = posée,
   // 10 = ultra-réactive. Default 5 (~755 ms) si absent.
   const reactivity =
-    typeof body.reactivity === "number" ? clamp(body.reactivity, 1, 10) : 5;
+    !isDemo && typeof body.reactivity === "number" ? clamp(body.reactivity, 1, 10) : 5;
   const silenceMs = Math.round(1200 - ((reactivity - 1) / 9) * 1000);
 
   const turnDetection = {
@@ -225,24 +274,31 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify(sentPayload),
         });
       } else {
-        return NextResponse.json({ error: errText }, { status: 500 });
+        return sessionError(isDemo, errText);
       }
     }
   }
   if (!res.ok) {
-    const err = await res.text();
-    return NextResponse.json({ error: err }, { status: 500 });
+    return sessionError(isDemo, await res.text());
   }
 
   const data = await res.json();
+  if (isDemo) {
+    // Token + SDP URL + tool routes only: the provider's echo of the session
+    // (instructions, tools, model) stays here (lib/demo-session.ts).
+    const out = demoSessionResponse(data, {
+      webrtcUrl: webrtcUrl(provider),
+      model,
+      transport: transportFor(model),
+    });
+    if (!out) return sessionError(true, "client secret missing from the provider answer");
+    return NextResponse.json(out);
+  }
   return NextResponse.json({
     ...data,
     model,
     provider,
     webrtc_url: webrtcUrl(provider),
-    // Anonymous sessions carry the full persona + greeting rule server-side:
-    // the browser must greet with a bare response.create (see VoiceAgent).
-    server_instructions: anonymous,
     requested_temperature: requestedTemperature,
     requested_speed: requestedSpeed,
     silence_duration_ms_applied: silenceMs,
@@ -254,4 +310,15 @@ export async function POST(req: NextRequest) {
     // Surface to the client so the dashboard can render a "code drift" badge.
     stripped_field: stripped,
   });
+}
+
+/**
+ * A failed mint. The dashboard (LiveTestPanel) gets the provider's text for
+ * its triage panel; the public demo gets a neutral code (that text names the
+ * provider and the model), and the details go to the server log.
+ */
+function sessionError(isDemo: boolean, providerText: string) {
+  if (!isDemo) return NextResponse.json({ error: providerText }, { status: 500 });
+  console.error("[session] demo session mint failed:", providerText.slice(0, 500));
+  return NextResponse.json({ error: "session_failed" }, { status: 502 });
 }

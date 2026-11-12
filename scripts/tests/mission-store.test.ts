@@ -24,7 +24,8 @@ assert.equal(outboundAgents.mission.notNull, false);
   const j = JSON.parse(readFileSync(new URL("../../drizzle/meta/_journal.json", import.meta.url), "utf8")).entries as Array<{ idx: number; when: number; tag: string }>;
   const mine = j.findIndex((e) => e.tag === "0049_outbound_agents_mission");
   assert.ok(mine >= 0, "journal entry present");
-  for (const e of j) if (e.tag !== "0049_outbound_agents_mission") assert.ok(e.when < j[mine].when, `journal: ${e.tag} sorts before 0049`);
+  // Every EARLIER migration sorts before it (later ones, e.g. 0050, sort after).
+  for (const e of j.slice(0, mine)) assert.ok(e.when < j[mine].when, `journal: ${e.tag} sorts before 0049`);
 }
 
 // ── The value ────────────────────────────────────────────────────────────

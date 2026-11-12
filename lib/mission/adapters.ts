@@ -16,6 +16,9 @@ export const PRESET_TO_MISSION: Record<GoalPreset, { kind: SalesMission; cold: b
   sales: { kind: "announce_offer", cold: false },
   marketing: { kind: "announce_offer", cold: false },
   custom: { kind: "other", cold: false },
+  // M2d: one preset per mission, never cold.
+  book_for_seller: { kind: "book_for_seller", cold: false },
+  follow_up: { kind: "follow_up", cold: false },
 };
 
 /** A stored preset → its mission; any other stored string → "other" (the raw preset is kept by the caller). */
@@ -29,8 +32,8 @@ export function missionForPreset(preset: string): { kind: SalesMission; cold: bo
  * The reverse: an agent's default mission → the preset that prefills a NEW
  * campaign's draft (the front calls it; nothing server-side does yet).
  * Lossy by design, read side only: "marketing" reads as announce_offer and
- * comes back as "sales". book_for_seller and follow_up have no preset yet
- * (mapping pending tamaraVP) → null, as is a missing mission.
+ * comes back as "sales". book_for_seller and follow_up have their own
+ * preset since M2d. A missing mission → null.
  */
 export function presetForMission(m: { kind: SalesMission; cold: boolean } | null): GoalPreset | null {
   if (!m) return null;
@@ -42,8 +45,9 @@ export function presetForMission(m: { kind: SalesMission; cold: boolean } | null
     case "other":
       return "custom";
     case "book_for_seller":
+      return "book_for_seller";
     case "follow_up":
-      return null;
+      return "follow_up";
   }
 }
 
@@ -66,8 +70,9 @@ export function missionFromCampaign(c: {
     successCriteria: c.successCriteria,
     capture: c.extractionSchema ?? [],
     fallback: null,
-    // The capabilities every mapped mission strictly needs: none of today's
-    // presets maps to one that requires a capability.
+    // The capabilities the mapped mission strictly needs: only
+    // book_for_seller (M2d) requires one, booking (enforced on save,
+    // lib/campaigns/preset-gate.ts).
     requires: [...SALES_MISSION_TABLE[kind].requires.all],
   };
 }

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { callTypeForCall } from "@/lib/call-type-db";
 import { callIdFromRequest } from "@/lib/call-id";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
+import { getTranslations } from "next-intl/server";
+import { sendOwnerRecapEmailBestEffort } from "@/lib/owner-recap-email-send";
+import { sendOwnerRecapWhatsApp, toRecapLocale } from "@/lib/owner-recap-whatsapp";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { callInsertValues, parseCallEndBody } from "@/lib/call-end-body";
@@ -10,11 +13,11 @@ import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { clientConfirmDeps } from "@/lib/client-confirm/deps";
+import { sendClientConfirm } from "@/lib/client-confirm/run";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
-import { ltrIsolate } from "@/lib/phone-utils";
-import { withCallUsLine } from "@/lib/whatsapp-call-line";
 import { tenantCallNumber } from "@/lib/tenant-call-number";
 import { getSummaryPromptByPlan } from "@/lib/settings";
 import {
@@ -24,7 +27,7 @@ import {
 } from "@/lib/sheets-helpers";
 import { summarizeCall, summarySignature } from "@/lib/summarize";
 import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
-import { checkTwilioMessageStatus, sendWhatsApp } from "@/lib/whatsapp";
+import { checkTwilioMessageStatus } from "@/lib/whatsapp";
 
 const APPELS_SHEET_TITLE = "Appels";
 const APPELS_HEADERS = [
@@ -47,7 +50,8 @@ const APPELS_HEADERS = [
 async function verifyDelivery(
   sid: string,
   recipient: "owner" | "client",
-  to: string,
+  /** null = not logged (the client's number never goes into events). */
+  to: string | null,
   userId: string,
   callId: string,
 ): Promise<void> {
@@ -61,12 +65,12 @@ async function verifyDelivery(
     await logEvent({
       source: "whatsapp",
       event: `whatsapp_undelivered_${recipient}`,
-      message: `WhatsApp ${recipient} non livré à ${to} (status=${status.status}${
+      message: `WhatsApp ${recipient} non livré${to ? ` à ${to}` : ""} (status=${status.status}${
         status.errorCode ? ` code=${status.errorCode}` : ""
       })${status.errorMessage ? ` : ${status.errorMessage.slice(0, 150)}` : ""}`,
       level: "error",
       userId,
-      metadata: { callId, sid, to, ...status },
+      metadata: to ? { callId, sid, to, ...status } : { callId, sid, ...status },
     });
   }
 }
@@ -226,68 +230,46 @@ export async function POST(req: NextRequest) {
   const planMatrix = await getPlanFeatureMatrix();
   const tenantFeatures = featuresForPlan(planMatrix, user.subscriptionPlan);
 
-  if (fromNumber && tenantFeatures.whatsapp_confirm !== false) {
-    // Client-facing recap: use Twilio Content Template if configured, so
-    // the message ships même si la cliente n'a jamais WhatsAppé first.
-    // Free-form falls back to the 24h-window rule.
-    //
-    // Per-language template routing : si WHATSAPP_CLIENT_TEMPLATE_SID_HE
-    // (ou _EN, _FR) est défini sur Railway, on l'utilise pour les tenants
-    // dont primaryLanguage matche. Sinon fallback sur le SID legacy
-    // (WHATSAPP_CLIENT_TEMPLATE_SID = FR par défaut historique). Les
-    // templates Meta-approved ne permettent pas de wrapper dynamique —
-    // créer un template par langue dans Twilio est le seul moyen d'avoir
-    // un "Bonjour..." en FR vs "שלום..." en HE.
-    // Appel canal WhatsApp : la cliente vient de nous joindre via WhatsApp,
-    // donc la fenêtre de service 24h est ouverte → on envoie le recap en
-    // free-form (texte direct, multi-ligne, dans le même thread) au lieu du
-    // template Meta-approuvé froid. UX nettement meilleure. Pour les appels
-    // PSTN (canal par défaut), on garde le template qui ship hors fenêtre.
+  // Client confirm: ONLY after a PROVEN booking / cancel / reschedule of this
+  // call, with a text built from that tool event (never the model's recap:
+  // the caller ID can be spoofed). One per destination per call, at most 3
+  // per number per day. lib/client-confirm/run.ts.
+  //
+  // PSTN: the per-language approved template (WHATSAPP_CLIENT_TEMPLATE_SID_<LANG>,
+  // else the legacy SID), only its {{1}} value is ours. WhatsApp channel: the
+  // 24 h window is open (the caller just reached us there) → free-form.
+  {
     const isWhatsappChannel = channel === "whatsapp";
     const tenantLang = (cfg.primaryLanguage ?? "fr").toUpperCase();
     const langKey = `WHATSAPP_CLIENT_TEMPLATE_SID_${tenantLang}`;
     const clientTemplate = isWhatsappChannel
       ? undefined
       : process.env[langKey] || process.env.WHATSAPP_CLIENT_TEMPLATE_SID;
-    // "Call us" line with the tenant's aitamara number (tappable in
-    // WhatsApp), inside the 1000-char template variable.
-    const clientText = withCallUsLine(
-      summary.forClient,
-      cfg.primaryLanguage ?? "fr",
-      await tenantCallNumber(user.id, toNumber || null),
-    );
-    const r = await sendWhatsApp({
-      to: fromNumber,
-      body: clientText,
-      templateSid: clientTemplate || undefined,
-      templateVariables: clientTemplate ? { "1": clientText } : undefined,
-    });
-    if (r.ok && r.sid) {
-      clientSid = r.sid;
-      await logEvent({
-        source: "whatsapp",
-        event: "whatsapp_sent_client",
-        message: `WhatsApp ${isWhatsappChannel ? "free-form (thread WhatsApp)" : "template"} envoyé à la cliente ${fromNumber}`,
+    const confirm = await sendClientConfirm(
+      {
         userId: user.id,
-        metadata: {
-          callId: callRow.id,
-          sid: r.sid,
-          to: fromNumber,
-          channel,
-          mode: isWhatsappChannel ? "free_form" : "template",
+        call: {
+          id: callRow.id,
+          userId: user.id,
+          callId: callRow.callId ?? "",
+          createdAt: callRow.createdAt,
+          durationSeconds: callRow.durationSeconds ?? 0,
         },
-      });
-      void verifyDelivery(r.sid, "client", fromNumber, user.id, callRow.id);
-    } else {
-      waError = `client: ${r.error}`;
-      await logEvent({
-        source: "whatsapp",
-        event: "whatsapp_failed_client",
-        message: `WhatsApp client échoué : ${r.error?.slice(0, 200)}`,
-        level: "error",
-        userId: user.id,
-        metadata: { callId: callRow.id, to: fromNumber, error: r.error },
-      });
+        fromNumber,
+        enabled: tenantFeatures.whatsapp_confirm !== false,
+        channel,
+        lang: cfg.primaryLanguage ?? "fr",
+        signature: summarySignature(cfg.business),
+        callNumber: () => tenantCallNumber(user.id, toNumber || null),
+        templateSid: clientTemplate || undefined,
+      },
+      clientConfirmDeps,
+    );
+    if (confirm.sent) {
+      clientSid = confirm.sid;
+      void verifyDelivery(confirm.sid, "client", null, user.id, callRow.id);
+    } else if (confirm.reason === "send_failed") {
+      waError = `client: ${confirm.error}`;
     }
   }
 
@@ -376,28 +358,19 @@ export async function POST(req: NextRequest) {
     tenantFeatures.whatsapp_recap !== false &&
     skipOwnerReason === null
   ) {
-    // ltrIsolate : le récap peut être en hébreu (RTL) → on isole le numéro en
-    // LTR pour que le « + » de l'indicatif reste en tête (sinon rendu "972…+").
-    const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${
-      fromNumber ? ltrIsolate(fromNumber) : "numéro inconnu"
-    }`;
-    // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
-    // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
-    // récente). Sinon free-form (qui silently undelivered si hors window).
-    // Routing per-langue identique au client : prefer _HE/_EN/_FR sur le
-    // legacy SID. Le proprio reçoit donc le wrapper dans sa langue active.
-    const ownerLangKey = `WHATSAPP_OWNER_TEMPLATE_SID_${(cfg.primaryLanguage ?? "fr").toUpperCase()}`;
-    const ownerTemplate =
-      process.env[ownerLangKey] || process.env.WHATSAPP_OWNER_TEMPLATE_SID;
-    const r = await sendWhatsApp({
-      to: cfg.ownerWhatsapp,
-      body: ownerBody,
-      templateSid: ownerTemplate || undefined,
-      templateVariables: ownerTemplate
-        ? { "1": ownerBody.slice(0, 1000) }
-        : undefined,
-      ownerTemplateFallback: true, // Meta provider only
-    });
+    // Wrapper in the tenant's language (same strings as the owner recap
+    // email); template SID per language, unchanged (lib/owner-recap-whatsapp).
+    const recapLocale = toRecapLocale(cfg.primaryLanguage);
+    const tRecap = await getTranslations({ locale: recapLocale, namespace: "Email.ownerRecap" });
+    const r = await sendOwnerRecapWhatsApp(
+      {
+        to: cfg.ownerWhatsapp,
+        forOwner: summary.forOwner,
+        fromNumber,
+        primaryLanguage: cfg.primaryLanguage,
+      },
+      (key, vars) => tRecap(key, vars),
+    );
     if (r.ok && r.sid) {
       ownerSid = r.sid;
       await logEvent({
@@ -423,6 +396,19 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  // Owner recap by EMAIL, next to the WhatsApp one: only when the owner
+  // switched it on AND set an address (default OFF). Fire-and-forget like
+  // verifyDelivery: never awaited, never throws, never changes the response.
+  void sendOwnerRecapEmailBestEffort({
+    userId: user.id,
+    callId: callRow.id,
+    cfg,
+    forOwner: summary.forOwner,
+    fromNumber,
+    recapFeatureOn: tenantFeatures.whatsapp_recap !== false,
+    transcriptEntries: transcript.length,
+  });
 
   await db
     .update(calls)

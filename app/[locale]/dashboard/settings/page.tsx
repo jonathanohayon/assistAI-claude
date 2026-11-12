@@ -10,7 +10,7 @@ import { getLocalizedPlan } from "@/lib/plan-i18n";
 
 import { AgentBrainSection } from "./agent-brain-section";
 import { AgentUrlCard } from "./agent-url-section";
-import { ApiKeySection } from "./api-key-section";
+import { ApiKeyCard } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
 import { DeveloperModeSwitch } from "@/components/bricks/DeveloperModeSwitch";
@@ -170,16 +170,9 @@ export default async function SettingsPage(props: {
           </div>
         )}
 
-        {/* API / Accès développeur — clé pour l'API publique v1 (app journal). */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="font-display text-lg text-[var(--color-foreground)]">
-            {t("apiSection")}
-          </h2>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            {t("apiDesc")}
-          </p>
-          <ApiKeySection />
-        </div>
+        {/* API key for the public v1 API. Level-3 content: rendered only in
+            developer mode (admins always). */}
+        <ApiKeyCard isAdmin={isAdmin} />
 
         {/* Cerveau de l'agent : persona Tamara ou agent externe du tenant. */}
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">

@@ -17,7 +17,13 @@ import type { CallAction, CallDetailResponse, CallLine, CallOutcome } from "../.
 import {
   ACTION_KEYS,
   OUTCOMES,
+  OUTCOME_FILTERS,
+  PERIOD_CHOICES,
   actionMessage,
+  emptyState,
+  listHeading,
+  periodKey,
+  periodRange,
   contactLabel,
   conversationView,
   detailUrl,
@@ -26,7 +32,15 @@ import {
   listUrl,
   outcomeKey,
 } from "../../lib/calls/view";
-import { CallDetailBody, CallRow, LoadMore } from "../../app/[locale]/dashboard/logs/calls-view";
+import {
+  CallDetailBody,
+  CallRow,
+  CallsEmpty,
+  CallsFigures,
+  ListHeading,
+  LoadMore,
+  OutcomeFilterChips,
+} from "../../app/[locale]/dashboard/logs/calls-view";
 
 type ProviderProps = ComponentProps<typeof NextIntlClientProvider>;
 
@@ -284,7 +298,7 @@ test("time: today → time only; another day → date + time", () => {
 });
 
 test('"Show more" cursor wiring', () => {
-  // First page: default period, no cursor. Next pages: ONLY the cursor (+ asUserId).
+  // No filter / period given: bare URL. Next pages: ONLY the cursor (+ asUserId).
   assert.equal(listUrl(null), "/api/dashboard/calls");
   assert.equal(listUrl("abc_-1"), "/api/dashboard/calls?cursor=abc_-1");
   assert.equal(listUrl("abc", "u-1"), "/api/dashboard/calls?cursor=abc&asUserId=u-1");
@@ -297,10 +311,129 @@ test('"Show more" cursor wiring', () => {
   assert.match(more("next", "loading"), /disabled=""[^>]*>Chargement…/);
   // The view requests the next page with the API's nextCursor, through listUrl.
   const src = read("app/[locale]/dashboard/logs/calls-view.tsx");
-  assert.match(src, /fetch\(listUrl\(cursor, asUserId\)/);
+  assert.match(src, /fetch\(listUrl\(cursor, asUserId, filter, range\)/);
   assert.match(src, /fetchPage\(nextCursor\)/);
   assert.match(src, /setNextCursor\(page\.nextCursor\)/);
   assert.ok(!/IntersectionObserver|onScroll/.test(src), "no infinite scroll");
+});
+
+test("list URL: filter + period on page 1, cursor only after", () => {
+  const range = { since: "2026-11-01T00:00:00.000Z", until: "2026-11-12T10:00:00.000Z" };
+  const first = new URL(listUrl(null, undefined, "booked", range), "http://x");
+  assert.equal(first.pathname, "/api/dashboard/calls");
+  assert.equal(first.searchParams.get("outcome"), "booked");
+  assert.equal(first.searchParams.get("since"), range.since);
+  assert.equal(first.searchParams.get("until"), range.until);
+  assert.equal(first.searchParams.get("cursor"), null);
+  // "All" sends no outcome at all (the API rejects an empty one).
+  assert.ok(!listUrl(null, undefined, "all", range).includes("outcome"));
+  // Later pages: the cursor carries the filter and the period.
+  assert.equal(listUrl("cur", undefined, "booked", range), "/api/dashboard/calls?cursor=cur");
+  assert.equal(listUrl("cur", "u-1", "cancelled", range), "/api/dashboard/calls?cursor=cur&asUserId=u-1");
+  // The view: page 1 with filter + period; "Show more" with only the cursor.
+  const src = read("app/[locale]/dashboard/logs/calls-view.tsx");
+  assert.match(src, /fetchPage\(null, outcome, periodChoice\)/);
+  assert.match(src, /fetchPage\(nextCursor\);/);
+  // A change resets the list and closes the detail.
+  const restart = src.slice(src.indexOf("const restart"), src.indexOf("const pickOutcome"));
+  assert.match(restart, /setItems\(\[\]\)/);
+  assert.match(restart, /setOpenId\(null\)/);
+  assert.match(restart, /setNextCursor\(null\)/);
+});
+
+test("period: 7 / 30 days rolling, this month from the 1st 00:00 local", () => {
+  const now = new Date("2026-11-12T10:00:00.000Z");
+  assert.deepEqual(periodRange("7d", now), { since: "2026-11-05T10:00:00.000Z", until: now.toISOString() });
+  assert.deepEqual(periodRange("30d", now), { since: "2026-10-13T10:00:00.000Z", until: now.toISOString() });
+  // Jerusalem in November = UTC+2: the 1st at 00:00 local = Oct 31 22:00 UTC.
+  assert.equal(periodRange("month", now, "Asia/Jerusalem").since, "2026-10-31T22:00:00.000Z");
+  assert.equal(periodRange("month", now, "UTC").since, "2026-11-01T00:00:00.000Z");
+  // On the 1st itself (local), the month starts that day.
+  const first = new Date("2026-11-01T05:00:00.000Z");
+  assert.equal(periodRange("month", first, "Asia/Jerusalem").since, "2026-10-31T22:00:00.000Z");
+  // Month change by time zone: Nov 30 23:30 UTC is already Dec 1 in Jerusalem.
+  const edge = new Date("2026-11-30T23:30:00.000Z");
+  assert.equal(periodRange("month", edge, "Asia/Jerusalem").since, "2026-11-30T22:00:00.000Z");
+  assert.equal(periodRange("month", edge, "UTC").since, "2026-11-01T00:00:00.000Z");
+  // A month starting in summer time (Jerusalem UTC+3 on Oct 1).
+  assert.equal(periodRange("month", new Date("2026-10-15T12:00:00Z"), "Asia/Jerusalem").since, "2026-09-30T21:00:00.000Z");
+  // New York, March (DST starts Mar 8): Mar 1 00:00 EST = 05:00 UTC.
+  assert.equal(periodRange("month", new Date("2026-03-20T12:00:00Z"), "America/New_York").since, "2026-03-01T05:00:00.000Z");
+  // Without a zone: the runtime's local midnight of the 1st.
+  const local = new Date(periodRange("month", now).since);
+  assert.equal(local.getDate(), 1);
+  assert.equal(local.getHours(), 0);
+  assert.equal(local.getMinutes(), 0);
+  // Every period word exists.
+  for (const l of LOCALES) for (const c of PERIOD_CHOICES) assert.ok(messages(l).Calls[periodKey(c)]?.trim(), `${l}: ${c}`);
+  assert.deepEqual(PERIOD_CHOICES.map((c) => messages("fr").Calls[periodKey(c)]), ["7 jours", "30 jours", "Ce mois-ci"]);
+});
+
+test("the filter's words are the badges' words in fr / en / he", () => {
+  assert.deepEqual(OUTCOME_FILTERS.map((o) => o.id), ["all", ...OUTCOMES]);
+  for (const l of LOCALES) {
+    const chips = render(l, (t) => createElement(OutcomeFilterChips, { selected: "booked", onPick: () => {}, t }));
+    const words = [...chips.matchAll(/role="radio"[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
+    const badge = (o: CallOutcome) => {
+      const row = render(l, (t) =>
+        createElement(CallRow, { line: line({ outcome: o }), open: false, onToggle: () => {}, onRetry: () => {}, t, locale: l }),
+      );
+      return row.match(/rounded-full px-2\.5 py-1[^"]*">([^<]*)</)![1];
+    };
+    assert.deepEqual(words, [messages(l).Calls.filterAll, ...OUTCOMES.map(badge)], l);
+    // Radio semantics: one checked, roving tabindex; the chips wrap.
+    assert.match(chips, /role="radiogroup"/);
+    assert.equal((chips.match(/aria-checked="true"/g) ?? []).length, 1);
+    assert.match(chips, /aria-checked="true" data-id="booked" tabindex="0"/);
+    assert.match(chips, /flex-wrap/);
+  }
+  assert.ok(render("fr", (t) => createElement(OutcomeFilterChips, { selected: "all", onPick: () => {}, t })).includes(">Tous<"));
+});
+
+test("empty state with a filter names it and offers all calls", () => {
+  assert.deepEqual(emptyState("all"), { kind: "plain" });
+  assert.deepEqual(emptyState("booked"), { kind: "filtered", outcomeKey: "outcome_booked" });
+  const fr = render("fr", (t) => createElement(CallsEmpty, { outcome: "booked", onShowAll: () => {}, t }));
+  assert.match(fr, /Aucun appel « Rendez-vous pris » sur cette période/);
+  assert.match(fr, /data-show-all="true"[^>]*>Voir tous les appels</);
+  const plain = render("fr", (t) => createElement(CallsEmpty, { outcome: "all", onShowAll: () => {}, t }));
+  assert.match(plain, /Aucun appel sur cette période/);
+  assert.ok(!plain.includes("data-show-all"));
+  for (const l of LOCALES) {
+    for (const o of OUTCOMES) {
+      const html = render(l, (t) => createElement(CallsEmpty, { outcome: o, onShowAll: () => {}, t }));
+      assert.ok(html.includes(messages(l).Calls[outcomeKey(o)]), `${l}: ${o} named`);
+      assert.ok(!/\{outcome\}|outcome_/.test(html), `${l}: no raw key`);
+    }
+  }
+});
+
+test("figures are labelled period-wide; the list heading states the filter", () => {
+  const figures = { callsReceived: 40, booked: 12, transferred: 3 };
+  const unfiltered = render("fr", (t) => createElement(CallsFigures, { figures, filtered: false, t }));
+  assert.match(unfiltered, /role="group" aria-labelledby="([^"]+)"[\s\S]*id="\1"[^>]*>Sur la période</);
+  assert.ok(!unfiltered.includes("data-figures-note"));
+  const filtered = render("fr", (t) => createElement(CallsFigures, { figures, filtered: true, t }));
+  assert.match(filtered, /Tous les appels de la période, quel que soit le filtre/);
+  // The tiles show the API's period figures as given, whatever the filter.
+  assert.ok(filtered.includes(">40<") && filtered.includes(">12<") && filtered.includes(">3<"));
+  for (const l of LOCALES) {
+    assert.ok(messages(l).Calls.figuresLabel.trim() && messages(l).Calls.figuresAllCalls.trim(), l);
+  }
+  // Heading: the filter's name; the count only when every page is loaded.
+  assert.deepEqual(listHeading("booked", 12, false), { labelKey: "outcome_booked", count: null });
+  assert.deepEqual(listHeading("booked", 12, true), { labelKey: "outcome_booked", count: 12 });
+  assert.deepEqual(listHeading("all", 0, true), { labelKey: "listHeadingAll", count: null });
+  const h = (o: "all" | CallOutcome, n: number, complete: boolean, l = "fr") =>
+    render(l, (t) => createElement(ListHeading, { level: "h2", outcome: o, shown: n, complete, t }));
+  assert.match(h("booked", 12, true), /<h2[^>]*>Rendez-vous pris · 12 appels<\/h2>/);
+  assert.match(h("booked", 1, true), /Rendez-vous pris · 1 appel</);
+  assert.match(h("booked", 50, false), /<h2[^>]*>Rendez-vous pris<\/h2>/);
+  assert.match(h("all", 50, false), />Tous les appels</);
+  assert.match(h("transferred", 2, true, "he"), /השיחה הועברה · 2 שיחות/);
+  // The view announces each refresh politely.
+  const src = read("app/[locale]/dashboard/logs/calls-view.tsx");
+  assert.match(src, /aria-live="polite"[\s\S]{0,200}t\("listShown"/);
 });
 
 if (failures) {
