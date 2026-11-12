@@ -349,7 +349,6 @@ function NotifsPanel({
         onChangeValue={(v) => set({ notifications: { ...draft.notifications, whatsapp: v } })}
         placeholder="+33…"
         inputType="tel"
-        testEndpoint="/api/dashboard/notifications/whatsapp-test"
         icon={<svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20z" /></svg>}
       />
       <NotifChannelCard
@@ -367,28 +366,16 @@ function NotifsPanel({
   );
 }
 
+// No Test button here: the WhatsApp test route only sends to the account's
+// SAVED owner number (PR #301), not to the number typed for this agent.
 function NotifChannelCard({
-  label, icon, color, on, onToggle, value, onChangeValue, placeholder, inputType, testEndpoint,
+  label, icon, color, on, onToggle, value, onChangeValue, placeholder, inputType,
 }: {
   label: string; icon: React.ReactNode; color: string; on: boolean;
   onToggle: (v: boolean) => void; value: string; onChangeValue: (v: string) => void;
-  placeholder: string; inputType: string; testEndpoint?: string;
+  placeholder: string; inputType: string;
 }) {
   const tc = useTranslations("DashboardConfig");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const test = async () => {
-    if (!on || status !== "idle" || !testEndpoint || !value.trim()) return;
-    setStatus("sending");
-    try {
-      const res = await fetch(testEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: value }) });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
-      setStatus(!res.ok || !data.ok ? "error" : "sent");
-      setTimeout(() => setStatus("idle"), 3500);
-    } catch {
-      setStatus("error");
-      setTimeout(() => setStatus("idle"), 3500);
-    }
-  };
   return (
     <div className={`flex flex-col gap-3 rounded-2xl border-2 p-4 transition-all duration-300 ${on ? "border-[#22d3ee]/40 bg-white shadow-[0_4px_20px_-8px_rgba(34,211,238,0.35)]" : "border-[#cbd5e1] bg-white hover:border-[#22d3ee]/30"}`}>
       <div className="flex items-center justify-between gap-3">
@@ -409,15 +396,6 @@ function NotifChannelCard({
       </div>
       <div className="flex gap-2">
         <input type={inputType} value={value} onChange={(e) => onChangeValue(e.target.value)} placeholder={placeholder} disabled={!on} className="min-w-0 flex-1 rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 font-mono text-xs text-[#18181b] transition-all focus:border-[#0e7490] focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15 disabled:cursor-not-allowed disabled:opacity-40" />
-        {testEndpoint && (
-          <button
-            type="button" onClick={test}
-            disabled={!on || status !== "idle" || !value.trim()}
-            className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${status === "sent" ? "border-[#22d3ee]/40 bg-[#ecfeff] text-[#0e7490]" : status === "error" ? "border-[#dc2626]/40 bg-[#fee2e2] text-[#991b1b]" : "border-[#0e7490]/30 bg-white text-[#0e7490] hover:border-[#0e7490] hover:bg-[#ecfeff]"}`}
-          >
-            {status === "sending" ? tc("wowTestSending") : status === "sent" ? tc("wowTestSent") : tc("wowTestButton")}
-          </button>
-        )}
       </div>
     </div>
   );

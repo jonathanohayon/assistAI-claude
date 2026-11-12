@@ -162,6 +162,9 @@ export function ConfigForm({
   const [toolsBase, setToolsBase] = useState<Tools | null>(null);
   // "Ask your agent": the last save refused for it, shown next to its row.
   const [clientAgentRefused, setClientAgentRefused] = useState<ClientAgentRefusal | null>(null);
+  // The owner WhatsApp number as last loaded/saved: the WhatsApp test only
+  // goes to the saved number, so its Test button compares against this.
+  const [ownerWhatsappBase, setOwnerWhatsappBase] = useState(initial.ownerWhatsapp);
   // The transfer number is written by the tools PUT too (switching transfer
   // off clears the served number): the config only sends it when edited.
   const [transferBase, setTransferBase] = useState(initial.transferNumber);
@@ -432,6 +435,7 @@ export function ConfigForm({
         personaConfig?: Persona;
       } | null;
       setTransferBase(transferNumber);
+      setOwnerWhatsappBase(rest.ownerWhatsapp);
       // A new transfer number changes the prerequisites: refresh the tools state.
       if (transferNumber !== transferBase) {
         const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
@@ -791,7 +795,7 @@ export function ConfigForm({
                   />
                 )}
                 {activeTile === "notifs" && (
-                  <NotifsPanel form={form} update={update} t={t} isAdmin={isAdmin} />
+                  <NotifsPanel form={form} update={update} t={t} ownerWhatsappSaved={ownerWhatsappBase} asUserId={asUserId ?? null} isAdmin={isAdmin} />
                 )}
                 {activeTile === "tools" && (
                   <div className="pb-28">

@@ -2,14 +2,24 @@
 
 /**
  * Carte d'un canal de notification owner (WhatsApp today) :
- * toggle on/off, champ de saisie du contact et bouton "Tester" qui POST
- * {to: value} sur testEndpoint (statuts envoi/envoyé/erreur auto-resetés).
+ * toggle on/off, champ de saisie du contact et bouton "Tester".
+ *
+ * The test goes to the SAVED number only (PR #301): the button is disabled,
+ * with the reason shown, until the typed number is saved. Results are our
+ * own lines (./whatsapp-test.ts), never the server's text.
  *
  * Utilisé par : notifs-panel.tsx (tuile Notifications).
  */
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+
+import {
+  whatsappTestBlock,
+  whatsappTestResult,
+  whatsappTestUrl,
+  type WhatsappTestResult,
+} from "./whatsapp-test";
 
 export function NotifChannelCard({
   label,
@@ -22,7 +32,7 @@ export function NotifChannelCard({
   placeholder,
   inputType,
   hint,
-  testEndpoint,
+  test,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -34,69 +44,46 @@ export function NotifChannelCard({
   placeholder: string;
   inputType: string;
   hint?: string;
-  /** Si fourni, POST {to: value} sur cet endpoint quand l'utilisateur
-   *  clique sur Tester. Without an endpoint the Test button stays disabled.
-   *  There is no "coming soon" state: an unusable channel is not rendered. */
-  testEndpoint?: string;
+  /** The Test button: `saved` is the number last loaded/saved (the only
+   *  recipient the route accepts); `asUserId` scopes it to the tenant an
+   *  admin is viewing. Without it, no Test button is rendered. */
+  test?: { saved: string; asUserId?: string | null };
 }) {
   const t = useTranslations("DashboardConfig");
-  const [testStatus, setTestStatus] = useState<
-    "idle" | "sending" | "sent" | "error"
-  >("idle");
-  const [testError, setTestError] = useState<string | null>(null);
+  const id = useId();
+  const testNoteId = `${id}-test`;
+  const [testStatus, setTestStatus] = useState<"idle" | "sending">("idle");
+  const [testResult, setTestResult] = useState<WhatsappTestResult | null>(null);
+  const testBlock = test ? whatsappTestBlock(test.saved, value) : null;
 
-  // Timer de retour à "idle" après un test : conservé dans un ref pour
-  // pouvoir l'annuler avant d'en programmer un nouveau (sinon un ancien
-  // timer peut écraser le statut d'un test plus récent) et le nettoyer
-  // au démontage du composant.
+  // Timer that clears the result line: kept in a ref so a newer test
+  // cancels the older one, and cleared on unmount.
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     return () => {
       if (resetTimerRef.current !== null) clearTimeout(resetTimerRef.current);
     };
   }, []);
 
-  const scheduleStatusReset = (delayMs: number) => {
-    if (resetTimerRef.current !== null) clearTimeout(resetTimerRef.current);
-    resetTimerRef.current = setTimeout(() => {
-      setTestStatus("idle");
-      setTestError(null);
-    }, delayMs);
-  };
-
   const handleTest = async () => {
-    if (
-      !on ||
-      testStatus !== "idle" ||
-      !testEndpoint ||
-      !value.trim()
-    )
-      return;
+    if (!test || testBlock || testStatus !== "idle") return;
     setTestStatus("sending");
-    setTestError(null);
+    setTestResult(null);
+    let result: WhatsappTestResult;
     try {
-      const res = await fetch(testEndpoint, {
+      const res = await fetch(whatsappTestUrl(test.asUserId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: value }),
+        body: JSON.stringify({ to: test.saved }),
       });
-      const data = (await res
-        .json()
-        .catch(() => ({}))) as { ok?: boolean; error?: string; hint?: string };
-      if (!res.ok || !data.ok) {
-        setTestStatus("error");
-        setTestError(data.error ?? `HTTP ${res.status}`);
-        scheduleStatusReset(6000);
-        return;
-      }
-      setTestStatus("sent");
-      scheduleStatusReset(6000);
-    } catch (e) {
-      setTestStatus("error");
-      setTestError((e as Error).message);
-      scheduleStatusReset(6000);
+      result = whatsappTestResult(res.status, await res.json().catch(() => null), res.headers.get("Retry-After"));
+    } catch {
+      result = { key: "whatsappTestFailed" };
     }
+    setTestStatus("idle");
+    setTestResult(result);
+    if (resetTimerRef.current !== null) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(() => setTestResult(null), 8000);
   };
 
   return (
@@ -166,75 +153,52 @@ export function NotifChannelCard({
           onChange={(e) => onChangeValue(e.target.value)}
           placeholder={placeholder}
           disabled={!on}
-          className="min-w-0 flex-1 rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 font-mono text-xs text-[#18181b] transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15 disabled:cursor-not-allowed disabled:opacity-40"
+          dir="ltr"
+          aria-label={label}
+          aria-describedby={test ? testNoteId : undefined}
+          className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#e2e8f0] bg-white/80 px-3 py-2 text-left font-mono text-xs text-[#18181b] transition-all focus:border-[#0e7490] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0e7490]/15 disabled:cursor-not-allowed disabled:opacity-40"
         />
-        <button
-          type="button"
-          onClick={handleTest}
-          disabled={
-            !on ||
-            testStatus !== "idle" ||
-            !testEndpoint ||
-            !value.trim()
-          }
-          aria-label={t("wowTestAria", { label })}
-          className={`group inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${
-            testStatus === "sent"
-              ? "border-[#22d3ee]/40 bg-[#ecfeff] text-[#0e7490]"
-              : testStatus === "error"
-                ? "border-[#dc2626]/40 bg-[#fee2e2] text-[#991b1b]"
-                : "border-[#0e7490]/30 bg-white text-[#0e7490] hover:-translate-y-0.5 hover:border-[#0e7490] hover:bg-[#ecfeff] hover:shadow-sm"
-          }`}
-        >
-          {testStatus === "sending" ? (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 motion-safe:animate-spin">
+        {test && (
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testBlock !== null || testStatus !== "idle"}
+            aria-label={t("wowTestAria", { label })}
+            aria-describedby={testNoteId}
+            data-test-block={testBlock ?? undefined}
+            className="group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-[#0e7490]/30 bg-white px-3 py-2 text-xs font-semibold text-[#0e7490] transition-all hover:border-[#0e7490] hover:bg-[#ecfeff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#0e7490]/30 disabled:hover:bg-white"
+          >
+            {testStatus === "sending" ? (
+              <svg aria-hidden viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 motion-safe:animate-spin">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
                 <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               </svg>
-              {t("wowTestSending")}
-            </>
-          ) : testStatus === "sent" ? (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              {t("wowTestSent")}
-            </>
-          ) : testStatus === "error" ? (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 8v5M12 16h.01" />
-              </svg>
-              Échec
-            </>
-          ) : (
-            <>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5">
+            ) : (
+              <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 rtl:-scale-x-100">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
-              {t("wowTestButton")}
-            </>
-          )}
-        </button>
+            )}
+            {testStatus === "sending" ? t("wowTestSending") : t("wowTestButton")}
+          </button>
+        )}
       </div>
 
-      {testStatus === "sent" && (
-        <p className="inline-flex items-center gap-1.5 rounded-lg border border-[#a7f3d0] bg-[#ecfdf5] px-2.5 py-1.5 text-[11px] font-medium leading-snug text-[#047857]">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          {t("wowTestSuccess")}
+      {test && (
+        <p id={testNoteId} aria-live="polite" className="text-[11px] leading-relaxed text-[#475569] empty:hidden">
+          {testResult ? (
+            <span
+              data-test-result={testResult.key}
+              className={testResult.key === "whatsappTestSent" ? "font-medium text-[#047857]" : "font-medium text-[#991b1b]"}
+            >
+              {t(testResult.key, { number: test.saved, minutes: testResult.minutes ?? 0 })}
+            </span>
+          ) : testBlock ? (
+            <span data-test-block-reason={testBlock}>{t(testBlock)}</span>
+          ) : null}
         </p>
       )}
-      {testError && (
-        <p className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5 text-[11px] leading-snug text-[#991b1b]">
-          {testError}
-        </p>
-      )}
-      {hint && testStatus !== "sent" && !testError && (
+      {hint && !testResult && (
         <p className="text-[11px] text-[#475569]">{hint}</p>
       )}
     </div>
