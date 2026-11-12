@@ -2,17 +2,13 @@
 
 import { useTranslations } from "next-intl";
 
-import {
-  CALL_OUTCOMES,
-  EXTRACTION_FIELD_TYPES,
-  MAX_CONCURRENCY,
-  type ExtractionField,
-} from "@/lib/campaigns/constants";
+import { CALL_OUTCOMES, MAX_CONCURRENCY } from "@/lib/campaigns/constants";
 import type { CampaignDraft } from "@/lib/campaigns/types";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 import type { EffectiveCapabilities } from "@/lib/tools/contract";
 
 import { Chip, Field, Section, inputCls } from "./_ui";
+import { CaptureFieldsEditor } from "./capture-fields-editor";
 import { MissionCards } from "@/components/bricks/mission/MissionBrick";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 
@@ -26,6 +22,7 @@ export function CampaignSetupStep({
   fromNumbers,
   isAdmin = false,
   capabilities = null,
+  captureOn = false,
 }: {
   draft: CampaignDraft;
   onChange: (patch: Partial<CampaignDraft>) => void;
@@ -35,6 +32,8 @@ export function CampaignSetupStep({
   isAdmin?: boolean;
   /** The picked agent's effective capabilities (GET /api/dashboard/tools?agentId=); null = unknown. */
   capabilities?: EffectiveCapabilities | null;
+  /** The server's CAMPAIGN_CAPTURE switch as one boolean (off when absent). */
+  captureOn?: boolean;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const voiceLabel = useVoiceLabel();
@@ -64,24 +63,6 @@ export function CampaignSetupStep({
         : [...draft.callWindow.days, d].sort((a, b) => a - b),
     });
   };
-
-  const addField = () =>
-    onChange({
-      extractionSchema: [
-        ...draft.extractionSchema,
-        { key: "", label: "", type: "string" },
-      ],
-    });
-  const updateField = (i: number, patch: Partial<ExtractionField>) =>
-    onChange({
-      extractionSchema: draft.extractionSchema.map((f, idx) =>
-        idx === i ? { ...f, ...patch } : f,
-      ),
-    });
-  const removeField = (i: number) =>
-    onChange({
-      extractionSchema: draft.extractionSchema.filter((_, idx) => idx !== i),
-    });
 
   return (
     <div className="space-y-4">
@@ -336,89 +317,13 @@ export function CampaignSetupStep({
         </label>
       </Section>
 
-      {/* Schéma d'extraction */}
-      <Section
-        title={t("extractionTitle")}
-        icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <path d="M14 2v6h6M9 13h6M9 17h4" />
-          </svg>
-        }
-      >
-        <p className="mb-2 text-[11px] text-[#94a3b8]">{t("extractionHint")}</p>
-        <div className="space-y-2">
-          {draft.extractionSchema.map((f, i) => (
-            <div
-              key={i}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white p-2"
-            >
-              <input
-                className={`${inputCls} min-w-[110px] flex-1`}
-                placeholder={t("extractionKey")}
-                value={f.key}
-                onChange={(e) => updateField(i, { key: e.target.value })}
-              />
-              <input
-                className={`${inputCls} min-w-[110px] flex-1`}
-                placeholder={t("extractionLabelField")}
-                value={f.label}
-                onChange={(e) => updateField(i, { label: e.target.value })}
-              />
-              <select
-                className={`${inputCls} w-auto`}
-                value={f.type}
-                onChange={(e) =>
-                  updateField(i, {
-                    type: e.target.value as ExtractionField["type"],
-                  })
-                }
-              >
-                {EXTRACTION_FIELD_TYPES.map((ty) => (
-                  <option key={ty} value={ty}>
-                    {t(`type_${ty}`)}
-                  </option>
-                ))}
-              </select>
-              {f.type === "enum" && (
-                <input
-                  className={`${inputCls} basis-full`}
-                  placeholder={t("extractionOptions")}
-                  value={(f.options ?? []).join(", ")}
-                  onChange={(e) =>
-                    updateField(i, {
-                      options: e.target.value
-                        .split(",")
-                        .map((o) => o.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => removeField(i)}
-                aria-label={t("extractionRemove")}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b8] transition hover:bg-[#fee2e2] hover:text-[#dc2626]"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
-                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" />
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={addField}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#f97316]/50 px-3 py-1.5 text-[12px] font-semibold text-[#ea580c] transition hover:bg-[#fff7ed]"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {t("extractionAddField")}
-        </button>
-      </Section>
+      {/* Fields to capture: hidden for tenants while capture is off. */}
+      <CaptureFieldsEditor
+        schema={draft.extractionSchema}
+        onChange={(extractionSchema) => onChange({ extractionSchema })}
+        captureOn={captureOn}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
