@@ -7,6 +7,7 @@ import { oldestTenantNumber } from "@/lib/phone/oldest-number";
 import { dialOneNow } from "@/lib/campaigns/dispatch";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { logEvent } from "@/lib/logger";
 
 interface Ctx {
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const parsed = await parseJsonBody<{ phoneNumber?: string }>(req);

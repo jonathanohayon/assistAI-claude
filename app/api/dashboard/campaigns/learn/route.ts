@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { learnFromSites, MAX_LEARN_URLS } from "@/lib/campaigns/learn";
 
 // Node runtime (cheerio + dns dans le crawler).
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const parsed = await parseJsonBody<{ urls?: unknown; language?: unknown }>(req);
   if (!parsed.ok) return parsed.response;
