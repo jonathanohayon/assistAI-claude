@@ -29,6 +29,7 @@ async function main() {
   const { liveTestDeps } = await import("../../lib/live-test/deps");
   const { handleLiveTestToken } = await import("../../lib/live-test/handler");
   const { mintLiveTestToken } = await import("../../lib/live-test/mint");
+  const { loadOutboundCampaignsAccess, planFeatureRequired } = await import("../../lib/campaigns/plan-gate");
   const { LIVE_TEST_GLOBAL_LIMIT, LIVE_TEST_PER_ACCOUNT_LIMIT } = await import("../../lib/live-test/policy");
   // lib/rate-limit-db.ts stores bucket "live_test" under this app_settings key.
   const LEDGER = "rate_limit:live_test";
@@ -58,6 +59,8 @@ async function main() {
       ...liveTestDeps,
       session: async () => ({ userId: session, email: `${session.slice(-4)}@example.com` }),
       configured: () => true,
+      // The real plan rule for the session user (outboundCampaignsGate reads the session itself).
+      outboundGate: async () => ((await loadOutboundCampaignsAccess(session)).enabled ? null : planFeatureRequired()),
       mint: async (input) => {
         signed++;
         return mintLiveTestToken(DUMMY, input);
@@ -68,11 +71,18 @@ async function main() {
   const meta = (r: { json: Record<string, unknown> }) =>
     JSON.parse(Buffer.from(String(r.json.token).split(".")[1], "base64url").toString("utf8")).metadata as string;
 
-  // Real outbound-agent lookup: own agent → outbound_test; another tenant's → inbound.
-  const own = await post(id(1), { agentId: AGENT });
+  // Real outbound-agent lookup (through the admin, who passes the plan gate):
+  // the tenant's agent → outbound_test; another tenant's → inbound.
+  const own = await post(ADMIN, { agentId: AGENT, asUserId: id(1) });
   assert.equal(own.status, 200);
   assert.equal(meta(own), JSON.stringify({ source: "outbound_test", agentId: AGENT, userId: id(1) }));
-  assert.equal(meta(await post(id(2), { agentId: AGENT })), JSON.stringify({ source: "web", userId: id(2) }));
+  assert.equal(meta(await post(ADMIN, { agentId: AGENT, asUserId: id(2) })), JSON.stringify({ source: "web", userId: id(2) }));
+  // A tenant without the outbound plan feature: 403, not counted.
+  await resetLedger();
+  const gated = await post(id(1), { agentId: AGENT });
+  assert.deepEqual(gated.json, { error: "plan_feature_required", feature: "outbound_campaigns" });
+  const [l0] = (await exec(sql`SELECT value FROM app_settings WHERE key = ${LEDGER}`)) as unknown as { value: string }[];
+  assert.equal(l0, undefined, "a gated refusal is not counted");
 
   // Admin ?asUserId (real resolveScopeUserId) counts in the tenant's bucket; non-admin → 403.
   await resetLedger();

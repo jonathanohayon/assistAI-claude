@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { auth } from "@/auth";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { db } from "@/lib/db";
 import { outboundAgents } from "@/lib/db/schema";
 import type { LiveTestDeps } from "@/lib/live-test/handler";
@@ -31,6 +32,7 @@ export const liveTestDeps: LiveTestDeps = {
   },
   configured: () => creds() !== null,
   resolveScope: (sessionUserId, asUserId) => resolveScopeUserId({ sessionUserId, asUserId }),
+  outboundGate: outboundCampaignsGate,
   // accountId = the scoped tenant (the ?asUserId target for admins).
   claim: (userId) =>
     consumeRateLimit({

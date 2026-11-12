@@ -7,6 +7,8 @@
 //   200 { url, token, roomName, identity }   unchanged from before the limit
 //   401 { error: "Unauthorized" }            no session
 //   403 { error: "Forbidden" }               ?asUserId by a non-admin
+//   403 { error: "plan_feature_required", feature: "outbound_campaigns" }
+//                                            agentId without the call-centre plan
 //   429 { error: "rate_limited", scope: "account" | "global" } + Retry-After
 //   500 { error: "not_configured" }          signer not configured
 //   503 { error: "unavailable" }             limiter unavailable (fails closed)
@@ -30,6 +32,11 @@ export interface LiveTestDeps {
   configured(): boolean;
   /** Admin scoping (resolveScopeUserId). */
   resolveScope(sessionUserId: string, asUserId: string | null): Promise<{ userId: string } | { forbidden: true }>;
+  /**
+   * Plan gate for testing an OUTBOUND agent (lib/campaigns/plan-gate.ts,
+   * outboundCampaignsGate): the 403 to send, or null when allowed.
+   */
+  outboundGate(): Promise<NextResponse | null>;
   /** Counts the attempt for this account (consumeRateLimit, bucket "live_test"). */
   claim(userId: string): Promise<RateLimitResult>;
   /** The outbound agent's id if it belongs to `userId`, else null. */
@@ -49,7 +56,6 @@ const fail = (error: LiveTestError, status: number, scope?: RateLimitScope, retr
 export async function handleLiveTestToken(req: NextRequest, deps: LiveTestDeps): Promise<NextResponse> {
   const session = await deps.session();
   if (!session) return fail("Unauthorized", 401);
-  if (!deps.configured()) return fail("not_configured", 500);
 
   // Optional body: empty = test the scoped tenant's inbound agent.
   // asUserId: admins may test another tenant (403 otherwise).
@@ -57,6 +63,16 @@ export async function handleLiveTestToken(req: NextRequest, deps: LiveTestDeps):
   const scope = await deps.resolveScope(session.userId, body.asUserId ?? null);
   if ("forbidden" in scope) return fail("Forbidden", 403);
   const userId = scope.userId;
+  const wantsAgent = typeof body.agentId === "string" && !!body.agentId;
+
+  // Testing an OUTBOUND agent is part of the outbound call centre: same plan
+  // gate as the campaigns / outbound-agents API (admins bypass). Checked
+  // before the signer config so the refusal doesn't depend on the env.
+  if (wantsAgent) {
+    const planGate = await deps.outboundGate();
+    if (planGate) return planGate;
+  }
+  if (!deps.configured()) return fail("not_configured", 500);
 
   // Counted BEFORE signing, atomically, against the tenant the token is for.
   let verdict: RateLimitResult;
@@ -69,8 +85,7 @@ export async function handleLiveTestToken(req: NextRequest, deps: LiveTestDeps):
   if (!verdict.ok) return fail("rate_limited", 429, verdict.scope, verdict.retryAfterSec);
 
   // Live test of an OUTBOUND agent: only one that belongs to the scoped tenant.
-  const testAgentId =
-    typeof body.agentId === "string" && body.agentId ? await deps.findOutboundAgent(body.agentId, userId) : null;
+  const testAgentId = wantsAgent ? await deps.findOutboundAgent(body.agentId as string, userId) : null;
 
   return NextResponse.json(await deps.mint({ userId, email: session.email, testAgentId }));
 }

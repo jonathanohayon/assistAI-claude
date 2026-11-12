@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { handleLiveTestToken, type LiveTestDeps } from "../../lib/live-test/handler";
 import { WORKER_AGENT_NAME, mintLiveTestToken } from "../../lib/live-test/mint";
@@ -34,7 +34,7 @@ const AGENT = "00000000-0000-4000-8000-0000000000c3";
 const ROLES: Record<string, string> = { [TENANT]: "user", [OTHER]: "user", [ADMIN]: "admin" };
 const EMAILS: Record<string, string> = { [TENANT]: "owner@example.com", [OTHER]: "other@example.com", [ADMIN]: "admin@example.com" };
 
-function makeWorld(opts: { configured?: boolean; claim?: LiveTestDeps["claim"] } = {}) {
+function makeWorld(opts: { configured?: boolean; claim?: LiveTestDeps["claim"]; planAllows?: boolean } = {}) {
   let ledger: RateLimitLedger = {};
   let clock = 1_800_000_000_000;
   const minted: { userId: string; testAgentId: string | null }[] = [];
@@ -45,6 +45,11 @@ function makeWorld(opts: { configured?: boolean; claim?: LiveTestDeps["claim"] }
     configured: () => opts.configured ?? true,
     // Mirrors resolveScopeUserId.
     resolveScope: async (me, as) => (!as || as === me ? { userId: me } : ROLES[me] === "admin" ? { userId: as } : { forbidden: true }),
+    // Mirrors outboundCampaignsGate's refusal body.
+    outboundGate: async () =>
+      opts.planAllows === false
+        ? NextResponse.json({ error: "plan_feature_required", feature: "outbound_campaigns" }, { status: 403 })
+        : null,
     claim:
       opts.claim ??
       // Same decision as lib/rate-limit-db.ts, in memory, on the test clock.
@@ -206,6 +211,21 @@ async function main() {
     assert.equal(d.status, 503);
     assert.deepEqual(d.json, { error: "unavailable" }, "fails closed, no raw error");
     assert.equal(down.minted.length, 0);
+  }
+
+  // ── Plan gate (#303) runs after scope, before the signer check and the limit ─
+  {
+    const w = makeWorld({ planAllows: false, configured: false });
+    const r = await w.post({ agentId: AGENT });
+    assert.equal(r.status, 403);
+    assert.deepEqual(r.json, { error: "plan_feature_required", feature: "outbound_campaigns" });
+    assert.equal(w.claims.length, 0, "a gated refusal is not counted");
+    assert.equal((await w.post()).status, 500, "inbound test is not gated");
+    const ok = makeWorld({ planAllows: false });
+    assert.equal((await ok.post()).status, 200, "inbound test still mints without the plan feature");
+    w.as(OTHER);
+    assert.equal((await w.post({ agentId: AGENT, asUserId: TENANT })).status, 403);
+    assert.deepEqual((await w.post({ agentId: AGENT, asUserId: TENANT })).json, { error: "Forbidden" }, "scope check first");
   }
 
   // ── Concurrency (handler level): 30 parallel → exactly 20 signed ──────────
