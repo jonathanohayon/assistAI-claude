@@ -43,9 +43,10 @@ for (const l of LOCALES) {
     const html = render(l, isAdmin, dev);
     assert.ok(html.includes(esc(m.title)), `${l} admin=${isAdmin} dev=${dev}: title`);
     assert.ok(html.includes(esc(m.contractTitle)), `${l}: contract box`);
-    assert.ok(html.includes(`>${esc(m.copy)}<`) && html.includes(`>${esc(m.rotate)}<`), `${l}: buttons`);
-    // URL and code sample stay left-to-right, also in Hebrew.
-    assert.match(html, /<code dir="ltr"/, `${l}: url ltr`);
+    // Before the status GET resolves the card shows a loading line; the URL
+    // states (create / once / hint) are covered by agent-url-once.test.ts.
+    assert.ok(html.includes(esc(m.loading)), `${l}: loading state`);
+    // The code sample stays left-to-right, also in Hebrew.
     assert.match(html, /<pre dir="ltr"/, `${l}: sample ltr`);
     assert.ok(html.includes(esc(m.urlPlaceholder)), `${l}: placeholder in the sample`);
   }

@@ -2609,7 +2609,20 @@
     "rotate": "Régénérer",
     "contractTitle": "Contrat attendu par les clients vocaux",
     "urlPlaceholder": "<votre-url>",
-    "replyWithin": "sous 2 s"
+    "replyWithin": "sous 2 s",
+    "loading": "Chargement…",
+    "emptyText": "Aucune URL pour l'instant : créez-la pour qu'un service vocal externe fasse répondre votre agent au téléphone.",
+    "create": "Créer l'URL",
+    "activeSince": "Active depuis le {date}",
+    "onceWarning": "Copiez cette URL maintenant : elle ne sera plus jamais affichée.",
+    "confirmTitle": "Régénérer l'URL ?",
+    "confirmBody": "L'URL actuelle cessera de fonctionner immédiatement, partout où elle est collée. Il faudra coller la nouvelle dans votre service vocal.",
+    "confirmYes": "Oui, régénérer",
+    "cancel": "Annuler",
+    "errorLoad": "Impossible de charger l'état de l'URL. Réessayez.",
+    "errorCreate": "Impossible de créer l'URL. Réessayez.",
+    "errorRegenerate": "Impossible de régénérer l'URL. Réessayez.",
+    "retry": "Réessayer"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi."
