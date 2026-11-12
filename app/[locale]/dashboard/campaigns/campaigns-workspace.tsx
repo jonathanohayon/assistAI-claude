@@ -76,12 +76,15 @@ export function CampaignsWorkspace({
   asUserId,
   variant = "modal",
   isAdmin = false,
+  captureOn = false,
 }: {
   open: boolean;
   onClose: () => void;
   asUserId?: string;
   /** The signed-in user is an admin (server page): the two admin-only mission cards (M2d). */
   isAdmin?: boolean;
+  /** The server's CAMPAIGN_CAPTURE switch as one boolean (server page); off when absent. */
+  captureOn?: boolean;
   // "modal" = overlay portal (ouvert depuis une tuile). "page" = rendu inline
   // dans le flux du layout dashboard (onglet « Appels sortants »), sans
   // backdrop ni fixed inset, pour laisser la nav visible au-dessus.
@@ -582,6 +585,7 @@ export function CampaignsWorkspace({
                 fromNumbers={fromNumbers}
                 isAdmin={isAdmin}
                 capabilities={capabilities}
+                captureOn={captureOn}
               />
             )}
 

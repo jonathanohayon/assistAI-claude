@@ -1253,6 +1253,8 @@
     "extractionType": "Type",
     "extractionOptions": "Options (séparées par des virgules)",
     "extractionRemove": "Supprimer",
+    "extractionCaptureOff": "la capture des champs est éteinte sur la plateforme : aucun champ n’est rempli pour l’instant.",
+    "extractionMax": "{max} champs maximum par campagne.",
     "type_string": "Texte",
     "type_number": "Nombre",
     "type_boolean": "Oui / Non",

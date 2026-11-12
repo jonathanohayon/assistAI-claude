@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { captureMode } from "@/lib/campaigns/capture-mode";
 import { loadOutboundCampaignsAccess } from "@/lib/campaigns/plan-gate";
 
 import { CampaignsPageClient } from "./campaigns-page-client";
@@ -25,7 +26,8 @@ export default async function CampaignsPage(props: {
 
   return (
     <main className="pb-6">
-      <CampaignsPageClient isAdmin={isAdmin} />
+      {/* Capture switch: one boolean to the client; the env stays server-side. */}
+      <CampaignsPageClient isAdmin={isAdmin} captureOn={captureMode() === "on"} />
     </main>
   );
 }

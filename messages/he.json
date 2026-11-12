@@ -1253,6 +1253,8 @@
     "extractionType": "סוג",
     "extractionOptions": "אפשרויות (מופרדות בפסיקים)",
     "extractionRemove": "הסרה",
+    "extractionCaptureOff": "איסוף השדות כבוי בפלטפורמה: אף שדה לא מתמלא כרגע.",
+    "extractionMax": "עד {max} שדות לכל קמפיין.",
     "type_string": "טקסט",
     "type_number": "מספר",
     "type_boolean": "כן / לא",

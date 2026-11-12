@@ -1253,6 +1253,8 @@
     "extractionType": "Type",
     "extractionOptions": "Options (comma-separated)",
     "extractionRemove": "Remove",
+    "extractionCaptureOff": "field capture is off on the platform: no field is filled for now.",
+    "extractionMax": "{max} fields maximum per campaign.",
     "type_string": "Text",
     "type_number": "Number",
     "type_boolean": "Yes / No",
