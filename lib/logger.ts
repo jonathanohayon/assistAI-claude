@@ -15,6 +15,7 @@
 //   auth      — login/signup/logout
 //   tenant    — multi-tenant resolution
 //   summary   — call summarization (gpt-5.4-mini)
+//   email     — owner recap emails (lib/owner-recap-email-send.ts)
 
 import { eq } from "drizzle-orm";
 
@@ -32,7 +33,8 @@ export type LogSource =
   | "tenant"
   | "summary"
   | "latency"
-  | "sync";
+  | "sync"
+  | "email";
 
 export interface LogEvent {
   source: LogSource;

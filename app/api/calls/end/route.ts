@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callTypeForCall } from "@/lib/call-type-db";
 import { callIdFromRequest } from "@/lib/call-id";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
+import { sendOwnerRecapEmailBestEffort } from "@/lib/owner-recap-email-send";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { callInsertValues, parseCallEndBody } from "@/lib/call-end-body";
@@ -423,6 +424,19 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  // Owner recap by EMAIL, next to the WhatsApp one: only when the owner
+  // switched it on AND set an address (default OFF). Fire-and-forget like
+  // verifyDelivery: never awaited, never throws, never changes the response.
+  void sendOwnerRecapEmailBestEffort({
+    userId: user.id,
+    callId: callRow.id,
+    cfg,
+    forOwner: summary.forOwner,
+    fromNumber,
+    recapFeatureOn: tenantFeatures.whatsapp_recap !== false,
+    transcriptEntries: transcript.length,
+  });
 
   await db
     .update(calls)

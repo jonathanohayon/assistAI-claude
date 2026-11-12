@@ -1820,6 +1820,14 @@
       "signature": "— L'équipe Tamara",
       "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est purement transactionnel."
     },
+    "ownerRecap": {
+      "subject": "📞 Nouvel appel reçu",
+      "eyebrow": "Récap d'appel",
+      "heading": "📞 Nouvel appel reçu",
+      "caller": "Appelant : {number}",
+      "unknownNumber": "numéro inconnu",
+      "footer": "Vous recevez cet email car le récap d'appel par email est activé sur votre compte. Vous pouvez changer l'adresse ou le désactiver à tout moment depuis votre dashboard."
+    },
     "trialWarning": {
       "subjectMinutes": "⏰ Il vous reste {minutes} minutes d'essai Tamara",
       "subjectHours": "⏰ Votre essai Tamara se termine dans 2 jours",
