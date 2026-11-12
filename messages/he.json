@@ -1447,7 +1447,9 @@
         "unknown": "לא ניתן {action, select, pause {להשהות} other {להפעיל}} את הקמפיין. נסו שוב."
       }
     },
-    "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}"
+    "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}",
+    "goal_book_for_seller": "פגישה עבור איש מכירות",
+    "goal_follow_up": "מעקב"
   },
   "DashboardCalendar": {
     "header": "יומן",
@@ -2609,7 +2611,21 @@
     "rotate": "יצירה מחדש",
     "contractTitle": "הפורמט שהשירותים הקוליים מצפים לו",
     "urlPlaceholder": "<your-url>",
-    "replyWithin": "תוך 2 שניות"
+    "replyWithin": "תוך 2 שניות",
+    "loading": "טוען…",
+    "emptyText": "עדיין אין כתובת: צרו אחת כדי ששירות קולי חיצוני יוכל לגרום לסוכן שלכם לענות לטלפון.",
+    "create": "יצירת כתובת",
+    "activeSince": "פעילה מאז {date}",
+    "onceWarning": "העתיקו את הכתובת עכשיו — היא לא תוצג שוב.",
+    "confirmTitle": "ליצור את הכתובת מחדש?",
+    "confirmBody": "הכתובת הנוכחית תפסיק לעבוד מיד, בכל מקום שבו היא מודבקת. תצטרכו להדביק את החדשה בשירות הקולי שלכם.",
+    "confirmYes": "כן, ליצור מחדש",
+    "cancel": "ביטול",
+    "errorLoad": "לא הצלחנו לטעון את מצב הכתובת. נסו שוב.",
+    "errorCreate": "לא הצלחנו ליצור את הכתובת. נסו שוב.",
+    "errorRegenerate": "לא הצלחנו ליצור את הכתובת מחדש. נסו שוב.",
+    "retry": "ניסיון חוזר",
+    "copiedDone": "העתקתי"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "הגדירו TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה."
@@ -2694,6 +2710,14 @@
       "other": {
         "name": "אחר",
         "what": "מטרה משלכם, שמתוארת בהמשך."
+      },
+      "book_for_seller": {
+        "name": "קביעת פגישה עבור איש מכירות",
+        "what": "מציעים לאדם פגישה עם איש מכירות שלכם."
+      },
+      "follow_up": {
+        "name": "מעקב מול לקוח",
+        "what": "חוזרים למי שכבר דיבר איתכם ומובילים לשלב הבא."
       }
     },
     "proofLabel": "הצלחה (הערכה):",
@@ -2706,10 +2730,22 @@
     },
     "coldLabel": "פנייה קרה",
     "coldHint": "האדם עדיין לא מכיר אתכם: רק פתיחת השיחה משתנה.",
-    "needsOff": "אפשר להפעיל במסך „{tools}”.",
     "defaultLabel": "משימת ברירת מחדל לקמפיינים חדשים",
     "defaultNone": "בחרו…",
     "defaultColdOption": "פנייה קרה",
-    "saveRefused": "המשימה לא נשמרה. נסו שוב."
+    "saveRefused": "המשימה לא נשמרה. נסו שוב.",
+    "lockedByTeam": "נבחרה על ידי הצוות שלנו: אפשר רק לבחור משימה אחרת.",
+    "presetAdminOnly": "המשימה הזו שמורה לצוות שלנו. בחרו משימה אחרת.",
+    "presetNeedsBooking": "המשימה הזו צריכה קביעת פגישות: הפעילו אותה עבור הסוכן שנבחר ונסו שוב.",
+    "capNoun": {
+      "booking": "קביעת פגישות",
+      "transfer": "העברה לאדם"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} עדיין לא זמינה בשיחות יוצאות.",
+      "google_not_connected": "{cap} ממתינה לחיבור Google Calendar.",
+      "no_transfer_number": "{cap} ממתינה למספר להעברה.",
+      "off": "צריך להפעיל {cap} במסך „{tools}”."
+    }
   }
 }

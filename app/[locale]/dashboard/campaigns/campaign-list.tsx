@@ -3,17 +3,20 @@
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
-import { GOAL_PRESETS } from "@/lib/campaigns/constants";
+import { GOAL_PRESETS, type GoalPreset } from "@/lib/campaigns/constants";
 import type { CampaignListItem } from "@/lib/campaigns/types";
 
 import { StatusPill } from "./_ui";
 
-const GOAL_EMOJI: Record<string, string> = {
+export const GOAL_EMOJI: Record<GoalPreset, string> = {
   cold: "❄️",
   sales: "💼",
   lead_gen: "🎯",
   marketing: "📣",
   custom: "✨",
+  // M2d (admin-only presets).
+  book_for_seller: "📅",
+  follow_up: "🔁",
 };
 
 export function CampaignList({
@@ -114,7 +117,7 @@ export function CampaignList({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#fff7ed] to-[#fdf2f8] text-lg">
-                    {GOAL_EMOJI[c.goalPreset] ?? "✨"}
+                    {GOAL_EMOJI[c.goalPreset as GoalPreset] ?? "✨"}
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-bold text-[#18181b]">
