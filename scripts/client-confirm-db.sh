@@ -3,8 +3,13 @@
 # (127.0.0.1:55478, data in the git-ignored .tmp/ folder), then stops it.
 # Needs initdb/pg_ctl on PATH. Never uses DATABASE_URL from your shell, and runs
 # with a clean env so no Twilio/OpenAI credential is visible. Also snapshots
-# origin/main's /api/calls/end route into .tmp/ so the test can compare the
-# owner recap payload of main and of this branch for the same input.
+# the "before" /api/calls/end route into .tmp/ so the test can compare the
+# owner recap payload of before and of this branch for the same input.
+# The "before" route is PINNED to the parent of #306's merge commit (the last
+# main that still sent the LLM recap for a call that proved nothing), not
+# origin/main: #306 fixed that flaw on main, so the "before still has the
+# flaw" check can never hold against origin/main. Override with
+# CLIENT_CONFIRM_MAIN_REF=<commit>.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PORT=55478
@@ -16,7 +21,9 @@ if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 mkdir -p "$(dirname "$MAIN_ROUTE")"
-git show "${CLIENT_CONFIRM_MAIN_REF:-origin/main}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
+# Parent of "Merge pull request #306" (07ffeca^1).
+BEFORE_REF="${CLIENT_CONFIRM_MAIN_REF:-e1968760af7bc00e179269a227954fbaa9a05212}"
+git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
 rm -rf "$DIR" && mkdir -p "$DIR"
 initdb -D "$DIR" -A trust -U postgres >/dev/null
 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
