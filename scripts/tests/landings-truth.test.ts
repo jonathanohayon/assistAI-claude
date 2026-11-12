@@ -208,12 +208,29 @@ for (const s of [
   }
 }
 
-// 7. Connect (VP review): the sample request appears once, in the contract section; the hero keeps the diagram only.
+// 7. Connect (VP review): the sample request appears once, in the contract
+// section; the diagram is the hero's visual, with no section (or heading) of
+// its own lower on the page.
 for (const l of LANDING_LOCALES) {
-  const c = buildConnectContent(l) as { showcase?: { copy?: Record<string, unknown> } };
-  const sc = c.showcase!.copy!;
-  for (const k of ["request", "reply", "requestLabel", "replyLabel"]) assert.equal(k in sc, false, `${l}: no ${k} beside the diagram`);
+  const c = buildConnectContent(l);
+  assert.equal(c.hero?.media, "diagram", `${l}: the diagram is the hero visual`);
+  assert.equal("showcase" in c, false, `${l}: no separate diagram section`);
+  const diagram = c.hero.media === "diagram" ? c.hero.diagram : undefined;
+  assert.deepEqual(Object.keys(diagram ?? {}).sort(), ["actors", "caption", "links"], `${l}: the diagram carries no heading`);
+  for (const k of ["request", "reply", "requestLabel", "replyLabel"]) assert.equal(k in (diagram ?? {}), false, `${l}: no ${k} beside the diagram`);
   assert.equal(JSON.stringify(c).split("call_mock_0001").length - 1, 1, `${l}: one sample request on the page`);
+}
+
+// 7b. Contract note (VP review): one contract for both modes; the old
+// "voice only has its own request shape" note is gone.
+const NOTE = {
+  fr: "Le même contrat sert aux deux modes : Tamara mène la conversation, ou prête seulement sa voix.",
+  en: "The same contract serves both modes: Tamara leads the conversation, or only lends her voice.",
+  he: "אותו חוזה משמש את שני המצבים: תמרה מנהלת את השיחה, או רק משאילה את הקול שלה.",
+} as const;
+for (const l of LANDING_LOCALES) {
+  assert.equal(buildConnectContent(l).contract?.scope, NOTE[l], `${l}: contract note`);
+  assert.doesNotMatch(pageText(PAGES[1], l, OFF), /voix seule|voice-only|propre forme de requête|own request shape|מבנה בקשה משלו/, `${l}: old note gone`);
 }
 
 // 8. Door heroes (VP review): no landing page plays the home's video; /sales

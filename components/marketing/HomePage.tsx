@@ -14,9 +14,8 @@ import { Hero } from "./Hero";
 import { Industries } from "./Industries";
 import { IntegrationsStrip } from "./IntegrationsStrip";
 import { Journey } from "./Journey";
-import { ConnectDiagram } from "./landing/ConnectDiagram";
 import { ContractSection } from "./landing/ContractSection";
-import { DoorHero } from "./landing/DoorHero";
+import { DOOR_TONE, DoorHero } from "./landing/DoorHero";
 import { FactStrip } from "./landing/FactStrip";
 import { LandingSteps } from "./landing/LandingSteps";
 import { LandingUseCases } from "./landing/LandingUseCases";
@@ -42,8 +41,7 @@ const RENDERERS: {
   // The home keeps its video hero; a landing page gets its own door (DoorHero).
   hero: (slot) => (slot.media === "video" ? <Hero stats={slot.stats} copy={slot.copy} /> : <DoorHero {...slot} />),
   proofStrip: (slot) => ("facts" in slot ? <FactStrip label={slot.label} facts={slot.facts} /> : <IntegrationsStrip />),
-  showcase: (slot) =>
-    slot.baked === "OutboundCalling" ? <OutboundCalling copy={slot.copy} /> : <ConnectDiagram copy={slot.copy} />,
+  showcase: (slot) => <OutboundCalling copy={slot.copy} />,
   demo: (slot) => <TryDemo demo={slot.demo} />,
   how: (slot) => ("steps" in slot ? <LandingSteps {...slot} /> : <Journey />),
   contract: (slot) => <ContractSection {...slot} />,
@@ -58,6 +56,13 @@ const RENDERERS: {
   faq: (slot) => ("items" in slot ? <FAQ heading={slot} items={slot.items} /> : <FAQ faqKeys={slot.keys} />),
   cta: (slot) => ("copy" in slot ? <CTA copy={slot.copy} /> : <CTA />),
 };
+
+/** A light landing door under the nav: its links start dark (the home's
+ *  video and the dark door keep white links until scrolled). */
+function heroIsLight(content: HomeContent): boolean {
+  const hero = content.hero;
+  return !!hero && hero.media !== "video" && DOOR_TONE[hero.media] === "light";
+}
 
 function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent) {
   const slot = content[id];
@@ -75,7 +80,7 @@ export function HomePage({ content }: { content: HomeContent }) {
   return (
     <RespectReducedMotion>
       <main className="noise-grain relative flex flex-col overflow-x-hidden">
-        <Nav nav={content.nav} />
+        <Nav nav={content.nav} overLight={heroIsLight(content)} />
         {HOME_SLOT_ORDER.map((id) => renderSlot(id, content))}
         <Footer anchorBase={content.nav ? "/" : ""} tagline={content.footerTagline} />
         <SupportFab />

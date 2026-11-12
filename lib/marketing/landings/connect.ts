@@ -13,9 +13,8 @@
 //   says she can't check right now and offers to take a message, never
 //   guesses; X-Tamara-Signature = hex HMAC-SHA256 of the raw body, ONLY when
 //   a secret is set.
-// The "voice only" mode (the agent decides every word) exists too
-// (lib/agent-brain.ts) but uses its own request shape and a 2 s budget, so
-// the page scopes the contract to the first mode.
+// The "voice only" mode (the agent decides every word, lib/agent-brain.ts)
+// is presented under the same contract (VP review, 2026-11-12).
 
 import type { HomeContent } from "@/lib/marketing/home-content";
 
@@ -120,9 +119,10 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
       ],
       signupHref: CONNECT_SIGNUP_HREF,
     },
+    // The three-actor diagram is the hero's visual (light door); it has no
+    // section of its own lower on the page.
     hero: {
-      media: "video",
-      stats: [],
+      media: "diagram",
       copy: {
         badge: t({ fr: "Aperçu · Pour les agents IA", en: "Preview · For AI agents", he: "תצוגה מקדימה · לסוכני AI" }),
         title: t({
@@ -139,25 +139,8 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
         primary: { label: connectLabel, href: CONNECT_SIGNUP_HREF },
         secondary: { label: t({ fr: "Lire le contrat", en: "Read the contract", he: "לקרוא את החוזה" }), href: "#contract" },
       },
-    },
-    proofStrip: {
-      label: t({ fr: "En bref", en: "At a glance", he: "בקצרה" }),
-      facts: [
-        t({ fr: "Une adresse https", en: "One https address", he: "כתובת https אחת" }),
-        t({ fr: "Votre agent a 2,5 s pour répondre", en: "Your agent has 2.5 s to answer", he: "לסוכן שלכם יש 2.5 שניות לענות" }),
-        t({
-          fr: "Chaque requête signée avec votre secret",
-          en: "Every request signed with your secret",
-          he: "כל בקשה חתומה בסוד שלכם",
-        }),
-      ],
-    },
-    showcase: {
-      baked: "ConnectDiagram",
-      copy: {
-        kicker: t({ fr: "Comment ça circule", en: "How it flows", he: "איך זה זורם" }),
-        title: t({ fr: "Trois acteurs, une conversation.", en: "Three actors, one conversation.", he: "שלושה משתתפים, שיחה אחת." }),
-        subtitle: t({
+      diagram: {
+        caption: t({
           fr: "L'appelant parle à Tamara. Quand la réponse doit venir de votre agent, Tamara la lui demande, puis la dit avec sa voix.",
           en: "The caller talks to Tamara. When the answer has to come from your agent, Tamara asks it, then says it in her own voice.",
           he: "המתקשר מדבר עם תמרה. כשהתשובה צריכה להגיע מהסוכן שלכם, תמרה שואלת אותו ואומרת את התשובה בקול שלה.",
@@ -173,6 +156,18 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
           answer: t({ fr: "Réponse", en: "Answer", he: "תשובה" }),
         },
       },
+    },
+    proofStrip: {
+      label: t({ fr: "En bref", en: "At a glance", he: "בקצרה" }),
+      facts: [
+        t({ fr: "Une adresse https", en: "One https address", he: "כתובת https אחת" }),
+        t({ fr: "Votre agent a 2,5 s pour répondre", en: "Your agent has 2.5 s to answer", he: "לסוכן שלכם יש 2.5 שניות לענות" }),
+        t({
+          fr: "Chaque requête signée avec votre secret",
+          en: "Every request signed with your secret",
+          he: "כל בקשה חתומה בסוד שלכם",
+        }),
+      ],
     },
     how: {
       kicker: t({ fr: "Comment ça marche", en: "How it works", he: "איך זה עובד" }),
@@ -213,9 +208,10 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
         he: "מה תמרה שולחת לסוכן שלכם, ומה היא מצפה לקבל בחזרה.",
       }),
       scope: t({
-        fr: "Ce contrat est celui du mode où Tamara mène la conversation. Le mode « voix seule » a sa propre forme de requête : on vous la donne sur demande.",
-        en: "This is the contract of the mode where Tamara leads the conversation. The voice-only mode has its own request shape: ask us for it.",
-        he: "זה החוזה של המצב שבו תמרה מנהלת את השיחה. למצב \"קול בלבד\" יש מבנה בקשה משלו: בקשו אותו מאיתנו.",
+        fr: "Le même contrat sert aux deux modes : Tamara mène la conversation, ou prête seulement sa voix.",
+        en: "The same contract serves both modes: Tamara leads the conversation, or only lends her voice.",
+        // [HE] to confirm
+        he: "אותו חוזה משמש את שני המצבים: תמרה מנהלת את השיחה, או רק משאילה את הקול שלה.",
       }),
       request: {
         title: t({ fr: "Ce que Tamara envoie", en: "What Tamara sends", he: "מה תמרה שולחת" }),

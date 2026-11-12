@@ -42,7 +42,7 @@ for (const id of [...LANDING_ONLY_SLOTS, "nav", "footerTagline"]) assert.equal(i
 assert.equal("copy" in RECEPTIONIST_HOME.hero, false);
 // Hero media: the home keeps its video; the other kinds are landing doors.
 assert.equal(RECEPTIONIST_HOME.hero.media, "video");
-assert.deepEqual([...HERO_MEDIA_KINDS], ["video", "panel"]);
+assert.deepEqual([...HERO_MEDIA_KINDS], ["video", "panel", "diagram"]);
 assert.equal("copy" in RECEPTIONIST_HOME.cta, false);
 assert.equal(RECEPTIONIST_HOME.proofStrip?.baked, "IntegrationsStrip");
 assert.equal(RECEPTIONIST_HOME.how?.baked, "Journey");
@@ -57,14 +57,19 @@ assert.equal("outbound" in RECEPTIONIST_HOME, false);
 // inside the same wrapper as before. Nav and Footer get the home's defaults
 // when the content has no `nav` (the home).
 const homePage = src("components/marketing/HomePage.tsx");
-assert.match(homePage, /<RespectReducedMotion>\s*<main className="noise-grain relative flex flex-col overflow-x-hidden">\s*<Nav nav=\{content\.nav\} \/>\s*\{HOME_SLOT_ORDER\.map\(/);
+assert.match(homePage, /<RespectReducedMotion>\s*<main className="noise-grain relative flex flex-col overflow-x-hidden">\s*<Nav nav=\{content\.nav\} overLight=\{heroIsLight\(content\)\} \/>\s*\{HOME_SLOT_ORDER\.map\(/);
+// The nav keeps white links over the home's video: only a light landing door
+// turns them dark from the top.
+assert.match(homePage, /return !!hero && hero\.media !== "video" && DOOR_TONE\[hero\.media\] === "light";/);
+assert.match(marketing("Nav"), /overLight = false,/);
+assert.match(marketing("Nav"), /const darkText = scrolled \|\| overLight;/);
 assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} tagline=\{content\.footerTagline\} \/>\s*<SupportFab \/>\s*<\/main>\s*<\/RespectReducedMotion>/);
 // For the home's shape of each slot, the renderer is the component it had
 // before, with the same props.
 const renderers: Record<string, RegExp> = {
   hero: /hero: \(slot\) => \(slot\.media === "video" \? <Hero stats=\{slot\.stats\} copy=\{slot\.copy\} \/> : <DoorHero \{\.\.\.slot\} \/>\)/,
   proofStrip: /proofStrip: \(slot\) => \("facts" in slot \? <FactStrip [^>]*\/> : <IntegrationsStrip \/>\)/,
-  showcase: /showcase: \(slot\) =>\s*slot\.baked === "OutboundCalling" \? <OutboundCalling copy=\{slot\.copy\} \/> : <ConnectDiagram copy=\{slot\.copy\} \/>,/,
+  showcase: /showcase: \(slot\) => <OutboundCalling copy=\{slot\.copy\} \/>,/,
   contract: /contract: \(slot\) => <ContractSection \{\.\.\.slot\} \/>/,
   demo: /demo: \(slot\) => <TryDemo demo=\{slot\.demo\} \/>/,
   how: /how: \(slot\) => \("steps" in slot \? <LandingSteps \{\.\.\.slot\} \/> : <Journey \/>\)/,

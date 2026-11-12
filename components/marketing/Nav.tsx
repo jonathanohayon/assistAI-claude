@@ -21,9 +21,13 @@ const NAV_LINKS = [
 
 export function Nav({
   nav,
+  overLight = false,
 }: {
   /** A landing page's own links and sign-up door; omitted = the home's. */
   nav?: NavCopy;
+  /** The hero under the nav is light (a landing door): the white bar and its
+   *  teal links from the top, not only once scrolled. Omitted on the home. */
+  overLight?: boolean;
 } = {}) {
   const t = useTranslations("Nav");
   const links = nav ? nav.links : NAV_LINKS.map((l) => ({ href: l.href, label: t(`links.${l.labelKey}`) }));
@@ -31,6 +35,9 @@ export function Nav({
   // The drawer slides in from the burger's side: right in LTR, left in RTL.
   const offscreen = useLocale() === "he" ? "-100%" : "100%";
   const [scrolled, setScrolled] = useState(false);
+  // White links over a dark hero; the white bar with teal links once
+  // scrolled, or from the top over a light hero.
+  const darkText = scrolled || overLight;
   const [open, setOpen] = useState(false);
   const { scrollY, scrollYProgress } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
@@ -70,7 +77,9 @@ export function Nav({
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled || open
+        // Over a light door the bar is white from the top: teal links on the
+        // pink mesh measured 3.5:1, on the white bar 5.36:1.
+        darkText || open
           ? "border-b border-[var(--color-border)]/60 bg-white/80 backdrop-blur-lg"
           : "border-b border-transparent bg-transparent"
       }`}
@@ -97,10 +106,10 @@ export function Nav({
               key={l.href}
               href={l.href}
               className={`font-semibold transition-colors hover:text-[#ec4899] ${
-                scrolled ? "text-[#0e7490]" : "text-white"
+                darkText ? "text-[#0e7490]" : "text-white"
               }`}
               style={
-                scrolled
+                darkText
                   ? undefined
                   : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
               }
@@ -115,10 +124,10 @@ export function Nav({
           <Link
             href="/login"
             className={`hidden rounded-full px-4 py-2 text-base font-semibold transition-colors hover:text-[#ec4899] sm:inline-flex ${
-              scrolled ? "text-[#0e7490]" : "text-white"
+              darkText ? "text-[#0e7490]" : "text-white"
             }`}
             style={
-              scrolled
+              darkText
                 ? undefined
                 : { textShadow: "0 1px 6px rgba(0,0,0,0.45)" }
             }

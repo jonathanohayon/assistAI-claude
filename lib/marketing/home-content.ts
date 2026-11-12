@@ -101,9 +101,11 @@ export type TalkCopy = SectionHeading & { button: string };
 
 export type CtaCopy = SectionHeading & { primary: LinkCopy; secondary: LinkCopy };
 
-/** The /connect visual: caller → Tamara → your agent (the sample request and
- *  reply are in the contract section). */
-export type ConnectDiagramCopy = SectionHeading & {
+/** The connect landing's visual: caller → Tamara → your agent (the sample
+ *  request and reply are in the contract section). It lives in the hero, so
+ *  it carries no heading of its own: `caption` is its accessible description. */
+export type ConnectDiagramCopy = {
+  caption: string;
   actors: { caller: string; tamara: string; agent: string };
   links: { voice: string; ask: string; answer: string };
 };
@@ -114,7 +116,7 @@ export type ContractPart = { title: string; body: string; code?: string };
 /** The /connect contract: what Tamara sends, what the agent returns, the
  *  time budget and the signature. */
 export type ContractCopy = SectionHeading & {
-  /** Which mode this contract covers. */
+  /** Which modes this contract covers. */
   scope: string;
   request: ContractPart & { fields: readonly { name: string; body: string }[] };
   reply: ContractPart;
@@ -129,14 +131,16 @@ export type NavCopy = { links: readonly LinkCopy[]; signupHref: string };
  *  video hero (centred copy, stats). The other kinds are a landing page's
  *  own door: copy on the start side, the visual on the end side (below it on
  *  phones). `panel`: the live campaign card on the dark command-centre
- *  background (the sales landing). */
-export const HERO_MEDIA_KINDS = ["video", "panel"] as const;
+ *  background (the sales landing). `diagram`: the three-actor diagram on the
+ *  light brand surface (the connect landing). */
+export const HERO_MEDIA_KINDS = ["video", "panel", "diagram"] as const;
 export type HeroMediaKind = (typeof HERO_MEDIA_KINDS)[number];
 
 export type VideoHeroSlot = { media: "video"; stats: readonly HeroStat[]; copy?: HeroCopy };
 export type PanelHeroSlot = { media: "panel"; copy: HeroCopy };
+export type DiagramHeroSlot = { media: "diagram"; copy: HeroCopy; diagram: ConnectDiagramCopy };
 /** A landing page's hero: its own copy and visual, no video, no stats. */
-export type DoorHeroSlot = PanelHeroSlot;
+export type DoorHeroSlot = PanelHeroSlot | DiagramHeroSlot;
 export type HeroSlot = VideoHeroSlot | DoorHeroSlot;
 
 /** Every media kind has a hero shape, and every shape names a kind. */
@@ -152,7 +156,7 @@ export type HomeContent = {
   hero?: HeroSlot;
   proofStrip?: { baked: "IntegrationsStrip" } | { label: string; facts: readonly string[] };
   /** The page's visual right under the proof strip (landing pages). */
-  showcase?: { baked: "OutboundCalling"; copy: SectionHeading } | { baked: "ConnectDiagram"; copy: ConnectDiagramCopy };
+  showcase?: { baked: "OutboundCalling"; copy: SectionHeading };
   demo?: { demo: DemoId };
   how?: { baked: "Journey" } | (SectionHeading & { steps: readonly ItemCopy[] });
   contract?: ContractCopy;
