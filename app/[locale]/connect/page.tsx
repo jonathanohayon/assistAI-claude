@@ -4,7 +4,6 @@ import { setRequestLocale } from "next-intl/server";
 import { HomePage } from "@/components/marketing/HomePage";
 import { buildConnectContent, connectMeta } from "@/lib/marketing/landings/connect";
 import { asLandingLocale } from "@/lib/marketing/landings/switches";
-import { DEFAULT_PLAN_PRICING } from "@/lib/plan-pricing";
 
 // L4: UNLISTED preview of "give your AI agent a voice and a number". The
 // capability is not live on calls yet; the page says so. noindex, not in any
@@ -25,6 +24,5 @@ export default async function ConnectLanding({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  // No pricing slot on this page: the default map only satisfies the prop.
-  return <HomePage content={buildConnectContent(asLandingLocale(locale))} pricing={DEFAULT_PLAN_PRICING} />;
+  return <HomePage content={buildConnectContent(asLandingLocale(locale))} />;
 }
