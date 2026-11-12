@@ -9,6 +9,8 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { logEvent } from "@/lib/logger";
+import { consumeRateLimit } from "@/lib/rate-limit-db";
+import { testCallLimitOpts, testCallRateLimited } from "@/lib/campaigns/test-call-limit";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -58,6 +60,11 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   if (!fromNumber) {
     return NextResponse.json({ error: "no_caller_id" }, { status: 409 });
   }
+
+  // Counted BEFORE the dial (and before the test contact is written), for the
+  // account the call is FOR (the ?asUserId target when an admin acts).
+  const limit = await consumeRateLimit(testCallLimitOpts(r.userId));
+  if (!limit.ok) return testCallRateLimited(limit);
 
   // Contact de test marqué (status 'calling' → ignoré par le dispatcher).
   const [contact] = await db
