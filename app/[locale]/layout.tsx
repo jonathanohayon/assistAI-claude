@@ -7,7 +7,7 @@ import {
   setRequestLocale,
 } from "next-intl/server";
 
-import { LocaleHtmlAttributes } from "@/components/LocaleHtmlAttributes";
+import { RootHtml } from "../_root/root-html";
 import { PUBLIC_NAMESPACES, pickNamespaces } from "@/i18n/public-namespaces";
 import { routing, type Locale } from "@/i18n/routing";
 
@@ -15,8 +15,13 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-// Per-locale <title>/description. The root layout's static metadata is French
-// and only remains as a fallback for routes outside [locale].
+// Only fr/he/en exist. Any other first segment (/xx, /nothing-here) 404s before
+// this root layout renders, so it gets app/global-not-found.tsx instead of a
+// bare error document.
+export const dynamicParams = false;
+
+// Per-locale <title>/description. The French metadata in
+// app/_root/plain-root-layout.tsx only covers the routes outside [locale].
 export async function generateMetadata({
   params,
 }: {
@@ -28,6 +33,11 @@ export async function generateMetadata({
   return { title: t("title"), description: t("description") };
 }
 
+// This is a ROOT layout (there is no app/layout.tsx): it renders <html> with
+// the lang/dir of the `locale` param, so /fr, /en and /he prerender statically
+// (generateStaticParams + setRequestLocale, no request data read). On a soft
+// navigation /fr → /he the param changes, this layout re-renders and React
+// updates <html lang dir> and the provider's messages together.
 export default async function LocaleLayout({
   children,
   params,
@@ -46,9 +56,10 @@ export default async function LocaleLayout({
   // in the root layout, or the language switcher freezes on soft navigation.
   const messages = pickNamespaces(await getMessages(), PUBLIC_NAMESPACES);
   return (
-    <NextIntlClientProvider locale={typedLocale} messages={messages}>
-      <LocaleHtmlAttributes locale={typedLocale} />
-      {children}
-    </NextIntlClientProvider>
+    <RootHtml locale={typedLocale}>
+      <NextIntlClientProvider locale={typedLocale} messages={messages}>
+        {children}
+      </NextIntlClientProvider>
+    </RootHtml>
   );
 }
