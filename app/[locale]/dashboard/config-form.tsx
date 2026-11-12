@@ -30,10 +30,10 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
 import { UpsellModal } from "./campaigns/upsell-modal";
+// Client-safe module: importing a VALUE from lib/plan-features would bundle
+// its tool-name descriptions into the tenant's dashboard chunks.
+import { canUseOutboundCampaigns } from "@/lib/outbound-access";
 import type { PlanFeatures } from "@/lib/plan-features";
-// Client-safe module: importing a value from lib/plan-features would ship
-// FEATURE_DEFS (tool names) to tenants.
-import { canUseOutboundCampaigns } from "@/lib/outbound-campaigns-rule";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
 import { ChannelsPanel } from "./config/channels-panel";

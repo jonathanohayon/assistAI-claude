@@ -103,6 +103,6 @@ export function featuresForPlan(
   return { ...f, outbound_campaigns: false };
 }
 
-// The ONE rule for the outbound call centre lives in its own client-safe
-// module (lib/outbound-campaigns-rule.ts); re-exported for server callers.
-export { canUseOutboundCampaigns } from "@/lib/outbound-campaigns-rule";
+// The outbound call-centre rule lives in lib/outbound-access.ts (client-safe);
+// re-exported so server callers keep importing it from here.
+export { canUseOutboundCampaigns } from "@/lib/outbound-access";

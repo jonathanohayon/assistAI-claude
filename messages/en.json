@@ -520,7 +520,8 @@
     "orDivider": "or with an email",
     "continueWithGoogle": "Continue with Google",
     "backHome": "← Back",
-    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”."
+    "errExistsGoogle": "This email is already registered via Google. Use “Continue with Google”.",
+    "errRateLimited": "Too many attempts. Please try again later."
   },
   "Login": {
     "title": "Sign in",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "Cancel signup and return home",
     "restartConfirm": "Delete this signup and start over?\n\nThe account will be permanently deleted. You can re-register with the same or another email.",
     "restartButton": "Start over with another email",
-    "errNetwork": "Network error"
+    "errNetwork": "Network error",
+    "errResendRateLimited": "Too many code requests. Please try again later."
   },
   "Onboarding": {
     "trialLabel": "Free trial — 60 call minutes or 24h",

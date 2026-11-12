@@ -2,10 +2,9 @@
 // shared by the UI (page, nav tab, config tile) and the API gate
 // (lib/campaigns/plan-gate.ts): admins always, otherwise the plan feature.
 //
-// Its own module, with a type-only import, so a client component can use it
-// without pulling lib/plan-features' FEATURE_DEFS (which name the agent's
-// tools) into a tenant's bundle (scripts/check-tenant-bundle.mjs).
-// lib/plan-features.ts re-exports it for server callers.
+// Its own module, with a TYPE-only import, so client components can use it
+// without bundling lib/plan-features.ts (whose admin descriptions name the
+// agent's tools: scripts/check-tenant-bundle.mjs).
 
 import type { PlanFeatures } from "@/lib/plan-features";
 
