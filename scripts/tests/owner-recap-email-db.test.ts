@@ -6,7 +6,7 @@
 // a sender failure that changes nothing but logs an event.
 // Mock data only (+1555 numbers, example.com, "Demo Salon"); every outbound
 // fetch is mocked (the summary) or refused.
-// Run with:  OWNER_RECAP_EMAIL_TEST_DB_URL=postgres://… npx tsx scripts/tests/owner-recap-email-db.test.ts
+// Run with:  npm run test:db -- --only owner-recap-email   (see scripts/owner-recap-email-db.sh)
 // Runs only when OWNER_RECAP_EMAIL_TEST_DB_URL points at a THROWAWAY, migrated
 // database (it deletes users/events); otherwise it is skipped, so plain
 // `npm test` never touches a database. main's route is copied (git show
