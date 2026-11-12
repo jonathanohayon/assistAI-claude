@@ -37,10 +37,14 @@ export function sameWhatsappNumber(a: string, b: string): boolean {
 /** Why the Test button is disabled, or null when it can be used. */
 export type WhatsappTestBlockKey = "whatsappTestNeedsSaved" | "whatsappTestSaveFirst";
 
+/** Nothing saved and nothing typed → "save a number"; a typed number that
+ *  isn't the saved one (including a cleared field) → "save it first"; a
+ *  saved value the route would refuse → "save a number". */
 export function whatsappTestBlock(saved: string, current: string): WhatsappTestBlockKey | null {
   const s = clean(saved);
-  if (!s || !E164_LOOSE.test(s)) return "whatsappTestNeedsSaved";
+  if (!s && !clean(current)) return "whatsappTestNeedsSaved";
   if (!sameWhatsappNumber(saved, current)) return "whatsappTestSaveFirst";
+  if (!E164_LOOSE.test(s)) return "whatsappTestNeedsSaved";
   return null;
 }
 

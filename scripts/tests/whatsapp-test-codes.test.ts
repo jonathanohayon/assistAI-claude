@@ -120,8 +120,9 @@ await test("Retry-After seconds become whole minutes, rounded up, at least 1", (
 
 await test("block rules: nothing saved, typed differs, same number in another spelling", () => {
   assert.equal(whatsappTestBlock("", ""), "whatsappTestNeedsSaved");
-  assert.equal(whatsappTestBlock("", MOCK), "whatsappTestNeedsSaved");
-  assert.equal(whatsappTestBlock("   ", MOCK), "whatsappTestNeedsSaved");
+  assert.equal(whatsappTestBlock("   ", "  "), "whatsappTestNeedsSaved");
+  assert.equal(whatsappTestBlock("", MOCK), "whatsappTestSaveFirst", "typed, never saved");
+  assert.equal(whatsappTestBlock("   ", MOCK), "whatsappTestSaveFirst");
   assert.equal(whatsappTestBlock("+12", "+12"), "whatsappTestNeedsSaved", "too short for the route");
   assert.equal(whatsappTestBlock(MOCK, "+972500000001"), "whatsappTestSaveFirst");
   assert.equal(whatsappTestBlock(MOCK, ""), "whatsappTestSaveFirst", "switched off = number cleared, not saved yet");
@@ -187,6 +188,7 @@ await test("rendered card: Test disabled with the reason, enabled once saved", (
     {
       const html = render(locale, { form: formWith(MOCK) });
       assert.match(testButton(html), /disabled=""/, `${locale}: no saved prop = disabled`);
+      assert.ok(html.includes(escape(dc.whatsappTestSaveFirst)), `${locale}: typed-not-saved reason shown`);
     }
     // Saved and unchanged: enabled, no reason line.
     {
