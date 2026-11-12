@@ -2,6 +2,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { outboundVoiceConfigAfterLegacy, outboundVoiceConfigUpdates } from "@/lib/voice/route-writes";
 import { currentOutboundVoice, voiceForViewer } from "@/lib/voice/store";
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   // body optionnel : normalizeAgentFields applique des défauts sur tout.
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

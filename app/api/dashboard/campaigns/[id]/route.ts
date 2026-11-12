@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { withoutToolsStore } from "@/lib/tools/store";
 import { withoutMissionStore } from "@/lib/mission/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
@@ -104,6 +105,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const campaign = await loadOwned(r.userId, id);
@@ -176,6 +180,9 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const campaign = await loadOwned(r.userId, id);
