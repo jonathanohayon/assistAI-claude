@@ -1907,7 +1907,7 @@
       "rateLimited": "Trop de tests d'affilée. Réessayez dans {minutes} min.",
       "rateLimitedNoTime": "Trop de tests d'affilée. Réessayez un peu plus tard.",
       "unavailable": "Le test en direct est momentanément indisponible. Réessayez dans un instant.",
-      "planRequired": "Le test en direct de cet agent n'est pas inclus dans votre offre.",
+      "planRequired": "Le test en direct de cet agent n'est pas inclus dans votre forfait.",
       "unauthorized": "Votre session a expiré. Reconnectez-vous.",
       "connectFailed": "La connexion n'a pas abouti. Vérifiez votre réseau et votre micro, puis réessayez.",
       "failed": "Le test n'a pas pu démarrer. Réessayez."
