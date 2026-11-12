@@ -51,7 +51,7 @@ const renderers: Record<string, RegExp> = {
   features: /features: \(\) => <FeatureBento \/>/,
   useCases: /useCases: \(\) => <Industries \/>/,
   proof: /proof: \(\) => <Proof \/>/,
-  pricing: /pricing: \(_slot, ctx\) => <Pricing pricing=\{ctx\.pricing\} \/>/,
+  pricing: /pricing: \(\) => <Pricing \/>/,
   trust: /trust: \(\) => <TrustStrip \/>/,
   faq: /faq: \(slot\) => <FAQ faqKeys=\{slot\.keys\} \/>/,
   cta: /cta: \(\) => <CTA \/>/,
@@ -90,12 +90,12 @@ assert.match(marketing("TryDemo"), /^"use client";/);
 assert.match(marketing("TryDemo"), /import VoiceAgent from "@\/components\/VoiceAgent";/);
 assert.doesNotMatch(homePage, /VoiceAgent/);
 
-// 4. page.tsx renders through the content object and keeps ISR + build-safe pricing.
+// 4. page.tsx renders through the content object and reads no data: it is
+//    prerendered, and the prices are fetched on the client.
 const page = src("app/[locale]/page.tsx");
-assert.match(page, /return <HomePage content=\{RECEPTIONIST_HOME\} pricing=\{pricing\} \/>;/);
-assert.match(page, /export const revalidate = 600;/);
+assert.match(page, /return <HomePage content=\{RECEPTIONIST_HOME\} \/>;/);
+assert.doesNotMatch(page, /getPlanPricingMap|DEFAULT_PLAN_PRICING|revalidate/);
 assert.match(page, /setRequestLocale\(locale\);/);
-assert.match(page, /pricing = DEFAULT_PLAN_PRICING;/);
 assert.doesNotMatch(page, /<(Hero|FAQ|TryDemo|Journey|Pricing|Nav|Footer)\b/);
 
 console.log("ALL HOME-SLOTS TESTS PASSED");
