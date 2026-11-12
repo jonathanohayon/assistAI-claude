@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { NextIntlClientProvider } from "next-intl";
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { Pricing } from "../../components/marketing/Pricing";
@@ -28,6 +28,7 @@ const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const messages = (l: string) => JSON.parse(read(`messages/${l}.json`));
 const LOCALES = ["fr", "en", "he"] as const;
+type ProviderProps = ComponentProps<typeof NextIntlClientProvider>;
 
 let failures = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -61,7 +62,7 @@ const amountRe = (n: number) => {
 
 function renderWithIntl(locale: string, node: React.ReactElement) {
   return renderToStaticMarkup(
-    createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" }, node),
+    createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, node),
   );
 }
 
