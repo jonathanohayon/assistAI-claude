@@ -1448,7 +1448,7 @@
       }
     },
     "pauseToEdit": "Pause the campaign to change: {fields}",
-    "goal_book_for_seller": "Appointment for the seller",
+    "goal_book_for_seller": "Meeting for a salesperson",
     "goal_follow_up": "Follow-up"
   },
   "DashboardCalendar": {
@@ -2686,11 +2686,11 @@
         "what": "Your own goal, described below."
       },
       "book_for_seller": {
-        "name": "Book an appointment for the seller",
+        "name": "Book a meeting for a salesperson",
         "what": "Offers the person an appointment with your seller."
       },
       "follow_up": {
-        "name": "Follow up",
+        "name": "Follow up with a customer",
         "what": "Gets back in touch with someone who already spoke with you and leads to the next step."
       }
     },
@@ -2704,13 +2704,22 @@
     },
     "coldLabel": "Cold prospecting",
     "coldHint": "They don't know you yet: only the opening of the call changes.",
-    "needsOff": "turn it on in “{tools}”.",
     "defaultLabel": "Default mission for new campaigns",
     "defaultNone": "Choose…",
     "defaultColdOption": "Cold prospecting",
     "saveRefused": "The mission wasn't saved. Try again.",
     "lockedByTeam": "Set by our team: you can only pick another mission.",
     "presetAdminOnly": "This mission is reserved for our team. Pick another one.",
-    "presetNeedsBooking": "This mission needs appointment booking: turn it on for the chosen agent, then try again."
+    "presetNeedsBooking": "This mission needs appointment booking: turn it on for the chosen agent, then try again.",
+    "capNoun": {
+      "booking": "booking",
+      "transfer": "transfer to a person"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} isn't available for outbound calls yet.",
+      "google_not_connected": "{cap} is waiting for Google Calendar to be connected.",
+      "no_transfer_number": "{cap} is waiting for a transfer number.",
+      "off": "turn on {cap} in “{tools}”."
+    }
   }
 }

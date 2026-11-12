@@ -135,9 +135,17 @@ const ids = (out: string) => [...out.matchAll(/data-id="([a-z_]+)"/g)].map((m) =
     const tb = messages(l).ToolsBrick;
     const off = cards("book_for_seller", { isAdmin: true, locale: l, caps: served() });
     assert.ok(off.includes(esc(tb.statusPending)), `${l}: "Not active yet" shown`);
-    assert.ok(off.includes(esc(tb.cap.booking.name)), `${l}: names booking`);
+    const mbl = messages(l).MissionBrick;
+    const sentence = (reason: string, cap: string) => mbl.needSentence[reason].replace("{cap}", mbl.capNoun[cap]).replace("{tools}", tb.tileLabel);
+    assert.ok(off.includes(esc(sentence("off", "booking"))), `${l}: one sentence naming booking`);
     const blocked = cards("book_for_seller", { isAdmin: true, locale: l, caps: served(bookingOn, false) });
-    assert.ok(blocked.includes(esc(tb.missing.not_available_outbound)), `${l}: the Tools brick's reason`);
+    assert.ok(blocked.includes(esc(sentence("not_available_outbound", "booking"))), `${l}: one sentence, no dash`);
+    assert.ok(!blocked.includes(" — "), `${l}: no status-code dash`);
+    // Tenants never see the line (they can't act on it), even on a stored admin preset.
+    for (const preset of ["book_for_seller", "follow_up"]) {
+      const tenant = html(createElement(MissionCards, { preset, onPresetChange: () => {}, capabilities: served() }), l);
+      assert.ok(!tenant.includes(esc(tb.statusPending)), `${l}: tenant on ${preset} → no "Not active yet"`);
+    }
     const unknown = cards("book_for_seller", { isAdmin: true, locale: l, caps: null });
     assert.ok(!unknown.includes(esc(tb.statusPending)), `${l}: no agent / loading → no line`);
     // The proof: "judged from the conversation" until booking is effective, then the booking.
@@ -186,8 +194,16 @@ const ids = (out: string) => [...out.matchAll(/data-id="([a-z_]+)"/g)].map((m) =
     o && typeof o === "object" ? Object.entries(o).flatMap(([k, v]) => keys(v, `${p}${k}.`)) : [p];
   const fr = keys(messages("fr").MissionBrick).sort();
   for (const l of ["en", "he"]) assert.deepEqual(keys(messages(l).MissionBrick).sort(), fr, `${l}: same MissionBrick keys`);
-  assert.equal(messages("fr").MissionBrick.kind.book_for_seller.name, "Prendre un rendez-vous pour le vendeur");
-  assert.equal(messages("fr").MissionBrick.kind.follow_up.name, "Relancer");
+  assert.equal(messages("fr").MissionBrick.kind.book_for_seller.name, "Prendre un rendez-vous pour un vendeur");
+  assert.equal(messages("fr").MissionBrick.kind.follow_up.name, "Relancer un client");
+  assert.equal(messages("en").MissionBrick.kind.book_for_seller.name, "Book a meeting for a salesperson");
+  assert.equal(messages("en").MissionBrick.kind.follow_up.name, "Follow up with a customer");
+  // Every capability a mission can need, and every reason, has its sentence.
+  for (const l of LOCALES) {
+    const mb = messages(l).MissionBrick;
+    for (const c of ["booking", "transfer"]) assert.ok(mb.capNoun[c], `${l} capNoun.${c}`);
+    for (const r of ["not_available_outbound", "google_not_connected", "no_transfer_number", "off"]) assert.match(mb.needSentence[r], /\{cap\}/, `${l} ${r}`);
+  }
   // Campaign list: an icon for every preset (no ✨ fallback for the two), same emoji style.
   for (const p of GOAL_PRESETS) assert.ok(GOAL_EMOJI[p], `icon for ${p}`);
   assert.notEqual(GOAL_EMOJI.book_for_seller, "✨");
@@ -196,7 +212,7 @@ const ids = (out: string) => [...out.matchAll(/data-id="([a-z_]+)"/g)].map((m) =
   for (const f of ["app/admin/campaign-framings-form.tsx", "app/[locale]/dashboard/campaigns/campaign-setup-step.tsx"]) {
     assert.doesNotMatch(read(f), /TODO\(tamaraHenry\)/, f);
   }
-  assert.match(read("app/admin/campaign-framings-form.tsx"), /book_for_seller: "Prendre un rendez-vous pour le vendeur/);
+  assert.match(read("app/admin/campaign-framings-form.tsx"), /book_for_seller: "Prendre un rendez-vous pour un vendeur/);
 }
 
 // 6. A 403 from a save: one line in our words, never the server's reasons

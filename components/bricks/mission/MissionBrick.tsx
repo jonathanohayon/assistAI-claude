@@ -139,13 +139,14 @@ export function MissionCards({
         </div>
       )}
 
-      {/* The Tools brick's "Not active yet" reading and words; display only. */}
-      {needs.length > 0 && (
+      {/* The Tools brick's "Not active yet" reading, as one sentence; display
+          only, and admins only: a tenant can't act on it (VP review, #295). */}
+      {isAdmin && needs.length > 0 && (
         <ul className="mt-3 space-y-1 text-sm text-[#92400e]" aria-live="polite">
           {needs.map((n) => (
             <li key={n.key}>
-              <span className="font-semibold">{tTools("statusPending")}</span> {tTools(`cap.${n.key}.name`)} —{" "}
-              {n.missing ? tTools(`missing.${n.missing}`) : t("needsOff", { tools: tTools("tileLabel") })}
+              <span className="font-semibold">{tTools("statusPending")}</span>{" "}
+              {t(`needSentence.${n.missing ?? "off"}`, { cap: t(`capNoun.${n.key}`), tools: tTools("tileLabel") })}
             </li>
           ))}
         </ul>

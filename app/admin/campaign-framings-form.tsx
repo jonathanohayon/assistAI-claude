@@ -11,8 +11,8 @@ const PRESET_LABEL: Record<GoalPreset, string> = {
   marketing: "Marketing",
   custom: "Personnalisé (custom)",
   // M2d: admin-only presets (lib/campaigns/preset-gate.ts).
-  book_for_seller: "Prendre un rendez-vous pour le vendeur (book_for_seller)",
-  follow_up: "Relancer (follow_up)",
+  book_for_seller: "Prendre un rendez-vous pour un vendeur (book_for_seller)",
+  follow_up: "Relancer un client (follow_up)",
 };
 
 type Framings = Record<GoalPreset, string>;
