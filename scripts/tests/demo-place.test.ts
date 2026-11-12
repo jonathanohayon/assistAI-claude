@@ -1,6 +1,6 @@
 // lib/demo-place.ts: the home demo's one fictional place and its fact sheet,
-// and the guards that keep a stored account's business out of the demo
-// prompt. The DB-backed end-to-end check is scripts/demo-sheet-db.sh.
+// and the guards that keep any stored account text out of the demo prompt.
+// The DB-backed end-to-end check is scripts/demo-sheet-db.sh.
 // Run with:  npx tsx scripts/tests/demo-place.test.ts
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -8,7 +8,6 @@ import { readFileSync } from "node:fs";
 import { anonymousDemoInstructions } from "../../lib/demo-instructions";
 import {
   DEMO_CLOSE_TIME,
-  DEMO_FORBIDDEN_PLACES,
   DEMO_LANGS,
   DEMO_OPEN_DAYS,
   DEMO_OPEN_TIME,
@@ -16,12 +15,14 @@ import {
   DEMO_PLACE_ID,
   DEMO_SERVICES,
   DEMO_SLOTS,
+  demoCurrency,
   demoLang,
-  demoPersonaInstructions,
   demoSheetBlock,
 } from "../../lib/demo-place";
 import * as tools from "../../lib/demo-tools";
+import { LOCALE_TO_CURRENCY, landingCurrencyFor } from "../../lib/landing-currency";
 import { CENTERS, labelFor } from "../../lib/schedule";
+import { SCHEDULE_PLACES } from "./fixtures/demo-sheet/real-places";
 
 async function main() {
   // The canned place, word for word (the same strings as the canned tools).
@@ -47,12 +48,23 @@ async function main() {
   const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
   for (const s of DEMO_SERVICES) {
     assert.ok(minutes(DEMO_SLOTS[DEMO_SLOTS.length - 1]!) + s.durationMinutes <= minutes(DEMO_CLOSE_TIME), s.name.fr);
-    for (const l of DEMO_LANGS) assert.ok(s.name[l].trim() && s.price[l] > 0, `${s.name.fr} ${l}`);
+    for (const l of DEMO_LANGS) assert.ok(s.name[l].trim(), `${s.name.fr} ${l}`);
+    for (const c of ["EUR", "USD", "ILS"] as const) assert.ok(s.price[c] > 0, `${s.name.fr} ${c}`);
   }
 
-  // The forbidden list covers every lib/schedule centre label.
-  for (const c of CENTERS) assert.match(labelFor(c), DEMO_FORBIDDEN_PLACES, c);
-  for (const town of ["Jerusalem", "Netanya", "ירושלים", "אשדוד", "נתניה"]) assert.match(town, DEMO_FORBIDDEN_PLACES);
+  // Currency: the landing Pricing section's rule for the locale, not a second table.
+  for (const l of DEMO_LANGS) assert.equal(demoCurrency(l), landingCurrencyFor(l), l);
+  assert.equal(demoCurrency("fr"), LOCALE_TO_CURRENCY.fr);
+  assert.match(demoSheetBlock("fr"), new RegExp(`${DEMO_SERVICES[0]!.price.ILS} ₪`));
+  assert.match(demoSheetBlock("he"), new RegExp(`${DEMO_SERVICES[0]!.price.ILS} ₪`));
+  assert.match(demoSheetBlock("en"), new RegExp(`${DEMO_SERVICES[0]!.price.USD} \\$`));
+  const pricing = readFileSync("components/marketing/Pricing.tsx", "utf8");
+  assert.match(pricing, /landingCurrencyFor\(locale\)/, "the Pricing section uses the same function");
+  assert.doesNotMatch(readFileSync("components/plans/PlanCard.tsx", "utf8"), /fr: "ILS"/, "one locale table");
+
+  // The real-place list covers every lib/schedule centre label.
+  for (const c of CENTERS) assert.match(labelFor(c), SCHEDULE_PLACES, c);
+  for (const town of ["Jerusalem", "Netanya", "ירושלים", "אשדוד", "נתניה"]) assert.match(town, SCHEDULE_PLACES);
 
   // The sheet, per language: the place, the services, the right week, no real place.
   for (const l of DEMO_LANGS) {
@@ -60,8 +72,7 @@ async function main() {
     assert.ok(sheet.includes(`« ${DEMO_PLACE[l]} »`), `${l}: place`);
     for (const s of DEMO_SERVICES) assert.ok(sheet.includes(s.name[l]), `${l}: ${s.name[l]}`);
     assert.match(sheet, /samedi : fermé/);
-    assert.doesNotMatch(sheet, DEMO_FORBIDDEN_PLACES);
-    assert.match(sheet, /seule cette fiche fait foi/);
+    assert.doesNotMatch(sheet, SCHEDULE_PLACES);
   }
   assert.match(demoSheetBlock("he"), /dimanche : 10:00–18:00/);
   assert.match(demoSheetBlock("he"), /vendredi : fermé/);
@@ -69,26 +80,20 @@ async function main() {
   assert.match(demoSheetBlock("en"), /vendredi : 10:00–18:00/);
   assert.equal(demoSheetBlock("xx"), demoSheetBlock("fr"));
 
-  // Stored persona: untouched unless a line names a real place, then that line goes.
-  assert.equal(demoPersonaInstructions(null), "");
-  assert.equal(demoPersonaInstructions("  Ton chaleureux.\n\nVouvoie.  "), "  Ton chaleureux.\n\nVouvoie.  ");
-  assert.equal(
-    demoPersonaInstructions("Ton chaleureux.\nNous sommes à Jérusalem le mardi.\nVouvoie.\nסניף אשדוד"),
-    "Ton chaleureux.\nVouvoie.",
-  );
-
-  // No demo account: the built-in persona carries the sheet too.
+  // The demo prompt carries the sheet, and no real place.
   for (const l of DEMO_LANGS) {
-    const prompt = anonymousDemoInstructions(null, l);
-    assert.ok(prompt.includes(demoSheetBlock(l)), `fallback ${l}: sheet`);
-    assert.doesNotMatch(prompt, DEMO_FORBIDDEN_PLACES);
+    const prompt = anonymousDemoInstructions(l);
+    assert.ok(prompt.includes(demoSheetBlock(l)), `${l}: sheet`);
+    assert.doesNotMatch(prompt, SCHEDULE_PLACES);
   }
 
-  // The demo loader never reads the stored business, nor renders a business block.
+  // The demo loader reads the voice and the model only: no stored text.
   const loader = readFileSync("lib/demo-agent.ts", "utf8").replace(/^\s*\/\/.*$/gm, "");
-  assert.doesNotMatch(loader, /agentConfigs\.business|renderBusinessPromptBlock|sanitizeBusinessConfig|@\/lib\/business/);
-  assert.match(loader, /demoSheetBlock\(langParam\)/);
-  assert.match(loader, /demoPersonaInstructions\(cfg\.instructions\)/);
+  const selected = [...loader.matchAll(/agentConfigs\.(\w+)/g)].map((m) => m[1]).sort();
+  assert.deepEqual(selected, ["model", "userId", "voice"]);
+  assert.doesNotMatch(loader, /@\/lib\/business/);
+  // The route builds the demo prompt from the page's language alone.
+  assert.match(readFileSync("app/api/session/route.ts", "utf8"), /anonymousDemoInstructions\(body\.primaryLanguage\)/);
 
   // The canned tools answer with this same place, week and slots: one object, not a copy.
   assert.equal(tools.DEMO_PLACE, DEMO_PLACE, "demo-tools place");

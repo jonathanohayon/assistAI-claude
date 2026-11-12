@@ -37,14 +37,11 @@ assert.deepEqual(found('let i=`Tu es un assistant vocal intelligent et chaleureu
 assert.deepEqual(found("ACCUEILLE PROACTIVEMENT l'appelant"), ["accueille proactivement"]);
 // Every marker really is in the prompt it stands for (else it guards nothing),
 // and every demo prompt the server builds carries at least two of them.
-const prompts = [REALTIME_INSTRUCTIONS, ...["fr", "en", "he"].map((l) => anonymousDemoInstructions(null, l))];
+const prompts = [REALTIME_INSTRUCTIONS, ...["fr", "en", "he"].map((l) => anonymousDemoInstructions(l))];
 for (const m of INSTRUCTION_MARKERS as string[]) {
   assert.ok(prompts.some((p) => p.toLowerCase().includes(m.toLowerCase())), `marker not in any prompt: ${m}`);
 }
 for (const p of prompts) assert.ok(found(p).filter((k) => k.includes(" ")).length >= 2, "demo prompt caught by markers");
-for (const l of ["fr", "en", "he"]) {
-  assert.ok(found(anonymousDemoInstructions("Mock demo persona.", l)).length >= 1, `demo account prompt (${l}) caught`);
-}
 // Marketing copy about the product is not instruction text.
 assert.deepEqual(found("Tamara accueille vos clients, chaleureuse et concise, 24h/24"), []);
 // Plain words in copy are fine.
