@@ -6,12 +6,15 @@ import type { DoorHeroSlot } from "@/lib/marketing/home-content";
 
 import { CampaignPanel } from "../CampaignPanel";
 import { COMMAND_CENTRE_BG, CommandCentreGlows } from "../CommandCentre";
+import { ConnectDiagram } from "./ConnectDiagram";
 
-type Tone = "dark" | "light";
+export type Tone = "dark" | "light";
 
-/** Each door's surface: the visual decides it (the campaign card is a dark card). */
-const TONE: Record<DoorHeroSlot["media"], Tone> = {
+/** Each door's surface: the visual decides it (the campaign card is a dark
+ *  card; the diagram sits on the light brand surface). The nav reads it too. */
+export const DOOR_TONE: Record<DoorHeroSlot["media"], Tone> = {
   panel: "dark",
+  diagram: "light",
 };
 
 /**
@@ -51,6 +54,8 @@ function Visual({ slot }: { slot: DoorHeroSlot }): ReactNode {
   switch (slot.media) {
     case "panel":
       return <CampaignPanel />;
+    case "diagram":
+      return <ConnectDiagram copy={slot.diagram} tone="light" />;
   }
 }
 
@@ -58,12 +63,12 @@ function Visual({ slot }: { slot: DoorHeroSlot }): ReactNode {
  * A landing page's hero (its "door"): no video. Copy on the start side (left,
  * right in RTL), the page's own visual on the end side, below the copy on
  * phones. The home keeps its video hero (Hero.tsx); this one is static: the
- * only motion is the visual's own (the campaign card dialling), which honours
+ * only motion is the visual's own (the campaign card dialling, the diagram's reveal), which honours
  * reduced motion.
  */
 export function DoorHero(slot: DoorHeroSlot) {
   const { copy } = slot;
-  const tone = TONE[slot.media];
+  const tone = DOOR_TONE[slot.media];
   const c = TONES[tone];
   const tokens = heroTitleTokens(copy.title.replace("{emphasis}", EMPHASIS_SLOT), copy.emphasis ?? "");
 
