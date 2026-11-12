@@ -15,11 +15,6 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-// Only fr/he/en exist. Any other first segment (/xx, /nothing-here) 404s before
-// this root layout renders, so it gets app/global-not-found.tsx instead of a
-// bare error document.
-export const dynamicParams = false;
-
 // Per-locale <title>/description. The French metadata in
 // app/_root/plain-root-layout.tsx only covers the routes outside [locale].
 export async function generateMetadata({

@@ -10,10 +10,6 @@ const nextConfig: NextConfig = {
     // le dossier est préservé (Nixpacks le fait par défaut). Stable en
     // dev depuis Next 16.1, experimental en build.
     turbopackFileSystemCacheForBuild: true,
-    // app/global-not-found.tsx: the app has several root layouts (one per
-    // top-level segment, no app/layout.tsx), so unmatched URLs need their own
-    // 404 document.
-    globalNotFound: true,
   },
 };
 
