@@ -1,6 +1,6 @@
 // The dark "command centre" surface: the OutboundCalling section and the
-// /sales hero share it. Light text only on it: white, or the brand tints
-// #f472b6 / #22d3ee (AA on every stop of the gradient).
+// sales landing hero share it. Light text only on it: white, #22d3ee, or
+// #f472b6 for large text (3.75:1 at worst, under the pink glow).
 
 /** Slate-blue gradient, lighter than --color-dark-bg (#1e2937 was judged too dark). */
 export const COMMAND_CENTRE_BG = "bg-gradient-to-b from-[#2e3d55] via-[#2a374c] to-[#243043]";

@@ -9,7 +9,7 @@ import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount
 import { EASE } from "./Reveal";
 
 // The "live campaign" card: Tamara's agents dialling a list in parallel.
-// Shown inside the OutboundCalling section and as the /sales hero visual.
+// Shown inside the OutboundCalling section and as the sales landing hero visual.
 // Dark surface only (white text on the command-centre background).
 
 // Contacts de démo (fictifs) appelés dans la « campagne en direct ».

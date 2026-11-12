@@ -107,7 +107,7 @@ export type NavCopy = { links: readonly LinkCopy[]; signupHref: string };
  *  video hero (centred copy, stats). The other kinds are a landing page's
  *  own door: copy on the start side, the visual on the end side (below it on
  *  phones). `panel`: the live campaign card on the dark command-centre
- *  background (/sales). */
+ *  background (the sales landing). */
 export const HERO_MEDIA_KINDS = ["video", "panel"] as const;
 export type HeroMediaKind = (typeof HERO_MEDIA_KINDS)[number];
 
