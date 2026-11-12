@@ -65,8 +65,8 @@ export function OutboundHome({
         open
         variant="page"
         asUserId={asUserId}
-        isAdmin={isAdmin}
         captureOn={captureOn}
+        isAdmin={isAdmin}
         onClose={() => setView("hub")}
       />
     );
