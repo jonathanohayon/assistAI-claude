@@ -161,11 +161,11 @@ const cards = (preset: string, locale = "fr", onPresetChange: (p: string) => voi
     assert.ok(tb.statusPending && tb.missing.not_available_outbound, l);
     const out = html(createElement(MissionCards, { preset: "lead_gen", onPresetChange: () => {}, capabilities: caps }), l);
     assert.ok(!out.includes(esc(tb.statusPending)), `${l}: no line when the shown mission needs nothing`);
-    assert.match(messages(l).MissionBrick.needsOff, /\{tools\}/, `${l}: names the tools screen`);
+    assert.match(messages(l).MissionBrick.needSentence.off, /\{tools\}/, `${l}: names the tools screen`);
   }
   const brick = read("components/bricks/mission/MissionBrick.tsx");
   assert.match(brick, /tTools\("statusPending"\)/);
-  assert.match(brick, /tTools\(`missing\.\$\{n\.missing\}`\)/, "reuses the missing-prerequisite words");
+  assert.match(brick, /t\(`needSentence\.\$\{n\.missing \?\? "off"\}`/, "one sentence per missing prerequisite");
   assert.match(read("components/bricks/mission/mission-ui.ts"), /capabilityView\(key, s\)/, "reuses the Tools brick's reading");
 }
 

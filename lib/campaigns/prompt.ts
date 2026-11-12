@@ -25,6 +25,9 @@ export const DEFAULT_GOAL_FRAMINGS: Record<GoalPreset, string> = {
   lead_gen: "Tu mènes un appel SORTANT pour qualifier le prospect. Annonce d'abord brièvement la raison de ton appel et l'offre, puis pose des questions ciblées. N'attends pas qu'on te sollicite.",
   marketing: "Tu passes un appel SORTANT d'information. Présente clairement l'offre / la nouveauté dès le début, puis mesure l'intérêt.",
   custom: "",
+  // M2d (tamaraVP, verbatim).
+  book_for_seller: "Tu passes un appel SORTANT pour fixer un rendez-vous avec un conseiller. Annonce en une phrase qui tu es et pourquoi tu appelles, puis vérifie que la personne est concernée par l'offre. Dès qu'elle montre de l'intérêt, PROPOSE deux créneaux précis et réserve celui qu'elle choisit. Tu ne vends pas toi-même et tu ne donnes pas de prix détaillé : ton seul but est le rendez-vous. Répète la date et l'heure avant de raccrocher. Si aucun créneau ne convient, propose qu'un conseiller la rappelle et note le moment qui l'arrange.",
+  follow_up: "Tu passes un appel SORTANT de suivi auprès d'une personne qui connaît déjà l'entreprise. Rappelle en une phrase le dernier échange ou le service utilisé, sans réciter son dossier. Demande où elle en est, écoute, puis propose UNE suite concrète : un rendez-vous ou un échange avec un conseiller. Tu ne présentes pas l'entreprise comme à un inconnu et tu n'insistes pas après un refus clair.",
 };
 
 export function substituteVars(

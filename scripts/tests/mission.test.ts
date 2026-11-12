@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 
 import { GOAL_PRESETS } from "../../lib/campaigns/constants";
+import { buildCampaignInstructions, DEFAULT_GOAL_FRAMINGS } from "../../lib/campaigns/prompt";
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { readFileSync } from "node:fs";
 
@@ -25,7 +26,7 @@ for (const goalPreset of [...GOAL_PRESETS, "legacy_unknown"]) {
   };
   const m = missionFromCampaign(c);
   assert.equal(m.preset, goalPreset, "the raw stored preset is kept as is");
-  assert.deepEqual(m.requires, [], "no mapped preset requires a capability");
+  assert.deepEqual(m.requires, goalPreset === "book_for_seller" ? ["booking"] : [], "only book_for_seller requires a capability (booking)");
   assert.deepEqual(m.capture, c.extractionSchema);
   assert.deepEqual(campaignGoalFields(m), { goalPreset, objective: c.objective, successCriteria: c.successCriteria });
 }
@@ -43,6 +44,10 @@ assert.deepEqual([kindOf("lead_gen").kind, kindOf("lead_gen").cold], ["qualify_l
 assert.deepEqual([kindOf("sales").kind, kindOf("sales").cold], ["announce_offer", false]);
 assert.deepEqual([kindOf("marketing").kind, kindOf("marketing").cold], ["announce_offer", false]);
 assert.deepEqual([kindOf("custom").kind, kindOf("custom").cold], ["other", false]);
+// M2d: one preset per mission, never cold.
+assert.deepEqual([kindOf("book_for_seller").kind, kindOf("book_for_seller").cold], ["book_for_seller", false]);
+assert.deepEqual([kindOf("follow_up").kind, kindOf("follow_up").cold], ["follow_up", false]);
+assert.deepEqual(kindOf("follow_up").requires, [], "follow_up needs no tool (anyOf only, not enforced)");
 for (const unknown of ["legacy_unknown", "", "appointment", "qualify", "toString", "__proto__", "COLD"]) {
   const m = kindOf(unknown);
   assert.deepEqual([m.kind, m.cold, m.preset], ["other", false, unknown], `unknown preset ${JSON.stringify(unknown)} → other, preset kept`);
@@ -72,7 +77,33 @@ for (const k of SALES_MISSIONS) {
   const now = goldenCases();
   assert.deepEqual(Object.keys(now), Object.keys(golden));
   for (const k of Object.keys(golden)) assert.equal(now[k], golden[k], `instructions unchanged: ${k}`);
-  assert.equal(Object.keys(golden).length, 37);
+  // The 37 M2a goldens first (captured on origin/main before M2d), then one per M2d preset.
+  assert.equal(Object.keys(golden).length, 39);
+  assert.deepEqual(Object.keys(golden).slice(37), ["book_for_seller default", "follow_up default"]);
+  assert.ok(golden["book_for_seller default"].includes(DEFAULT_GOAL_FRAMINGS.book_for_seller));
+  assert.ok(golden["follow_up default"].includes(DEFAULT_GOAL_FRAMINGS.follow_up));
+}
+
+// ── M2d: the two framings, byte-exact (tamaraVP's text) ──
+{
+  assert.equal(
+    DEFAULT_GOAL_FRAMINGS.book_for_seller,
+    "Tu passes un appel SORTANT pour fixer un rendez-vous avec un conseiller. Annonce en une phrase qui tu es et pourquoi tu appelles, puis vérifie que la personne est concernée par l'offre. Dès qu'elle montre de l'intérêt, PROPOSE deux créneaux précis et réserve celui qu'elle choisit. Tu ne vends pas toi-même et tu ne donnes pas de prix détaillé : ton seul but est le rendez-vous. Répète la date et l'heure avant de raccrocher. Si aucun créneau ne convient, propose qu'un conseiller la rappelle et note le moment qui l'arrange.",
+  );
+  assert.equal(
+    DEFAULT_GOAL_FRAMINGS.follow_up,
+    "Tu passes un appel SORTANT de suivi auprès d'une personne qui connaît déjà l'entreprise. Rappelle en une phrase le dernier échange ou le service utilisé, sans réciter son dossier. Demande où elle en est, écoute, puis propose UNE suite concrète : un rendez-vous ou un échange avec un conseiller. Tu ne présentes pas l'entreprise comme à un inconnu et tu n'insistes pas après un refus clair.",
+  );
+  for (const p of ["book_for_seller", "follow_up"] as const) {
+    const t = DEFAULT_GOAL_FRAMINGS[p];
+    assert.ok(!/[\u2019\u00a0\u202f]/.test(t), `${p}: straight apostrophes, plain spaces`);
+    assert.ok(t.includes(" : "), `${p}: a plain space before the colon`);
+    assert.equal(t, t.normalize("NFC"), `${p}: NFC`);
+  }
+  // Admin-editable through the same framings map: an override wins, blank → the default.
+  const c = { goalPreset: "follow_up", objective: "", persona: {} };
+  assert.ok(buildCampaignInstructions(c, {}, { follow_up: "Framing suivi ADMIN mock." }).includes("Framing suivi ADMIN mock."));
+  assert.ok(buildCampaignInstructions(c, {}, { follow_up: "  " }).includes(DEFAULT_GOAL_FRAMINGS.follow_up));
 }
 
 // Receptionist: implicit, from what its calls can do.
@@ -117,8 +148,9 @@ assert.equal(presetForMission({ kind: "qualify_lead", cold: true }), "cold");
 assert.equal(presetForMission({ kind: "qualify_lead", cold: false }), "lead_gen");
 assert.equal(presetForMission({ kind: "announce_offer", cold: false }), "sales");
 assert.equal(presetForMission({ kind: "other", cold: false }), "custom");
-assert.equal(presetForMission({ kind: "book_for_seller", cold: false }), null, "no preset expresses book_for_seller yet");
-assert.equal(presetForMission({ kind: "follow_up", cold: false }), null, "no preset expresses follow_up yet");
+assert.equal(presetForMission({ kind: "book_for_seller", cold: false }), "book_for_seller");
+assert.equal(presetForMission({ kind: "follow_up", cold: false }), "follow_up");
+for (const kind of SALES_MISSIONS) assert.notEqual(presetForMission({ kind, cold: false }), null, `${kind} has a preset (M2d)`);
 assert.equal(presetForMission(null), null);
 for (const kind of SALES_MISSIONS) assert.notEqual(presetForMission({ kind, cold: false }), undefined, `${kind} is handled`);
 // round-trip for every preset except "marketing"

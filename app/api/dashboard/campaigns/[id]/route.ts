@@ -13,6 +13,9 @@ import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { withoutToolsStore } from "@/lib/tools/store";
 import { withoutMissionStore } from "@/lib/mission/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
+import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { patchPresetGateInput, presetGateRefusal } from "@/lib/campaigns/preset-gate";
+import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
 import { campaignCallPublicColumns, campaignDetailCalls } from "@/lib/campaigns/campaign-call-row";
 
 interface Ctx {
@@ -136,6 +139,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       .limit(1);
     patch.agentId = a?.id ?? null;
   }
+
+  // M2d: admin-only presets + book_for_seller needs effective booking for
+  // the agent the campaign will have. Omitting goalPreset keeps the stored one.
+  const gate = patchPresetGateInput(campaign, plan.changes, (patch.agentId as string | null | undefined) ?? null);
+  const refusal = await presetGateRefusal({
+    ...gate,
+    isAdmin: await sessionIsAdmin(),
+    bookingActive: () => outboundBookingActive(r.userId, gate.agentId),
+  });
+  if (refusal) return NextResponse.json(refusal.body, { status: refusal.status });
 
   if (campaign.status === "running" && plan.changes.callWindow) {
     await logEvent({
