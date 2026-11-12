@@ -15,6 +15,7 @@ import { logEvent } from "@/lib/logger";
 import { reportTenantFallback } from "@/lib/tenant-fallback";
 import { resolveInboundTenantWith } from "@/lib/tenant-resolution";
 import { servedInboundVoice } from "@/lib/voice/serve";
+import { workerRuntimeConfig } from "@/lib/agent/worker-runtime-config";
 import { inboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { toEngineSettings } from "@/lib/voice/engine";
 import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
@@ -254,18 +255,9 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // personaConfig (P3) stays out of the worker payload: calls still read the
   // legacy persona columns until the reader switch. Same for the Tools
   // store (T3): calls read the tile toggles + transferNumber.
-  const {
-    id: _id,
-    userId: _userId,
-    updatedAt,
-    personaConfig: _personaConfig,
-    toolsConfig: _toolsConfig,
-    transferNumberParked: _parked,
-    ...runtime
-  } = config;
-  void [_personaConfig, _toolsConfig, _parked];
-  void _id;
-  void _userId;
+  // The hidden columns (ids, personaConfig, Tools store, owner recap email)
+  // live in ONE list: lib/agent/worker-runtime-config.ts.
+  const { updatedAt, ...runtime } = workerRuntimeConfig(config);
   // Greeting fallback per-plan : utilisé par le worker quand
   // agent_configs.greeting_instructions est vide. Placeholder
   // `{agent_name}` substitué côté worker (cf. agent.ts).
