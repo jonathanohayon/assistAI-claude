@@ -67,7 +67,8 @@ export type AgentUrlAction =
   | { type: "cancelRegenerate" }
   | { type: "submit" }
   | { type: "created"; token: string; status: AgentUrlStatus }
-  | { type: "createFailed" };
+  | { type: "createFailed" }
+  | { type: "statusRefreshed"; status: AgentUrlStatus };
 
 export const initialAgentUrlState: AgentUrlState = {
   phase: "loading",
@@ -96,7 +97,13 @@ export function agentUrlReducer(s: AgentUrlState, a: AgentUrlAction): AgentUrlSt
     case "created":
       return { ...s, phase: "ready", busy: false, confirming: false, revealed: a.token, status: a.status, error: null };
     case "createFailed":
-      return { ...s, busy: false, confirming: false, error: s.status.exists ? "regenerate" : "create" };
+      // A failed regenerate may still have killed the old URL server-side, so
+      // a URL revealed earlier is no longer trusted and is dropped.
+      return { ...s, busy: false, confirming: false, revealed: null, error: s.status.exists ? "regenerate" : "create" };
+    case "statusRefreshed":
+      // Re-read after a failed POST: the hint and date say what is true now;
+      // the error line stays.
+      return { ...s, status: a.status };
   }
 }
 
@@ -171,7 +178,13 @@ export function AgentUrlSection() {
   const submit = async () => {
     dispatch({ type: "submit" });
     const r = await postAgentUrl(fetch);
-    dispatch(r ? { type: "created", token: r.token, status: r.status } : { type: "createFailed" });
+    if (r) {
+      dispatch({ type: "created", token: r.token, status: r.status });
+      return;
+    }
+    dispatch({ type: "createFailed" });
+    const status = await fetchAgentUrlStatus(fetch);
+    if (status) dispatch({ type: "statusRefreshed", status });
   };
 
   const copy = (text: string) => {

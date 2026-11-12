@@ -250,7 +250,22 @@ async function main() {
     assert.match(src, /e\.key === "Escape"[\s\S]{0,80}onCancelRegenerate\(\)/, "Escape cancels");
   }
 
-  console.log("agent-url-once: ok");
+  // A failed regenerate drops a URL revealed earlier and keeps the error while the status is re-read.
+{
+  const st = { exists: true, createdAt: "2026-11-01T00:00:00.000Z", hint: "agt_…0000" };
+  let s = agentUrlReducer(initialAgentUrlState, { type: "loaded", status: st });
+  s = agentUrlReducer(s, { type: "created", token: "agt_mock0000000000000000", status: st });
+  s = agentUrlReducer(s, { type: "askRegenerate" });
+  s = agentUrlReducer(s, { type: "submit" });
+  s = agentUrlReducer(s, { type: "createFailed" });
+  assert.equal(s.revealed, null, "an earlier URL is no longer trusted");
+  assert.equal(s.error, "regenerate");
+  s = agentUrlReducer(s, { type: "statusRefreshed", status: { ...st, hint: "agt_…1111" } });
+  assert.equal(s.status.hint, "agt_…1111");
+  assert.equal(s.error, "regenerate", "the error line stays");
+}
+
+console.log("agent-url-once: ok");
 }
 
 main().catch((e) => {
