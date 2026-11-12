@@ -188,6 +188,10 @@ export function OwnerEmailCard({
             aria-describedby={testNoteId}
             className="group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-[#0e7490]/30 bg-white px-3 py-2 text-xs font-semibold text-[#0e7490] transition-all hover:border-[#0e7490] hover:bg-[#ecfeff] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#0e7490]/30 disabled:hover:bg-white"
           >
+            <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 rtl:-scale-x-100">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
             {testStatus === "sending" ? t("wowTestSending") : t("wowTestButton")}
           </button>
         </div>
