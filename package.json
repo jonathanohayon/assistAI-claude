@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:alert-ledger-db": "bash scripts/alert-ledger-claim-db.sh",
     "test:agent-tokens-db": "bash scripts/agent-tokens-db.sh",
+    "test:client-confirm-db": "bash scripts/client-confirm-db.sh",
     "test:email-test-db": "bash scripts/email-test-hardening-db.sh",
     "test:rate-limit-db": "bash scripts/rate-limit-db.sh",
     "test": "for f in scripts/tests/*.test.ts; do echo \"› $f\"; tsx \"$f\" || exit 1; done",
