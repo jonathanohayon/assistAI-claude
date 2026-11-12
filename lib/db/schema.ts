@@ -152,6 +152,12 @@ export const agentConfigs = pgTable("agent_configs", {
   // Owner's morning WhatsApp digest (yesterday's calls, bookings, messages,
   // transfers). ON by default; never sent for a day with zero calls.
   ownerDigestEnabled: boolean("owner_digest_enabled").notNull().default(true),
+  // Post-call owner recap by EMAIL (lib/owner-recap-email.ts): the same
+  // recap as the WhatsApp one, sent only when the switch is ON *and* an
+  // address is set. OFF by default; the address is stored trimmed and
+  // lowercased, '' = none. Owner-scoped (tenant or admin via ?asUserId).
+  ownerRecapEmail: text("owner_recap_email").notNull().default(""),
+  ownerRecapEmailEnabled: boolean("owner_recap_email_enabled").notNull().default(false),
   // Call-forwarding setup check (onboarding wizard): the owner starts a
   // 10-min test window, then has someone call the usual business number.
   // The first inbound call to the tenant's number inside the window sets

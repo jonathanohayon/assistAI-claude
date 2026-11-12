@@ -46,3 +46,4 @@ next-env.d.ts
 
 # calls-routes-db.test.ts reference copies of lib/calls (removed on exit)
 /scripts/tests/.calls-main-ref-*
+/scripts/tests/.owner-recap-main-ref-*
