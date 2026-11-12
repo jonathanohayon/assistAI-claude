@@ -15,15 +15,18 @@
 //   errors             → { error } with a 400
 //
 // Canned calendar, wall clock Asia/Jerusalem (the zone every other calendar
-// tool uses): Sunday to Thursday, 10:00 / 11:30 / 15:00, closing at 18:00.
-// A slot starting in less than 30 min is hidden, as computeFreeSlots does.
+// tool uses): 10:00 / 11:30 / 15:00, closing at 18:00, on the visitor's
+// working week (fr/en Monday to Friday, he Sunday to Thursday). The language
+// is server-chosen: /api/session writes it into the route table
+// (?lang=fr|en|he). A slot starting in less than 30 min is hidden, as
+// computeFreeSlots does. One fictional place, never a real business: the
+// `center` / `label` field names stay, their values are DEMO_PLACE.
 //
 // PURE: no Google client, no DB, no logger. scripts/tests/demo-tools.test.ts
 // checks the import list.
 
 import { parseBookingRequest } from "@/lib/booking-request";
-import { atPlace, resolvePlace } from "@/lib/booking-place";
-import { centerForDate, dayNameFr, labelFor, type DateForCenter } from "@/lib/schedule";
+import { dayNameFr, type DateForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, jerusalemToUTCISO } from "@/lib/tz";
 
 export const DEMO_TOOLS_BASE = "/api/demo/tools";
@@ -34,7 +37,30 @@ export type DemoToolName = (typeof DEMO_TOOL_NAMES)[number];
 export const isDemoToolName = (v: string): v is DemoToolName =>
   (DEMO_TOOL_NAMES as readonly string[]).includes(v);
 
-export const demoToolEndpoint = (name: DemoToolName): string => `${DEMO_TOOLS_BASE}/${name}`;
+export const DEMO_LANGS = ["fr", "en", "he"] as const;
+export type DemoLang = (typeof DEMO_LANGS)[number];
+
+/** A language the demo knows, else French (the demo's default). */
+export const demoLang = (v: unknown): DemoLang =>
+  typeof v === "string" && (DEMO_LANGS as readonly string[]).includes(v) ? (v as DemoLang) : "fr";
+
+export const demoToolEndpoint = (name: DemoToolName, lang: unknown = "fr"): string =>
+  `${DEMO_TOOLS_BASE}/${name}?lang=${demoLang(lang)}`;
+
+/** Open weekdays per language (0 = Sunday). */
+export const DEMO_OPEN_DAYS: Readonly<Record<DemoLang, readonly number[]>> = {
+  fr: [1, 2, 3, 4, 5],
+  en: [1, 2, 3, 4, 5],
+  he: [0, 1, 2, 3, 4],
+};
+
+/** The demo's one fictional place. The Hebrew wording is still to confirm. */
+export const DEMO_PLACE_ID = "demo_salon";
+export const DEMO_PLACE: Readonly<Record<DemoLang, string>> = {
+  fr: "notre salon du centre-ville",
+  en: "our downtown salon",
+  he: "הסלון שלנו במרכז העיר", // [HE] to confirm
+};
 
 /**
  * Public endpoint, counted in the shared DB limiter like /api/session's demo
@@ -49,8 +75,6 @@ export const DEMO_TOOLS_GLOBAL = 1500;
 
 /** Canned free starts on an open day (HH:MM, Asia/Jerusalem). */
 export const DEMO_SLOTS = ["10:00", "11:30", "15:00"] as const;
-/** Open weekdays (0 = Sunday): Sunday to Thursday. */
-export const DEMO_OPEN_DAYS: readonly number[] = [0, 1, 2, 3, 4];
 const CLOSE_TIME = "18:00";
 const SLOT_BUFFER_MS = 30 * 60_000;
 const PAST_GRACE_MS = 5 * 60_000;
@@ -98,8 +122,8 @@ const atMs = (date: string, time: string): number =>
   new Date(jerusalemToUTCISO(date, `${time}:00`)).getTime();
 
 /** The canned free starts on `date` for a `durationMin` service, never in the past. */
-export function cannedSlots(date: string, durationMin: number, nowMs: number): string[] {
-  if (!DEMO_OPEN_DAYS.includes(weekday(date))) return [];
+export function cannedSlots(date: string, durationMin: number, nowMs: number, lang: DemoLang = "fr"): string[] {
+  if (!DEMO_OPEN_DAYS[lang].includes(weekday(date))) return [];
   if (date < jerusalemDateAt(nowMs)) return [];
   const closeMs = atMs(date, CLOSE_TIME);
   return DEMO_SLOTS.filter((t) => {
@@ -109,16 +133,16 @@ export function cannedSlots(date: string, durationMin: number, nowMs: number): s
 }
 
 /** The next open dates strictly after `after` that still have a slot. */
-function suggestedDates(after: string, durationMin: number, nowMs: number): DateForCenter[] {
+function suggestedDates(after: string, durationMin: number, nowMs: number, lang: DemoLang): DateForCenter[] {
   const out: DateForCenter[] = [];
   for (let i = 1; i <= SUGGEST_HORIZON_DAYS && out.length < SUGGESTED_COUNT; i++) {
     const d = addDays(after, i);
-    if (cannedSlots(d, durationMin, nowMs).length > 0) out.push({ date: d, weekday: dayNameFr(d) });
+    if (cannedSlots(d, durationMin, nowMs, lang).length > 0) out.push({ date: d, weekday: dayNameFr(d) });
   }
   return out;
 }
 
-function checkAvailability(args: Record<string, unknown>, nowMs: number): DemoToolAnswer {
+function checkAvailability(args: Record<string, unknown>, nowMs: number, lang: DemoLang): DemoToolAnswer {
   const date = str(args.date);
   if (!date) return { status: 400, body: { error: "date requise (YYYY-MM-DD)" } };
   if (!isRealDate(date)) {
@@ -127,12 +151,11 @@ function checkAvailability(args: Record<string, unknown>, nowMs: number): DemoTo
   const duration = args.duration;
   const durationMin =
     typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? Math.round(duration) : 30;
-  const center = centerForDate(date);
-  const slots = cannedSlots(date, durationMin, nowMs);
-  const base = { date, center, label: labelFor(center), available_slots: slots };
+  const slots = cannedSlots(date, durationMin, nowMs, lang);
+  const base = { date, center: DEMO_PLACE_ID, label: DEMO_PLACE[lang], available_slots: slots };
   if (slots.length > 0) return { status: 200, body: base };
   const today = jerusalemDateAt(nowMs);
-  const suggested = suggestedDates(date < today ? today : date, durationMin, nowMs);
+  const suggested = suggestedDates(date < today ? today : date, durationMin, nowMs, lang);
   return {
     status: 200,
     body: {
@@ -143,27 +166,21 @@ function checkAvailability(args: Record<string, unknown>, nowMs: number): DemoTo
   };
 }
 
-function bookAppointment(args: Record<string, unknown>, nowMs: number): DemoToolAnswer {
+function bookAppointment(args: Record<string, unknown>, nowMs: number, lang: DemoLang): DemoToolAnswer {
   const parsed = parseBookingRequest(args);
   if (!parsed.ok) return { status: 400, body: { error: parsed.error } };
+  // Any `center` the model sends is ignored: the demo has one place.
   const { name, date, time } = parsed.value;
-  // The demo tool has no `center` argument: the weekday's centre, as the
-  // legacy route resolves it when none is given.
-  const placed = resolvePlace({}, date);
-  if (!placed.ok) {
-    return { status: 400, body: { error: placed.kind === "invalid_date" ? placed.error : placed.refusal.reason } };
-  }
   if (atMs(date, time) < nowMs - PAST_GRACE_MS) {
     return { status: 400, body: { error: `Le créneau ${date} ${time} est déjà passé. Propose un horaire futur.` } };
   }
-  const { place } = placed;
   return {
     status: 200,
     body: {
       success: true,
       simulated: true,
-      ...(place.kind === "legacy" ? { center: place.center } : { location: place.label }),
-      summary: `RDV confirmé le ${date} à ${time} pour ${name}${atPlace(place)}`,
+      center: DEMO_PLACE_ID,
+      summary: `RDV confirmé le ${date} à ${time} pour ${name} à ${DEMO_PLACE[lang]}`,
     },
   };
 }
@@ -174,13 +191,14 @@ function saveContact(args: Record<string, unknown>): DemoToolAnswer {
 }
 
 /** The canned answer to one demo tool call. Stores nothing, reads only the clock it is given. */
-export function runDemoTool(name: DemoToolName, rawArgs: unknown, nowMs: number): DemoToolAnswer {
+export function runDemoTool(name: DemoToolName, rawArgs: unknown, nowMs: number, lang: unknown = "fr"): DemoToolAnswer {
   const args = asRecord(rawArgs);
+  const l = demoLang(lang);
   switch (name) {
     case "check_availability":
-      return checkAvailability(args, nowMs);
+      return checkAvailability(args, nowMs, l);
     case "book_appointment":
-      return bookAppointment(args, nowMs);
+      return bookAppointment(args, nowMs, l);
     case "save_contact":
       return saveContact(args);
   }

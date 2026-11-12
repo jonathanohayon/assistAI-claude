@@ -50,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ too
   if (!allowed) return NextResponse.json(RATE_LIMITED, { status: 429 });
 
   const args: unknown = await req.json().catch(() => ({}));
-  const { status, body } = runDemoTool(tool, args, Date.now());
+  // The language the session wrote into the route table (lib/demo-session.ts).
+  const { status, body } = runDemoTool(tool, args, Date.now(), req.nextUrl.searchParams.get("lang"));
   return NextResponse.json(body, { status });
 }

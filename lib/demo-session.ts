@@ -31,14 +31,21 @@ export type DemoToolRoute = { endpoint: string } | { hangUp: true };
  * Every data tool points at the canned demo endpoint (app/api/demo/tools,
  * lib/demo-tools.ts): the home demo never reads or writes a real calendar or
  * sheet, signed in or not. /api/calendar/* and /api/sheets/* are for real
- * callers only (worker, dashboard Live Test).
+ * callers only (worker, dashboard Live Test). The server writes the page's
+ * language into each endpoint (?lang=fr|en|he, validated, default fr): the
+ * canned working week and place follow it, and the browser carries no logic.
  */
-export const DEMO_TOOL_ROUTES: Readonly<Record<string, DemoToolRoute>> = {
-  check_availability: { endpoint: demoToolEndpoint("check_availability") },
-  book_appointment: { endpoint: demoToolEndpoint("book_appointment") },
-  save_contact: { endpoint: demoToolEndpoint("save_contact") },
-  end_call: { hangUp: true },
-};
+export function demoToolRoutes(lang: unknown): Readonly<Record<string, DemoToolRoute>> {
+  return {
+    check_availability: { endpoint: demoToolEndpoint("check_availability", lang) },
+    book_appointment: { endpoint: demoToolEndpoint("book_appointment", lang) },
+    save_contact: { endpoint: demoToolEndpoint("save_contact", lang) },
+    end_call: { hangUp: true },
+  };
+}
+
+/** The French table (the default language). */
+export const DEMO_TOOL_ROUTES = demoToolRoutes("fr");
 
 /**
  * The demo voice, as the browser used to pick it: the demo account's voice
@@ -73,7 +80,7 @@ export interface DemoSessionResponse {
  */
 export function demoSessionResponse(
   minted: { value?: unknown; expires_at?: unknown },
-  opts: { webrtcUrl: string; model: string; transport: Transport },
+  opts: { webrtcUrl: string; model: string; transport: Transport; lang?: unknown },
 ): DemoSessionResponse | null {
   if (typeof minted.value !== "string" || !minted.value) return null;
   return {
@@ -81,6 +88,6 @@ export function demoSessionResponse(
     expires_at: typeof minted.expires_at === "number" ? minted.expires_at : null,
     webrtc_url: `${opts.webrtcUrl}?model=${encodeURIComponent(opts.model)}`,
     transport: opts.transport,
-    tools: DEMO_TOOL_ROUTES,
+    tools: demoToolRoutes(opts.lang),
   };
 }

@@ -44,7 +44,7 @@ assert.equal(demoSessionResponse({ value: "ek", expires_at: "soon" }, { webrtcUr
 assert.deepEqual(Object.keys(DEMO_TOOL_ROUTES).sort(), REALTIME_TOOLS.map((t) => t.name).sort());
 assert.deepEqual(DEMO_TOOL_ROUTES.end_call, { hangUp: true });
 for (const [name, route] of Object.entries(DEMO_TOOL_ROUTES)) {
-  if ("endpoint" in route) assert.match(route.endpoint, /^\/api\/demo\/tools\/[a-z_]+$/, name);
+  if ("endpoint" in route) assert.match(route.endpoint, /^\/api\/demo\/tools\/[a-z_]+\?lang=fr$/, name);
 }
 
 // Voice: as the browser used to choose it.
