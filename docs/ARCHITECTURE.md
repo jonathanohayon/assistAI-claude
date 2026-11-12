@@ -90,7 +90,7 @@ centralisés de `lib/api/auth-guards.ts`** :
 | `/api/agent/*`, `/api/calls/end`, `/api/cron/*`, `/api/admin/internal-*` | Machine : worker Railway, crons | `requireInternalSecret(req)` (header `x-internal-secret`) |
 
 Cas particuliers :
-- `/api/session` + `/api/demo-config` : démo vocale anonyme de la landing
+- `/api/session` : démo vocale anonyme de la landing (session créée côté serveur, cf. lib/demo-session.ts)
   (pas d'auth, quotas/caps côté code).
 - `/api/twilio/voice-bridge` : webhook TwiML appelé par Twilio.
 - `/api/dashboard/hyp/callback` : callback de paiement HYP (signature vérifiée).

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { callTypeForCall } from "@/lib/call-type-db";
 import { callIdFromRequest } from "@/lib/call-id";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
+import { getTranslations } from "next-intl/server";
+import { sendOwnerRecapEmailBestEffort } from "@/lib/owner-recap-email-send";
+import { sendOwnerRecapWhatsApp, toRecapLocale } from "@/lib/owner-recap-whatsapp";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { callInsertValues, parseCallEndBody } from "@/lib/call-end-body";
@@ -15,7 +18,6 @@ import { sendClientConfirm } from "@/lib/client-confirm/run";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
-import { ltrIsolate } from "@/lib/phone-utils";
 import { tenantCallNumber } from "@/lib/tenant-call-number";
 import { getSummaryPromptByPlan } from "@/lib/settings";
 import {
@@ -25,7 +27,7 @@ import {
 } from "@/lib/sheets-helpers";
 import { summarizeCall, summarySignature } from "@/lib/summarize";
 import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
-import { checkTwilioMessageStatus, sendWhatsApp } from "@/lib/whatsapp";
+import { checkTwilioMessageStatus } from "@/lib/whatsapp";
 
 const APPELS_SHEET_TITLE = "Appels";
 const APPELS_HEADERS = [
@@ -356,28 +358,19 @@ export async function POST(req: NextRequest) {
     tenantFeatures.whatsapp_recap !== false &&
     skipOwnerReason === null
   ) {
-    // ltrIsolate : le récap peut être en hébreu (RTL) → on isole le numéro en
-    // LTR pour que le « + » de l'indicatif reste en tête (sinon rendu "972…+").
-    const ownerBody = `📞 Nouvel appel reçu\n\n${summary.forOwner}\n\n— ${
-      fromNumber ? ltrIsolate(fromNumber) : "numéro inconnu"
-    }`;
-    // Si WHATSAPP_OWNER_TEMPLATE_SID set → on passe par le template Twilio
-    // (bypass la fenêtre 24h, livraison garantie hors WhatsApp interaction
-    // récente). Sinon free-form (qui silently undelivered si hors window).
-    // Routing per-langue identique au client : prefer _HE/_EN/_FR sur le
-    // legacy SID. Le proprio reçoit donc le wrapper dans sa langue active.
-    const ownerLangKey = `WHATSAPP_OWNER_TEMPLATE_SID_${(cfg.primaryLanguage ?? "fr").toUpperCase()}`;
-    const ownerTemplate =
-      process.env[ownerLangKey] || process.env.WHATSAPP_OWNER_TEMPLATE_SID;
-    const r = await sendWhatsApp({
-      to: cfg.ownerWhatsapp,
-      body: ownerBody,
-      templateSid: ownerTemplate || undefined,
-      templateVariables: ownerTemplate
-        ? { "1": ownerBody.slice(0, 1000) }
-        : undefined,
-      ownerTemplateFallback: true, // Meta provider only
-    });
+    // Wrapper in the tenant's language (same strings as the owner recap
+    // email); template SID per language, unchanged (lib/owner-recap-whatsapp).
+    const recapLocale = toRecapLocale(cfg.primaryLanguage);
+    const tRecap = await getTranslations({ locale: recapLocale, namespace: "Email.ownerRecap" });
+    const r = await sendOwnerRecapWhatsApp(
+      {
+        to: cfg.ownerWhatsapp,
+        forOwner: summary.forOwner,
+        fromNumber,
+        primaryLanguage: cfg.primaryLanguage,
+      },
+      (key, vars) => tRecap(key, vars),
+    );
     if (r.ok && r.sid) {
       ownerSid = r.sid;
       await logEvent({
@@ -403,6 +396,19 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  // Owner recap by EMAIL, next to the WhatsApp one: only when the owner
+  // switched it on AND set an address (default OFF). Fire-and-forget like
+  // verifyDelivery: never awaited, never throws, never changes the response.
+  void sendOwnerRecapEmailBestEffort({
+    userId: user.id,
+    callId: callRow.id,
+    cfg,
+    forOwner: summary.forOwner,
+    fromNumber,
+    recapFeatureOn: tenantFeatures.whatsapp_recap !== false,
+    transcriptEntries: transcript.length,
+  });
 
   await db
     .update(calls)

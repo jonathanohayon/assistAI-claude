@@ -520,7 +520,8 @@
     "orDivider": "ou avec un email",
     "continueWithGoogle": "Continuer avec Google",
     "backHome": "← Retour",
-    "errExistsGoogle": "Cet email est déjà inscrit via Google. Connectez-vous avec « Continuer avec Google »."
+    "errExistsGoogle": "Cet email est déjà inscrit via Google. Connectez-vous avec « Continuer avec Google ».",
+    "errRateLimited": "Trop de tentatives. Réessayez plus tard."
   },
   "Login": {
     "title": "Connexion",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "Annuler l'inscription et retourner à l'accueil",
     "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Vous pourrez vous réinscrire avec le même ou un autre email.",
     "restartButton": "Recommencer avec un autre email",
-    "errNetwork": "Erreur réseau"
+    "errNetwork": "Erreur réseau",
+    "errResendRateLimited": "Trop de demandes de code. Réessayez plus tard."
   },
   "Onboarding": {
     "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",
@@ -766,6 +768,19 @@
     "whatsappSubtitle": "Après chaque appel, un récap est envoyé par WhatsApp à la cliente et au propriétaire.",
     "ownerWhatsappLabel": "Numéro WhatsApp du propriétaire",
     "ownerWhatsappHint": "Format international, ex: +972500000000. Laissez vide pour désactiver.",
+    "whatsappTestNeedsSaved": "Enregistrez un numéro pour envoyer un test.",
+    "whatsappTestSaveFirst": "Enregistrez le numéro avant de le tester.",
+    "whatsappTestSent": "Message de test envoyé au {number}.",
+    "whatsappTestInvalidNumber": "Ce numéro n'est pas valide. Format international, ex : +972500000000.",
+    "whatsappTestUnauthorized": "Votre session a expiré. Reconnectez-vous puis réessayez.",
+    "whatsappTestForbidden": "Vous n'avez pas accès aux réglages de ce compte.",
+    "whatsappTestRecipientNotAllowed": "Le test ne peut partir que vers le numéro enregistré sur ce compte.",
+    "whatsappTestNoSavedNumber": "Aucun numéro enregistré : enregistrez-en un avant de tester.",
+    "whatsappTestRateLimited": "Trop de tests d'affilée. Réessayez dans {minutes} min.",
+    "whatsappTestRateLimitedNoTime": "Trop de tests d'affilée. Réessayez un peu plus tard.",
+    "whatsappTestSendFailed": "Le message de test n'est pas parti. Réessayez dans un instant.",
+    "whatsappTestNotConfigured": "Le message de test n'est pas parti : l'envoi WhatsApp n'est pas encore configuré.",
+    "whatsappTestFailed": "Le test n'a pas pu être envoyé. Réessayez dans un instant.",
     "reminderTitle": "Rappel de RDV (J-1)",
     "reminderHint": "Envoie automatiquement un rappel WhatsApp au client la veille de son rendez-vous (vers 18h). Le numéro est repris du rendez-vous pris par l'agent.",
     "whatsappFooter": "La cliente reçoit aussi un récap si elle accepte les messages WhatsApp sur son numéro d'appel.",
@@ -1822,6 +1837,14 @@
       "signature": "— L'équipe Tamara",
       "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est purement transactionnel."
     },
+    "ownerRecap": {
+      "subject": "📞 Nouvel appel reçu",
+      "eyebrow": "Récap d'appel",
+      "heading": "📞 Nouvel appel reçu",
+      "caller": "Appelant : {number}",
+      "unknownNumber": "numéro inconnu",
+      "footer": "Vous recevez cet email car le récap d'appel par email est activé sur votre compte. Vous pouvez changer l'adresse ou le désactiver à tout moment depuis votre dashboard."
+    },
     "trialWarning": {
       "subjectMinutes": "⏰ Il vous reste {minutes} minutes d'essai Tamara",
       "subjectHours": "⏰ Votre essai Tamara se termine dans 2 jours",
@@ -1901,7 +1924,17 @@
     "muted": "Micro coupé",
     "conversation": "Conversation",
     "emptyLive": "En écoute… parlez à votre agent.",
-    "emptyIdle": "Cliquez sur le micro pour démarrer un test."
+    "emptyIdle": "Cliquez sur le micro pour démarrer un test.",
+    "errors": {
+      "notConfigured": "Le test en direct n'est pas disponible pour le moment.",
+      "rateLimited": "Trop de tests d'affilée. Réessayez dans {minutes} min.",
+      "rateLimitedNoTime": "Trop de tests d'affilée. Réessayez un peu plus tard.",
+      "unavailable": "Le test en direct est momentanément indisponible. Réessayez dans un instant.",
+      "planRequired": "Le test en direct de cet agent n'est pas inclus dans votre forfait.",
+      "unauthorized": "Votre session a expiré. Reconnectez-vous.",
+      "connectFailed": "La connexion n'a pas abouti. Vérifiez votre réseau et votre micro, puis réessayez.",
+      "failed": "Le test n'a pas pu démarrer. Réessayez."
+    }
   },
   "Voices": {
     "display": "Voix {n}{gender, select, f { · féminine} m { · masculine} other {}}",

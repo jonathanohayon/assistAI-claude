@@ -351,6 +351,13 @@
       "when": 1794434204799,
       "tag": "0049_outbound_agents_mission",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794437735383,
+      "tag": "0050_owner_recap_email",
+      "breakpoints": true
     }
   ]
 }

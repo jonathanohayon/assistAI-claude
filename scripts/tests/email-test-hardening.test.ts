@@ -1,5 +1,5 @@
 // POST /api/dashboard/notifications/email-test hardening (lib/email-test/*):
-// own address only, per-account + global rate limits counted before sending,
+// own addresses only (login + saved recap address), per-account + global rate limits counted before sending,
 // neutral error codes. Every I/O is injected: nothing is ever sent, no DB.
 // The real ledger under concurrency: scripts/tests/email-test-hardening-db.test.ts.
 // Mock data only (example.com).
@@ -31,10 +31,13 @@ const LEAK = /resend|[A-Z][A-Z0-9]*_[A-Z0-9_]*(KEY|FROM|SECRET|TOKEN|URL)\b/;
 const TENANT = "00000000-0000-4000-8000-0000000000a1";
 const OTHER = "00000000-0000-4000-8000-0000000000b2";
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
-const ACCOUNTS: Record<string, { loginEmail: string; displayName: string | null; role: string }> = {
-  [TENANT]: { loginEmail: "Owner@Example.com", displayName: "Salon A", role: "user" },
-  [OTHER]: { loginEmail: "other@example.com", displayName: null, role: "user" },
-  [ADMIN]: { loginEmail: "admin@example.com", displayName: "Admin", role: "admin" },
+// ownerRecapEmail = agent_configs.owner_recap_email. The recap switch is not
+// part of the account on purpose: a test may go to a saved address that is
+// not switched on yet (the DB suite stores the switch OFF to prove it).
+const ACCOUNTS: Record<string, { loginEmail: string; ownerRecapEmail: string; displayName: string | null; role: string }> = {
+  [TENANT]: { loginEmail: "Owner@Example.com", ownerRecapEmail: " Recap@Example.com ", displayName: "Salon A", role: "user" },
+  [OTHER]: { loginEmail: "other@example.com", ownerRecapEmail: "", displayName: null, role: "user" },
+  [ADMIN]: { loginEmail: "admin@example.com", ownerRecapEmail: "admin-recap@example.com", displayName: "Admin", role: "admin" },
 };
 const RAW_PROVIDER_ERROR =
   "Resend: domain not verified, check EMAIL_FROM / RESEND_API_KEY=re_FAKE_secret_0123456789 for owner@example.com";
@@ -54,7 +57,7 @@ function makeWorld(opts: { session: string | null; sendResult?: EmailTestSendRes
     },
     loadAccount: async (id) => {
       const a = ACCOUNTS[id];
-      return a ? { loginEmail: a.loginEmail, displayName: a.displayName } : null;
+      return a ? { loginEmail: a.loginEmail, ownerRecapEmail: a.ownerRecapEmail, displayName: a.displayName } : null;
     },
     claim:
       opts.claim ??
@@ -120,10 +123,32 @@ async function main() {
     allLogs.push(...w.logs);
   }
 
+  // 1b. The saved recap address passes too (normalised), and so does the login email.
+  {
+    const w = makeWorld({ session: TENANT });
+    const r = await w.post({ to: "RECAP@example.COM  " });
+    assert.equal(r.status, 200);
+    assert.equal((await w.post({ to: "owner@example.com" })).status, 200);
+    assert.deepEqual(w.sent, ["recap@example.com", "owner@example.com"]);
+    allResponses.push(...w.responses);
+    allLogs.push(...w.logs);
+  }
+
+  // 1c. An empty saved recap address → only the login email is allowed.
+  {
+    const w = makeWorld({ session: OTHER });
+    assert.equal((await w.post({ to: "other@example.com" })).status, 200);
+    for (const to of ["recap@example.com", "owner@example.com"]) {
+      assert.deepEqual((await w.post({ to })).json, { error: "recipient_not_allowed" }, to);
+    }
+    assert.deepEqual(w.sent, ["other@example.com"]);
+    allResponses.push(...w.responses);
+  }
+
   // 2. Another address → 403 recipient_not_allowed, nothing sent, nothing counted.
   {
     const w = makeWorld({ session: TENANT });
-    for (const to of ["victim@example.com", "other@example.com", "admin@example.com", "owner@example.com.evil.example"]) {
+    for (const to of ["victim@example.com", "other@example.com", "admin@example.com", "admin-recap@example.com", "owner@example.com.evil.example", "recap@example.com.evil.example"]) {
       const r = await w.post({ to });
       assert.equal(r.status, 403, to);
       assert.deepEqual(r.json, { error: "recipient_not_allowed" }, to);
@@ -172,13 +197,15 @@ async function main() {
     allResponses.push(...w.responses);
   }
 
-  // 5. Admin: ?asUserId=<tenant> to the tenant's own address passes; to any other → 403.
+  // 5. Admin: ?asUserId=<tenant> to the tenant's login or saved recap address passes;
+  //    to any other (the admin's own login or recap address included) → 403.
   {
     const w = makeWorld({ session: ADMIN });
     const ok = await w.post({ to: "owner@example.com" }, `?asUserId=${TENANT}`);
     assert.equal(ok.status, 200);
-    assert.deepEqual(w.sent, ["owner@example.com"]);
-    for (const to of ["admin@example.com", "victim@example.com"]) {
+    assert.equal((await w.post({ to: "recap@example.com" }, `?asUserId=${TENANT}`)).status, 200);
+    assert.deepEqual(w.sent, ["owner@example.com", "recap@example.com"]);
+    for (const to of ["admin@example.com", "admin-recap@example.com", "victim@example.com"]) {
       const r = await w.post({ to }, `?asUserId=${TENANT}`);
       assert.equal(r.status, 403, to);
       assert.deepEqual(r.json, { error: "recipient_not_allowed" });
@@ -271,6 +298,15 @@ async function main() {
   // 9. Pure pieces.
   assert.deepEqual(allowedTestRecipients({ loginEmail: " Owner@Example.COM " }), ["owner@example.com"]);
   assert.deepEqual(allowedTestRecipients({ loginEmail: "not-an-address" }), []);
+  assert.deepEqual(
+    allowedTestRecipients({ loginEmail: "owner@example.com", ownerRecapEmail: " Recap@EXAMPLE.com " }),
+    ["owner@example.com", "recap@example.com"],
+  );
+  for (const ownerRecapEmail of ["", "   ", null, undefined]) {
+    assert.deepEqual(allowedTestRecipients({ loginEmail: "owner@example.com", ownerRecapEmail }), ["owner@example.com"], String(ownerRecapEmail));
+  }
+  assert.deepEqual(allowedTestRecipients({ loginEmail: "owner@example.com", ownerRecapEmail: "OWNER@example.com" }), ["owner@example.com"], "deduplicated");
+  assert.equal(matchAllowedRecipient(" recap@example.com", { loginEmail: "owner@example.com", ownerRecapEmail: "Recap@example.com" }), "recap@example.com");
   assert.equal(matchAllowedRecipient("OWNER@example.com", { loginEmail: "owner@example.com" }), "owner@example.com");
   assert.equal(matchAllowedRecipient("x@example.com", { loginEmail: "owner@example.com" }), null);
   {

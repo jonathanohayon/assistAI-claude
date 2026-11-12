@@ -4,7 +4,9 @@
 
 import assert from "node:assert/strict";
 
-import { hits, inBase64Run } from "../tenant-bundle-match.mjs";
+import { anonymousDemoInstructions } from "../../lib/demo-instructions";
+import { REALTIME_INSTRUCTIONS } from "../../lib/realtime";
+import { hits, INSTRUCTION_MARKERS, inBase64Run } from "../tenant-bundle-match.mjs";
 
 const found = (text: string) => [...(hits(text) as Map<string, string[]>).keys()];
 
@@ -30,6 +32,21 @@ assert.deepEqual(found("Jean-Claude a rappelé · Resend code"), [], "first name
 assert.deepEqual(found('{"name":"book_appointment"}'), ["book_appointment"]);
 assert.deepEqual(found("call transfer_call then end_call"), ["transfer_call", "end_call"]);
 assert.deepEqual(found("rebook_appointments_count"), [], "not a whole word");
+// Instruction text: marker phrases of the demo prompt, any case, anywhere.
+assert.deepEqual(found('let i=`Tu es un assistant vocal intelligent et chaleureux pour`'), ["intelligent et chaleureux"]);
+assert.deepEqual(found("ACCUEILLE PROACTIVEMENT l'appelant"), ["accueille proactivement"]);
+// Every marker really is in the prompt it stands for (else it guards nothing),
+// and every demo prompt the server builds carries at least two of them.
+const prompts = [REALTIME_INSTRUCTIONS, ...["fr", "en", "he"].map((l) => anonymousDemoInstructions(null, l))];
+for (const m of INSTRUCTION_MARKERS as string[]) {
+  assert.ok(prompts.some((p) => p.toLowerCase().includes(m.toLowerCase())), `marker not in any prompt: ${m}`);
+}
+for (const p of prompts) assert.ok(found(p).filter((k) => k.includes(" ")).length >= 2, "demo prompt caught by markers");
+for (const l of ["fr", "en", "he"]) {
+  assert.ok(found(anonymousDemoInstructions("Mock demo persona.", l)).length >= 1, `demo account prompt (${l}) caught`);
+}
+// Marketing copy about the product is not instruction text.
+assert.deepEqual(found("Tamara accueille vos clients, chaleureuse et concise, 24h/24"), []);
 // Plain words in copy are fine.
 assert.deepEqual(found("Prendre des rendez-vous · Transférer à une personne"), []);
 // Per-request base64 noise is skipped; a chunk path never is.

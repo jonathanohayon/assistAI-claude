@@ -1,0 +1,2 @@
+ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "owner_recap_email" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "owner_recap_email_enabled" boolean DEFAULT false NOT NULL;

@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 import { EMAIL_TEST_ERRORS } from "../../lib/email-test/policy";
+import { VERIFICATION_ERRORS } from "../../lib/verification-limits/policy";
 import { LIVE_TEST_ERRORS } from "../../lib/live-test/policy";
 import { PATTERN } from "../tenant-bundle-match.mjs";
 
@@ -36,6 +37,31 @@ assert.ok(codes.length >= 7);
 for (const c of codes) assert.ok((EMAIL_TEST_ERRORS as readonly string[]).includes(c), `non-neutral code ${c}`);
 for (const c of EMAIL_TEST_ERRORS) assert.doesNotMatch(c, SUPPLIER);
 assert.equal([...handler.matchAll(/NextResponse\.json\(/g)].length, 2, "only fail() and the 200 build responses");
+
+// The public verification paths (resend route + signup action): no supplier,
+// no env var in code; the route answers only through fail() / ACCEPTED with a
+// neutral code (provider errors stay in the server log).
+for (const f of [
+  "app/api/auth/resend-verification/route.ts",
+  "lib/verification-limits/resend.ts",
+  "lib/verification-limits/signup.ts",
+  "lib/verification-limits/policy.ts",
+  "app/[locale]/signup/page.tsx",
+]) {
+  const src = code(f);
+  assert.doesNotMatch(src, SUPPLIER, `${f} names a supplier`);
+  assert.doesNotMatch(src, /process\.env|[A-Z][A-Z0-9]*_(API_KEY|FROM|SECRET|TOKEN)\b/, `${f} names an env var`);
+  // "resend" is also a plain verb here (route path, identifiers), so the email
+  // supplier is checked by its SDK and host; response bodies are checked
+  // dynamically in verification-limits.test.ts.
+  assert.doesNotMatch(src, /from "resend"|resend\.com/i, `${f} names the email supplier`);
+}
+const resendSrc = code("lib/verification-limits/resend.ts");
+assert.equal([...resendSrc.matchAll(/\bbody: \{/g)].length, 2, "responses are built by fail() and ACCEPTED only");
+for (const m of resendSrc.matchAll(/fail\("([a-z_]+)"/g)) {
+  assert.ok((VERIFICATION_ERRORS as readonly string[]).includes(m[1]), `non-neutral code ${m[1]}`);
+}
+for (const c of VERIFICATION_ERRORS) assert.doesNotMatch(c, SUPPLIER);
 
 // The live-test token route: the handler that builds every response names no
 // supplier and no env var; every error goes through fail() with a listed code.

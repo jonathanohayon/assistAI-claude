@@ -8,7 +8,7 @@
 //   400 { error: "invalid_email" }          missing / malformed address or body
 //   401 { error: "unauthorized" }           no session
 //   403 { error: "forbidden" }              ?asUserId by a non-admin
-//   403 { error: "recipient_not_allowed" }  not the account's own address
+//   403 { error: "recipient_not_allowed" }  neither the login nor the saved recap address
 //   429 { error: "rate_limited", scope: "account" | "global" } + Retry-After header
 //   500 { error: "send_failed" } | { error: "not_configured" }
 
@@ -26,6 +26,8 @@ import type { RateLimitResult } from "@/lib/rate-limit-db-core";
 
 export interface EmailTestAccount {
   loginEmail: string;
+  /** Saved owner recap address ("" when none); also an allowed recipient. */
+  ownerRecapEmail: string;
   displayName: string | null;
 }
 
@@ -71,7 +73,7 @@ export async function handleEmailTest(req: NextRequest, deps: EmailTestDeps): Pr
   if (!isWellFormedEmail(to)) return fail("invalid_email", 400);
 
   const account = await deps.loadAccount(userId);
-  const recipient = account ? matchAllowedRecipient(to, { loginEmail: account.loginEmail }) : null;
+  const recipient = account ? matchAllowedRecipient(to, account) : null;
   if (!account || !recipient) return fail("recipient_not_allowed", 403);
 
   // Counted BEFORE sending, atomically (lib/rate-limit-db.ts).
