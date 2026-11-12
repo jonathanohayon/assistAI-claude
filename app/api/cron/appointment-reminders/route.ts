@@ -1,4 +1,3 @@
-import { withCallUsLine } from "@/lib/whatsapp-call-line";
 import { tenantCallNumber } from "@/lib/tenant-call-number";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,13 +7,14 @@ import { db } from "@/lib/db";
 import { agentConfigs, appointmentReminders, users } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { consumeRateLimit } from "@/lib/rate-limit-db";
 import {
-  type ReminderLang,
-  formatDateLabel,
-  parseEventContact,
-  reminderText,
-  resolveReminderTemplateSid,
-} from "@/lib/reminders";
+  REMINDERS_CAP_WINDOW_MS,
+  REMINDERS_GLOBAL_PER_DAY,
+  REMINDERS_PER_TENANT_PER_DAY,
+  REMINDERS_RATE_BUCKET,
+  remindTenant,
+} from "@/lib/appointment-reminders-run";
 import { JERUSALEM_TZ, jerusalemDateOffset, jerusalemToUTCISO } from "@/lib/tz";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
@@ -25,6 +25,8 @@ export const maxDuration = 300;
 // lit les RDV de DEMAIN (Asia/Jerusalem) dans son agenda et envoie un rappel
 // WhatsApp au client. Idempotent via la table appointment_reminders
 // (un seul rappel par (tenant, eventId)). Best-effort par tenant/RDV.
+//
+// Capped per tenant and globally per day (lib/appointment-reminders-run.ts).
 //
 // Auth : INTERNAL_SECRET. À hooker sur un cron Railway quotidien (~18h Israël,
 // soit 15h/16h UTC selon DST).
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest) {
     sent: number;
     failed: number;
     skipped: number;
+    capped?: number;
     reason?: string;
   }> = [];
 
@@ -72,6 +75,7 @@ export async function GET(req: NextRequest) {
     let sent = 0;
     let failed = 0;
     let skipped = 0;
+    let capped = 0;
     let reason: string | undefined;
     try {
       const g = await getTenantGoogleClients(t.id);
@@ -80,121 +84,56 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      const list = await g.calendar.events.list({
-        calendarId: g.calendarId,
-        timeMin,
-        timeMax,
-        singleEvents: true,
-        orderBy: "startTime",
-        maxResults: 250,
-        timeZone: JERUSALEM_TZ,
-      });
-      const items = (list.data.items ?? []).filter(
-        (e) => e.id && e.start?.dateTime, // ignore all-day / sans id
-      );
-      events = items.length;
-
-      // Idempotence : eventIds déjà rappelés pour ce tenant.
-      const ids = items.map((e) => e.id as string);
-      const already = ids.length
-        ? new Set(
-            (
-              await db
-                .select({ eventId: appointmentReminders.eventId })
-                .from(appointmentReminders)
-                .where(
-                  and(
-                    eq(appointmentReminders.userId, t.id),
-                    inArray(appointmentReminders.eventId, ids),
-                  ),
-                )
-            ).map((r) => r.eventId),
-          )
-        : new Set<string>();
-
-      const lang = (["fr", "he", "en"].includes(t.primaryLanguage)
-        ? t.primaryLanguage
-        : "fr") as ReminderLang;
-      const templateSid = resolveReminderTemplateSid(lang);
-      // Tenant's aitamara number for the "call us" line (none → no line).
-      const callNumber = await tenantCallNumber(t.id);
-
-      for (const ev of items) {
-        const eventId = ev.id as string;
-        if (already.has(eventId)) {
-          skipped++;
-          continue;
-        }
-        const { name, phone, center } = parseEventContact({
-          summary: ev.summary,
-          description: ev.description,
-        });
-        if (!phone) {
-          skipped++;
-          continue; // pas de téléphone exploitable → on ne peut pas rappeler
-        }
-
-        const startISO = ev.start?.dateTime ?? null;
-        const time = startISO
-          ? new Intl.DateTimeFormat("fr-FR", {
+      const counts = await remindTenant(t, tomorrow, {
+        listEvents: async () =>
+          (
+            await g.calendar.events.list({
+              calendarId: g.calendarId,
+              timeMin,
+              timeMax,
+              singleEvents: true,
+              orderBy: "startTime",
+              maxResults: 250,
               timeZone: JERUSALEM_TZ,
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            }).format(new Date(startISO))
-          : "";
-        const text = withCallUsLine(
-          reminderText(lang, {
-            name,
-            dateLabel: formatDateLabel(tomorrow, lang),
-            time,
-            center,
+            })
+          ).data.items ?? [],
+        alreadyReminded: (ids) =>
+          db
+            .select({
+              eventId: appointmentReminders.eventId,
+              clientPhone: appointmentReminders.clientPhone,
+              status: appointmentReminders.status,
+            })
+            .from(appointmentReminders)
+            .where(
+              and(
+                eq(appointmentReminders.userId, t.id),
+                inArray(appointmentReminders.eventId, ids),
+              ),
+            ),
+        callNumber: () => tenantCallNumber(t.id),
+        consume: () =>
+          consumeRateLimit({
+            bucket: REMINDERS_RATE_BUCKET,
+            accountId: t.id,
+            windowMs: REMINDERS_CAP_WINDOW_MS,
+            perAccount: REMINDERS_PER_TENANT_PER_DAY,
+            global: REMINDERS_GLOBAL_PER_DAY,
           }),
-          lang,
-          callNumber,
-        );
-
-        const r = await sendWhatsApp({
-          to: phone,
-          body: text,
-          templateSid,
-          templateVariables: templateSid ? { "1": text } : undefined,
-        });
-
-        await db
-          .insert(appointmentReminders)
-          .values({
-            userId: t.id,
-            eventId,
-            channel: "whatsapp",
-            status: r.ok ? "sent" : "failed",
-            clientPhone: phone,
-            error: r.ok ? "" : (r.error ?? "").slice(0, 500),
-            appointmentStart: startISO ? new Date(startISO) : null,
-          })
-          .onConflictDoNothing();
-
-        if (r.ok) {
-          sent++;
-          await logEvent({
-            source: "whatsapp",
-            event: "appointment_reminder_sent",
-            message: `Rappel J-1 → ${phone} (${tomorrow} ${time})`,
-            userId: t.id,
-            metadata: { eventId, phone, sid: r.sid },
-          });
-        } else {
-          failed++;
-          await logEvent({
-            source: "whatsapp",
-            event: "appointment_reminder_failed",
-            message: `Rappel J-1 KO → ${phone} : ${(r.error ?? "").slice(0, 150)}`,
-            level: "warn",
-            userId: t.id,
-            metadata: { eventId, phone, error: r.error },
-          });
-        }
-      }
+        send: (opts) => sendWhatsApp(opts),
+        record: async (row) => {
+          await db
+            .insert(appointmentReminders)
+            .values({ userId: t.id, channel: "whatsapp", ...row })
+            .onConflictDoNothing();
+        },
+        log: (ev) => logEvent(ev),
+      });
+      events = counts.events;
+      sent = counts.sent;
+      failed = counts.failed;
+      skipped = counts.skipped;
+      capped = counts.capped;
     } catch (e) {
       reason = e instanceof Error ? e.message.slice(0, 200) : "exception";
       await logEvent({
@@ -210,7 +149,16 @@ export async function GET(req: NextRequest) {
     totalSent += sent;
     totalFailed += failed;
     totalSkipped += skipped;
-    results.push({ userId: t.id, email: t.email, events, sent, failed, skipped, reason });
+    results.push({
+      userId: t.id,
+      email: t.email,
+      events,
+      sent,
+      failed,
+      skipped,
+      ...(capped ? { capped } : {}),
+      reason,
+    });
   }
 
   return NextResponse.json({

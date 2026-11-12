@@ -37,9 +37,25 @@ export function createRateLimiter(opts: {
   };
 }
 
-/** Client IP behind Railway's proxy: first X-Forwarded-For entry. */
+/**
+ * Client IP behind Railway's HTTP edge — BEST-EFFORT, not a guarantee.
+ *
+ * Order: X-Real-IP, else the first X-Forwarded-For entry, else "unknown".
+ * Per Railway staff (forum answers, not a versioned contract), the public
+ * edge OVERWRITES caller-supplied X-Real-IP and X-Forwarded-For, and X-Real-IP
+ * is the header they recommend for rate limiting. Known caveats: X-Real-IP
+ * has been reported to carry a CDN edge IP when Railway's CDN is in the path,
+ * and *.railway.internal traffic skips the edge (headers are then caller
+ * controlled). So every per-IP limit built on this MUST keep a global ceiling
+ * as its backstop. Sources:
+ *   https://station.railway.com/questions/need-authoritative-client-ip-proxy-tru-090eac86
+ *   https://station.railway.com/questions/which-header-should-i-rely-on-for-real-c-d78a6f96
+ *   https://station.railway.com/questions/edge-cdn-layer-leaking-its-own-ip-as-cli-1ce29b05
+ * Used by the signup per-IP cap and the anonymous /api/session limiter.
+ */
 export function clientIp(headers: Headers): string {
-  const xff = headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  const realIp = headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  const first = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return first || "unknown";
 }

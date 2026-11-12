@@ -60,6 +60,17 @@ const metaNumber = (e164: string): string => e164.replace(/^\+/, "");
 // Twilio accepts E.164 prefixed with "whatsapp:".
 const twilioNumber = (e164: string): string => `whatsapp:${e164}`;
 
+/** True when the selected provider has its credentials (no call made). */
+export function whatsAppConfigured(): boolean {
+  const provider = (process.env.WHATSAPP_PROVIDER ?? "meta").toLowerCase();
+  if (provider === "twilio") {
+    return Boolean(
+      process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_WHATSAPP_FROM,
+    );
+  }
+  return Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_ACCESS_TOKEN);
+}
+
 export async function sendWhatsApp(opts: WhatsAppOptions): Promise<WhatsAppResult> {
   const provider = (process.env.WHATSAPP_PROVIDER ?? "meta").toLowerCase();
   const e164 = normalizeE164(opts.to);

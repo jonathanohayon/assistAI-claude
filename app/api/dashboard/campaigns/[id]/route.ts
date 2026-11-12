@@ -10,9 +10,13 @@ import {
 } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { withoutToolsStore } from "@/lib/tools/store";
 import { withoutMissionStore } from "@/lib/mission/store";
 import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
+import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { patchPresetGateInput, presetGateRefusal } from "@/lib/campaigns/preset-gate";
+import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
 import { campaignCallPublicColumns, campaignDetailCalls } from "@/lib/campaigns/campaign-call-row";
 
 interface Ctx {
@@ -101,6 +105,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const campaign = await loadOwned(r.userId, id);
@@ -137,6 +144,16 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     patch.agentId = a?.id ?? null;
   }
 
+  // M2d: admin-only presets + book_for_seller needs effective booking for
+  // the agent the campaign will have. Omitting goalPreset keeps the stored one.
+  const gate = patchPresetGateInput(campaign, plan.changes, (patch.agentId as string | null | undefined) ?? null);
+  const refusal = await presetGateRefusal({
+    ...gate,
+    isAdmin: await sessionIsAdmin(),
+    bookingActive: () => outboundBookingActive(r.userId, gate.agentId),
+  });
+  if (refusal) return NextResponse.json(refusal.body, { status: refusal.status });
+
   if (campaign.status === "running" && plan.changes.callWindow) {
     await logEvent({
       source: "web",
@@ -163,6 +180,9 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const campaign = await loadOwned(r.userId, id);

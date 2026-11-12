@@ -520,7 +520,8 @@
     "orDivider": "או עם אימייל",
     "continueWithGoogle": "המשך עם Google",
     "backHome": "→ חזרה",
-    "errExistsGoogle": "האימייל כבר רשום דרך Google. התחברו עם «המשך עם Google»."
+    "errExistsGoogle": "האימייל כבר רשום דרך Google. התחברו עם «המשך עם Google».",
+    "errRateLimited": "יותר מדי ניסיונות. נסו שוב מאוחר יותר."
   },
   "Login": {
     "title": "התחברות",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "ביטול ההרשמה וחזרה לעמוד הבית",
     "restartConfirm": "למחוק את ההרשמה הזו ולהתחיל מחדש?\n\nהחשבון שנוצר יימחק לצמיתות. תוכלי להירשם שוב עם אותו אימייל או אחר.",
     "restartButton": "להתחיל מחדש עם אימייל אחר",
-    "errNetwork": "שגיאת רשת"
+    "errNetwork": "שגיאת רשת",
+    "errResendRateLimited": "יותר מדי בקשות לקוד. נסו שוב מאוחר יותר."
   },
   "Onboarding": {
     "trialLabel": "ניסיון חינם — 60 דקות שיחה או 24 שעות",
@@ -766,6 +768,19 @@
     "whatsappSubtitle": "אחרי כל שיחה, נשלח סיכום ב-WhatsApp ללקוחה ולבעלת העסק.",
     "ownerWhatsappLabel": "מספר WhatsApp של בעלת העסק",
     "ownerWhatsappHint": "פורמט בינלאומי, למשל: ⁦+972500000000⁩. השאירי ריק כדי לכבות.",
+    "whatsappTestNeedsSaved": "שמרו מספר כדי לשלוח בדיקה.",
+    "whatsappTestSaveFirst": "שמרו את המספר לפני שבודקים אותו.",
+    "whatsappTestSent": "הודעת בדיקה נשלחה אל ⁦{number}⁩.",
+    "whatsappTestInvalidNumber": "המספר אינו תקין. פורמט בינלאומי, למשל: ⁦+972500000000⁩.",
+    "whatsappTestUnauthorized": "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.",
+    "whatsappTestForbidden": "אין לכם גישה להגדרות של החשבון הזה.",
+    "whatsappTestRecipientNotAllowed": "הבדיקה יכולה להישלח רק למספר השמור בחשבון הזה.",
+    "whatsappTestNoSavedNumber": "עדיין לא נשמר מספר: שמרו מספר לפני הבדיקה.",
+    "whatsappTestRateLimited": "יותר מדי בדיקות ברצף. נסו שוב בעוד {minutes} דק׳.",
+    "whatsappTestRateLimitedNoTime": "יותר מדי בדיקות ברצף. נסו שוב מעט מאוחר יותר.",
+    "whatsappTestSendFailed": "הודעת הבדיקה לא נשלחה. נסו שוב בעוד רגע.",
+    "whatsappTestNotConfigured": "הודעת הבדיקה לא נשלחה: שליחת WhatsApp עדיין לא הוגדרה.",
+    "whatsappTestFailed": "לא ניתן היה לשלוח את הבדיקה. נסו שוב בעוד רגע.",
     "reminderTitle": "תזכורת לתור (יום לפני)",
     "reminderHint": "שולח אוטומטית תזכורת ב-WhatsApp ללקוח יום לפני התור (בסביבות 18:00). המספר נלקח מהתור שנקבע על ידי הסוכן.",
     "whatsappFooter": "הלקוחה גם מקבלת סיכום אם היא מקבלת הודעות WhatsApp במספר שממנו התקשרה.",
@@ -1447,7 +1462,9 @@
         "unknown": "לא ניתן {action, select, pause {להשהות} other {להפעיל}} את הקמפיין. נסו שוב."
       }
     },
-    "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}"
+    "pauseToEdit": "יש להשהות את הקמפיין כדי לשנות: {fields}",
+    "goal_book_for_seller": "פגישה עבור איש מכירות",
+    "goal_follow_up": "מעקב"
   },
   "DashboardCalendar": {
     "header": "יומן",
@@ -1907,7 +1924,17 @@
     "muted": "המיקרופון מושתק",
     "conversation": "שיחה",
     "emptyLive": "מאזין… דברו עם הסוכן שלכם.",
-    "emptyIdle": "לחצו על המיקרופון כדי להתחיל בדיקה."
+    "emptyIdle": "לחצו על המיקרופון כדי להתחיל בדיקה.",
+    "errors": {
+      "notConfigured": "הבדיקה החיה אינה זמינה כרגע.",
+      "rateLimited": "יותר מדי בדיקות ברצף. נסו שוב בעוד {minutes} דק׳.",
+      "rateLimitedNoTime": "יותר מדי בדיקות ברצף. נסו שוב מעט מאוחר יותר.",
+      "unavailable": "הבדיקה החיה אינה זמינה זמנית. נסו שוב בעוד רגע.",
+      "planRequired": "בדיקה חיה של הסוכן הזה אינה כלולה בחבילה שלכם.",
+      "unauthorized": "פג תוקף החיבור שלכם. התחברו מחדש.",
+      "connectFailed": "החיבור לא הצליח. בדקו את הרשת ואת המיקרופון ונסו שוב.",
+      "failed": "לא ניתן היה להתחיל את הבדיקה. נסו שוב."
+    }
   },
   "Voices": {
     "display": "קול {n}{gender, select, f { · נשי} m { · גברי} other {}}",
@@ -2617,7 +2644,21 @@
     "rotate": "יצירה מחדש",
     "contractTitle": "הפורמט שהשירותים הקוליים מצפים לו",
     "urlPlaceholder": "<your-url>",
-    "replyWithin": "תוך 2 שניות"
+    "replyWithin": "תוך 2 שניות",
+    "loading": "טוען…",
+    "emptyText": "עדיין אין כתובת: צרו אחת כדי ששירות קולי חיצוני יוכל לגרום לסוכן שלכם לענות לטלפון.",
+    "create": "יצירת כתובת",
+    "activeSince": "פעילה מאז {date}",
+    "onceWarning": "העתיקו את הכתובת עכשיו — היא לא תוצג שוב.",
+    "confirmTitle": "ליצור את הכתובת מחדש?",
+    "confirmBody": "הכתובת הנוכחית תפסיק לעבוד מיד, בכל מקום שבו היא מודבקת. תצטרכו להדביק את החדשה בשירות הקולי שלכם.",
+    "confirmYes": "כן, ליצור מחדש",
+    "cancel": "ביטול",
+    "errorLoad": "לא הצלחנו לטעון את מצב הכתובת. נסו שוב.",
+    "errorCreate": "לא הצלחנו ליצור את הכתובת. נסו שוב.",
+    "errorRegenerate": "לא הצלחנו ליצור את הכתובת מחדש. נסו שוב.",
+    "retry": "ניסיון חוזר",
+    "copiedDone": "העתקתי"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "הגדירו TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה."
@@ -2702,6 +2743,14 @@
       "other": {
         "name": "אחר",
         "what": "מטרה משלכם, שמתוארת בהמשך."
+      },
+      "book_for_seller": {
+        "name": "קביעת פגישה עבור איש מכירות",
+        "what": "מציעים לאדם פגישה עם איש מכירות שלכם."
+      },
+      "follow_up": {
+        "name": "מעקב מול לקוח",
+        "what": "חוזרים למי שכבר דיבר איתכם ומובילים לשלב הבא."
       }
     },
     "proofLabel": "הצלחה (הערכה):",
@@ -2714,10 +2763,29 @@
     },
     "coldLabel": "פנייה קרה",
     "coldHint": "האדם עדיין לא מכיר אתכם: רק פתיחת השיחה משתנה.",
-    "needsOff": "אפשר להפעיל במסך „{tools}”.",
     "defaultLabel": "משימת ברירת מחדל לקמפיינים חדשים",
     "defaultNone": "בחרו…",
     "defaultColdOption": "פנייה קרה",
-    "saveRefused": "המשימה לא נשמרה. נסו שוב."
+    "saveRefused": "המשימה לא נשמרה. נסו שוב.",
+    "lockedByTeam": "נבחרה על ידי הצוות שלנו: אפשר רק לבחור משימה אחרת.",
+    "presetAdminOnly": "המשימה הזו שמורה לצוות שלנו. בחרו משימה אחרת.",
+    "presetNeedsBooking": "המשימה הזו צריכה קביעת פגישות: הפעילו אותה עבור הסוכן שנבחר ונסו שוב.",
+    "capNoun": {
+      "booking": "קביעת פגישות",
+      "transfer": "העברה לאדם"
+    },
+    "needSentence": {
+      "not_available_outbound": "{cap} עדיין לא זמינה בשיחות יוצאות.",
+      "google_not_connected": "{cap} ממתינה לחיבור Google Calendar.",
+      "no_transfer_number": "{cap} ממתינה למספר להעברה.",
+      "off": "צריך להפעיל {cap} במסך „{tools}”."
+    }
+  },
+  "ClientConfirm": {
+    "booked": "התור שלך ב{date} בשעה {time} אושר.",
+    "cancelled": "התור שלך ב{date} בשעה {time} בוטל.",
+    "cancelledNoDate": "התור שלך בוטל.",
+    "rescheduled": "התור שלך הועבר ל{date} בשעה {time}.",
+    "place": "מיקום: {place}"
   }
 }
