@@ -34,19 +34,9 @@ export function Logo({
       </span>
       <span
         className={`font-display text-xl leading-none tracking-tight transition-colors duration-300 ${
-          tone === "onDark" ? "relative isolate text-white" : "text-[#8b5cf6]"
+          tone === "onDark" ? "text-white" : "text-[#8b5cf6]"
         }`}
       >
-        {/* Over a dark hero, a soft dark halo keeps white >= 4.5:1 on the
-         *  lightest pixel behind the wordmark: the home video's poster has
-         *  bright bulbs there (white alone measured 2.42:1). */}
-        {tone === "onDark" && (
-          <span
-            aria-hidden
-            data-wordmark-halo=""
-            className="pointer-events-none absolute -inset-x-4 -inset-y-2.5 -z-10 rounded-full bg-black/45 blur-[10px]"
-          />
-        )}
         Tamara
       </span>
     </span>

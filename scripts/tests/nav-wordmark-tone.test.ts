@@ -31,18 +31,19 @@ assert.equal(wordmarkTone(at({ overLight: true, scrolled: true })), "brand");
 assert.equal(wordmarkTone(at({ open: true })), "brand");
 
 // 2. The real Logo: purple by default (every other screen), white on dark.
-const wordmark = (html: string) => /<span class="(font-display[^"]*)">(?:<span[^>]*><\/span>)?Tamara<\/span>/.exec(html)?.[1] ?? "";
+// The wordmark is plain text in both tones: no halo or other child element.
+const wordmark = (html: string) => /<span class="(font-display[^"]*)">Tamara<\/span>/.exec(html)?.[1] ?? "";
 const brandHtml = renderToStaticMarkup(createElement(Logo));
 const brand = wordmark(brandHtml);
 assert.match(brand, /text-\[#8b5cf6\]/);
 assert.doesNotMatch(brand, /text-white/);
-assert.doesNotMatch(brandHtml, /data-wordmark-halo/, "no halo on the purple wordmark");
 const onDarkHtml = renderToStaticMarkup(createElement(Logo, { tone: "onDark" }));
 const onDark = wordmark(onDarkHtml);
 assert.match(onDark, /text-white/);
 assert.doesNotMatch(onDark, /text-\[#8b5cf6\]/);
-// The white wordmark carries its dark halo (contrast on the video's bright bulbs).
-assert.match(onDarkHtml, /<span aria-hidden="true" data-wordmark-halo="" class="[^"]*bg-black\/45 blur-\[10px\][^"]*"><\/span>Tamara/);
+for (const html of [brandHtml, onDarkHtml]) {
+  assert.doesNotMatch(html, /halo|blur-|bg-black/, "no halo behind the wordmark");
+}
 // The mic badge does not change with the tone.
 const badge = (html: string) => /<span class="(relative inline-flex h-7[^"]*)"/.exec(html)?.[1];
 assert.equal(badge(renderToStaticMarkup(createElement(Logo, { tone: "onDark" }))), badge(renderToStaticMarkup(createElement(Logo))));
@@ -55,5 +56,22 @@ assert.match(nav, /const tone = \{ scrolled, overLight, open \};/);
 assert.match(nav, /<Logo tone=\{wordmarkTone\(tone\)\} \/>/);
 assert.match(nav, /navBarIsWhite\(tone\)\s*\?\s*"border-b border-\[var\(--color-border\)\]\/60 bg-white\/80 backdrop-blur-lg"/);
 assert.doesNotMatch(nav, /useReducedMotion/);
+
+// 4. The nav scrim lives in the home's video hero only: a decorative,
+// absolutely positioned top band that fades out below the nav. /sales and
+// /connect (DoorHero) and the nav itself do not carry it.
+const srcOf = (p: string) => readFileSync(join(__dirname, "..", "..", p), "utf8");
+const hero = srcOf("components/marketing/Hero.tsx");
+const scrims = hero.match(/<div[^>]*data-nav-scrim=""[^>]*\/>/g) ?? [];
+assert.equal(scrims.length, 1, "one scrim in the video hero");
+const scrim = scrims[0];
+assert.match(scrim, /aria-hidden/);
+assert.match(scrim, /className="pointer-events-none absolute inset-x-0 top-0 -z-20 h-40 bg-gradient-to-b from-black\/55 via-black\/30 to-transparent"/);
+// No layout impact: absolute, no margin/padding, and no motion on it.
+assert.doesNotMatch(scrim, /\b(m|p|mt|pt|mb|pb)-\d/);
+assert.doesNotMatch(scrim, /motion|animate|style=/);
+for (const p of ["components/marketing/Nav.tsx", "components/marketing/landing/DoorHero.tsx", "components/marketing/HomePage.tsx"]) {
+  assert.doesNotMatch(srcOf(p), /nav-scrim/, `${p} has no nav scrim`);
+}
 
 console.log("nav-wordmark-tone: ok");
