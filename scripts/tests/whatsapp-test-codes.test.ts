@@ -241,6 +241,36 @@ await test("the campaign agent editor no longer calls whatsapp-test and keeps it
   }
 });
 
+// ─── 5b. The WhatsApp switch (RTL knob + 44 px hit area) ─────────────────
+
+await test("the WhatsApp switch: 44 px hit area, knob mirrored in RTL, same aria", () => {
+  for (const [locale, on] of [["he", true], ["he", false], ["fr", true]] as const) {
+    const html = render(locale, { form: formWith(on ? MOCK : ""), ownerWhatsappSaved: MOCK });
+    // The WhatsApp switch is the first switch of the panel.
+    const sw = html.match(/<button[^>]*role="switch"[^>]*>([\s\S]*?)<\/button>/);
+    assert.ok(sw, `${locale}: switch rendered`);
+    const [tag] = sw[0].match(/<button[^>]*>/)!;
+    assert.match(tag, /\bh-11\b/, `${locale}: 44 px tall hit area`);
+    assert.match(tag, /\bmin-w-11\b/, `${locale}: at least 44 px wide`);
+    assert.match(tag, /focus-visible:ring-2/, `${locale}: visible focus`);
+    assert.match(tag, new RegExp(`aria-checked="${on}"`), `${locale}: aria-checked follows the state`);
+    const knob = sw[1].match(/<span[^>]*data-switch-knob[^>]*>/)?.[0] ?? "";
+    assert.ok(knob, `${locale}: knob rendered`);
+    // No physical inline transform (the old knob slid out of the track in RTL).
+    assert.doesNotMatch(knob, /style="[^"]*translateX/, `${locale}: no physical translateX`);
+    if (on) assert.match(knob, /translate-x-5 rtl:-translate-x-5/, `${locale}: knob mirrored in RTL`);
+    else assert.match(knob, /translate-x-0/, `${locale}: knob at the start when off`);
+    // The 28 px track is still the visual.
+    assert.match(sw[1], /data-switch-track[^>]*class="[^"]*\bh-7 w-12\b/, `${locale}: 28 px track kept`);
+  }
+  // Behaviour unchanged: the switch still calls onToggle(!on), and turning
+  // WhatsApp off still clears the number in the panel.
+  const card = read("app/[locale]/dashboard/config/notif-channel-card.tsx");
+  assert.match(card, /onClick=\{\(\) => onToggle\(!on\)\}/);
+  const panel = read("app/[locale]/dashboard/config/notifs-panel.tsx");
+  assert.match(panel, /if \(!v\) update\("ownerWhatsapp", ""\)/);
+});
+
 // ─── 6. Same keys in fr/en/he ────────────────────────────────────────────
 
 await test("fr/en/he carry every key, non-empty, with the same placeholders", () => {

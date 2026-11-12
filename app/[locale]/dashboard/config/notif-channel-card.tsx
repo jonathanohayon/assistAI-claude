@@ -124,25 +124,33 @@ export function NotifChannelCard({
           </div>
         </div>
 
+        {/* 44px hit area around the 28px track. The knob moves with
+            logical translate classes so it stays inside the track in RTL. */}
         <button
           type="button"
           role="switch"
           aria-checked={on}
           aria-label={t("wowToggleAria", { action: on ? t("wowToggleDisable") : t("wowToggleEnable"), label })}
           onClick={() => onToggle(!on)}
-          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2 ${
-            on
-              ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_16px_-2px_rgba(34,211,238,0.6)]"
-              : "bg-[#94a3b8] hover:bg-[#64748b]"
-          }`}
+          className="group inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] focus-visible:ring-offset-2"
         >
           <span
             aria-hidden
-            className="block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{
-              transform: on ? "translateX(20px)" : "translateX(0)",
-            }}
-          />
+            data-switch-track
+            className={`relative inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-all duration-300 ${
+              on
+                ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_16px_-2px_rgba(34,211,238,0.6)]"
+                : "bg-[#94a3b8] group-hover:bg-[#64748b]"
+            }`}
+          >
+            <span
+              aria-hidden
+              data-switch-knob
+              className={`block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                on ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </span>
         </button>
       </div>
 
