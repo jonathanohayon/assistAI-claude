@@ -520,7 +520,8 @@
     "orDivider": "או עם אימייל",
     "continueWithGoogle": "המשך עם Google",
     "backHome": "→ חזרה",
-    "errExistsGoogle": "האימייל כבר רשום דרך Google. התחברו עם «המשך עם Google»."
+    "errExistsGoogle": "האימייל כבר רשום דרך Google. התחברו עם «המשך עם Google».",
+    "errRateLimited": "יותר מדי ניסיונות. נסו שוב מאוחר יותר."
   },
   "Login": {
     "title": "התחברות",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "ביטול ההרשמה וחזרה לעמוד הבית",
     "restartConfirm": "למחוק את ההרשמה הזו ולהתחיל מחדש?\n\nהחשבון שנוצר יימחק לצמיתות. תוכלי להירשם שוב עם אותו אימייל או אחר.",
     "restartButton": "להתחיל מחדש עם אימייל אחר",
-    "errNetwork": "שגיאת רשת"
+    "errNetwork": "שגיאת רשת",
+    "errResendRateLimited": "יותר מדי בקשות לקוד. נסו שוב מאוחר יותר."
   },
   "Onboarding": {
     "trialLabel": "ניסיון חינם — 60 דקות שיחה או 24 שעות",

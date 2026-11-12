@@ -520,7 +520,8 @@
     "orDivider": "ou avec un email",
     "continueWithGoogle": "Continuer avec Google",
     "backHome": "← Retour",
-    "errExistsGoogle": "Cet email est déjà inscrit via Google. Connectez-vous avec « Continuer avec Google »."
+    "errExistsGoogle": "Cet email est déjà inscrit via Google. Connectez-vous avec « Continuer avec Google ».",
+    "errRateLimited": "Trop de tentatives. Réessayez plus tard."
   },
   "Login": {
     "title": "Connexion",
@@ -560,7 +561,8 @@
     "cancelAriaLabel": "Annuler l'inscription et retourner à l'accueil",
     "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Vous pourrez vous réinscrire avec le même ou un autre email.",
     "restartButton": "Recommencer avec un autre email",
-    "errNetwork": "Erreur réseau"
+    "errNetwork": "Erreur réseau",
+    "errResendRateLimited": "Trop de demandes de code. Réessayez plus tard."
   },
   "Onboarding": {
     "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",
