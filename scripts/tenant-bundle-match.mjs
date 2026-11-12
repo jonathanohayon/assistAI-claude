@@ -2,7 +2,10 @@
 //   - supplier names (Voice brick rule);
 //   - the technical names of the agent's tools (Tools brick rule: tenants
 //     see capabilities in plain words; the names are admin-only, in the
-//     admin response only).
+//     admin response only);
+//   - the agent's instructions (marker phrases), e.g. the landing demo's
+//     prompt, which the server sets on the session (lib/demo-session.ts).
+// Also run on the public pages by scripts/check-public-bundle.mjs.
 // Pure, so scripts/tests/tenant-bundle-match.test.ts can probe it.
 
 // Every company behind the product (package.json dependencies, env var
@@ -50,15 +53,29 @@ export const TOOL_NAMES = [
   "get_opening_hours",
   "get_centre_info",
 ];
+// Marker phrases of the agent's instructions (lib/realtime.ts
+// REALTIME_INSTRUCTIONS, lib/demo-instructions.ts, lib/demo-register.ts): a
+// browser bundle carrying one carries the prompt. ASCII-only, no quotes, so a
+// minifier's escaping can't hide them; matched case-insensitively, anywhere.
+export const INSTRUCTION_MARKERS = [
+  "intelligent et chaleureux",
+  "Sois concis, professionnel",
+  "accueille proactivement",
+  "greet the caller first",
+  "very first sentence must be in",
+  "ne le tutoie jamais",
+];
 // Supplier names that are the start of an ordinary word get a guard:
 // recharts ships "cartesian" in every chart chunk.
 export const SUPPLIER_GUARDS = { cartesia: "(?!n)" };
 const supplierAlternatives = SUPPLIERS.map((s) => s + (SUPPLIER_GUARDS[s] ?? ""));
 // Model ids that name no supplier word on their own (gpt-4o, gpt-5…).
 export const MODEL_IDS = ["gpt-[0-9a-z]"];
-// Tool names and model ids are whole words; supplier names match anywhere.
+// Tool names and model ids are whole words; supplier names and instruction
+// markers match anywhere.
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const PATTERN = new RegExp(
-  `${supplierAlternatives.join("|")}|\\b(?:${MODEL_IDS.join("|")})|\\b(?:${TOOL_NAMES.join("|")})\\b`,
+  `${INSTRUCTION_MARKERS.map(escapeRe).join("|")}|${supplierAlternatives.join("|")}|\\b(?:${MODEL_IDS.join("|")})|\\b(?:${TOOL_NAMES.join("|")})\\b`,
   "gi",
 );
 
