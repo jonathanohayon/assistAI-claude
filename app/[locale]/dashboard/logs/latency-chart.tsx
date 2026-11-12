@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Scatter chart de latence par appel — onglet Monitoring du dashboard.
+ * Scatter chart de latence par appel — developer console of the Calls tab.
  *
  * - X : temps (du début de la période au "maintenant")
  * - Y : latence totale E2E en ms (ttfaMs.mean ou greetingMs si pas de turn)

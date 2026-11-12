@@ -652,13 +652,13 @@
     "trialExpired": "תקופת הניסיון הסתיימה: תמרה מושהית. הצטרפו לתוכנית כדי להפעיל אותה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום.",
     "trialRemainingMessage": "תקופת ניסיון: נותרו {label}",
     "trialSubscribeButton": "הצטרפות",
-    "tabConfiguration": "שיחות נכנסות",
+    "tabConfiguration": "פקידת קבלה",
     "tabOutbound": "שיחות יוצאות",
     "tabCalendar": "יומן",
     "tabContacts": "אנשי קשר",
     "tabCalendarCrm": "יומן, לקוחות והזמנות",
     "tabBilling": "מנוי",
-    "tabLogs": "מעקב",
+    "tabLogs": "שיחות",
     "userMenuAria": "תפריט משתמש",
     "loggedInAs": "מחובר בתור",
     "settingsLink": "הגדרות",
@@ -1564,6 +1564,7 @@
     "apiCopied": "הועתק",
     "apiEndpointLabel": "נקודת קצה",
     "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<המפתח_שלך>",
     "developerSection": "תצוגה"
   },
   "DashboardBilling": {
@@ -1649,8 +1650,9 @@
     "gatePausedSubtitle": "הצטרפו לתוכנית כדי להפעיל את תמרה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום לאחר ההשהיה."
   },
   "DashboardLogs": {
-    "header": "מעקב",
-    "title": "השהיה ופעילות בזמן אמת.",
+    "metaTitle": "שיחות · Tamara",
+    "header": "מצב מפתח",
+    "title": "ניטור",
     "subtitle": "גרף השהיית end-to-end לכל שיחה (העברת עכבר מציגה את 8 ה-hops + סה״כ). מתחת, כל האירועים הגולמיים: שיחות נכנסות, כלי הסוכן, סיכומי WhatsApp, שינויי הגדרות. רענון אוטומטי כל 3 שניות.",
     "sourceFilterLabel": "מקור:",
     "levelFilterLabel": "רמה:",
@@ -1685,7 +1687,7 @@
     "engineAria": "המודל ששימש בשיחה",
     "pricingPerMinute": "(≈ לפי דקה)",
     "latency": {
-      "eyebrow": "ניטור · {metric}",
+      "eyebrow": "זמן תגובה · {metric}",
       "title": "השהיה לכל שיחה (ms)",
       "callsInPeriod": "{count, plural, =0 {אין שיחות} one {שיחה אחת} other {# שיחות}} בתקופה",
       "liveRefreshEvery": "רענון אוטומטי כל {seconds} שניות",
@@ -2676,5 +2678,38 @@
     "listShown": "{count, plural, =0 {לא מוצגות שיחות} one {מוצגת שיחה אחת} other {מוצגות # שיחות}}",
     "emptyFiltered": "אין שיחות „{outcome}” בתקופה הזו",
     "showAllCalls": "הצגת כל השיחות"
+  },
+  "MissionBrick": {
+    "cardsLabel": "משימה",
+    "cardsHint": "מה השיחה צריכה להשיג.",
+    "kind": {
+      "qualify_lead": {
+        "name": "סינון ליד",
+        "what": "מציגים את סיבת השיחה, ואז שואלים את שאלות הסינון שלכם."
+      },
+      "announce_offer": {
+        "name": "הצגת הצעה",
+        "what": "מציגים את ההצעה שלכם ומובילים את השיחה לשלב הבא."
+      },
+      "other": {
+        "name": "אחר",
+        "what": "מטרה משלכם, שמתוארת בהמשך."
+      }
+    },
+    "proofLabel": "הצלחה (הערכה):",
+    "proof": {
+      "lead_sheet_complete": "כרטיס הליד מולא, כולל שדות החובה.",
+      "booking_created": "נקבעה פגישה.",
+      "transfer_or_callback": "השיחה הועברה לאדם, או שהתבקשה שיחה חוזרת.",
+      "booking_or_transfer": "נקבעה פגישה, או שהשיחה הועברה לאדם.",
+      "estimated": "לפי מהלך השיחה."
+    },
+    "coldLabel": "פנייה קרה",
+    "coldHint": "האדם עדיין לא מכיר אתכם: רק פתיחת השיחה משתנה.",
+    "needsOff": "אפשר להפעיל במסך „{tools}”.",
+    "defaultLabel": "משימת ברירת מחדל לקמפיינים חדשים",
+    "defaultNone": "בחרו…",
+    "defaultColdOption": "פנייה קרה",
+    "saveRefused": "המשימה לא נשמרה. נסו שוב."
   }
 }

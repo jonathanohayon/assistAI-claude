@@ -4,6 +4,7 @@
 import { getTableColumns } from "drizzle-orm";
 
 import { callIdFromRequest } from "@/lib/call-id";
+import { capturedView, type CapturedView } from "@/lib/campaigns/capture";
 import type { CallOutcome } from "@/lib/campaigns/constants";
 import { campaignCalls } from "@/lib/db/schema";
 
@@ -35,3 +36,28 @@ export function campaignCallRow(
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { workerCallId: _internal, ...publicColumns } = getTableColumns(campaignCalls);
 export const campaignCallPublicColumns = publicColumns;
+
+/**
+ * campaign_calls.extracted as GET /api/dashboard/campaigns/[id] returns it.
+ * Never the stored claim internals (pending, token, attempt, claimedAt):
+ * - {} (no capture attempt; always the case with CAMPAIGN_CAPTURE off) → {} as before;
+ * - a completed capture → the results route's public shape (capturedView);
+ * - a pending or exhausted claim, or anything unrecognised → null (fail closed).
+ */
+export function publicExtracted(extracted: unknown): Record<string, never> | CapturedView {
+  if (
+    extracted &&
+    typeof extracted === "object" &&
+    !Array.isArray(extracted) &&
+    Object.getPrototypeOf(extracted) === Object.prototype &&
+    Object.keys(extracted).length === 0
+  ) {
+    return {};
+  }
+  return capturedView(extracted);
+}
+
+/** The calls array of GET /api/dashboard/campaigns/[id]: same keys, same order, `extracted` made public. */
+export function campaignDetailCalls<T extends { extracted: unknown }>(rows: T[]) {
+  return rows.map((c) => ({ ...c, extracted: publicExtracted(c.extracted) }));
+}

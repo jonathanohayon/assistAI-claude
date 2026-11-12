@@ -11,7 +11,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -40,6 +40,7 @@ import {
   snapshot,
 } from "@/lib/campaigns/edit-guard";
 import { StatusPill } from "./_ui";
+import { presetOnAgentPick } from "@/components/bricks/mission/mission-ui";
 
 type View = "list" | "editor";
 type EditorTab = "setup" | "contacts" | "launch";
@@ -90,6 +91,8 @@ export function CampaignsWorkspace({
   const [list, setList] = useState<CampaignListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // M2b: a new draft takes its agent's default mission until a card is picked.
+  const cardPicked = useRef(false);
   const [fromNumbers, setFromNumbers] = useState<string[]>([]);
   // Incrémenté à chaque ajout de contacts → rafraîchit la liste affichée.
   const [contactsVersion, setContactsVersion] = useState(0);
@@ -190,6 +193,7 @@ export function CampaignsWorkspace({
 
   const openNew = () => {
     setDraft(emptyDraft(t("newCampaign")));
+    cardPicked.current = false;
     setSavedSnapshot(null);
     setActiveStatus("draft");
     setSaveError(null);
@@ -213,6 +217,7 @@ export function CampaignsWorkspace({
     };
     setDraft(loaded);
     setSavedSnapshot(snapshot(loaded));
+    cardPicked.current = false;
     setActiveStatus(c.status);
     setSaveError(null);
     setTab("setup");
@@ -234,6 +239,28 @@ export function CampaignsWorkspace({
     setDraft((d) => ({ ...d, ...patch }));
     // Toute modif après une sauvegarde efface le badge "Enregistré".
     if (justSaved) setJustSaved(false);
+  };
+
+  // The setup step's changes. A mission card pick ends the prefill; picking
+  // an agent on a NEW draft (cards untouched) prefills the preset from that
+  // agent's default mission, read from its GET (the list leaves it out).
+  const setupChange = (patch: Partial<CampaignDraft>) => {
+    patchDraft(patch);
+    if ("goalPreset" in patch) cardPicked.current = true;
+    const agentId = patch.agentId;
+    if (!agentId || draft.id || cardPicked.current) return;
+    void fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<{ agent?: { mission?: unknown } }>) : null))
+      .then((d) => {
+        if (!d) return;
+        setDraft((cur) => {
+          // Stale answer (another agent picked since) or no longer a new draft: keep it.
+          if (cur.agentId !== agentId || cur.id || cardPicked.current) return cur;
+          const goalPreset = presetOnAgentPick({ isNew: true, cardPicked: false, current: cur.goalPreset, agentMission: d.agent?.mission });
+          return goalPreset === cur.goalPreset ? cur : { ...cur, goalPreset: goalPreset as CampaignDraft["goalPreset"] };
+        });
+      })
+      .catch(() => {});
   };
 
   // Suppression d'une campagne (depuis la liste ou l'éditeur). Confirme,
@@ -513,7 +540,7 @@ export function CampaignsWorkspace({
             {view === "editor" && tab === "setup" && (
               <CampaignSetupStep
                 draft={draft}
-                onChange={patchDraft}
+                onChange={setupChange}
                 agents={agents}
                 fromNumbers={fromNumbers}
               />

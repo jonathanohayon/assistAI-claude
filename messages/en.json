@@ -652,13 +652,13 @@
     "trialExpired": "Your trial has ended: Tamara is paused. Subscribe to reactivate her. Your settings stay, and your number is kept for 30 days.",
     "trialRemainingMessage": "Free trial: {label} left",
     "trialSubscribeButton": "Subscribe",
-    "tabConfiguration": "Inbound calls",
+    "tabConfiguration": "Receptionist",
     "tabOutbound": "Outbound calls",
     "tabCalendar": "Calendar",
     "tabContacts": "Contacts",
     "tabCalendarCrm": "Calendar & Customers & Orders",
     "tabBilling": "Billing",
-    "tabLogs": "Monitoring",
+    "tabLogs": "Calls",
     "userMenuAria": "User menu",
     "loggedInAs": "Signed in as",
     "settingsLink": "Settings",
@@ -1564,6 +1564,7 @@
     "apiCopied": "Copied",
     "apiEndpointLabel": "Endpoint",
     "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<YOUR_KEY>",
     "developerSection": "Display"
   },
   "DashboardBilling": {
@@ -1649,8 +1650,9 @@
     "gatePausedSubtitle": "Subscribe to reactivate Tamara. Your settings stay, and your number is kept for 30 days after the pause."
   },
   "DashboardLogs": {
-    "header": "Monitoring",
-    "title": "Latency and real-time activity.",
+    "metaTitle": "Calls · Tamara",
+    "header": "Developer mode",
+    "title": "Monitoring",
     "subtitle": "End-to-end latency chart per call (hover a point for the 8-hop breakdown + total). Below, the raw event stream: incoming calls, agent tools, WhatsApp recaps, config changes. Auto-refresh every 3 seconds.",
     "sourceFilterLabel": "Source:",
     "levelFilterLabel": "Level:",
@@ -1685,7 +1687,7 @@
     "engineAria": "Model used for the call",
     "pricingPerMinute": "(≈ per minute)",
     "latency": {
-      "eyebrow": "Monitoring · {metric}",
+      "eyebrow": "Latency · {metric}",
       "title": "Latency per call (ms)",
       "callsInPeriod": "{count, plural, =0 {No calls} one {# call} other {# calls}} in this period",
       "liveRefreshEvery": "Auto-refresh every {seconds} s",
@@ -2676,5 +2678,38 @@
     "listShown": "{count, plural, =0 {No calls shown} one {# call shown} other {# calls shown}}",
     "emptyFiltered": "No “{outcome}” calls in this period",
     "showAllCalls": "Show all calls"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "What the call should achieve.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualify a lead",
+        "what": "States the reason for the call, then asks your qualifying questions."
+      },
+      "announce_offer": {
+        "name": "Announce an offer",
+        "what": "Presents your offer and steers the conversation towards the next step."
+      },
+      "other": {
+        "name": "Other",
+        "what": "Your own goal, described below."
+      }
+    },
+    "proofLabel": "Success (estimated):",
+    "proof": {
+      "lead_sheet_complete": "the lead sheet is filled in, required fields included.",
+      "booking_created": "an appointment is booked.",
+      "transfer_or_callback": "the call is passed to a person, or they ask to be called back.",
+      "booking_or_transfer": "an appointment is booked, or the call is passed to a person.",
+      "estimated": "judged from the conversation."
+    },
+    "coldLabel": "Cold prospecting",
+    "coldHint": "They don't know you yet: only the opening of the call changes.",
+    "needsOff": "turn it on in “{tools}”.",
+    "defaultLabel": "Default mission for new campaigns",
+    "defaultNone": "Choose…",
+    "defaultColdOption": "Cold prospecting",
+    "saveRefused": "The mission wasn't saved. Try again."
   }
 }

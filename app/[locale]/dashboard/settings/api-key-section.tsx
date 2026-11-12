@@ -3,7 +3,42 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
+import { showLevel3 } from "@/components/bricks/level3";
+import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
+
 type Meta = { prefix: string; createdAt: string } | null;
+
+/**
+ * "API & developer access" card: an API key, an endpoint and a curl sample.
+ *
+ * Engineering-facing, so it is level-3 content (same rule as AgentUrlCard):
+ * shown only when the viewer's developer mode is on, admins always. While the
+ * flag loads it counts as off. Off means the card is not in the DOM and the
+ * key metadata (GET /api/dashboard/api-key) is never fetched, because the
+ * fetch lives in ApiKeySection, which the gate does not render.
+ */
+export function ApiKeyCard({ isAdmin }: { isAdmin: boolean }) {
+  const dev = useDeveloperMode();
+  return <ApiKeyCardGate isAdmin={isAdmin} developerMode={dev.on} />;
+}
+
+/** The gate itself, without the store (rendered as-is by the tests). */
+export function ApiKeyCardGate({ isAdmin, developerMode }: { isAdmin: boolean; developerMode: boolean }) {
+  const t = useTranslations("DashboardSettings");
+  if (!showLevel3({ isAdmin, developerMode })) return null;
+  return (
+    <section
+      aria-labelledby="api-key-title"
+      className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6"
+    >
+      <h2 id="api-key-title" className="font-display text-lg text-[var(--color-foreground)]">
+        {t("apiSection")}
+      </h2>
+      <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t("apiDesc")}</p>
+      <ApiKeySection />
+    </section>
+  );
+}
 
 export function ApiKeySection() {
   const t = useTranslations("DashboardSettings");
@@ -57,11 +92,11 @@ export function ApiKeySection() {
     });
   };
 
-  const example = `curl "${origin}/api/v1/transcripts?phone=+972500000000&from=2026-06-01&order=desc" \\\n  -H "Authorization: Bearer ${revealed ?? "<VOTRE_CLE>"}"`;
+  const example = `curl "${origin}/api/v1/transcripts?phone=+972500000000&from=2026-06-01&order=desc" \\\n  -H "Authorization: Bearer ${revealed ?? t("apiKeyPlaceholder")}"`;
 
   return (
     <div className="mt-4 space-y-4">
-      {/* État de la clé */}
+      {/* Key status */}
       {meta ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--color-muted)] px-4 py-3 text-sm">
           <span className="inline-flex items-center gap-2">
@@ -106,7 +141,7 @@ export function ApiKeySection() {
         </div>
       )}
 
-      {/* Clé révélée une seule fois */}
+      {/* Key revealed only once */}
       {revealed && (
         <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-xs font-medium text-amber-800">{t("apiKeyOnceWarning")}</p>
@@ -128,7 +163,7 @@ export function ApiKeySection() {
         </div>
       )}
 
-      {/* Documentation rapide */}
+      {/* Quick reference */}
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-xs">
         <p className="font-medium text-[var(--color-foreground)]">{t("apiEndpointLabel")}</p>
         <code dir="ltr" className="mt-1 block break-all font-mono text-[var(--color-muted-foreground)]">

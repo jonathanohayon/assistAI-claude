@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { campaignCalls, campaigns, outboundAgents } from "@/lib/db/schema";
 import { analyzeCampaignCall } from "@/lib/campaigns/analyze";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { captureMode } from "@/lib/campaigns/capture-mode";
+import { resultsCallView } from "@/lib/campaigns/results-call-view";
 
 // Node runtime (analyse LLM). L'analyse paresseuse peut prendre du temps.
 export const dynamic = "force-dynamic";
@@ -32,6 +34,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await ctx.params;
+  const mode = captureMode();
   const [campaign] = await db
     .select()
     .from(campaigns)
@@ -139,16 +142,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       analyzedNow: analyzed,
       pendingAnalysis: Math.max(0, toAnalyze.length - queue.length),
     },
-    calls: rows.map((c) => ({
-      id: c.id,
-      phoneNumber: c.phoneNumber,
-      outcome: c.outcome,
-      durationSeconds: c.durationSeconds ?? 0,
-      success: c.disposition || null,
-      sentiment: c.sentiment || null,
-      summary: c.summary || "",
-      transcript: Array.isArray(c.transcript) ? c.transcript : [],
-      createdAt: c.createdAt.toISOString(),
-    })),
+    // `captured` (M3a) is present ONLY when CAMPAIGN_CAPTURE is on.
+    calls: rows.map((c) => resultsCallView(c, mode)),
   });
 }

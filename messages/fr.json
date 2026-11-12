@@ -652,13 +652,13 @@
     "trialExpired": "Votre essai est terminé : Tamara est en pause. Souscrivez pour la réactiver. Vos réglages restent, et votre numéro est conservé 30 jours.",
     "trialRemainingMessage": "Essai gratuit : {label} restants",
     "trialSubscribeButton": "Souscrire",
-    "tabConfiguration": "Appels entrants",
+    "tabConfiguration": "Réceptionniste",
     "tabOutbound": "Appels sortants",
     "tabCalendar": "Calendrier",
     "tabContacts": "Contacts",
     "tabCalendarCrm": "Calendrier & Clients & Commandes",
     "tabBilling": "Abonnement",
-    "tabLogs": "Monitoring",
+    "tabLogs": "Appels",
     "userMenuAria": "Menu utilisateur",
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
@@ -1564,6 +1564,7 @@
     "apiCopied": "Copié",
     "apiEndpointLabel": "Point d’accès",
     "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<VOTRE_CLE>",
     "developerSection": "Affichage"
   },
   "DashboardBilling": {
@@ -1649,8 +1650,9 @@
     "gatePausedSubtitle": "Souscrivez pour réactiver Tamara. Vos réglages restent, et votre numéro est conservé 30 jours après la pause."
   },
   "DashboardLogs": {
-    "header": "Monitoring",
-    "title": "Latence et activité en temps réel.",
+    "metaTitle": "Appels · Tamara",
+    "header": "Mode développeur",
+    "title": "Monitoring",
     "subtitle": "Graph de latence end-to-end par appel (hover sur un point pour le détail des 8 hops + total). En dessous, tous les events bruts : appels reçus, tools agent, récaps WhatsApp, modifications de config. Auto-refresh toutes les 3 secondes.",
     "sourceFilterLabel": "Source:",
     "levelFilterLabel": "Niveau:",
@@ -1685,7 +1687,7 @@
     "engineAria": "Modèle utilisé pour l'appel",
     "pricingPerMinute": "(≈ à la minute)",
     "latency": {
-      "eyebrow": "Monitoring · {metric}",
+      "eyebrow": "Latence · {metric}",
       "title": "Latence par appel (ms)",
       "callsInPeriod": "{count, plural, =0 {0 appel} one {# appel} other {# appels}} sur la période",
       "liveRefreshEvery": "Rafraîchissement auto toutes les {seconds} s",
@@ -2676,5 +2678,38 @@
     "listShown": "{count, plural, =0 {Aucun appel affiché} one {# appel affiché} other {# appels affichés}}",
     "emptyFiltered": "Aucun appel « {outcome} » sur cette période",
     "showAllCalls": "Voir tous les appels"
+  },
+  "MissionBrick": {
+    "cardsLabel": "Mission",
+    "cardsHint": "Ce que l'appel doit obtenir.",
+    "kind": {
+      "qualify_lead": {
+        "name": "Qualifier un prospect",
+        "what": "Annonce la raison de l'appel, puis pose vos questions de qualification."
+      },
+      "announce_offer": {
+        "name": "Annoncer une offre",
+        "what": "Présente votre offre et mène la conversation vers la prochaine étape."
+      },
+      "other": {
+        "name": "Autre",
+        "what": "Votre propre objectif, décrit ci-dessous."
+      }
+    },
+    "proofLabel": "Réussite (estimée) :",
+    "proof": {
+      "lead_sheet_complete": "la fiche du prospect est remplie, champs obligatoires compris.",
+      "booking_created": "un rendez-vous est réservé.",
+      "transfer_or_callback": "l'appel est passé à une personne, ou la personne demande à être rappelée.",
+      "booking_or_transfer": "un rendez-vous est réservé, ou l'appel est passé à une personne.",
+      "estimated": "jugée d'après la conversation."
+    },
+    "coldLabel": "Prospection à froid",
+    "coldHint": "La personne ne vous connaît pas encore : seule l'ouverture de l'appel change.",
+    "needsOff": "à activer dans « {tools} ».",
+    "defaultLabel": "Mission par défaut des nouvelles campagnes",
+    "defaultNone": "Choisir…",
+    "defaultColdOption": "Prospection à froid",
+    "saveRefused": "La mission n'a pas été enregistrée. Réessayez."
   }
 }
