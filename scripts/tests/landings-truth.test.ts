@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { hits } from "../tenant-bundle-match.mjs";
+import { buildConnectContent, connectMeta, sampleReply, sampleRequest } from "../../lib/marketing/landings/connect";
 import { buildSalesContent, salesMeta } from "../../lib/marketing/landings/sales";
 import {
   LANDING_LOCALES,
@@ -25,7 +26,10 @@ type Page = {
   render: (l: LandingLocale, sw: LandingSwitches) => unknown;
   meta: (l: LandingLocale) => unknown;
 };
-const PAGES: Page[] = [{ name: "sales", render: buildSalesContent, meta: salesMeta }];
+const PAGES: Page[] = [
+  { name: "sales", render: buildSalesContent, meta: salesMeta },
+  { name: "connect", render: buildConnectContent, meta: connectMeta },
+];
 
 /** Every string of a page (content object + metadata), one per line. */
 function pageText(p: Page, l: LandingLocale, sw: LandingSwitches): string {
@@ -135,5 +139,54 @@ for (const s of [
   "Your leads by file or copy-paste",
   "French, English, Hebrew",
 ]) assert.ok(en.includes(s), `en has: ${s}`);
+
+// 5. Connect: the contract is the worker's ("Tamara leads" mode), with mock
+// values only, and the page never claims the capability is live.
+for (const l of LANDING_LOCALES) {
+  const req = JSON.parse(sampleRequest(l)) as Record<string, unknown>;
+  assert.deepEqual(Object.keys(req), ["call_id", "turn_id", "language", "question", "caller_said", "history"]);
+  assert.equal(req.call_id, "call_mock_0001");
+  assert.equal(req.language, l);
+  assert.ok(Array.isArray(req.history) && req.history.length <= 6);
+  for (const turn of req.history as Array<Record<string, unknown>>) assert.deepEqual(Object.keys(turn), ["role", "text"]);
+  assert.deepEqual(Object.keys(JSON.parse(sampleReply(l))), ["answer"]);
+
+  const c = buildConnectContent(l) as { hero?: { copy?: { badge: string } }; contract?: Record<string, { body: string; fields?: { name: string }[] } | string> };
+  const contract = c.contract!;
+  const request = contract.request as { fields: { name: string }[] };
+  assert.deepEqual(request.fields.map((f) => f.name), ["call_id", "turn_id", "language", "question", "caller_said", "history"]);
+  const sig = (contract.signature as { body: string }).body;
+  assert.match(sig, /X-Tamara-Signature/);
+  assert.match(sig, /HMAC-SHA256/);
+  const text = pageText(PAGES[1], l, OFF);
+  // Preview, not live.
+  assert.match(c.hero!.copy!.badge, { fr: /Aperçu/, en: /Preview/, he: /תצוגה מקדימה/ }[l]);
+  assert.match(text, { fr: /Pas encore sur les appels/, en: /Not on calls yet/, he: /עדיין לא בשיחות/ }[l]);
+  // Unsigned without a secret, said plainly; the 2.5 s budget.
+  assert.match(sig, { fr: /Sans secret, la requête part sans signature/, en: /Without a secret, the request is sent unsigned/, he: /בלי סוד, הבקשה נשלחת בלי חתימה/ }[l]);
+  assert.match(text, { fr: /2,5 s/, en: /2\.5 s/, he: /2\.5 שניות/ }[l]);
+}
+const connectFr = pageText(PAGES[1], "fr", OFF);
+const connectEn = pageText(PAGES[1], "en", OFF);
+for (const s of [
+  "Donnez une voix et un numéro à {emphasis}.",
+  "Vous avez déjà un agent conversationnel. Tamara lui apporte le téléphone : elle mène la conversation avec naturel et interroge votre agent en direct.",
+  "Brancher mon agent",
+  "Lire le contrat",
+  "Une adresse https",
+  "Votre agent a 2,5 s pour répondre",
+  "Chaque requête signée avec votre secret",
+  "Collez l'adresse de votre agent",
+  "Recevez un numéro",
+]) assert.ok(connectFr.includes(s), `connect fr has: ${s}`);
+for (const s of [
+  "Give {emphasis} a voice and a phone number.",
+  "You already have a conversational agent. Tamara brings it the phone: she leads the conversation naturally and asks your agent live.",
+  "Connect my agent",
+  "Read the contract",
+  "One https address",
+  "Your agent has 2.5 s to answer",
+  "Every request signed with your secret",
+]) assert.ok(connectEn.includes(s), `connect en has: ${s}`);
 
 console.log("landings-truth: ok");

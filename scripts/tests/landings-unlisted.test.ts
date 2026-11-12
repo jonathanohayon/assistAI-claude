@@ -81,6 +81,6 @@ for (const route of ROUTES) {
   assert.match(src, /export async function generateMetadata|export const metadata/, `/${route} has metadata`);
   assert.match(src, /robots: \{ index: false, follow: false \}/, `/${route} is noindex, nofollow`);
 }
-assert.ok(existsSync(join(root, "app", "[locale]", "sales", "page.tsx")), "the /sales page exists");
+for (const route of ROUTES) assert.ok(existsSync(join(root, "app", "[locale]", route, "page.tsx")), `the /${route} page exists`);
 
 console.log("landings-unlisted: ok");

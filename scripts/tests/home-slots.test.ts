@@ -21,13 +21,13 @@ const src = (p: string) => readFileSync(join(root, p), "utf8");
 const marketing = (name: string) => src(`components/marketing/${name}.tsx`);
 
 // 1. Slot order. The home's own slots keep the page's section order before
-// L1; the landing-only slots (showcase, modules, talk) sit between them and
+// L1; the landing-only slots (showcase, contract, modules, talk) sit between them and
 // are empty on the home.
 const HOME_OWN_SLOTS = ["hero", "proofStrip", "demo", "how", "features", "useCases", "proof", "pricing", "trust", "faq", "cta"];
-const LANDING_ONLY_SLOTS = ["showcase", "modules", "talk"];
+const LANDING_ONLY_SLOTS = ["showcase", "contract", "modules", "talk"];
 assert.deepEqual(
   [...HOME_SLOT_ORDER],
-  ["hero", "proofStrip", "showcase", "demo", "how", "features", "modules", "useCases", "proof", "pricing", "talk", "trust", "faq", "cta"],
+  ["hero", "proofStrip", "showcase", "demo", "how", "contract", "features", "modules", "useCases", "proof", "pricing", "talk", "trust", "faq", "cta"],
 );
 assert.deepEqual(
   HOME_SLOT_ORDER.filter((id) => !LANDING_ONLY_SLOTS.includes(id)),
@@ -60,7 +60,8 @@ assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} 
 const renderers: Record<string, RegExp> = {
   hero: /hero: \(slot\) => <Hero stats=\{slot\.stats\} copy=\{slot\.copy\} \/>/,
   proofStrip: /proofStrip: \(slot\) => \("facts" in slot \? <FactStrip [^>]*\/> : <IntegrationsStrip \/>\)/,
-  showcase: /showcase: \(slot\) => <OutboundCalling copy=\{slot\.copy\} \/>/,
+  showcase: /showcase: \(slot\) =>\s*slot\.baked === "OutboundCalling" \? <OutboundCalling copy=\{slot\.copy\} \/> : <ConnectDiagram copy=\{slot\.copy\} \/>,/,
+  contract: /contract: \(slot\) => <ContractSection \{\.\.\.slot\} \/>/,
   demo: /demo: \(slot\) => <TryDemo demo=\{slot\.demo\} \/>/,
   how: /how: \(slot\) => \("steps" in slot \? <LandingSteps \{\.\.\.slot\} \/> : <Journey \/>\)/,
   features: /features: \(\) => <FeatureBento \/>/,

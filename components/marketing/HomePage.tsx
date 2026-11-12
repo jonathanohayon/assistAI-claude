@@ -15,6 +15,8 @@ import { Hero } from "./Hero";
 import { Industries } from "./Industries";
 import { IntegrationsStrip } from "./IntegrationsStrip";
 import { Journey } from "./Journey";
+import { ConnectDiagram } from "./landing/ConnectDiagram";
+import { ContractSection } from "./landing/ContractSection";
 import { FactStrip } from "./landing/FactStrip";
 import { LandingSteps } from "./landing/LandingSteps";
 import { LandingUseCases } from "./landing/LandingUseCases";
@@ -41,9 +43,11 @@ const RENDERERS: {
 } = {
   hero: (slot) => <Hero stats={slot.stats} copy={slot.copy} />,
   proofStrip: (slot) => ("facts" in slot ? <FactStrip label={slot.label} facts={slot.facts} /> : <IntegrationsStrip />),
-  showcase: (slot) => <OutboundCalling copy={slot.copy} />,
+  showcase: (slot) =>
+    slot.baked === "OutboundCalling" ? <OutboundCalling copy={slot.copy} /> : <ConnectDiagram copy={slot.copy} />,
   demo: (slot) => <TryDemo demo={slot.demo} />,
   how: (slot) => ("steps" in slot ? <LandingSteps {...slot} /> : <Journey />),
+  contract: (slot) => <ContractSection {...slot} />,
   features: () => <FeatureBento />,
   modules: (slot) => <SixModules {...slot} />,
   useCases: (slot) => ("items" in slot ? <LandingUseCases {...slot} /> : <Industries />),

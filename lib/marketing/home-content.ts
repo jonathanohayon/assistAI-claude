@@ -16,6 +16,7 @@ export const HOME_SLOT_ORDER = [
   "showcase",
   "demo",
   "how",
+  "contract",
   "features",
   "modules",
   "useCases",
@@ -100,6 +101,31 @@ export type TalkCopy = SectionHeading & { button: string };
 
 export type CtaCopy = SectionHeading & { primary: LinkCopy; secondary: LinkCopy };
 
+/** The /connect visual: caller → Tamara → your agent, with a sample request
+ *  and reply (mock values; code stays LTR in every locale). */
+export type ConnectDiagramCopy = SectionHeading & {
+  actors: { caller: string; tamara: string; agent: string };
+  links: { voice: string; ask: string; answer: string };
+  requestLabel: string;
+  request: string;
+  replyLabel: string;
+  reply: string;
+};
+
+/** A titled part of the contract, with an optional code sample. */
+export type ContractPart = { title: string; body: string; code?: string };
+
+/** The /connect contract: what Tamara sends, what the agent returns, the
+ *  time budget and the signature. */
+export type ContractCopy = SectionHeading & {
+  /** Which mode this contract covers. */
+  scope: string;
+  request: ContractPart & { fields: readonly { name: string; body: string }[] };
+  reply: ContractPart;
+  budget: ContractPart;
+  signature: ContractPart;
+};
+
 /** Nav of a landing page (in-page anchors + the sign-up door). */
 export type NavCopy = { links: readonly LinkCopy[]; signupHref: string };
 
@@ -107,9 +133,10 @@ export type HomeContent = {
   hero?: { stats: readonly HeroStat[]; copy?: HeroCopy };
   proofStrip?: { baked: "IntegrationsStrip" } | { label: string; facts: readonly string[] };
   /** The page's visual right under the proof strip (landing pages). */
-  showcase?: { baked: "OutboundCalling"; copy: SectionHeading };
+  showcase?: { baked: "OutboundCalling"; copy: SectionHeading } | { baked: "ConnectDiagram"; copy: ConnectDiagramCopy };
   demo?: { demo: DemoId };
   how?: { baked: "Journey" } | (SectionHeading & { steps: readonly ItemCopy[] });
+  contract?: ContractCopy;
   features?: { baked: "FeatureBento" };
   modules?: ModulesCopy;
   useCases?: { baked: "Industries" } | (SectionHeading & { items: readonly ItemCopy[] });
