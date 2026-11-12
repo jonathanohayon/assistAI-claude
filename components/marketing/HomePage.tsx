@@ -1,6 +1,5 @@
 import { Fragment, type ReactNode } from "react";
 
-import type { PlanPricingMap } from "@/lib/plan-pricing";
 import {
   HOME_SLOT_ORDER,
   type HomeContent,
@@ -23,12 +22,10 @@ import { SupportFab } from "./SupportFab";
 import { TrustStrip } from "./TrustStrip";
 import { TryDemo } from "./TryDemo";
 
-type SlotContext = { pricing: PlanPricingMap };
-
 /** One renderer per slot. The mapped type makes it exhaustive: a new slot in
  *  HomeContent does not compile until it has a renderer here. */
 const RENDERERS: {
-  [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>, ctx: SlotContext) => ReactNode;
+  [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>) => ReactNode;
 } = {
   hero: (slot) => <Hero stats={slot.stats} />,
   proofStrip: () => <IntegrationsStrip />,
@@ -37,35 +34,29 @@ const RENDERERS: {
   features: () => <FeatureBento />,
   useCases: () => <Industries />,
   proof: () => <Proof />,
-  pricing: (_slot, ctx) => <Pricing pricing={ctx.pricing} />,
+  // Prices are fetched on the client (the page is prerendered).
+  pricing: () => <Pricing />,
   trust: () => <TrustStrip />,
   faq: (slot) => <FAQ faqKeys={slot.keys} />,
   cta: () => <CTA />,
 };
 
-function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent, ctx: SlotContext) {
+function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent) {
   const slot = content[id];
   if (!slot) return null;
-  return <Fragment key={id}>{RENDERERS[id](slot as NonNullable<HomeContent[K]>, ctx)}</Fragment>;
+  return <Fragment key={id}>{RENDERERS[id](slot as NonNullable<HomeContent[K]>)}</Fragment>;
 }
 
 /**
  * The public home page, rendered from a content object: Nav, the filled
  * slots in HOME_SLOT_ORDER, then Footer and the support button.
  */
-export function HomePage({
-  content,
-  pricing,
-}: {
-  content: HomeContent;
-  pricing: PlanPricingMap;
-}) {
-  const ctx: SlotContext = { pricing };
+export function HomePage({ content }: { content: HomeContent }) {
   return (
     <RespectReducedMotion>
       <main className="noise-grain relative flex flex-col overflow-x-hidden">
         <Nav />
-        {HOME_SLOT_ORDER.map((id) => renderSlot(id, content, ctx))}
+        {HOME_SLOT_ORDER.map((id) => renderSlot(id, content))}
         <Footer />
         <SupportFab />
       </main>
