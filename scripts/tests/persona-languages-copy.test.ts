@@ -15,17 +15,17 @@ const EXPECTED = {
   fr: {
     languageLabel: "Langue par défaut",
     languagesLabel: "Autres langues parlées",
-    languageHint: "L'agent répond dans la langue de l'appelant, sauf si « Rester dans la langue principale » est activé.",
+    languageHint: "L'agent répond dans la langue de l'appelant, sauf si « Rester dans la langue par défaut » est activé.",
   },
   en: {
     languageLabel: "Default language",
     languagesLabel: "Other languages spoken",
-    languageHint: "The agent answers in the caller's language, unless “Stay in the main language” is on.",
+    languageHint: "The agent answers in the caller's language, unless “Stay in the default language” is on.",
   },
   he: {
     languageLabel: "שפת ברירת מחדל",
     languagesLabel: "שפות נוספות שהסוכן מדבר",
-    languageHint: "הסוכן עונה בשפה של המתקשר, אלא אם האפשרות ״להישאר בשפה הראשית״ מופעלת.",
+    languageHint: "הסוכן עונה בשפה של המתקשר, אלא אם האפשרות ״להישאר בשפת ברירת המחדל״ מופעלת.",
   },
 } as const;
 
@@ -53,6 +53,13 @@ for (const [locale, want] of Object.entries(EXPECTED)) {
   const src = readFileSync(join(ROOT, "components/bricks/persona/PersonaBrick.tsx"), "utf8");
   assert.match(src, /t\("languageHint"\)/, "PersonaBrick renders languageHint");
   assert.ok(src.indexOf('t("languageLabel")') < src.indexOf('t("languageHint")'), "hint sits after the label");
+}
+
+// One name for one idea (VP review): no dashboard screen still says "main/primary language".
+for (const locale of ["fr", "en", "he"]) {
+  const m = load(locale) as unknown as Record<string, Record<string, string>>;
+  for (const [ns, k] of [["VoiceBrick", "languageLockLabel"], ["VoiceBrick", "languageLockOn"], ["PersonaBrick", "languageHint"], ["WebsiteScan", "applyLanguage"]])
+    assert.doesNotMatch(m[ns][k], /langue principale|main language|primary language|השפה הראשית|שפה ראשית/, `${locale} ${ns}.${k}`);
 }
 
 console.log("ALL PERSONA-LANGUAGES-COPY TESTS PASSED");
