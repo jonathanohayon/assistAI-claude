@@ -3,12 +3,19 @@
 // supply its own instructions. Never sent to the browser: the public
 // /api/demo-config route that returned it was removed (the demo page no
 // longer needs it, see lib/demo-session.ts).
+//
+// The demo account's stored `business` (centres, centresRules, services,
+// hours, prices) is never read here: the home demo is public, and its place
+// facts come only from the fictional sheet in lib/demo-place.ts (the place the
+// canned demo tools answer with). Its stored `instructions` (the persona's
+// tone) are kept, minus any line naming a real place (demoPersonaInstructions),
+// and the sheet's precedence rule overrides any other place fact they carry.
 
 import { eq } from "drizzle-orm";
 
-import { renderBusinessPromptBlock, sanitizeBusinessConfig } from "@/lib/business";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
+import { demoPersonaInstructions, demoSheetBlock } from "@/lib/demo-place";
 import { demoRegisterDirective } from "@/lib/demo-register";
 import { getDemoUserId } from "@/lib/settings";
 
@@ -48,7 +55,6 @@ export async function loadDemoAgent(
       model: agentConfigs.model,
       speed: agentConfigs.speed,
       primaryLanguage: agentConfigs.primaryLanguage,
-      business: agentConfigs.business,
     })
     .from(agentConfigs)
     .where(eq(agentConfigs.userId, demoUserId))
@@ -58,24 +64,16 @@ export async function loadDemoAgent(
   // Langue de l'agent : celle forcée par la page si fournie, sinon celle du compte.
   const primary = forcedLang ?? cfg.primaryLanguage ?? "fr";
 
-  // Bloc business (horaires / prestations) — marketing-safe.
-  let businessBlock = "";
-  try {
-    if (cfg.business && typeof cfg.business === "object") {
-      businessBlock = renderBusinessPromptBlock(
-        sanitizeBusinessConfig(cfg.business),
-      );
-    }
-  } catch {
-    /* business mal formé → on ignore le bloc */
-  }
+  // The fictional place, in the language the canned tools use: the page's
+  // (/api/session writes body.primaryLanguage into the tool routes), else fr.
+  const sheetBlock = demoSheetBlock(langParam);
 
   const langName = langLabel[primary] ?? "français";
   const languageDirective = `LANGUE : parle EXCLUSIVEMENT en ${langName} (code: ${primary}) pendant tout l'appel — accueil ET réponses. Ne réponds JAMAIS dans une autre langue, même en cas d'hésitation.`;
 
   const instructions = [
-    cfg.instructions ?? "",
-    businessBlock,
+    demoPersonaInstructions(cfg.instructions),
+    sheetBlock,
     languageDirective,
     demoRegisterDirective(primary),
   ]

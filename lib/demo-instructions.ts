@@ -10,7 +10,11 @@
 //   This path used to send the generic rules alone: the agent called itself
 //   "votre assistant", drifted between « ravi » and « ravie », and recited
 //   its own instructions ("je parle uniquement en français").
+// Both paths carry the fictional place sheet (lib/demo-place.ts), never a
+// stored account's business block: lib/demo-agent.ts puts it in on the first
+// path, this file on the second.
 
+import { demoSheetBlock } from "@/lib/demo-place";
 import { demoRegisterDirective } from "@/lib/demo-register";
 import { REALTIME_INSTRUCTIONS } from "@/lib/realtime";
 
@@ -59,6 +63,7 @@ export function anonymousDemoInstructions(
   return [
     DEMO_FALLBACK_PERSONA,
     REALTIME_INSTRUCTIONS,
+    demoSheetBlock(primary),
     language,
     demoRegisterDirective(primary),
   ]
