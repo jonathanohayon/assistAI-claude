@@ -52,6 +52,7 @@ export function SignupContent({
     invalid: t("errInvalid"),
     exists: t("errExists"),
     exists_google: t("errExistsGoogle"),
+    rate_limited: t("errRateLimited"),
   };
 
   return (
