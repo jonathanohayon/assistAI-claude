@@ -247,4 +247,18 @@ for (const isAdmin of [false, true]) {
   assert.ok(!read("lib/campaigns/capture-editor.ts").includes("process.env"));
 }
 
+// VP review: a sales manager's words, one colon, no switch named on screen.
+{
+  const fr = messages("fr").DashboardCampaigns;
+  assert.equal(fr.extractionTitle, "Informations à relever");
+  assert.equal(fr.extractionCaptureOff, "le relevé des informations est éteint sur la plateforme, rien n'est rempli pour l'instant.");
+  assert.equal(fr.extractionMax.replace("{max}", "20"), "20 informations maximum par campagne.");
+  for (const l of LOCALES) {
+    const c = messages(l).DashboardCampaigns;
+    for (const k of ["extractionTitle", "extractionHint", "extractionAddField", "extractionCaptureOff", "extractionMax"])
+      assert.doesNotMatch(c[k], /extrai|extract|données structurées|structured data|CAMPAIGN_CAPTURE|חילוץ/i, `${l} ${k}`);
+    assert.equal((c.extractionCaptureOff.match(/:/g) ?? []).length, 0, `${l}: no colon inside the line (the prefix brings one)`);
+  }
+}
+
 console.log("campaign-capture-gate: all assertions passed");
