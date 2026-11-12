@@ -26,8 +26,22 @@
 // checks the import list.
 
 import { parseBookingRequest } from "@/lib/booking-request";
+import {
+  DEMO_CLOSE_TIME,
+  DEMO_OPEN_DAYS,
+  DEMO_PLACE,
+  DEMO_PLACE_ID,
+  DEMO_SLOTS,
+  demoLang,
+  type DemoLang,
+} from "@/lib/demo-place";
 import { dayNameFr, type DateForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, jerusalemToUTCISO } from "@/lib/tz";
+
+// The place, its week and its slots live in lib/demo-place.ts, shared with
+// the demo prompt's fact sheet; re-exported for this module's callers.
+export { DEMO_LANGS, DEMO_OPEN_DAYS, DEMO_PLACE, DEMO_PLACE_ID, DEMO_SLOTS, demoLang } from "@/lib/demo-place";
+export type { DemoLang } from "@/lib/demo-place";
 
 export const DEMO_TOOLS_BASE = "/api/demo/tools";
 
@@ -37,30 +51,8 @@ export type DemoToolName = (typeof DEMO_TOOL_NAMES)[number];
 export const isDemoToolName = (v: string): v is DemoToolName =>
   (DEMO_TOOL_NAMES as readonly string[]).includes(v);
 
-export const DEMO_LANGS = ["fr", "en", "he"] as const;
-export type DemoLang = (typeof DEMO_LANGS)[number];
-
-/** A language the demo knows, else French (the demo's default). */
-export const demoLang = (v: unknown): DemoLang =>
-  typeof v === "string" && (DEMO_LANGS as readonly string[]).includes(v) ? (v as DemoLang) : "fr";
-
 export const demoToolEndpoint = (name: DemoToolName, lang: unknown = "fr"): string =>
   `${DEMO_TOOLS_BASE}/${name}?lang=${demoLang(lang)}`;
-
-/** Open weekdays per language (0 = Sunday). */
-export const DEMO_OPEN_DAYS: Readonly<Record<DemoLang, readonly number[]>> = {
-  fr: [1, 2, 3, 4, 5],
-  en: [1, 2, 3, 4, 5],
-  he: [0, 1, 2, 3, 4],
-};
-
-/** The demo's one fictional place. The Hebrew wording is still to confirm. */
-export const DEMO_PLACE_ID = "demo_salon";
-export const DEMO_PLACE: Readonly<Record<DemoLang, string>> = {
-  fr: "notre salon du centre-ville",
-  en: "our downtown salon",
-  he: "הסלון שלנו במרכז העיר", // [HE] to confirm
-};
 
 /**
  * Public endpoint, counted in the shared DB limiter like /api/session's demo
@@ -73,9 +65,6 @@ export const DEMO_TOOLS_WINDOW_MS = 10 * 60_000;
 export const DEMO_TOOLS_PER_IP = 60;
 export const DEMO_TOOLS_GLOBAL = 1500;
 
-/** Canned free starts on an open day (HH:MM, Asia/Jerusalem). */
-export const DEMO_SLOTS = ["10:00", "11:30", "15:00"] as const;
-const CLOSE_TIME = "18:00";
 const SLOT_BUFFER_MS = 30 * 60_000;
 const PAST_GRACE_MS = 5 * 60_000;
 const SUGGESTED_COUNT = 3;
@@ -125,7 +114,7 @@ const atMs = (date: string, time: string): number =>
 export function cannedSlots(date: string, durationMin: number, nowMs: number, lang: DemoLang = "fr"): string[] {
   if (!DEMO_OPEN_DAYS[lang].includes(weekday(date))) return [];
   if (date < jerusalemDateAt(nowMs)) return [];
-  const closeMs = atMs(date, CLOSE_TIME);
+  const closeMs = atMs(date, DEMO_CLOSE_TIME);
   return DEMO_SLOTS.filter((t) => {
     const startMs = atMs(date, t);
     return startMs > nowMs + SLOT_BUFFER_MS && startMs + durationMin * 60_000 <= closeMs;

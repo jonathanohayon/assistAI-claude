@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
   const isDemo = anonymous || body.demo === true;
   const demo = isDemo
-    ? await loadDemoAgent(body.primaryLanguage ?? null)
+    ? await loadDemoAgent()
     : null;
 
   // Trust the model id from the client — it was picked from the live OpenAI
@@ -141,7 +141,8 @@ export async function POST(req: NextRequest) {
   }
 
   const instructions = isDemo
-    ? anonymousDemoInstructions(demo?.instructions ?? null, body.primaryLanguage ?? null)
+    ? // Fixed persona + fictional sheet, in code: no stored text (lib/demo-instructions.ts).
+      anonymousDemoInstructions(body.primaryLanguage)
     : typeof body.instructions === "string" &&
         body.instructions.trim().length > 0
       ? body.instructions
