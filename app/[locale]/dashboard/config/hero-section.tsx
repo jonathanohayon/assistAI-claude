@@ -2,8 +2,8 @@
 
 /**
  * Section hero du /dashboard : numéro principal du tenant (or "no number
- * yet" with a link to the checklist's onboarding step), stats du jour/mois, et card statut cyan "live" avec
- * waveform animée + voix/langue/plan courants.
+ * yet" with a link to the checklist's onboarding step), stats du jour/mois, et card statut cyan avec
+ * waveform + voix/langue/plan courants. "Live" only with a number.
  *
  * Rendu en haut de ConfigForm (config-form.tsx) — span 2 colonnes en xl+.
  */
@@ -16,6 +16,7 @@ import { splitDuration } from "./stat-format";
 import { formatPhone } from "@/lib/format-phone";
 import { useVoiceLabel } from "@/lib/use-voice-label";
 import { Link } from "@/i18n/navigation";
+import { heroLiveState } from "./hero-live-state";
 
 export function HeroSection({
   primaryPhone,
@@ -38,6 +39,10 @@ export function HeroSection({
   const tSetup = useTranslations("DashboardSetup");
   const voiceLabel = useVoiceLabel();
   const locale = useLocale();
+  // No number = no calls: the eyebrow and the badge only say online/Live
+  // when a number is attached (see hero-live-state.ts).
+  const liveState = heroLiveState(primaryPhone);
+  const live = liveState.live;
   // `rdvSince` only exists once stats come from book_success events (and
   // real durations). Until then the figures are summary-regex counts and
   // transcript-length estimates, and the labels say so.
@@ -66,12 +71,18 @@ export function HeroSection({
 
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#be185d]">
           {t("heroEyebrow")} ·{" "}
-          <span className="inline-flex items-center gap-1 text-[#0e7490]">
+          <span
+            className={`inline-flex items-center gap-1 ${live ? "text-[#0e7490]" : "text-[#475569]"}`}
+          >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-70 motion-safe:animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22d3ee]" />
+              {live && (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-70 motion-safe:animate-ping" />
+              )}
+              <span
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : "bg-[#94a3b8]"}`}
+              />
             </span>
-            {t("heroLive")}
+            {t(liveState.eyebrowStatusKey)}
           </span>
         </p>
 
@@ -97,7 +108,7 @@ export function HeroSection({
             {t("heroNoNumber")} ·{" "}
             <Link
               href="/onboarding"
-              className="font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline"
+              className="inline-flex min-h-11 items-center font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline"
             >
               {tSetup("numberCta")}
             </Link>
@@ -170,21 +181,35 @@ export function HeroSection({
           <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/70">
             {t("wowStatusLabel")}
           </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#22d3ee]/20 px-2.5 py-1 text-[10px] font-semibold text-[#a5f3fc] ring-1 ring-inset ring-[#22d3ee]/40 backdrop-blur">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset backdrop-blur ${
+              live
+                ? "bg-[#22d3ee]/20 text-[#a5f3fc] ring-[#22d3ee]/40"
+                : "bg-white/10 text-white ring-white/30"
+            }`}
+          >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-80 motion-safe:animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22d3ee]" />
+              {live && (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-80 motion-safe:animate-ping" />
+              )}
+              <span
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : "bg-white/60"}`}
+              />
             </span>
-            {t("wowLiveLabel")}
+            {t(liveState.badgeKey)}
           </span>
         </div>
 
-        {/* Waveform alterné blanc/cyan */}
-        <div className="relative flex h-28 items-center justify-center gap-1.5">
+        {/* Waveform alterné blanc/cyan. It only moves while a number is
+         *  attached: a moving waveform would suggest calls that can't happen. */}
+        <div
+          aria-hidden
+          className={`relative flex h-28 items-center justify-center gap-1.5 ${live ? "" : "opacity-40"}`}
+        >
           {Array.from({ length: 14 }).map((_, i) => (
             <span
               key={i}
-              className="w-1 rounded-full motion-safe:animate-[wave_1.2s_ease-in-out_infinite]"
+              className={`w-1 rounded-full ${live ? "motion-safe:animate-[wave_1.2s_ease-in-out_infinite]" : ""}`}
               style={{
                 height: `${20 + Math.sin(i * 0.8) * 30 + 30}%`,
                 animationDelay: `${i * 80}ms`,
