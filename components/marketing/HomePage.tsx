@@ -14,6 +14,7 @@ import { Hero } from "./Hero";
 import { Industries } from "./Industries";
 import { IntegrationsStrip } from "./IntegrationsStrip";
 import { Journey } from "./Journey";
+import { DoorHero } from "./landing/DoorHero";
 import { FactStrip } from "./landing/FactStrip";
 import { LandingSteps } from "./landing/LandingSteps";
 import { LandingUseCases } from "./landing/LandingUseCases";
@@ -36,7 +37,8 @@ import { TryDemo } from "./TryDemo";
 const RENDERERS: {
   [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>) => ReactNode;
 } = {
-  hero: (slot) => <Hero stats={slot.stats} copy={slot.copy} />,
+  // The home keeps its video hero; a landing page gets its own door (DoorHero).
+  hero: (slot) => (slot.media === "video" ? <Hero stats={slot.stats} copy={slot.copy} /> : <DoorHero {...slot} />),
   proofStrip: (slot) => ("facts" in slot ? <FactStrip label={slot.label} facts={slot.facts} /> : <IntegrationsStrip />),
   showcase: (slot) => <OutboundCalling copy={slot.copy} />,
   demo: (slot) => <TryDemo demo={slot.demo} />,

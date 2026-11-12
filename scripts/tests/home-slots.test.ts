@@ -12,6 +12,7 @@ import {
   DEFAULT_DEMO,
   DEFAULT_FAQ_KEYS,
   DEFAULT_HERO_STATS,
+  HERO_MEDIA_KINDS,
   HOME_SLOT_ORDER,
   RECEPTIONIST_HOME,
 } from "../../lib/marketing/home-content";
@@ -39,6 +40,9 @@ assert.deepEqual(
 assert.deepEqual(Object.keys(RECEPTIONIST_HOME).sort(), [...HOME_OWN_SLOTS].sort());
 for (const id of [...LANDING_ONLY_SLOTS, "nav", "footerTagline"]) assert.equal(id in RECEPTIONIST_HOME, false, `home has no ${id}`);
 assert.equal("copy" in RECEPTIONIST_HOME.hero, false);
+// Hero media: the home keeps its video; the other kinds are landing doors.
+assert.equal(RECEPTIONIST_HOME.hero.media, "video");
+assert.deepEqual([...HERO_MEDIA_KINDS], ["video", "panel"]);
 assert.equal("copy" in RECEPTIONIST_HOME.cta, false);
 assert.equal(RECEPTIONIST_HOME.proofStrip?.baked, "IntegrationsStrip");
 assert.equal(RECEPTIONIST_HOME.how?.baked, "Journey");
@@ -58,7 +62,7 @@ assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} 
 // For the home's shape of each slot, the renderer is the component it had
 // before, with the same props.
 const renderers: Record<string, RegExp> = {
-  hero: /hero: \(slot\) => <Hero stats=\{slot\.stats\} copy=\{slot\.copy\} \/>/,
+  hero: /hero: \(slot\) => \(slot\.media === "video" \? <Hero stats=\{slot\.stats\} copy=\{slot\.copy\} \/> : <DoorHero \{\.\.\.slot\} \/>\)/,
   proofStrip: /proofStrip: \(slot\) => \("facts" in slot \? <FactStrip [^>]*\/> : <IntegrationsStrip \/>\)/,
   showcase: /showcase: \(slot\) => <OutboundCalling copy=\{slot\.copy\} \/>/,
   demo: /demo: \(slot\) => <TryDemo demo=\{slot\.demo\} \/>/,
@@ -74,6 +78,16 @@ const renderers: Record<string, RegExp> = {
   cta: /cta: \(slot\) => \("copy" in slot \? <CTA copy=\{slot\.copy\} \/> : <CTA \/>\)/,
 };
 for (const id of HOME_SLOT_ORDER) assert.match(homePage, renderers[id], `renderer for ${id}`);
+
+// The video path is the home's hero as it was: Hero.tsx still plays the
+// local video over its poster, and DoorHero never mounts a video.
+const hero = marketing("Hero");
+assert.match(hero, /const HERO_VIDEO = "\/videos\/hero-bg-960\.mp4";/);
+assert.match(hero, /<motion\.video[\s\S]*poster=\{HERO_POSTER\}[\s\S]*src=\{HERO_VIDEO\}/);
+assert.match(hero, /className="absolute left-0 top-0 -z-30 h-\[125%\] w-\[125%\] object-cover object-left-top"/);
+assert.match(hero, /className="relative isolate overflow-hidden pt-32 pb-32 sm:pt-40 sm:pb-40 lg:min-h-\[88vh\]"/);
+const doorHero = src("components/marketing/landing/DoorHero.tsx");
+assert.doesNotMatch(doorHero, /<video|motion\.video|\.mp4/);
 
 // 2. Anchor ids carried by the section components (nav links and #demo CTA).
 const anchors: Array<[string, string]> = [
