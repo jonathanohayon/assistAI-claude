@@ -2625,7 +2625,7 @@
   "Calls": {
     "title": "Vos appels",
     "periodRange": "Du {since} au {until}",
-    "figuresLabel": "Chiffres de la période",
+    "figuresLabel": "Sur la période",
     "figureCallsReceived": "Appels reçus",
     "figureBooked": "Rendez-vous pris",
     "figureTransferred": "Transferts",
@@ -2673,7 +2673,19 @@
     "rawTranscriptNote": "La conversation n'a pas pu être mise en forme. Voici le texte tel qu'il a été enregistré :",
     "noTranscript": "Pas de conversation enregistrée pour cet appel.",
     "moreDetails": "Plus de détails",
-    "calledNumber": "Numéro appelé"
+    "calledNumber": "Numéro appelé",
+    "figuresAllCalls": "Tous les appels de la période, quel que soit le filtre",
+    "periodLabel": "Période",
+    "period_7d": "7 jours",
+    "period_30d": "30 jours",
+    "period_month": "Ce mois-ci",
+    "filterLabel": "Résultat de l'appel",
+    "filterAll": "Tous",
+    "listHeadingAll": "Tous les appels",
+    "listHeadingCount": "{label} · {count, plural, one {# appel} other {# appels}}",
+    "listShown": "{count, plural, =0 {Aucun appel affiché} one {# appel affiché} other {# appels affichés}}",
+    "emptyFiltered": "Aucun appel « {outcome} » sur cette période",
+    "showAllCalls": "Voir tous les appels"
   },
   "MissionBrick": {
     "cardsLabel": "Mission",
