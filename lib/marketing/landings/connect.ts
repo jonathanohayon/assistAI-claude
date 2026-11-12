@@ -71,25 +71,25 @@ const SAMPLE: Record<LandingLocale, { question: string; said: string; hello: str
 
 export function sampleRequest(l: LandingLocale): string {
   const s = SAMPLE[l];
-  return JSON.stringify(
-    {
-      call_id: "call_mock_0001",
-      turn_id: 3,
-      language: l,
-      question: s.question,
-      caller_said: s.said,
-      history: [
-        { role: "user", text: s.hello },
-        { role: "agent", text: s.listen },
-      ],
-    },
-    null,
-    2,
-  );
+  const q = (v: string | number) => JSON.stringify(v);
+  // Pretty-printed by hand: one line per history turn keeps the sample short.
+  return [
+    "{",
+    `  "call_id": ${q("call_mock_0001")},`,
+    `  "turn_id": 3,`,
+    `  "language": ${q(l)},`,
+    `  "question": ${q(s.question)},`,
+    `  "caller_said": ${q(s.said)},`,
+    `  "history": [`,
+    `    { "role": "user", "text": ${q(s.hello)} },`,
+    `    { "role": "agent", "text": ${q(s.listen)} }`,
+    "  ]",
+    "}",
+  ].join("\n");
 }
 
 export function sampleReply(l: LandingLocale): string {
-  return JSON.stringify({ answer: SAMPLE[l].answer }, null, 2);
+  return `{ "answer": ${JSON.stringify(SAMPLE[l].answer)} }`;
 }
 
 const VERIFY_SNIPPET = `import { createHmac, timingSafeEqual } from "node:crypto";
