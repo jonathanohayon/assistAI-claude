@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import { anonymousDemoInstructions } from "../../lib/demo-instructions";
 import { REALTIME_INSTRUCTIONS } from "../../lib/realtime";
-import { hits, INSTRUCTION_MARKERS, inBase64Run } from "../tenant-bundle-match.mjs";
+import { hits, INSTRUCTION_MARKERS, inBase64Run, inBase64UrlRun } from "../tenant-bundle-match.mjs";
 
 const found = (text: string) => [...(hits(text) as Map<string, string[]>).keys()];
 
@@ -58,5 +58,16 @@ const blob2 = "Qm9vdHN0cmFwKzEyMw/x9TwilioKp3RzZ+aGVsbG8gd29ybGQ1NjczNDU2Nzg";
 assert.equal(inBase64Run(blob2, blob2.indexOf("Twilio"), 6), true);
 assert.deepEqual(found(blob2), []);
 assert.deepEqual(found("/_next/static/chunks/app/openai-abc123DEF456ghi789.js"), ["openai"]);
+
+// base64url tokens (no "+" or "/"): the settings-page flake, and what must still be caught.
+{
+  const tok = "q7ffBMHnmJYGmdVZM4IBdcs3xTeA6OxAiOLnwd7L79P0nhgl1K5PBK26GSotf5Z";
+  assert.equal(inBase64UrlRun(tok, tok.toLowerCase().indexOf("xai"), 3), true, "random base64url token skipped");
+  assert.equal(hits(`<div data-t="${tok}">`).size, 0, "no hit inside the token");
+  // Still caught: names in words, env-like identifiers, URLs, short runs.
+  for (const real of ["provider: xai", "XAI_API_KEY", "process.env.XAI_API_KEY", "/api/xai/v1", "grok via xAI", "x_xai_realtime_provider_config_value_for_the_agent_2024"]) {
+    assert.ok(hits(real).size > 0, `still caught: ${real}`);
+  }
+}
 
 console.log("ALL TENANT-BUNDLE-MATCH TESTS PASSED");
