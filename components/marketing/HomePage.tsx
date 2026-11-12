@@ -14,7 +14,14 @@ import { Hero } from "./Hero";
 import { Industries } from "./Industries";
 import { IntegrationsStrip } from "./IntegrationsStrip";
 import { Journey } from "./Journey";
+import { DoorHero } from "./landing/DoorHero";
+import { FactStrip } from "./landing/FactStrip";
+import { LandingSteps } from "./landing/LandingSteps";
+import { LandingUseCases } from "./landing/LandingUseCases";
+import { SixModules } from "./landing/SixModules";
+import { TalkToUs } from "./landing/TalkToUs";
 import { Nav } from "./Nav";
+import { OutboundCalling } from "./OutboundCalling";
 import { Pricing } from "./Pricing";
 import { Proof } from "./Proof";
 import { RespectReducedMotion } from "./RespectReducedMotion";
@@ -23,22 +30,29 @@ import { TrustStrip } from "./TrustStrip";
 import { TryDemo } from "./TryDemo";
 
 /** One renderer per slot. The mapped type makes it exhaustive: a new slot in
- *  HomeContent does not compile until it has a renderer here. */
+ *  HomeContent does not compile until it has a renderer here. A slot with
+ *  two shapes (the home's baked component, or a landing page's copy) picks
+ *  its component from the shape; the home's shape renders exactly what it
+ *  did before. */
 const RENDERERS: {
   [K in HomeSlotId]: (slot: NonNullable<HomeContent[K]>) => ReactNode;
 } = {
-  hero: (slot) => <Hero stats={slot.stats} />,
-  proofStrip: () => <IntegrationsStrip />,
+  // The home keeps its video hero; a landing page gets its own door (DoorHero).
+  hero: (slot) => (slot.media === "video" ? <Hero stats={slot.stats} copy={slot.copy} /> : <DoorHero {...slot} />),
+  proofStrip: (slot) => ("facts" in slot ? <FactStrip label={slot.label} facts={slot.facts} /> : <IntegrationsStrip />),
+  showcase: (slot) => <OutboundCalling copy={slot.copy} />,
   demo: (slot) => <TryDemo demo={slot.demo} />,
-  how: () => <Journey />,
+  how: (slot) => ("steps" in slot ? <LandingSteps {...slot} /> : <Journey />),
   features: () => <FeatureBento />,
-  useCases: () => <Industries />,
+  modules: (slot) => <SixModules {...slot} />,
+  useCases: (slot) => ("items" in slot ? <LandingUseCases {...slot} /> : <Industries />),
   proof: () => <Proof />,
   // Prices are fetched on the client (the page is prerendered).
   pricing: () => <Pricing />,
+  talk: (slot) => <TalkToUs {...slot} />,
   trust: () => <TrustStrip />,
-  faq: (slot) => <FAQ faqKeys={slot.keys} />,
-  cta: () => <CTA />,
+  faq: (slot) => ("items" in slot ? <FAQ heading={slot} items={slot.items} /> : <FAQ faqKeys={slot.keys} />),
+  cta: (slot) => ("copy" in slot ? <CTA copy={slot.copy} /> : <CTA />),
 };
 
 function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent) {
@@ -49,15 +63,17 @@ function renderSlot<K extends HomeSlotId>(id: K, content: HomeContent) {
 
 /**
  * The public home page, rendered from a content object: Nav, the filled
- * slots in HOME_SLOT_ORDER, then Footer and the support button.
+ * slots in HOME_SLOT_ORDER, then Footer and the support button. The unlisted
+ * landing pages (/sales, /connect) are other content objects on this same
+ * skeleton.
  */
 export function HomePage({ content }: { content: HomeContent }) {
   return (
     <RespectReducedMotion>
       <main className="noise-grain relative flex flex-col overflow-x-hidden">
-        <Nav />
+        <Nav nav={content.nav} />
         {HOME_SLOT_ORDER.map((id) => renderSlot(id, content))}
-        <Footer />
+        <Footer anchorBase={content.nav ? "/" : ""} tagline={content.footerTagline} />
         <SupportFab />
       </main>
     </RespectReducedMotion>

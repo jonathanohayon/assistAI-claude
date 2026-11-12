@@ -488,7 +488,8 @@
       "barbers": "ספרים"
     },
     "copyright": "© {year} תמרה · פקידת קבלה AI",
-    "status": "כל השירותים מקוונים"
+    "status": "כל השירותים מקוונים",
+    "copyrightPlain": "© {year} תמרה"
   },
   "LocaleSwitcher": {
     "label": "שפה"

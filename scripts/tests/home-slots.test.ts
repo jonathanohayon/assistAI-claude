@@ -12,6 +12,7 @@ import {
   DEFAULT_DEMO,
   DEFAULT_FAQ_KEYS,
   DEFAULT_HERO_STATS,
+  HERO_MEDIA_KINDS,
   HOME_SLOT_ORDER,
   RECEPTIONIST_HOME,
 } from "../../lib/marketing/home-content";
@@ -20,14 +21,29 @@ const root = join(__dirname, "..", "..");
 const src = (p: string) => readFileSync(join(root, p), "utf8");
 const marketing = (name: string) => src(`components/marketing/${name}.tsx`);
 
-// 1. Slot order = the page's section order before L1.
+// 1. Slot order. The home's own slots keep the page's section order before
+// L1; the landing-only slots (showcase, modules, talk) sit between them and
+// are empty on the home.
+const HOME_OWN_SLOTS = ["hero", "proofStrip", "demo", "how", "features", "useCases", "proof", "pricing", "trust", "faq", "cta"];
+const LANDING_ONLY_SLOTS = ["showcase", "modules", "talk"];
 assert.deepEqual(
   [...HOME_SLOT_ORDER],
-  ["hero", "proofStrip", "demo", "how", "features", "useCases", "proof", "pricing", "trust", "faq", "cta"],
+  ["hero", "proofStrip", "showcase", "demo", "how", "features", "modules", "useCases", "proof", "pricing", "talk", "trust", "faq", "cta"],
+);
+assert.deepEqual(
+  HOME_SLOT_ORDER.filter((id) => !LANDING_ONLY_SLOTS.includes(id)),
+  HOME_OWN_SLOTS,
 );
 
-// The receptionist home fills every slot, with the component it had before.
-assert.deepEqual(Object.keys(RECEPTIONIST_HOME).sort(), [...HOME_SLOT_ORDER].sort());
+// The receptionist home fills exactly its own slots, with the component it
+// had before, and nothing of a landing page (no nav override, no showcase).
+assert.deepEqual(Object.keys(RECEPTIONIST_HOME).sort(), [...HOME_OWN_SLOTS].sort());
+for (const id of [...LANDING_ONLY_SLOTS, "nav", "footerTagline"]) assert.equal(id in RECEPTIONIST_HOME, false, `home has no ${id}`);
+assert.equal("copy" in RECEPTIONIST_HOME.hero, false);
+// Hero media: the home keeps its video; the other kinds are landing doors.
+assert.equal(RECEPTIONIST_HOME.hero.media, "video");
+assert.deepEqual([...HERO_MEDIA_KINDS], ["video", "panel"]);
+assert.equal("copy" in RECEPTIONIST_HOME.cta, false);
 assert.equal(RECEPTIONIST_HOME.proofStrip?.baked, "IntegrationsStrip");
 assert.equal(RECEPTIONIST_HOME.how?.baked, "Journey");
 assert.equal(RECEPTIONIST_HOME.features?.baked, "FeatureBento");
@@ -38,25 +54,40 @@ assert.equal(RECEPTIONIST_HOME.trust?.baked, "TrustStrip");
 assert.equal("outbound" in RECEPTIONIST_HOME, false);
 
 // HomePage renders Nav, the slots in HOME_SLOT_ORDER, Footer, SupportFab,
-// inside the same wrapper as before.
+// inside the same wrapper as before. Nav and Footer get the home's defaults
+// when the content has no `nav` (the home).
 const homePage = src("components/marketing/HomePage.tsx");
-assert.match(homePage, /<RespectReducedMotion>\s*<main className="noise-grain relative flex flex-col overflow-x-hidden">\s*<Nav \/>\s*\{HOME_SLOT_ORDER\.map\(/);
-assert.match(homePage, /\)\}\s*<Footer \/>\s*<SupportFab \/>\s*<\/main>\s*<\/RespectReducedMotion>/);
-assert.doesNotMatch(homePage, /OutboundCalling/);
+assert.match(homePage, /<RespectReducedMotion>\s*<main className="noise-grain relative flex flex-col overflow-x-hidden">\s*<Nav nav=\{content\.nav\} \/>\s*\{HOME_SLOT_ORDER\.map\(/);
+assert.match(homePage, /\)\}\s*<Footer anchorBase=\{content\.nav \? "\/" : ""\} tagline=\{content\.footerTagline\} \/>\s*<SupportFab \/>\s*<\/main>\s*<\/RespectReducedMotion>/);
+// For the home's shape of each slot, the renderer is the component it had
+// before, with the same props.
 const renderers: Record<string, RegExp> = {
-  hero: /hero: \(slot\) => <Hero stats=\{slot\.stats\} \/>/,
-  proofStrip: /proofStrip: \(\) => <IntegrationsStrip \/>/,
+  hero: /hero: \(slot\) => \(slot\.media === "video" \? <Hero stats=\{slot\.stats\} copy=\{slot\.copy\} \/> : <DoorHero \{\.\.\.slot\} \/>\)/,
+  proofStrip: /proofStrip: \(slot\) => \("facts" in slot \? <FactStrip [^>]*\/> : <IntegrationsStrip \/>\)/,
+  showcase: /showcase: \(slot\) => <OutboundCalling copy=\{slot\.copy\} \/>/,
   demo: /demo: \(slot\) => <TryDemo demo=\{slot\.demo\} \/>/,
-  how: /how: \(\) => <Journey \/>/,
+  how: /how: \(slot\) => \("steps" in slot \? <LandingSteps \{\.\.\.slot\} \/> : <Journey \/>\)/,
   features: /features: \(\) => <FeatureBento \/>/,
-  useCases: /useCases: \(\) => <Industries \/>/,
+  modules: /modules: \(slot\) => <SixModules \{\.\.\.slot\} \/>/,
+  useCases: /useCases: \(slot\) => \("items" in slot \? <LandingUseCases \{\.\.\.slot\} \/> : <Industries \/>\)/,
   proof: /proof: \(\) => <Proof \/>/,
   pricing: /pricing: \(\) => <Pricing \/>/,
+  talk: /talk: \(slot\) => <TalkToUs \{\.\.\.slot\} \/>/,
   trust: /trust: \(\) => <TrustStrip \/>/,
-  faq: /faq: \(slot\) => <FAQ faqKeys=\{slot\.keys\} \/>/,
-  cta: /cta: \(\) => <CTA \/>/,
+  faq: /faq: \(slot\) => \("items" in slot \? <FAQ [^>]*\/> : <FAQ faqKeys=\{slot\.keys\} \/>\)/,
+  cta: /cta: \(slot\) => \("copy" in slot \? <CTA copy=\{slot\.copy\} \/> : <CTA \/>\)/,
 };
 for (const id of HOME_SLOT_ORDER) assert.match(homePage, renderers[id], `renderer for ${id}`);
+
+// The video path is the home's hero as it was: Hero.tsx still plays the
+// local video over its poster, and DoorHero never mounts a video.
+const hero = marketing("Hero");
+assert.match(hero, /const HERO_VIDEO = "\/videos\/hero-bg-960\.mp4";/);
+assert.match(hero, /<motion\.video[\s\S]*poster=\{HERO_POSTER\}[\s\S]*src=\{HERO_VIDEO\}/);
+assert.match(hero, /className="absolute left-0 top-0 -z-30 h-\[125%\] w-\[125%\] object-cover object-left-top"/);
+assert.match(hero, /className="relative isolate overflow-hidden pt-32 pb-32 sm:pt-40 sm:pb-40 lg:min-h-\[88vh\]"/);
+const doorHero = src("components/marketing/landing/DoorHero.tsx");
+assert.doesNotMatch(doorHero, /<video|motion\.video|\.mp4/);
 
 // 2. Anchor ids carried by the section components (nav links and #demo CTA).
 const anchors: Array<[string, string]> = [

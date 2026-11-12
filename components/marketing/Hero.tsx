@@ -11,7 +11,7 @@ import { useTranslations } from "next-intl";
 
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
 import { EMPHASIS_SLOT, heroTitleTokens } from "@/lib/hero-title";
-import { DEFAULT_HERO_STATS, type HeroStat } from "@/lib/marketing/home-content";
+import { DEFAULT_HERO_STATS, type HeroCopy, type HeroStat } from "@/lib/marketing/home-content";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
@@ -39,17 +39,27 @@ const SPARKLES = [
  */
 export function Hero({
   stats = DEFAULT_HERO_STATS,
+  copy,
 }: {
   /** Stats under the subtitle (value + `Hero.stats` label key + delay). */
   stats?: readonly HeroStat[];
+  /** A landing page's own copy; omitted = the home's (`Hero` messages). */
+  copy?: HeroCopy;
 } = {}) {
   const t = useTranslations("Hero");
   // Not useReducedMotion(): it's null during SSR and made the first client
   // render differ from the server HTML (hydration error with reduce motion on).
   const reduce = useReducedMotionAfterMount();
 
-  const emphasis = t("titleEmphasis");
-  const titleTokens = heroTitleTokens(t("title", { emphasis: EMPHASIS_SLOT }), emphasis);
+  const emphasis = copy ? (copy.emphasis ?? "") : t("titleEmphasis");
+  const titleTokens = heroTitleTokens(
+    copy ? copy.title.replace("{emphasis}", EMPHASIS_SLOT) : t("title", { emphasis: EMPHASIS_SLOT }),
+    emphasis,
+  );
+  const badge = copy ? copy.badge : t("badge");
+  const subtitle = copy ? copy.subtitle : t("subtitle");
+  const primary = copy ? copy.primary : { label: t("ctaDemo"), href: "/signup" };
+  const secondary = copy ? copy.secondary : { label: t("ctaLiveDemo"), href: "#demo" };
 
   const fadeUp = (delay: number) =>
     reduce
@@ -209,7 +219,7 @@ export function Hero({
             <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-[#22d3ee] opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#22d3ee]" />
           </span>
-          {t("badge")}
+          {badge}
         </motion.div>
 
         {/* H1 + 3 sparkles subtils autour */}
@@ -314,10 +324,11 @@ export function Hero({
             animationDelay: "0.5s",
           }}
         >
-          {t("subtitle")}
+          {subtitle}
         </p>
 
         {/* Stats inline — rangée resserrée */}
+        {stats.length > 0 ? (
         <div className="mt-8 flex flex-wrap items-end justify-center gap-x-4 gap-y-3 sm:gap-x-6">
           {stats.map((stat, i) => (
             <Fragment key={stat.labelKey}>
@@ -331,6 +342,7 @@ export function Hero({
             </Fragment>
           ))}
         </div>
+        ) : null}
 
         {/* CTAs — 2 seulement : signup magnétique + live demo cyan */}
         <motion.div
@@ -354,11 +366,11 @@ export function Hero({
           >
             <Link
               ref={ctaRef}
-              href="/signup"
+              href={primary.href}
               className="cta-glow group relative inline-flex cursor-pointer items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-8 py-4 text-base font-semibold text-white shadow-lg ring-2 ring-[#22d3ee]/40 transition-all hover:scale-[1.03] hover:shadow-xl active:scale-95"
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              <span className="relative">{t("ctaDemo")}</span>
+              <span className="relative">{primary.label}</span>
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -379,34 +391,40 @@ export function Hero({
            *  cyan animée + onde sonore (3 barres pulsantes) à côté du label
            *  pour signaler "parle live maintenant". */}
           <Link
-            href="#demo"
-            aria-label={t("ctaLiveDemo")}
+            href={secondary.href}
+            aria-label={secondary.label}
             className="group relative inline-flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-full border-2 border-[#22d3ee]/70 bg-[#22d3ee]/15 px-7 py-4 text-base font-semibold text-white shadow-[0_8px_28px_-8px_rgba(34,211,238,0.55)] backdrop-blur-md transition-all hover:scale-[1.03] hover:border-[#22d3ee] hover:bg-[#22d3ee]/25"
           >
-            {/* Pulse halo cyan derrière */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-full bg-[#22d3ee]/0 motion-safe:animate-pulse"
-              style={{
-                boxShadow: "0 0 0 0 rgba(34,211,238,0.5)",
-                animation: "live-demo-halo 2.4s ease-in-out infinite",
-              }}
-            />
-            {/* Onde sonore : 3 barres qui battent en cadence */}
-            <span aria-hidden className="relative flex items-center gap-[3px]">
-              {[0, 0.15, 0.3].map((delay, i) => (
+            {/* The halo and the sound wave say "talk live now": the home's
+             *  demo only. A landing page's second button is a plain link. */}
+            {copy ? null : (
+              <>
+                {/* Pulse halo cyan derrière */}
                 <span
-                  key={i}
-                  className="block w-[3px] rounded-full bg-white"
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-full bg-[#22d3ee]/0 motion-safe:animate-pulse"
                   style={{
-                    height: 16,
-                    animation: `live-demo-wave 1s ease-in-out ${delay}s infinite`,
-                    transformOrigin: "center",
+                    boxShadow: "0 0 0 0 rgba(34,211,238,0.5)",
+                    animation: "live-demo-halo 2.4s ease-in-out infinite",
                   }}
                 />
-              ))}
-            </span>
-            <span className="relative">{t("ctaLiveDemo")}</span>
+                {/* Onde sonore : 3 barres qui battent en cadence */}
+                <span aria-hidden className="relative flex items-center gap-[3px]">
+                  {[0, 0.15, 0.3].map((delay, i) => (
+                    <span
+                      key={i}
+                      className="block w-[3px] rounded-full bg-white"
+                      style={{
+                        height: 16,
+                        animation: `live-demo-wave 1s ease-in-out ${delay}s infinite`,
+                        transformOrigin: "center",
+                      }}
+                    />
+                  ))}
+                </span>
+              </>
+            )}
+            <span className="relative">{secondary.label}</span>
           </Link>
         </motion.div>
       </motion.div>
