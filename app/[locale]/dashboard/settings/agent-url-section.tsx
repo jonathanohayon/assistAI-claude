@@ -68,7 +68,8 @@ export type AgentUrlAction =
   | { type: "submit" }
   | { type: "created"; token: string; status: AgentUrlStatus }
   | { type: "createFailed" }
-  | { type: "statusRefreshed"; status: AgentUrlStatus };
+  | { type: "statusRefreshed"; status: AgentUrlStatus }
+  | { type: "dismiss" };
 
 export const initialAgentUrlState: AgentUrlState = {
   phase: "loading",
@@ -100,6 +101,9 @@ export function agentUrlReducer(s: AgentUrlState, a: AgentUrlAction): AgentUrlSt
       // A failed regenerate may still have killed the old URL server-side, so
       // a URL revealed earlier is no longer trusted and is dropped.
       return { ...s, busy: false, confirming: false, revealed: null, error: s.status.exists ? "regenerate" : "create" };
+    case "dismiss":
+      // "C'est copié": the one-time URL leaves the screen (and the DOM) for good.
+      return { ...s, revealed: null };
     case "statusRefreshed":
       // Re-read after a failed POST: the hint and date say what is true now;
       // the error line stays.
@@ -206,6 +210,7 @@ export function AgentUrlSection() {
       onConfirmRegenerate={submit}
       onCopy={copy}
       onRetry={load}
+      onDismiss={() => dispatch({ type: "dismiss" })}
     />
   );
 }
@@ -229,6 +234,7 @@ export type AgentUrlViewProps = {
   onConfirmRegenerate: () => void;
   onCopy: (url: string) => void;
   onRetry: () => void;
+  onDismiss: () => void;
 };
 
 export function AgentUrlView({
@@ -241,6 +247,7 @@ export function AgentUrlView({
   onConfirmRegenerate,
   onCopy,
   onRetry,
+  onDismiss,
 }: AgentUrlViewProps) {
   const t = useTranslations("AgentUrl");
   const format = useFormatter();
@@ -259,6 +266,7 @@ export function AgentUrlView({
     if (confirming && !was.confirming) cancelRef.current?.focus();
     else if (revealed && revealed !== was.revealed) copyRef.current?.focus();
     else if (!confirming && was.confirming) regenerateRef.current?.focus();
+    else if (!revealed && was.revealed) regenerateRef.current?.focus();
     prev.current = { confirming, revealed };
   }, [confirming, revealed]);
 
@@ -383,6 +391,14 @@ export function AgentUrlView({
               {copied ? t("copied") : ""}
             </span>
           </div>
+          {/* Same show-once pattern as the Tools brick's secret: only this closes the box. */}
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="min-h-11 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--color-foreground)]"
+          >
+            {t("copiedDone")}
+          </button>
           <p className="text-xs text-[var(--color-muted-foreground)]">{t("urlHint")}</p>
         </div>
       )}

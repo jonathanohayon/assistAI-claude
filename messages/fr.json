@@ -2622,7 +2622,8 @@
     "errorLoad": "Impossible de charger l'état de l'URL. Réessayez.",
     "errorCreate": "Impossible de créer l'URL. Réessayez.",
     "errorRegenerate": "Impossible de régénérer l'URL. Réessayez.",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "copiedDone": "C'est copié"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "Configurez TWILIO_WHATSAPP_FROM côté Railway pour activer l'envoi."

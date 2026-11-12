@@ -2622,7 +2622,8 @@
     "errorLoad": "לא הצלחנו לטעון את מצב הכתובת. נסו שוב.",
     "errorCreate": "לא הצלחנו ליצור את הכתובת. נסו שוב.",
     "errorRegenerate": "לא הצלחנו ליצור את הכתובת מחדש. נסו שוב.",
-    "retry": "ניסיון חוזר"
+    "retry": "ניסיון חוזר",
+    "copiedDone": "העתקתי"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "הגדירו TWILIO_WHATSAPP_FROM ב-Railway כדי להפעיל את השליחה."

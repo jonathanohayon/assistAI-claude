@@ -2622,7 +2622,8 @@
     "errorLoad": "We couldn't load the URL status. Please try again.",
     "errorCreate": "We couldn't create the URL. Please try again.",
     "errorRegenerate": "We couldn't regenerate the URL. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "copiedDone": "I've copied it"
   },
   "AdminNotifs": {
     "whatsappSenderHint": "Configure TWILIO_WHATSAPP_FROM on Railway to enable sending."

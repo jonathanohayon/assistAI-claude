@@ -77,6 +77,7 @@ const render = (locale: string, state: AgentUrlState) =>
         onConfirmRegenerate: NOOP,
         onCopy: NOOP,
         onRetry: NOOP,
+        onDismiss: NOOP,
       }),
     ),
   );
@@ -263,6 +264,18 @@ async function main() {
   s = agentUrlReducer(s, { type: "statusRefreshed", status: { ...st, hint: "agt_…1111" } });
   assert.equal(s.status.hint, "agt_…1111");
   assert.equal(s.error, "regenerate", "the error line stays");
+}
+
+// "C'est copié" closes the one-time view for good (the Tools brick's show-once pattern).
+{
+  const st = { exists: true, createdAt: "2026-11-01T00:00:00.000Z", hint: "agt_…0000" };
+  let s = agentUrlReducer(initialAgentUrlState, { type: "created", token: "agt_mock0000000000000000", status: st });
+  assert.equal(s.revealed, "agt_mock0000000000000000");
+  s = agentUrlReducer(s, { type: "dismiss" });
+  assert.equal(s.revealed, null);
+  assert.deepEqual(s.status, st, "the hint and date stay");
+  const src = readFileSync(join(ROOT, "app/[locale]/dashboard/settings/agent-url-section.tsx"), "utf8");
+  assert.match(src, /onClick=\{onDismiss\}[\s\S]{0,300}t\("copiedDone"\)/);
 }
 
 console.log("agent-url-once: ok");
