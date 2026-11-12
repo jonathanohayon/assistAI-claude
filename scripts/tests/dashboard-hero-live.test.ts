@@ -74,7 +74,7 @@ for (const none of [null, undefined, "", "   "]) {
 
 // 2. Same keys in all three locales: the hero's DashboardConfig keys exist
 // everywhere, and DashboardConfig has the same key set in fr/en/he.
-const HERO_KEYS = ["heroEyebrow", "heroLive", "heroOffline", "wowLiveLabel", "wowOfflineLabel", "heroNoNumber"];
+const HERO_KEYS = ["heroEyebrow", "heroLive", "heroToActivate", "wowLiveLabel", "wowToActivateLabel", "heroNoNumber"];
 const frKeys = Object.keys(messages("fr").DashboardConfig).sort();
 for (const locale of LOCALES) {
   const dc = messages(locale).DashboardConfig;
@@ -88,15 +88,15 @@ for (const locale of LOCALES) {
 
   // 3. No number: no word claiming the line is up, the offline wording
   // instead, nothing pinging or waving, and the "get a number" link.
-  const offStrings = [dc.heroOffline, dc.wowOfflineLabel, dc.heroNoNumber];
+  const offStrings = [dc.heroToActivate, dc.wowToActivateLabel, dc.heroNoNumber];
   for (const s of offStrings) {
     for (const re of ONLINE_WORDS) assert.ok(!re.test(s), `${locale}: "${s}" matches ${re}`);
   }
   const off = render(locale, null);
   const offText = text(off);
   for (const re of ONLINE_WORDS) assert.ok(!re.test(offText), `${locale} no number: hero text matches ${re}`);
-  assert.ok(offText.includes(dc.heroOffline), `${locale}: eyebrow says offline`);
-  assert.ok(offText.includes(dc.wowOfflineLabel), `${locale}: badge says offline`);
+  assert.ok(offText.includes(dc.heroToActivate), `${locale}: eyebrow says "to activate"`);
+  assert.ok(offText.includes(dc.wowToActivateLabel), `${locale}: badge says "to activate"`);
   assert.ok(offText.includes(dc.heroNoNumber), `${locale}: no-number line`);
   assert.ok(off.includes('href="/onboarding"') || /href="\/[a-z]{2}\/onboarding"/.test(off), `${locale}: link to get a number`);
   assert.ok(!off.includes("animate-ping"), `${locale}: no live ping without a number`);
@@ -108,11 +108,19 @@ for (const locale of LOCALES) {
   const onText = text(on);
   assert.ok(onText.includes(dc.heroLive), `${locale}: eyebrow says online`);
   assert.ok(onText.includes(dc.wowLiveLabel), `${locale}: badge says Live`);
-  assert.ok(!onText.includes(dc.heroOffline), `${locale}: no offline wording with a number`);
+  assert.ok(!onText.includes(dc.heroToActivate), `${locale}: no "to activate" wording with a number`);
   assert.ok(!onText.includes(dc.heroNoNumber), `${locale}: no "no number" line with a number`);
   assert.ok(/972/.test(onText), `${locale}: number shown`);
   assert.equal(on.match(/animate-ping/g)?.length, 2, `${locale}: eyebrow and badge ping`);
   assert.ok(on.includes("animate-[wave"), `${locale}: waveform moves`);
 }
+
+// VP review: a never-activated account is a first step, not a breakdown. "Hors ligne / Offline" is
+// kept for the day we can know that an agent that WAS live is down.
+for (const locale of ["fr", "en", "he"]) {
+  const dc = JSON.parse(readFileSync(join(ROOT, `messages/${locale}.json`), "utf8")).DashboardConfig;
+  for (const k of ["heroToActivate", "wowToActivateLabel"]) assert.doesNotMatch(dc[k], /hors ligne|offline|לא זמינה/i, `${locale} ${k}`);
+}
+assert.equal(JSON.parse(readFileSync(join(ROOT, "messages/fr.json"), "utf8")).DashboardConfig.wowToActivateLabel, "À activer");
 
 console.log("dashboard-hero-live: ok");

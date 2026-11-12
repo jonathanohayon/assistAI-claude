@@ -10,14 +10,14 @@
 export type HeroLiveState = {
   live: boolean;
   /** DashboardConfig key shown after the eyebrow. */
-  eyebrowStatusKey: "heroLive" | "heroOffline";
+  eyebrowStatusKey: "heroLive" | "heroToActivate";
   /** DashboardConfig key of the status card badge. */
-  badgeKey: "wowLiveLabel" | "wowOfflineLabel";
+  badgeKey: "wowLiveLabel" | "wowToActivateLabel";
 };
 
 export function heroLiveState(primaryPhone: string | null | undefined): HeroLiveState {
   const live = Boolean(primaryPhone?.trim());
   return live
     ? { live, eyebrowStatusKey: "heroLive", badgeKey: "wowLiveLabel" }
-    : { live, eyebrowStatusKey: "heroOffline", badgeKey: "wowOfflineLabel" };
+    : { live, eyebrowStatusKey: "heroToActivate", badgeKey: "wowToActivateLabel" };
 }
