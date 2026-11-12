@@ -16,7 +16,7 @@ import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { patchPresetGateInput, presetGateRefusal } from "@/lib/campaigns/preset-gate";
 import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
-import { campaignCallPublicColumns } from "@/lib/campaigns/campaign-call-row";
+import { campaignCallPublicColumns, campaignDetailCalls } from "@/lib/campaigns/campaign-call-row";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -68,12 +68,14 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .from(campaignContacts)
     .where(eq(campaignContacts.campaignId, id));
 
-  const calls = await db
+  // `extracted` goes through campaignDetailCalls: never the capture claim
+  // internals (pending/token/attempt/claimedAt); {} stays {} (OFF bytes unchanged).
+  const calls = campaignDetailCalls(await db
     .select(campaignCallPublicColumns)
     .from(campaignCalls)
     .where(eq(campaignCalls.campaignId, id))
     .orderBy(desc(campaignCalls.createdAt))
-    .limit(limit);
+    .limit(limit));
 
   // Agent associé (Phase 2) — sert au preflight (connaissance métier) et à
   // l'affichage. null si la campagne n'a pas encore d'agent.

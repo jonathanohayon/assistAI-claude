@@ -9,6 +9,7 @@ import type {
   GoalPreset,
   RetryRules,
 } from "./constants";
+import type { CapturedView } from "./capture";
 
 export type CampaignStats = {
   total: number;
@@ -63,7 +64,8 @@ export type CampaignCallDTO = {
   sentiment: string;
   summary: string;
   transcript: Array<{ role: "user" | "assistant"; text: string }>;
-  extracted: Record<string, unknown>;
+  /** Public shape only (publicExtracted): {} = no capture, null = pending/unrecognised. */
+  extracted: Record<string, never> | CapturedView;
   durationSeconds: number;
   createdAt: string;
 };

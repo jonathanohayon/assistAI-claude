@@ -1566,6 +1566,7 @@
     "apiCopied": "Copied",
     "apiEndpointLabel": "Endpoint",
     "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
+    "apiKeyPlaceholder": "<YOUR_KEY>",
     "developerSection": "Display"
   },
   "DashboardBilling": {
