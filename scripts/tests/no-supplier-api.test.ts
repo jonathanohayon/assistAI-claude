@@ -61,5 +61,23 @@ for (const m of resendSrc.matchAll(/fail\("([a-z_]+)"/g)) {
   assert.ok((VERIFICATION_ERRORS as readonly string[]).includes(m[1]), `non-neutral code ${m[1]}`);
 }
 for (const c of VERIFICATION_ERRORS) assert.doesNotMatch(c, SUPPLIER);
+// The WhatsApp test route answers with neutral codes only: every error string
+// in the route and its logic is one of the codes, never a supplier or an env
+// var name (the old route returned the raw provider error and env hints).
+const WA_CODES = new Set([
+  "invalid_number", "recipient_not_allowed", "no_saved_number", "rate_limited", "send_failed", "not_configured",
+  "Unauthorized", "Forbidden",
+]);
+for (const f of ["app/api/dashboard/notifications/whatsapp-test/route.ts", "lib/notifications/whatsapp-test.ts"]) {
+  const src = readFileSync(f, "utf8");
+  const errors = [...src.matchAll(/error: "([^"]*)"|fail\(\d+, "([^"]*)"\)/g)].map((m) => m[1] ?? m[2]);
+  assert.ok(errors.length > 0, `${f}: no error strings found`);
+  for (const e of errors) {
+    assert.ok(WA_CODES.has(e), `${f}: unexpected error string "${e}"`);
+    assert.doesNotMatch(e, SUPPLIER, `${f}: "${e}" names a supplier`);
+  }
+  // Responses are built from the code only: no `hint`, `provider` or raw `result.error` field.
+  assert.doesNotMatch(src, /\bhint:|\bprovider:|error: result\.error/, `${f}: leaks provider details`);
+}
 
 console.log("ALL NO-SUPPLIER-API TESTS PASSED");

@@ -12,6 +12,7 @@ import { auth } from "@/auth";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { db } from "@/lib/db";
 import { outboundAgents } from "@/lib/db/schema";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 
 /**
  * Nom de l'agent enregistré côté worker (`config.ts:AGENT_NAME` dans le
@@ -40,16 +41,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = process.env.LIVEKIT_URL;
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  if (!url || !apiKey || !apiSecret) {
-    return NextResponse.json(
-      { error: "LiveKit not configured" },
-      { status: 500 },
-    );
-  }
-
   // Optionnel : admin peut tester en tant qu'un autre tenant via `asUserId`.
   // Bloqué (403) si le caller n'est pas admin. Sinon → userId = target.
   // body optionnel : vide ⇒ test de l'agent entrant du tenant courant.
@@ -65,6 +56,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const userId = scope.userId;
+
+  // Testing an OUTBOUND agent is part of the outbound call centre: same plan
+  // gate as the campaigns / outbound-agents API (admins bypass). Checked
+  // before the LiveKit config so the refusal doesn't depend on the env.
+  if (typeof body.agentId === "string" && body.agentId) {
+    const planGate = await outboundCampaignsGate();
+    if (planGate) return planGate;
+  }
+
+  const url = process.env.LIVEKIT_URL;
+  const apiKey = process.env.LIVEKIT_API_KEY;
+  const apiSecret = process.env.LIVEKIT_API_SECRET;
+  if (!url || !apiKey || !apiSecret) {
+    return NextResponse.json(
+      { error: "LiveKit not configured" },
+      { status: 500 },
+    );
+  }
 
   // Test LIVE d'un agent SORTANT : si un agentId (appartenant au tenant scopé)
   // est fourni, la session teste cet agent (sa voix/persona/connaissance) au
