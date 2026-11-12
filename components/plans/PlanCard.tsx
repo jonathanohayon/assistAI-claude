@@ -432,7 +432,9 @@ export function PlanCard({
   billing: Billing;
   currency: Currency;
   rates: Record<Currency, number>;
-  pricing: PlanPricingMap;
+  /** null while the landing loads the grid (or if that failed): the card
+   *  shows a placeholder and no amount. Never substitute the defaults. */
+  pricing: PlanPricingMap | null;
   action: PlanCardAction;
   status?: PlanCardStatus;
   /** Label of the "current plan" badge — required when status === "current". */
@@ -444,14 +446,24 @@ export function PlanCard({
   const localized = useLocalizedPlan(plan);
   // Montants admin (EUR + ILS) pour la vue courante. Mensuel = prix mensuel ;
   // annuel = total annuel ÷ 12 (la grosse valeur reste un équivalent /mois).
-  const eurMonthly = resolvePrice(pricing, plan.key, "monthly", "EUR");
-  const eurAnnual = resolvePrice(pricing, plan.key, "annual", "EUR");
-  const ilsMonthly = resolvePrice(pricing, plan.key, "monthly", "ILS");
-  const ilsAnnual = resolvePrice(pricing, plan.key, "annual", "ILS");
-  const bigEur = billing === "monthly" ? eurMonthly : eurAnnual / 12;
-  const bigIls = billing === "monthly" ? ilsMonthly : ilsAnnual / 12;
   const pageLocale = useLocale();
-  const formattedPrice = formatPlanMoney(bigEur, bigIls, currency, rates, pageLocale);
+  const amounts = pricing
+    ? {
+        eurMonthly: resolvePrice(pricing, plan.key, "monthly", "EUR"),
+        eurAnnual: resolvePrice(pricing, plan.key, "annual", "EUR"),
+        ilsMonthly: resolvePrice(pricing, plan.key, "monthly", "ILS"),
+        ilsAnnual: resolvePrice(pricing, plan.key, "annual", "ILS"),
+      }
+    : null;
+  const formattedPrice = amounts
+    ? formatPlanMoney(
+        billing === "monthly" ? amounts.eurMonthly : amounts.eurAnnual / 12,
+        billing === "monthly" ? amounts.ilsMonthly : amounts.ilsAnnual / 12,
+        currency,
+        rates,
+        pageLocale,
+      )
+    : null;
   const overagePrice = formatPricePerMinute(
     OVERAGE_RATE_ILS_PER_MIN,
     currency,
@@ -459,9 +471,15 @@ export function PlanCard({
     pageLocale,
   );
   const annualHint =
-    billing === "annual"
+    billing === "annual" && amounts
       ? t("annualHint", {
-          total: formatPlanMoney(eurAnnual, ilsAnnual, currency, rates, pageLocale),
+          total: formatPlanMoney(
+            amounts.eurAnnual,
+            amounts.ilsAnnual,
+            currency,
+            rates,
+            pageLocale,
+          ),
         })
       : null;
 
@@ -587,6 +605,17 @@ export function PlanCard({
         ) : (
           <>
             <div className="flex items-baseline gap-1">
+              {formattedPrice === null ? (
+                // Same line box as the amount (text-5xl), so nothing shifts
+                // when the price arrives.
+                <span
+                  data-testid="plan-price-placeholder"
+                  aria-hidden
+                  className="font-display text-5xl tracking-tight"
+                >
+                  <span className="inline-block h-[0.8em] w-[3.2em] animate-pulse rounded-xl bg-[var(--color-muted)] align-baseline" />
+                </span>
+              ) : (
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={`${plan.key}-${billing}-${currency}`}
@@ -599,12 +628,17 @@ export function PlanCard({
                   {formattedPrice}
                 </motion.span>
               </AnimatePresence>
+              )}
               <span className="text-sm font-medium text-[var(--color-muted-foreground)]">
                 {t("perMonth")}
               </span>
             </div>
             <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
-              {annualHint ?? t("monthlyHint")}
+              {billing === "annual" && !amounts ? (
+                <span className="inline-block h-[1em] w-32 animate-pulse rounded bg-[var(--color-muted)] align-middle" />
+              ) : (
+                (annualHint ?? t("monthlyHint"))
+              )}
             </p>
             <p
               className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
