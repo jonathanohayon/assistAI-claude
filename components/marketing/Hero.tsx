@@ -205,6 +205,15 @@ export function Hero({
         className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-b from-black/35 via-black/10 to-black/45"
       />
 
+      {/* Nav scrim: a darker band under the transparent nav, fading out
+       *  below it, so the white wordmark and links hold >= 4.5:1 on the
+       *  video's bright bulbs. Only on this video hero; static, decorative. */}
+      <div
+        aria-hidden
+        data-nav-scrim=""
+        className="pointer-events-none absolute inset-x-0 top-0 -z-20 h-40 bg-gradient-to-b from-black/55 via-black/30 to-transparent"
+      />
+
       {/* Content centré — translate + fade quand on scrolle hors du hero. */}
       <motion.div
         style={reduce ? undefined : { y: contentY, opacity: contentOpacity }}

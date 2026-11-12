@@ -8,6 +8,7 @@ import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 
 import type { NavCopy } from "@/lib/marketing/home-content";
+import { navBarIsWhite, wordmarkTone } from "@/lib/marketing/nav-tone";
 
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
@@ -39,6 +40,8 @@ export function Nav({
   // scrolled, or from the top over a light hero.
   const darkText = scrolled || overLight;
   const [open, setOpen] = useState(false);
+  // The white bar carries the purple wordmark; over a dark hero it is white.
+  const tone = { scrolled, overLight, open };
   const { scrollY, scrollYProgress } = useScroll();
   useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
   // Scroll-progress bar width — 0% top → 100% bottom of page.
@@ -79,7 +82,7 @@ export function Nav({
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         // Over a light door the bar is white from the top: teal links on the
         // pink mesh measured 3.5:1, on the white bar 5.36:1.
-        darkText || open
+        navBarIsWhite(tone)
           ? "border-b border-[var(--color-border)]/60 bg-white/80 backdrop-blur-lg"
           : "border-b border-transparent bg-transparent"
       }`}
@@ -92,7 +95,7 @@ export function Nav({
       />
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <Logo />
+          <Logo tone={wordmarkTone(tone)} />
         </Link>
 
         {/* Desktop nav — couleur ADAPTATIVE :
