@@ -1,17 +1,12 @@
-import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
-import { provisionTenant } from "@/lib/auth/provision-tenant";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { sendVerificationEmail } from "@/lib/email";
-import { logEvent } from "@/lib/logger";
 import { TRIAL_PLAN_KEY } from "@/lib/plans";
-import { createEmailVerification } from "@/lib/verify-code";
+import { clientIp } from "@/lib/rate-limit";
+import { signupDeps } from "@/lib/verification-limits/deps";
+import { signupWithEmail } from "@/lib/verification-limits/signup";
 
 import { SignupContent } from "./signup-content";
 
@@ -39,82 +34,21 @@ export default async function SignupPage(props: {
   async function handleSignup(formData: FormData) {
     "use server";
 
-    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    // Client IP for the per-IP signup cap: lib/rate-limit.ts clientIp
+    // (X-Real-IP, else the first X-Forwarded-For entry). BEST-EFFORT: it
+    // relies on Railway's edge overwriting those headers (see the sources on
+    // clientIp). If a client could set them, it could rotate this value; the
+    // route-wide hourly ceiling still bounds the total.
+    const ip = clientIp(await headers());
+    const outcome = await signupWithEmail(
+      { email: formData.get("email"), password: formData.get("password"), locale, ip },
+      signupDeps,
+    );
+    if (!outcome.ok) {
+      redirect(`/${locale}/signup?error=${outcome.error}`);
+    }
+    const { email } = outcome;
     const password = String(formData.get("password") ?? "");
-
-    if (!email.includes("@") || password.length < 8) {
-      redirect(`/${locale}/signup?error=invalid`);
-    }
-
-    const existing = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-    if (existing.length > 0) {
-      // Compte Google (passwordHash sentinelle "") → message dédié orientant
-      // vers la connexion Google, au lieu d'un générique "compte existe déjà".
-      const isGoogleAccount = existing[0].passwordHash === "";
-      redirect(
-        `/${locale}/signup?error=${isGoogleAccount ? "exists_google" : "exists"}`,
-      );
-    }
-
-    const hash = await bcrypt.hash(password, 12);
-    // Crée le tenant (users + agent_config). emailVerified=false → gate
-    // /verify-email actif pour le signup email/mdp (cf. logique ci-dessous).
-    // L'essai gratuit donne accès à toutes les fonctionnalités : on provisionne
-    // sur TRIAL_PLAN_KEY. Le nom (displayName) est collecté à l'onboarding.
-    const created = await provisionTenant({
-      email,
-      displayName: "",
-      plan: TRIAL_PLAN_KEY,
-      locale,
-      emailVerified: false,
-      passwordHash: hash,
-    });
-
-    // Email verification gate : crée un code 4 chiffres, l'envoie par mail.
-    // On signIn IMMÉDIATEMENT après création pour que le user reste loggué,
-    // mais les layouts /dashboard /admin /onboarding détectent
-    // emailVerified=false et redirigent vers /verify-email tant que pas
-    // validé. Évite au user d'avoir à retaper son mdp après verify.
-    const verif = await createEmailVerification(created.id, {
-      skipCooldown: true,
-    });
-    if (verif.ok && verif.code) {
-      const sent = await sendVerificationEmail(email, verif.code, locale);
-      // Dev escape-hatch : si RESEND_API_KEY n'est pas configuré, on log
-      // le code en CLAIR dans le message pour le retrouver depuis
-      // /dashboard/logs (filtre Auth). EN PROD avec RESEND_API_KEY set,
-      // sent.fallback est undefined → code jamais loggué en clair.
-      const isDevFallback = sent.fallback === "console_log";
-      await logEvent({
-        source: "auth",
-        event: sent.ok ? "verification_email_sent" : "verification_email_failed",
-        message: sent.ok
-          ? isDevFallback
-            ? `[DEV] Code envoyé à ${email} : ${verif.code} (RESEND_API_KEY absent, vrai email pas envoyé)`
-            : `Code envoyé à ${email}`
-          : `Envoi du code à ${email} échoué : ${sent.error}`,
-        level: sent.ok ? (isDevFallback ? "warn" : "info") : "error",
-        userId: created.id,
-        metadata: {
-          fallback: sent.fallback,
-          error: sent.error,
-          // Code en clair UNIQUEMENT en fallback dev — jamais en prod.
-          devCode: isDevFallback ? verif.code : undefined,
-        },
-      });
-    } else {
-      await logEvent({
-        source: "auth",
-        event: "verification_email_skipped",
-        message: `Création de code échouée pour ${email} : ${verif.reason}`,
-        level: "warn",
-        userId: created.id,
-      });
-    }
 
     try {
       await signIn("credentials", {

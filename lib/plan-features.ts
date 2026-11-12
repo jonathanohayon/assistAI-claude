@@ -102,3 +102,7 @@ export function featuresForPlan(
   // them, whatever an older stored matrix says (admins bypass via isAdmin).
   return { ...f, outbound_campaigns: false };
 }
+
+// The outbound call-centre rule lives in lib/outbound-access.ts (client-safe);
+// re-exported so server callers keep importing it from here.
+export { canUseOutboundCampaigns } from "@/lib/outbound-access";

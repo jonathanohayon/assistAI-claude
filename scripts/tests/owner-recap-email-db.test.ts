@@ -6,7 +6,7 @@
 // a sender failure that changes nothing but logs an event.
 // Mock data only (+1555 numbers, example.com, "Demo Salon"); every outbound
 // fetch is mocked (the summary) or refused.
-// Run with:  OWNER_RECAP_EMAIL_TEST_DB_URL=postgres://… npx tsx scripts/tests/owner-recap-email-db.test.ts
+// Run with:  npm run test:db -- --only owner-recap-email   (see scripts/owner-recap-email-db.sh)
 // Runs only when OWNER_RECAP_EMAIL_TEST_DB_URL points at a THROWAWAY, migrated
 // database (it deletes users/events); otherwise it is skipped, so plain
 // `npm test` never touches a database. main's route is copied (git show
@@ -221,6 +221,25 @@ async function main() {
   const dump = JSON.stringify(failed[0]);
   assert.ok(!dump.includes("owner@example.com"), "no recipient address in the failure event");
   assert.ok(!dump.includes("haircut") && !dump.includes("Dana"), "no recap body in the failure event");
+
+  // ── 4. Worker-facing payloads never carry the address or the switch ───
+  await exec(sql`INSERT INTO phone_numbers (user_id, phone_number) VALUES (${T.on}, '+15550100010')`);
+  const configGET = (await import("../../app/api/agent/config/route")).GET;
+  const sessionGET = (await import("../../app/api/agent/session-config/route")).GET;
+  const H = { "x-internal-secret": "mock-internal-secret" };
+  for (const [label, route, q] of [
+    ["config phone", configGET, "phone=%2B15550100010"],
+    ["config web", configGET, `userId=${T.on}`],
+    ["session phone", sessionGET, "origin=phone&phone=%2B15550100010"],
+    ["session web", sessionGET, `origin=web&userId=${T.on}`],
+    ["session call_me", sessionGET, `origin=call_me&userId=${T.on}`],
+  ] as const) {
+    const res = await route(new NextRequest(`http://localhost/x?${q}`, { headers: H }));
+    const text = await res.text();
+    assert.equal(res.status, 200, `${label}: served`);
+    assert.ok(text.includes('"instructions"'), `${label}: a real config payload`);
+    assert.ok(!text.includes("ownerRecapEmail") && !text.includes("owner@example.com"), `${label}: no owner recap email field or address`);
+  }
 
   console.log("ALL OWNER-RECAP-EMAIL DB TESTS PASSED");
   process.exit(0);
