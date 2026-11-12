@@ -37,6 +37,13 @@ import { ChannelsPanel } from "./config/channels-panel";
 import { CONFIG_FORM_CSS } from "./config/config-form-css";
 import { HeroSection } from "./config/hero-section";
 import { NotifsPanel } from "./config/notifs-panel";
+import {
+  ownerEmailSaveBody,
+  ownerEmailSaveError,
+  ownerEmailUrl,
+  type OwnerEmailErrorKey,
+  type OwnerEmailSettings,
+} from "./config/owner-email";
 import { PersonaPanel } from "./config/persona-panel";
 import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
@@ -165,6 +172,11 @@ export function ConfigForm({
   // The transfer number is written by the tools PUT too (switching transfer
   // off clears the served number): the config only sends it when edited.
   const [transferBase, setTransferBase] = useState(initial.transferNumber);
+  // Owner recap by email: its own route (?asUserId for the admin view),
+  // saved by this form's save bar with only the changed fields.
+  const [ownerEmail, setOwnerEmail] = useState<OwnerEmailSettings | null>(null);
+  const [ownerEmailBase, setOwnerEmailBase] = useState<OwnerEmailSettings | null>(null);
+  const [ownerEmailError, setOwnerEmailError] = useState<OwnerEmailErrorKey | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -314,6 +326,21 @@ export function ConfigForm({
     return () => ctrl.abort();
   }, [asUserId]);
 
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch(ownerEmailUrl(asUserId), { signal: ctrl.signal, cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<OwnerEmailSettings>) : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        const loaded = { ownerRecapEmail: d.ownerRecapEmail ?? "", ownerRecapEmailEnabled: d.ownerRecapEmailEnabled === true };
+        setOwnerEmail(loaded);
+        setOwnerEmailBase(loaded);
+      })
+      .catch(() => {
+        /* not loaded: the card stays hidden rather than showing a guess */
+      });
+    return () => ctrl.abort();
+  }, [asUserId]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setDirty(true);
     setForm((prev) => {
@@ -383,6 +410,31 @@ export function ConfigForm({
           setTools(tdata.tools);
           setToolsBase(tdata.tools);
         }
+      }
+
+      // 2b. The owner recap by email, when it changed (only changed fields).
+      //     A refused address stops the save; our line shows next to it.
+      if (ownerEmail && ownerEmailBase) {
+        const echanges = ownerEmailSaveBody(ownerEmailBase, ownerEmail);
+        if (Object.keys(echanges).length > 0) {
+          const eres = await fetch(ownerEmailUrl(asUserId), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(echanges),
+          }).catch(() => null);
+          const edata = eres ? ((await eres.json().catch(() => null)) as OwnerEmailSettings | null) : null;
+          if (!eres || !eres.ok || !edata) {
+            const key = ownerEmailSaveError(eres?.status ?? 0, edata);
+            setOwnerEmailError(key);
+            setActiveTile("notifs");
+            setError(t(key));
+            return;
+          }
+          const saved = { ownerRecapEmail: edata.ownerRecapEmail, ownerRecapEmailEnabled: edata.ownerRecapEmailEnabled };
+          setOwnerEmail(saved);
+          setOwnerEmailBase(saved);
+        }
+        setOwnerEmailError(null);
       }
 
       // 3. The agent's config — without the sheet (`business` and its
@@ -791,7 +843,29 @@ export function ConfigForm({
                   />
                 )}
                 {activeTile === "notifs" && (
-                  <NotifsPanel form={form} update={update} t={t} isAdmin={isAdmin} />
+                  <NotifsPanel
+                    form={form}
+                    update={update}
+                    t={t}
+                    isAdmin={isAdmin}
+                    ownerEmail={
+                      ownerEmail && ownerEmailBase
+                        ? {
+                            value: ownerEmail,
+                            base: ownerEmailBase,
+                            onChange: (next) => {
+                              setOwnerEmail(next);
+                              setOwnerEmailError(null);
+                              setError(null);
+                              setDirty(true);
+                            },
+                            error: ownerEmailError,
+                            recapFeatureOn: features?.whatsapp_recap !== false,
+                            locale,
+                          }
+                        : null
+                    }
+                  />
                 )}
                 {activeTile === "tools" && (
                   <div className="pb-28">

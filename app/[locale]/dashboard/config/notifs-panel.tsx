@@ -2,13 +2,13 @@
 
 /**
  * Tuile "Notifications" : carte du canal owner WhatsApp (branché en DB)
+ * + carte du récap owner par email (owner-email-card.tsx, its own route)
  * + toggle du rappel de RDV J-1
  * envoyé automatiquement au client par WhatsApp (cron).
  *
- * SMS and Email are not offered: a channel that can't be used is not rendered
- * at all (no "soon" badge, no disabled row, no switch that is never saved).
- * Add their cards back once they ship (the email test API route is kept
- * server side for that day).
+ * SMS is not offered: a channel that can't be used is not rendered at all
+ * (no "soon" badge, no disabled row, no switch that is never saved). Add its
+ * card back once it ships.
  *
  * Utilisé par : config-form.tsx (workspace de la tuile `notifs`).
  */
@@ -17,6 +17,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { NotifChannelCard } from "./notif-channel-card";
+import type { OwnerEmailErrorKey, OwnerEmailSettings } from "./owner-email";
+import { OwnerEmailCard } from "./owner-email-card";
 import { OwnerDigestCard } from "./owner-digest-card";
 import { TransferNumberField } from "./transfer-number-field";
 import type { FormState, FormUpdater, Translator } from "./types";
@@ -26,12 +28,24 @@ export function NotifsPanel({
   update,
   t,
   isAdmin = false,
+  ownerEmail,
 }: {
   form: FormState;
   update: FormUpdater;
   t: Translator;
   /** Admins also see the ops hint (AdminNotifs, an admin-only namespace). */
   isAdmin?: boolean;
+  /** Owner recap by email, loaded and saved by config-form.tsx through
+   *  /api/dashboard/notifications/email (scoped with ?asUserId there).
+   *  Not rendered until loaded. */
+  ownerEmail?: {
+    value: OwnerEmailSettings;
+    base: OwnerEmailSettings;
+    onChange: (next: OwnerEmailSettings) => void;
+    error: OwnerEmailErrorKey | null;
+    recapFeatureOn?: boolean;
+    locale: string;
+  } | null;
 }) {
   // État on/off WhatsApp indépendant de la valeur : sinon le champ (disabled
   // quand off) ne peut jamais être rempli puisque "off" dérivait de la valeur
@@ -61,6 +75,7 @@ export function NotifsPanel({
         hint={t("ownerWhatsappHint")}
         testEndpoint="/api/dashboard/notifications/whatsapp-test"
       />
+      {ownerEmail && <OwnerEmailCard {...ownerEmail} t={t} />}
       <TransferNumberField form={form} update={update} t={t} />
       {/* Rappel de RDV J-1 — WhatsApp au client la veille (cron). Pas de
           champ contact : le numéro vient de l'événement Google Calendar. */}
