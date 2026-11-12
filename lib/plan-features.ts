@@ -103,12 +103,6 @@ export function featuresForPlan(
   return { ...f, outbound_campaigns: false };
 }
 
-// The ONE rule for the outbound call centre (campaigns + outbound agents),
-// shared by the UI (page, nav tab, config tile) and the API gate
-// (lib/campaigns/plan-gate.ts): admins always, otherwise the plan feature.
-export function canUseOutboundCampaigns(
-  isAdmin: boolean,
-  features: Partial<PlanFeatures> | null | undefined,
-): boolean {
-  return isAdmin || features?.outbound_campaigns === true;
-}
+// The ONE rule for the outbound call centre lives in its own client-safe
+// module (lib/outbound-campaigns-rule.ts); re-exported for server callers.
+export { canUseOutboundCampaigns } from "@/lib/outbound-campaigns-rule";
