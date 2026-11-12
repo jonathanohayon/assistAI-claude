@@ -28,9 +28,12 @@ export function ownerEmailUrl(asUserId?: string | null): string {
   return `/api/dashboard/notifications/email${qs}`;
 }
 
-/** The test route: it takes `{ to }`, not a tenant scope. */
-export function ownerEmailTestUrl(locale: string): string {
-  return `/api/dashboard/notifications/email-test?locale=${encodeURIComponent(locale)}`;
+/** The test route (PR #300): body `{ to }`, the email's language in
+ *  ?locale, and ?asUserId so an admin tests the tenant's address. */
+export function ownerEmailTestUrl(locale: string, asUserId?: string | null): string {
+  const qs = new URLSearchParams({ locale });
+  if (asUserId) qs.set("asUserId", asUserId);
+  return `/api/dashboard/notifications/email-test?${qs.toString()}`;
 }
 
 /** Same normalisation as the server (trimmed, lowercased). */
@@ -106,19 +109,57 @@ export function ownerEmailTestBlock(
   return null;
 }
 
-/** The test route answers `{ ok, fallback }`: with no sender configured it
- *  only logs the email server side (`fallback: "console_log"`), so that is
- *  NOT a sent email. */
+/** The test route's answers (PR #300), each mapped to one of our lines:
+ *   200 { ok, id }                         → sent
+ *   400 invalid_email                      → our invalid-address line
+ *   401 unauthorized / 500 send_failed     → failed
+ *   403 forbidden                          → no access to this account
+ *   403 recipient_not_allowed              → only the account's saved address
+ *   429 rate_limited + Retry-After (s)     → too many tests, wait N min
+ *   500 not_configured                     → email sending not set up
+ *  Anything else (network, unknown code) → failed. The server's text is
+ *  never shown. */
 export type OwnerEmailTestResultKey =
   | "ownerEmailTestSent"
-  | "ownerEmailTestNotConfigured"
-  | "ownerEmailTestFailed";
+  | "ownerEmailErrInvalid"
+  | "ownerEmailTestFailed"
+  | "ownerEmailErrForbidden"
+  | "ownerEmailTestRecipientNotAllowed"
+  | "ownerEmailTestRateLimited"
+  | "ownerEmailTestRateLimitedNoTime"
+  | "ownerEmailTestNotConfigured";
 
-export function ownerEmailTestResult(status: number, body: unknown): OwnerEmailTestResultKey {
-  const b = body && typeof body === "object" ? (body as { ok?: unknown; fallback?: unknown }) : {};
-  if (status !== 200 || b.ok !== true) return "ownerEmailTestFailed";
-  if (b.fallback) return "ownerEmailTestNotConfigured";
-  return "ownerEmailTestSent";
+export interface OwnerEmailTestResult {
+  key: OwnerEmailTestResultKey;
+  /** Minutes to wait, rounded up (rate limited with a Retry-After only). */
+  minutes?: number;
+}
+
+/** Retry-After in seconds → whole minutes, rounded up (at least 1).
+ *  Null when the header is missing or not a positive number of seconds. */
+export function retryAfterMinutes(header: string | null | undefined): number | null {
+  if (header == null || !/^\s*\d+\s*$/.test(header)) return null;
+  const sec = Number(header);
+  if (!Number.isFinite(sec) || sec <= 0) return null;
+  return Math.max(1, Math.ceil(sec / 60));
+}
+
+export function ownerEmailTestResult(
+  status: number,
+  body: unknown,
+  retryAfter?: string | null,
+): OwnerEmailTestResult {
+  const b = body && typeof body === "object" ? (body as { ok?: unknown; error?: unknown }) : {};
+  if (status === 200 && b.ok === true) return { key: "ownerEmailTestSent" };
+  if (status === 400 && b.error === "invalid_email") return { key: "ownerEmailErrInvalid" };
+  if (status === 403 && b.error === "recipient_not_allowed") return { key: "ownerEmailTestRecipientNotAllowed" };
+  if (status === 403 && b.error === "forbidden") return { key: "ownerEmailErrForbidden" };
+  if (status === 429 && b.error === "rate_limited") {
+    const minutes = retryAfterMinutes(retryAfter);
+    return minutes === null ? { key: "ownerEmailTestRateLimitedNoTime" } : { key: "ownerEmailTestRateLimited", minutes };
+  }
+  if (status === 500 && b.error === "not_configured") return { key: "ownerEmailTestNotConfigured" };
+  return { key: "ownerEmailTestFailed" };
 }
 
 /** The switch: flips the flag only. The address is kept (switching off then

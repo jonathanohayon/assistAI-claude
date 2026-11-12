@@ -45,6 +45,7 @@ export function NotifsPanel({
     error: OwnerEmailErrorKey | null;
     recapFeatureOn?: boolean;
     locale: string;
+    asUserId?: string | null;
   } | null;
 }) {
   // État on/off WhatsApp indépendant de la valeur : sinon le champ (disabled

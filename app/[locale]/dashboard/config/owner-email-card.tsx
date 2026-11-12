@@ -26,7 +26,7 @@ import {
   toggleOwnerEmail,
   type OwnerEmailErrorKey,
   type OwnerEmailSettings,
-  type OwnerEmailTestResultKey,
+  type OwnerEmailTestResult,
 } from "./owner-email";
 import type { Translator } from "./types";
 
@@ -37,6 +37,7 @@ export function OwnerEmailCard({
   error,
   recapFeatureOn = true,
   locale,
+  asUserId,
   t,
 }: {
   /** What is on screen (unsaved edits included). */
@@ -49,6 +50,8 @@ export function OwnerEmailCard({
   /** The plan includes the owner recap (plan feature whatsapp_recap). */
   recapFeatureOn?: boolean;
   locale: string;
+  /** Admin on a tenant page: the test targets that tenant. */
+  asUserId?: string | null;
   t: Translator;
 }) {
   const id = useId();
@@ -62,7 +65,7 @@ export function OwnerEmailCard({
   const testBlock = ownerEmailTestBlock(base, value);
 
   const [testStatus, setTestStatus] = useState<"idle" | "sending">("idle");
-  const [testResult, setTestResult] = useState<OwnerEmailTestResultKey | null>(null);
+  const [testResult, setTestResult] = useState<OwnerEmailTestResult | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (resetTimer.current !== null) clearTimeout(resetTimer.current);
@@ -72,16 +75,16 @@ export function OwnerEmailCard({
     if (testBlock || testStatus !== "idle") return;
     setTestStatus("sending");
     setTestResult(null);
-    let result: OwnerEmailTestResultKey;
+    let result: OwnerEmailTestResult;
     try {
-      const res = await fetch(ownerEmailTestUrl(locale), {
+      const res = await fetch(ownerEmailTestUrl(locale, asUserId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: base.ownerRecapEmail }),
       });
-      result = ownerEmailTestResult(res.status, await res.json().catch(() => null));
+      result = ownerEmailTestResult(res.status, await res.json().catch(() => null), res.headers.get("Retry-After"));
     } catch {
-      result = "ownerEmailTestFailed";
+      result = { key: "ownerEmailTestFailed" };
     }
     setTestStatus("idle");
     setTestResult(result);
@@ -220,10 +223,10 @@ export function OwnerEmailCard({
       <p id={testNoteId} aria-live="polite" className="text-[11px] leading-relaxed text-[#475569] empty:hidden">
         {testResult ? (
           <span
-            data-test-result={testResult}
-            className={testResult === "ownerEmailTestSent" ? "font-medium text-[#047857]" : "font-medium text-[#991b1b]"}
+            data-test-result={testResult.key}
+            className={testResult.key === "ownerEmailTestSent" ? "font-medium text-[#047857]" : "font-medium text-[#991b1b]"}
           >
-            {t(testResult, { email: base.ownerRecapEmail })}
+            {t(testResult.key, { email: base.ownerRecapEmail, minutes: testResult.minutes ?? 0 })}
           </span>
         ) : testBlock ? (
           t(testBlock)

@@ -862,6 +862,7 @@ export function ConfigForm({
                             error: ownerEmailError,
                             recapFeatureOn: features?.whatsapp_recap !== false,
                             locale,
+                            asUserId: asUserId ?? null,
                           }
                         : null
                     }

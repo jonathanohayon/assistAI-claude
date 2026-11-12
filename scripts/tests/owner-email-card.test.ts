@@ -230,12 +230,47 @@ for (const l of LOCALES) {
   assert.equal(ownerEmailTestBlock(S("", true), S(ADDR, true)), "ownerEmailTestNeedsSaved", "typed but not saved");
   assert.equal(ownerEmailTestBlock(S(ADDR, true), S("b@example.test", true)), "ownerEmailTestSaveFirst");
   assert.equal(ownerEmailTestBlock(S(ADDR, false), S(ADDR, false)), null, "a saved address can be tested even when off");
-  assert.equal(ownerEmailTestResult(200, { ok: true, id: "x" }), "ownerEmailTestSent");
-  assert.equal(ownerEmailTestResult(200, { ok: true, fallback: "console_log" }), "ownerEmailTestNotConfigured");
-  assert.equal(ownerEmailTestResult(500, { error: "x", hint: "y" }), "ownerEmailTestFailed");
-  assert.equal(ownerEmailTestResult(400, { error: "Format email invalide" }), "ownerEmailTestFailed");
-  assert.equal(ownerEmailTestResult(200, null), "ownerEmailTestFailed");
+  // The email-test contract (PR #300): every code maps to one of our lines.
+  const R = ownerEmailTestResult;
+  assert.deepEqual(R(200, { ok: true, id: "x" }), { key: "ownerEmailTestSent" });
+  assert.deepEqual(R(200, { ok: true, fallback: "console_log" }), { key: "ownerEmailTestSent" }, "fallback no longer read");
+  assert.deepEqual(R(200, null), { key: "ownerEmailTestFailed" });
+  assert.deepEqual(R(400, { error: "invalid_email" }), { key: "ownerEmailErrInvalid" });
+  assert.deepEqual(R(401, { error: "unauthorized" }), { key: "ownerEmailTestFailed" });
+  assert.deepEqual(R(500, { error: "send_failed" }), { key: "ownerEmailTestFailed" });
+  assert.deepEqual(R(403, { error: "forbidden" }), { key: "ownerEmailErrForbidden" });
+  assert.deepEqual(R(403, { error: "recipient_not_allowed" }), { key: "ownerEmailTestRecipientNotAllowed" });
+  assert.deepEqual(R(429, { error: "rate_limited", scope: "account" }, "3600"), { key: "ownerEmailTestRateLimited", minutes: 60 });
+  assert.deepEqual(R(429, { error: "rate_limited", scope: "global" }, "61"), { key: "ownerEmailTestRateLimited", minutes: 2 }, "rounded up");
+  assert.deepEqual(R(429, { error: "rate_limited", scope: "account" }, "1"), { key: "ownerEmailTestRateLimited", minutes: 1 });
+  assert.deepEqual(R(429, { error: "rate_limited", scope: "account" }, null), { key: "ownerEmailTestRateLimitedNoTime" }, "no header");
+  assert.deepEqual(R(429, { error: "rate_limited", scope: "account" }, "Wed, 21 Oct 2026 07:28:00 GMT"), { key: "ownerEmailTestRateLimitedNoTime" }, "date form not guessed");
+  assert.deepEqual(R(429, { error: "rate_limited" }, "0"), { key: "ownerEmailTestRateLimitedNoTime" });
+  assert.deepEqual(R(500, { error: "not_configured" }), { key: "ownerEmailTestNotConfigured" });
+  assert.deepEqual(R(502, { error: "Some provider text" }), { key: "ownerEmailTestFailed" });
+  assert.deepEqual(R(0, null), { key: "ownerEmailTestFailed" }, "network failure");
+  // ?asUserId reaches email-test too, so an admin tests the tenant's address.
   assert.equal(ownerEmailTestUrl("he"), "/api/dashboard/notifications/email-test?locale=he");
+  assert.equal(ownerEmailTestUrl("fr", null), "/api/dashboard/notifications/email-test?locale=fr");
+  assert.equal(
+    ownerEmailTestUrl("fr", "11111111-2222-3333-4444-555555555555"),
+    "/api/dashboard/notifications/email-test?locale=fr&asUserId=11111111-2222-3333-4444-555555555555",
+  );
+  {
+    const cardSrc = read("app/[locale]/dashboard/config/owner-email-card.tsx");
+    assert.match(cardSrc, /ownerEmailTestUrl\(locale, asUserId\)/);
+    assert.match(cardSrc, /res\.headers\.get\("Retry-After"\)/);
+    assert.doesNotMatch(cardSrc, /fallback/, "no sender-configured inference left");
+    assert.match(read("app/[locale]/dashboard/config-form.tsx"), /asUserId: asUserId \?\? null,/);
+  }
+  // Every result key is a catalogue line with only the {email}/{minutes} placeholders.
+  for (const l of LOCALES) {
+    const dc = messages(l).DashboardConfig;
+    for (const k of ["ownerEmailTestSent", "ownerEmailErrInvalid", "ownerEmailTestFailed", "ownerEmailErrForbidden", "ownerEmailTestRecipientNotAllowed", "ownerEmailTestRateLimited", "ownerEmailTestRateLimitedNoTime", "ownerEmailTestNotConfigured"])
+      assert.ok(typeof dc[k] === "string", `${l}: ${k}`);
+    assert.match(dc.ownerEmailTestRateLimited, /\{minutes\}/, `${l}: minutes placeholder`);
+    assert.doesNotMatch(dc.ownerEmailTestRateLimitedNoTime, /\{/, `${l}: no number without the header`);
+  }
   for (const l of LOCALES) {
     const dc = messages(l).DashboardConfig;
     const none = card(render(l, S("", true)));
