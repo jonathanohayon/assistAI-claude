@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Tenant Calls view (J2, levels 1 and 2): the period's three figures, one
- * line per inbound call, and an inline detail under the tapped line (summary,
+ * Tenant Calls view (J2, levels 1 and 2): a period picker, the period's
+ * three figures (period-wide: the outcome filter never moves them), an
+ * outcome filter, one line per inbound call, and an inline detail under the tapped line (summary,
  * what was done, the conversation, then "More details"). Default content of
  * the Monitoring page, above the engineering console. Data: GET
  * /api/dashboard/calls (+ /[id]), shapes in lib/calls/contract.ts; words and
@@ -10,8 +11,9 @@
  */
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
+import { ChipGroup, Segmented } from "@/components/bricks/controls";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { TranscriptBubbles } from "@/components/calls/TranscriptBubbles";
 import type {
@@ -27,12 +29,21 @@ import {
   calledNumber,
   contactLabel,
   conversationView,
+  DEFAULT_PERIOD,
   detailUrl,
   durationMessage,
+  emptyState,
   formatCallTime,
+  listHeading,
   listUrl,
+  OUTCOME_FILTERS,
   outcomeKey,
+  PERIOD_CHOICES,
+  periodKey,
+  periodRange,
   type Msg,
+  type OutcomeFilter,
+  type PeriodChoice,
 } from "@/lib/calls/view";
 
 import { Stat } from "../config/shared-ui";
@@ -70,33 +81,29 @@ export function CallsView({
   const [moreStatus, setMoreStatus] = useState<"idle" | "loading" | "error">("idle");
   const [openId, setOpenId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, DetailState>>({});
+  const [outcome, setOutcome] = useState<OutcomeFilter>("all");
+  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(DEFAULT_PERIOD);
+  // Bumped by "retry"; also part of the first-page request identity.
+  const [attempt, setAttempt] = useState(0);
+  // Only the latest first-page request may write the state (fast clicks).
+  const requestSeq = useRef(0);
 
   const fetchPage = useCallback(
-    async (cursor: string | null): Promise<CallListResponse> => {
-      const res = await fetch(listUrl(cursor, asUserId), { cache: "no-store" });
+    async (cursor: string | null, filter?: OutcomeFilter, choice?: PeriodChoice): Promise<CallListResponse> => {
+      // since / until in the browser's time zone; later pages send only the cursor.
+      const range = cursor || !choice ? undefined : periodRange(choice, new Date());
+      const res = await fetch(listUrl(cursor, asUserId, filter, range), { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
       return (await res.json()) as CallListResponse;
     },
     [asUserId],
   );
 
-  const showFirst = (page: CallListResponse) => {
-    setItems(page.items);
-    setFigures(page.figures);
-    setPeriod(page.period);
-    setNextCursor(page.nextCursor);
-    setStatus("ready");
-  };
-
-  // Status starts at "loading"; a retry sets it back before calling this.
-  const loadFirst = () =>
-    fetchPage(null).then(showFirst, () => setStatus("error"));
-
   useEffect(() => {
-    let alive = true;
-    fetchPage(null).then(
+    const seq = ++requestSeq.current;
+    fetchPage(null, outcome, periodChoice).then(
       (page) => {
-        if (!alive) return;
+        if (seq !== requestSeq.current) return;
         setItems(page.items);
         setFigures(page.figures);
         setPeriod(page.period);
@@ -104,24 +111,43 @@ export function CallsView({
         setStatus("ready");
       },
       () => {
-        if (alive) setStatus("error");
+        if (seq === requestSeq.current) setStatus("error");
       },
     );
-    return () => {
-      alive = false;
-    };
-  }, [fetchPage]);
+  }, [fetchPage, outcome, periodChoice, attempt]);
+
+  /** A new filter or period: reset the list, close the open detail, refetch page 1. */
+  const restart = () => {
+    requestSeq.current++; // drop any page still in flight
+    setItems([]);
+    setNextCursor(null);
+    setOpenId(null);
+    setMoreStatus("idle");
+    setStatus("loading");
+  };
+  const pickOutcome = (id: string) => {
+    if (id === outcome) return;
+    restart();
+    setOutcome(id as OutcomeFilter);
+  };
+  const pickPeriod = (id: string) => {
+    if (id === periodChoice) return;
+    restart();
+    setPeriodChoice(id as PeriodChoice);
+  };
 
   const loadMore = async () => {
     if (!nextCursor) return;
+    const seq = requestSeq.current;
     setMoreStatus("loading");
     try {
       const page = await fetchPage(nextCursor);
+      if (seq !== requestSeq.current) return;
       setItems((prev) => [...prev, ...page.items.filter((x) => !prev.some((p) => p.id === x.id))]);
       setNextCursor(page.nextCursor);
       setMoreStatus("idle");
     } catch {
-      setMoreStatus("error");
+      if (seq === requestSeq.current) setMoreStatus("error");
     }
   };
 
@@ -169,8 +195,34 @@ export function CallsView({
         )}
       </div>
 
+      {/* The period drives the figures AND the list. */}
+      <Segmented
+        label={t("periodLabel")}
+        options={PERIOD_CHOICES.map((c) => ({ id: c, label: say(t, { key: periodKey(c) }) }))}
+        selected={periodChoice}
+        onPick={pickPeriod}
+      />
+
+      {figures && <CallsFigures figures={figures} filtered={outcome !== "all"} t={t} />}
+
+      {/* The outcome filter drives the list only. */}
+      <OutcomeFilterChips selected={outcome} onPick={pickOutcome} t={t} />
+
+      <ListHeading
+        level={headingLevel === 1 ? "h2" : "h3"}
+        outcome={outcome}
+        shown={items.length}
+        complete={status === "ready" && !nextCursor}
+        t={t}
+      />
+
+      {/* Announces the result of each refresh to screen readers. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {status === "ready" ? t("listShown", { count: items.length }) : ""}
+      </p>
+
       {status === "loading" && (
-        <p role="status" className="rounded-2xl border border-[var(--color-border)] bg-white p-6 text-sm text-[var(--color-muted-foreground)]">
+        <p className="rounded-2xl border border-[var(--color-border)] bg-white p-6 text-sm text-[var(--color-muted-foreground)]">
           {t("loading")}
         </p>
       )}
@@ -181,8 +233,8 @@ export function CallsView({
           <button
             type="button"
             onClick={() => {
-              setStatus("loading");
-              void loadFirst();
+              restart();
+              setAttempt((n) => n + 1);
             }}
             className="min-h-11 rounded-full border border-[var(--color-border)] px-4 text-sm font-medium text-[var(--color-foreground)] hover:bg-[var(--color-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
           >
@@ -191,23 +243,8 @@ export function CallsView({
         </div>
       )}
 
-      {status === "ready" && figures && (
-        <div
-          role="group"
-          aria-label={t("figuresLabel")}
-          className="grid grid-cols-3 gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm sm:gap-6 sm:p-6"
-        >
-          <Stat label={t("figureCallsReceived")} value={t("figureValue", { count: figures.callsReceived })} tone="cyan" />
-          <Stat label={t("figureBooked")} value={t("figureValue", { count: figures.booked })} tone="primary" />
-          <Stat label={t("figureTransferred")} value={t("figureValue", { count: figures.transferred })} tone="teal" />
-        </div>
-      )}
-
       {status === "ready" && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-white p-8 text-center">
-          <p className="font-medium text-[var(--color-foreground)]">{t("emptyTitle")}</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-muted-foreground)]">{t("emptyBody")}</p>
-        </div>
+        <CallsEmpty outcome={outcome} onShowAll={() => pickOutcome("all")} t={t} />
       )}
 
       {status === "ready" && items.length > 0 && (
@@ -231,6 +268,109 @@ export function CallsView({
         <LoadMore nextCursor={nextCursor} status={moreStatus} onMore={() => void loadMore()} t={t} />
       )}
     </section>
+  );
+}
+
+/** The period's figures. They count EVERY call of the period: the outcome filter never moves them. */
+export function CallsFigures({ figures, filtered, t }: { figures: CallFigures; filtered: boolean; t: T }) {
+  const id = useId();
+  return (
+    <div
+      role="group"
+      aria-labelledby={id}
+      data-figures
+      className="rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm sm:p-6"
+    >
+      <p className="text-xs text-[var(--color-muted-foreground)]">
+        <span id={id} className="font-semibold text-[#334155]">
+          {t("figuresLabel")}
+        </span>
+        {filtered && (
+          <>
+            {" · "}
+            <span data-figures-note>{t("figuresAllCalls")}</span>
+          </>
+        )}
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-3 sm:gap-6">
+        <Stat label={t("figureCallsReceived")} value={t("figureValue", { count: figures.callsReceived })} tone="cyan" />
+        <Stat label={t("figureBooked")} value={t("figureValue", { count: figures.booked })} tone="primary" />
+        <Stat label={t("figureTransferred")} value={t("figureValue", { count: figures.transferred })} tone="teal" />
+      </div>
+    </div>
+  );
+}
+
+/** "All" + the five outcomes, with the badges' own words; radio semantics, arrow keys, wraps. */
+export function OutcomeFilterChips({
+  selected,
+  onPick,
+  t,
+}: {
+  selected: OutcomeFilter;
+  onPick: (id: string) => void;
+  t: T;
+}) {
+  return (
+    <ChipGroup
+      label={t("filterLabel")}
+      options={OUTCOME_FILTERS.map((o) => ({ id: o.id, label: say(t, { key: o.key }) }))}
+      selected={selected}
+      onPick={onPick}
+    />
+  );
+}
+
+/** The list's heading: the filter's name, with the count only when every page is loaded. */
+export function ListHeading({
+  level,
+  outcome,
+  shown,
+  complete,
+  t,
+}: {
+  level: "h2" | "h3";
+  outcome: OutcomeFilter;
+  shown: number;
+  complete: boolean;
+  t: T;
+}) {
+  const H = level;
+  const h = listHeading(outcome, shown, complete);
+  const label = say(t, { key: h.labelKey });
+  return (
+    <H data-list-heading className="text-base font-semibold text-[var(--color-foreground)]">
+      {h.count === null ? label : t("listHeadingCount", { label, count: h.count })}
+    </H>
+  );
+}
+
+/** No call: plain, or naming the filter with a way to clear it. */
+export function CallsEmpty({ outcome, onShowAll, t }: { outcome: OutcomeFilter; onShowAll: () => void; t: T }) {
+  const e = emptyState(outcome);
+  return (
+    <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-white p-8 text-center">
+      {e.kind === "plain" ? (
+        <>
+          <p className="font-medium text-[var(--color-foreground)]">{t("emptyTitle")}</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-muted-foreground)]">{t("emptyBody")}</p>
+        </>
+      ) : (
+        <>
+          <p className="font-medium text-[var(--color-foreground)]">
+            {t("emptyFiltered", { outcome: say(t, { key: e.outcomeKey }) })}
+          </p>
+          <button
+            type="button"
+            onClick={onShowAll}
+            data-show-all
+            className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-[#be185d] underline underline-offset-4 hover:text-[#9d174d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+          >
+            {t("showAllCalls")}
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
