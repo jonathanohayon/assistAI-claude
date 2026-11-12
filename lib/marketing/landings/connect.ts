@@ -329,9 +329,9 @@ export function buildConnectContent(l: LandingLocale, _sw: LandingSwitches = LAN
           id: "change",
           question: t({ fr: "Faut-il changer mon agent ?", en: "Do I need to change my agent?", he: "צריך לשנות את הסוכן שלי?" }),
           answer: t({
-            fr: "Non. Il lui faut seulement une adresse https qui reçoit la requête ci-dessus et renvoie { \"answer\": \"…\" }.",
-            en: "No. It only needs an https address that takes the request above and returns { \"answer\": \"…\" }.",
-            he: "לא. הוא צריך רק כתובת https שמקבלת את הבקשה שלמעלה ומחזירה { \"answer\": \"…\" }.",
+            fr: "Non. Il lui faut seulement une adresse https qui reçoit la requête ci-dessus et renvoie un JSON avec un champ answer.",
+            en: "No. It only needs an https address that takes the request above and returns JSON with an answer field.",
+            he: "לא. הוא צריך רק כתובת https שמקבלת את הבקשה שלמעלה ומחזירה JSON עם שדה answer.",
           }),
         },
         {

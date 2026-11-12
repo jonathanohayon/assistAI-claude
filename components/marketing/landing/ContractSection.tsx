@@ -4,6 +4,25 @@ import { Reveal } from "../Reveal";
 import { CodeBlock } from "./CodeBlock";
 import { SectionHeader } from "./SectionHeader";
 
+/** Technical tokens inside prose ("X-Tamara-Signature", "{ role: user | agent, text }")
+ *  stay one left-to-right unit, unbroken, inside Hebrew sentences. */
+const LTR_TOKEN = /\{[^}]*\}|X-Tamara-Signature|HMAC-SHA256/g;
+function withLtrTokens(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(LTR_TOKEN)) {
+    out.push(text.slice(last, m.index));
+    out.push(
+      <bdi key={m.index} dir="ltr" className="whitespace-nowrap">
+        {m[0]}
+      </bdi>,
+    );
+    last = m.index! + m[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+}
+
 function Part({ part, children }: { part: ContractPart; children?: React.ReactNode }) {
   return (
     <Reveal
@@ -13,7 +32,7 @@ function Part({ part, children }: { part: ContractPart; children?: React.ReactNo
     >
       <div className="min-w-0 max-w-2xl">
         <h3 className="font-display text-2xl tracking-tight text-[#18181b] sm:text-3xl">{part.title}</h3>
-        <p className="mt-3 text-base leading-relaxed text-[#475569]">{part.body}</p>
+        <p className="mt-3 text-base leading-relaxed text-[#475569]">{withLtrTokens(part.body)}</p>
         {children}
       </div>
       {part.code ? (
@@ -47,7 +66,7 @@ export function ContractSection(c: ContractCopy) {
                       {f.name}
                     </code>
                   </dt>
-                  <dd className="text-sm leading-relaxed text-[#475569]">{f.body}</dd>
+                  <dd className="text-sm leading-relaxed text-[#475569]">{withLtrTokens(f.body)}</dd>
                 </div>
               ))}
             </dl>
