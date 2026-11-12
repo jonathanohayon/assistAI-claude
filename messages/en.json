@@ -2760,5 +2760,12 @@
       "no_transfer_number": "{cap} is waiting for a transfer number.",
       "off": "turn on {cap} in “{tools}”."
     }
+  },
+  "ClientConfirm": {
+    "booked": "Your appointment on {date} at {time} is confirmed.",
+    "cancelled": "Your appointment on {date} at {time} is cancelled.",
+    "cancelledNoDate": "Your appointment is cancelled.",
+    "rescheduled": "Your appointment has been moved to {date} at {time}.",
+    "place": "Location: {place}"
   }
 }
