@@ -768,6 +768,19 @@
     "whatsappSubtitle": "אחרי כל שיחה, נשלח סיכום ב-WhatsApp ללקוחה ולבעלת העסק.",
     "ownerWhatsappLabel": "מספר WhatsApp של בעלת העסק",
     "ownerWhatsappHint": "פורמט בינלאומי, למשל: ⁦+972500000000⁩. השאירי ריק כדי לכבות.",
+    "whatsappTestNeedsSaved": "שמרו מספר כדי לשלוח בדיקה.",
+    "whatsappTestSaveFirst": "שמרו את המספר לפני שבודקים אותו.",
+    "whatsappTestSent": "הודעת בדיקה נשלחה אל ⁦{number}⁩.",
+    "whatsappTestInvalidNumber": "המספר אינו תקין. פורמט בינלאומי, למשל: ⁦+972500000000⁩.",
+    "whatsappTestUnauthorized": "פג תוקף ההתחברות. התחברו מחדש ונסו שוב.",
+    "whatsappTestForbidden": "אין לכם גישה להגדרות של החשבון הזה.",
+    "whatsappTestRecipientNotAllowed": "הבדיקה יכולה להישלח רק למספר השמור בחשבון הזה.",
+    "whatsappTestNoSavedNumber": "עדיין לא נשמר מספר: שמרו מספר לפני הבדיקה.",
+    "whatsappTestRateLimited": "יותר מדי בדיקות ברצף. נסו שוב בעוד {minutes} דק׳.",
+    "whatsappTestRateLimitedNoTime": "יותר מדי בדיקות ברצף. נסו שוב מעט מאוחר יותר.",
+    "whatsappTestSendFailed": "הודעת הבדיקה לא נשלחה. נסו שוב בעוד רגע.",
+    "whatsappTestNotConfigured": "הודעת הבדיקה לא נשלחה: שליחת WhatsApp עדיין לא הוגדרה.",
+    "whatsappTestFailed": "לא ניתן היה לשלוח את הבדיקה. נסו שוב בעוד רגע.",
     "reminderTitle": "תזכורת לתור (יום לפני)",
     "reminderHint": "שולח אוטומטית תזכורת ב-WhatsApp ללקוח יום לפני התור (בסביבות 18:00). המספר נלקח מהתור שנקבע על ידי הסוכן.",
     "whatsappFooter": "הלקוחה גם מקבלת סיכום אם היא מקבלת הודעות WhatsApp במספר שממנו התקשרה.",
@@ -1903,7 +1916,17 @@
     "muted": "המיקרופון מושתק",
     "conversation": "שיחה",
     "emptyLive": "מאזין… דברו עם הסוכן שלכם.",
-    "emptyIdle": "לחצו על המיקרופון כדי להתחיל בדיקה."
+    "emptyIdle": "לחצו על המיקרופון כדי להתחיל בדיקה.",
+    "errors": {
+      "notConfigured": "הבדיקה החיה אינה זמינה כרגע.",
+      "rateLimited": "יותר מדי בדיקות ברצף. נסו שוב בעוד {minutes} דק׳.",
+      "rateLimitedNoTime": "יותר מדי בדיקות ברצף. נסו שוב מעט מאוחר יותר.",
+      "unavailable": "הבדיקה החיה אינה זמינה זמנית. נסו שוב בעוד רגע.",
+      "planRequired": "בדיקה חיה של הסוכן הזה אינה כלולה בחבילה שלכם.",
+      "unauthorized": "פג תוקף החיבור שלכם. התחברו מחדש.",
+      "connectFailed": "החיבור לא הצליח. בדקו את הרשת ואת המיקרופון ונסו שוב.",
+      "failed": "לא ניתן היה להתחיל את הבדיקה. נסו שוב."
+    }
   },
   "Voices": {
     "display": "קול {n}{gender, select, f { · נשי} m { · גברי} other {}}",
