@@ -1,4 +1,13 @@
-export function Logo({ className }: { className?: string }) {
+import type { WordmarkTone } from "@/lib/marketing/nav-tone";
+
+export function Logo({
+  className,
+  tone = "brand",
+}: {
+  className?: string;
+  /** "onDark" renders the wordmark white, for a dark hero under the nav. */
+  tone?: WordmarkTone;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-2 ${className ?? ""}`}
@@ -23,7 +32,21 @@ export function Logo({ className }: { className?: string }) {
           />
         </svg>
       </span>
-      <span className="font-display text-xl leading-none tracking-tight text-[#8b5cf6]">
+      <span
+        className={`font-display text-xl leading-none tracking-tight transition-colors duration-300 ${
+          tone === "onDark" ? "relative isolate text-white" : "text-[#8b5cf6]"
+        }`}
+      >
+        {/* Over a dark hero, a soft dark halo keeps white >= 4.5:1 on the
+         *  lightest pixel behind the wordmark: the home video's poster has
+         *  bright bulbs there (white alone measured 2.42:1). */}
+        {tone === "onDark" && (
+          <span
+            aria-hidden
+            data-wordmark-halo=""
+            className="pointer-events-none absolute -inset-x-4 -inset-y-2.5 -z-10 rounded-full bg-black/45 blur-[10px]"
+          />
+        )}
         Tamara
       </span>
     </span>
