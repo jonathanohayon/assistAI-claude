@@ -6,6 +6,7 @@ import { campaignContacts, campaigns } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 import type { DispatchMode } from "@/lib/campaigns/dispatch-mode";
 import type { CampaignStatus } from "@/lib/campaigns/constants";
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const parsed = await parseJsonBody<{ action?: string }>(req);

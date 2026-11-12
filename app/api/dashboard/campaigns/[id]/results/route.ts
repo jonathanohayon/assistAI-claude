@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { campaignCalls, campaigns, outboundAgents } from "@/lib/db/schema";
 import { analyzeCampaignCall } from "@/lib/campaigns/analyze";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { resultsCallView } from "@/lib/campaigns/results-call-view";
 
@@ -32,6 +33,9 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if ("forbidden" in r)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Plan gate (same rule as the UI): admins, or plans with outbound_campaigns.
+  const planGate = await outboundCampaignsGate();
+  if (planGate) return planGate;
 
   const { id } = await ctx.params;
   const mode = captureMode();
