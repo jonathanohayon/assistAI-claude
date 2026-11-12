@@ -84,7 +84,9 @@ export function CaptureFieldsEditor({
               onChange={(e) => update(i, { label: e.target.value })}
             />
             <select
-              className={`${field} w-auto`}
+              // inputCls carries w-full, which beats w-auto: drop it so the
+              // row stays on one line on desktop and wraps on a phone.
+              className={`${field.replace("w-full ", "")} w-auto`}
               value={f.type}
               onChange={(e) => update(i, { type: e.target.value as ExtractionField["type"] })}
             >
