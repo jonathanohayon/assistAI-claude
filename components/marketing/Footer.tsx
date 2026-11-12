@@ -12,7 +12,7 @@ export function Footer({
   /** Prefix of the home-section links: "" on the home, "/" elsewhere (the
    *  sections live on the home page). */
   anchorBase?: string;
-  /** The page's own one-line description; omitted = the home's (Footer.tagline). */
+  /** The page's own one-line description; omitted = the home's (Footer.tagline). Set = the plain copyright line too. */
   tagline?: string;
 } = {}) {
   const t = useTranslations("Footer");
@@ -89,7 +89,8 @@ export function Footer({
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[#e2e8f0] pt-6 text-xs text-[#475569]">
-          <p>{t("copyright", { year: new Date().getFullYear() })}</p>
+          {/* A page with its own line (the landing pages) also gets the plain copyright: the home's names the receptionist. */}
+          <p>{t(tagline ? "copyrightPlain" : "copyright", { year: new Date().getFullYear() })}</p>
           <p>
             <span className="inline-flex items-center gap-1.5">
               <span className="relative flex h-1.5 w-1.5">

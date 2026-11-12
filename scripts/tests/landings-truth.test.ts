@@ -140,7 +140,7 @@ for (const s of [
 {
   for (const p of PAGES)
     for (const l of ["fr", "en", "he"] as const) {
-      const tag = p.render(l).footerTagline;
+      const tag = (p.render(l, OFF) as { footerTagline?: string }).footerTagline;
       assert.ok(tag && tag.length > 0, `${p.name} ${l}: footer line set`);
       assert.doesNotMatch(tag!, /r[ée]ceptionn|receptionist|פקיד/i, `${p.name} ${l}: not the receptionist line`);
     }
@@ -148,6 +148,11 @@ for (const s of [
   assert.equal(buildSalesContent("en").footerTagline, "Tamara, your AI voice agent");
   const footer = readFileSync(join(new URL("../../", import.meta.url).pathname, "components/marketing/Footer.tsx"), "utf8");
   assert.match(footer, /\{tagline \?\? t\("tagline"\)\}/, "the home keeps its own line");
+  assert.match(footer, /t\(tagline \? "copyrightPlain" : "copyright"/, "a landing page gets the plain copyright");
+  for (const l of ["fr", "en", "he"]) {
+    const f = JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).Footer;
+    assert.doesNotMatch(f.copyrightPlain, /r[ée]ceptionn|receptionist|פקיד/i, `${l}: copyrightPlain is neutral`);
+  }
 }
 
 console.log("landings-truth: ok");
