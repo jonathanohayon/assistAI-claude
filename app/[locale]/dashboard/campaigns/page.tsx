@@ -1,11 +1,7 @@
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { featuresForPlan } from "@/lib/plan-features";
-import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { loadOutboundCampaignsAccess } from "@/lib/campaigns/plan-gate";
 
 import { CampaignsPageClient } from "./campaigns-page-client";
 
@@ -23,18 +19,8 @@ export default async function CampaignsPage(props: {
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
 
-  const [me] = await db
-    .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-
-  const isAdmin = me?.role === "admin";
-  const features = featuresForPlan(
-    await getPlanFeatureMatrix(),
-    me?.subscriptionPlan,
-  );
-  const enabled = isAdmin || features.outbound_campaigns === true;
+  // Same helper as the API gate (lib/campaigns/plan-gate.ts).
+  const { isAdmin, enabled } = await loadOutboundCampaignsAccess(session.user.id);
   if (!enabled) redirect(`/${locale}/dashboard`);
 
   return (

@@ -30,7 +30,7 @@ import type { PromptBlock } from "@/lib/agent-prompt-preview";
 
 import { PromptPreview } from "./prompt-preview";
 import { UpsellModal } from "./campaigns/upsell-modal";
-import type { PlanFeatures } from "@/lib/plan-features";
+import { canUseOutboundCampaigns, type PlanFeatures } from "@/lib/plan-features";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
 import { ChannelsPanel } from "./config/channels-panel";
@@ -221,7 +221,7 @@ export function ConfigForm({
   // Centre d'appels sortant : visible sur tous les plans, mais workspace
   // ouvrable seulement si la feature est active (plan premium) OU admin.
   // Sinon clic → modal d'upsell.
-  const campaignsEnabled = isAdmin || features?.outbound_campaigns === true;
+  const campaignsEnabled = canUseOutboundCampaigns(isAdmin, features);
   const [upsellOpen, setUpsellOpen] = useState(false);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
