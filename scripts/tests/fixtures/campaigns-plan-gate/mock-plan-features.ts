@@ -3,7 +3,8 @@
 // globalThis.__campgateLiftForceOff is true — the only way to have a plan that
 // HAS the feature, since the real one forces it off for every plan.
 export * from "../../../../lib/plan-features";
-import { featuresForPlan as realFeaturesForPlan, type PlanFeatureMatrix, type PlanFeatures, type PlanKey } from "../../../../lib/plan-features";
+import { featuresForPlan as realFeaturesForPlan, type PlanFeatureMatrix, type PlanFeatures } from "../../../../lib/plan-features";
+import type { PlanKey } from "../../../../lib/plans";
 
 const g = globalThis as { __campgateLiftForceOff?: boolean };
 export function featuresForPlan(matrix: PlanFeatureMatrix, plan: string | null | undefined): PlanFeatures {
