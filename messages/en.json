@@ -1901,7 +1901,17 @@
     "muted": "Mic muted",
     "conversation": "Conversation",
     "emptyLive": "Listening… speak to your agent.",
-    "emptyIdle": "Click the mic to start a test."
+    "emptyIdle": "Click the mic to start a test.",
+    "errors": {
+      "notConfigured": "Live testing isn't available right now.",
+      "rateLimited": "Too many tests in a row. Try again in {minutes} min.",
+      "rateLimitedNoTime": "Too many tests in a row. Try again a little later.",
+      "unavailable": "Live testing is temporarily unavailable. Try again in a moment.",
+      "planRequired": "Live testing this agent isn't included in your plan.",
+      "unauthorized": "Your session has expired. Please sign in again.",
+      "connectFailed": "The connection didn't go through. Check your network and microphone, then try again.",
+      "failed": "The test couldn't start. Please try again."
+    }
   },
   "Voices": {
     "display": "Voice {n}{gender, select, f { · female} m { · male} other {}}",
