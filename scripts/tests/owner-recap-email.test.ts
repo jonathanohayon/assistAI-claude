@@ -38,6 +38,18 @@ const stringsFor = (locale: RecapLocale): RecapStrings => {
 };
 
 async function main() {
+  // ── 0. Migration: idempotent, defaults OFF / '', sorts last ──────────
+  assert.equal(
+    read("drizzle/0050_owner_recap_email.sql").trim(),
+    `ALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "owner_recap_email" text DEFAULT '' NOT NULL;--> statement-breakpoint\nALTER TABLE "agent_configs" ADD COLUMN IF NOT EXISTS "owner_recap_email_enabled" boolean DEFAULT false NOT NULL;`,
+  );
+  {
+    const j = (JSON.parse(read("drizzle/meta/_journal.json")) as { entries: Array<{ when: number; tag: string }> }).entries;
+    const mine = j.findIndex((e) => e.tag === "0050_owner_recap_email");
+    assert.ok(mine >= 0, "journal entry present");
+    for (const e of j.slice(0, mine)) assert.ok(e.when < j[mine].when, `journal: ${e.tag} sorts before 0050`);
+  }
+
   // ── 1. Address validation + normalisation ─────────────────────────────
   assert.deepEqual(parseRecapEmail("  Owner@Example.COM "), { ok: true, value: "owner@example.com" });
   assert.deepEqual(parseRecapEmail(""), { ok: true, value: "" }, "'' clears");
@@ -207,7 +219,7 @@ async function main() {
   assert.equal(await sendOwnerRecapEmailBestEffort({ ...base, cfg: on }), "sent");
   assert.equal(sends.length, 1, "on: called once");
   assert.deepEqual(sends[0], ["owner@example.com", { forOwner: forOwner.en, fromNumber: "+15550100001", businessName: "Demo Salon", locale: "en" }]);
-  const sentRender = renderOwnerRecapEmail({ locale: "en", ...sends[0][1] }, stringsFor("en"));
+  const sentRender = renderOwnerRecapEmail({ ...sends[0][1], locale: "en" }, stringsFor("en"));
   assert.ok(sentRender.text.includes(forOwner.en) && sentRender.text.trimEnd().endsWith("— Demo Salon"));
   assert.equal(logs.length, 1);
   assert.equal(logs[0].event, "email_sent_owner");
