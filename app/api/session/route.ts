@@ -290,6 +290,7 @@ export async function POST(req: NextRequest) {
       webrtcUrl: webrtcUrl(provider),
       model,
       transport: transportFor(model),
+      lang: body.primaryLanguage,
     });
     if (!out) return sessionError(true, "client secret missing from the provider answer");
     return NextResponse.json(out);
