@@ -1827,6 +1827,14 @@
       "signature": "— The Tamara team",
       "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a purely transactional email."
     },
+    "ownerRecap": {
+      "subject": "📞 New call received",
+      "eyebrow": "Call recap",
+      "heading": "📞 New call received",
+      "caller": "Caller: {number}",
+      "unknownNumber": "unknown number",
+      "footer": "You receive this email because call recaps by email are switched on for your account. You can change the address or switch them off anytime from your dashboard."
+    },
     "verification": {
       "subject": "Your verification code: {code}",
       "heading": "Your Tamara code",
