@@ -3,7 +3,8 @@
 //
 // The route used to send a branded email to ANY address in the body, with no
 // limit: a spam relay for any signed-in account. Now:
-//   - the only allowed recipient is the account's own address;
+//   - the only allowed recipients are the account's own addresses: its login
+//     email and its saved owner recap address (agent_configs.owner_recap_email);
 //   - every allowed attempt is counted (per account + global) BEFORE sending,
 //     with the shared DB limiter (lib/rate-limit-db.ts, bucket EMAIL_TEST_BUCKET);
 //   - responses carry neutral codes only (EMAIL_TEST_ERRORS).
@@ -45,17 +46,21 @@ export function isWellFormedEmail(raw: unknown): raw is string {
 export interface TestRecipientAccount {
   /** users.email — the account's login address. */
   loginEmail: string;
+  /**
+   * agent_configs.owner_recap_email — the saved owner recap address ("" or
+   * absent when none is saved, or when the account has no agent config).
+   */
+  ownerRecapEmail?: string | null;
 }
 
 /**
- * The addresses a test email may be sent to for this account, normalised.
- * Until PR #297 lands, ONLY the login email (users.email).
- * #297: add the saved recap address here in one line, e.g.
- *   account.ownerRecapEmail,
- * (and load it into TestRecipientAccount in the route). Nothing else changes.
+ * The addresses a test email may be sent to for this account, normalised:
+ * the login email and the saved owner recap address. An empty saved address
+ * adds nothing. The recap switch (owner_recap_email_enabled) deliberately does
+ * NOT matter here: a saved address can be tested before it is switched on.
  */
 export function allowedTestRecipients(account: TestRecipientAccount): string[] {
-  const list = [account.loginEmail]
+  const list = [account.loginEmail, account.ownerRecapEmail]
     .filter((e): e is string => typeof e === "string" && isWellFormedEmail(e))
     .map(normaliseEmail);
   return [...new Set(list)];
