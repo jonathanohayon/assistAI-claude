@@ -1,11 +1,11 @@
-// Verified numbers N1 against a real Postgres:
-//   1. migration 0051: the column, every EXISTING value grandfathered (read
-//      confirmed, by "grandfathered", one timestamp), a re-run is a no-op
-//      (no row rewritten);
+// Verified numbers N1 against a real Postgres (the "0051 writes no data"
+// md5 proof runs before this, in scripts/contact-confirmation-db.sh):
+//   1. the column, and every EXISTING value (no record) reads CONFIRMED and
+//      grandfathered; the enforcement date setting is absent;
 //   2. the write paths with the real DB: the email save, the Tools write
-//      (switch park / restore), the config routes' column write (new value →
-//      unconfirmed, same → kept, '' → cleared, omitted → kept), the record
-//      stored as a jsonb OBJECT;
+//      (switch park / restore), the config routes' column write (re-saved
+//      grandfathered value → no record, new value → unconfirmed, same →
+//      kept, '' → cleared, omitted → kept), the record stored as a jsonb OBJECT;
 //   3. the admin confirm (by "admin", logged without the value);
 //   4. sends identical whatever the record holds: /api/calls/end (owner
 //      recap WhatsApp + email, senders INJECTED), the WhatsApp test (sender
@@ -19,8 +19,6 @@
 // migrated database (it deletes users/events); otherwise it is skipped.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 const url = process.env.CONTACT_CONFIRMATION_TEST_DB_URL;
 if (!url) {
@@ -56,7 +54,7 @@ async function main() {
   const { NextRequest } = await import("next/server");
   const { db } = await import("../../lib/db");
   const cc = await import("../../lib/contact-confirmation");
-  const { contactConfirmationsWrite, markContactConfirmedByAdmin } = await import("../../lib/contact-confirmation-store");
+  const { contactConfirmationsWrite, loadEnforcementStartedAt, markContactConfirmedByAdmin } = await import("../../lib/contact-confirmation-store");
   const { saveOwnerRecapEmail } = await import("../../lib/owner-recap-email-store");
   const { writeTools } = await import("../../lib/tools/write");
   const { ownerRecapEmailDeps } = await import("../../lib/owner-recap-email-send");
@@ -66,7 +64,6 @@ async function main() {
   const { runOwnerDigests } = await import("../../lib/owner-digest-run");
   const callsEnd = await import("../../app/api/calls/end/route");
 
-  const root = path.resolve(new URL("../..", import.meta.url).pathname);
   const exec = (q: ReturnType<typeof sql>) => db.execute(q);
   const rows = async <T,>(q: ReturnType<typeof sql>) => (await exec(q)) as unknown as T[];
   const record = async (u: string) =>
@@ -76,54 +73,30 @@ async function main() {
 
   const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
   const ADMIN = id(900);
-  const A = { all: id(1), parked: id(2), none: id(3), emailOnly: id(4), hasRecord: id(5) };
+  const A = { all: id(1), parked: id(2), none: id(3) };
   await exec(sql`INSERT INTO users (id, email, password_hash, role) VALUES (${ADMIN}, 'admin@example.com', 'x', 'admin')`);
   for (const [k, u] of Object.entries(A)) {
     await exec(sql`INSERT INTO users (id, email, password_hash, role, display_name) VALUES (${u}, ${`${k}@example.com`}, 'x', 'user', 'Demo Salon')`);
+    // An existing account: inserted without the column → its default.
     await exec(sql`INSERT INTO agent_configs (user_id, instructions, greeting_instructions, primary_language, business) VALUES (${u}, '', '', 'en', ${JSON.stringify({ identity: { name: "Demo Salon" } })}::jsonb)`);
   }
   await exec(sql`UPDATE agent_configs SET owner_whatsapp = '+15550100001', transfer_number = '+15550100002', owner_recap_email = 'owner@example.com', owner_recap_email_enabled = true WHERE user_id = ${A.all}`);
   await exec(sql`UPDATE agent_configs SET owner_whatsapp = '+15550100011', transfer_number = '', transfer_number_parked = '+15550100012' WHERE user_id = ${A.parked}`);
-  await exec(sql`UPDATE agent_configs SET owner_recap_email = 'only@example.com' WHERE user_id = ${A.emailOnly}`);
-  await exec(sql`UPDATE agent_configs SET owner_whatsapp = '+15550100051' WHERE user_id = ${A.hasRecord}`);
 
-  // ── 1. Migration 0051 ─────────────────────────────────────────────────
+  // ── 1. Existing values read confirmed (grandfathered) ─────────────────
   const col = await rows<{ column_default: string; is_nullable: string; data_type: string }>(sql`
     SELECT column_default, is_nullable, data_type FROM information_schema.columns
     WHERE table_name = 'agent_configs' AND column_name = 'contact_confirmations'`);
   assert.deepEqual(col.map((c) => [c.data_type, c.column_default, c.is_nullable]), [["jsonb", "'{}'::jsonb", "NO"]]);
-  // The rows above are "existing accounts": the column as the ALTER leaves
-  // it. Drop it and run the migration file raw, as a deploy would on main's
-  // data; one kind of one row already has a record, which must survive.
-  await exec(sql`ALTER TABLE agent_configs DROP COLUMN contact_confirmations`);
-  const stmts = readFileSync(path.join(root, "drizzle/0051_contact_confirmations.sql"), "utf8").split("--> statement-breakpoint");
-  assert.equal(stmts.length, 2);
-  await exec(sql.raw(stmts[0]));
-  const earlier = { owner_whatsapp: { value: "+15550100059", state: "unconfirmed", at: "2026-11-10T00:00:00.000Z" } };
-  await exec(sql`UPDATE agent_configs SET contact_confirmations = ${JSON.stringify(earlier)}::jsonb WHERE user_id = ${A.hasRecord}`);
-  const t0 = Date.now();
-  await exec(sql.raw(stmts[1]));
-
-  const all = (await record(A.all)).c as Record<string, { at: string }>;
-  const at = all.owner_whatsapp.at;
-  assert.match(at, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/, "ISO timestamp");
-  assert.ok(Math.abs(Date.parse(at) - t0) < 60_000, "the migration's time");
-  const g = (value: string) => ({ value, state: "confirmed", at, by: "grandfathered" });
-  assert.deepEqual(all, { owner_whatsapp: g("+15550100001"), transfer_number: g("+15550100002"), owner_recap_email: g("owner@example.com") });
-  assert.deepEqual((await record(A.parked)).c, { owner_whatsapp: g("+15550100011"), transfer_number: g("+15550100012") }, "parked = the kept transfer number");
-  assert.deepEqual((await record(A.none)).c, {}, "no value → no record");
-  assert.deepEqual((await record(A.emailOnly)).c, { owner_recap_email: g("only@example.com") });
-  assert.deepEqual((await record(A.hasRecord)).c, earlier, "an existing record is never overwritten");
-  // Read: every existing value CONFIRMED, identifiable as grandfathered.
+  for (const u of Object.values(A)) assert.deepEqual(await record(u), { c: {}, t: "object" }, "existing account: '{}'");
+  const GF = { allowed: true, grace: "grandfathered", state: "confirmed", source: "grandfathered" };
+  const all = (await record(A.all)).c;
   for (const [kind, v] of [["owner_whatsapp", "+15550100001"], ["transfer_number", "+15550100002"], ["owner_recap_email", "owner@example.com"]] as const) {
-    assert.deepEqual(cc.maySendTo(kind, v, all), { allowed: true, state: "confirmed", by: "grandfathered", at });
+    assert.deepEqual(cc.maySendTo(kind, v, all), GF, `${kind}: no record → confirmed, grandfathered, allowed`);
   }
-  assert.deepEqual(cc.maySendTo("transfer_number", "+15550100012", (await record(A.parked)).c), { allowed: true, state: "confirmed", by: "grandfathered", at });
-  // Re-run: a no-op (no row rewritten: xmin unchanged).
-  const xmin = async () => rows<{ u: string; x: string; c: unknown }>(sql`SELECT user_id AS u, xmin::text AS x, contact_confirmations AS c FROM agent_configs ORDER BY user_id`);
-  const before = await xmin();
-  for (const s of stmts) await exec(sql.raw(s));
-  assert.deepEqual(await xmin(), before, "re-run of 0051 rewrites nothing");
+  assert.deepEqual(cc.maySendTo("transfer_number", "+15550100012", (await record(A.parked)).c), GF, "parked transfer: grandfathered");
+  assert.equal(await loadEnforcementStartedAt(), null, "N1: no enforcement date");
+  assert.equal((await rows(sql`SELECT 1 FROM app_settings WHERE key = 'contact_confirmation_enforced_at'`)).length, 0);
 
   // ── 2. Write paths ────────────────────────────────────────────────────
   // 2a. The config routes' column write (dashboard + admin PUT call
@@ -144,56 +117,56 @@ async function main() {
   const U = id(10);
   await exec(sql`INSERT INTO users (id, email, password_hash, role) VALUES (${U}, 'u@example.com', 'x', 'user')`);
   await exec(sql`INSERT INTO agent_configs (user_id, instructions, greeting_instructions, owner_whatsapp, transfer_number) VALUES (${U}, '', '', '+15550100101', '+15550100102')`);
-  await exec(sql.raw(stmts[1])); // grandfather this account too
-  const gU = (await record(U)).c as Record<string, { at: string }>;
-  assert.equal((gU.owner_whatsapp as unknown as { by: string }).by, "grandfathered");
 
   assert.deepEqual(await routeSave(U, { instructions: "x" }), {}, "a save of other fields writes no record");
-  assert.deepEqual((await record(U)).c, gU, "omitted → kept");
-  assert.deepEqual(await routeSave(U, { ownerWhatsapp: "+15550100101" }), {}, "same value → no write");
-  assert.deepEqual((await record(U)).c, gU, "same value → kept");
+  assert.deepEqual(await routeSave(U, { ownerWhatsapp: "+15550100101", transferNumber: "+15550100102" }), {}, "the form re-sending grandfathered values → no record");
+  assert.deepEqual((await record(U)).c, {}, "still grandfathered");
   await routeSave(U, { ownerWhatsapp: "+15550100109" });
   const r1 = await record(U);
   assert.equal(r1.t, "object", "stored as a jsonb object, not a string");
   const nw = (r1.c as Record<string, { value: string; state: string; at: string }>).owner_whatsapp;
   assert.deepEqual([nw.value, nw.state], ["+15550100109", "unconfirmed"], "new value → unconfirmed for it");
-  assert.deepEqual((r1.c as Record<string, unknown>).transfer_number, gU.transfer_number, "other kinds untouched");
-  assert.equal(cc.contactState("owner_whatsapp", "+15550100109", r1.c).state, "unconfirmed");
+  assert.ok(!("transfer_number" in (r1.c as object)), "other kinds untouched (still grandfathered)");
+  assert.equal(cc.maySendTo("owner_whatsapp", "+15550100109", r1.c).state, "unconfirmed");
+  assert.equal(cc.maySendTo("owner_whatsapp", "+15550100109", r1.c).allowed, true, "enforcement off: still allowed");
+  assert.deepEqual(await routeSave(U, { ownerWhatsapp: "+1 555 010 0109" }), {}, "same value → kept");
+  assert.deepEqual(await routeSave(U, { instructions: "y" }), {}, "omitted → kept");
+  assert.deepEqual((await record(U)).c, r1.c);
   // The legacy transfer write while the switch is OFF: '' keeps the parked number.
   await exec(sql`UPDATE agent_configs SET transfer_number = '', transfer_number_parked = '+15550100102' WHERE user_id = ${U}`);
-  assert.deepEqual(await routeSave(U, { transferNumber: "" }), {}, "'' while parked keeps the kept number's record");
-  await routeSave(U, { transferNumber: "", transferNumberParked: null });
-  assert.ok(!("transfer_number" in ((await record(U)).c as object)), "no number left → cleared");
+  assert.deepEqual(await routeSave(U, { transferNumber: "" }), {}, "'' while parked → no write");
   await routeSave(U, { ownerWhatsapp: "" });
   assert.deepEqual((await record(U)).c, {}, "'' → cleared");
 
   // 2b. The email save (the notifications route's own store function).
   const SENDER = { senderConfigured: true };
   const E = A.all;
-  const gE = (await record(E)).c as Record<string, unknown>;
   await saveOwnerRecapEmail(E, { ownerRecapEmailEnabled: false }, SENDER);
-  assert.deepEqual((await record(E)).c, gE, "switch only (address omitted) → kept");
+  assert.deepEqual((await record(E)).c, {}, "switch only (address omitted) → no record");
   await saveOwnerRecapEmail(E, { ownerRecapEmail: " OWNER@example.com " }, SENDER);
-  assert.deepEqual((await record(E)).c, gE, "same address → kept");
+  assert.deepEqual((await record(E)).c, {}, "same address re-saved → still grandfathered");
   const saved = await saveOwnerRecapEmail(E, { ownerRecapEmail: "new@example.com" }, SENDER);
   assert.deepEqual(saved.body, { ownerRecapEmail: "new@example.com", ownerRecapEmailEnabled: false, changedFields: ["ownerRecapEmail"] }, "route body unchanged: no record in it");
   const e1 = (await record(E)).c as Record<string, { value: string; state: string }>;
+  assert.deepEqual(Object.keys(e1), ["owner_recap_email"]);
   assert.deepEqual([e1.owner_recap_email.value, e1.owner_recap_email.state], ["new@example.com", "unconfirmed"]);
-  assert.deepEqual(e1.owner_whatsapp, gE.owner_whatsapp);
   await saveOwnerRecapEmail(E, { ownerRecapEmail: "" }, SENDER);
-  assert.ok(!("owner_recap_email" in ((await record(E)).c as object)), "'' → cleared");
-  await exec(sql`UPDATE agent_configs SET owner_recap_email = 'owner@example.com', owner_recap_email_enabled = true, contact_confirmations = ${JSON.stringify(gE)}::jsonb WHERE user_id = ${E}`);
+  assert.deepEqual((await record(E)).c, {}, "'' → cleared");
+  await exec(sql`UPDATE agent_configs SET owner_recap_email = 'owner@example.com', owner_recap_email_enabled = true, contact_confirmations = '{}'::jsonb WHERE user_id = ${E}`);
 
   // 2c. Tools switch OFF then ON: the number is parked then restored; same
-  // kept number → the grandfathered record is kept.
+  // kept number → no record (still grandfathered), and a confirmed one is kept.
   const P = A.all;
-  const gP = (await record(P)).c;
-  assert.deepEqual(await writeTools(P, null, { transfer: { enabled: false } }), { ok: true });
-  const [off] = await rows<{ t: string; p: string | null }>(sql`SELECT transfer_number AS t, transfer_number_parked AS p FROM agent_configs WHERE user_id = ${P}`);
-  assert.deepEqual(off, { t: "", p: "+15550100002" });
-  assert.deepEqual((await record(P)).c, gP, "switch OFF keeps the record");
-  assert.deepEqual(await writeTools(P, null, { transfer: { enabled: true } }), { ok: true });
-  assert.deepEqual((await record(P)).c, gP, "switch ON keeps the record");
+  for (const start of [{}, { transfer_number: { value: "+15550100002", state: "confirmed", at: "2026-11-15T00:00:00.000Z", by: "admin" } }]) {
+    await exec(sql`UPDATE agent_configs SET contact_confirmations = ${JSON.stringify(start)}::jsonb WHERE user_id = ${P}`);
+    assert.deepEqual(await writeTools(P, null, { transfer: { enabled: false } }), { ok: true });
+    const [off] = await rows<{ t: string; p: string | null }>(sql`SELECT transfer_number AS t, transfer_number_parked AS p FROM agent_configs WHERE user_id = ${P}`);
+    assert.deepEqual(off, { t: "", p: "+15550100002" });
+    assert.deepEqual((await record(P)).c, start, "switch OFF keeps the record");
+    assert.deepEqual(await writeTools(P, null, { transfer: { enabled: true } }), { ok: true });
+    assert.deepEqual((await record(P)).c, start, "switch ON keeps the record");
+  }
+  await exec(sql`UPDATE agent_configs SET contact_confirmations = '{}'::jsonb WHERE user_id = ${P}`);
 
   // ── 3. Admin confirm ──────────────────────────────────────────────────
   await routeSave(U, { ownerWhatsapp: "+15550100109" });
@@ -210,13 +183,14 @@ async function main() {
   // A later change of that value → unconfirmed again.
   await routeSave(U, { ownerWhatsapp: "+15550100108" });
   assert.equal(cc.contactState("owner_whatsapp", "+15550100108", (await record(U)).c).state, "unconfirmed");
+  const at = "2026-11-15T00:00:00.000Z";
 
   // ── 4. Sends identical whatever the record holds ──────────────────────
   const S = A.all; // owner WhatsApp + transfer + recap email ON
   const VARIANTS: Array<[string, unknown]> = [
-    ["no record", {}],
-    ["grandfathered", gE],
-    ["saved unconfirmed", { owner_whatsapp: { value: "+15550100001", state: "unconfirmed", at: at }, owner_recap_email: { value: "owner@example.com", state: "unconfirmed", at }, transfer_number: { value: "+15550100002", state: "unconfirmed", at } }],
+    ["no record (grandfathered)", {}],
+    ["confirmed by admin", { owner_whatsapp: { value: "+15550100001", state: "confirmed", at, by: "admin" }, transfer_number: { value: "+15550100002", state: "confirmed", at, by: "admin" } }],
+    ["saved unconfirmed", { owner_whatsapp: { value: "+15550100001", state: "unconfirmed", at }, owner_recap_email: { value: "owner@example.com", state: "unconfirmed", at }, transfer_number: { value: "+15550100002", state: "unconfirmed", at } }],
     ["value changed", { owner_whatsapp: { value: "+15550199999", state: "confirmed", at, by: "code" }, owner_recap_email: { value: "old@example.com", state: "confirmed", at, by: "code" } }],
     ["malformed", { owner_whatsapp: "yes", owner_recap_email: [1] }],
   ];
