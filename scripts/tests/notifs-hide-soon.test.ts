@@ -1,7 +1,8 @@
 // Notifications panel: a channel that can't be used is not shown at all.
 // SMS has no sender yet, so no SMS card, no "soon" badge, no disabled row.
-// Email is not saved yet (its switch and address were local state only), so
-// no Email card, no email switch, no email input. In fr/en/he, for a tenant
+// The Email card ships with its own route and renders only once its settings
+// are loaded (scripts/tests/owner-email-card.test.ts); without them (here) the
+// panel shows no email switch or input. In fr/en/he, for a tenant
 // and for an admin. The tile summary on /dashboard mentions neither. Renders the REAL NotifsPanel. Mock data only.
 // Run with:  npx tsx scripts/tests/notifs-hide-soon.test.ts
 
@@ -66,7 +67,7 @@ for (const locale of ["fr", "en", "he"]) {
       assert.ok(html.includes(escape(dc[k])), `${who}: ${k} rendered`);
     }
     assert.ok((html.match(/role="switch"/g) ?? []).length >= 3, `${who}: WhatsApp, reminder and digest switches rendered`);
-    // No Email card: no label, no email switch, no email input, no test call.
+    // Email settings not loaded: no Email card, switch, input or test call.
     assert.doesNotMatch(html, />E-?mail</i, `${who}: no Email card`);
     assert.doesNotMatch(html, /aria-label="[^"]*E-?mail[^"]*"/i, `${who}: no email switch or test button`);
     assert.doesNotMatch(html, /type="email"/, `${who}: no email input`);
