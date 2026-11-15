@@ -8,9 +8,14 @@
 //      insert fails silently, the stdout mirror prints the stored copy).
 //   3. Readers keep working on the new shape (Calls join, Monitoring label,
 //      tenant resolution).
+//   4. EVENT_PII_HASH_KEY: unset/blank = the pre-key plain sha256/12 byte for
+//      byte; set = HMAC-SHA256/12 (vector from `openssl dgst -hmac`); the
+//      call-id sha256/16 is unkeyed either way; the key never reaches a row
+//      or a log line. Mock key only.
 // Run with:  npx tsx scripts/tests/events-no-pii.test.ts
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 import { callReceivedEvent } from "../../lib/call-received-event";
 import {
@@ -221,31 +226,98 @@ for (const [label, ev] of RAW) assertClean(label, eventForStorage(ev));
   assert.equal(`SIP …${m["fromLast4"]} → ${to}`, "SIP …0123 → +15550100999");
 }
 
+// ── 4. EVENT_PII_HASH_KEY ───────────────────────────────────────────────
+const MOCK_KEY = "mock-event-pii-key-0001";
+/** piiHash exactly as it was before the key existed (lib/event-pii.ts, #332). */
+function legacyPiiHash(value: string): string {
+  const v = value.trim();
+  const norm = v.includes("@") ? v.toLowerCase() : `+${v.replace(/\D/g, "")}`;
+  return createHash("sha256").update(norm, "utf8").digest("hex").slice(0, 12);
+}
+const HASH_INPUTS = ["+15550100123", "+1 555-010-0123", " whatsapp:+15550100777 ", "Ana@Example.com", "ana@example.com", "", "abc"];
+const ROOM = "call-_+15550100123_AbCd";
+/** Run fn with EVENT_PII_HASH_KEY set to v (undefined = unset), then restore. */
+function withKey<T>(v: string | undefined, fn: () => T): T {
+  const prev = process.env.EVENT_PII_HASH_KEY;
+  if (v === undefined) delete process.env.EVENT_PII_HASH_KEY;
+  else process.env.EVENT_PII_HASH_KEY = v;
+  try {
+    return fn();
+  } finally {
+    if (prev === undefined) delete process.env.EVENT_PII_HASH_KEY;
+    else process.env.EVENT_PII_HASH_KEY = prev;
+  }
+}
+for (const unset of [undefined, "", "   "]) {
+  withKey(unset, () => {
+    const label = JSON.stringify(unset ?? "(unset)");
+    for (const x of HASH_INPUTS) assert.equal(piiHash(x), legacyPiiHash(x), `key ${label}: piiHash(${x}) = plain sha256/12`);
+    assert.equal(piiHash("+15550100123"), "71e19f521d9d", `key ${label}: pinned plain sha256/12`);
+    const s = eventForStorage(RAW[0][1]);
+    assert.equal(s.metadata["fromHash"], legacyPiiHash("+15550100123"), `key ${label}: stored fromHash unchanged`);
+  });
+}
+withKey(MOCK_KEY, () => {
+  // Vectors: printf '%s' '+15550100123' | openssl dgst -sha256 -hmac 'mock-event-pii-key-0001'
+  assert.equal(piiHash("+15550100123"), "08d64b82c376", "key set: HMAC-SHA256/12 of the phone");
+  assert.equal(piiHash("+1 555-010-0123"), "08d64b82c376", "key set: still format-independent");
+  assert.equal(piiHash("Ana@Example.com"), "b9a26916b14e", "key set: HMAC-SHA256/12 of the email");
+  for (const x of HASH_INPUTS) {
+    assert.notEqual(piiHash(x), legacyPiiHash(x), `key set: piiHash(${x}) differs from plain sha256`);
+    assert.match(piiHash(x), /^[0-9a-f]{12}$/, "key set: same 12-hex format");
+  }
+});
+for (const k of [undefined, MOCK_KEY]) {
+  withKey(k, () => {
+    // The call-id hash is the Calls join key (lib/calls/core.ts hashCallId,
+    // lib/calls/query.ts SQL, the worker): plain sha256/16 whatever the key.
+    const stored = eventForStorage({ message: "Transfer", metadata: { callId: ROOM } });
+    const plain16 = createHash("sha256").update(ROOM, "utf8").digest("hex").slice(0, 16);
+    assert.equal(stored.metadata["callId"], plain16, `key ${k ? "set" : "unset"}: callId stays plain sha256/16`);
+    assert.equal(stored.metadata["callId"], hashCallId(ROOM), `key ${k ? "set" : "unset"}: callId = hashCallId`);
+    // Pinned: printf '%s' 'call-_+15550100123_AbCd' | openssl dgst -sha256 (first 16 hex).
+    assert.equal(stored.metadata["callId"], "8f9bfdcf580445df", `key ${k ? "set" : "unset"}: pinned call-id hash`);
+  });
+}
+
 // The real logEvent(): no DATABASE_URL → insert fails (caught); the stdout
 // mirror prints exactly what would be stored.
-async function realLogEvent() {
+async function realLogEvent(key: string | undefined) {
   delete process.env.DATABASE_URL;
+  if (key === undefined) delete process.env.EVENT_PII_HASH_KEY;
+  else process.env.EVENT_PII_HASH_KEY = key;
   const { logEvent } = await import("../../lib/logger");
   const printed: unknown[][] = [];
   const orig = { log: console.log, warn: console.warn, error: console.error };
   console.log = (...a: unknown[]) => void printed.push(a);
   console.warn = (...a: unknown[]) => void printed.push(a);
-  console.error = () => {};
+  const errors: unknown[][] = [];
+  console.error = (...a: unknown[]) => void errors.push(a);
   try {
     for (const [label, ev] of RAW) {
       await logEvent({ source: "agent", event: label.replace(/\W/g, "_"), userId: "u1", level: "warn", ...ev });
     }
   } finally {
     Object.assign(console, orig);
+    delete process.env.EVENT_PII_HASH_KEY;
   }
   assert.equal(printed.length, RAW.length);
+  // The key never reaches a stored row or any log line (stdout or stderr).
+  const all = JSON.stringify([printed, errors.map((a) => a.map(String))]);
+  assert.ok(!all.includes(MOCK_KEY), "EVENT_PII_HASH_KEY appears in a logged event or log line");
+  if (key) {
+    const caller = printed.find(([, , m]) => (m as Record<string, unknown>)?.["fromHash"]);
+    assert.equal((caller?.[2] as Record<string, unknown>)["fromHash"], "08d64b82c376", "logEvent stores the keyed hash");
+  }
   for (const [i, [, message, metadata]] of printed.entries()) {
     assertClean(`logEvent ${RAW[i][0]}`, { message: String(message), metadata });
   }
 }
 
-realLogEvent().then(
-  () => console.log(`events-no-pii: ${callSites} call sites scanned in ${scan.files.length} files, ${RAW.length} shapes stored clean`),
+realLogEvent(undefined)
+  .then(() => realLogEvent(MOCK_KEY))
+  .then(
+  () => console.log(`events-no-pii: ${callSites} call sites scanned in ${scan.files.length} files, ${RAW.length} shapes stored clean (key unset and set)`),
   (e) => {
     console.error(e);
     process.exit(1);
