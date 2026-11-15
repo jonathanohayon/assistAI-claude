@@ -42,7 +42,7 @@ export function WowDashboard() {
   const [persona, setPersona] = useState<Persona>({
     ...DEFAULT_PERSONA,
     name: "Sarah",
-    greeting: { mode: "custom", text: "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?" },
+    greeting: { mode: "custom", text: "Bonjour, c'est Sarah du salon du centre-ville. Comment puis-je vous aider ?" },
   });
   const lang = persona.primaryLanguage;
   const [notifs, setNotifs] = useState<Record<NotifChannel, boolean>>({
@@ -535,7 +535,7 @@ export function WowDashboard() {
               <div className="space-y-2.5 rounded-2xl border border-[#e2e8f0] bg-white/80 p-4 backdrop-blur">
                 <BubbleV2
                   who="assistant"
-                  text="Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?"
+                  text="Bonjour, c'est Sarah du salon du centre-ville. Comment puis-je vous aider ?"
                   time="14:32"
                   delay={300}
                 />
@@ -638,7 +638,7 @@ export function WowDashboard() {
                   <VoiceBrick value={voiceSettings} onChange={setVoiceSettings} isAdmin={false} />
                 )}
                 {activeTile === "persona" && (
-                  <PersonaBrick value={persona} onChange={setPersona} kind="inbound" businessName="Prestige Coiffure" />
+                  <PersonaBrick value={persona} onChange={setPersona} kind="inbound" businessName="Salon du centre-ville" />
                 )}
                 {activeTile === "notifs" && (
                   <NotifsPanel
