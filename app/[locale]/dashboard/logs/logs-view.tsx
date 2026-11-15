@@ -498,6 +498,8 @@ export function LogsView({
                           t("offCallActivity")
                         ) : group.sip ? (
                           <SipCallLabel label={group.sip} />
+                        ) : group.origin === "web" ? (
+                          t("latency.originWeb")
                         ) : (
                           group.label
                         )}
