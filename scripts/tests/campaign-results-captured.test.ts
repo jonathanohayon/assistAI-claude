@@ -12,9 +12,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { CapturedFromConversation } from "../../app/[locale]/dashboard/campaigns/captured-from-conversation";
+import { CapturedCountChip, CapturedFromConversation } from "../../app/[locale]/dashboard/campaigns/captured-from-conversation";
 import { capturedView, type CapturedView } from "../../lib/campaigns/capture";
-import { capturedItems } from "../../lib/campaigns/captured-items";
+import { capturedCount, capturedItems } from "../../lib/campaigns/captured-items";
 import type { ExtractionField } from "../../lib/campaigns/constants";
 import { resultsCallView, type ResultsCallRow } from "../../lib/campaigns/results-call-view";
 
@@ -160,13 +160,115 @@ test("fr, en and he have the same captured keys, all non-empty", () => {
   const keysOf = (l: string) =>
     Object.keys(messages(l).DashboardCampaigns).filter((k) => k.startsWith("captured")).sort();
   const base = keysOf("fr");
-  assert.deepEqual(base, ["capturedHint", "capturedMissing", "capturedNo", "capturedTitle", "capturedYes"]);
+  assert.deepEqual(base, [
+    "capturedCount",
+    "capturedCountA11y",
+    "capturedHint",
+    "capturedMissing",
+    "capturedNo",
+    "capturedTitle",
+    "capturedYes",
+  ]);
   for (const l of LOCALES) {
     assert.deepEqual(keysOf(l), base, l);
     for (const k of base) assert.ok(String(messages(l).DashboardCampaigns[k]).trim(), `${l}.${k}`);
   }
   assert.equal(fr.capturedTitle, "Relevé depuis la conversation");
   assert.equal(messages("en").DashboardCampaigns.capturedTitle, "Captured from the conversation");
+});
+
+// ── Collapsed-row chip ("3/4 relevés") ──────────────────────────────────
+
+function chip(props: { schema: ExtractionField[]; captured: CapturedView | undefined; captureOn: boolean }, locale = "fr") {
+  return renderToStaticMarkup(
+    createElement(
+      NextIntlClientProvider,
+      { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps,
+      createElement(CapturedCountChip, props),
+    ),
+  );
+}
+const visibleText = (out: string) =>
+  (out.match(/<span aria-hidden="true">(.*?)<\/span><span class="sr-only">/)?.[1] ?? "").replace(/<[^>]+>/g, "");
+const srText = (out: string) => out.match(/<span class="sr-only">(.*?)<\/span>/)?.[1] ?? "";
+const ALL = capturedView({
+  ...STORED,
+  values: { budget_eur: 1200, decision_maker: false, best_slot: "Matin", next_step: "Envoyer le devis" },
+});
+const NOTHING = capturedView({ ...STORED, values: {} });
+
+test("chip: the count matches the expanded block for the same call", () => {
+  for (const c of [CAPTURED, ALL, NOTHING]) {
+    const block = html({ schema: SCHEMA, captured: c, captureOn: true });
+    const missing = block.split(esc(fr.capturedMissing)).length - 1;
+    const rows = block.split("<dt").length - 1;
+    const n = capturedCount(SCHEMA, c, true)!;
+    assert.deepEqual(n, { got: rows - missing, total: rows });
+    assert.equal(visibleText(chip({ schema: SCHEMA, captured: c, captureOn: true })), `${n.got}/${n.total} relevés`);
+  }
+  assert.deepEqual(capturedCount(SCHEMA, CAPTURED, true), { got: 3, total: 4 });
+  // An empty string or a non-finite number counts as missing, as in the block.
+  const blanks = capturedView({ ...STORED, values: { next_step: "   ", budget_eur: Number.NaN, best_slot: "Soir" } });
+  assert.deepEqual(capturedCount(SCHEMA, blanks, true), { got: 1, total: 4 });
+  // A stale key never counts.
+  assert.equal(capturedCount(SCHEMA, capturedView({ ...STORED, values: { legacy_field_xyz: "x" } }), true)!.got, 0);
+});
+
+test("chip: hidden in exactly the cases the block is hidden", () => {
+  const pending = capturedView({ v: 1, pending: true, claimedAt: "2026-11-14T09:00:00.000Z", token: "t", attempt: 1 });
+  const cases: Array<{ schema: ExtractionField[]; captured: CapturedView | undefined; captureOn: boolean }> = [
+    { schema: SCHEMA, captured: CAPTURED, captureOn: false },
+    { schema: SCHEMA, captured: undefined, captureOn: true },
+    { schema: SCHEMA, captured: null, captureOn: true },
+    { schema: [], captured: CAPTURED, captureOn: true },
+    { schema: SCHEMA, captured: pending, captureOn: true },
+  ];
+  for (const l of LOCALES) {
+    for (const c of cases) {
+      assert.equal(html(c, l), "", "block hidden");
+      assert.equal(chip(c, l), "", `${l}: chip hidden`);
+      assert.equal(capturedCount(c.schema, c.captured, c.captureOn), null);
+    }
+  }
+});
+
+test("chip: 0/N is shown when the capture ran and found nothing", () => {
+  const out = chip({ schema: SCHEMA, captured: NOTHING, captureOn: true });
+  assert.equal(visibleText(out), "0/4 relevés");
+  assert.ok(out.includes('data-captured-chip="partial"'));
+  assert.equal(visibleText(chip({ schema: SCHEMA, captured: NOTHING, captureOn: true }, "en")), "0/4 captured");
+});
+
+test("chip: full capture gets the success tint, partial stays neutral", () => {
+  assert.ok(chip({ schema: SCHEMA, captured: ALL, captureOn: true }).includes('data-captured-chip="full"'));
+  assert.ok(chip({ schema: SCHEMA, captured: CAPTURED, captureOn: true }).includes('data-captured-chip="partial"'));
+});
+
+test("chip: the fraction is LTR-isolated and the visible text is hidden from assistive tech", () => {
+  for (const l of LOCALES) {
+    const out = chip({ schema: SCHEMA, captured: CAPTURED, captureOn: true }, l);
+    assert.ok(out.includes('<bdi dir="ltr">3/4</bdi>'), `${l}: bdi`);
+    assert.ok(/<span aria-hidden="true">.*<bdi dir="ltr">3\/4<\/bdi>/.test(out), `${l}: visible text aria-hidden`);
+    for (const k of [...SCHEMA.map((f) => f.key), "legacy_field_xyz"]) assert.ok(!out.includes(k), `${l}: key ${k}`);
+  }
+});
+
+test("chip: the accessible name reads as a sentence", () => {
+  const name = (c: CapturedView, l = "fr") => srText(chip({ schema: SCHEMA, captured: c, captureOn: true }, l));
+  assert.equal(name(CAPTURED), "3 informations relevées sur 4");
+  assert.equal(name(NOTHING), "Aucune information relevée sur 4");
+  assert.equal(name(NOTHING, "en"), "No information captured out of 4");
+  assert.equal(name(NOTHING, "he"), "לא נאסף אף פריט מתוך 4");
+  assert.equal(name(capturedView({ ...STORED, values: { best_slot: "Soir" } })), "1 information relevée sur 4");
+  assert.equal(name(CAPTURED, "en"), "3 of 4 items captured");
+  assert.equal(name(CAPTURED, "he"), "נאספו 3 מתוך 4 פרטים");
+});
+
+test("chip: fr, en and he visible copy", () => {
+  const vis = (l: string) => visibleText(chip({ schema: SCHEMA, captured: CAPTURED, captureOn: true }, l));
+  assert.equal(vis("fr"), "3/4 relevés");
+  assert.equal(vis("en"), "3/4 captured");
+  assert.equal(vis("he"), "3/4 נאספו");
 });
 
 console.log(`\n${passed} tests passed`);
