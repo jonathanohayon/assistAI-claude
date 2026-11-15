@@ -1255,7 +1255,7 @@
     "concurrencyLabel": "Parallel calls",
     "concurrencyHint": "How many leads to dial at the same time.",
     "extractionTitle": "Information to capture",
-    "extractionHint": "What the agent captures during each call.",
+    "extractionHint": "What we capture from each conversation.",
     "extractionAddField": "Add an item",
     "extractionKey": "Key",
     "extractionLabelField": "Label",

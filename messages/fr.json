@@ -1255,7 +1255,7 @@
     "concurrencyLabel": "Appels simultanés",
     "concurrencyHint": "Nombre de leads à composer en même temps.",
     "extractionTitle": "Informations à relever",
-    "extractionHint": "Ce que l'agent relève pendant chaque appel.",
+    "extractionHint": "Ce que nous relevons de chaque conversation.",
     "extractionAddField": "Ajouter une information",
     "extractionKey": "Clé",
     "extractionLabelField": "Libellé",

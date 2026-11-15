@@ -23,6 +23,7 @@ export function CampaignSetupStep({
   isAdmin = false,
   capabilities = null,
   captureOn = false,
+  storedCaptureKeys = [],
 }: {
   draft: CampaignDraft;
   onChange: (patch: Partial<CampaignDraft>) => void;
@@ -34,6 +35,8 @@ export function CampaignSetupStep({
   capabilities?: EffectiveCapabilities | null;
   /** The server's CAMPAIGN_CAPTURE switch as one boolean (off when absent). */
   captureOn?: boolean;
+  /** Capture keys of the schema as last loaded or saved: never re-derived. */
+  storedCaptureKeys?: readonly string[];
 }) {
   const t = useTranslations("DashboardCampaigns");
   const voiceLabel = useVoiceLabel();
@@ -323,6 +326,7 @@ export function CampaignSetupStep({
         onChange={(extractionSchema) => onChange({ extractionSchema })}
         captureOn={captureOn}
         isAdmin={isAdmin}
+        storedKeys={storedCaptureKeys}
       />
     </div>
   );
