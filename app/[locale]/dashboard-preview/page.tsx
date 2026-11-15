@@ -3,15 +3,20 @@ import { PaletteSwitcher } from "./palette-switcher";
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { DEFAULT_VOICE } from "@/lib/voice/contract";
 import { voiceForViewer } from "@/lib/voice/store";
+import { requireAdminOr404 } from "@/lib/auth/require-admin-page";
 
 /**
- * Route de prévisualisation visuelle du redesign /dashboard config — sans
- * authentification, avec des données mockées. À supprimer une fois le
- * redesign validé (non-prod, pas listée dans la nav).
+ * Route de prévisualisation visuelle du redesign /dashboard config, avec des
+ * données mockées. À supprimer une fois le redesign validé (pas listée dans la nav).
+ *
+ * Admins only: the layout gates the segment, and this page gates again first
+ * because layouts and pages render in parallel (and layouts don't re-run on
+ * client navigation), so no mock is built for anyone else.
  */
 export default async function DashboardPreviewPage(props: {
   params: Promise<{ locale: string }>;
 }) {
+  await requireAdminOr404();
   const { locale } = await props.params;
 
   const dateLocale =
