@@ -295,7 +295,8 @@ for (const l of LOCALES) {
   assert.equal(ownerEmailUrl("11111111-2222-3333-4444-555555555555"), "/api/dashboard/notifications/email?asUserId=11111111-2222-3333-4444-555555555555");
   assert.equal(ownerEmailUrl("a b&c"), "/api/dashboard/notifications/email?asUserId=a%20b%26c");
   const cf = read("app/[locale]/dashboard/config-form.tsx");
-  assert.equal((cf.match(/ownerEmailUrl\(asUserId\)/g) ?? []).length, 2, "GET and PUT scoped by asUserId");
+  // GET on load, GET reload of the confirmation state (N2), PUT.
+  assert.equal((cf.match(/ownerEmailUrl\(asUserId\)/g) ?? []).length, 3, "GETs and PUT scoped by asUserId");
   assert.match(cf, /\}, \[asUserId\]\);/);
 }
 
