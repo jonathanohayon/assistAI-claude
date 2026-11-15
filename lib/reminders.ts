@@ -109,8 +109,10 @@ export function reminderTimesLabel(
   lang: ReminderLang,
   slots: ReminderSlot[],
 ): { times: string; center: string } {
-  const centers = slots.map((s) => clip(s.center.trim(), REMINDER_CENTER_MAX));
-  const sameCenter = centers.every((c) => c === centers[0]);
+  const raw = slots.map((s) => s.center.trim());
+  // Compared before clipping: two long places sharing a prefix stay distinct.
+  const sameCenter = raw.every((c) => c === raw[0]);
+  const centers = raw.map((c) => clip(c, REMINDER_CENTER_MAX));
   const shown = slots.slice(0, REMINDER_MAX_LISTED_SLOTS).map((s, i) =>
     !sameCenter && centers[i] ? `${s.time} (${centers[i]})` : s.time,
   );
