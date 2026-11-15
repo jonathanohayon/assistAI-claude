@@ -174,12 +174,9 @@ export function LiveTestPanelLK({ dirty, asUserId, agentId }: Props) {
       `}</style>
 
       {/* Header */}
-      <header className="mb-5 flex items-start justify-between gap-3">
+      <header className="mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#0e7490]">
-            {tl("kicker")}
-          </p>
-          <h3 className="mt-1 font-display text-xl tracking-tight text-[#18181b]">
+          <h3 className="font-display text-xl tracking-tight text-[#18181b]">
             {tl("title")}
           </h3>
         </div>
