@@ -68,7 +68,7 @@ export const PLANS: readonly Plan[] = [
     features: [
       "{minutes} minutes incluses",
       "Prise d'appels et de rendez-vous automatique, 24/7",
-      "Calendrier connecté & CRM",
+      "Calendrier connecté & contacts",
       "Récap de chaque appel sur WhatsApp",
       "Réponses aux questions fréquentes",
       "Voix naturelle, en français, hébreu et anglais",
@@ -76,7 +76,7 @@ export const PLANS: readonly Plan[] = [
     excludedFeatures: [],
     bestFor: "salons, cabinets et commerces avec un seul établissement",
     onboardingNotes: [
-      "Le CRM Google Sheet sera créé et partagé avec toi pendant la connexion Google.",
+      "Ton tableau Google Sheets de contacts sera créé et partagé avec toi pendant la connexion Google.",
       "Renseigne ton numéro WhatsApp pour recevoir les récaps d'appels.",
     ],
   },
@@ -101,7 +101,7 @@ export const PLANS: readonly Plan[] = [
     bestFor: "cliniques et entreprises multi-sites",
     onboardingNotes: [
       "Tu peux rattacher jusqu'à 3 établissements / calendriers distincts.",
-      "Notre équipe te contactera sous 24h pour la configuration (persona, voix, centres).",
+      "Notre équipe te contactera sous 24h pour la configuration (personnalité, voix, centres).",
     ],
   },
   {
@@ -123,7 +123,7 @@ export const PLANS: readonly Plan[] = [
       "Rapports d'activité hebdomadaires",
     ],
     excludedFeatures: [
-      "Intégration CRM",
+      "Contacts dans ton tableau Google Sheets",
       "Calendrier connecté (prise de RDV)",
     ],
     bestFor: "indépendants, commerces et petites équipes",
