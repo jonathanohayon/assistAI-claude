@@ -743,7 +743,6 @@
     "noConfigPost": "to initialize your receptionist.",
     "header": "Configuration",
     "pageTitle": "Give your receptionist her voice.",
-    "pageSubtitle": "Edit your agent's personality, tone and settings. Changes take effect on the next call — the agent reloads its configuration at the start of every session.",
     "lastUpdated": "Last updated ·",
     "personaTitle": "Personality",
     "personaSubtitle": "The big system string that defines identity, style, and workflows.",
@@ -752,7 +751,6 @@
     "langFr": "🇫🇷 French",
     "langHe": "🇮🇱 Hebrew",
     "langEn": "🇺🇸 English (US)",
-    "instructionsLabel": "Personality instructions",
     "instructionsDescription": "Your agent's \"brain\": the business rules, tone, conversation flow, and information it should know. Optional — if left empty, the agent follows your plan's default behavior.",
     "instructionsToggle": "Show / edit instructions",
     "instructionsHint": "Markdown supported. Describe the agent's name + business name, hours, services, tone, and the workflows to follow.",
@@ -1979,16 +1977,15 @@
       "reco1Body": "Call {phone} from your phone and chat with her like a customer would. It's the best way to discover what she can do.",
       "recoCalendarTitle": "{n} · Connect Google Calendar",
       "recoCalendarBody": "Without a connected calendar, the agent can't book in YOUR calendar. Open your dashboard and click \"Connect Google\" — 30 seconds.",
-      "recoCrmTitle": "{n} · CRM Google Sheet",
-      "recoCrmBody": "Every contact created by the agent is added automatically to your Google Sheet. Share it with your team if multiple people consult it.",
+      "recoCrmTitle": "{n} · Your Google contacts spreadsheet",
+      "recoCrmBody": "Every contact created by the agent is added automatically to your Google spreadsheet. Share it with your team if multiple people consult it.",
       "recoWhatsappTitle": "{n} · WhatsApp owner recap",
       "recoWhatsappBody": "Set your owner WhatsApp number in the Settings tab to receive an instant recap after every call.",
-      "recoPersonaTitle": "{n} · Customize the persona",
-      "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. Default persona is \"Tamara\" — rename it and adapt it to your activity."
+      "recoPersonaTitle": "{n} · Adjust her personality",
+      "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
     }
   },
   "LiveTest": {
-    "kicker": "Live test",
     "title": "Test it live",
     "status": {
       "idle": "Ready",

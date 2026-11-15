@@ -48,7 +48,7 @@ assert.deepEqual(found(visibleText(html)), ["OAuth"], "title attribute scanned, 
 
 // --- The L1 namespaces ---------------------------------------------------
 // Every namespace a tenant reads on the dashboard and onboarding. Not here:
-// public pages (audit D), Admin*/Email/Plans (Plans is shared word for word
+// public pages (audit D), Admin*/Plans/the other Email mails (Plans is shared word for word
 // with the public pricing cards), and DashboardLogs (developer mode, audit
 // B: only its two decided keys are checked, below).
 const L1 = [
@@ -83,6 +83,8 @@ const NOT_TENANT_COPY: Record<string, string> = {
   "Onboarding.redirectHintFooter": "developer setup text, not used by any component",
 };
 const DEV_MODE_KEYS = ["DashboardLogs.sourceTenant", "DashboardLogs.latency.originWeb"];
+// The welcome mail every new tenant receives (lib/email.ts sendWelcomeEmail).
+const MAILS = ["Email.welcome"];
 
 function* strings(node: unknown, path: string): Generator<[string, string]> {
   if (typeof node === "string") yield [path, node];
@@ -95,7 +97,11 @@ const problems: string[] = [];
 for (const l of LOCALES) {
   const m = messages(l);
   for (const ns of L1) assert.ok(m[ns], `${l}: namespace ${ns} exists`);
-  const entries = [...L1.flatMap((ns) => [...strings(m[ns], ns)]), ...DEV_MODE_KEYS.map((k) => [k, at(m, k)] as [string, string])];
+  for (const p of MAILS) assert.ok(at(m, p), `${l}: ${p} exists`);
+  const entries = [
+    ...L1.flatMap((ns) => [...strings(m[ns], ns)]),
+    ...MAILS.flatMap((p) => [...strings(at(m, p), p)]),
+    ...DEV_MODE_KEYS.map((k) => [k, at(m, k)] as [string, string])];
   for (const [key, value] of entries) {
     assert.equal(typeof value, "string", `${l} ${key} is a message`);
     if (NOT_TENANT_COPY[key]) continue;
@@ -108,7 +114,8 @@ assert.deepEqual(problems, [], `internal words in tenant copy:\n${problems.join(
 // The decided wording itself (FR), so a revert shows up by name.
 const fr = messages("fr");
 assert.equal(at(fr, "DashboardConfig.personaTitle"), "Personnalité");
-assert.equal(at(fr, "LiveTest.kicker"), "Test en direct");
+assert.equal(at(fr, "Email.welcome.recoCrmTitle"), "{n} · Votre tableau Google des contacts");
+assert.equal(at(fr, "Email.welcome.recoPersonaTitle"), "{n} · Ajustez sa personnalité");
 assert.equal(at(fr, "DashboardCampaigns.channelsPhone"), "Téléphone");
 assert.equal(at(fr, "DashboardContacts.header"), "Contacts");
 assert.equal(at(fr, "WebsiteScan.agentsTitle"), "Lecture de votre site");
