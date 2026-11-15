@@ -41,6 +41,7 @@ import { CONFIG_FORM_CSS } from "./config/config-form-css";
 import { HeroSection } from "./config/hero-section";
 import { NotifsPanel } from "./config/notifs-panel";
 import { PersonaPanel } from "./config/persona-panel";
+import { personaTileSummary } from "./config/persona-tile-summary";
 import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
@@ -294,17 +295,15 @@ export function ConfigForm({
   // Labels langues traduits stables (refs).
   const primaryLanguages = useMemo(
     () => [
-      { value: "fr", flag: "FR", label: t("langFr") },
-      { value: "he", flag: "HE", label: t("langHe") },
-      { value: "en", flag: "EN", label: t("langEn") },
+      { value: "fr", label: t("langFr") },
+      { value: "he", label: t("langHe") },
+      { value: "en", label: t("langEn") },
     ],
     [t],
   );
   const currentLangLabel =
     primaryLanguages.find((l) => l.value === form.primaryLanguage)?.label ??
     form.primaryLanguage;
-  const currentLangFlag =
-    primaryLanguages.find((l) => l.value === form.primaryLanguage)?.flag ?? "—";
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -516,7 +515,10 @@ export function ConfigForm({
       id: "persona",
       label: t("personaTitle"),
       tagline: t("wowTagPersona"),
-      summary: `${form.inheritAdminGlobals ? t("wowPersonaSummaryInherit") : t("wowPersonaSummaryCustom")} · ${currentLangFlag}`,
+      // The agent's name and language, from the on-screen persona (draft),
+      // like the other tiles. Admin inheritance stays in the admin-only
+      // InheritAdminField (Knowledge panel); tenants never see it.
+      summary: personaTileSummary(persona, t),
       accent: "from-[#be185d] to-[#ec4899]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
