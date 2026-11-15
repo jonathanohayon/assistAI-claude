@@ -14,6 +14,7 @@ import {
 } from "@/lib/campaigns/live";
 import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
 import { campaignEventsWhere, eventContactId } from "@/lib/campaigns/live-events";
+import { eventRowForBrowser } from "@/lib/event-display";
 import { getSetting } from "@/lib/settings";
 
 interface Ctx {
@@ -152,14 +153,20 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     inProgress: contacts.filter((c) => c.status === "calling" || c.status === "claimed"),
     contacts: contacts.slice(0, CONTACT_LIMIT),
     contactsTotal: contacts.length,
-    events: eventRows.map((e) => ({
-      id: e.id,
-      at: e.at.toISOString(),
-      event: e.event,
-      level: e.level,
-      message: e.message,
-      contactId: eventContactId(e.metadata),
-      data: e.metadata,
-    })),
+    // Admin-only, but events hold no third-party PII for admins either: the
+    // same read-time mask as /api/dashboard/events (lib/event-display.ts).
+    // contactId is read from the raw row first (a uuid, not PII).
+    events: eventRows.map((e) => {
+      const masked = eventRowForBrowser(e);
+      return {
+        id: e.id,
+        at: e.at.toISOString(),
+        event: e.event,
+        level: e.level,
+        message: masked.message,
+        contactId: eventContactId(e.metadata),
+        data: masked.metadata,
+      };
+    }),
   });
 }
