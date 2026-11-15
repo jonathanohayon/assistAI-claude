@@ -1168,6 +1168,8 @@
     "capturedMissing": "non relevé",
     "capturedYes": "Oui",
     "capturedNo": "Non",
+    "capturedCount": "<n>{got}/{total}</n> relevés",
+    "capturedCountA11y": "{got, plural, one {# information relevée} other {# informations relevées}} sur {total}",
     "estimatedSuccess_success": "Succès estimé",
     "estimatedSuccess_partial": "Partiel (estimé)",
     "estimatedSuccess_fail": "Échec estimé",
