@@ -114,5 +114,12 @@ export const DEFAULT_CALL_WINDOW: CallWindow = {
 export const DEFAULT_CONCURRENCY = 3;
 export const MAX_CONCURRENCY = 20;
 
+/**
+ * The ONE cap on a campaign's extraction_schema: the server refuses a list
+ * that GROWS past it (lib/campaigns/extraction-cap.ts), the editor stops
+ * adding at it, and capture sends at most this many fields to the model.
+ */
+export const EXTRACTION_SCHEMA_MAX_FIELDS = 20;
+
 // Garde-fou import / saisie.
 export const MAX_CONTACTS_PER_IMPORT = 5000;

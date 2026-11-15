@@ -22,6 +22,7 @@ import {
   normalizeGoalPreset,
   normalizeRetryRules,
 } from "@/lib/campaigns/validate";
+import { checkExtractionSchemaCount, type ExtractionSchemaCapRefusal } from "@/lib/campaigns/extraction-cap";
 
 export const STRUCTURAL_FIELDS = [
   "goalPreset",
@@ -106,4 +107,22 @@ export function planCampaignPatch(
 
   if (changed.length) return { ok: false, error: "campaign_not_editable", fields: changed };
   return { ok: true, changes };
+}
+
+/**
+ * The PATCH route's plan: planCampaignPatch, then the extraction schema cap
+ * (lib/campaigns/extraction-cap.ts) on a CHANGED schema only. An unchanged
+ * re-send is never in `changes`, so a list stored above the cap passes and
+ * stays as stored; a changed list may not grow past the cap.
+ */
+export function planCappedCampaignPatch(
+  campaign: { status: string } & Partial<Record<StructuralField, unknown>>,
+  body: Record<string, unknown>,
+): PatchPlan | { ok: false; status: 400; body: ExtractionSchemaCapRefusal } {
+  const plan = planCampaignPatch(campaign, body);
+  if (!plan.ok || !("extractionSchema" in plan.changes)) return plan;
+  const next = (plan.changes.extractionSchema as unknown[]).length;
+  const stored = normalizeExtractionSchema(campaign.extractionSchema).length;
+  const check = checkExtractionSchemaCount(next, stored);
+  return check.ok ? plan : check;
 }

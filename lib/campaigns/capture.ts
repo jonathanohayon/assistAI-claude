@@ -6,13 +6,13 @@
 // Display contract: a captured value is "relevé depuis la conversation" (what
 // the prospect said, as read by a model), never a proven fact.
 
-import type { CallOutcome, ExtractionField } from "@/lib/campaigns/constants";
+import { EXTRACTION_SCHEMA_MAX_FIELDS, type CallOutcome, type ExtractionField } from "@/lib/campaigns/constants";
 import { normalizeExtractionSchema } from "@/lib/campaigns/validate";
 
 /** Transcript characters sent to the model (same cap as analyze.ts). */
 export const CAPTURE_TRANSCRIPT_CHARS = 12000;
 /** Fields sent to the model: the first N of the schema. */
-export const CAPTURE_MAX_FIELDS = 20;
+export const CAPTURE_MAX_FIELDS = EXTRACTION_SCHEMA_MAX_FIELDS;
 /** A captured string is trimmed and capped at this length. */
 export const CAPTURE_STRING_CHARS = 500;
 

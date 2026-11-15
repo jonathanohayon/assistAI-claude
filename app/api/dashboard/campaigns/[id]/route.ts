@@ -13,7 +13,7 @@ import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { withoutToolsStore } from "@/lib/tools/store";
 import { withoutMissionStore } from "@/lib/mission/store";
-import { planCampaignPatch } from "@/lib/campaigns/patch-plan";
+import { planCappedCampaignPatch } from "@/lib/campaigns/patch-plan";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { patchPresetGateInput, presetGateRefusal } from "@/lib/campaigns/preset-gate";
 import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
@@ -117,7 +117,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   // body optionnel : tous les champs sont facultatifs (patch partiel).
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  const plan = planCampaignPatch(campaign, body);
+  // A refused change applies NOTHING: 400 too_many_fields (the extraction
+  // schema may not grow past its cap), or 409 (status rule).
+  const plan = planCappedCampaignPatch(campaign, body);
+  if (!plan.ok && "body" in plan) return NextResponse.json(plan.body, { status: plan.status });
   if (!plan.ok) {
     return NextResponse.json(
       { error: plan.error, fields: plan.fields, status: campaign.status },
