@@ -255,15 +255,18 @@
       "warmth": "חום",
       "formality": "פורמליות",
       "energy": "אנרגיה",
-      "speed": "מהירות"
+      "speed": "מהירות",
+      "tone": "טון"
     },
     "panel": {
+      "breadcrumb": "דאשבורד / קול",
       "agentVoice": "הקול של הסוכן",
       "personality": "אישיות",
       "liveBadge": "live",
-      "voiceGenderF": "אישה",
+      "voiceName": "קול 1",
+      "voiceGenderF": "נשי",
       "previewVoiceAria": "תצוגה מקדימה של הקול",
-      "primaryLanguage": "שפה ראשית",
+      "defaultLanguage": "שפת ברירת מחדל",
       "agentName": "שם הסוכן"
     }
   },

@@ -255,15 +255,18 @@
       "warmth": "Chaleur",
       "formality": "Formalité",
       "energy": "Énergie",
-      "speed": "Vitesse"
+      "speed": "Vitesse",
+      "tone": "Ton"
     },
     "panel": {
+      "breadcrumb": "tableau de bord / voix",
       "agentVoice": "Voix de l'agent",
       "personality": "Personnalité",
       "liveBadge": "live",
-      "voiceGenderF": "Femme",
+      "voiceName": "Voix 1",
+      "voiceGenderF": "féminine",
       "previewVoiceAria": "Prévisualiser la voix",
-      "primaryLanguage": "Langue principale",
+      "defaultLanguage": "Langue par défaut",
       "agentName": "Nom de l'agent"
     }
   },

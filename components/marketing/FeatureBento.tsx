@@ -338,7 +338,7 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
         </div>
         <span className="font-mono text-[9px] uppercase tracking-widest text-[#64748b]">
-          dashboard / voice
+          {tv("panel.breadcrumb")}
         </span>
       </div>
 
@@ -350,7 +350,11 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
         >
           <span className="flex items-center gap-1.5">
             <MicIcon className="h-3.5 w-3.5 text-[#0e7490]" />
-            <span className="text-xs font-semibold text-[#18181b]">Coral</span>
+            {/* The dashboard's own label ("Voix 1 · féminine", Voices.display):
+                never a supplier's voice name (public words guard). */}
+            <span className="text-xs font-semibold text-[#18181b]">
+              {tv("panel.voiceName")}
+            </span>
             <span aria-hidden className="text-[10px] text-[#64748b]">·</span>
             <span className="text-[10px] text-[#475569]">
               {tv("panel.voiceGenderF")}
@@ -423,7 +427,7 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
       {/* Language pills */}
       <div className="mt-3">
         <span className="text-[9px] font-semibold uppercase tracking-wider text-[#64748b]">
-          {tv("panel.primaryLanguage")}
+          {tv("panel.defaultLanguage")}
         </span>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {STUDIO_LANGUAGES.map((lang) => (
@@ -544,8 +548,11 @@ function CalendarMock({ reduce }: { reduce: boolean }) {
 /*  Tuile F — config live : 3 mini sliders qui bougent seuls (scaleX)          */
 /* -------------------------------------------------------------------------- */
 
+const DEMO_SLIDERS = ["tone", "speed", "warmth"] as const;
+
 function SliderDemo({ reduce }: { reduce: boolean }) {
-  const labels = ["Tone", "Speed", "Warmth"];
+  const tv = useTranslations("VoiceStudio");
+  const labels = DEMO_SLIDERS.map((key) => tv(`sliders.${key}`));
   const [vals, setVals] = useState<number[]>([35, 70, 55]);
 
   useEffect(() => {
