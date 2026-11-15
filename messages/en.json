@@ -1264,6 +1264,8 @@
     "extractionRemove": "Remove",
     "extractionCaptureOff": "information capture is off on the platform, nothing is filled in for now.",
     "extractionMax": "{max} items maximum per campaign.",
+    "extractionUnlabeled": "Give this information a name",
+    "extractionKeyRenamed": "Values already captured keep the old key",
     "type_string": "Text",
     "type_number": "Number",
     "type_boolean": "Yes / No",
