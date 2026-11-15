@@ -25,7 +25,7 @@ declare module "next-auth" {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Mounted under /api/admin/auth/* to avoid colliding with the existing
   // /api/auth/login + /api/auth/callback Google OAuth flow used by
-  // Calendar/Sheets refresh-token auth.
+  // Calendar/Sheets refresh-token auth (/api/auth/callback: local dev only).
   basePath: "/api/admin/auth",
   // Trust the proxy's host header (Railway). Combined with AUTH_URL
   // env var (canonical public origin), Auth.js generates correct redirects.
