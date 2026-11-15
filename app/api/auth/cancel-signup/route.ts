@@ -5,6 +5,7 @@ import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { emailFields } from "@/lib/event-pii";
 
 // POST /api/auth/cancel-signup
 // Pour le flow signup → verify-email : laisse au user un escape hatch
@@ -49,8 +50,8 @@ export async function POST() {
   await logEvent({
     source: "auth",
     event: "signup_cancelled",
-    message: `Signup annulé par ${me.email} avant vérification — compte supprimé`,
-    metadata: { email: me.email },
+    message: `Signup annulé par ${me.id} avant vérification — compte supprimé`,
+    metadata: emailFields(me.email),
   });
 
   // Force-clear la session.

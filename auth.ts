@@ -9,6 +9,7 @@ import { provisionTenant } from "@/lib/auth/provision-tenant";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { emailFields } from "@/lib/event-pii";
 import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
 
 const SUPPORTED_LOCALES = ["fr", "he", "en"];
@@ -56,9 +57,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await logEvent({
             source: "auth",
             event: "login_failed",
-            message: `Login refusé — email inconnu (${email})`,
+            message: "Login refusé — email inconnu",
             level: "warn",
-            metadata: { email },
+            metadata: emailFields(email),
           });
           return null;
         }
@@ -72,10 +73,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await logEvent({
             source: "auth",
             event: "login_no_password",
-            message: `Login email refusé — compte sans mot de passe (Google) : ${email}`,
+            message: "Login email refusé — compte sans mot de passe (Google)",
             level: "warn",
             userId: user.id,
-            metadata: { email },
+            metadata: emailFields(email),
           });
           return null;
         }
@@ -88,7 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             message: `Login refusé — mot de passe incorrect`,
             level: "warn",
             userId: user.id,
-            metadata: { email },
+            metadata: emailFields(email),
           });
           return null;
         }
@@ -96,7 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await logEvent({
           source: "auth",
           event: "login_success",
-          message: `Login réussi : ${email}`,
+          message: "Login réussi",
           userId: user.id,
         });
         return { id: user.id, email: user.email };
@@ -158,7 +159,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await logEvent({
             source: "auth",
             event: "signup_google_exists",
-            message: `Signup Google refusé — compte déjà existant : ${email}`,
+            message: "Signup Google refusé — compte déjà existant",
             userId: existing.id,
           });
           return `/${locale}/login?notice=exists`;
@@ -173,7 +174,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await logEvent({
           source: "auth",
           event: "login_success",
-          message: `Login Google : ${email}`,
+          message: "Login Google",
           userId: existing.id,
         });
         return true;
@@ -192,7 +193,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       await logEvent({
         source: "auth",
         event: "signup_google",
-        message: `Signup Google : ${email} (plan ${plan})`,
+        message: `Signup Google (plan ${plan})`,
         userId: created.id,
       });
       return true;

@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
         await logEvent({
           source: "sync",
           event: "tenant_synced",
-          message: `Sync ${t.email} : +${r.inserted} ajoutés, ↻${r.updated} màj sur ${r.scanned} events (${elapsedMs}ms)`,
+          message: `Sync ${t.id} : +${r.inserted} ajoutés, ↻${r.updated} màj sur ${r.scanned} events (${elapsedMs}ms)`,
           userId: t.id,
           metadata: { ...r } as Record<string, unknown>,
         });
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
         await logEvent({
           source: "sync",
           event: "tenant_sync_errors",
-          message: `Sync ${t.email} : ${r.errors.length} erreur(s) — ${r.errors[0]?.slice(0, 100)}`,
+          message: `Sync ${t.id} : ${r.errors.length} erreur(s) — ${r.errors[0]?.slice(0, 100)}`,
           level: "warn",
           userId: t.id,
           metadata: { errors: r.errors, reason: r.reason },
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
       await logEvent({
         source: "sync",
         event: "tenant_sync_failed",
-        message: `Sync ${t.email} crashed : ${msg.slice(0, 200)}`,
+        message: `Sync ${t.id} crashed : ${msg.slice(0, 200)}`,
         level: "error",
         userId: t.id,
         metadata: { error: msg },
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
         await logEvent({
           source: "sync",
           event: "loyalty_backfill_done",
-          message: `Loyalty backfill ${t.email}: ${v.upserted} bookings from ${v.scanned} events`,
+          message: `Loyalty backfill ${t.id}: ${v.upserted} bookings from ${v.scanned} events`,
           userId: t.id,
           metadata: { ...v } as Record<string, unknown>,
         });
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
         await logEvent({
           source: "sync",
           event: "loyalty_sync_failed",
-          message: `Loyalty sync ${t.email}: ${v.reason?.slice(0, 160)}`,
+          message: `Loyalty sync ${t.id}: ${v.reason?.slice(0, 160)}`,
           level: "warn",
           userId: t.id,
           metadata: { ...v } as Record<string, unknown>,

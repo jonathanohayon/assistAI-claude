@@ -51,9 +51,9 @@ export async function releaseAllTwilioNumbersFor(
       await logEvent({
         source: "web",
         event: "twilio_number_released",
-        message: `Numéro ${n.phoneNumber} libéré côté Twilio (SID ${n.twilioSid})`,
+        message: `Numéro libéré côté Twilio (SID ${n.twilioSid})`,
         userId,
-        metadata: { phoneNumber: n.phoneNumber, sid: n.twilioSid },
+        metadata: { tenantLine: n.phoneNumber, sid: n.twilioSid },
       });
       // Also drop it from the LiveKit inbound trunk allowlist. This was never
       // called: every released number stayed on the trunk (14 of 15 at the
@@ -65,11 +65,11 @@ export async function releaseAllTwilioNumbersFor(
         await logEvent({
           source: "web",
           event: "livekit_trunk_remove_failed",
-          message: `Numéro ${n.phoneNumber} libéré chez Twilio mais pas retiré du trunk LiveKit`,
+          message: `Numéro libéré chez Twilio mais pas retiré du trunk LiveKit (SID ${n.twilioSid})`,
           level: "warn",
           userId,
           metadata: {
-            phoneNumber: n.phoneNumber,
+            tenantLine: n.phoneNumber,
             error: trunkErr instanceof Error ? trunkErr.message : String(trunkErr),
           },
         });
@@ -81,10 +81,10 @@ export async function releaseAllTwilioNumbersFor(
       await logEvent({
         source: "web",
         event: "twilio_number_release_failed",
-        message: `Échec libération ${n.phoneNumber} : ${msg.slice(0, 200)}`,
+        message: `Échec libération (SID ${n.twilioSid}) : ${msg.slice(0, 200)}`,
         level: "error",
         userId,
-        metadata: { phoneNumber: n.phoneNumber, sid: n.twilioSid, error: msg },
+        metadata: { tenantLine: n.phoneNumber, sid: n.twilioSid, error: msg },
       });
     }
   }

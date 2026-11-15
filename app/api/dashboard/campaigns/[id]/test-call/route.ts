@@ -91,7 +91,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     await logEvent({
       source: "web",
       event: "campaign_test_call",
-      message: `Appel test immédiat → ${phoneNumber} (caller-id ${fromNumber})`,
+      message: `Appel test immédiat (contact ${contact.id})`,
       userId: r.userId,
       metadata: { campaignId: id, contactId: contact.id, roomName },
     });
