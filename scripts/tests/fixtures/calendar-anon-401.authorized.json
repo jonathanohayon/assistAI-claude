@@ -422,6 +422,13 @@
     },
     "google": [
       {
+        "api": "calendar.events.get",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "eventId": "evt-1"
+        }
+      },
+      {
         "api": "calendar.events.delete",
         "args": {
           "calendarId": "cal-user-worker-mock",
@@ -437,6 +444,13 @@
       "message": "RDV annulé."
     },
     "google": [
+      {
+        "api": "calendar.events.get",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "eventId": "evt-1"
+        }
+      },
       {
         "api": "calendar.events.delete",
         "args": {
