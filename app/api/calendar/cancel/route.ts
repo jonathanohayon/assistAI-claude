@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
-import { resolveAgentCallerGoogle } from "@/lib/google";
+import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
 
 export async function POST(req: NextRequest) {
+  // No internal secret and no session → 401 before anything else.
+  const gate = await requireAgentCaller(req);
+  if (!gate.ok) return gate.response;
   const { eventId } = await req.json();
 
   if (!eventId) {
@@ -13,15 +15,15 @@ export async function POST(req: NextRequest) {
   }
 
   const caller = await resolveAgentCallerGoogle(req);
+  if (caller.mode === "anonymous") {
+    // Unreachable behind the gate above; kept so no path can use a client.
+    return NextResponse.json(AGENT_CALLER_UNAUTHORIZED_BODY, { status: 401 });
+  }
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Calendar non connecté pour ce compte." },
       { status: 409 },
     );
-  }
-  if (caller.mode === "demo") {
-    // Anonymous caller: never read or delete real events (lib/demo-sandbox).
-    return NextResponse.json(DEMO_DENIED_BODY, { status: 401 });
   }
   if (caller.mode === "unknown_tenant") {
     return NextResponse.json(

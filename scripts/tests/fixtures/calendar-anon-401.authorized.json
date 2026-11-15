@@ -1,0 +1,692 @@
+{
+  "calendar/availability :: worker": {
+    "status": 200,
+    "body": {
+      "date": "2030-01-07",
+      "center": "ashdod",
+      "label": "Ashdod",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00",
+        "17:30"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/availability :: session": {
+    "status": 200,
+    "body": {
+      "date": "2030-01-07",
+      "center": "ashdod",
+      "label": "Ashdod",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00",
+        "17:30"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/availability (location) :: worker": {
+    "status": 200,
+    "body": {
+      "date": "2030-01-07",
+      "location": "Mock Studio",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/availability (location) :: session": {
+    "status": 200,
+    "body": {
+      "date": "2030-01-07",
+      "location": "Mock Studio",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/list-dates :: worker": {
+    "status": 200,
+    "body": {
+      "center": "ashdod",
+      "label": "Ashdod",
+      "dates": [
+        {
+          "date": "2030-01-14",
+          "weekday": "lundi"
+        },
+        {
+          "date": "2030-01-21",
+          "weekday": "lundi"
+        }
+      ]
+    },
+    "google": []
+  },
+  "calendar/list-dates :: session": {
+    "status": 401,
+    "body": {
+      "error": "unauthorized"
+    },
+    "google": []
+  },
+  "calendar/book :: worker": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "eventId": "evt-new",
+      "link": "https://calendar.example.test/evt-new",
+      "center": "ashdod",
+      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client à Ashdod"
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T12:00:00.000Z",
+          "timeMax": "2030-01-07T12:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.insert",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "requestBody": {
+            "summary": "RDV Ashdod — Mock Client",
+            "description": "Rendez-vous\nCentre : Ashdod\nTel : +15555550123",
+            "start": {
+              "dateTime": "2030-01-07T14:00:00",
+              "timeZone": "Asia/Jerusalem"
+            },
+            "end": {
+              "dateTime": "2030-01-07T14:30:00",
+              "timeZone": "Asia/Jerusalem"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "calendar/book :: session": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "eventId": "evt-new",
+      "link": "https://calendar.example.test/evt-new",
+      "center": "ashdod",
+      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client à Ashdod"
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T12:00:00.000Z",
+          "timeMax": "2030-01-07T12:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.insert",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "requestBody": {
+            "summary": "RDV Ashdod — Mock Client",
+            "description": "Rendez-vous\nCentre : Ashdod\nTel : +15555550123",
+            "start": {
+              "dateTime": "2030-01-07T14:00:00",
+              "timeZone": "Asia/Jerusalem"
+            },
+            "end": {
+              "dateTime": "2030-01-07T14:30:00",
+              "timeZone": "Asia/Jerusalem"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "calendar/book (conflict) :: worker": {
+    "status": 409,
+    "body": {
+      "error": "slot_conflict",
+      "message": "Le créneau 11:00 (30 min) chevauche un rendez-vous existant le 2030-01-07. Créneaux libres : 09:00, 09:30, 10:00, 10:30, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30, 17:00, 17:30.",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00",
+        "17:30"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T09:00:00.000Z",
+          "timeMax": "2030-01-07T09:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/book (conflict) :: session": {
+    "status": 409,
+    "body": {
+      "error": "slot_conflict",
+      "message": "Le créneau 11:00 (30 min) chevauche un rendez-vous existant le 2030-01-07. Créneaux libres : 09:00, 09:30, 10:00, 10:30, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30, 17:00, 17:30.",
+      "available_slots": [
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00",
+        "17:30"
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T09:00:00.000Z",
+          "timeMax": "2030-01-07T09:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-01-07T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/find :: worker": {
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "eventId": "evt-1",
+          "summary": "RDV Ashdod — Mock Client",
+          "start": "2030-01-07T11:00:00+02:00",
+          "end": "2030-01-07T11:30:00+02:00"
+        }
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2029-12-03T10:00:00.000Z",
+          "timeMax": "2030-01-02T10:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "maxResults": 50,
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/find :: session": {
+    "status": 200,
+    "body": {
+      "events": [
+        {
+          "eventId": "evt-1",
+          "summary": "RDV Ashdod — Mock Client",
+          "start": "2030-01-07T11:00:00+02:00",
+          "end": "2030-01-07T11:30:00+02:00"
+        }
+      ]
+    },
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2029-12-03T10:00:00.000Z",
+          "timeMax": "2030-01-02T10:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "maxResults": 50,
+          "timeZone": "Asia/Jerusalem"
+        }
+      }
+    ]
+  },
+  "calendar/cancel :: worker": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "RDV annulé."
+    },
+    "google": [
+      {
+        "api": "calendar.events.delete",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "eventId": "evt-1"
+        }
+      }
+    ]
+  },
+  "calendar/cancel :: session": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "RDV annulé."
+    },
+    "google": [
+      {
+        "api": "calendar.events.delete",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "eventId": "evt-1"
+        }
+      }
+    ]
+  },
+  "calendar/reschedule :: worker": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "eventId": "evt-1",
+      "center": "ashdod",
+      "summary": "RDV déplacé au 2030-01-07 à 15:00 (Ashdod)."
+    },
+    "google": [
+      {
+        "api": "calendar.events.get",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "eventId": "evt-1"
+        }
+      },
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T13:00:00.000Z",
+          "timeMax": "2030-01-07T13:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.patch",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "eventId": "evt-1",
+          "requestBody": {
+            "summary": "RDV Ashdod — Mock Client",
+            "start": {
+              "dateTime": "2030-01-07T15:00:00",
+              "timeZone": "Asia/Jerusalem"
+            },
+            "end": {
+              "dateTime": "2030-01-07T15:30:00",
+              "timeZone": "Asia/Jerusalem"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "calendar/reschedule :: session": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "eventId": "evt-1",
+      "center": "ashdod",
+      "summary": "RDV déplacé au 2030-01-07 à 15:00 (Ashdod)."
+    },
+    "google": [
+      {
+        "api": "calendar.events.get",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "eventId": "evt-1"
+        }
+      },
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "timeMin": "2030-01-07T13:00:00.000Z",
+          "timeMax": "2030-01-07T13:30:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem"
+        }
+      },
+      {
+        "api": "calendar.events.patch",
+        "args": {
+          "calendarId": "cal-user-session-mock",
+          "eventId": "evt-1",
+          "requestBody": {
+            "summary": "RDV Ashdod — Mock Client",
+            "start": {
+              "dateTime": "2030-01-07T15:00:00",
+              "timeZone": "Asia/Jerusalem"
+            },
+            "end": {
+              "dateTime": "2030-01-07T15:30:00",
+              "timeZone": "Asia/Jerusalem"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "sheets/contact :: worker": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "action": "updated",
+      "message": "Client Mock Client mis à jour"
+    },
+    "google": [
+      {
+        "api": "sheets.spreadsheets.get",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock"
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.values.get",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock",
+          "range": "Clients!A:F"
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.values.update",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock",
+          "range": "Clients!A2:F2",
+          "valueInputOption": "USER_ENTERED",
+          "requestBody": {
+            "values": [
+              [
+                "Mock Client",
+                "'+15555550123",
+                "",
+                "first | second",
+                "01/12/2029",
+                "03/12/2029 12:00:00"
+              ]
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "sheets/contact :: session": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "action": "updated",
+      "message": "Client Mock Client mis à jour"
+    },
+    "google": [
+      {
+        "api": "sheets.spreadsheets.get",
+        "args": {
+          "spreadsheetId": "sheet-user-session-mock"
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.values.get",
+        "args": {
+          "spreadsheetId": "sheet-user-session-mock",
+          "range": "Clients!A:F"
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.values.update",
+        "args": {
+          "spreadsheetId": "sheet-user-session-mock",
+          "range": "Clients!A2:F2",
+          "valueInputOption": "USER_ENTERED",
+          "requestBody": {
+            "values": [
+              [
+                "Mock Client",
+                "'+15555550123",
+                "",
+                "first | second",
+                "01/12/2029",
+                "03/12/2029 12:00:00"
+              ]
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "sheets/call-log :: worker": {
+    "status": 200,
+    "body": {
+      "success": true
+    },
+    "google": [
+      {
+        "api": "sheets.spreadsheets.get",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock"
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.batchUpdate",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock",
+          "requestBody": {
+            "requests": [
+              {
+                "insertDimension": {
+                  "range": {
+                    "sheetId": 12,
+                    "dimension": "ROWS",
+                    "startIndex": 1,
+                    "endIndex": 2
+                  },
+                  "inheritFromBefore": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "api": "sheets.spreadsheets.values.update",
+        "args": {
+          "spreadsheetId": "sheet-user-worker-mock",
+          "range": "Appels!A2:G2",
+          "valueInputOption": "USER_ENTERED",
+          "requestBody": {
+            "values": [
+              [
+                "03/12/2029",
+                "12:00",
+                "Mock Client",
+                "'+15555550123",
+                "1:15",
+                "info",
+                "mock"
+              ]
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "sheets/call-log :: session": {
+    "status": 401,
+    "body": {
+      "error": "unauthorized"
+    },
+    "google": []
+  }
+}
