@@ -26,6 +26,10 @@ import {
 } from "recharts";
 
 import { TranscriptBubbles } from "@/components/calls/TranscriptBubbles";
+import type { CapturedView } from "@/lib/campaigns/capture";
+import type { ExtractionField } from "@/lib/campaigns/constants";
+
+import { CapturedFromConversation } from "./captured-from-conversation";
 
 type Call = {
   id: string;
@@ -37,6 +41,8 @@ type Call = {
   summary: string;
   transcript: Array<{ role: "user" | "assistant"; text: string }>;
   createdAt: string;
+  /** Present only when the server's capture switch is on (results-call-view.ts); null = no attempt recorded. */
+  captured?: CapturedView;
 };
 
 interface Results {
@@ -89,11 +95,17 @@ export function CampaignAnalytics({
   campaignName,
   asUserId,
   onClose,
+  extractionSchema = [],
+  captureOn = false,
 }: {
   campaignId: string;
   campaignName: string;
   asUserId?: string;
   onClose: () => void;
+  /** The campaign's CURRENT fields-to-capture schema: labels and order of the captured block. */
+  extractionSchema?: ExtractionField[];
+  /** The server's CAMPAIGN_CAPTURE switch as one boolean (server page); off = no captured block. */
+  captureOn?: boolean;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const [mounted, setMounted] = useState(false);
@@ -327,6 +339,8 @@ export function CampaignAnalytics({
                         onToggle={() => setOpenCall(openCall === c.id ? null : c.id)}
                         outcomeLabel={outcomeLabel}
                         t={t}
+                        extractionSchema={extractionSchema}
+                        captureOn={captureOn}
                       />
                     ))}
                   </div>
@@ -433,12 +447,16 @@ function ConversationRow({
   onToggle,
   outcomeLabel,
   t,
+  extractionSchema,
+  captureOn,
 }: {
   call: Call;
   open: boolean;
   onToggle: () => void;
   outcomeLabel: (o: string) => string;
   t: ReturnType<typeof useTranslations<"DashboardCampaigns">>;
+  extractionSchema: ExtractionField[];
+  captureOn: boolean;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white">
@@ -446,7 +464,7 @@ function ConversationRow({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
+        className="flex min-h-[44px] w-full flex-wrap items-center gap-x-2 gap-y-1.5 px-3.5 py-2.5 text-start transition hover:bg-[#f8fafc]"
       >
         <span dir="ltr" className="font-mono text-[12px] text-[#18181b]">{call.phoneNumber}</span>
         <span
@@ -505,6 +523,11 @@ function ConversationRow({
                   {call.summary}
                 </p>
               )}
+              <CapturedFromConversation
+                schema={extractionSchema}
+                captured={call.captured}
+                captureOn={captureOn}
+              />
               {call.transcript.length === 0 ? (
                 <p className="text-[12px] italic text-[#94a3b8]">{t("noTranscript")}</p>
               ) : (
