@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/check-dev-only.mjs && next build",
     "start": "node scripts/migrate.mjs && next start",
     "lint": "eslint",
     "test": "node scripts/run-unit-tests.mjs",
