@@ -13,6 +13,11 @@
 //     matched there. French and Hebrew have no such word: any case matches.
 //     "Google Sheets" (the product's name) is allowed everywhere.
 // Hebrew: the transliterations of the same words.
+//
+// Both rule sets (tenant and public) also carry the first customer's names,
+// in every locale: scripts/first-customer-names.mjs.
+
+import { FIRST_CUSTOMER_NAME_RULES } from "./first-customer-names.mjs";
 
 const COMMON = [
   ["Persona", /\bpersonas?\b/gi],
@@ -35,7 +40,7 @@ const SHEET_CAPITAL = /\bSheets?\b/g;
 /** The rules for one locale: [label, regex] pairs (global regexes). */
 export function wordRules(locale) {
   const sheet = locale === "en" ? SHEET_CAPITAL : SHEET_ANY_CASE;
-  return [...COMMON, ["Sheet", sheet], ...(locale === "he" ? HEBREW : [])];
+  return [...COMMON, ["Sheet", sheet], ...(locale === "he" ? HEBREW : []), ...FIRST_CUSTOMER_NAME_RULES];
 }
 
 /**
@@ -57,6 +62,7 @@ export function publicWordRules(locale) {
     ["Sheet", sheet],
     latency,
     ...(locale === "he" ? [["Persona", /פרסונ/g]] : []),
+    ...FIRST_CUSTOMER_NAME_RULES,
   ];
 }
 
