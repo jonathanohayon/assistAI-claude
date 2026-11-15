@@ -40,6 +40,7 @@ import {
   snapshot,
 } from "@/lib/campaigns/edit-guard";
 import { StatusPill } from "./_ui";
+import { storedCaptureKeys } from "@/lib/campaigns/capture-editor";
 import { presetOnAgentPick, presetRefusal } from "@/components/bricks/mission/mission-ui";
 import type { ToolsResponse } from "@/components/bricks/tools/tools-ui";
 import type { EffectiveCapabilities } from "@/lib/tools/contract";
@@ -586,6 +587,7 @@ export function CampaignsWorkspace({
                 isAdmin={isAdmin}
                 capabilities={capabilities}
                 captureOn={captureOn}
+                storedCaptureKeys={storedCaptureKeys(savedSnapshot)}
               />
             )}
 

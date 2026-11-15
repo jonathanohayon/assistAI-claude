@@ -1248,7 +1248,7 @@
     "concurrencyLabel": "שיחות במקביל",
     "concurrencyHint": "כמה לידים לחייג בו-זמנית.",
     "extractionTitle": "מידע לאיסוף",
-    "extractionHint": "מה שהסוכן אוסף במהלך כל שיחה.",
+    "extractionHint": "מה שאנחנו אוספים מכל שיחה.",
     "extractionAddField": "הוספת פריט מידע",
     "extractionKey": "מפתח",
     "extractionLabelField": "תווית",
