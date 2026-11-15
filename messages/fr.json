@@ -1895,8 +1895,8 @@
       "amountLabel": "Montant",
       "amountLabelText": "Montant :",
       "includedHeading": "Ce qui est inclus",
-      "ctaButton": "Accéder à mon dashboard",
-      "footer": "Cet email est une confirmation de paiement. Vous pouvez gérer votre abonnement à tout moment depuis votre dashboard.",
+      "ctaButton": "Accéder à mon tableau de bord",
+      "footer": "Cet email est une confirmation de paiement. Vous pouvez gérer votre abonnement à tout moment depuis votre tableau de bord.",
       "signature": "— L'équipe Tamara"
     },
     "notificationTest": {
@@ -1905,10 +1905,10 @@
       "heading": "Vos notifications email sont OK ✓",
       "defaultGreeting": "à vous",
       "hello": "Bonjour {name},",
-      "intro": "Ceci est un email de test envoyé depuis votre dashboard Tamara. Si vous lisez ce message, cela veut dire que les notifications email sont correctement configurées sur votre compte.",
+      "intro": "Ceci est un email de test envoyé depuis votre tableau de bord Tamara. Si vous lisez ce message, cela veut dire que les notifications email sont correctement configurées sur votre compte.",
       "confirm": "Vous recevrez désormais un récap email après chaque appel.",
       "signature": "— L'équipe Tamara",
-      "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est un simple message de service."
+      "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre tableau de bord. Cet email est un simple message de service."
     },
     "contactCode": {
       "subject": "Confirmez votre adresse pour les résumés d'appels",
@@ -1923,7 +1923,7 @@
       "heading": "📞 Nouvel appel reçu",
       "caller": "Appelant : {number}",
       "unknownNumber": "numéro inconnu",
-      "footer": "Vous recevez cet email car le récap d'appel par email est activé sur votre compte. Vous pouvez changer l'adresse ou le désactiver à tout moment depuis votre dashboard."
+      "footer": "Vous recevez cet email car le récap d'appel par email est activé sur votre compte. Vous pouvez changer l'adresse ou le désactiver à tout moment depuis votre tableau de bord."
     },
     "trialWarning": {
       "subjectMinutes": "⏰ Il vous reste {minutes} minutes d'essai Tamara",
@@ -1976,13 +1976,13 @@
       "reco1Title": "1 · Testez votre assistante",
       "reco1Body": "Appelez le {phone} depuis votre téléphone et discutez avec elle comme avec un client. C'est le meilleur moyen de découvrir ce qu'elle sait faire.",
       "recoCalendarTitle": "{n} · Connectez Google Calendar",
-      "recoCalendarBody": "Sans calendrier connecté, votre assistante ne peut pas réserver dans VOTRE agenda. Ouvrez votre dashboard et cliquez sur \"Connecter Google\" — 30 secondes.",
+      "recoCalendarBody": "Sans calendrier connecté, votre assistante ne peut pas réserver dans VOTRE agenda. Ouvrez votre tableau de bord et cliquez sur \"Connecter Google\" — 30 secondes.",
       "recoCrmTitle": "{n} · Votre tableau Google des contacts",
       "recoCrmBody": "Chaque contact créé par votre assistante est ajouté automatiquement à votre tableau Google. Pensez à le partager avec votre équipe si plusieurs personnes le consultent.",
       "recoWhatsappTitle": "{n} · Votre récap WhatsApp",
       "recoWhatsappBody": "Renseignez votre numéro WhatsApp dans l'onglet Réceptionniste pour recevoir un récap immédiat à chaque appel.",
       "recoPersonaTitle": "{n} · Ajustez sa personnalité",
-      "recoPersonaBody": "Allez dans l'onglet Réceptionniste pour ajuster le ton, les horaires, les centres et les règles métier. La personnalité par défaut s'appelle \"Tamara\" — renommez-la et adaptez-la à votre activité."
+      "recoPersonaBody": "Allez dans l'onglet Réceptionniste pour ajuster le ton, les horaires, les établissements et les règles métier. La personnalité par défaut s'appelle \"Tamara\" — renommez-la et adaptez-la à votre activité."
     }
   },
   "LiveTest": {

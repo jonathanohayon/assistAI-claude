@@ -102,10 +102,18 @@ const MAILS = EMAIL_NAMESPACES.map((ns) => `Email.${ns}`);
 // E-mail-only words, on top of wordHits: the customer is the owner, so a mail
 // never calls them "owner" (fr/en/he). And no English left inside the fr/he
 // mails: in Hebrew, no Latin word but the brand and product names; in
-// French, the English leftovers met in the 15/11 sweep ("dashboard" is the
-// product's French word, as on the screens).
+// French, the English leftovers met in the 15/11 sweep, "dashboard" included
+// (the French mails say "tableau de bord", tamaraVP 15/11).
+// Hebrew mails speak to the reader in the plural (שלכם, הזינו…), tamaraVP
+// 15/11: the singular forms (feminine and masculine) the sweep replaced must
+// not come back. Whole words only, so nouns that merely contain them pass.
 const HE_LATIN_ALLOWED = new Set(["Tamara", "WhatsApp", "Google", "Calendar", "Sheets"]);
-const FR_ENGLISH = [/\brecaps?\b/gi, /\bsettings\b/gi, /\bnotification test\b/gi, /\bagent config\b/gi, /\btransactional\b/gi];
+const FR_ENGLISH = [/\brecaps?\b/gi, /\bsettings\b/gi, /\bnotification test\b/gi, /\bagent config\b/gi, /\btransactional\b/gi, /\bdashboards?\b/gi];
+const HE_SINGULAR = [
+  "שלך", "לך", "הגעת", "תקבל", "קיבלת", "יצרת", "התעלמי", "תוכלי", "שניסית", "צריך עזרה", "תגיבי",
+  "בדקי", "התקשרי", "דברי", "את לקוחה", "פתחי", "לחצי", "הזיני", "עברי", "שנני", "התאימי",
+];
+const HE_SINGULAR_RE = new RegExp(`(?<![\\u05D0-\\u05EA])(${HE_SINGULAR.join("|")})(?![\\u05D0-\\u05EA])`, "g");
 function emailHits(text: string, locale: string): string[] {
   const out: string[] = [];
   const plain = stripIcuArguments(text).replace(/<[^>]*>/g, " ");
@@ -113,6 +121,7 @@ function emailHits(text: string, locale: string): string[] {
   if (locale === "he") {
     if (/בעלים|בעלת העסק|בעל העסק/.test(plain)) out.push("owner");
     for (const [w] of plain.matchAll(/[A-Za-z][A-Za-z-]*/g)) if (!HE_LATIN_ALLOWED.has(w)) out.push(`English "${w}"`);
+    for (const [w] of plain.matchAll(HE_SINGULAR_RE)) out.push(`singular "${w}"`);
   }
   if (locale === "fr") for (const re of FR_ENGLISH) for (const [w] of plain.matchAll(re)) out.push(`English "${w}"`);
   return out;
@@ -123,6 +132,11 @@ assert.deepEqual(emailHits("Set your owner WhatsApp number", "en"), ["owner"]);
 assert.deepEqual(emailHits("{n} · סיכום WhatsApp לבעלים", "he"), ["owner"]);
 assert.deepEqual(emailHits("ב-<strong>Tamara</strong> · Google Calendar", "he"), [], "brand names and tags are fine");
 assert.deepEqual(emailHits("בדיקת Notification", "he"), ['English "Notification"']);
+assert.deepEqual(emailHits("Ouvrez votre dashboard", "fr"), ['English "dashboard"']);
+assert.deepEqual(emailHits("Ouvrez votre tableau de bord", "fr"), []);
+assert.deepEqual(emailHits("הזיני את מספר ה-WhatsApp שלך", "he"), ['singular "הזיני"', 'singular "שלך"']);
+assert.deepEqual(emailHits("הזינו את מספר ה-WhatsApp שלכם", "he"), [], "the plural is the decided form");
+assert.deepEqual(emailHits("התשלום שלכם · הלקוחות · ברכות", "he"), [], "words containing a form are not hits");
 
 function* strings(node: unknown, path: string): Generator<[string, string]> {
   if (typeof node === "string") yield [path, node];

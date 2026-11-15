@@ -1982,7 +1982,7 @@
       "recoWhatsappTitle": "{n} · Your WhatsApp recap",
       "recoWhatsappBody": "Set your WhatsApp number in the Receptionist tab to receive an instant recap after every call.",
       "recoPersonaTitle": "{n} · Adjust her personality",
-      "recoPersonaBody": "Go to the Receptionist tab to tune the tone, hours, branches, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
+      "recoPersonaBody": "Go to the Receptionist tab to tune the tone, hours, locations, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
     }
   },
   "LiveTest": {

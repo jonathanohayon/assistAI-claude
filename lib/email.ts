@@ -612,10 +612,12 @@ export async function sendNotificationTestEmail(
     `${t("confirm")}\n\n` +
     t("signature");
 
+  // Header: the magenta→rose signature of the owner recap mail (no pink→cyan,
+  // its middle turns grey); white text stays AA on both stops (≥ 4.6:1).
   const html = `
     <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;">
-      <div style="background:linear-gradient(135deg,#be185d 0%,#ec4899 50%,#22d3ee 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
-        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.85);font-weight:600;">${t("eyebrow")}</p>
+      <div style="background:linear-gradient(135deg,#be185d 0%,#db2777 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#fff;font-weight:600;">${t("eyebrow")}</p>
         <h1 style="margin:0;font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Tamara</h1>
       </div>
       <div style="padding:32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">
