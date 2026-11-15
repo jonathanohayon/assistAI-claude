@@ -1,5 +1,5 @@
-// Production wiring of the resend-verification handler and the signup action.
-// Tests reuse it and replace only the sender (and the logger).
+// Production wiring of the resend-verification and verify-email handlers and
+// the signup action. Tests reuse it and replace only the sender (and the logger).
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
@@ -13,7 +13,8 @@ import { TRIAL_PLAN_KEY } from "@/lib/plans";
 import { consumeRateLimit } from "@/lib/rate-limit-db";
 import type { ResendDeps } from "@/lib/verification-limits/resend";
 import type { SignupDeps } from "@/lib/verification-limits/signup";
-import { createEmailVerification } from "@/lib/verify-code";
+import type { VerifyDeps } from "@/lib/verification-limits/verify";
+import { burnCodeCompare, createEmailVerification, matchesLatestCode, verifyEmailCode } from "@/lib/verify-code";
 
 export const resendDeps: ResendDeps = {
   consume: consumeRateLimit,
@@ -57,5 +58,21 @@ export const signupDeps: SignupDeps = {
     provisionTenant({ email, displayName: "", plan: TRIAL_PLAN_KEY, locale, emailVerified: false, passwordHash }),
   createCode: (userId) => createEmailVerification(userId, { skipCooldown: true }),
   send: sendVerificationEmail,
+  log: logEvent,
+};
+
+export const verifyDeps: VerifyDeps = {
+  consume: consumeRateLimit,
+  findUser: async (email) => {
+    const [u] = await db
+      .select({ id: users.id, emailVerified: users.emailVerified })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return u ?? null;
+  },
+  verifyCode: verifyEmailCode,
+  matchesLatestCode,
+  burnCompare: burnCodeCompare,
   log: logEvent,
 };
