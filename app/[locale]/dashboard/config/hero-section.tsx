@@ -87,7 +87,7 @@ export function HeroSection({
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#be185d]">
           {t("heroEyebrow")} ·{" "}
           <span
-            className={`inline-flex items-center gap-1 ${live ? "text-[#0e7490]" : warning ? "text-[#b45309]" : "text-[#475569]"}`}
+            className={`inline-flex items-center gap-1 ${live ? "text-[#0e7490]" : warning ? "text-[#92400e]" : "text-[#475569]"}`}
           >
             <span className="relative flex h-1.5 w-1.5">
               {live && (
