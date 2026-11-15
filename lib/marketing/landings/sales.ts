@@ -27,14 +27,14 @@ export function salesMeta(l: LandingLocale): LandingMeta {
   const t = pick(l);
   return {
     title: t({
-      fr: "Tamara — Appels sortants pour vos leads",
-      en: "Tamara — Outbound calls for your leads",
-      he: "תמרה — שיחות יוצאות ללידים שלכם",
+      fr: "Tamara — Appels sortants pour vos prospects",
+      en: "Tamara — Outbound calls for your prospects",
+      he: "תמרה — שיחות יוצאות ללקוחות הפוטנציאליים שלכם",
     }),
     description: t({
-      fr: "Tamara appelle vos leads, les qualifie et vous dit qui est prêt.",
-      en: "Tamara calls your leads, qualifies them and tells you who is ready.",
-      he: "תמרה מתקשרת ללידים שלכם, מסננת אותם ואומרת לכם מי מוכן.",
+      fr: "Tamara appelle vos contacts, repère ceux qui sont intéressés et vous dit qui rappeler.",
+      en: "Tamara calls your contacts, spots the ones who are interested and tells you whom to call back.",
+      he: "תמרה מתקשרת לאנשי הקשר שלכם, מזהה מי מעוניין ואומרת לכם למי לחזור.",
     }),
   };
 }
@@ -60,18 +60,24 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
       media: "panel",
       copy: {
         badge: t({ fr: "Appels sortants", en: "Outbound calls", he: "שיחות יוצאות" }),
-        title: t({ fr: "Aucun lead ne reste {emphasis}.", en: "No lead goes {emphasis}.", he: "אף ליד לא נשאר {emphasis}." }),
-        emphasis: t({ fr: "sans appel", en: "uncalled", he: "בלי שיחה" }),
+        // What goes in is contacts / prospects; what comes out is leads: Tamara
+        // creates them. The accent is on the second sentence. [HE] to confirm.
+        title: t({
+          fr: "Vos prospects appelés. {emphasis}.",
+          en: "Your prospects called. {emphasis}.",
+          he: "הלקוחות הפוטנציאליים שלכם מקבלים שיחה. {emphasis}.",
+        }),
+        emphasis: t({ fr: "Vos leads qualifiés", en: "Your leads qualified", he: "הלידים שלכם מסוננים" }),
         subtitle: sw.outboundBookingEffective
           ? t({
-              fr: "Tamara appelle vos leads, les qualifie et réserve le rendez-vous dans l'agenda de vos vendeurs. Vos équipes ne parlent qu'aux prospects prêts.",
-              en: "Tamara calls your leads, qualifies them and books the meeting in your sales team's calendar. Your people only talk to prospects who are ready.",
-              he: "תמרה מתקשרת ללידים שלכם, מסננת אותם וקובעת את הפגישה ביומן של אנשי המכירות. הצוות שלכם מדבר רק עם לקוחות שמוכנים.",
+              fr: "Tamara appelle vos contacts, repère ceux qui sont intéressés et réserve le rendez-vous dans l'agenda de vos vendeurs. Vos équipes ne parlent qu'aux prospects prêts.",
+              en: "Tamara calls your contacts, spots the ones who are interested and books the meeting in your sales team's calendar. Your people only talk to prospects who are ready.",
+              he: "תמרה מתקשרת לאנשי הקשר שלכם, מזהה מי מעוניין וקובעת את הפגישה ביומן של אנשי המכירות. הצוות שלכם מדבר רק עם לקוחות שמוכנים.",
             })
           : t({
-              fr: "Tamara appelle vos leads, les qualifie et vous dit qui est prêt. Vos vendeurs ne parlent qu'aux bons prospects.",
-              en: "Tamara calls your leads, qualifies them and tells you who is ready. Your sales team only talks to the right prospects.",
-              he: "תמרה מתקשרת ללידים שלכם, מסננת אותם ואומרת לכם מי מוכן. אנשי המכירות שלכם מדברים רק עם הלקוחות הנכונים.",
+              fr: "Tamara appelle vos contacts, repère ceux qui sont intéressés et vous dit qui rappeler. Vos vendeurs ne parlent qu'aux bons prospects.",
+              en: "Tamara calls your contacts, spots the ones who are interested and tells you whom to call back. Your sales team only talks to the right prospects.",
+              he: "תמרה מתקשרת לאנשי הקשר שלכם, מזהה מי מעוניין ואומרת לכם למי לחזור. אנשי המכירות שלכם מדברים רק עם הלקוחות הנכונים.",
             }),
         primary: { label: trialLabel, href: SALES_SIGNUP_HREF },
         secondary: { label: talkLabel, href: "#talk" },
@@ -81,7 +87,11 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
       label: t({ fr: "En bref", en: "At a glance", he: "בקצרה" }),
       facts: [
         t({ fr: "Jusqu'à 20 appels à la fois", en: "Up to 20 calls at once", he: "עד 20 שיחות במקביל" }),
-        t({ fr: "Vos leads par fichier ou copier-coller", en: "Your leads by file or copy-paste", he: "הלידים שלכם מקובץ או בהעתק-הדבק" }),
+        t({
+          fr: "Vos contacts par fichier ou copier-coller",
+          en: "Your contacts by file or copy-paste",
+          he: "אנשי הקשר שלכם מקובץ או בהעתק-הדבק",
+        }),
         t({ fr: "Français, anglais, hébreu", en: "French, English, Hebrew", he: "צרפתית, אנגלית, עברית" }),
       ],
     },
@@ -90,7 +100,7 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
       title: t({ fr: "Trois étapes, une campagne.", en: "Three steps, one campaign.", he: "שלושה שלבים, קמפיין אחד." }),
       steps: [
         {
-          title: t({ fr: "Importez vos leads", en: "Import your leads", he: "ייבאו את הלידים" }),
+          title: t({ fr: "Importez vos contacts", en: "Import your contacts", he: "ייבאו את אנשי הקשר" }),
           body: t({ fr: "Par fichier ou copier-coller.", en: "By file or copy-paste.", he: "מקובץ או בהעתק-הדבק." }),
         },
         {
@@ -99,16 +109,16 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
             ? t({
                 fr: "Qualifier un prospect, annoncer une offre ou réserver un rendez-vous.",
                 en: "Qualify a prospect, announce an offer or book a meeting.",
-                he: "לסנן ליד, להכריז על הצעה או לקבוע פגישה.",
+                he: "לסנן לקוח פוטנציאלי, להכריז על הצעה או לקבוע פגישה.",
               })
             : t({
                 fr: "Qualifier un prospect ou annoncer une offre.",
                 en: "Qualify a prospect or announce an offer.",
-                he: "לסנן ליד או להכריז על הצעה.",
+                he: "לסנן לקוח פוטנציאלי או להכריז על הצעה.",
               }),
         },
         {
-          title: t({ fr: "Recevez les résultats", en: "Get the results", he: "קבלו את התוצאות" }),
+          title: t({ fr: "Recevez vos leads", en: "Get your leads", he: "קבלו את הלידים" }),
           body: sw.outboundBookingEffective
             ? t({
                 fr: "Qui est intéressé, qui rappeler, et les rendez-vous pris.",
@@ -174,9 +184,9 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
           id: "who",
           question: t({ fr: "Qui appelle-t-on ?", en: "Who gets called?", he: "למי מתקשרים?" }),
           answer: t({
-            fr: "Uniquement les leads que vous importez, les jours et aux heures que vous fixez pour la campagne.",
-            en: "Only the leads you import, on the days and at the hours you set for the campaign.",
-            he: "רק ללידים שאתם מייבאים, בימים ובשעות שאתם מגדירים לקמפיין.",
+            fr: "Uniquement les contacts que vous importez, les jours et aux heures que vous fixez pour la campagne.",
+            en: "Only the contacts you import, on the days and at the hours you set for the campaign.",
+            he: "רק לאנשי הקשר שאתם מייבאים, בימים ובשעות שאתם מגדירים לקמפיין.",
           }),
         },
         {
@@ -234,9 +244,9 @@ export function buildSalesContent(l: LandingLocale, sw: LandingSwitches = LANDIN
         kicker: t({ fr: "Prêt à essayer ?", en: "Ready to try?", he: "מוכנים לנסות?" }),
         title: t({ fr: "Lancez votre première campagne.", en: "Launch your first campaign.", he: "הפעילו את הקמפיין הראשון שלכם." }),
         subtitle: t({
-          fr: "Créez votre compte, importez quelques leads et suivez les appels en direct.",
-          en: "Create your account, import a few leads and follow the calls live.",
-          he: "פתחו חשבון, ייבאו כמה לידים ועקבו אחרי השיחות בזמן אמת.",
+          fr: "Créez votre compte, importez quelques contacts et suivez les appels en direct.",
+          en: "Create your account, import a few contacts and follow the calls live.",
+          he: "פתחו חשבון, ייבאו כמה אנשי קשר ועקבו אחרי השיחות בזמן אמת.",
         }),
         primary: { label: trialLabel, href: SALES_SIGNUP_HREF },
         secondary: { label: talkLabel, href: "#talk" },
