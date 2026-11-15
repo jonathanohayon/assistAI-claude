@@ -1959,8 +1959,7 @@
     "welcome": {
       "subject": "🎉 העוזרת שלכם ב-Tamara באוויר — {phone}",
       "heading": "🎉 העוזרת שלכם באוויר",
-      "introHtmlWithName": "שלום {name}, — Tamara זמינה עכשיו בכל רגע במספר הזה:",
-      "introHtmlNoName": "שלום, Tamara זמינה עכשיו בכל רגע במספר הזה:",
+      "introHtmlBody": "העוזרת הקולית שלכם, Tamara, זמינה עכשיו בכל רגע במספר הזה:",
       "introTextWithName": "שלום {name},",
       "introTextNoName": "שלום,",
       "introTextBody": "העוזרת הקולית שלכם ב-Tamara עכשיו באוויר במספר:",

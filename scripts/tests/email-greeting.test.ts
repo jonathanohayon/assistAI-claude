@@ -32,4 +32,15 @@ for (const caller of ["app/api/onboarding/provision/route.ts", "app/api/dashboar
   assert.doesNotMatch(read(caller), /displayName: (me|u)\.displayName|recipientName/, `${caller}: no business name as a greeting`);
 }
 
+// The welcome greeting stands alone ("Bonjour,") and the next sentence never
+// opens on "Tamara", so it can't read as "Bonjour, Tamara" (tamaraVP 16/11).
+assert.match(email, /const helloHtml = `\$\{helloText\}<br\/>\$\{t\("introHtmlBody"\)\}`;/);
+for (const l of ["fr", "en", "he"]) {
+  const w = JSON.parse(read(`messages/${l}.json`)).Email.welcome;
+  assert.equal(w.introHtmlWithName, undefined, `${l}: no greeting fused with the Tamara sentence`);
+  assert.equal(w.introHtmlNoName, undefined, `${l}: no greeting fused with the Tamara sentence`);
+  assert.doesNotMatch(w.introHtmlBody, /^\s*Tamara/, `${l}: the sentence after the greeting doesn't open on Tamara`);
+  assert.match(w.introTextNoName, /^[^—{}]+,$/, `${l}: the no-name greeting is one word and a comma`);
+}
+
 console.log("email-greeting: ok");

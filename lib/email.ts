@@ -200,7 +200,7 @@ export async function sendTrialWarningEmail(
         ${t("actionLineHtml")}
       </p>
       <p style="margin:0 0 24px;">
-        <a href="https://aitamara.com/dashboard/billing" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
+        <a href="https://aitamara.com/dashboard/billing" style="display:inline-block;background:linear-gradient(135deg,#be185d,#db2777);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
           ${t("ctaButton")}
         </a>
       </p>
@@ -312,12 +312,12 @@ export async function sendWelcomeEmail(
   const plan = getLocalizedPlan(locale, opts.planKey);
   const planLabel = plan.name;
   const firstName = greetingName({ personName: opts.personName });
-  const helloHtml = firstName
-    ? t("introHtmlWithName", { name: firstName })
-    : t("introHtmlNoName");
   const helloText = firstName
     ? t("introTextWithName", { name: firstName })
     : t("introTextNoName");
+  // The greeting stands alone ("Bonjour,") and the Tamara sentence starts on
+  // its own line, so it never reads as if the customer were called Tamara.
+  const helloHtml = `${helloText}<br/>${t("introHtmlBody")}`;
 
   const trialLine = opts.trialEndsAt
     ? t("trialLineWithDate", {
@@ -415,7 +415,7 @@ export async function sendWelcomeEmail(
       <p style="font-size:14px;line-height:1.6;margin:0 0 18px;color:#555;">
         ${helloHtml}
       </p>
-      <div style="background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;text-align:center;font-family:'SF Mono',Menlo,monospace;font-size:24px;font-weight:600;letter-spacing:0.04em;padding:18px 20px;border-radius:14px;margin:0 0 22px;">
+      <div style="background:linear-gradient(135deg,#be185d,#db2777);color:#fff;text-align:center;font-family:'SF Mono',Menlo,monospace;font-size:24px;font-weight:600;letter-spacing:0.04em;padding:18px 20px;border-radius:14px;margin:0 0 22px;">
         ${ltrIsolate(opts.phoneNumber)}
       </div>
       <table cellspacing="0" cellpadding="0" style="width:100%;margin:0 0 22px;font-size:13px;border-collapse:collapse;">
@@ -557,7 +557,7 @@ export async function sendSubscriptionConfirmationEmail(
             : ""
         }
         <p style="margin:24px 0 0;">
-          <a href="https://aitamara.com/dashboard" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
+          <a href="https://aitamara.com/dashboard" style="display:inline-block;background:linear-gradient(135deg,#be185d,#db2777);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
             ${t("ctaButton")}
           </a>
         </p>
@@ -637,8 +637,8 @@ export async function sendNotificationTestEmail(
         <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#475569;">
           ${t("intro")}
         </p>
-        <div style="background:linear-gradient(135deg,#ecfeff,#fdf2f8);border:1px solid #22d3ee33;border-radius:12px;padding:18px 20px;margin:24px 0;">
-          <p style="margin:0;font-size:14px;color:#0e7490;font-weight:600;">
+        <div style="background:linear-gradient(135deg,#fdf2f8,#fce7f3);border:1px solid #db277733;border-radius:12px;padding:18px 20px;margin:24px 0;">
+          <p style="margin:0;font-size:14px;color:#be185d;font-weight:600;">
             ✓ ${t("confirm")}
           </p>
         </div>
