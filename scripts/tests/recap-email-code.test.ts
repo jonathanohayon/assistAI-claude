@@ -6,6 +6,7 @@
 // Run with:  npx tsx scripts/tests/recap-email-code.test.ts
 
 import assert from "node:assert/strict";
+import { createHash, createHmac, hkdfSync } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { NextRequest } from "next/server";
@@ -33,7 +34,21 @@ import {
   type RecapEmailCodeDeps,
 } from "../../lib/recap-email-code/handler";
 import { RECAP_EMAIL_CODE_ERRORS, recapEmailConfirmationView } from "../../lib/recap-email-code/policy";
+import { setKeyProblemReporter } from "../../lib/crypto/secret-box";
 import { PATTERN } from "../tenant-bundle-match.mjs";
+
+// No real admin alert from a unit test; and no key from the environment.
+setKeyProblemReporter(() => {});
+for (const v of ["SECRETS_KEY", "SECRETS_KEY_ID", "SECRETS_KEY_PREVIOUS", "SECRETS_KEY_PREVIOUS_ID", "CONTACT_CODE_HASH_KEY"]) delete process.env[v];
+// Mock master key only (32 bytes of 0x5a), never a real one.
+const MOCK_MASTER = Buffer.alloc(32, 0x5a);
+const MOCK_ENV = { SECRETS_KEY: MOCK_MASTER.toString("base64"), SECRETS_KEY_ID: "mock" };
+const setMasterKey = (on: boolean) => {
+  for (const [k, v] of Object.entries(MOCK_ENV)) {
+    if (on) process.env[k] = v;
+    else delete process.env[k];
+  }
+};
 
 const SUPPLIER = new RegExp((PATTERN as RegExp).source, "i");
 const LEAK = /resend|[A-Z][A-Z0-9]*_[A-Z0-9_]*(KEY|FROM|SECRET|TOKEN|URL)\b/;
@@ -74,6 +89,23 @@ const ADDRESS = "recap@example.com";
     { ...base, code: "123457" },
   ]) {
     assert.notEqual(hashCode(other), h);
+  }
+  // No key: byte for byte N2's salted sha256 (frozen copy of the pre-pepper hashCode).
+  const n2 = (i: typeof base) =>
+    createHash("sha256")
+      .update(["contact-code:v1", i.userId, i.kind, i.value.trim().toLowerCase(), i.salt, i.code].join("\u0000"), "utf8")
+      .digest("hex");
+  assert.equal(h, n2(base), "no key: N2's salted sha256");
+  // A key: HMAC-SHA256 over the same material, under HKDF(SECRETS_KEY, info "contact-code-hash").
+  setMasterKey(true);
+  try {
+    const pepper = Buffer.from(hkdfSync("sha256", MOCK_MASTER, Buffer.alloc(0), "contact-code-hash", 32));
+    const material = ["contact-code:v1", TENANT, KIND, ADDRESS, "aa", "123456"].join("\u0000");
+    assert.equal(hashCode(base), createHmac("sha256", pepper).update(material, "utf8").digest("hex"), "key: HMAC of the same material");
+    assert.notEqual(hashCode(base), h, "key: differs from the unkeyed hash");
+    assert.match(hashCode(base), /^[0-9a-f]{64}$/);
+  } finally {
+    setMasterKey(false);
   }
   assert.equal(valueKey(KIND, " Recap@Example.com "), valueKey(KIND, ADDRESS));
   assert.match(valueKey(KIND, ADDRESS), /^[0-9a-f]{64}$/);
@@ -368,6 +400,30 @@ async function main() {
     await v.sendCode();
     acc.value = "new@example.com";
     assert.deepEqual(neutral(await v.confirm({ code: "731946" })).json, { error: "invalid_code" }, "a value change invalidates");
+  }
+
+  // SECRETS_KEY set: the whole send → confirm path works under the pepper.
+  // A code issued BEFORE the key appeared no longer verifies (documented in
+  // lib/contact-code.ts: codes in flight are invalidated, 10 min TTL).
+  {
+    const before = makeWorld({});
+    await before.sendCode();
+    setMasterKey(true);
+    try {
+      assert.deepEqual(neutral(await before.confirm({ code: "731946" })).json, { error: "invalid_code" }, "issued without a key, verified with one");
+      const w = makeWorld({});
+      neutral(await w.sendCode());
+      const ok = neutral(await w.confirm({ code: "731946" }));
+      assert.equal(ok.status, 200, "issued and verified under the same key");
+      // No key material in any response or logged event.
+      const pepper = Buffer.from(hkdfSync("sha256", MOCK_MASTER, Buffer.alloc(0), "contact-code-hash", 32));
+      const out = JSON.stringify([responses, before.logs, w.logs]);
+      for (const m of [MOCK_ENV.SECRETS_KEY, MOCK_MASTER.toString("hex"), MOCK_MASTER.toString("base64url"), pepper.toString("hex"), pepper.toString("base64")]) {
+        assert.ok(!out.includes(m), "key material in a response or a log");
+      }
+    } finally {
+      setMasterKey(false);
+    }
   }
 
   // Every response: neutral, no supplier, no env var name, no code.

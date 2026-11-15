@@ -1,20 +1,25 @@
 // Verified contacts, N2: the confirmation CODE itself (pure: no database, no
-// env, no I/O besides node:crypto). Kind-generic so the owner WhatsApp and
+// I/O besides node:crypto; the only env read is the pepper, via
+// lib/crypto/derived-keys.ts). Kind-generic so the owner WhatsApp and
 // the transfer number channels (held) reuse it; only "owner_recap_email" has
 // a sending channel today (lib/recap-email-code/*).
 //
 // - 6 digits, crypto-random (randomInt), valid CODE_TTL_MS, MAX_ATTEMPTS
 //   tries; a code whose tries are used up is dead.
-// - NEVER stored in clear: the row holds a salted sha256 of the code bound
-//   to the account, the kind and the normalised value (codeHash), plus the
-//   sha256 of the normalised value (valueKey) so a value change makes the
-//   row stale. Never logged, never in a response.
+// - NEVER stored in clear: the row holds a hash of the code bound to the
+//   account, the kind, the normalised value and a per-code salt (codeHash):
+//   HMAC-SHA256 under a server pepper (derivedKey("contact-code-hash"):
+//   CONTACT_CODE_HASH_KEY if set, else HKDF of SECRETS_KEY) when one exists,
+//   else the plain salted sha256 of N2. Plus the sha256 of the normalised
+//   value (valueKey) so a value change makes the row stale. Never logged,
+//   never in a response.
 // - ONE live code per (account, kind): a new send replaces the row
 //   (contact_confirmation_codes, primary key (user_id, kind)).
 // The DB side: lib/contact-code-store.ts.
 
-import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 
+import { derivedKey } from "@/lib/crypto/derived-keys";
 import { normaliseContactValue, type ContactKind } from "@/lib/contact-confirmation";
 
 export const CODE_LENGTH = 6;
@@ -50,10 +55,24 @@ export function valueKey(kind: ContactKind, value: string): string {
   return sha256(normaliseContactValue(kind, value));
 }
 
-/** The stored hash of `code`, bound to the account, the kind, the normalised value and the salt. */
+/**
+ * The stored hash of `code`, bound to the account, the kind, the normalised
+ * value and the salt. Issue AND verify both go through here, so they always
+ * apply the same rule, read at call time:
+ *   - a pepper exists (CONTACT_CODE_HASH_KEY, else HKDF(SECRETS_KEY)):
+ *     HMAC-SHA256(pepper, material), so a leaked row can't be brute-forced
+ *     over the 10^6 codes without the server secret;
+ *   - no pepper: sha256(material), byte for byte N2's hash.
+ * A code issued under one rule fails to verify under another: codes in
+ * flight when the pepper appears or rotates (SECRETS_KEY rotation included)
+ * answer invalid_code and the owner asks for a new one. Accepted: a code
+ * lives 10 minutes, so stored rows need no migration.
+ */
 export function hashCode(input: { userId: string; kind: ContactKind; value: string; salt: string; code: string }): string {
   const v = normaliseContactValue(input.kind, input.value);
-  return sha256(["contact-code:v1", input.userId, input.kind, v, input.salt, input.code].join("\u0000"));
+  const material = ["contact-code:v1", input.userId, input.kind, v, input.salt, input.code].join("\u0000");
+  const pepper = derivedKey("contact-code-hash");
+  return pepper ? createHmac("sha256", pepper).update(material, "utf8").digest("hex") : sha256(material);
 }
 
 /** Constant-time comparison of two hex hashes. */

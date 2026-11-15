@@ -109,6 +109,16 @@ export function sealingEnabled(env: Env = process.env): boolean {
   return ringForUse(env).current !== null;
 }
 
+/**
+ * The CURRENT key's bytes, for lib/crypto/derived-keys.ts ONLY (HKDF input),
+ * or null when SECRETS_KEY is unset or malformed. Goes through the same
+ * parsing and the same misconfiguration reporter as seal / open, so a bad key
+ * alerts exactly as it does for E1. Never log, print or return these bytes.
+ */
+export function currentKeyForDerivation(env: Env = process.env): Buffer | null {
+  return ringForUse(env).current?.key ?? null;
+}
+
 /** Seals with the current key. Throws when no key is set: use sealForStorage on write paths. */
 export function sealSecret(plain: string, env: Env = process.env): string {
   const { current } = ringForUse(env);

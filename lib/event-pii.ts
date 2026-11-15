@@ -6,10 +6,12 @@
 // What is personal data here: a caller's phone number, a lead's number, the
 // owner's WhatsApp number, any user's email address. They are stored as
 //   - `<key>Hash`  : HMAC-SHA256 of the normalised value under a server key
-//                    (EVENT_PII_HASH_KEY), first 12 hex. Enough to correlate
-//                    two events about the same person. Without the key it
-//                    falls back to a plain sha256, which is pseudonymisation
-//                    only (a phone number space can be enumerated).
+//                    (derivedKey("event-pii-hash"): EVENT_PII_HASH_KEY if set,
+//                    else HKDF of SECRETS_KEY, lib/crypto/derived-keys.ts),
+//                    first 12 hex. Enough to correlate two events about the
+//                    same person. Without any key it falls back to a plain
+//                    sha256, which is pseudonymisation only (a phone number
+//                    space can be enumerated).
 //   - `<key>Last4` : the last 4 digits of a phone number, for display ("…1234").
 // and masked inside free text ("…1234" for a number, "[email]" for an address).
 //
@@ -22,6 +24,7 @@
 
 import { createHash, createHmac } from "node:crypto";
 
+import { derivedKey } from "@/lib/crypto/derived-keys";
 import { EMAIL_RE, KEPT_KEY_PATHS, PHONE_RE, last4, maskPii } from "@/lib/pii-mask";
 
 // The masks (regexes, last4, maskPii) live in the client-safe lib/pii-mask.ts
@@ -31,29 +34,22 @@ export { EMAIL_RE, KEPT_KEY_PATHS, PHONE_RE, last4, maskPii } from "@/lib/pii-ma
 const digits = (v: string) => v.replace(/\D/g, "");
 
 /**
- * The server key for piiHash, or null when unset / blank. The ONLY place that
- * reads EVENT_PII_HASH_KEY. Read at call time (not cached) so tests can flip
- * it. Never log it, print it or put it in a response or an error message.
- */
-function piiHashKey(): string | null {
-  const k = process.env.EVENT_PII_HASH_KEY;
-  return k && k.trim() ? k : null;
-}
-
-/**
  * Hash of the normalised value (lower-cased email, digits-only phone), first
- * 12 hex.
- *   - EVENT_PII_HASH_KEY set   : HMAC-SHA256 under that key, so the hash can't
- *                                be reversed by hashing every phone number.
- *   - EVENT_PII_HASH_KEY unset : plain sha256, byte for byte the pre-key output.
- * Once the key is set, new hashes no longer match old ones for the same
- * value (and rotating the key does the same). Accepted: these hashes only
- * spot repeats of the same person across events, nothing joins on them.
+ * 12 hex. The key is derivedKey("event-pii-hash"), read at call time:
+ *   - EVENT_PII_HASH_KEY set (non-blank) : HMAC-SHA256 under it (utf8 bytes,
+ *                                          the same output as before);
+ *   - else SECRETS_KEY set and valid     : HMAC-SHA256 under HKDF(SECRETS_KEY);
+ *   - else                               : plain sha256, byte for byte the
+ *                                          pre-key output.
+ * Once a key exists, new hashes no longer match old ones for the same value
+ * (and rotating it, or SECRETS_KEY, does the same). Accepted: these hashes
+ * only spot repeats of the same person across events, nothing joins on them.
+ * The key is never logged, printed or put in a response or an error.
  */
 export function piiHash(value: string): string {
   const v = value.trim();
   const norm = v.includes("@") ? v.toLowerCase() : `+${digits(v)}`;
-  const key = piiHashKey();
+  const key = derivedKey("event-pii-hash");
   const h = key ? createHmac("sha256", key) : createHash("sha256");
   return h.update(norm, "utf8").digest("hex").slice(0, 12);
 }
