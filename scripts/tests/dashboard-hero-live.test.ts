@@ -58,7 +58,7 @@ const MOCK_STATS: DashboardStats = {
   minutesThisMonth: 0,
 };
 
-function render(locale: string, primaryPhone: string | null, agentState?: unknown) {
+function render(locale: string, primaryPhone: string | null, agentState?: unknown, adminView = false) {
   const stats = agentState === undefined ? undefined : ({ ...MOCK_STATS, agentState } as DashboardStats);
   return renderToStaticMarkup(
     createElement(
@@ -71,6 +71,7 @@ function render(locale: string, primaryPhone: string | null, agentState?: unknow
         planLabel: "Mock plan",
         voice: "mock-voice",
         currentLangLabel: "Mock",
+        adminView,
       }),
     ),
   );
@@ -81,7 +82,12 @@ const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&#x27;|&#3
 
 const LIVE: AgentState = { state: "live", reason: null };
 const TO_ACTIVATE: AgentState = { state: "to_activate", reason: null };
-const SUB: AgentState = { state: "attention", reason: "subscription_inactive" };
+// Reasons that may or may not be in AgentStateReason on a given tree
+// (subscription_inactive is reserved; the trial split lands separately):
+// plain objects, so this test compiles either way.
+const SUB = { state: "attention", reason: "subscription_inactive" } as const;
+const TRIAL_ENDED = { state: "attention", reason: "trial_ended" } as const;
+const TRIAL_MINUTES = { state: "attention", reason: "trial_minutes_exhausted" } as const;
 const CONFIG: AgentState = { state: "attention", reason: "config_unavailable" };
 const ENGINE: AgentState = { state: "attention", reason: "engine_unreachable" };
 
@@ -113,6 +119,20 @@ assert.deepEqual(heroLiveState({ agentState: SUB, primaryPhone: MOCK_PHONE }), {
   lineKey: "heroSubscriptionInactive",
   action: "plans",
 });
+for (const [state, lineKey] of [
+  [TRIAL_ENDED, "heroTrialEnded"],
+  [TRIAL_MINUTES, "heroTrialMinutesExhausted"],
+] as const) {
+  assert.deepEqual(heroLiveState({ agentState: state, primaryPhone: MOCK_PHONE }), {
+    status: "attention",
+    live: false,
+    tone: "warning",
+    eyebrowStatusKey: "heroAttention",
+    badgeKey: "wowAttentionLabel",
+    lineKey,
+    action: "plans",
+  });
+}
 assert.deepEqual(heroLiveState({ agentState: CONFIG, primaryPhone: MOCK_PHONE }), {
   status: "attention",
   live: false,
@@ -169,6 +189,8 @@ const HERO_KEYS = [
   "wowAttentionLabel",
   "heroNoNumber",
   "heroSubscriptionInactive",
+  "heroTrialEnded",
+  "heroTrialMinutesExhausted",
   "heroSeePlans",
   "heroConfigUnavailable",
   "heroContactTeam",
@@ -236,6 +258,8 @@ for (const locale of LOCALES) {
   // its reason with its own action only, nothing pinging or waving.
   for (const [label, state, lineKey, linkKey, own, other] of [
     ["subscription_inactive", SUB, "heroSubscriptionInactive", "heroSeePlans", PLANS_HREF, SUPPORT_HREF],
+    ["trial_ended", TRIAL_ENDED, "heroTrialEnded", "heroSeePlans", PLANS_HREF, SUPPORT_HREF],
+    ["trial_minutes_exhausted", TRIAL_MINUTES, "heroTrialMinutesExhausted", "heroSeePlans", PLANS_HREF, SUPPORT_HREF],
     ["config_unavailable", CONFIG, "heroConfigUnavailable", "heroContactTeam", SUPPORT_HREF, PLANS_HREF],
   ] as const) {
     const html = render(locale, MOCK_PHONE, state);
@@ -257,6 +281,15 @@ for (const locale of LOCALES) {
     for (const k of [lineKey, linkKey, "heroAttention", "wowAttentionLabel"]) {
       assert.doesNotMatch(dc[k], TECHNICAL_WORDS, `${locale} ${k}: no technical word`);
     }
+
+    // An admin viewing this tenant: same eyebrow, badge and line, but no
+    // plans or support link (those are the tenant's to follow).
+    const admin = render(locale, MOCK_PHONE, state, true);
+    const at = text(admin);
+    assert.ok(at.includes(dc.heroAttention) && at.includes(dc[lineKey]), `${locale} ${label} admin: line kept`);
+    assert.ok(!at.includes(dc[linkKey]), `${locale} ${label} admin: no action label`);
+    assert.doesNotMatch(admin, PLANS_HREF, `${locale} ${label} admin: no plans link`);
+    assert.doesNotMatch(admin, SUPPORT_HREF, `${locale} ${label} admin: no support link`);
   }
   // 7. engine_unreachable (our side is down): grey "offline" eyebrow and
   // badge, its line, no action at all, nothing pinging or waving.
@@ -307,6 +340,10 @@ assert.equal(en.heroAttention, "To check");
 assert.equal(en.wowAttentionLabel, "To check");
 assert.equal(en.heroSubscriptionInactive, "Your subscription is no longer active: your agent is not answering calls.");
 assert.equal(en.heroSeePlans, "See plans");
+assert.equal(fr.heroTrialEnded, "Votre essai est terminé : votre agent ne répond plus aux appels.");
+assert.equal(fr.heroTrialMinutesExhausted, "Les minutes de votre essai sont épuisées : votre agent ne répond plus aux appels.");
+assert.equal(en.heroTrialEnded, "Your trial has ended: your agent no longer answers calls.");
+assert.equal(en.heroTrialMinutesExhausted, "Your trial minutes are used up: your agent no longer answers calls.");
 assert.equal(fr.heroOffline, "Hors ligne");
 assert.equal(fr.wowOfflineLabel, "Hors ligne");
 assert.equal(fr.heroEngineUnreachable, "Un incident est en cours de notre côté. Notre équipe est prévenue.");
@@ -314,6 +351,10 @@ assert.equal(en.heroOffline, "Offline");
 assert.equal(en.wowOfflineLabel, "Offline");
 assert.equal(en.heroEngineUnreachable, "An incident is in progress on our side. Our team has been alerted.");
 assert.equal(`${en.heroConfigUnavailable} ${en.heroContactTeam}`, "A setting is stopping your agent from answering. Contact the Tamara team.");
+
+// The admin tenant view (ConfigForm with asUserId) tells the hero it's an admin view.
+const formSrc = readFileSync(join(ROOT, "app/[locale]/dashboard/config-form.tsx"), "utf8");
+assert.match(formSrc, /<HeroSection[\s\S]*?adminView=\{Boolean\(asUserId\)\}[\s\S]*?\/>/, "ConfigForm passes adminView from asUserId");
 
 // The support number is never hard-coded in the hero.
 const heroSrc = readFileSync(join(ROOT, "app/[locale]/dashboard/config/hero-section.tsx"), "utf8");

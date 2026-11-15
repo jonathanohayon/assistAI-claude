@@ -36,6 +36,7 @@ export function HeroSection({
   planLabel,
   voice,
   currentLangLabel,
+  adminView = false,
 }: {
   primaryPhone: string | null;
   stats?: DashboardStats;
@@ -45,6 +46,9 @@ export function HeroSection({
   voice: string;
   /** Label traduit de la langue principale (ex. "Français"). */
   currentLangLabel: string;
+  /** An admin looking at a tenant (ConfigForm's asUserId): the status line
+   *  stays, but its plans / support links are the tenant's to follow. */
+  adminView?: boolean;
 }) {
   const t = useTranslations("DashboardConfig");
   const tSetup = useTranslations("DashboardSetup");
@@ -152,12 +156,12 @@ export function HeroSection({
               </svg>
             )}
             {t(liveState.lineKey)}{" "}
-            {liveState.action === "plans" && (
+            {!adminView && liveState.action === "plans" && (
               <Link href="/dashboard/billing" className={INLINE_STATUS_LINK}>
                 {t("heroSeePlans")}
               </Link>
             )}
-            {liveState.action === "support" && (
+            {!adminView && liveState.action === "support" && (
               <a
                 href={supportHref(tSupport("waGreeting"))}
                 target="_blank"

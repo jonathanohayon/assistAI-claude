@@ -809,6 +809,8 @@
     "heroNoNumber": "עדיין אין מספר",
     "heroAttention": "לבדיקה",
     "heroSubscriptionInactive": "המנוי שלך כבר לא פעיל: המזכירה שלך לא עונה לשיחות.",
+    "heroTrialEnded": "תקופת הניסיון שלך הסתיימה: המזכירה שלך כבר לא עונה לשיחות.",
+    "heroTrialMinutesExhausted": "דקות הניסיון שלך נוצלו: המזכירה שלך כבר לא עונה לשיחות.",
     "heroSeePlans": "לצפייה במסלולים",
     "heroConfigUnavailable": "הגדרה מונעת מהמזכירה שלך לענות.",
     "heroContactTeam": "צרו קשר עם צוות Tamara.",

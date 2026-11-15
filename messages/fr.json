@@ -809,6 +809,8 @@
     "heroNoNumber": "Pas encore de numéro",
     "heroAttention": "À vérifier",
     "heroSubscriptionInactive": "Votre abonnement n'est plus actif : votre agent ne répond pas aux appels.",
+    "heroTrialEnded": "Votre essai est terminé : votre agent ne répond plus aux appels.",
+    "heroTrialMinutesExhausted": "Les minutes de votre essai sont épuisées : votre agent ne répond plus aux appels.",
     "heroSeePlans": "Voir les forfaits",
     "heroConfigUnavailable": "Un réglage empêche votre agent de répondre.",
     "heroContactTeam": "Contactez l'équipe Tamara.",

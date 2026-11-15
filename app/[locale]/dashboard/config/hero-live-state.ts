@@ -37,6 +37,8 @@ export type HeroLiveState = {
   lineKey:
     | "heroNoNumber"
     | "heroSubscriptionInactive"
+    | "heroTrialEnded"
+    | "heroTrialMinutesExhausted"
     | "heroConfigUnavailable"
     | "heroEngineUnreachable"
     | null;
@@ -63,6 +65,8 @@ const HERO_STATES = {
     lineKey: "heroNoNumber",
     action: "get_number",
   },
+  // Reserved for a paid-plan rule; the trial gate reports the two trial
+  // reasons below.
   "attention:subscription_inactive": {
     status: "attention",
     live: false,
@@ -70,6 +74,24 @@ const HERO_STATES = {
     eyebrowStatusKey: "heroAttention",
     badgeKey: "wowAttentionLabel",
     lineKey: "heroSubscriptionInactive",
+    action: "plans",
+  },
+  "attention:trial_ended": {
+    status: "attention",
+    live: false,
+    tone: "warning",
+    eyebrowStatusKey: "heroAttention",
+    badgeKey: "wowAttentionLabel",
+    lineKey: "heroTrialEnded",
+    action: "plans",
+  },
+  "attention:trial_minutes_exhausted": {
+    status: "attention",
+    live: false,
+    tone: "warning",
+    eyebrowStatusKey: "heroAttention",
+    badgeKey: "wowAttentionLabel",
+    lineKey: "heroTrialMinutesExhausted",
     action: "plans",
   },
   "attention:config_unavailable": {
