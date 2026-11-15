@@ -166,7 +166,7 @@ assert.ok("contactConfirmations" in contactConfirmationsWrite({ ...row, contactC
 assert.deepEqual(withoutContactConfirmations({ a: 1, contactConfirmations: grand }), { a: 1 });
 for (const p of ["app/api/dashboard/config/route.ts", "app/api/admin/configs/[userId]/route.ts"]) {
   const s = src(p).replace(/\/\/.*$/gm, "");
-  const spreads = s.match(/\.\.\.[A-Za-z]+\(/g) ?? [];
+  const spreads: string[] = s.match(/\.\.\.[A-Za-z]+\(/g) ?? [];
   assert.equal(
     (s.match(/\.\.\.withoutContactConfirmations\(withoutToolsStore\((config|cfg|updated)\)\)/g) ?? []).length,
     2,
