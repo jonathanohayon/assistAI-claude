@@ -8,8 +8,9 @@ import { buildInboundConfig, DRY_INBOUND_EFFECTS } from "@/lib/agent/session-con
 import { inboundTrialRefusal } from "@/lib/agent/session-config/trial-gate";
 import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
+import { readHeartbeat } from "@/lib/monitoring";
 
-import { decideAgentState } from "./decide";
+import { decideAgentState, engineReachable } from "./decide";
 import type { AgentState } from "./types";
 
 /**
@@ -31,7 +32,9 @@ export async function inboundConfigBuilds(phoneNumber: string): Promise<boolean>
 }
 
 export async function computeAgentState(userId: string): Promise<AgentState> {
-  const [[user], [number]] = await Promise.all([
+  // One settings read (worker_heartbeat) per call, in parallel with the
+  // account queries.
+  const [[user], [number], heartbeat] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -48,10 +51,13 @@ export async function computeAgentState(userId: string): Promise<AgentState> {
       .from(phoneNumbers)
       .where(eq(phoneNumbers.userId, userId))
       .limit(1),
+    readHeartbeat(),
   ]);
+  const now = Date.now();
   return decideAgentState({
     hasNumber: () => Boolean(user && number),
     subscriptionAllowsCalls: async () => !(await inboundTrialRefusal(user!)),
     configAvailable: () => inboundConfigBuilds(number!.phoneNumber),
+    engineReachable: () => engineReachable(heartbeat, now),
   });
 }
