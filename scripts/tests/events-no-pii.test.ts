@@ -23,6 +23,7 @@ import {
   piiHash,
 } from "../../lib/event-pii";
 import { attachEvents, hashCallId, type JoinEvent } from "../../lib/calls/core";
+import { sipLabelFromReceived } from "../../lib/monitoring-label";
 import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/;
@@ -212,13 +213,10 @@ for (const [label, ev] of RAW) assertClean(label, eventForStorage(ev));
 }
 {
   // Monitoring (logs-view groupEventsByCall): the SIP label is built from
-  // metadata.toNumber and (optionally) a caller field. With fromNumber gone the
-  // label becomes "SIP <tenant line>"; fromLast4 is there for a masked caller.
+  // metadata.toNumber + fromLast4 (lib/monitoring-label.ts; rendering tested
+  // in monitoring-sip-label.test.ts).
   const m = eventForStorage(RAW[0][1]).metadata;
-  const to = m["toNumber"] as string | undefined;
-  const from = m["fromNumber"] as string | undefined;
-  assert.equal(`SIP ${from ? `${from} → ` : ""}${to}`, "SIP +15550100999");
-  assert.equal(`SIP …${m["fromLast4"]} → ${to}`, "SIP …0123 → +15550100999");
+  assert.deepEqual(sipLabelFromReceived(m), { last4: "0123", to: "+1 555-010-0999" });
 }
 
 // The real logEvent(): no DATABASE_URL → insert fails (caught); the stdout

@@ -20,13 +20,11 @@
 
 import { createHash } from "node:crypto";
 
-/** Metadata paths whose value is the tenant's own line, kept in clear. */
-export const KEPT_KEY_PATHS: readonly string[] = ["toNumber", "tenantLine", "origin.calledNumber"];
+import { EMAIL_RE, KEPT_KEY_PATHS, PHONE_RE, last4, maskPii } from "@/lib/pii-mask";
 
-/** Email addresses anywhere in a string. */
-export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
-/** International phone numbers (E.164, optionally spaced/dashed, optional whatsapp: prefix). */
-export const PHONE_RE = /(?:whatsapp:)?\+[1-9](?:[\s().-]?\d){6,14}/g;
+// The masks (regexes, last4, maskPii) live in the client-safe lib/pii-mask.ts
+// so Monitoring can apply the same rules to old events in the browser.
+export { EMAIL_RE, KEPT_KEY_PATHS, PHONE_RE, last4, maskPii } from "@/lib/pii-mask";
 
 const digits = (v: string) => v.replace(/\D/g, "");
 
@@ -35,19 +33,6 @@ export function piiHash(value: string): string {
   const v = value.trim();
   const norm = v.includes("@") ? v.toLowerCase() : `+${digits(v)}`;
   return createHash("sha256").update(norm, "utf8").digest("hex").slice(0, 12);
-}
-
-/** Last 4 digits of a phone number ("" when it has fewer than 4). */
-export function last4(phone: string): string {
-  const d = digits(phone);
-  return d.length >= 4 ? d.slice(-4) : "";
-}
-
-/** Free text with every email address and phone number masked. */
-export function maskPii(text: string): string {
-  return text
-    .replace(EMAIL_RE, "[email]")
-    .replace(PHONE_RE, (m) => (last4(m) ? `…${last4(m)}` : "[phone]"));
 }
 
 const isPhone = (v: string) => new RegExp(`^${PHONE_RE.source}$`).test(v.trim());

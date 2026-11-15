@@ -45,7 +45,6 @@ interface CallMetricsMetadata {
   rawServerTransMs?: number[];
   rawServerFirstAudioMs?: number[];
   toNumber?: string;
-  fromNumber?: string;
   topology?: {
     twilio?: string;
     worker?: string;
