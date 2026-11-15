@@ -21,10 +21,10 @@ export default async function DashboardPreviewPage(props: {
     timeStyle: "short",
   });
 
-  const mockInstructions = `Tu es Sarah, la secrétaire IA du salon Prestige Coiffure à Ashdod.
+  const mockInstructions = `Tu es Sarah, la secrétaire IA du salon du centre-ville.
 
 # Identité
-- Salon haut de gamme situé centre-ville Ashdod, rue Rogozin 12
+- Salon haut de gamme situé en centre-ville
 - Horaires : 9h-19h du dimanche au jeudi, fermé vendredi-samedi
 - Spécialités : coloration, mèches, balayage, soins kératine
 
@@ -56,7 +56,7 @@ export default async function DashboardPreviewPage(props: {
           voiceConfig: voiceForViewer(DEFAULT_VOICE, false) as ServedVoice,
           instructions: mockInstructions,
           greetingInstructions:
-            "Bonjour, c'est Sarah du salon Prestige Coiffure. Comment puis-je vous aider ?",
+            "Bonjour, c'est Sarah du salon du centre-ville. Comment puis-je vous aider ?",
           maxResponseTokens: 220,
           ownerWhatsapp: "+972500000000",
           transferNumber: "+972500000000",
