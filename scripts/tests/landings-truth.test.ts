@@ -117,28 +117,66 @@ for (const l of LANDING_LOCALES) {
 const fr = pageText(PAGES[0], "fr", OFF);
 const en = pageText(PAGES[0], "en", OFF);
 for (const s of [
-  "Aucun lead ne reste {emphasis}.",
-  "sans appel",
-  "Tamara appelle vos leads, les qualifie et vous dit qui est prêt. Vos vendeurs ne parlent qu'aux bons prospects.",
+  "Vos prospects appelés. {emphasis}.",
+  "Vos leads qualifiés",
+  "Tamara appelle vos contacts, repère ceux qui sont intéressés et vous dit qui rappeler. Vos vendeurs ne parlent qu'aux bons prospects.",
   "Lancer une campagne d'essai",
   "Parler à l'équipe",
   "Jusqu'à 20 appels à la fois",
-  "Vos leads par fichier ou copier-coller",
+  "Vos contacts par fichier ou copier-coller",
   "Français, anglais, hébreu",
-  "Importez vos leads",
+  "Importez vos contacts",
+  "Par fichier ou copier-coller.",
   "Qualifier un prospect ou annoncer une offre.",
+  "Recevez vos leads",
+  "Qui est intéressé, qui rappeler.",
+  "Uniquement les contacts que vous importez, les jours et aux heures que vous fixez pour la campagne.",
   "Tamara note sa demande et vous la retrouvez dans les résultats de la campagne.",
 ]) assert.ok(fr.includes(s), `fr has: ${s}`);
 for (const s of [
-  "No lead goes {emphasis}.",
-  "uncalled",
-  "Tamara calls your leads, qualifies them and tells you who is ready. Your sales team only talks to the right prospects.",
+  "Your prospects called. {emphasis}.",
+  "Your leads qualified",
+  "Tamara calls your contacts, spots the ones who are interested and tells you whom to call back. Your sales team only talks to the right prospects.",
   "Start a trial campaign",
   "Talk to us",
   "Up to 20 calls at once",
-  "Your leads by file or copy-paste",
+  "Your contacts by file or copy-paste",
   "French, English, Hebrew",
+  "Import your contacts",
+  "Get your leads",
+  "Only the contacts you import, on the days and at the hours you set for the campaign.",
 ]) assert.ok(en.includes(s), `en has: ${s}`);
+// The accent of the /sales hero is on its second sentence (the leads out).
+assert.equal(buildSalesContent("fr").hero?.copy?.emphasis, "Vos leads qualifiés");
+assert.equal(buildSalesContent("en").hero?.copy?.emphasis, "Your leads qualified");
+
+// 4b. Contacts / prospects go in, leads come out: no line of the /sales page
+// (hero, proof strip, steps, FAQ, CTA, metadata; both switch states) uses
+// "leads" as the input of the campaign.
+const LEADS_AS_INPUT = [
+  /vos leads par fichier/i,
+  /import\w* (vos|quelques|des|les)? ?leads/i,
+  /appel\w* (vos|les|des) leads/i,
+  /les leads que vous/i,
+  /your leads by file/i,
+  /import (your|a few|the)? ?leads/i,
+  /calls? (your|the) leads/i,
+  /the leads you import/i,
+  /for your leads/i,
+  /מתקשרת ללידים/,
+  /הלידים שלכם מקובץ/,
+  /ייבאו (את )?(ה|כמה )?לידים/,
+  /ללידים שאתם מייבאים/,
+];
+assert.ok(LEADS_AS_INPUT.some((re) => re.test("Tamara appelle vos leads, les qualifie.")));
+assert.ok(LEADS_AS_INPUT.some((re) => re.test("Import your leads")));
+assert.ok(LEADS_AS_INPUT.some((re) => re.test("ייבאו את הלידים")));
+assert.ok(!LEADS_AS_INPUT.some((re) => re.test("Recevez vos leads. Vos leads qualifiés. Get your leads. קבלו את הלידים")));
+for (const l of LANDING_LOCALES)
+  for (const sw of [OFF, ON]) {
+    const text = pageText(PAGES[0], l, sw);
+    for (const re of LEADS_AS_INPUT) assert.doesNotMatch(text, re, `sales/${l}: "leads" used as input (${re})`);
+  }
 
 // 5. Connect: the contract is the worker's ("Tamara leads" mode), with mock
 // values only, and the page never claims the capability is live.
