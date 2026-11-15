@@ -1960,7 +1960,7 @@
       "subject": "🎉 Your Tamara assistant is live — {phone}",
       "heading": "🎉 Your assistant is live",
       "introHtmlWithName": "Hi {name}, — Tamara is now reachable anytime on this number:",
-      "introHtmlNoName": "Hi — Tamara is now reachable anytime on this number:",
+      "introHtmlNoName": "Hi, Tamara is now reachable anytime on this number:",
       "introTextWithName": "Hi {name},",
       "introTextNoName": "Hi,",
       "introTextBody": "Your Tamara voice assistant is now live on:",

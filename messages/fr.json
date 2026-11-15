@@ -1960,7 +1960,7 @@
       "subject": "🎉 Votre assistante Tamara est en ligne — {phone}",
       "heading": "🎉 Votre assistante est en ligne",
       "introHtmlWithName": "Bonjour {name}, — Tamara est désormais joignable à tout moment sur ce numéro :",
-      "introHtmlNoName": "Bonjour — Tamara est désormais joignable à tout moment sur ce numéro :",
+      "introHtmlNoName": "Bonjour, Tamara est désormais joignable à tout moment sur ce numéro :",
       "introTextWithName": "Bonjour {name},",
       "introTextNoName": "Bonjour,",
       "introTextBody": "Votre assistante vocale Tamara est désormais en ligne sur :",
