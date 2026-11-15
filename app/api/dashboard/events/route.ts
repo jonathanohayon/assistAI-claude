@@ -2,6 +2,7 @@ import { and, desc, eq, gt, SQL } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin, resolveTargetUserId } from "@/lib/api/auth-guards";
+import { eventRowsForBrowser } from "@/lib/event-display";
 import { eventsForViewer } from "@/lib/engine-visibility";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
@@ -57,7 +58,10 @@ export async function GET(req: NextRequest) {
   const viewerIsAdmin = (await requireAdmin()).ok;
 
   return NextResponse.json({
-    events: eventsForViewer(filtered, viewerIsAdmin),
+    // Server-side PII mask on every row, old and new, before the JSON leaves
+    // (lib/event-display.ts): no caller number, email or `*Hash` reaches the
+    // browser, even in devtools. Read-time only: stored rows are unchanged.
+    events: eventRowsForBrowser(eventsForViewer(filtered, viewerIsAdmin)),
     serverTime: new Date().toISOString(),
   });
 }
