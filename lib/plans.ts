@@ -123,7 +123,7 @@ export const PLANS: readonly Plan[] = [
       "Rapports d'activité hebdomadaires",
     ],
     excludedFeatures: [
-      "Contacts dans ton tableau Google Sheets",
+      "Contacts dans Google Sheets",
       "Calendrier connecté (prise de RDV)",
     ],
     bestFor: "indépendants, commerces et petites équipes",
