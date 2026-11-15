@@ -122,6 +122,10 @@ function emailHits(text: string, locale: string): string[] {
     if (/בעלים|בעלת העסק|בעל העסק/.test(plain)) out.push("owner");
     for (const [w] of plain.matchAll(/[A-Za-z][A-Za-z-]*/g)) if (!HE_LATIN_ALLOWED.has(w)) out.push(`English "${w}"`);
     for (const [w] of plain.matchAll(HE_SINGULAR_RE)) out.push(`singular "${w}"`);
+    // One word for the dashboard in Hebrew mails: "לוח הבקרה" (tamaraVP 15/11),
+    // also inside a prefixed form ("מהדאשבורד"). And no French " :" spacing.
+    if (/דאשבורד/.test(plain)) out.push('"דאשבורד" (say לוח הבקרה)');
+    if (/\s:/.test(plain)) out.push('space before ":"');
   }
   if (locale === "fr") for (const re of FR_ENGLISH) for (const [w] of plain.matchAll(re)) out.push(`English "${w}"`);
   return out;
@@ -137,6 +141,9 @@ assert.deepEqual(emailHits("Ouvrez votre tableau de bord", "fr"), []);
 assert.deepEqual(emailHits("הזיני את מספר ה-WhatsApp שלך", "he"), ['singular "הזיני"', 'singular "שלך"']);
 assert.deepEqual(emailHits("הזינו את מספר ה-WhatsApp שלכם", "he"), [], "the plural is the decided form");
 assert.deepEqual(emailHits("התשלום שלכם · הלקוחות · ברכות", "he"), [], "words containing a form are not hits");
+assert.deepEqual(emailHits("הפעילו תוכנית מהדאשבורד:", "he"), ['"דאשבורד" (say לוח הבקרה)']);
+assert.deepEqual(emailHits("הפעילו תוכנית מלוח הבקרה:", "he"), []);
+assert.deepEqual(emailHits("מה לעשות עכשיו :", "he"), ['space before ":"']);
 
 function* strings(node: unknown, path: string): Generator<[string, string]> {
   if (typeof node === "string") yield [path, node];

@@ -242,17 +242,18 @@ export async function GET(req: NextRequest) {
   // retour (l'abonnement est déjà activé). Locale = langue de la page de paiement.
   try {
     const [u] = await db
-      .select({ email: users.email, displayName: users.displayName })
+      .select({ email: users.email })
       .from(users)
       .where(eq(users.id, order.userId))
       .limit(1);
     if (u?.email) {
+      // No personName: users.displayName is the business name, never a
+      // greeting (lib/email-greeting.ts).
       const mail = await sendSubscriptionConfirmationEmail(u.email, {
         planKey: order.planKey,
         period,
         amount: order.expectedAmount,
         currency: order.currency,
-        displayName: u.displayName,
         locale,
       });
       if (!mail.ok) {

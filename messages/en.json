@@ -1872,7 +1872,7 @@
       "subject": "🔔 Tamara — notification test",
       "eyebrow": "Notification test",
       "heading": "Your email notifications work ✓",
-      "defaultGreeting": "there",
+      "helloNoName": "Hi,",
       "hello": "Hi {name},",
       "intro": "This is a test email sent from your Tamara dashboard. If you're reading this, email notifications are correctly configured on your account.",
       "confirm": "You'll now receive an email recap after every call.",
@@ -1938,8 +1938,7 @@
     "welcome": {
       "subject": "🎉 Your Tamara assistant is live — {phone}",
       "heading": "🎉 Your assistant is live",
-      "introHtmlWithName": "Hi {name}, — Tamara is now reachable anytime on this number:",
-      "introHtmlNoName": "Hi — Tamara is now reachable anytime on this number:",
+      "introHtmlBody": "Your assistant Tamara is now reachable anytime on this number:",
       "introTextWithName": "Hi {name},",
       "introTextNoName": "Hi,",
       "introTextBody": "Your Tamara voice assistant is now live on:",
