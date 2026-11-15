@@ -12,10 +12,13 @@
 //      byte; set = HMAC-SHA256/12 (vector from `openssl dgst -hmac`); the
 //      call-id sha256/16 is unkeyed either way; the key never reaches a row
 //      or a log line. Mock key only.
+//   5. SECRETS_KEY (no override): HMAC-SHA256/12 under HKDF(SECRETS_KEY,
+//      info "event-pii-hash"); EVENT_PII_HASH_KEY still wins; the call id
+//      stays plain; no key material in a row or a log line. Mock key only.
 // Run with:  npx tsx scripts/tests/events-no-pii.test.ts
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, createHmac, hkdfSync } from "node:crypto";
 
 import { callReceivedEvent } from "../../lib/call-received-event";
 import {
@@ -28,6 +31,7 @@ import {
   piiHash,
 } from "../../lib/event-pii";
 import { attachEvents, hashCallId, type JoinEvent } from "../../lib/calls/core";
+import { setKeyProblemReporter } from "../../lib/crypto/secret-box";
 import { sipLabelFromReceived } from "../../lib/monitoring-label";
 import { assertScanRead, scanSources } from "./helpers/source-scan";
 
@@ -225,6 +229,9 @@ for (const [label, ev] of RAW) assertClean(label, eventForStorage(ev));
 }
 
 // ── 4. EVENT_PII_HASH_KEY ───────────────────────────────────────────────
+// No master key from the environment, and no real admin alert from a test.
+for (const v of ["SECRETS_KEY", "SECRETS_KEY_ID", "SECRETS_KEY_PREVIOUS", "SECRETS_KEY_PREVIOUS_ID"]) delete process.env[v];
+setKeyProblemReporter(() => {});
 const MOCK_KEY = "mock-event-pii-key-0001";
 /** piiHash exactly as it was before the key existed (lib/event-pii.ts, #332). */
 function legacyPiiHash(value: string): string {
@@ -278,10 +285,37 @@ for (const k of [undefined, MOCK_KEY]) {
   });
 }
 
+// ── 5. SECRETS_KEY (HKDF-derived key, no override) ──────────────────────
+// Mock master key: 32 bytes of 0x33, never a real one.
+const MOCK_MASTER = Buffer.alloc(32, 0x33);
+const MASTER_ENV = { SECRETS_KEY: MOCK_MASTER.toString("base64"), SECRETS_KEY_ID: "mock" };
+const DERIVED = Buffer.from(hkdfSync("sha256", MOCK_MASTER, Buffer.alloc(0), "event-pii-hash", 32));
+const hkdfHash = (norm: string) => createHmac("sha256", DERIVED).update(norm, "utf8").digest("hex").slice(0, 12);
+function withMaster<T>(fn: () => T): T {
+  Object.assign(process.env, MASTER_ENV);
+  try {
+    return fn();
+  } finally {
+    for (const k of Object.keys(MASTER_ENV)) delete process.env[k];
+  }
+}
+withMaster(() => {
+  withKey(undefined, () => {
+    assert.equal(piiHash("+15550100123"), hkdfHash("+15550100123"), "master key: HMAC under HKDF(SECRETS_KEY)");
+    assert.equal(piiHash("Ana@Example.com"), hkdfHash("ana@example.com"), "master key: email normalised");
+    for (const x of HASH_INPUTS) assert.notEqual(piiHash(x), legacyPiiHash(x), `master key: piiHash(${x}) differs from plain`);
+    const stored = eventForStorage({ message: "Transfer", metadata: { callId: ROOM } });
+    assert.equal(stored.metadata["callId"], "8f9bfdcf580445df", "master key: callId stays plain sha256/16");
+  });
+  // The override still wins over the derived key.
+  withKey(MOCK_KEY, () => assert.equal(piiHash("+15550100123"), "08d64b82c376", "override beats the derived key"));
+});
+
 // The real logEvent(): no DATABASE_URL → insert fails (caught); the stdout
 // mirror prints exactly what would be stored.
-async function realLogEvent(key: string | undefined) {
+async function realLogEvent(key: string | undefined, master = false) {
   delete process.env.DATABASE_URL;
+  if (master) Object.assign(process.env, MASTER_ENV);
   if (key === undefined) delete process.env.EVENT_PII_HASH_KEY;
   else process.env.EVENT_PII_HASH_KEY = key;
   const { logEvent } = await import("../../lib/logger");
@@ -298,11 +332,19 @@ async function realLogEvent(key: string | undefined) {
   } finally {
     Object.assign(console, orig);
     delete process.env.EVENT_PII_HASH_KEY;
+    for (const k of Object.keys(MASTER_ENV)) delete process.env[k];
   }
   assert.equal(printed.length, RAW.length);
   // The key never reaches a stored row or any log line (stdout or stderr).
   const all = JSON.stringify([printed, errors.map((a) => a.map(String))]);
   assert.ok(!all.includes(MOCK_KEY), "EVENT_PII_HASH_KEY appears in a logged event or log line");
+  for (const m of [MASTER_ENV.SECRETS_KEY, MOCK_MASTER.toString("hex"), DERIVED.toString("hex"), DERIVED.toString("base64")]) {
+    assert.ok(!all.includes(m), "key material appears in a logged event or log line");
+  }
+  if (master && !key) {
+    const caller = printed.find(([, , m]) => (m as Record<string, unknown>)?.["fromHash"]);
+    assert.equal((caller?.[2] as Record<string, unknown>)["fromHash"], hkdfHash("+15550100123"), "logEvent stores the derived-key hash");
+  }
   if (key) {
     const caller = printed.find(([, , m]) => (m as Record<string, unknown>)?.["fromHash"]);
     assert.equal((caller?.[2] as Record<string, unknown>)["fromHash"], "08d64b82c376", "logEvent stores the keyed hash");
@@ -314,8 +356,9 @@ async function realLogEvent(key: string | undefined) {
 
 realLogEvent(undefined)
   .then(() => realLogEvent(MOCK_KEY))
+  .then(() => realLogEvent(undefined, true))
   .then(
-  () => console.log(`events-no-pii: ${callSites} call sites scanned in ${scan.files.length} files, ${RAW.length} shapes stored clean (key unset and set)`),
+  () => console.log(`events-no-pii: ${callSites} call sites scanned in ${scan.files.length} files, ${RAW.length} shapes stored clean (no key, override, derived key)`),
   (e) => {
     console.error(e);
     process.exit(1);
