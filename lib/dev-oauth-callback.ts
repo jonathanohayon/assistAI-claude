@@ -65,3 +65,37 @@ export async function handleDevOAuthCallback(req: NextRequest, deps: DevOAuthCal
     return new NextResponse(`Erreur: ${msg}`, { status: 500 });
   }
 }
+
+// Minimal surface of google-auth-library's OAuth2Client used by the login step.
+type ConsentUrlBuilder = {
+  generateAuthUrl(opts: { access_type: string; prompt: string; scope: string[] }): string;
+};
+
+export type DevOAuthLoginDeps = {
+  /** DEV_OAUTH_HELPER_ENABLED from lib/dev-only.mjs (same flag as the callback). */
+  enabled: boolean;
+  /** Only called when enabled, so production never builds a Google client. */
+  loadOAuthClient: () => Promise<ConsentUrlBuilder>;
+};
+
+export const DEV_OAUTH_SCOPES = [
+  "https://www.googleapis.com/auth/calendar",
+  "https://www.googleapis.com/auth/spreadsheets",
+];
+
+/**
+ * Local-dev helper, first half of the flow: redirects to Google's consent
+ * screen, which then lands on /api/auth/callback. In production: 404 before
+ * anything else, no client is built and no redirect is sent.
+ */
+export async function handleDevOAuthLogin(deps: DevOAuthLoginDeps) {
+  if (!deps.enabled) return notFound();
+
+  const auth = await deps.loadOAuthClient();
+  const url = auth.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: DEV_OAUTH_SCOPES,
+  });
+  return NextResponse.redirect(url);
+}
