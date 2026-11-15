@@ -36,9 +36,13 @@ Object.assign(process.env, {
   WHATSAPP_CLIENT_TEMPLATE_SID_EN: "HXclienten",
   WHATSAPP_OWNER_TEMPLATE_SID: "HXowner",
   REALTIME_API_KEY: "test-not-a-key",
+  GOOGLE_CLIENT_ID: "test-google-client",
+  GOOGLE_CLIENT_SECRET: "test-not-a-secret",
 });
 delete process.env.OPENAI_API_KEY;
 
+// Toggled by the tests below: a failing summarizer (OpenAI 500).
+const mockState = { openaiFails: false };
 type Sent = { to: string; contentSid: string | null; vars: Record<string, string> | null; body: string | null; raw: string };
 const sent: Sent[] = [];
 const RECAP_CLIENT = "Merci Dana ! Votre RDV est pris pour demain 18h, offert par la maison.";
@@ -46,6 +50,7 @@ const RECAP_OWNER = "Dana a appelé. RDV jeudi 10:30. Tel +15555550101.";
 globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
   const u = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
   if (u.startsWith("https://api.openai.com/v1/chat/completions")) {
+    if (mockState.openaiFails) return new Response(JSON.stringify({ error: { message: "mock outage" } }), { status: 500 });
     const content = JSON.stringify({ summary: "Mock summary", for_client: RECAP_CLIENT, for_owner: RECAP_OWNER });
     return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
   }
@@ -70,6 +75,13 @@ async function main() {
   const mainRoutePath = process.env.CLIENT_CONFIRM_MAIN_ROUTE;
   if (!mainRoutePath) throw new Error("CLIENT_CONFIRM_MAIN_ROUTE not set");
   const mainRoute = (await import(mainRoutePath)) as typeof branch;
+  // The routes as on main just before this branch (cancel date + confirm order).
+  const prevEndPath = process.env.CLIENT_CONFIRM_PREV_END_ROUTE;
+  const prevCancelPath = process.env.CLIENT_CONFIRM_PREV_CANCEL_ROUTE;
+  if (!prevEndPath || !prevCancelPath) throw new Error("CLIENT_CONFIRM_PREV_END_ROUTE / CLIENT_CONFIRM_PREV_CANCEL_ROUTE not set");
+  const prevEnd = (await import(prevEndPath)) as typeof branch;
+  const cancelBranch = await import("../../app/api/calendar/cancel/route");
+  const prevCancel = (await import(prevCancelPath)) as typeof cancelBranch;
   const { hashCallId } = await import("../../lib/calls/core");
 
   const exec = (q: ReturnType<typeof sql>) => db.execute(q);
@@ -234,6 +246,152 @@ async function main() {
   await post(mainRoute, { room: "room-main-talk" });
   assert.equal(client().length, 1, "main: recap sent with no tool event (the flaw)");
   assert.ok(client()[0].vars!["1"].startsWith(RECAP_CLIENT));
+
+  // ═══ B. The confirm no longer waits for the transcript or the summary ═══
+  // Same route response as main's route before this branch (callId = the new
+  // row's id, differs per call → normalised); the owner recap is still skipped.
+  const norm = (j: Record<string, unknown>) => JSON.stringify({ ...j, callId: "<row>" });
+  for (const scenario of ["empty_transcript", "summary_failed"] as const) {
+    const over = scenario === "empty_transcript" ? { transcript: [] } : {};
+    const run = async (route: typeof branch, proven: boolean) => {
+      await reset();
+      if (proven) await toolEvent("book_success", "room-early", { eventId: "gcal-e", date: "2026-11-19", time: "10:30" });
+      mockState.openaiFails = scenario === "summary_failed";
+      try {
+        return await post(route, { room: "room-early", ...over });
+      } finally {
+        mockState.openaiFails = false;
+      }
+    };
+    // Proven booking → the confirm goes out, the owner recap does not.
+    const onPrev = await run(prevEnd, true);
+    assert.equal(client().length, 0, `main: nothing sent (${scenario})`);
+    const onBranch = await run(branch, true);
+    assert.equal(client().length, 1, `confirm sent (${scenario})`);
+    assert.equal(client()[0].vars!["1"], `Votre rendez-vous du jeudi 19 novembre à 10:30 est confirmé. · — Demo Salon · ${callLine}`);
+    assert.equal(owner().length, 0, `owner recap still skipped (${scenario})`);
+    assert.equal(onBranch.status, onPrev.status, scenario);
+    assert.equal(norm(onBranch.json), norm(onPrev.json), `same route response (${scenario})`);
+    const [row] = rows<{ s: string | null; e: string | null }>(
+      await exec(sql`SELECT whatsapp_client_sid AS s, whatsapp_error AS e FROM calls`),
+    );
+    assert.match(row.s ?? "", /^SMtest\d+$/, "the confirm SID is stored on the call row");
+    if (scenario === "summary_failed") assert.match(row.e ?? "", /^summary: /, "summary error kept");
+    console.log(`proven booking + ${scenario}: confirm sent, owner skipped, response ${onBranch.status} identical`);
+    // No tool event → nothing at all, same response.
+    const quietPrev = await run(prevEnd, false);
+    const quiet = await run(branch, false);
+    assert.equal(sent.length, 0, `nothing sent without a proven event (${scenario})`);
+    assert.equal(quiet.status, quietPrev.status);
+    assert.equal(norm(quiet.json), norm(quietPrev.json));
+  }
+
+  // ═══ A. The cancel stores the appointment's date; the confirm states it ═══
+  // Google is mocked at gaxios' fetch (it uses window.fetch when a window
+  // exists, node-fetch otherwise): token refresh, events.get, events.delete.
+  // Set only for this section; any other Google URL throws.
+  const google = { getFails: false, deleteFails: false, calls: [] as string[] };
+  const G_EVENT = {
+    id: "gcal-x",
+    summary: "RDV Demo Salon Centre — Dana",
+    description: `Rendez-vous\nLieu : Demo Salon Centre\nTel : ${CALLER}`,
+    start: { dateTime: "2026-11-26T11:45:00+02:00", timeZone: "Asia/Jerusalem" },
+    end: { dateTime: "2026-11-26T12:15:00+02:00", timeZone: "Asia/Jerusalem" },
+  };
+  const googleFetch = async (input: string | URL | Request, init?: RequestInit) => {
+    const u = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const method = (init?.method ?? "GET").toUpperCase();
+    google.calls.push(`${method} ${u.split("?")[0]}`);
+    if (u.startsWith("https://oauth2.googleapis.com/token")) {
+      return new Response(JSON.stringify({ access_token: "test-access", expires_in: 3600, token_type: "Bearer" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (u.split("?")[0] === "https://www.googleapis.com/calendar/v3/calendars/primary/events/gcal-x") {
+      if (method === "GET") {
+        return google.getFails
+          ? new Response(JSON.stringify({ error: { code: 403, message: "mock read failure" } }), { status: 403, headers: { "content-type": "application/json" } })
+          : new Response(JSON.stringify(G_EVENT), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (method === "DELETE") {
+        return google.deleteFails
+          ? new Response(JSON.stringify({ error: { code: 410, message: "Resource has been deleted" } }), { status: 410, headers: { "content-type": "application/json" } })
+          : new Response(null, { status: 204 });
+      }
+    }
+    throw new Error(`test: unexpected Google call ${method} ${u}`);
+  };
+  const g = globalThis as unknown as { window?: unknown };
+  g.window = { fetch: googleFetch };
+  await exec(sql`UPDATE users SET google_refresh_token = 'test-refresh-token' WHERE id = ${USER}`);
+  const cancel = async (route: typeof cancelBranch, room: string) => {
+    const req = new NextRequest("http://localhost/api/calendar/cancel", {
+      method: "POST",
+      headers: {
+        "x-internal-secret": "test-internal-secret",
+        "x-tenant-phone": LINE,
+        "x-call-id": hashCallId(room),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ eventId: "gcal-x" }),
+    });
+    const res = await route.POST(req);
+    return { status: res.status, text: await res.text() };
+  };
+  const cancelMeta = async () =>
+    rows<{ metadata: Record<string, unknown> }>(await exec(sql`SELECT metadata FROM events WHERE event = 'cancel_success'`)).map((r) => r.metadata);
+  try {
+    // The cancel response to the worker is byte-identical to main's, in every case.
+    for (const c of [{ name: "success" }, { name: "read_failed", getFails: true }, { name: "delete_failed", deleteFails: true }]) {
+      google.getFails = !!c.getFails;
+      google.deleteFails = !!c.deleteFails;
+      await reset();
+      const before = await cancel(prevCancel, "room-cx");
+      await reset();
+      google.calls.length = 0;
+      const after = await cancel(cancelBranch, "room-cx");
+      assert.equal(after.status, before.status, c.name);
+      assert.equal(after.text, before.text, `cancel response byte-identical (${c.name})`);
+      assert.deepEqual(
+        google.calls.filter((x) => !x.includes("oauth2")),
+        ["GET https://www.googleapis.com/calendar/v3/calendars/primary/events/gcal-x", "DELETE https://www.googleapis.com/calendar/v3/calendars/primary/events/gcal-x"],
+        `one read, then the delete (${c.name})`,
+      );
+      console.log(`cancel response byte-identical (${c.name}): ${after.status} ${after.text}`);
+    }
+    google.getFails = false;
+    google.deleteFails = false;
+
+    // Success: cancel_success carries date/time/place only, and the confirm states them.
+    await reset();
+    await cancel(cancelBranch, "room-cancel-dated");
+    const [m] = await cancelMeta();
+    assert.deepEqual(m, { callId: hashCallId("room-cancel-dated"), eventId: "gcal-x", date: "2026-11-26", time: "11:45", location: "Demo Salon Centre" });
+    assert.doesNotMatch(JSON.stringify(m), /5555550101|Dana/, "no caller number or name in the cancel event");
+    await post(branch, { room: "room-cancel-dated" });
+    assert.equal(client().length, 1);
+    assert.equal(client()[0].vars!["1"], `Votre rendez-vous du jeudi 26 novembre à 11:45 est annulé. · Lieu : Demo Salon Centre · — Demo Salon · ${callLine}`);
+
+    // Read failure: the event has no date → the old fallback (no book event here → no date).
+    google.getFails = true;
+    await reset();
+    await cancel(cancelBranch, "room-cancel-blind");
+    const [m2] = await cancelMeta();
+    assert.deepEqual(m2, { callId: hashCallId("room-cancel-blind"), eventId: "gcal-x" }, "logged without the date, as before");
+    await post(branch, { room: "room-cancel-blind" });
+    assert.equal(client()[0].vars!["1"], `Votre rendez-vous est annulé. · — Demo Salon · ${callLine}`);
+    // ...and with an earlier booking of that event, its date (the old lookup).
+    await reset();
+    await toolEvent("book_success", "room-old-x", { eventId: "gcal-x", date: "2026-11-21", time: "09:00" });
+    await cancel(cancelBranch, "room-cancel-blind2");
+    await post(branch, { room: "room-cancel-blind2" });
+    assert.equal(client()[0].vars!["1"], `Votre rendez-vous du samedi 21 novembre à 09:00 est annulé. · — Demo Salon · ${callLine}`);
+    console.log("cancel stores its date; read failure falls back to the old chain");
+  } finally {
+    delete g.window;
+    await exec(sql`UPDATE users SET google_refresh_token = NULL WHERE id = ${USER}`);
+  }
 
   console.log("ALL CLIENT-CONFIRM-DB TESTS PASSED");
   process.exit(0);

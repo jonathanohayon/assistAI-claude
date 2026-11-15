@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 
 import type { JoinCall, JoinEvent } from "../../lib/calls/core";
 import {
+  cancelledAppointmentMeta,
   CLIENT_CONFIRM_BUCKET,
   CLIENT_CONFIRM_CALL_BUCKET,
   CLIENT_CONFIRM_PER_NUMBER,
@@ -166,6 +167,50 @@ async function main() {
     const h3 = harness({ events: [CANCEL], appointment: null });
     await sendClientConfirm(h3.input({ lang: "he" }), h3.deps);
     assert.equal(h3.sent[0].body.split("\n")[0], "התור שלך בוטל.");
+  }
+
+  // ── 2b. The cancel route stores the deleted appointment: date/time/place only ──
+  {
+    const gEvent = {
+      summary: "RDV Demo Salon Centre — Dana",
+      description: `Rendez-vous\nLieu : Demo Salon Centre\nTel : ${CALLER}\nEmail : dana@example.com`,
+      start: { dateTime: "2026-11-19T10:30:00+02:00", timeZone: "Asia/Jerusalem" },
+    };
+    const meta = cancelledAppointmentMeta(gEvent);
+    assert.deepEqual(meta, { date: "2026-11-19", time: "10:30", location: "Demo Salon Centre" });
+    assert.doesNotMatch(JSON.stringify(meta), /5555550|Dana|example\.com/, "no caller name, number or email");
+    // The instant is read in Asia/Jerusalem whatever offset Google returns it in.
+    assert.deepEqual(cancelledAppointmentMeta({ start: { dateTime: "2026-11-19T08:30:00Z" } }), { date: "2026-11-19", time: "10:30" });
+    assert.deepEqual(cancelledAppointmentMeta({ start: { dateTime: "2026-07-01T23:30:00Z" } }), { date: "2026-07-02", time: "02:30" }, "summer time, day boundary");
+    // Google's own location field wins over the description line; legacy "Centre :" line.
+    assert.equal(cancelledAppointmentMeta({ ...gEvent, location: "Demo Salon Annexe" })!.location, "Demo Salon Annexe");
+    assert.equal(cancelledAppointmentMeta({ ...gEvent, description: "Rendez-vous\nCentre : Ashdod\nTel : x" })!.location, "Ashdod");
+    assert.equal("location" in cancelledAppointmentMeta({ ...gEvent, description: `Tel : ${CALLER}` })!, false, "no place line → no place");
+    // No timed start → nothing stored (the old fallback applies).
+    assert.equal(cancelledAppointmentMeta({ start: { date: "2026-11-19" } }), null, "all-day event");
+    assert.equal(cancelledAppointmentMeta({ start: { dateTime: "nope" } }), null);
+    assert.equal(cancelledAppointmentMeta({}), null);
+    assert.equal(cancelledAppointmentMeta(null), null);
+
+    // The confirm uses the cancel event's own date FIRST (no lookup at all).
+    const DATED_CANCEL = ev("cancel_success", { eventId: "gcal-1", ...meta }, -10);
+    const h = harness({ events: [DATED_CANCEL], appointment: RESCHED });
+    let looked = 0;
+    const lookup = h.deps.lastEventOfAppointment;
+    h.deps.lastEventOfAppointment = async (...a) => {
+      looked++;
+      return lookup(...a);
+    };
+    await sendClientConfirm(h.input(), h.deps);
+    assert.equal(h.sent[0].body.split("\n").slice(0, 2).join("\n"), "Votre rendez-vous du jeudi 19 novembre à 10:30 est annulé.\nLieu : Demo Salon Centre");
+    assert.equal(looked, 0, "the cancel's own date, not the old lookup");
+    // A cancel event with no date (failed read, older event) → the old fallback chain.
+    const h2 = harness({ events: [ev("cancel_success", { eventId: "gcal-1", date: "2026-11-19" }, -10)], appointment: RESCHED });
+    await sendClientConfirm(h2.input(), h2.deps);
+    assert.equal(h2.sent[0].body.split("\n")[0], "Votre rendez-vous du vendredi 20 novembre à 14:00 est annulé.", "date without time → lookup");
+    const h3 = harness({ events: [CANCEL], appointment: null });
+    await sendClientConfirm(h3.input(), h3.deps);
+    assert.equal(h3.sent[0].body.split("\n")[0], "Votre rendez-vous est annulé.");
   }
 
   // ── 3. Reschedule → its text ──
