@@ -56,6 +56,8 @@ async function main() {
     });
     const res = await handleEmailTest(req, {
       ...emailTestDeps,
+      // The sender gate is covered in email-test-hardening.test.ts; here a sender is configured.
+      senderConfigured: () => true,
       resolveTarget: async (r) => {
         const scope = await resolveScopeUserId({ sessionUserId: session, asUserId: r.nextUrl.searchParams.get("asUserId") });
         return "forbidden" in scope ? { forbidden: true as const } : scope;

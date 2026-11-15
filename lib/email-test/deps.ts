@@ -6,6 +6,7 @@ import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { sendNotificationTestEmail } from "@/lib/email";
+import { emailSenderConfigured } from "@/lib/email-sender";
 import type { EmailTestDeps } from "@/lib/email-test/handler";
 import {
   EMAIL_TEST_BUCKET,
@@ -43,4 +44,5 @@ export const emailTestDeps: EmailTestDeps = {
   send: sendNotificationTestEmail,
   log: logEvent,
   secrets: emailSenderSecrets,
+  senderConfigured: () => emailSenderConfigured(),
 };
