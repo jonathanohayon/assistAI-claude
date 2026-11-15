@@ -21,7 +21,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { LiveTestPanelLK } from "@/components/LiveTestPanelLK";
 import { WHATSAPP_VOICE_AVAILABLE } from "@/lib/channels/contract";
@@ -48,6 +48,7 @@ import {
   type OwnerEmailErrorKey,
   type OwnerEmailSettings,
 } from "./config/owner-email";
+import { parseRecapEmailConfirmation, type RecapEmailConfirmation } from "./config/owner-email-confirm";
 import { PersonaPanel } from "./config/persona-panel";
 import { personaTileSummary } from "./config/persona-tile-summary";
 import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
@@ -188,6 +189,16 @@ export function ConfigForm({
   // The server's "a verified sender is configured" flag (GET .../notifications/email).
   // Missing = not configured: a tenant never sees the card in that state.
   const [ownerEmailSenderConfigured, setOwnerEmailSenderConfigured] = useState(false);
+  // N2 (#348): the SAVED address's confirmation state, always as the last GET says.
+  const [ownerEmailConfirmation, setOwnerEmailConfirmation] = useState<RecapEmailConfirmation>(null);
+  const reloadOwnerEmailConfirmation = useCallback(() => {
+    fetch(ownerEmailUrl(asUserId), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => setOwnerEmailConfirmation(parseRecapEmailConfirmation((d as { recapEmailConfirmation?: unknown }).recapEmailConfirmation)))
+      .catch(() => {
+        /* keep the last known state */
+      });
+  }, [asUserId]);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -342,6 +353,7 @@ export function ConfigForm({
       .then((d) => {
         const loaded = { ownerRecapEmail: d.ownerRecapEmail ?? "", ownerRecapEmailEnabled: d.ownerRecapEmailEnabled === true };
         setOwnerEmailSenderConfigured((d as { senderConfigured?: unknown }).senderConfigured === true);
+        setOwnerEmailConfirmation(parseRecapEmailConfirmation((d as { recapEmailConfirmation?: unknown }).recapEmailConfirmation));
         setOwnerEmail(loaded);
         setOwnerEmailBase(loaded);
       })
@@ -443,6 +455,8 @@ export function ConfigForm({
           const saved = { ownerRecapEmail: edata.ownerRecapEmail, ownerRecapEmailEnabled: edata.ownerRecapEmailEnabled };
           setOwnerEmail(saved);
           setOwnerEmailBase(saved);
+          // A changed address: its state is whatever the server now says (never assumed).
+          if ("ownerRecapEmail" in echanges) reloadOwnerEmailConfirmation();
         }
         setOwnerEmailError(null);
       }
@@ -881,6 +895,9 @@ export function ConfigForm({
                             recapFeatureOn: features?.whatsapp_recap !== false,
                             locale,
                             asUserId: asUserId ?? null,
+                            confirmation: ownerEmailConfirmation,
+                            onConfirmation: setOwnerEmailConfirmation,
+                            reloadConfirmation: reloadOwnerEmailConfirmation,
                           }
                         : null
                     }
