@@ -9,9 +9,9 @@
 //   - At most MAX_CAPTURE_FIELDS fields can be ADDED. A schema already above
 //     the cap is kept as is: nothing here truncates or rewrites it; only
 //     adding is blocked, removing still works.
-import type { ExtractionField } from "./constants";
+import { EXTRACTION_SCHEMA_MAX_FIELDS, type ExtractionField } from "./constants";
 
-export const MAX_CAPTURE_FIELDS = 20;
+export const MAX_CAPTURE_FIELDS = EXTRACTION_SCHEMA_MAX_FIELDS;
 
 export type CaptureEditorView = "hidden" | "off_admin" | "on";
 
