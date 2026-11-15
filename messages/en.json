@@ -1898,7 +1898,7 @@
       "intro": "This is a test email sent from your Tamara dashboard. If you're reading this, email notifications are correctly configured on your account.",
       "confirm": "You'll now receive an email recap after every call.",
       "signature": "— The Tamara team",
-      "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a purely transactional email."
+      "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a service email only."
     },
     "contactCode": {
       "subject": "Confirm your email address for call recaps",
@@ -1976,13 +1976,13 @@
       "reco1Title": "1 · Test your assistant",
       "reco1Body": "Call {phone} from your phone and chat with her like a customer would. It's the best way to discover what she can do.",
       "recoCalendarTitle": "{n} · Connect Google Calendar",
-      "recoCalendarBody": "Without a connected calendar, the agent can't book in YOUR calendar. Open your dashboard and click \"Connect Google\" — 30 seconds.",
+      "recoCalendarBody": "Without a connected calendar, your assistant can't book in YOUR calendar. Open your dashboard and click \"Connect Google\" — 30 seconds.",
       "recoCrmTitle": "{n} · Your Google contacts spreadsheet",
-      "recoCrmBody": "Every contact created by the agent is added automatically to your Google spreadsheet. Share it with your team if multiple people consult it.",
-      "recoWhatsappTitle": "{n} · WhatsApp owner recap",
-      "recoWhatsappBody": "Set your owner WhatsApp number in the Settings tab to receive an instant recap after every call.",
+      "recoCrmBody": "Every contact created by your assistant is added automatically to your Google spreadsheet. Share it with your team if multiple people consult it.",
+      "recoWhatsappTitle": "{n} · Your WhatsApp recap",
+      "recoWhatsappBody": "Set your WhatsApp number in the Receptionist tab to receive an instant recap after every call.",
       "recoPersonaTitle": "{n} · Adjust her personality",
-      "recoPersonaBody": "Go to Settings to tune the tone, hours, branches, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
+      "recoPersonaBody": "Go to the Receptionist tab to tune the tone, hours, locations, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
     }
   },
   "LiveTest": {
