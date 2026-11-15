@@ -78,7 +78,7 @@ for (const l of LOCALES) {
   assert.equal(fr.title, "Agent joignable");
   assert.equal(fr.desc, "Donnez à votre agent une voix et un numéro depuis un service vocal externe, en lui fournissant cette URL.");
   assert.equal(fr.urlLabel, "URL publique de votre agent");
-  assert.equal(fr.urlHint, "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la persona configurée ci-dessus.");
+  assert.equal(fr.urlHint, "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité configurée ci-dessus.");
   assert.equal(fr.warning, "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.");
   assert.equal(fr.contractTitle, "Contrat attendu par les clients vocaux");
   assert.deepEqual([fr.copy, fr.copied, fr.rotate, fr.urlPlaceholder, fr.replyWithin], ["Copier", "Copié", "Régénérer", "<votre-url>", "sous 2 s"]);
