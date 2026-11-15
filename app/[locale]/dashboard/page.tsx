@@ -9,7 +9,7 @@ import {
 } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
-import { computeDashboardStats } from "@/lib/dashboard-stats";
+import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
@@ -108,7 +108,7 @@ export default async function DashboardPage(props: {
   });
 
   // Stats hero — see lib/dashboard-stats.ts (real durations and bookings).
-  const stats = await computeDashboardStats(session.user!.id!);
+  const stats = await computeHeroStats(session.user!.id!);
 
   // Construit la preview des blocs admin hérités (pour le popup de la
   // checkbox). On lit les directives system per-plan + admin block et

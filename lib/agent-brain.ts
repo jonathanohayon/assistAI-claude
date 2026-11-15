@@ -73,9 +73,12 @@ export function brainFromEntry(
   return { ...base, secretUnreadable: true };
 }
 
-export async function getAgentBrain(userId: string): Promise<AgentBrain> {
+export async function getAgentBrain(
+  userId: string,
+  report: UnreadableReporter = reportUnreadableSecret,
+): Promise<AgentBrain> {
   const map = await readMap();
-  return brainFromEntry(map[userId]);
+  return brainFromEntry(map[userId], report);
 }
 
 /**
