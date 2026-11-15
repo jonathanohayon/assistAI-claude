@@ -20,10 +20,14 @@ import { Link } from "@/i18n/navigation";
 import { supportHref } from "@/components/marketing/SupportFab";
 import { heroLiveState } from "./hero-live-state";
 
-// One line + its action, shared by the "no number" and "to check" lines: the
-// link keeps a 44 px touch target.
+// The status line's action link keeps a 44 px touch target.
 const STATUS_LINK =
   "inline-flex min-h-11 items-center font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline";
+// Same, inside wrapping text: 12 px of padding above and below (26 + 24 =
+// 50 px tall hit area) cancelled by negative margins, so the link doesn't
+// stretch the line it sits on.
+const INLINE_STATUS_LINK =
+  "-my-3 inline-block py-3 font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline";
 
 export function HeroSection({
   primaryPhone,
@@ -149,7 +153,7 @@ export function HeroSection({
             )}
             {t(liveState.lineKey)}{" "}
             {liveState.action === "plans" && (
-              <Link href="/dashboard/billing" className={STATUS_LINK}>
+              <Link href="/dashboard/billing" className={INLINE_STATUS_LINK}>
                 {t("heroSeePlans")}
               </Link>
             )}
@@ -158,7 +162,7 @@ export function HeroSection({
                 href={supportHref(tSupport("waGreeting"))}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={STATUS_LINK}
+                className={INLINE_STATUS_LINK}
               >
                 {t("heroContactTeam")}
               </a>
