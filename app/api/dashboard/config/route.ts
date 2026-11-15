@@ -12,6 +12,8 @@ import { sheetAfterBusinessWrite } from "@/lib/knowledge/store";
 import { planConfigBusinessWrite } from "@/lib/locations-cap";
 import { inheritAdminGlobalsWrite } from "@/lib/admin-gates";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
+import { withoutContactConfirmations } from "@/lib/contact-confirmation";
+import { contactConfirmationsWrite } from "@/lib/contact-confirmation-store";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
@@ -47,7 +49,8 @@ export async function GET() {
   // Voice contract (V5): the stored voice, or derived from the columns;
   // admin-only paths removed for tenants (no provider trace).
   return NextResponse.json({
-    ...withoutToolsStore(config),
+    // N1: the confirmation record is never returned (N2 adds its own view).
+    ...withoutContactConfirmations(withoutToolsStore(config)),
     voiceConfig: voiceForViewer(currentInboundVoice(row.config.voiceConfig, row.config), row.role === "admin"),
     // V8b: the voice choice as OUR ids for the account's engine (no engine
     // name, no engine voice name) — what the picker sends back as voiceId.
@@ -107,6 +110,11 @@ export async function PUT(req: NextRequest) {
       aiDisclosureText: agentConfigs.aiDisclosureText,
       personaConfig: agentConfigs.personaConfig,
       inheritAdminGlobals: agentConfigs.inheritAdminGlobals,
+      // Verified numbers (N1): the contact values before this save + their record.
+      ownerWhatsapp: agentConfigs.ownerWhatsapp,
+      transferNumber: agentConfigs.transferNumber,
+      transferNumberParked: agentConfigs.transferNumberParked,
+      contactConfirmations: agentConfigs.contactConfirmations,
     })
     .from(agentConfigs)
     .innerJoin(users, eq(users.id, agentConfigs.userId))
@@ -288,9 +296,15 @@ export async function PUT(req: NextRequest) {
   if (personaWrite) Object.assign(updates, personaWrite.updates);
   else updates.personaConfig = inboundPersonaAfterLegacy(current, updates);
 
+  // Verified numbers (N1): a NEW owner WhatsApp / transfer number is recorded
+  // unconfirmed (same value: kept; empty: cleared; omitted: untouched).
+  // Recorded only, nothing enforced; kept out of `updates` so the event below
+  // is unchanged.
+  const confirmations = contactConfirmationsWrite(current, updates);
+
   const [updated] = await db
     .update(agentConfigs)
-    .set(updates)
+    .set({ ...updates, ...confirmations })
     .where(eq(agentConfigs.userId, guard.userId))
     .returning();
 
@@ -309,7 +323,7 @@ export async function PUT(req: NextRequest) {
   void warmGreetingAudioForUser(guard.userId);
 
   return NextResponse.json({
-    ...withoutToolsStore(updated),
+    ...withoutContactConfirmations(withoutToolsStore(updated)),
     voiceConfig: voiceForViewer(currentInboundVoice(updated.voiceConfig, updated), isAdmin),
     // V8c: recomputed after the write — which of OUR ids is now selected.
     voiceChoice: await voiceChoiceFor(updated, isAdmin),

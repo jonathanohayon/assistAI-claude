@@ -23,6 +23,9 @@ export const WORKER_HIDDEN_CONFIG_COLUMNS = [
   // has no use for the owner's address.
   "ownerRecapEmail",
   "ownerRecapEmailEnabled",
+  // Verified numbers (N1): the confirmation record is the web's decision
+  // input; the worker keeps receiving transferNumber exactly as before.
+  "contactConfirmations",
 ] as const satisfies ReadonlyArray<keyof ConfigRow>;
 
 type Hidden = (typeof WORKER_HIDDEN_CONFIG_COLUMNS)[number];

@@ -4,6 +4,7 @@
 
 import { eq } from "drizzle-orm";
 
+import { contactConfirmationsWrite } from "@/lib/contact-confirmation-store";
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
 import {
@@ -49,9 +50,17 @@ export async function saveOwnerRecapEmail(
   if (refused) return { status: 409, body: refused };
   const changedFields = Object.keys(write.updates);
   if (changedFields.length === 0) return { status: 200, body: { ...current, changedFields } };
+  // Verified numbers (N1): a NEW address is recorded unconfirmed (same: kept;
+  // '': cleared; omitted: untouched). Recorded only, nothing enforced.
+  const [record] = await db
+    .select({ contactConfirmations: agentConfigs.contactConfirmations })
+    .from(agentConfigs)
+    .where(eq(agentConfigs.userId, userId))
+    .limit(1);
+  const confirmations = record ? contactConfirmationsWrite({ ...current, ...record }, write.updates) : {};
   const [updated] = await db
     .update(agentConfigs)
-    .set({ ...write.updates, updatedAt: new Date() })
+    .set({ ...write.updates, ...confirmations, updatedAt: new Date() })
     .where(eq(agentConfigs.userId, userId))
     .returning({
       ownerRecapEmail: agentConfigs.ownerRecapEmail,

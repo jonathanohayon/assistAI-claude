@@ -57,6 +57,7 @@ const NEVER_SERVED = [
   "transferNumberParked",
   "ownerRecapEmail",
   "ownerRecapEmailEnabled",
+  "contactConfirmations",
 ];
 
 const columns = Object.keys(getTableColumns(agentConfigs));
@@ -69,11 +70,21 @@ for (const c of columns) {
 assert.deepEqual([...WORKER_HIDDEN_CONFIG_COLUMNS].sort(), [...NEVER_SERVED].sort(), "the helper hides exactly NEVER_SERVED");
 
 // A full row (every column set) → exactly SERVED, in row order.
-const row = Object.fromEntries(columns.map((c) => [c, c === "ownerRecapEmail" ? "owner@example.com" : `mock-${c}`])) as unknown as Parameters<typeof workerRuntimeConfig>[0];
+const row = Object.fromEntries(
+  columns.map((c) => [
+    c,
+    c === "ownerRecapEmail"
+      ? "owner@example.com"
+      : c === "contactConfirmations"
+        ? { owner_whatsapp: { value: "+15550000099", state: "confirmed", at: "2026-11-15T00:00:00.000Z", by: "code" } }
+        : `mock-${c}`,
+  ]),
+) as unknown as Parameters<typeof workerRuntimeConfig>[0];
 const served = workerRuntimeConfig(row);
 assert.deepEqual(Object.keys(served), SERVED, "served keys pinned");
 for (const k of NEVER_SERVED) assert.ok(!(k in served), `${k} never served`);
 assert.ok(!JSON.stringify(served).includes("owner@example.com"), "the owner recap address is never served");
+assert.ok(!JSON.stringify(served).includes("+15550000099"), "the confirmation record is never served");
 assert.ok("ownerRecapEmail" in row, "the input row is not mutated");
 
 // The inbound handler goes through the helper and spreads no other row.

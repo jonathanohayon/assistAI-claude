@@ -3,6 +3,7 @@
 // Outbound: stored only (inactive until T4).
 import { and, eq, sql } from "drizzle-orm";
 
+import { contactConfirmationsWrite } from "@/lib/contact-confirmation-store";
 import { db } from "@/lib/db";
 import { agentConfigs, outboundAgents } from "@/lib/db/schema";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
@@ -71,6 +72,7 @@ export async function writeTools(
         toolsConfig: agentConfigs.toolsConfig,
         transferNumber: agentConfigs.transferNumber,
         transferNumberParked: agentConfigs.transferNumberParked,
+        contactConfirmations: agentConfigs.contactConfirmations,
       })
       .from(agentConfigs)
       .where(eq(agentConfigs.userId, userId))
@@ -89,6 +91,9 @@ export async function writeTools(
         toolsConfig: jsonb(sealClientAgentSecretWrite(plan.columns.toolsConfig, patch)),
         transferNumber: plan.columns.transferNumber,
         transferNumberParked: plan.columns.transferNumberParked,
+        // Verified numbers (N1): a NEW kept transfer number is recorded
+        // unconfirmed; the switch parking / restoring the same number keeps it.
+        ...contactConfirmationsWrite(row, plan.columns),
         updatedAt: new Date(),
       } as never)
       .where(eq(agentConfigs.userId, userId));
