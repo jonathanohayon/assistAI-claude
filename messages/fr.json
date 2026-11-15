@@ -1884,6 +1884,13 @@
       "signature": "— L'équipe Tamara",
       "footer": "Vous pouvez changer l'adresse ou désactiver les notifications email à tout moment depuis votre dashboard. Cet email est purement transactionnel."
     },
+    "contactCode": {
+      "subject": "Confirmez votre adresse pour les résumés d'appels",
+      "heading": "Votre code de confirmation",
+      "intro": "Saisissez ce code dans votre tableau de bord pour confirmer cette adresse pour les résumés d'appels :",
+      "expires": "Le code est valable 10 minutes.",
+      "ignore": "Si vous n'avez pas demandé ce code, ignorez cet e-mail : rien ne change tant que le code n'est pas saisi."
+    },
     "ownerRecap": {
       "subject": "📞 Nouvel appel reçu",
       "eyebrow": "Récap d'appel",

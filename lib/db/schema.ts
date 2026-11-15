@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -790,6 +791,32 @@ export const appSettings = pgTable("app_settings", {
     .notNull()
     .default(sql`now()`),
 });
+
+// Verified contacts (N2): the ONE live confirmation code per account and
+// contact kind (lib/contact-code.ts). A new send replaces the row; a
+// confirm deletes it. The code is never stored: code_hash is a salted
+// sha256 bound to the account, the kind and the value; value_hash is the
+// sha256 of the normalised value the code was sent to (a value change makes
+// the row stale). No address, no number, no code in clear. Deleted with the
+// account (cascade).
+export const contactConfirmationCodes = pgTable(
+  "contact_confirmation_codes",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    valueHash: text("value_hash").notNull(),
+    salt: text("salt").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.kind] })],
+);
 
 export type AppSetting = typeof appSettings.$inferSelect;
 export type NewAppSetting = typeof appSettings.$inferInsert;
