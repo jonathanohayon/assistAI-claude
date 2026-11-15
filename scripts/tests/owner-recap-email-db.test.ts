@@ -10,7 +10,8 @@
 // Runs only when OWNER_RECAP_EMAIL_TEST_DB_URL points at a THROWAWAY, migrated
 // database (it deletes users/events); otherwise it is skipped, so plain
 // `npm test` never touches a database. main's route is copied (git show
-// OWNER_RECAP_EMAIL_MAIN_REF, default origin/main) into a git-ignored
+// OWNER_RECAP_EMAIL_MAIN_REF, which owner-recap-email-db.sh pins to the parent
+// of #297's merge; default origin/main when run by hand) into a git-ignored
 // scripts/tests/.owner-recap-main-ref-* folder, removed on exit.
 
 import assert from "node:assert/strict";

@@ -42,18 +42,10 @@ trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$(dirn
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # The route's owner recap wrapper calls next-intl's getTranslations, which
-# only runs inside Next (react-server condition + the plugin's config alias).
-# A test tsconfig maps "next-intl/server" to a stand-in built from the same
-# message files (scripts/tests/helpers/next-intl-server-stub.ts).
-TSCONFIG=".tmp/client-confirm-main/tsconfig.json"
-cat > "$TSCONFIG" <<'JSON'
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "paths": { "@/*": ["../../*"], "next-intl/server": ["../../scripts/tests/helpers/next-intl-server-stub.ts"] }
-  }
-}
-JSON
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$PWD/$TSCONFIG" CLIENT_CONFIRM_DB_URL="$URL" CLIENT_CONFIRM_MAIN_ROUTE="$PWD/$MAIN_ROUTE" \
+# only runs inside Next: the shared test tsconfig maps "next-intl/server" to a
+# stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
+source scripts/lib/next-intl-stub-tsconfig.sh
+write_next_intl_stub_tsconfig
+env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" CLIENT_CONFIRM_DB_URL="$URL" CLIENT_CONFIRM_MAIN_ROUTE="$PWD/$MAIN_ROUTE" \
   CLIENT_CONFIRM_PREV_END_ROUTE="$PWD/$PREV_END" CLIENT_CONFIRM_PREV_CANCEL_ROUTE="$PWD/$PREV_CANCEL" \
   npx tsx scripts/tests/client-confirm-db.test.ts

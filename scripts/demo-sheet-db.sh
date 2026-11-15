@@ -33,10 +33,13 @@ env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/
 
 echo "== 1. baseline route (pre-#323 main, \${DEMO_SHEET_BASE:-8567c7a})"
 mkdir -p "$MAIN"
-# The baseline is the last main BEFORE #323 (8567c7a): the tree that leaked the
-# stored account text. Comparing against today's main would compare the fix
-# with itself, and the "main leaks" sanity check below would fail.
-BASE="${DEMO_SHEET_BASE:-8567c7a}"
+# The baseline is PINNED to the last main BEFORE #323 (a1dfec0^1 = 8567c7a, the
+# parent of #323's merge commit): the tree that leaked the stored account
+# text. origin/main already contains #323's fix, so comparing against it would
+# compare the fix with itself and the "main snapshot carries the seeded
+# Centre Zzyzx-Mock" sanity check would fail. Full SHA so it never becomes
+# ambiguous. Override with DEMO_SHEET_BASE=<commit>.
+BASE="${DEMO_SHEET_BASE:-8567c7a2e4b45c40c5edb9df2104e354e38f4899}"
 git archive "$BASE" | tar -x -C "$MAIN"
 mkdir -p "$MAIN/scripts/tests/fixtures"
 cp -R scripts/tests/fixtures/demo-sheet "$MAIN/scripts/tests/fixtures/"

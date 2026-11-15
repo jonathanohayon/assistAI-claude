@@ -2,8 +2,9 @@
 // handlers with tsx). The real getTranslations needs the react-server
 // condition and the Next plugin's "next-intl/config" alias; this one builds
 // the same translator from the same message files (use-intl's
-// createTranslator, which next-intl uses underneath). Mapped in by the test
-// tsconfig written by scripts/client-confirm-db.sh, never imported by the app.
+// createTranslator, which next-intl uses underneath). Mapped in by the shared
+// test tsconfig written by scripts/lib/next-intl-stub-tsconfig.sh (sourced by
+// the DB suites that need it), never imported by the app.
 
 import { createTranslator } from "use-intl/core";
 
