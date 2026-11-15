@@ -7,7 +7,7 @@
 // Run with:  npx tsx scripts/tests/worker-runtime-config.test.ts
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 
 import { getTableColumns } from "drizzle-orm";
 
@@ -80,5 +80,29 @@ assert.ok("ownerRecapEmail" in row, "the input row is not mutated");
 const src = readFileSync(new URL("../../lib/agent/session-config/inbound.ts", import.meta.url), "utf8").replace(/\/\/.*$/gm, "");
 assert.match(src, /const \{ updatedAt, \.\.\.runtime \} = workerRuntimeConfig\(config\);/);
 assert.doesNotMatch(src, /\.\.\.(config|tenant\.config)\b/, "no raw spread of the config row");
+
+// agentState (dashboard hero) is NEVER a worker-facing key: not a column the
+// helper could serve, not in the served payload, and no worker-facing handler
+// or /api/agent/* route mentions it (code only, comments stripped). The
+// inbound handler only exports the dry-run effects agentState uses.
+assert.ok(!columns.includes("agentState"), "agentState is not an agent_configs column");
+assert.ok(!("agentState" in served), "agentState never served");
+{
+  const code = (u: URL) => readFileSync(u, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const files: URL[] = [];
+  const walk = (dir: URL) => {
+    for (const name of readdirSync(dir)) {
+      const u = new URL(name, dir);
+      if (statSync(u).isDirectory()) walk(new URL(`${name}/`, dir));
+      else if (/\.tsx?$/.test(name)) files.push(u);
+    }
+  };
+  walk(new URL("../../lib/agent/session-config/", import.meta.url));
+  walk(new URL("../../app/api/agent/", import.meta.url));
+  assert.ok(files.length >= 10, "worker-facing files found");
+  for (const f of files) {
+    assert.doesNotMatch(code(f), /agentState|agent-state/, `${f.pathname} must not reference agentState`);
+  }
+}
 
 console.log("ALL WORKER-RUNTIME-CONFIG TESTS PASSED");
