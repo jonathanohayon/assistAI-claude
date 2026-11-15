@@ -1,23 +1,92 @@
 /**
- * What the dashboard hero may claim about the line being up.
+ * What the dashboard hero may claim about the agent answering calls.
  *
- * The only signal the page has is whether the account owns a phone number
- * (a phone_numbers row, read server-side in dashboard/page.tsx). No number
- * means no call can reach the agent, so the hero must not say "online" or
- * "Live". With a number we keep today's wording: it means "a number is
- * routed to your assistant", not a live health check of the worker.
+ * Source of truth: `stats.agentState`, computed by the server
+ * (lib/agent-state/compute.ts: number → subscription/trial → inbound config).
+ * When it is missing or not a shape we know, we fall back to the older rule
+ * (#319): a phone number means "live", no number means "to activate". The
+ * fallback NEVER yields "attention": a warning is only shown when the server
+ * said so.
+ *
+ * Adding a state (e.g. a future "engine stale / offline") is one row in
+ * HERO_STATES plus its message keys. The server shape is
+ * lib/agent-state/types.ts (AgentState).
  */
+
+export type HeroStatus = "live" | "to_activate" | "attention";
+
+/** The call to action shown with the hero's status line. */
+export type HeroAction = "get_number" | "plans" | "support";
+
 export type HeroLiveState = {
+  status: HeroStatus;
+  /** Only true when the agent answers: drives the pings and the waveform. */
   live: boolean;
   /** DashboardConfig key shown after the eyebrow. */
-  eyebrowStatusKey: "heroLive" | "heroToActivate";
+  eyebrowStatusKey: "heroLive" | "heroToActivate" | "heroAttention";
   /** DashboardConfig key of the status card badge. */
-  badgeKey: "wowLiveLabel" | "wowToActivateLabel";
+  badgeKey: "wowLiveLabel" | "wowToActivateLabel" | "wowAttentionLabel";
+  /** DashboardConfig key of the status line, null when there is none. */
+  lineKey: "heroNoNumber" | "heroSubscriptionInactive" | "heroConfigUnavailable" | null;
+  /** The line's call to action, null when there is none. */
+  action: HeroAction | null;
 };
 
-export function heroLiveState(primaryPhone: string | null | undefined): HeroLiveState {
-  const live = Boolean(primaryPhone?.trim());
-  return live
-    ? { live, eyebrowStatusKey: "heroLive", badgeKey: "wowLiveLabel" }
-    : { live, eyebrowStatusKey: "heroToActivate", badgeKey: "wowToActivateLabel" };
+const HERO_STATES = {
+  live: {
+    status: "live",
+    live: true,
+    eyebrowStatusKey: "heroLive",
+    badgeKey: "wowLiveLabel",
+    lineKey: null,
+    action: null,
+  },
+  to_activate: {
+    status: "to_activate",
+    live: false,
+    eyebrowStatusKey: "heroToActivate",
+    badgeKey: "wowToActivateLabel",
+    lineKey: "heroNoNumber",
+    action: "get_number",
+  },
+  "attention:subscription_inactive": {
+    status: "attention",
+    live: false,
+    eyebrowStatusKey: "heroAttention",
+    badgeKey: "wowAttentionLabel",
+    lineKey: "heroSubscriptionInactive",
+    action: "plans",
+  },
+  "attention:config_unavailable": {
+    status: "attention",
+    live: false,
+    eyebrowStatusKey: "heroAttention",
+    badgeKey: "wowAttentionLabel",
+    lineKey: "heroConfigUnavailable",
+    action: "support",
+  },
+} as const satisfies Record<string, HeroLiveState>;
+
+type HeroStateId = keyof typeof HERO_STATES;
+
+/** The table row for a server agentState, or null when it isn't one we know. */
+function rowFor(agentState: unknown): HeroStateId | null {
+  if (!agentState || typeof agentState !== "object") return null;
+  const { state, reason } = agentState as { state?: unknown; reason?: unknown };
+  const id = state === "attention" ? `attention:${String(reason)}` : String(state);
+  return Object.prototype.hasOwnProperty.call(HERO_STATES, id) ? (id as HeroStateId) : null;
+}
+
+export function heroLiveState({
+  agentState,
+  primaryPhone,
+}: {
+  /** stats.agentState (an AgentState); typed loosely because a payload may be older or newer than this build. */
+  agentState?: unknown;
+  primaryPhone: string | null | undefined;
+}): HeroLiveState {
+  const row = rowFor(agentState);
+  if (row) return HERO_STATES[row];
+  // Missing / unknown: today's number-based rule, never "attention".
+  return primaryPhone?.trim() ? HERO_STATES.live : HERO_STATES.to_activate;
 }
