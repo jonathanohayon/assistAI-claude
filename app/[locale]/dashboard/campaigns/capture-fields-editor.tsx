@@ -10,9 +10,22 @@ import {
   canAddCaptureField,
   captureEditorView,
   removeCaptureField,
+  setCaptureLabel,
 } from "@/lib/campaigns/capture-editor";
+import { showLevel3 } from "@/components/bricks/level3";
+import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
 
 import { Section, inputCls } from "./_ui";
+
+type EditorProps = {
+  schema: ExtractionField[];
+  onChange: (next: ExtractionField[]) => void;
+  /** The server's capture switch, as one boolean from the server page. */
+  captureOn: boolean;
+  isAdmin: boolean;
+  /** Keys of the schema as last loaded or saved: never re-derived. */
+  storedKeys?: readonly string[];
+};
 
 /**
  * The campaign's "fields to capture" (extraction schema) editor.
@@ -20,25 +33,32 @@ import { Section, inputCls } from "./_ui";
  * server's capture switch is off, shown to admins with one "not active yet"
  * line, and adding stops at MAX_CAPTURE_FIELDS (an existing longer schema is
  * kept untouched; removing still works).
+ *
+ * A tenant types the label only: the technical key is derived from it and
+ * hidden. The key input is level-3 content (developer mode on, or admin),
+ * the same gate as AgentUrlCard / ApiKeyCard.
  */
-export function CaptureFieldsEditor({
+export function CaptureFieldsEditor(props: EditorProps) {
+  const dev = useDeveloperMode();
+  return <CaptureFieldsEditorGate {...props} developerMode={dev.on} />;
+}
+
+/** The editor without the developer-mode store (rendered as-is by the tests). */
+export function CaptureFieldsEditorGate({
   schema,
   onChange,
   captureOn,
   isAdmin,
-}: {
-  schema: ExtractionField[];
-  onChange: (next: ExtractionField[]) => void;
-  /** The server's capture switch, as one boolean from the server page. */
-  captureOn: boolean;
-  isAdmin: boolean;
-}) {
+  storedKeys = [],
+  developerMode,
+}: EditorProps & { developerMode: boolean }) {
   const t = useTranslations("DashboardCampaigns");
   const tTools = useTranslations("ToolsBrick");
   const capId = useId();
   const view = captureEditorView(captureOn, isAdmin);
   if (view === "hidden") return null;
 
+  const showKey = showLevel3({ isAdmin, developerMode });
   const canAdd = canAddCaptureField(schema);
   const update = (i: number, patch: Partial<ExtractionField>) =>
     onChange(schema.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
@@ -61,6 +81,10 @@ export function CaptureFieldsEditor({
           <span className="font-semibold">{tTools("statusPending")}</span> {t("extractionCaptureOff")}
         </p>
       )}
+      {/* "What we capture from each conversation": the capture runs on the
+          transcript after the call, the agent is not told to ask yet. The
+          agent-centred wording ("what the agent asks/captures") comes back
+          once the agent is told to ask (M3b). HE copy: [HE] to confirm. */}
       <p className="mb-2 text-[11px] text-[#94a3b8]">{t("extractionHint")}</p>
       <div className="space-y-2">
         {schema.map((f, i) => (
@@ -71,18 +95,24 @@ export function CaptureFieldsEditor({
           >
             <input
               className={`${field} min-w-[110px] flex-1`}
-              placeholder={t("extractionKey")}
-              aria-label={t("extractionKey")}
-              value={f.key}
-              onChange={(e) => update(i, { key: e.target.value })}
-            />
-            <input
-              className={`${field} min-w-[110px] flex-1`}
               placeholder={t("extractionLabelField")}
               aria-label={t("extractionLabelField")}
               value={f.label}
-              onChange={(e) => update(i, { label: e.target.value })}
+              onChange={(e) => onChange(setCaptureLabel(schema, i, e.target.value, storedKeys))}
             />
+            {showKey && (
+              <input
+                data-capture-key
+                dir="ltr"
+                spellCheck={false}
+                autoCapitalize="off"
+                className={`${field} min-w-[110px] flex-1 font-mono text-[12px]`}
+                placeholder={t("extractionKey")}
+                aria-label={t("extractionKey")}
+                value={f.key}
+                onChange={(e) => update(i, { key: e.target.value })}
+              />
+            )}
             <select
               // inputCls carries w-full, which beats w-auto: drop it so the
               // row stays on one line on desktop and wraps on a phone.
