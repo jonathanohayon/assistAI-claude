@@ -1,8 +1,10 @@
 // Plain words on tenant screens (internal-words audit, 15/11): the message
 // namespaces every tenant reads (L1) carry no "Persona", "PSTN", "CRM",
 // "Sheet" (outside "Google Sheets"), "Live Test"/"LiveTest", "OAuth",
-// "token" or "tenant", in fr/en/he. The fast half of the guard; the rendered
-// half is scripts/check-tenant-words.mjs. Also probes the matcher itself.
+// "token" or "tenant", in fr/en/he. Every customer e-mail (all of Email.*)
+// also carries no "owner", and its fr/he versions no English left over. The
+// fast half of the guard; the rendered half is scripts/check-tenant-words.mjs.
+// Also probes the matcher itself.
 // Run with:  npx tsx scripts/tests/tenant-words.test.ts
 
 import assert from "node:assert/strict";
@@ -48,7 +50,7 @@ assert.deepEqual(found(visibleText(html)), ["OAuth"], "title attribute scanned, 
 
 // --- The L1 namespaces ---------------------------------------------------
 // Every namespace a tenant reads on the dashboard and onboarding. Not here:
-// public pages (audit D), Admin*/Plans/the other Email mails (Plans is shared word for word
+// public pages (audit D), Admin*/Plans (Plans is shared word for word
 // with the public pricing cards), and DashboardLogs (developer mode, audit
 // B: only its two decided keys are checked, below).
 const L1 = [
@@ -83,8 +85,44 @@ const NOT_TENANT_COPY: Record<string, string> = {
   "Onboarding.redirectHintFooter": "developer setup text, not used by any component",
 };
 const DEV_MODE_KEYS = ["DashboardLogs.sourceTenant", "DashboardLogs.latency.originWeb"];
-// The welcome mail every new tenant receives (lib/email.ts sendWelcomeEmail).
-const MAILS = ["Email.welcome"];
+// Every customer e-mail (lib/email.ts send*Email, one Email.* namespace each).
+// The admin alert mail is plain text in code and goes to us, not customers.
+const EMAIL_NAMESPACES = [
+  "verification",
+  "subscriptionConfirmation",
+  "notificationTest",
+  "contactCode",
+  "ownerRecap",
+  "trialWarning",
+  "trialDeleted",
+  "welcome",
+];
+const MAILS = EMAIL_NAMESPACES.map((ns) => `Email.${ns}`);
+
+// E-mail-only words, on top of wordHits: the customer is the owner, so a mail
+// never calls them "owner" (fr/en/he). And no English left inside the fr/he
+// mails: in Hebrew, no Latin word but the brand and product names; in
+// French, the English leftovers met in the 15/11 sweep ("dashboard" is the
+// product's French word, as on the screens).
+const HE_LATIN_ALLOWED = new Set(["Tamara", "WhatsApp", "Google", "Calendar", "Sheets"]);
+const FR_ENGLISH = [/\brecaps?\b/gi, /\bsettings\b/gi, /\bnotification test\b/gi, /\bagent config\b/gi, /\btransactional\b/gi];
+function emailHits(text: string, locale: string): string[] {
+  const out: string[] = [];
+  const plain = stripIcuArguments(text).replace(/<[^>]*>/g, " ");
+  if (/\bowners?\b/i.test(plain)) out.push("owner");
+  if (locale === "he") {
+    if (/בעלים|בעלת העסק|בעל העסק/.test(plain)) out.push("owner");
+    for (const [w] of plain.matchAll(/[A-Za-z][A-Za-z-]*/g)) if (!HE_LATIN_ALLOWED.has(w)) out.push(`English "${w}"`);
+  }
+  if (locale === "fr") for (const re of FR_ENGLISH) for (const [w] of plain.matchAll(re)) out.push(`English "${w}"`);
+  return out;
+}
+assert.deepEqual(emailHits("{n} · Recap WhatsApp owner", "fr"), ["owner", 'English "Recap"']);
+assert.deepEqual(emailHits("{n} · Votre récap WhatsApp", "fr"), [], "the French récap is fine");
+assert.deepEqual(emailHits("Set your owner WhatsApp number", "en"), ["owner"]);
+assert.deepEqual(emailHits("{n} · סיכום WhatsApp לבעלים", "he"), ["owner"]);
+assert.deepEqual(emailHits("ב-<strong>Tamara</strong> · Google Calendar", "he"), [], "brand names and tags are fine");
+assert.deepEqual(emailHits("בדיקת Notification", "he"), ['English "Notification"']);
 
 function* strings(node: unknown, path: string): Generator<[string, string]> {
   if (typeof node === "string") yield [path, node];
@@ -97,6 +135,7 @@ const problems: string[] = [];
 for (const l of LOCALES) {
   const m = messages(l);
   for (const ns of L1) assert.ok(m[ns], `${l}: namespace ${ns} exists`);
+  assert.deepEqual(Object.keys(m.Email as Messages).sort(), [...EMAIL_NAMESPACES].sort(), `${l}: every Email.* namespace is checked`);
   for (const p of MAILS) assert.ok(at(m, p), `${l}: ${p} exists`);
   const entries = [
     ...L1.flatMap((ns) => [...strings(m[ns], ns)]),
@@ -105,7 +144,8 @@ for (const l of LOCALES) {
   for (const [key, value] of entries) {
     assert.equal(typeof value, "string", `${l} ${key} is a message`);
     if (NOT_TENANT_COPY[key]) continue;
-    const h = found(stripIcuArguments(value), l);
+    const bare = stripIcuArguments(value);
+    const h = [...found(bare, l), ...(key.startsWith("Email.") ? emailHits(bare, l) : [])];
     if (h.length) problems.push(`${l} ${key}: ${h.join(", ")} in "${value}"`);
   }
 }
@@ -116,6 +156,8 @@ const fr = messages("fr");
 assert.equal(at(fr, "DashboardConfig.personaTitle"), "Personnalité");
 assert.equal(at(fr, "Email.welcome.recoCrmTitle"), "{n} · Votre tableau Google des contacts");
 assert.equal(at(fr, "Email.welcome.recoPersonaTitle"), "{n} · Ajustez sa personnalité");
+assert.equal(at(fr, "Email.welcome.recoWhatsappTitle"), "{n} · Votre récap WhatsApp");
+assert.equal(at(messages("en"), "Email.welcome.recoWhatsappTitle"), "{n} · Your WhatsApp recap");
 assert.equal(at(fr, "DashboardCampaigns.channelsPhone"), "Téléphone");
 assert.equal(at(fr, "DashboardContacts.header"), "Contacts");
 assert.equal(at(fr, "WebsiteScan.agentsTitle"), "Lecture de votre site");
