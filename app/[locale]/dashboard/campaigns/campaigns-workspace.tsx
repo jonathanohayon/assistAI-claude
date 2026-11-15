@@ -125,7 +125,7 @@ export function CampaignsWorkspace({
   // the setup step auto-saves only when the draft differs from it.
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   // Campagne dont on affiche les analytics (modal).
-  const [analyticsFor, setAnalyticsFor] = useState<{ id: string; name: string } | null>(null);
+  const [analyticsFor, setAnalyticsFor] = useState<CampaignListItem | null>(null);
 
   // Portal monté côté client → modal rendu dans <body>, donc `fixed` = viewport
   // garanti (immunisé contre un ancêtre transformé qui le confinerait et le
@@ -573,7 +573,7 @@ export function CampaignsWorkspace({
                 onOpen={openExisting}
                 onCreate={openNew}
                 onDelete={deleteCampaign}
-                onAnalytics={(c) => setAnalyticsFor({ id: c.id, name: c.name })}
+                onAnalytics={(c) => setAnalyticsFor(c)}
               />
             )}
 
@@ -733,6 +733,8 @@ export function CampaignsWorkspace({
       campaignName={analyticsFor.name}
       asUserId={asUserId}
       onClose={() => setAnalyticsFor(null)}
+      extractionSchema={analyticsFor.extractionSchema ?? []}
+      captureOn={captureOn}
     />
   );
 
