@@ -36,8 +36,7 @@ assert.deepEqual(found("Instructions OAuth du tenant"), [], "tenant-only words a
 
 // --- The public namespaces -----------------------------------------------
 // Every namespace read by components/marketing, components/plans and the
-// public routes (home, sales, connect, login, signup, verify-email), plus
-// HowItWorks (not rendered today, kept in step with the home's copy).
+// public routes (home, sales, connect, login, signup, verify-email).
 // Plans is shared word for word with /dashboard/billing.
 const PUBLIC = [
   "CTA",
@@ -46,7 +45,6 @@ const PUBLIC = [
   "Features",
   "Footer",
   "Hero",
-  "HowItWorks",
   "Industries",
   "Integrations",
   "LocaleSwitcher",
@@ -95,8 +93,7 @@ assert.deepEqual(problems, [], `internal words in public copy:\n${problems.join(
 
 // The decided wording itself (FR), so a revert shows up by name.
 const fr = messages("fr");
-assert.equal(at(fr, "Hero.stats.latency"), "Temps de réponse");
-assert.equal(at(fr, "Features.list.crm.title"), "Fiche client remplie toute seule");
+assert.equal(at(fr, "Features.list.crm.title"), "Fiche client remplie automatiquement");
 assert.equal(at(fr, "PricingComparison.rowCrm"), "Contacts dans Google Sheets");
 assert.equal(at(fr, "Plans.global.features.2"), "Calendrier connecté & contacts");
 
