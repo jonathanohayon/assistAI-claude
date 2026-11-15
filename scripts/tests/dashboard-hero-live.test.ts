@@ -267,7 +267,7 @@ for (const locale of LOCALES) {
     assert.ok(t.includes(dc.wowOfflineLabel), `${locale} engine_unreachable: badge says offline`);
     assert.ok(t.includes(dc.heroEngineUnreachable), `${locale} engine_unreachable: its line`);
     assert.ok(!html.includes("bg-[#fde68a]"), `${locale} engine_unreachable: grey badge, not amber`);
-    assert.ok(html.includes("bg-white/10 text-white"), `${locale} engine_unreachable: grey badge`);
+    assert.ok(html.includes("bg-black/20 text-white"), `${locale} engine_unreachable: grey badge`);
     for (const re of [PLANS_HREF, SUPPORT_HREF, ONBOARDING_HREF]) {
       assert.doesNotMatch(html, re, `${locale} engine_unreachable: no action link`);
     }
