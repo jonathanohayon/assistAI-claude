@@ -719,6 +719,7 @@ export function ConfigForm({
           planLabel={planLabel}
           voice={voice.voiceId}
           currentLangLabel={currentLangLabel}
+          adminView={Boolean(asUserId)}
         />
 
         {/* ── LIVE TEST ───────────────────────────────────────────────── */}
