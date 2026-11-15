@@ -4,8 +4,9 @@ import { eq } from "drizzle-orm";
 
 import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
 import { sendNotificationTestEmail } from "@/lib/email";
+import { emailSenderConfigured } from "@/lib/email-sender";
 import type { EmailTestDeps } from "@/lib/email-test/handler";
 import {
   EMAIL_TEST_BUCKET,
@@ -19,13 +20,17 @@ import { consumeRateLimit } from "@/lib/rate-limit-db";
 
 export const emailTestDeps: EmailTestDeps = {
   resolveTarget: resolveTargetUserId,
+  // userId = the scoped account (the ?asUserId tenant for admins), so both
+  // addresses are the TENANT's. The recap switch is not read: a saved address
+  // may be tested before it is switched on.
   loadAccount: async (userId) => {
     const [u] = await db
-      .select({ email: users.email, displayName: users.displayName })
+      .select({ email: users.email, displayName: users.displayName, ownerRecapEmail: agentConfigs.ownerRecapEmail })
       .from(users)
+      .leftJoin(agentConfigs, eq(agentConfigs.userId, users.id))
       .where(eq(users.id, userId))
       .limit(1);
-    return u ? { loginEmail: u.email, displayName: u.displayName } : null;
+    return u ? { loginEmail: u.email, ownerRecapEmail: u.ownerRecapEmail ?? "", displayName: u.displayName } : null;
   },
   // accountId = the scoped account (the ?asUserId tenant for admins).
   claim: (userId) =>
@@ -39,4 +44,5 @@ export const emailTestDeps: EmailTestDeps = {
   send: sendNotificationTestEmail,
   log: logEvent,
   secrets: emailSenderSecrets,
+  senderConfigured: () => emailSenderConfigured(),
 };

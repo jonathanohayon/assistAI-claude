@@ -10,7 +10,8 @@
 // Runs only when OWNER_RECAP_EMAIL_TEST_DB_URL points at a THROWAWAY, migrated
 // database (it deletes users/events); otherwise it is skipped, so plain
 // `npm test` never touches a database. main's route is copied (git show
-// OWNER_RECAP_EMAIL_MAIN_REF, default origin/main) into a git-ignored
+// OWNER_RECAP_EMAIL_MAIN_REF, which owner-recap-email-db.sh pins to the parent
+// of #297's merge; default origin/main when run by hand) into a git-ignored
 // scripts/tests/.owner-recap-main-ref-* folder, removed on exit.
 
 import assert from "node:assert/strict";
@@ -54,8 +55,13 @@ async function main() {
   const { db } = await import("../../lib/db");
   const { resolveScopeUserId } = await import("../../lib/admin-impersonate");
   const { loadOwnerRecapEmail, saveOwnerRecapEmail } = await import("../../lib/owner-recap-email-store");
+  const SENDER_ON = { senderConfigured: true };
+  const SENDER_OFF = { senderConfigured: false };
   const { ownerRecapEmailDeps } = await import("../../lib/owner-recap-email-send");
   const mine = await import("../../app/api/calls/end/route");
+  // A sender is configured for the calls/end part (the unconfigured skip is
+  // covered in owner-recap-email.test.ts).
+  ownerRecapEmailDeps.senderConfigured = () => true;
 
   const root = path.resolve(new URL("../..", import.meta.url).pathname);
   const ref = process.env.OWNER_RECAP_EMAIL_MAIN_REF || "origin/main";
@@ -118,28 +124,61 @@ async function main() {
   assert.deepEqual(asAdmin, { userId: T.store }, "admin scoped to the tenant");
   assert.deepEqual(forbidden, { forbidden: true }, "a tenant can't target another account");
 
-  const bad = await saveOwnerRecapEmail(T.store, { ownerRecapEmail: "nope", ownerRecapEmailEnabled: true });
+  const bad = await saveOwnerRecapEmail(T.store, { ownerRecapEmail: "nope", ownerRecapEmailEnabled: true }, SENDER_ON);
   assert.deepEqual(bad, { status: 400, body: { error: "invalid_email", fields: ["ownerRecapEmail"] } });
   assert.deepEqual(await loadOwnerRecapEmail(T.store), { ownerRecapEmail: "", ownerRecapEmailEnabled: false }, "a 400 writes nothing");
 
   for (const [who, scope] of [["tenant", asTenant], ["admin", asAdmin]] as const) {
     const uid = (scope as { userId: string }).userId;
-    const set = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `  ${who.toUpperCase()}@Example.com `, ownerRecapEmailEnabled: true });
+    const set = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `  ${who.toUpperCase()}@Example.com `, ownerRecapEmailEnabled: true }, SENDER_ON);
     assert.equal(set.status, 200);
     const want = { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: true };
     assert.deepEqual(await loadOwnerRecapEmail(uid), want, `${who}: normalised + saved`);
     // Omitting a field keeps it (each one, then both).
-    await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: true });
+    await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: true }, SENDER_ON);
     assert.deepEqual(await loadOwnerRecapEmail(uid), want, `${who}: absent address kept`);
-    await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com` });
+    await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com` }, SENDER_ON);
     assert.deepEqual(await loadOwnerRecapEmail(uid), want, `${who}: absent switch kept`);
-    const noop = await saveOwnerRecapEmail(uid, {});
+    const noop = await saveOwnerRecapEmail(uid, {}, SENDER_ON);
     assert.deepEqual(noop, { status: 200, body: { ...want, changedFields: [] } }, `${who}: empty body = no write`);
     assert.deepEqual(await loadOwnerRecapEmail(uid), want);
-    await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: false });
+    await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: false }, SENDER_ON);
     assert.deepEqual(await loadOwnerRecapEmail(uid), { ...want, ownerRecapEmailEnabled: false }, `${who}: switch off, address kept`);
-    await saveOwnerRecapEmail(uid, { ownerRecapEmail: "" });
+    await saveOwnerRecapEmail(uid, { ownerRecapEmail: "" }, SENDER_ON);
     assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: "", ownerRecapEmailEnabled: false }, `${who}: '' clears`);
+  }
+
+  // ── 2b. Sender gate: no sender configured, tenant + admin (?asUserId),
+  //        through the same save path. Only a CHANGE to ON is refused.
+  for (const [who, scope] of [["tenant", asTenant], ["admin", asAdmin]] as const) {
+    const uid = (scope as { userId: string }).userId;
+    await exec(sql`UPDATE agent_configs SET owner_recap_email = '', owner_recap_email_enabled = false WHERE user_id = ${uid}`);
+    // (1) other fields pass: the address is saved, the switch stays OFF.
+    const addr = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com` }, SENDER_OFF);
+    assert.equal(addr.status, 200, `${who}: address saved while unconfigured`);
+    assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false });
+    // (2) an unchanged re-send passes (OFF → OFF).
+    const sameOff = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false }, SENDER_OFF);
+    assert.equal(sameOff.status, 200, `${who}: unchanged OFF re-send passes`);
+    assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false });
+    // (3) a change to ON → 409 naming the field, nothing written (not even the address).
+    const refused = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `new-${who}@example.com`, ownerRecapEmailEnabled: true }, SENDER_OFF);
+    assert.deepEqual(refused, { status: 409, body: { error: "sender_not_configured", field: "ownerRecapEmailEnabled" } });
+    assert.ok(!JSON.stringify(refused).includes("@"), `${who}: 409 carries no address`);
+    assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false }, `${who}: a 409 writes nothing`);
+    // (4) a save omitting the switch keeps it (OFF here; ON below).
+    await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com` }, SENDER_OFF);
+    assert.equal((await loadOwnerRecapEmail(uid))?.ownerRecapEmailEnabled, false, `${who}: omitted switch kept OFF`);
+    // Already ON (switched on while a sender was configured): an unchanged
+    // re-send of ON passes, omitting it keeps ON, turning it OFF passes.
+    await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: true }, SENDER_ON);
+    const sameOn = await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: true }, SENDER_OFF);
+    assert.equal(sameOn.status, 200, `${who}: unchanged ON re-send passes`);
+    await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com` }, SENDER_OFF);
+    assert.equal((await loadOwnerRecapEmail(uid))?.ownerRecapEmailEnabled, true, `${who}: omitted switch kept ON`);
+    const off = await saveOwnerRecapEmail(uid, { ownerRecapEmailEnabled: false }, SENDER_OFF);
+    assert.equal(off.status, 200, `${who}: turning it OFF passes while unconfigured`);
+    await exec(sql`UPDATE agent_configs SET owner_recap_email = '', owner_recap_email_enabled = false WHERE user_id = ${uid}`);
   }
 
   // ── 3. /api/calls/end, this route vs main's ───────────────────────────

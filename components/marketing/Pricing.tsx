@@ -8,7 +8,7 @@ import {
   type Billing,
   type Currency,
   CURRENCY_META,
-  LOCALE_TO_CURRENCY,
+  landingCurrencyFor,
   PlanCard,
   useExchangeRates,
 } from "@/components/plans/PlanCard";
@@ -185,11 +185,9 @@ export function Pricing() {
   const tCard = useTranslations("Pricing.card");
   const locale = useLocale();
   const [billing, setBilling] = useState<Billing>("monthly");
-  // Default currency by locale (FR→ILS, HE→ILS, EN→USD).
+  // Default currency by locale (FR→ILS, HE→ILS, EN→USD), lib/landing-currency.ts.
   // L'utilisateur peut toujours changer via le dropdown.
-  const [currency, setCurrency] = useState<Currency>(
-    LOCALE_TO_CURRENCY[locale] ?? "EUR",
-  );
+  const [currency, setCurrency] = useState<Currency>(landingCurrencyFor(locale));
   const rates = useExchangeRates();
 
   return (

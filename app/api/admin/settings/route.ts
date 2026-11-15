@@ -248,7 +248,7 @@ export async function PUT(req: NextRequest) {
     await logEvent({
       source: "web",
       event: "admin_settings_updated",
-      message: `Admin ${me.email} a édité ${changed.join(", ")}`,
+      message: `Admin ${me.id} a édité ${changed.join(", ")}`,
       userId: me.id,
       metadata: { keys: changed },
     });

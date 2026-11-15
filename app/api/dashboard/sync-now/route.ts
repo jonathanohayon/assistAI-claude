@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sync",
       event: "manual_sync",
-      message: `Sync manuel ${target.email} : +${r.inserted}, ↻${r.updated} sur ${r.scanned} (${elapsedMs}ms)`,
+      message: `Sync manuel ${target.id} : +${r.inserted}, ↻${r.updated} sur ${r.scanned} (${elapsedMs}ms)`,
       userId: target.id,
       metadata,
     });
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sync",
       event: "manual_sync_failed",
-      message: `Sync manuel ${target.email} échoué : ${r.reason ?? "unknown"}`,
+      message: `Sync manuel ${target.id} échoué : ${r.reason ?? "unknown"}`,
       level: "warn",
       userId: target.id,
       metadata,

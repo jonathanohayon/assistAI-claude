@@ -2,19 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  PROVIDERS,
-  REALTIME_MODELS as FALLBACK_MODELS,
-  type Provider,
-} from "@/lib/realtime";
+import type { Provider } from "@/lib/realtime";
 
 // Client-side hook : fetches the live OpenAI realtime catalog
 // (/api/realtime/catalog) and exposes models + voices for picker UIs.
 //
-// Falls back to the hardcoded list (lib/realtime.ts) when:
-//   - the fetch hasn't completed yet (during SSR or before mount)
-//   - the API returned `source: "fallback"` (OpenAI down / no key)
-//   - the network call fails
+// No synchronous fallback: lib/realtime.ts (the provider catalogue) is never
+// imported by client code (scripts/tests/realtime-client-safe.test.ts). Until
+// the fetch completes, or if it fails, the catalog is empty; the route itself
+// already answers with the hardcoded list when the live one is unavailable.
 //
 // Cached in sessionStorage for the page lifetime so repeated mounts don't
 // retrigger the fetch. Server-side cache (1h) handles cross-user sharing.
@@ -33,31 +29,16 @@ interface VoicesByProvider {
 
 interface Catalog {
   models: CatalogModel[];
-  voicesByProvider: Record<Provider, VoicesByProvider>;
+  voicesByProvider: Partial<Record<Provider, VoicesByProvider>>;
   source: "openai-api" | "fallback" | "loading";
 }
 
 const SESSION_CACHE_KEY = "realtime-catalog-v1";
 
-// Synchronous fallback derived from the hardcoded lib/realtime.ts data, used
-// before the network fetch completes. This keeps SSR / first paint correct.
+// Empty until /api/realtime/catalog answers (same on server and client, so
+// first paint hydrates cleanly).
 function fallbackCatalog(): Catalog {
-  return {
-    models: FALLBACK_MODELS.map((m) => ({ ...m, live: false })),
-    voicesByProvider: {
-      openai: {
-        provider: "openai",
-        voices: [...PROVIDERS.openai.voices],
-        defaultVoice: PROVIDERS.openai.defaultVoice,
-      },
-      xai: {
-        provider: "xai",
-        voices: [...PROVIDERS.xai.voices],
-        defaultVoice: PROVIDERS.xai.defaultVoice,
-      },
-    },
-    source: "loading",
-  };
+  return { models: [], voicesByProvider: {}, source: "loading" };
 }
 
 export function useRealtimeCatalog(): Catalog {
@@ -93,7 +74,7 @@ export function useRealtimeCatalog(): Catalog {
           models: data.models,
           voicesByProvider: Object.fromEntries(
             (data.voices as VoicesByProvider[]).map((v) => [v.provider, v]),
-          ) as Record<Provider, VoicesByProvider>,
+          ) as Partial<Record<Provider, VoicesByProvider>>,
           source: data.source,
         };
         setCatalog(next);
@@ -112,26 +93,4 @@ export function useRealtimeCatalog(): Catalog {
   }, []);
 
   return catalog;
-}
-
-export function providerForCatalog(
-  catalog: Catalog,
-  modelId: string,
-): Provider {
-  return catalog.models.find((m) => m.id === modelId)?.provider ?? "openai";
-}
-
-export function voicesForCatalog(
-  catalog: Catalog,
-  modelId: string,
-): readonly string[] {
-  return catalog.voicesByProvider[providerForCatalog(catalog, modelId)].voices;
-}
-
-export function defaultVoiceForCatalog(
-  catalog: Catalog,
-  modelId: string,
-): string {
-  return catalog.voicesByProvider[providerForCatalog(catalog, modelId)]
-    .defaultVoice;
 }

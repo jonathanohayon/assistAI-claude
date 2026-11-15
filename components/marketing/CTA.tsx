@@ -4,8 +4,20 @@ import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-export function CTA() {
+import type { CtaCopy } from "@/lib/marketing/home-content";
+
+export function CTA({
+  copy,
+}: {
+  /** A landing page's own copy; omitted = the `CTA` messages. */
+  copy?: CtaCopy;
+} = {}) {
   const t = useTranslations("CTA");
+  const kicker = copy ? copy.kicker : t("kicker");
+  const title = copy ? copy.title : t("title");
+  const subtitle = copy ? copy.subtitle : t("subtitle");
+  const primary = copy ? copy.primary : { label: t("ctaPrimary"), href: "/signup" };
+  const secondary = copy ? copy.secondary : { label: t("ctaSecondary"), href: "#demo" };
   return (
     <section className="relative px-6 py-20 sm:py-28">
       <div className="mx-auto w-full max-w-6xl">
@@ -49,22 +61,22 @@ export function CTA() {
 
           <div className="relative max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#0e7490]">
-              {t("kicker")}
+              {kicker}
             </p>
             <h2 className="mt-3 font-display text-4xl leading-tight tracking-tight text-[#18181b] sm:text-5xl lg:text-6xl">
-              {t("title")}
+              {title}
             </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-[#475569]">
-              {t("subtitle")}
+              {subtitle}
             </p>
 
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
-                href="/signup"
+                href={primary.href}
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_-8px_rgba(190,24,93,0.5)] ring-2 ring-[#22d3ee]/30 transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                <span className="relative">{t("ctaPrimary")}</span>
+                <span className="relative">{primary.label}</span>
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -80,14 +92,14 @@ export function CTA() {
                 </svg>
               </Link>
               <a
-                href="#demo"
+                href={secondary.href}
                 className="inline-flex items-center gap-2 rounded-full border-2 border-[#18181b]/15 bg-white/60 px-6 py-3 text-sm font-semibold text-[#18181b] backdrop-blur transition-all hover:border-[#0e7490]/40 hover:bg-white"
               >
-                {t("ctaSecondary")}
+                {secondary.label}
               </a>
             </div>
 
-            <p className="mt-8 text-xs text-[#475569]">{t("footer")}</p>
+            {copy ? null : <p className="mt-8 text-xs text-[#475569]">{t("footer")}</p>}
           </div>
         </motion.div>
       </div>

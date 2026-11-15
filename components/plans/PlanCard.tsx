@@ -20,17 +20,13 @@ import { useEffect, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { fillPlanFeatures, OVERAGE_RATE_ILS_PER_MIN, type Plan } from "@/lib/plans";
+import { CURRENCY_META, type Currency } from "@/lib/landing-currency";
 import { resolvePrice, type PlanPricingMap } from "@/lib/plan-pricing";
 
-export type Currency = "EUR" | "USD" | "ILS";
-
-// Symbol + locale (pour Intl.NumberFormat) par devise. La locale détermine
-// la position du symbole (avant/après) et le séparateur de milliers.
-export const CURRENCY_META: Record<Currency, { symbol: string; locale: string }> = {
-  EUR: { symbol: "€", locale: "fr-FR" },
-  USD: { symbol: "$", locale: "en-US" },
-  ILS: { symbol: "₪", locale: "he-IL" },
-};
+// The currency table and the locale default (ILS for Hebrew AND French
+// visitors, 2026-11 grid; USD in English) live in lib/landing-currency.ts,
+// shared with the home demo's fictional prices. Re-exported for callers.
+export { CURRENCY_META, LOCALE_TO_CURRENCY, landingCurrencyFor, type Currency } from "@/lib/landing-currency";
 
 // Fallback rates si le fetch frankfurter.app échoue. Approximation pour
 // éviter d'afficher des prix à 0 ou de masquer la card. Mis à jour au
@@ -152,15 +148,6 @@ function formatPricePerMinute(
     maximumFractionDigits: 2,
   }).format(converted);
 }
-
-/** Mapping locale → devise par défaut. FR→EUR, HE→ILS, EN→USD. */
-// ILS for Israel-based visitors in Hebrew AND French (2026-11 grid: ILS-first);
-// English shows USD (abroad).
-export const LOCALE_TO_CURRENCY: Record<string, Currency> = {
-  fr: "ILS",
-  he: "ILS",
-  en: "USD",
-};
 
 // Helpers locaux : pioche les variantes localisées (Plans namespace) avec
 // fallback sur les valeurs FR hardcodées dans lib/plans.ts si la clé n'a

@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       message: `Achat numéro échoué : ${msg.slice(0, 200)}`,
       level: "error",
       userId: session.user.id,
-      metadata: { phoneToBuy, error: msg },
+      metadata: { tenantLine: phoneToBuy, error: msg },
     });
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -157,10 +157,10 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "web",
       event: "provision_success",
-      message: `Numéro ${purchased.phoneNumber} provisionné pour ${session.user.email}`,
+      message: "Numéro provisionné",
       userId: session.user.id,
       metadata: {
-        phoneNumber: purchased.phoneNumber,
+        tenantLine: purchased.phoneNumber,
         twilioSid: purchased.sid,
         countryCode,
       },
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
           await logEvent({
             source: "web",
             event: "welcome_email_failed",
-            message: `Envoi welcome email à ${me.email} échoué : ${res.error?.slice(0, 200) ?? "?"}`,
+            message: `Envoi welcome email à ${me.id} échoué : ${res.error?.slice(0, 200) ?? "?"}`,
             level: "warn",
             userId: session.user.id,
             metadata: { error: res.error },
@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
           await logEvent({
             source: "web",
             event: "welcome_email_sent",
-            message: `Welcome email envoyé à ${me.email}`,
+            message: `Welcome email envoyé à ${me.id}`,
             userId: session.user.id,
             metadata: { emailId: res.id, fallback: res.fallback },
           });
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
       level: "error",
       userId: session.user.id,
       metadata: {
-        phoneNumber: purchased.phoneNumber,
+        tenantLine: purchased.phoneNumber,
         twilioSid: purchased.sid,
         error: msg,
       },

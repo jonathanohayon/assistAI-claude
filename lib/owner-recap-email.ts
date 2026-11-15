@@ -70,6 +70,47 @@ export function ownerRecapEmailWrite(body: unknown): OwnerRecapEmailWrite {
   return { ok: true, updates };
 }
 
+/**
+ * The GET body: the stored settings + whether a sender is configured. A
+ * boolean only: no configuration name, value or sender address.
+ */
+export function ownerRecapEmailView(
+  stored: OwnerRecapEmailSettings,
+  senderConfigured: boolean,
+): OwnerRecapEmailSettings & { senderConfigured: boolean } {
+  return {
+    ownerRecapEmail: stored.ownerRecapEmail,
+    ownerRecapEmailEnabled: stored.ownerRecapEmailEnabled,
+    senderConfigured: senderConfigured === true,
+  };
+}
+
+export interface SenderNotConfiguredBody {
+  error: "sender_not_configured";
+  field: "ownerRecapEmailEnabled";
+}
+
+/**
+ * The save's sender gate. While no email sender is configured, a CHANGE of
+ * the switch to ON is refused (409): a tenant must never trigger an email
+ * from the supplier's default sender. Everything else passes: turning it OFF,
+ * saving the address, other fields, a save that omits the switch, and an
+ * unchanged re-send of ON by an account already ON (no change is made; the
+ * recap itself still refuses to send while unconfigured).
+ * Returns null when the write may proceed.
+ */
+export function ownerRecapEmailSenderGate(
+  stored: OwnerRecapEmailSettings,
+  updates: Partial<OwnerRecapEmailSettings>,
+  senderConfigured: boolean,
+): SenderNotConfiguredBody | null {
+  if (senderConfigured) return null;
+  if (updates.ownerRecapEmailEnabled === true && stored.ownerRecapEmailEnabled !== true) {
+    return { error: "sender_not_configured", field: "ownerRecapEmailEnabled" };
+  }
+  return null;
+}
+
 /** The stored settings with a write applied (what the row becomes). */
 export function applyOwnerRecapEmailWrite(
   stored: OwnerRecapEmailSettings,

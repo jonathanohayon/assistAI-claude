@@ -157,11 +157,16 @@ export function normalizeCallWindow(v: unknown): CallWindow {
   };
 }
 
-/** Schéma d'extraction : ≤ 30 champs, key ≤ 60 chars, label ≤ 120, options enum ≤ 20 × 60 chars. */
+/**
+ * Extraction schema: key ≤ 60 chars, label ≤ 120, enum options ≤ 20 × 60 chars.
+ * The field COUNT is not cut here (no silent slice): the write paths refuse a
+ * list that grows past EXTRACTION_SCHEMA_MAX_FIELDS (lib/campaigns/extraction-cap.ts),
+ * and a list stored above it is kept as is.
+ */
 export function normalizeExtractionSchema(v: unknown): ExtractionField[] {
   if (!Array.isArray(v)) return [];
   const out: ExtractionField[] = [];
-  for (const item of v.slice(0, 30)) {
+  for (const item of v) {
     if (!item || typeof item !== "object") continue;
     const f = item as Record<string, unknown>;
     const key = typeof f.key === "string" ? f.key.trim().slice(0, 60) : "";

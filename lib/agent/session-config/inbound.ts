@@ -90,7 +90,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     await logEvent({
       source: "tenant",
       event: "unknown_dialed_number",
-      message: `Appel refusé : aucun tenant pour le numéro ${phone}`,
+      message: "Appel refusé : aucun tenant pour le numéro appelé",
       level: "error",
       metadata: { toNumber: phone },
     });
@@ -135,7 +135,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
         event: "trial_exhausted_block",
         message: `Appel refusé : essai épuisé (${Math.round(
           trialSecondsUsed / 60,
-        )} min utilisées) pour ${tenant.user.email}`,
+        )} min utilisées) pour ${tenant.user.id}`,
         level: "warn",
         userId: tenant.user.id,
         metadata: {
@@ -167,7 +167,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     logEvent({
       source: "tenant",
       event: "agent_config_loaded",
-      message: `Config chargée pour ${tenant.user.email} via ${resolution} (called=${phone ?? "(none)"}, userId=${userId ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
+      message: `Config chargée pour ${tenant.user.id} via ${resolution} (userId=${userId ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
       level:
         resolution === "phone_match" || resolution === "user_match"
           ? "info"
@@ -175,7 +175,8 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
       userId: tenant.user.id,
       metadata: {
         resolution,
-        calledPhone: phone,
+        // The tenant's own dialled line (kept in clear, lib/event-pii.ts).
+        toNumber: phone,
         requestUserId: userId,
         hasGoogle: Boolean(tenant.user.googleRefreshToken),
         hasCalendarId: Boolean(tenant.user.googleCalendarId),
@@ -308,7 +309,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     await logEvent({
       source: "tenant",
       event: "agent_webhook_unsafe",
-      message: `Cerveau externe ignoré pour ${tenant.user.email} : adresse refusée (${refused})`,
+      message: `Cerveau externe ignoré pour ${tenant.user.id} : adresse refusée (${refused})`,
       level: "error",
       userId: tenant.user.id,
       metadata: { via, code: refused },
@@ -328,7 +329,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     await logEvent({
       source: "tenant",
       event: "agent_brain_external",
-      message: `Cerveau externe actif pour ${tenant.user.email} → ${agentWebhook.url}${envOverride ? " (AGENT_WEBHOOK_URL global override: every tenant goes there)" : ""}`,
+      message: `Cerveau externe actif pour ${tenant.user.id} → ${agentWebhook.url}${envOverride ? " (AGENT_WEBHOOK_URL global override: every tenant goes there)" : ""}`,
       // The env override reroutes EVERY tenant to one endpoint with one
       // secret. Fine for a test, an incident if left on in prod: make it loud.
       level: envOverride ? "warn" : "info",
@@ -351,7 +352,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
       await logEvent({
         source: "tenant",
         event: "client_agent_unsafe",
-        message: `Agent du client ignoré pour ${tenant.user.email} : adresse refusée (${safe.code})`,
+        message: `Agent du client ignoré pour ${tenant.user.id} : adresse refusée (${safe.code})`,
         level: "error",
         userId: tenant.user.id,
         metadata: { code: safe.code },

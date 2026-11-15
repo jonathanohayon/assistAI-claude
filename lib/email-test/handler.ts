@@ -8,8 +8,9 @@
 //   400 { error: "invalid_email" }          missing / malformed address or body
 //   401 { error: "unauthorized" }           no session
 //   403 { error: "forbidden" }              ?asUserId by a non-admin
-//   403 { error: "recipient_not_allowed" }  not the account's own address
+//   403 { error: "recipient_not_allowed" }  neither the login nor the saved recap address
 //   429 { error: "rate_limited", scope: "account" | "global" } + Retry-After header
+//   503 { error: "not_configured" }         no email sender configured (nothing is sent, nothing counted)
 //   500 { error: "send_failed" } | { error: "not_configured" }
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -26,6 +27,8 @@ import type { RateLimitResult } from "@/lib/rate-limit-db-core";
 
 export interface EmailTestAccount {
   loginEmail: string;
+  /** Saved owner recap address ("" when none); also an allowed recipient. */
+  ownerRecapEmail: string;
   displayName: string | null;
 }
 
@@ -47,6 +50,8 @@ export interface EmailTestDeps {
   log(ev: LogEvent): Promise<void>;
   /** Values to redact from logged provider errors. */
   secrets(): string[];
+  /** A sender is configured (lib/email-sender.ts). false → 503, never the default sender. */
+  senderConfigured(): boolean;
 }
 
 const fail = (error: EmailTestError, status: number, scope?: RateScope, retryAfterSec?: number) =>
@@ -60,6 +65,9 @@ export async function handleEmailTest(req: NextRequest, deps: EmailTestDeps): Pr
   if ("unauthorized" in target) return fail("unauthorized", 401);
   if ("forbidden" in target) return fail("forbidden", 403);
   const userId = target.userId;
+  // A tenant never triggers an email from the supplier's default sender.
+  // Checked before anything is counted: the attempt costs no quota.
+  if (!deps.senderConfigured()) return fail("not_configured", 503);
 
   let body: unknown;
   try {
@@ -71,7 +79,7 @@ export async function handleEmailTest(req: NextRequest, deps: EmailTestDeps): Pr
   if (!isWellFormedEmail(to)) return fail("invalid_email", 400);
 
   const account = await deps.loadAccount(userId);
-  const recipient = account ? matchAllowedRecipient(to, { loginEmail: account.loginEmail }) : null;
+  const recipient = account ? matchAllowedRecipient(to, account) : null;
   if (!account || !recipient) return fail("recipient_not_allowed", 403);
 
   // Counted BEFORE sending, atomically (lib/rate-limit-db.ts).

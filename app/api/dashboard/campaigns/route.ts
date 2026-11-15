@@ -18,9 +18,9 @@ import { outboundBookingActive } from "@/lib/campaigns/preset-gate-load";
 import {
   normalizeCallWindow,
   normalizeConcurrency,
-  normalizeExtractionSchema,
   normalizeRetryRules,
 } from "@/lib/campaigns/validate";
+import { planCreateExtractionSchema } from "@/lib/campaigns/extraction-cap";
 
 // Valide qu'un agentId fourni appartient bien au tenant. Renvoie l'id si OK,
 // sinon null (campagne sans agent → le worker retombera sur la persona
@@ -111,6 +111,10 @@ export async function POST(req: NextRequest) {
   if (!name)
     return NextResponse.json({ error: "name_required" }, { status: 400 });
 
+  // A new list above the cap → 400, never a silent slice.
+  const extraction = planCreateExtractionSchema(body.extractionSchema);
+  if (!extraction.ok) return NextResponse.json(extraction.body, { status: extraction.status });
+
   // Le caller-id doit appartenir au tenant (sinon vide → worker utilisera le
   // numéro par défaut). On valide contre phone_numbers.
   let fromNumber = "";
@@ -151,7 +155,7 @@ export async function POST(req: NextRequest) {
       status: "draft",
       fromNumber,
       agentId,
-      extractionSchema: normalizeExtractionSchema(body.extractionSchema),
+      extractionSchema: extraction.schema,
       concurrency: normalizeConcurrency(body.concurrency),
       retryRules: normalizeRetryRules(body.retryRules),
       callWindow: normalizeCallWindow(body.callWindow),

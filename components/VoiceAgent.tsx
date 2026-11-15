@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import {
   applyTranscriptEvent,
@@ -9,12 +9,6 @@ import {
   visibleEntries,
   type DemoTranscriptEntry,
 } from "@/lib/realtime-transcript";
-import { transportFor } from "@/lib/realtime";
-import {
-  defaultVoiceForCatalog,
-  useRealtimeCatalog,
-  voicesForCatalog,
-} from "@/lib/use-realtime-catalog";
 
 type Status = "idle" | "connecting" | "connected" | "error";
 
@@ -25,16 +19,14 @@ type TranscriptEntry = DemoTranscriptEntry;
 // many seconds the session auto-disconnects with a "demo terminée" UX.
 const DEMO_SESSION_SECONDS = 80;
 
-// Modèle/voix figés pour la démo publique : plus de sélecteur exposé au
-// visiteur (UX épurée). On utilise toujours le modèle le plus avancé ; la
-// voix vient du compte démo (admin) sinon du défaut catalog.
-const DEMO_DEFAULT_MODEL = "gpt-realtime-2";
+// This file ships to every visitor: nothing provider-specific belongs here
+// (scripts/tests/realtime-client-safe.test.ts, scripts/check-public-bundle.mjs).
+// The server mints the demo session with its model, voice, instructions and
+// tools already set (POST /api/session, lib/demo-session.ts) and answers with
+// the token, the SDP URL and a route per tool name.
 
-const LANG_LABEL: Record<string, string> = {
-  fr: "français",
-  he: "hébreu",
-  en: "anglais",
-};
+/** How to run a tool call the model makes, as /api/session returns it. */
+type ToolRoute = { endpoint?: string; hangUp?: boolean };
 
 export default function VoiceAgent() {
   // Langue choisie sur la page d'accueil (sélecteur de langue) → l'agent démo
@@ -45,13 +37,6 @@ export default function VoiceAgent() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [error, setError]   = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const catalog = useRealtimeCatalog();
-  // Modèle figé (plus de picker) ; la voix reste dynamique (compte démo ou
-  // défaut catalog), mais n'est plus choisie par le visiteur.
-  const model = DEMO_DEFAULT_MODEL;
-  const [voice, setVoice] = useState<string>(
-    defaultVoiceForCatalog(catalog, DEMO_DEFAULT_MODEL),
-  );
   // null = pas de timer en cours, sinon secondes restantes (décrémente à 1Hz).
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [demoEnded, setDemoEnded] = useState(false);
@@ -59,56 +44,14 @@ export default function VoiceAgent() {
   // l'arrivée du transcript assistant. Drive l'indicateur typing 3-dots.
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
-  // Config du compte "démo" déclaré dans /admin : si présent, l'agent de la
-  // home reprend sa persona / voix / accueil / langue (personnalisable via le
-  // dashboard de ce compte). Null = démo anonyme par défaut.
-  const demoConfigRef = useRef<{
-    instructions?: string;
-    voice?: string | null;
-    greeting?: string;
-    primaryLanguage?: string;
-  } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    // On passe la langue de la page → le serveur cale la directive de langue
-    // de la persona sur celle-ci (l'agent démo parle la langue du visiteur).
-    fetch(`/api/demo-config?lang=${encodeURIComponent(locale)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !d?.configured) return;
-        demoConfigRef.current = d;
-        if (d.voice) setVoice(d.voice);
-      })
-      .catch(() => {
-        /* pas de compte démo → on garde l'agent anonyme par défaut */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [locale]);
-
-  const transport = useMemo(() => transportFor(model), [model]);
-  const isUnsupported = transport !== "webrtc";
-
-  // Une fois le catalog chargé, cale la voix sur le défaut du modèle si elle
-  // n'est pas encore valide (le compte démo peut la surcharger plus tard).
-  /* eslint-disable react-hooks/set-state-in-effect -- sync async catalog → state */
-  useEffect(() => {
-    const allowed = voicesForCatalog(catalog, DEMO_DEFAULT_MODEL);
-    setVoice((cur) =>
-      cur && allowed.includes(cur)
-        ? cur
-        : defaultVoiceForCatalog(catalog, DEMO_DEFAULT_MODEL),
-    );
-  }, [catalog]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const pcRef       = useRef<RTCPeerConnection | null>(null);
   const dcRef       = useRef<RTCDataChannel | null>(null);
   const audioRef    = useRef<HTMLAudioElement | null>(null);
   const streamRef   = useRef<MediaStream | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const pendingCalls = useRef<Map<string, string>>(new Map()); // call_id → function_name
+  // Tool name → route, from the session answer (the names never ship here).
+  const toolRoutesRef = useRef<Record<string, ToolRoute>>({});
   const stopSessionRef = useRef<() => void>(() => {});
   // True pendant la fenêtre d'accueil : le micro est coupé pour empêcher le
   // VAD serveur de créer une réponse auto (depuis le bruit/écho initial) qui
@@ -132,30 +75,19 @@ export default function VoiceAgent() {
     let shouldHangUp = false;
 
     try {
-      if (name === "check_availability") {
-        const res = await fetch("/api/calendar/availability", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(args),
-        });
-        result = await res.json();
-      } else if (name === "book_appointment") {
-        const res = await fetch("/api/calendar/book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(args),
-        });
-        result = await res.json();
-      } else if (name === "save_contact") {
-        const res = await fetch("/api/sheets/contact", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(args),
-        });
-        result = await res.json();
-      } else if (name === "end_call") {
+      const route = Object.prototype.hasOwnProperty.call(toolRoutesRef.current, name)
+        ? toolRoutesRef.current[name]
+        : undefined;
+      if (route?.hangUp) {
         result = { success: true, ended: true, reason: args.reason ?? "completed" };
         shouldHangUp = true;
+      } else if (route?.endpoint) {
+        const res = await fetch(route.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(args),
+        });
+        result = await res.json();
       } else {
         result = { error: `Outil inconnu: ${name}` };
       }
@@ -204,10 +136,10 @@ export default function VoiceAgent() {
         // accueil. On l'ignore (l'accueil en cours suffit) au lieu d'afficher
         // une erreur effrayante au visiteur.
         if (errObj?.code === "conversation_already_has_active_response") {
-          console.warn("[realtime] accueil: réponse déjà active, ignoré");
+          console.warn("[voice-demo] accueil: réponse déjà active, ignoré");
           return;
         }
-        console.error("[realtime] error event", event);
+        console.error("[voice-demo] error event", event);
         setError(t("errorGeneric"));
         setAwaitingResponse(false);
         return;
@@ -255,69 +187,36 @@ export default function VoiceAgent() {
     setDemoEnded(false);
     setTranscript([]);
 
-    if (transport !== "webrtc") {
-      setStatus("error");
-      console.error(`[realtime] transport ${transport} not implemented for ${model}`);
-      setError(t("errorStart"));
-      return;
-    }
-
     setStatus("connecting");
 
     try {
-      // 1. Get ephemeral token (model/voice picked client-side, validated server-side).
-      //    Si un compte démo est déclaré, on injecte sa persona + voix + langue.
-      //    On RECHARGE la config démo juste avant de connecter : garantit la
-      //    persona/voix à jour même si le compte démo a été modifié depuis le
-      //    chargement de la page, et élimine la course (clic avant la fin du
-      //    fetch initial → sinon fallback sur la persona générique).
-      let demo = demoConfigRef.current;
-      try {
-        const r = await fetch(
-          `/api/demo-config?lang=${encodeURIComponent(locale)}`,
-        );
-        if (r.ok) {
-          const d = await r.json();
-          if (d?.configured) {
-            demo = d;
-            demoConfigRef.current = d;
-          }
-        }
-      } catch {
-        /* réseau KO → on garde le ref existant (ou agent anonyme) */
-      }
-      // Voix du compte démo prioritaire sur la voix locale (qui peut ne pas
-      // encore être synchronisée si le clic précède le fetch initial).
-      const sessionVoice = demo?.voice || voice;
-      // Persona + consigne d'accueil placées dans les instructions de SESSION.
-      // La persona (avec sa directive de langue calée sur la page) reste donc
-      // active PENDANT l'accueil. On n'écrase plus la persona via
-      // response.instructions (qui rendait l'accueil générique puis basculait
-      // sur la persona = "autres configurations").
-      const sessionInstructions = demo?.instructions
-        ? `${demo.instructions}\n\nDÉBUT D'APPEL : dès le début, accueille proactivement l'appelant — présente-toi brièvement selon ta persona puis demande comment tu peux aider.`
-        : undefined;
+      // 1. Ephemeral token. The server picks everything about the session
+      //    (demo account's model, voice, persona, greeting rule, tools); the
+      //    browser only says which page language the caller speaks.
       const tokenRes = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model,
-          voice: sessionVoice,
-          ...(sessionInstructions ? { instructions: sessionInstructions } : {}),
+          demo: true,
           // STT calé sur la langue de la page (pas celle du compte démo) → le
           // visiteur est compris et l'agent répond dans sa langue.
           primaryLanguage: locale,
         }),
       });
       if (!tokenRes.ok) throw new Error("Impossible d'obtenir le token de session");
-      const tokenData = await tokenRes.json();
+      const tokenData = (await tokenRes.json()) as {
+        value?: string;
+        webrtc_url?: string;
+        transport?: string;
+        tools?: Record<string, ToolRoute>;
+      };
       const ephemeralKey = tokenData.value;
-      // Server echoes `model` directly; fall back to OpenAI's `session.model` shape.
-      const sessionModel = tokenData.model ?? tokenData.session?.model;
+      // SDP endpoint, model already in its query string.
       const webrtcUrl = tokenData.webrtc_url;
       if (!ephemeralKey) throw new Error("Token invalide");
-      if (!sessionModel) throw new Error("Modèle absent de la session");
       if (!webrtcUrl) throw new Error("URL WebRTC absente");
+      if (tokenData.transport !== "webrtc") throw new Error(`Transport non pris en charge : ${tokenData.transport}`);
+      toolRoutesRef.current = tokenData.tools ?? {};
 
       // 2. Set up peer connection
       const pc = new RTCPeerConnection();
@@ -355,21 +254,18 @@ export default function VoiceAgent() {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpRes = await fetch(
-        `${webrtcUrl}?model=${encodeURIComponent(sessionModel)}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${ephemeralKey}`,
-            "Content-Type": "application/sdp",
-          },
-          body: offer.sdp,
-        }
-      );
+      const sdpRes = await fetch(webrtcUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          "Content-Type": "application/sdp",
+        },
+        body: offer.sdp,
+      });
 
       if (!sdpRes.ok) {
         const txt = await sdpRes.text();
-        throw new Error(`OpenAI WebRTC: ${txt}`);
+        throw new Error(`SDP exchange failed (${sdpRes.status}): ${txt}`);
       }
 
       const answerSdp = await sdpRes.text();
@@ -381,25 +277,11 @@ export default function VoiceAgent() {
         setSecondsLeft(DEMO_SESSION_SECONDS);
         // Un SEUL response.create d'accueil. Micro coupé (cf. plus haut) → pas
         // d'auto-réponse VAD concurrente.
-        if (demo?.instructions || tokenData.server_instructions) {
-          // Persona + greeting rule + language already in the session
-          // instructions (always the case for anonymous visitors, even with no
-          // demo account) → bare response.create. Sending instructions here
-          // would REPLACE the session prompt for the greeting: no name, no
-          // register, and the agent recited the language rule.
-          dc.send(JSON.stringify({ type: "response.create" }));
-        } else {
-          // Fallback agent anonyme : pas de persona en session → on force la
-          // langue de la page + l'accueil via les instructions du response.
-          const label = LANG_LABEL[locale] ?? "français";
-          const greetInstruction = `Parle EXCLUSIVEMENT en ${label} pendant tout l'appel. Accueille l'appelant en ${label} : présente-toi brièvement puis demande comment tu peux l'aider. Ne réponds JAMAIS dans une autre langue, même si tu hésites.`;
-          dc.send(
-            JSON.stringify({
-              type: "response.create",
-              response: { instructions: greetInstruction },
-            }),
-          );
-        }
+        // Persona + greeting rule + language are in the session instructions
+        // (server-side, always) → bare response.create. Sending instructions
+        // here would REPLACE the session prompt for the greeting: no name, no
+        // register, and the agent recited the language rule.
+        dc.send(JSON.stringify({ type: "response.create" }));
         // Filet de sécurité : si response.done de l'accueil n'arrive pas (ex.
         // accueil vide/erreur), on réactive le micro après 8 s pour ne pas
         // laisser le visiteur muet.
@@ -419,10 +301,10 @@ export default function VoiceAgent() {
       };
     } catch (e) {
       setStatus("error");
-      console.error("[realtime] start failed", e);
+      console.error("[voice-demo] start failed", e);
       setError(t("errorStart"));
     }
-  }, [handleDataChannelMessage, model, voice, transport, locale, t]);
+  }, [handleDataChannelMessage, locale, t]);
 
   // ── Stop session ──────────────────────────────────────────────────────────
 
@@ -580,15 +462,6 @@ export default function VoiceAgent() {
           {statusLabel[status]}
         </span>
       </div>
-
-      {isUnsupported && (
-        <p
-          className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800"
-          role="alert"
-        >
-          {t("errorStart")}
-        </p>
-      )}
 
       <div className="relative grid grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-[auto_1fr]">
         {/* ─── COLONNE MIC ────────────────────────────────────────────── */}

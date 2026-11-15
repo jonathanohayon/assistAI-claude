@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "tenant",
     event: "calendar_selected",
-    message: `${session.user.email ?? session.user.id} a sélectionné le calendrier ${calendarId} pour ${scope.userId}`,
+    message: `${session.user.id} a sélectionné le calendrier ${calendarId} pour ${scope.userId}`,
     level: "info",
     userId: scope.userId,
     metadata: { calendarId, selectedBy: session.user.id },

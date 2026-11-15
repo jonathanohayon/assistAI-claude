@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "auth",
       event: "verify_failed",
-      message: `Vérif code échouée pour ${email} : ${result.reason}`,
+      message: `Vérif code échouée : ${result.reason}`,
       level: "warn",
       userId: user.id,
       metadata: { reason: result.reason, attemptsLeft: result.attemptsLeft },
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "auth",
     event: "verify_success",
-    message: `Email vérifié : ${email}`,
+    message: "Email vérifié",
     userId: user.id,
   });
   return NextResponse.json({ ok: true });

@@ -76,12 +76,15 @@ export function CampaignsWorkspace({
   asUserId,
   variant = "modal",
   isAdmin = false,
+  captureOn = false,
 }: {
   open: boolean;
   onClose: () => void;
   asUserId?: string;
   /** The signed-in user is an admin (server page): the two admin-only mission cards (M2d). */
   isAdmin?: boolean;
+  /** The server's CAMPAIGN_CAPTURE switch as one boolean (server page); off when absent. */
+  captureOn?: boolean;
   // "modal" = overlay portal (ouvert depuis une tuile). "page" = rendu inline
   // dans le flux du layout dashboard (onglet « Appels sortants »), sans
   // backdrop ni fixed inset, pour laisser la nav visible au-dessus.
@@ -122,7 +125,7 @@ export function CampaignsWorkspace({
   // the setup step auto-saves only when the draft differs from it.
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   // Campagne dont on affiche les analytics (modal).
-  const [analyticsFor, setAnalyticsFor] = useState<{ id: string; name: string } | null>(null);
+  const [analyticsFor, setAnalyticsFor] = useState<Pick<CampaignListItem, "id" | "name" | "extractionSchema"> | null>(null);
 
   // Portal monté côté client → modal rendu dans <body>, donc `fixed` = viewport
   // garanti (immunisé contre un ancêtre transformé qui le confinerait et le
@@ -444,7 +447,13 @@ export function CampaignsWorkspace({
               {view === "editor" && savedCampaign && draft.id && (
                 <button
                   onClick={() =>
-                    setAnalyticsFor({ id: draft.id!, name: draft.name })
+                    setAnalyticsFor({
+                      id: draft.id!,
+                      name: draft.name,
+                      // The SAVED schema (as the server stores it), not unsaved edits.
+                      extractionSchema:
+                        list.find((c) => c.id === draft.id)?.extractionSchema ?? draft.extractionSchema,
+                    })
                   }
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
                   aria-label={t("analytics")}
@@ -570,7 +579,7 @@ export function CampaignsWorkspace({
                 onOpen={openExisting}
                 onCreate={openNew}
                 onDelete={deleteCampaign}
-                onAnalytics={(c) => setAnalyticsFor({ id: c.id, name: c.name })}
+                onAnalytics={(c) => setAnalyticsFor(c)}
               />
             )}
 
@@ -582,6 +591,7 @@ export function CampaignsWorkspace({
                 fromNumbers={fromNumbers}
                 isAdmin={isAdmin}
                 capabilities={capabilities}
+                captureOn={captureOn}
               />
             )}
 
@@ -729,6 +739,8 @@ export function CampaignsWorkspace({
       campaignName={analyticsFor.name}
       asUserId={asUserId}
       onClose={() => setAnalyticsFor(null)}
+      extractionSchema={analyticsFor.extractionSchema ?? []}
+      captureOn={captureOn}
     />
   );
 

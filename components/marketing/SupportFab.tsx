@@ -20,15 +20,23 @@ import { useTranslations } from "next-intl";
  * - `aria-label` localisé.
  * - `prefers-reduced-motion` : pas d'animation pulse.
  */
+/**
+ * The support conversation link (WhatsApp, with a greeting typed in). The
+ * one place the support number lives: anything else that opens support
+ * (e.g. the landing pages' "Let's talk" button) calls this.
+ */
+export function supportHref(greeting: string): string {
+  const rawPhone =
+    process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "972585001007";
+  const phone = rawPhone.replace(/[^\d]/g, "");
+  return `https://wa.me/${phone}?text=${encodeURIComponent(greeting)}`;
+}
+
 export function SupportFab() {
   const t = useTranslations("Support");
   const reduce = useReducedMotionAfterMount();
 
-  const rawPhone =
-    process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "972585001007";
-  const phone = rawPhone.replace(/[^\d]/g, "");
-  const greeting = t("waGreeting");
-  const href = `https://wa.me/${phone}?text=${encodeURIComponent(greeting)}`;
+  const href = supportHref(t("waGreeting"));
   const hidden = useHiddenOverFabAvoidZones();
 
   return (

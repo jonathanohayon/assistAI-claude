@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { computeFreeSlots } from "@/lib/calendar-conflict";
-import { resolveAgentCallerGoogle } from "@/lib/google";
+import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
 import { isNewShape, locationLabel } from "@/lib/booking-place";
 import {
   type Center,
@@ -12,6 +12,9 @@ import {
 } from "@/lib/schedule";
 
 export async function POST(req: NextRequest) {
+  // No internal secret and no session → 401 before anything else.
+  const gate = await requireAgentCaller(req);
+  if (!gate.ok) return gate.response;
   const body = (await req.json()) as Record<string, unknown>;
   const { date, center, duration } = body as { date?: string; center?: string; duration?: number };
   // With a `location` (the tenant's own place, new worker): no weekday rule,
@@ -62,6 +65,10 @@ export async function POST(req: NextRequest) {
   }
 
   const caller = await resolveAgentCallerGoogle(req);
+  if (caller.mode === "anonymous") {
+    // Unreachable behind the gate above; kept so no path can use a client.
+    return NextResponse.json(AGENT_CALLER_UNAUTHORIZED_BODY, { status: 401 });
+  }
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Calendar non connecté pour ce compte." },

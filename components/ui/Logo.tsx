@@ -1,4 +1,13 @@
-export function Logo({ className }: { className?: string }) {
+import type { WordmarkTone } from "@/lib/marketing/nav-tone";
+
+export function Logo({
+  className,
+  tone = "brand",
+}: {
+  className?: string;
+  /** "onDark" renders the wordmark white, for a dark hero under the nav. */
+  tone?: WordmarkTone;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-2 ${className ?? ""}`}
@@ -23,7 +32,11 @@ export function Logo({ className }: { className?: string }) {
           />
         </svg>
       </span>
-      <span className="font-display text-xl leading-none tracking-tight text-[#8b5cf6]">
+      <span
+        className={`font-display text-xl leading-none tracking-tight transition-colors duration-300 ${
+          tone === "onDark" ? "text-white" : "text-[#8b5cf6]"
+        }`}
+      >
         Tamara
       </span>
     </span>

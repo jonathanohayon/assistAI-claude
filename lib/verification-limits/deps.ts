@@ -2,6 +2,7 @@
 // Tests reuse it and replace only the sender (and the logger).
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
 
 import { provisionTenant } from "@/lib/auth/provision-tenant";
 import { db } from "@/lib/db";
@@ -27,6 +28,16 @@ export const resendDeps: ResendDeps = {
   createCode: (userId) => createEmailVerification(userId),
   send: sendVerificationEmail,
   log: logEvent,
+  // after() throws outside a request scope (scripts, the DB suite): report
+  // false and the handler runs the delivery inline.
+  defer: (task) => {
+    try {
+      after(task);
+      return true;
+    } catch {
+      return false;
+    }
+  },
 };
 
 export const signupDeps: SignupDeps = {

@@ -107,12 +107,16 @@ export function PersonaBrick({ value, onChange, kind, businessName = "", isAdmin
         />
       </div>
 
-      <ChipGroup
-        label={t("languageLabel")}
-        options={PERSONA_LANGUAGES.map((l) => ({ id: l, label: LANGUAGE_NAME[l] }))}
-        selected={value.primaryLanguage}
-        onPick={(primaryLanguage) => apply({ primaryLanguage, languages: value.languages.filter((l) => l !== primaryLanguage) })}
-      />
+      <div>
+        <ChipGroup
+          label={t("languageLabel")}
+          options={PERSONA_LANGUAGES.map((l) => ({ id: l, label: LANGUAGE_NAME[l] }))}
+          selected={value.primaryLanguage}
+          onPick={(primaryLanguage) => apply({ primaryLanguage, languages: value.languages.filter((l) => l !== primaryLanguage) })}
+        />
+        {/* Wording only: quotes the Voice brick's language-lock label verbatim. */}
+        <p className={`${HINT} pt-1.5`}>{t("languageHint")}</p>
+      </div>
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -228,7 +228,7 @@ function SpeedMeter({ reduce }: { reduce: boolean }) {
 
 function ContactCard({ reduce }: { reduce: boolean }) {
   const name = "Sarah Cohen";
-  const phone = "+972 54 871 2208";
+  const phone = "+972 50 000 0000";
   // Init à 0 (= SSR stable, useReducedMotion étant null côté serveur) ; le
   // mode reduced bascule vers le texte complet dans l'effect.
   const [nLen, setNLen] = useState(0);

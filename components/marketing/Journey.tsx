@@ -226,7 +226,7 @@ function PhoneMockup() {
               dir="ltr"
               className="font-mono text-sm font-semibold tabular-nums text-[#18181b]"
             >
-              +33 6 12 34 56 78
+              +33 6 00 00 00 00
             </p>
             <p className="text-xs text-[#475569]">{t("phone.incoming")}</p>
           </div>

@@ -5,16 +5,25 @@ import Link from "next/link";
 
 import { Logo } from "@/components/ui/Logo";
 
-export function Footer() {
+export function Footer({
+  anchorBase = "",
+  tagline,
+}: {
+  /** Prefix of the home-section links: "" on the home, "/" elsewhere (the
+   *  sections live on the home page). */
+  anchorBase?: string;
+  /** The page's own one-line description; omitted = the home's (Footer.tagline). Set = the plain copyright line too. */
+  tagline?: string;
+} = {}) {
   const t = useTranslations("Footer");
 
   const CATEGORIES = [
     {
       title: t("categories.product"),
       links: [
-        { label: t("links.demo"), href: "#demo" },
-        { label: t("links.features"), href: "#features" },
-        { label: t("links.how"), href: "#how" },
+        { label: t("links.demo"), href: `${anchorBase}#demo` },
+        { label: t("links.features"), href: `${anchorBase}#features` },
+        { label: t("links.how"), href: `${anchorBase}#how` },
       ],
     },
     {
@@ -27,9 +36,9 @@ export function Footer() {
     {
       title: t("categories.industries"),
       links: [
-        { label: t("links.medical"), href: "#industries" },
-        { label: t("links.beauty"), href: "#industries" },
-        { label: t("links.barbers"), href: "#industries" },
+        { label: t("links.medical"), href: `${anchorBase}#industries` },
+        { label: t("links.beauty"), href: `${anchorBase}#industries` },
+        { label: t("links.barbers"), href: `${anchorBase}#industries` },
       ],
     },
   ];
@@ -41,7 +50,7 @@ export function Footer() {
           <div className="col-span-2">
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#475569]">
-              {t("tagline")}
+              {tagline ?? t("tagline")}
             </p>
             {/* Compliance badges */}
             <div className="mt-5 flex flex-wrap gap-1.5">
@@ -80,7 +89,8 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-[#e2e8f0] pt-6 text-xs text-[#475569]">
-          <p>{t("copyright", { year: new Date().getFullYear() })}</p>
+          {/* A page with its own line (the landing pages) also gets the plain copyright: the home's names the receptionist. */}
+          <p>{t(tagline ? "copyrightPlain" : "copyright", { year: new Date().getFullYear() })}</p>
           <p>
             <span className="inline-flex items-center gap-1.5">
               <span className="relative flex h-1.5 w-1.5">
