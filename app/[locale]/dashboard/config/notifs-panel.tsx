@@ -19,6 +19,7 @@ import { useState } from "react";
 import { NotifChannelCard } from "./notif-channel-card";
 import type { OwnerEmailErrorKey, OwnerEmailSettings } from "./owner-email";
 import { OwnerEmailCard } from "./owner-email-card";
+import type { RecapEmailConfirmation } from "./owner-email-confirm";
 import { OwnerDigestCard } from "./owner-digest-card";
 import { TransferNumberField } from "./transfer-number-field";
 import type { FormState, FormUpdater, Translator } from "./types";
@@ -55,6 +56,10 @@ export function NotifsPanel({
     asUserId?: string | null;
     /** Admin only: no sender configured on the server (the card is hidden from tenants then). */
     senderNotice?: boolean;
+    /** N2: the saved address's confirmation state (owner-email-confirm.ts). */
+    confirmation?: RecapEmailConfirmation;
+    onConfirmation?: (next: RecapEmailConfirmation) => void;
+    reloadConfirmation?: () => void;
   } | null;
 }) {
   // État on/off WhatsApp indépendant de la valeur : sinon le champ (disabled
