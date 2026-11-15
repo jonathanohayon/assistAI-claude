@@ -29,7 +29,7 @@ import { TranscriptBubbles } from "@/components/calls/TranscriptBubbles";
 import type { CapturedView } from "@/lib/campaigns/capture";
 import type { ExtractionField } from "@/lib/campaigns/constants";
 
-import { CapturedFromConversation } from "./captured-from-conversation";
+import { CapturedCountChip, CapturedFromConversation } from "./captured-from-conversation";
 
 type Call = {
   id: string;
@@ -492,6 +492,7 @@ function ConversationRow({
             {t(`estimatedSentiment_${call.sentiment}` as "estimatedSentiment_positive")}
           </span>
         )}
+        <CapturedCountChip schema={extractionSchema} captured={call.captured} captureOn={captureOn} />
         {/* Duration + chevron stay together when the badges wrap on a phone. */}
         <span className="ms-auto flex items-center gap-2 text-[11px] text-[#94a3b8]">
           {fmtDuration(call.durationSeconds)}
