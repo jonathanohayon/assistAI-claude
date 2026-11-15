@@ -178,8 +178,9 @@ export async function POST(req: NextRequest) {
         // me.locale lit la valeur saved at signup (depuis URL /he/signup etc).
         // Plus fiable que getLocale() ici car la requête vient du client en
         // fetch sur /api/onboarding/provision (pas de locale prefix dans l'URL).
+        // No personName: the account stores no person's name, and
+        // me.displayName is the business name (lib/email-greeting.ts).
         const res = await sendWelcomeEmail(me.email, {
-          displayName: me.displayName,
           phoneNumber: purchased.phoneNumber,
           planKey: me.subscriptionPlan,
           features,

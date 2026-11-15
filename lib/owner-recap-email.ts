@@ -184,7 +184,7 @@ export function renderOwnerRecapEmail(input: RecapInput, t: RecapStrings): Rende
   const callerLine = escapeHtml(t("caller", { number: "\u0000" })).replace("\u0000", number);
   const html = `<div dir="${dir}" lang="${input.locale}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;text-align:${dir === "rtl" ? "right" : "left"};">
   <div style="background:linear-gradient(135deg,#be185d 0%,#db2777 100%);padding:28px 32px;border-radius:16px 16px 0 0;">
-    <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.9);font-weight:600;">${escapeHtml(t("eyebrow"))}</p>
+    <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#fff;font-weight:600;">${escapeHtml(t("eyebrow"))}</p>
     <h1 style="margin:0;font-size:22px;font-weight:700;color:#fff;">${escapeHtml(t("heading"))}</h1>
   </div>
   <div style="padding:28px 32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">

@@ -46,7 +46,7 @@ export interface EmailTestDeps {
   loadAccount(userId: string): Promise<EmailTestAccount | null>;
   /** Counts the attempt for this account (consumeRateLimit, bucket "email_test"). */
   claim(userId: string): Promise<RateLimitResult>;
-  send(to: string, opts: { recipientName?: string | null; locale?: string | null }): Promise<EmailTestSendResult>;
+  send(to: string, opts: { personName?: string | null; locale?: string | null }): Promise<EmailTestSendResult>;
   log(ev: LogEvent): Promise<void>;
   /** Values to redact from logged provider errors. */
   secrets(): string[];
@@ -105,10 +105,9 @@ export async function handleEmailTest(req: NextRequest, deps: EmailTestDeps): Pr
 
   let result: EmailTestSendResult;
   try {
-    result = await deps.send(recipient, {
-      recipientName: account.displayName?.trim() || account.loginEmail.split("@")[0],
-      locale,
-    });
+    // No personName: displayName is the business name and the login e-mail is
+    // not a name; the mail greets with no name (lib/email-greeting.ts).
+    result = await deps.send(recipient, { locale });
   } catch (e) {
     result = { ok: false, error: sanitizeProviderError(e, deps.secrets()) };
   }
