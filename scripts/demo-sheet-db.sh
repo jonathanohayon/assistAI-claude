@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs scripts/tests/demo-sheet-db.test.ts against a THROWAWAY
 # Postgres (127.0.0.1:55481, data in the git-ignored .tmp/ folder), then stops it:
-#   1. origin/main's tree: the demo sessions through main's route → snapshot;
+#   1. the pre-#323 baseline tree (8567c7a, the leaky main): the demo sessions through its route → snapshot;
 #   2. this branch: no seeded business fact and no lib/schedule place in what
 #      the provider receives, the rest identical to the snapshot, and a regular
 #      tenant still gets its own business block.
@@ -31,9 +31,13 @@ trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null 2>&1
 
-echo "== 1. origin/main route"
+echo "== 1. baseline route (pre-#323 main, \${DEMO_SHEET_BASE:-8567c7a})"
 mkdir -p "$MAIN"
-git archive origin/main | tar -x -C "$MAIN"
+# The baseline is the last main BEFORE #323 (8567c7a): the tree that leaked the
+# stored account text. Comparing against today's main would compare the fix
+# with itself, and the "main leaks" sanity check below would fail.
+BASE="${DEMO_SHEET_BASE:-8567c7a}"
+git archive "$BASE" | tar -x -C "$MAIN"
 mkdir -p "$MAIN/scripts/tests/fixtures"
 cp -R scripts/tests/fixtures/demo-sheet "$MAIN/scripts/tests/fixtures/"
 cp "$TEST" "$MAIN/scripts/tests/"
