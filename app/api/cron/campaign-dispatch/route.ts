@@ -28,19 +28,24 @@ export async function GET(req: NextRequest) {
     Math.max(Number(req.nextUrl.searchParams.get("limit")) || 10, 1),
     50,
   );
-  const analysis = runCampaignAnalysisCatchUp(); // never rejects
-  if (captureMode() !== "on") {
-    const [dispatch] = await Promise.allSettled([dispatchDueJobs(limit), analysis]);
+  // Started first, awaited before the response (or before a dispatch error
+  // surfaces); it never rejects.
+  const analysis = runCampaignAnalysisCatchUp();
+  try {
+    if (captureMode() !== "on") {
+      const result = await dispatchDueJobs(limit);
+      return NextResponse.json({ ok: true, ...result });
+    }
+    // Both run; a dispatch failure still lets the catch-up finish, then
+    // surfaces exactly as before (the catch-up itself never rejects).
+    const [dispatch, capture] = await Promise.allSettled([dispatchDueJobs(limit), runCampaignCaptureCatchUp()]);
     if (dispatch.status === "rejected") throw dispatch.reason;
-    return NextResponse.json({ ok: true, ...dispatch.value });
+    return NextResponse.json({
+      ok: true,
+      ...dispatch.value,
+      capture: capture.status === "fulfilled" ? capture.value : { claimed: 0, written: 0, skipped: 0, failed: 0 },
+    });
+  } finally {
+    await analysis;
   }
-  // All run; a dispatch failure still lets the catch-ups finish, then
-  // surfaces exactly as before (the catch-ups themselves never reject).
-  const [dispatch, capture] = await Promise.allSettled([dispatchDueJobs(limit), runCampaignCaptureCatchUp(), analysis]);
-  if (dispatch.status === "rejected") throw dispatch.reason;
-  return NextResponse.json({
-    ok: true,
-    ...dispatch.value,
-    capture: capture.status === "fulfilled" ? capture.value : { claimed: 0, written: 0, skipped: 0, failed: 0 },
-  });
 }

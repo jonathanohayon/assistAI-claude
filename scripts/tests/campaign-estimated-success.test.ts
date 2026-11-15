@@ -54,8 +54,10 @@ const ESTIMATE_WORD: Record<string, RegExp> = {
   assert.match(analyze, /chat\/completions/, "success is judged by an LLM");
   assert.match(analyze, /Critères de succès/, "against the campaign's success criteria");
   assert.match(analyze, /"sentiment" = ressenti global du prospect/, "sentiment is judged by the same LLM call");
+  // The verdict is written after the call (lib/campaigns/analysis-runtime.ts), never by the GET.
+  const writer = read("lib/campaigns/analysis-runtime.ts");
+  assert.match(writer, /disposition: a\.success/, "the stored disposition is the LLM verdict");
   const route = read("app/api/dashboard/campaigns/[id]/results/route.ts");
-  assert.match(route, /disposition: a\.success/, "the stored disposition is the LLM verdict");
   assert.match(route, /if \(c\.disposition === "success"\) success\+\+/, "the rate counts LLM verdicts");
 }
 
