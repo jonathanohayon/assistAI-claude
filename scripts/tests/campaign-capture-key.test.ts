@@ -387,7 +387,7 @@ for (const l of LOCALES) {
     assert.equal((out.match(/data-capture-renamed/g) ?? []).length, 1, `${l}: one warning (row 0 only)`);
     assert.ok(out.includes(line), `${l}: the warning's words`);
     const keys = keyInputs(out);
-    const describedBy = keys[0].match(/aria-describedby="([^"]+)"/)?.[1];
+    const describedBy = (keys[0] ?? "").match(/aria-describedby="([^"]+)"/)?.[1];
     assert.ok(describedBy && out.includes(`id="${describedBy}"`), `${l}: key input described by the warning`);
     assert.ok(keys.slice(1).every((k) => !k.includes("aria-describedby")), `${l}: other keys: no warning`);
     // Tenant: no key input, no warning.
