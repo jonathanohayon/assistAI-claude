@@ -9,7 +9,9 @@
 //            campaign-result schedules the analysis once; after() + an
 //            overlapping tick analyse once; the catch-up is bounded, oldest
 //            first, within the window; an LLM failure never crashes and is
-//            retried at most ANALYSIS_MAX_ATTEMPTS times.
+//            retried at most ANALYSIS_MAX_ATTEMPTS times; a rejected key
+//            (mocked provider 401/403, through the real analyze()) consumes no
+//            attempt, pauses the tick and raises ONE deduped alert.
 // The session is a test double (campaigns-plan-gate module hooks). The LLM is
 // injected: no network call. The dispatch tick runs with CAMPAIGN_DISPATCH
 // off: it never dials. Only a 127.0.0.1/localhost URL is accepted;
@@ -63,6 +65,7 @@ async function main() {
 
   const reset = async () => {
     await exec(sql`DELETE FROM events`);
+    await exec(sql`DELETE FROM app_settings WHERE key = 'admin_alert_ledger'`);
     await exec(sql`DELETE FROM users`); // cascades to campaigns, contacts, calls, agents
     await exec(sql`INSERT INTO users (id, email, password_hash, role) VALUES (${ADMIN}, 'admin@example.test', 'x', 'admin')`);
     await exec(sql`INSERT INTO outbound_agents (id, user_id, name, language) VALUES (${AGENT}, ${ADMIN}, 'Mock agent', 'en')`);
@@ -128,13 +131,35 @@ async function main() {
     posts: Awaited<ReturnType<typeof postScenario>>;
     cron: Awaited<ReturnType<typeof tick>>;
   };
-  const { setAnalysisRuntimeForTests } = await import("../../lib/campaigns/analysis-runtime");
+  const { setAnalysisRuntimeForTests, AUTH_FAILED_ALERT } = await import("../../lib/campaigns/analysis-runtime");
   const { ANALYSIS_CATCHUP_PER_TICK, ANALYSIS_MAX_ATTEMPTS, ANALYSIS_CATCHUP_CUTOFF_HOURS } = await import("../../lib/campaigns/analysis");
+  const { analyzeCampaignCall } = await import("../../lib/campaigns/analyze");
+  const { alertAdmins } = await import("../../lib/alerts");
+
+  // A mocked provider: the real analyze() runs with an injected transport and
+  // a mock key; nothing leaves the process.
+  const MOCK_KEY = "sk-mock-0000-NOT-A-REAL-KEY";
+  const providerReply = (status: number) =>
+    (async () =>
+      new Response(JSON.stringify({ error: { message: `Incorrect API key provided: ${MOCK_KEY}`, code: "invalid_api_key" } }), {
+        status,
+      })) as unknown as typeof fetch;
+  const providerTimeout = (async () => {
+    throw new DOMException("mock timeout", "TimeoutError");
+  }) as unknown as typeof fetch;
+  /** Alerts "sent" by alertAdmins through the real ledger, with mock channels. */
+  const sentAlerts: Array<{ to: string; subject: string; body: string }> = [];
+  const alertDeps = {
+    emailRecipients: async () => ["admin@example.test"],
+    whatsappRecipients: async () => ["+15555550123"],
+    sendEmail: async (to: string, m: { subject: string; body: string }) => (sentAlerts.push({ to, ...m }), { ok: true }),
+    sendWhatsApp: async (to: string, text: string) => (sentAlerts.push({ to, subject: "wa", body: text }), true),
+  };
 
   type Reply = { success: "success" | "partial" | "fail"; sentiment: "positive" | "neutral" | "negative"; summary: string };
   let llmCalls = 0;
   let llmDelayMs = 0;
-  let llmMode: "ok" | "null" | "throw" = "ok";
+  let llmMode: "ok" | "null" | "throw" | "http401" | "http403" | "http500" | "timeout" = "ok";
   const llmSeen: Array<{ objective: string; successCriteria: string; language?: string | null }> = [];
   const tasks: Array<() => Promise<unknown>> = [];
   const install = (enabled = true) =>
@@ -145,12 +170,17 @@ async function main() {
         llmSeen.push({ objective: o.objective, successCriteria: o.successCriteria, language: o.language });
         if (llmDelayMs) await new Promise((r) => setTimeout(r, llmDelayMs));
         if (llmMode === "throw") throw new TypeError("mock failure");
+        if (llmMode === "http401" || llmMode === "http403" || llmMode === "http500") {
+          return analyzeCampaignCall(o, { apiKey: MOCK_KEY, fetch: providerReply(Number(llmMode.slice(4))) });
+        }
+        if (llmMode === "timeout") return analyzeCampaignCall(o, { apiKey: MOCK_KEY, fetch: providerTimeout });
         if (llmMode === "null") return null;
         return { success: "partial", sentiment: "positive", summary: "Mock analysis summary" } satisfies Reply;
       },
       schedule: (t) => {
         tasks.push(t);
       },
+      alertAuthFailed: () => alertAdmins(AUTH_FAILED_ALERT, alertDeps),
     });
   let restore = install();
   const fresh = () => {
@@ -159,6 +189,7 @@ async function main() {
     llmMode = "ok";
     llmSeen.length = 0;
     tasks.length = 0;
+    sentAlerts.length = 0;
   };
   const call = async (rowId: string) =>
     (await rows<{ disposition: string; sentiment: string; summary: string; analysis_claim: Record<string, unknown> | null }>(
@@ -328,6 +359,129 @@ async function main() {
     assert.equal((await call(a)).analysis_claim, null, "no attempt burnt");
     restore();
     restore = install();
+  });
+
+  // ---- A rejected key (provider 401/403) ----
+  /** Everything the process wrote to the console while `fn` ran. */
+  const consoleOut: string[] = [];
+  const capture = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const orig = { log: console.log, warn: console.warn, error: console.error, info: console.info };
+    const grab = (...a: unknown[]) => void consoleOut.push(a.map(String).join(" "));
+    Object.assign(console, { log: grab, warn: grab, error: grab, info: grab });
+    try {
+      return await fn();
+    } finally {
+      Object.assign(console, orig);
+    }
+  };
+  const authEvents = async () => (await tickEvents()).filter((e) => e.event === "campaign_analysis_auth_failed");
+  const failedEvents = async () => (await tickEvents()).filter((e) => e.event === "campaign_analysis_failed");
+  const alertEvents = async () =>
+    rows<{ metadata: Record<string, unknown> }>(sql`SELECT metadata FROM events WHERE event = 'admin_alert_sent' AND metadata->>'key' = 'campaign_analysis_auth_failed'`);
+  /** No key material anywhere: events, the settings table, the alerts, the console. */
+  const assertNoKeyMaterial = async () => {
+    const ev = await rows<{ t: string }>(sql`SELECT coalesce(string_agg(concat_ws('|', event, message, metadata::text), ';'), '') AS t FROM events`);
+    const st = await rows<{ t: string }>(sql`SELECT coalesce(string_agg(concat_ws('|', key, value), ';'), '') AS t FROM app_settings`);
+    const all = [ev[0]!.t, st[0]!.t, JSON.stringify(sentAlerts), consoleOut.join("\n")].join("\n");
+    for (const needle of [MOCK_KEY, "sk-mock", "Incorrect API key", "Bearer", "Mock prospect"]) {
+      assert.ok(!all.includes(needle), `no "${needle}" in logs, events, settings or alerts`);
+    }
+  };
+  const alertTexts = () => sentAlerts.filter((a) => a.subject !== "wa").map((a) => a.body);
+
+  await test("a 401: no attempt consumed, the claim released, the tick paused, one alert; same cron bytes", async () => {
+    await postScenario();
+    tasks.length = 0;
+    const a = await insertMissed(K(12), "30 minutes");
+    const b = await insertMissed(K(13), "20 minutes");
+    const c0 = await insertMissed(K(14), "10 minutes");
+    llmMode = "http401";
+    delete process.env.CAMPAIGN_DISPATCH;
+    const res = await capture(() => tick());
+    assert.deepEqual(res, snap.cron, "cron response bytes unchanged on an auth failure too");
+    assert.equal(llmCalls, 1, "the tick paused after the first rejected call");
+    const [posted] = await rows<{ id: string }>(sql`SELECT id FROM campaign_calls WHERE contact_id = ${K(10)}`);
+    for (const r of [posted!.id, a, b, c0]) {
+      const c = await call(r);
+      assert.equal(c.analysis_claim, null, "released to NULL, or never claimed in that tick");
+      assert.equal(c.summary, "");
+    }
+    assert.equal((await authEvents()).length, 1);
+    assert.equal((await failedEvents()).length, 0, "not a failed attempt");
+    const tickEv = (await tickEvents()).find((e) => e.event === "campaign_analysis_catchup")!;
+    assert.deepEqual(tickEv.metadata, { picked: 1, outsideWindow: 0, authFailed: true }, "counts only");
+    assert.equal((await alertEvents()).length, 1, "one alert");
+    assert.equal(alertTexts().length, 1);
+    assert.ok(alertTexts()[0]!.includes("The model provider rejected the API key; campaign analysis is paused."));
+    await assertNoKeyMaterial();
+  });
+
+  await test("a second 401 tick: still no attempt consumed, the alert deduped; the key works again → analysed", async () => {
+    const a = await insertMissed(K(12), "30 minutes");
+    const b = await insertMissed(K(13), "20 minutes");
+    llmMode = "http401";
+    await capture(() => tick());
+    await capture(() => tick());
+    assert.equal(llmCalls, 2, "one probe per tick");
+    assert.equal((await call(a)).analysis_claim, null);
+    assert.equal((await call(b)).analysis_claim, null);
+    assert.equal((await authEvents()).length, 2);
+    assert.equal((await alertEvents()).length, 1, "deduped within the 6 h window");
+    assert.equal(alertTexts().length, 1);
+    llmMode = "ok";
+    await tick();
+    assert.equal((await call(a)).summary, "Mock analysis summary");
+    assert.equal((await call(b)).summary, "Mock analysis summary");
+    await assertNoKeyMaterial();
+  });
+
+  await test("a 403: same, and an abandoned claim is restored exactly (attempt unchanged)", async () => {
+    const prev = { v: 1, pending: true, claimedAt: new Date(Date.now() - 11 * 60_000).toISOString(), token: "mock-old-token", attempt: 2 };
+    const a = await insertMissed(K(12), "30 minutes", prev);
+    const b = await insertMissed(K(13), "20 minutes");
+    llmMode = "http403";
+    await capture(() => tick());
+    assert.equal(llmCalls, 1);
+    assert.deepEqual((await call(a)).analysis_claim, prev, "previous claim back, attempt 2 unchanged");
+    assert.equal((await call(b)).analysis_claim, null, "not claimed in a paused tick");
+    assert.equal((await failedEvents()).length, 0);
+    await capture(() => tick());
+    assert.deepEqual((await call(a)).analysis_claim, prev, "still not consumed");
+    assert.equal((await alertEvents()).length, 1, "deduped");
+    await assertNoKeyMaterial();
+  });
+
+  await test("a 500 or a timeout consumes an attempt, as before (no release, no alert)", async () => {
+    for (const mode of ["http500", "timeout"] as const) {
+      await reset();
+      fresh();
+      const a = await insertMissed(K(12), "30 minutes");
+      const b = await insertMissed(K(13), "20 minutes");
+      llmMode = mode;
+      await capture(() => tick());
+      assert.equal(llmCalls, 2, `${mode}: the tick goes on (not paused)`);
+      assert.equal((await call(a)).analysis_claim?.attempt, 1, `${mode}: attempt consumed`);
+      assert.equal((await call(b)).analysis_claim?.attempt, 1);
+      assert.equal((await failedEvents()).length, 2);
+      assert.equal((await authEvents()).length, 0);
+      assert.equal((await alertEvents()).length, 0);
+      await assertNoKeyMaterial();
+    }
+  });
+
+  await test("the after() path with a 401: the claim released, no attempt, one alert", async () => {
+    await post(K(10), OPEN, "connected");
+    const [row] = await rows<{ id: string }>(sql`SELECT id FROM campaign_calls WHERE contact_id = ${K(10)}`);
+    llmMode = "http401";
+    assert.equal(await capture(() => tasks[0]!() as Promise<unknown>), "auth_failed");
+    assert.equal((await call(row!.id)).analysis_claim, null);
+    assert.equal((await failedEvents()).length, 0);
+    assert.equal((await alertEvents()).length, 1);
+    // The catch-up retries it once the key works.
+    llmMode = "ok";
+    await tick();
+    assert.equal((await call(row!.id)).summary, "Mock analysis summary");
+    await assertNoKeyMaterial();
   });
 
   restore();
