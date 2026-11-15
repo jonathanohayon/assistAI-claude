@@ -1739,6 +1739,8 @@
     "noMatchingEvents": "No events matching these filters.",
     "fetchError": "fetch error",
     "offCallActivity": "Activity outside calls",
+    "sipCallFrom": "SIP <num>…{last4}</num> → <to>{number}</to>",
+    "sipCallUnknownCaller": "SIP caller → <to>{number}</to>",
     "groupedViewTitle": "Grouped by call — click for the raw timeline",
     "flatViewTitle": "Raw timeline — click to group by call",
     "groupedViewButton": "☰ Grouped",

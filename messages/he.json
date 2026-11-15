@@ -1739,6 +1739,8 @@
     "noMatchingEvents": "אין אירועים עם המסננים האלה.",
     "fetchError": "שגיאת טעינה",
     "offCallActivity": "פעילות מחוץ לשיחות",
+    "sipCallFrom": "SIP <num>…{last4}</num> ← <to>{number}</to>",
+    "sipCallUnknownCaller": "SIP מתקשר ← <to>{number}</to>",
     "groupedViewTitle": "תצוגה מקובצת לפי שיחה — לחצו למעבר לציר זמן",
     "flatViewTitle": "ציר זמן גולמי — לחצו לקיבוץ לפי שיחה",
     "groupedViewButton": "☰ מקובץ",

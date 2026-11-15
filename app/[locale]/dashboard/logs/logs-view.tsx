@@ -8,9 +8,18 @@ import type { CallEngine } from "@/lib/call-engine";
 type EngineLib = typeof import("@/lib/call-engine");
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { LatencyChart } from "./latency-chart";
+import {
+  messageForDisplay,
+  metadataForDisplay,
+  sipLabelFromReceived,
+  sipLabelFromStarted,
+  type SipLabel,
+} from "@/lib/monitoring-label";
 
-interface EventRow {
+import { LatencyChart } from "./latency-chart";
+import { SipCallLabel } from "./sip-call-label";
+
+export interface EventRow {
   id: string;
   level: "info" | "warn" | "error";
   source: string;
@@ -36,6 +45,9 @@ interface CallGroup {
   origin: "sip" | "web" | "unknown";
   /** Numéro ou identifier court pour le header */
   label: string;
+  /** SIP calls: caller's last 4 + dialled line, rendered by <SipCallLabel>
+   *  (wins over `label`). Never the caller's full number nor its hash. */
+  sip?: SipLabel;
   events: EventRow[];
   errorCount: number;
   warnCount: number;
@@ -62,7 +74,7 @@ interface CallGroup {
  * en cours (ex. WhatsApp delivery check 8s), il y est quand même attaché.
  * C'est OK car on capture l'intention "events liés à cet appel".
  */
-function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): CallGroup[] {
+export function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): CallGroup[] {
   const sortedAsc = [...events].sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   );
@@ -94,11 +106,8 @@ function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): Cal
       const origin =
         (m["origin"] as { kind?: string } | undefined)?.kind ??
         (roomName.startsWith("livetest-") ? "web" : "sip");
-      const label =
-        origin === "web"
-          ? "Web LiveTest"
-          : ((m["origin"] as { calledNumber?: string } | undefined)
-              ?.calledNumber ?? "SIP");
+      const label = origin === "web" ? "Web LiveTest" : "SIP";
+      const sip = origin === "sip" ? (sipLabelFromStarted(m) ?? undefined) : undefined;
       currentCall = {
         key: roomName ? `room:${roomName}` : `call:${e.id}`,
         kind: "call",
@@ -106,6 +115,7 @@ function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): Cal
         endedAt: e.createdAt,
         origin: origin === "sip" || origin === "web" ? origin : "unknown",
         label,
+        sip,
         events: [e],
         errorCount: e.level === "error" ? 1 : 0,
         warnCount: e.level === "warn" ? 1 : 0,
@@ -113,14 +123,12 @@ function groupEventsByCall(events: EventRow[], engineLib: EngineLib | null): Cal
       groups.push(currentCall);
       continue;
     }
-    // Try to refine origin / label from late events (call_received has
-    // toNumber/fromNumber, useful for SIP groups)
-    if (currentCall && e.event === "call_received") {
-      const to = m["toNumber"] as string | undefined;
-      const from = m["fromNumber"] as string | undefined;
-      if (to && currentCall.origin === "sip") {
-        currentCall.label = `SIP ${from ? `${from} → ` : ""}${to}`;
-      }
+    // Refine the SIP label from call_received: toNumber + fromLast4 (since
+    // #332), or the last 4 of a legacy fromNumber. Web sessions have no
+    // toNumber and keep their label.
+    if (currentCall && e.event === "call_received" && currentCall.origin === "sip") {
+      const sip = sipLabelFromReceived(m);
+      if (sip) currentCall.sip = sip;
     }
     // Rattache l'event au groupe courant. Si pas de groupe courant
     // (= events orphelins en début de stream), on les met dans "other".
@@ -486,7 +494,13 @@ export function LogsView({
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[#18181b]">
-                        {group.kind === "other" ? t("offCallActivity") : group.label}
+                        {group.kind === "other" ? (
+                          t("offCallActivity")
+                        ) : group.sip ? (
+                          <SipCallLabel label={group.sip} />
+                        ) : (
+                          group.label
+                        )}
                       </p>
                       {showEngine && group.kind === "call" && (
                         <p className="mt-0.5 flex items-center gap-2" aria-label={t("engineAria")}>
@@ -617,7 +631,7 @@ function renderEventRow(
         <span
           className={`min-w-0 flex-1 break-words text-xs sm:text-sm ${LEVEL_BADGE[l.level]}`}
         >
-          {l.message}
+          {messageForDisplay(l.message)}
           {hasMetadata && (
             <span className="ml-2 text-[11px] text-[var(--color-muted-foreground)]">
               {isExpanded ? "▼" : "▶"}
@@ -627,7 +641,7 @@ function renderEventRow(
       </button>
       {isExpanded && hasMetadata && (
         <pre className="mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)]/60 px-3 py-2 font-mono text-[10px] text-[var(--color-foreground)] sm:text-[11px]">
-          {JSON.stringify(l.metadata, null, 2)}
+          {JSON.stringify(metadataForDisplay(l.metadata ?? {}), null, 2)}
         </pre>
       )}
     </li>
