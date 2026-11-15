@@ -1739,6 +1739,8 @@
     "noMatchingEvents": "Aucun événement avec ces filtres.",
     "fetchError": "fetch error",
     "offCallActivity": "Activité hors-appel",
+    "sipCallFrom": "SIP <num>…{last4}</num> → <to>{number}</to>",
+    "sipCallUnknownCaller": "SIP appelant → <to>{number}</to>",
     "groupedViewTitle": "Vue groupée par appel — cliquer pour passer en vue chronologique",
     "flatViewTitle": "Vue chronologique brute — cliquer pour regrouper par appel",
     "groupedViewButton": "☰ Groupé",
