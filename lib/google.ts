@@ -116,6 +116,18 @@ export async function getTenantGoogleClients(
   };
 }
 
+/**
+ * Injection seam for route tests (scripts/tests/calendar-anon-401.test.ts):
+ * the session reader and the two DB lookups the resolver depends on. Route
+ * handlers can then run outside Next with no DB and no Google. Production
+ * code never reassigns these.
+ */
+export const agentCallerDeps = {
+  auth: () => auth(),
+  getTenantGoogleClients: (userId: string) => getTenantGoogleClients(userId),
+  resolveTenantByPhone: (phone: string) => resolveTenantByPhone(phone),
+};
+
 export type AgentCallerGoogle =
   | {
       mode: "tenant";
@@ -168,7 +180,7 @@ export async function resolveAgentCallerGoogle(
     const outboundUserId = outboundCallerUserId(req.headers);
     if (outboundUserId !== null) {
       if (!expected || secret !== expected || !outboundUserId) return { mode: "unknown_tenant", dialedPhone: "" };
-      const clients = await getTenantGoogleClients(outboundUserId);
+      const clients = await agentCallerDeps.getTenantGoogleClients(outboundUserId);
       if (!clients) return { mode: "user_no_google" };
       return { mode: "tenant", userId: outboundUserId, ...clients };
     }
@@ -179,14 +191,14 @@ export async function resolveAgentCallerGoogle(
       const dialed = (req.headers.get("x-tenant-phone") ?? "").trim();
       const tenantUserId = (req.headers.get("x-tenant-user-id") ?? "").trim();
       if (dialed) {
-        const tenant = await resolveTenantByPhone(dialed);
+        const tenant = await agentCallerDeps.resolveTenantByPhone(dialed);
         if (!tenant) return { mode: "unknown_tenant", dialedPhone: dialed };
-        const clients = await getTenantGoogleClients(tenant.user.id);
+        const clients = await agentCallerDeps.getTenantGoogleClients(tenant.user.id);
         if (!clients) return { mode: "user_no_google" };
         return { mode: "tenant", userId: tenant.user.id, ...clients };
       }
       if (tenantUserId) {
-        const clients = await getTenantGoogleClients(tenantUserId);
+        const clients = await agentCallerDeps.getTenantGoogleClients(tenantUserId);
         if (!clients) return { mode: "user_no_google" };
         return { mode: "tenant", userId: tenantUserId, ...clients };
       }
@@ -194,9 +206,9 @@ export async function resolveAgentCallerGoogle(
     }
   }
 
-  const session = await auth();
+  const session = await agentCallerDeps.auth();
   if (session?.user?.id) {
-    const tenant = await getTenantGoogleClients(session.user.id);
+    const tenant = await agentCallerDeps.getTenantGoogleClients(session.user.id);
     if (tenant) return { mode: "tenant", userId: session.user.id, ...tenant };
     return { mode: "user_no_google" };
   }
