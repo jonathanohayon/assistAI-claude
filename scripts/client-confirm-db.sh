@@ -27,8 +27,10 @@ git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
 # The cancel route and /api/calls/end as on main just BEFORE the follow-ups
 # (cancel date + confirm before the summary), PINNED like the ref above: the
 # cancel response to the worker and the calls/end response must be
-# byte-identical to these. Override with CLIENT_CONFIRM_PREV_REF=<commit>.
-PREV_REF="${CLIENT_CONFIRM_PREV_REF:-a1dfec0a2cbeace2befa85702831400769a01597}"
+# byte-identical to these. Re-pinned to e782b81 after #328 (it deleted
+# lib/demo-sandbox, which the a1dfec0 cancel route imported). Override with
+# CLIENT_CONFIRM_PREV_REF=<commit>.
+PREV_REF="${CLIENT_CONFIRM_PREV_REF:-e782b813e666221329fd539e41764694743986da}"
 PREV_END=".tmp/client-confirm-main/prev-end-route.ts"
 PREV_CANCEL=".tmp/client-confirm-main/prev-cancel-route.ts"
 git show "${PREV_REF}:app/api/calls/end/route.ts" > "$PREV_END"
