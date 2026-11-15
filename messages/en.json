@@ -1094,7 +1094,7 @@
     "ownerEmailConfirmNeedsSaved": "Save an address to be able to confirm it.",
     "ownerEmailConfirmSaveFirst": "Save the new address before asking for a code.",
     "ownerEmailConfirmAdminHint": "The code goes to the client's address; they can read it out to you.",
-    "ownerEmailConfirmSentTo": "Code sent to {email}, valid for {minutes} minutes.",
+    "ownerEmailConfirmSentTo": "Code sent to <addr>{email}</addr>, valid for {minutes} minutes.",
     "ownerEmailConfirmCodeLabel": "Code received by email",
     "ownerEmailConfirmSubmit": "Confirm",
     "ownerEmailConfirmSubmitting": "Checking…",

@@ -129,7 +129,9 @@ for (const l of LOCALES) {
 
   // Code sent: the where/how-long line, the code field and Confirm.
   const sent = row(l, { initialPhase: "sent" });
-  assert.ok(sent.includes(esc(fill(dc.ownerEmailConfirmSentTo, { email: ADDR, minutes: 10 }))), `${l}: sent-to line`);
+  // The address sits in an LTR bdi inside the sentence (safe in RTL).
+  const sentTo = esc(fill(dc.ownerEmailConfirmSentTo, { email: ADDR, minutes: 10 })).replace("&lt;addr&gt;", '<bdi dir="ltr">').replace("&lt;/addr&gt;", "</bdi>");
+  assert.ok(sent.includes(sentTo), `${l}: sent-to line with the address in bdi`);
   assert.ok(sent.includes(`>${esc(dc.ownerEmailConfirmCodeLabel)}</label>`), `${l}: code label`);
   const label = sent.match(/<label for="([^"]+)"[^>]*>/)![1];
   const input = sent.match(/<input[^>]*>/)![0];

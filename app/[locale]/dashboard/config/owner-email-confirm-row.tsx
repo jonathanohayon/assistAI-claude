@@ -201,7 +201,7 @@ export function OwnerEmailConfirmRow({
       {!confirmed && phase === "sent" && sendBlock === null && (
         <div className="flex flex-col gap-1.5">
           <p id={noteId} aria-live="polite" data-sent-note className="text-[11px] leading-relaxed text-[#334155]">
-            {t("ownerEmailConfirmSentTo", { email: base.ownerRecapEmail, minutes })}
+            {t.rich("ownerEmailConfirmSentTo", { email: base.ownerRecapEmail, minutes, addr: (chunks) => <bdi dir="ltr">{chunks}</bdi> })}
           </p>
           <label htmlFor={codeId} className="text-xs font-semibold text-[#334155]">
             {t("ownerEmailConfirmCodeLabel")}

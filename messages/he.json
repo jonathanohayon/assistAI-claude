@@ -1094,7 +1094,7 @@
     "ownerEmailConfirmNeedsSaved": "שמרו כתובת כדי שתוכלו לאשר אותה.",
     "ownerEmailConfirmSaveFirst": "שמרו את הכתובת החדשה לפני שמבקשים קוד.",
     "ownerEmailConfirmAdminHint": "הקוד נשלח לכתובת של הלקוח; הוא יכול להקריא לכם אותו.",
-    "ownerEmailConfirmSentTo": "הקוד נשלח אל {email}, בתוקף ל־{minutes} דקות.",
+    "ownerEmailConfirmSentTo": "הקוד נשלח אל <addr>{email}</addr>, בתוקף ל־{minutes} דקות.",
     "ownerEmailConfirmCodeLabel": "הקוד שהתקבל במייל",
     "ownerEmailConfirmSubmit": "אישור",
     "ownerEmailConfirmSubmitting": "בודק…",
