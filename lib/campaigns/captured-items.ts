@@ -51,3 +51,26 @@ export function capturedItems(
   }
   return items.length ? items : null;
 }
+
+export interface CapturedCount {
+  /** Schema items with a captured value. */
+  got: number;
+  /** Items in the campaign's current schema (same set as the expanded block). */
+  total: number;
+}
+
+/**
+ * Count for the collapsed-row chip ("3/4 captured"). Derived from
+ * capturedItems() so it can never disagree with the expanded block: same
+ * items, same visibility (null whenever the block renders nothing). 0/N is
+ * a real answer (the capture ran and found nothing) and is returned.
+ */
+export function capturedCount(
+  schema: readonly ExtractionField[] | null | undefined,
+  captured: CapturedView | undefined,
+  captureOn: boolean,
+): CapturedCount | null {
+  const items = capturedItems(schema, captured, captureOn);
+  if (!items) return null;
+  return { got: items.filter((i) => i.value !== null).length, total: items.length };
+}
