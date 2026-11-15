@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { readHeartbeat } from "@/lib/monitoring";
 
-import { decideAgentState, engineReachable } from "./decide";
+import { decideAgentState, engineReachable, trialReason } from "./decide";
 import type { AgentState } from "./types";
 
 /**
@@ -56,7 +56,7 @@ export async function computeAgentState(userId: string): Promise<AgentState> {
   const now = Date.now();
   return decideAgentState({
     hasNumber: () => Boolean(user && number),
-    subscriptionAllowsCalls: async () => !(await inboundTrialRefusal(user!)),
+    trialRefusal: async () => trialReason((await inboundTrialRefusal(user!))?.cause),
     configAvailable: () => inboundConfigBuilds(number!.phoneNumber),
     engineReachable: () => engineReachable(heartbeat, now),
   });
