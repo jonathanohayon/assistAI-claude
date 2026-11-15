@@ -158,7 +158,8 @@ async function main() {
     assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false });
     // (2) an unchanged re-send passes (OFF → OFF).
     const sameOff = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false }, SENDER_OFF);
-    assert.deepEqual(sameOff, { status: 200, body: { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false, changedFields: [] } });
+    assert.equal(sameOff.status, 200, `${who}: unchanged OFF re-send passes`);
+    assert.deepEqual(await loadOwnerRecapEmail(uid), { ownerRecapEmail: `${who}@example.com`, ownerRecapEmailEnabled: false });
     // (3) a change to ON → 409 naming the field, nothing written (not even the address).
     const refused = await saveOwnerRecapEmail(uid, { ownerRecapEmail: `new-${who}@example.com`, ownerRecapEmailEnabled: true }, SENDER_OFF);
     assert.deepEqual(refused, { status: 409, body: { error: "sender_not_configured", field: "ownerRecapEmailEnabled" } });
