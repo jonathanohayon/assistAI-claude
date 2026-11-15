@@ -142,9 +142,12 @@ assert.equal(at(fr, "Plans.global.features.2"), "Calendrier connecté & contacts
 // Agent brick's "Langue par défaut" (PersonaBrick.languageLabel).
 for (const l of LOCALES) {
   const m = messages(l);
-  const t = createTranslator({ locale: l, messages: m as never, namespace: "Voices" as never });
+  const t = createTranslator({ locale: l, messages: m as never, namespace: "Voices" as never }) as unknown as (
+    key: string,
+    values: Record<string, string | number>,
+  ) => string;
   const shown = `${at(m, "VoiceStudio.panel.voiceName")} · ${at(m, "VoiceStudio.panel.voiceGenderF")}`;
-  assert.equal(shown, (t as (k: string, v: object) => string)("display", { n: 1, gender: "f" }), `${l}: mock voice label`);
+  assert.equal(shown, t("display", { n: 1, gender: "f" }), `${l}: mock voice label`);
   assert.equal(at(m, "VoiceStudio.panel.defaultLanguage"), at(m, "PersonaBrick.languageLabel"), `${l}: mock language label`);
 }
 
