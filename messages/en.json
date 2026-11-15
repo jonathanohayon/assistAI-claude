@@ -1149,7 +1149,7 @@
     "analyticsLoading": "Analyzing conversations…",
     "analyticsError": "Couldn't load analytics.",
     "analyticsEmpty": "No calls yet.",
-    "analyticsPending": "{count} conversation(s) still being analyzed — reopen shortly.",
+    "analyticsPending": "{count, plural, one {# conversation will be analyzed} other {# conversations will be analyzed}} in the next few minutes. Reopen this page to see the results.",
     "kpiTotal": "Calls",
     "kpiConnected": "Connected",
     "kpiEstimatedSuccessRate": "Estimated success rate",
