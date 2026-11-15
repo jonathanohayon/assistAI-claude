@@ -6,7 +6,8 @@
 # (no messaging, email or voice provider credential). set -e: nothing runs
 # after a failed initdb / pg_ctl / check.
 #
-# 1. Migration 0051 writes NO data: on a seeded database put back in the
+# 1. Migration 0051 writes NO data (migrations up to 0051 only, see
+#    scripts/lib/migrate-upto.sh): on a seeded database put back in the
 #    state before 0051 (column dropped, its ledger row removed), the md5 of
 #    EVERY public table's rows (over the columns that existed before) is
 #    identical before and after `node scripts/migrate.mjs`; the only schema
@@ -31,6 +32,9 @@ q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 migrate() { env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
 
 # ── 1. Migration 0051 writes no data ────────────────────────────────────
+# Up to 0051 only (later migrations would hide it from a re-run).
+source scripts/lib/migrate-upto.sh
+migrate() { migrate_upto 0051_contact_confirmations "$URL" "$DIR.work/m"; }
 migrate
 q -f scripts/fixtures/mission-m2a-seed.sql
 # Mock contact values (existing accounts): owner WhatsApp, a parked
@@ -40,8 +44,7 @@ q -c "UPDATE agent_configs SET owner_whatsapp = '+15550100001', owner_recap_emai
       INSERT INTO events (user_id, source, event, message) VALUES ('00000000-0000-0000-0000-00000000000a', 'web', 'config_updated', 'mock');
       INSERT INTO calls (user_id, duration_seconds) VALUES ('00000000-0000-0000-0000-00000000000a', 42);"
 WHEN="$(node -e 'const j=require("./drizzle/meta/_journal.json");const e=j.entries.find(x=>x.tag==="0051_contact_confirmations");if(!e)process.exit(1);console.log(e.when)')"
-LAST="$(node -e 'const j=require("./drizzle/meta/_journal.json");console.log(j.entries.at(-1).tag)')"
-[ "$LAST" = "0051_contact_confirmations" ] || { echo "0051 must sort last (last is $LAST)" >&2; exit 1; }
+migration_sorts_after_all_before 0051_contact_confirmations
 # Back to the state before 0051.
 q -c "ALTER TABLE agent_configs DROP COLUMN contact_confirmations"
 [ "$(q -c "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = ${WHEN} RETURNING 1")" = "1" ]
@@ -78,6 +81,8 @@ q -f drizzle/0051_contact_confirmations.sql 2>/dev/null
 echo "migration 0051: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after; schema diff = the new column only; ledger +1; re-run no-op"
 
 # ── 2. Writes, admin confirm, sends ─────────────────────────────────────
+# Every migration from here on.
+env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 # /api/calls/end calls next-intl's getTranslations: the shared test tsconfig
 # maps "next-intl/server" to a stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
 source scripts/lib/next-intl-stub-tsconfig.sh
