@@ -55,6 +55,8 @@ for (const f of [
   "app/api/auth/resend-verification/route.ts",
   "lib/verification-limits/resend.ts",
   "lib/verification-limits/signup.ts",
+  "lib/verification-limits/verify.ts",
+  "app/api/auth/verify-email/route.ts",
   "lib/verification-limits/policy.ts",
   "app/[locale]/signup/page.tsx",
 ]) {
