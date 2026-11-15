@@ -26,12 +26,25 @@ export type CallAnalysis = {
   summary: string;
 };
 
+/**
+ * The provider rejected the API key (HTTP 401 or 403). Distinct from null
+ * (any other failure): the caller must not count it as an analysis attempt.
+ */
+export const ANALYSIS_AUTH_FAILED = "auth_failed" as const;
+export type AnalysisAuthFailed = typeof ANALYSIS_AUTH_FAILED;
+
+/** Tests only: inject the transport and the key (never a real provider call). */
+export interface AnalyzeTransport {
+  fetch?: typeof fetch;
+  apiKey?: string;
+}
+
 export async function analyzeCampaignCall(opts: {
   transcript: Array<{ role: "user" | "assistant"; text: string }>;
   objective: string;
   successCriteria: string;
   language?: string | null;
-}): Promise<CallAnalysis | null> {
+}, transport: AnalyzeTransport = {}): Promise<CallAnalysis | AnalysisAuthFailed | null> {
   const dialog = opts.transcript
     .map((t) => `${t.role === "user" ? "Prospect" : "Agent"}: ${t.text}`)
     .join("\n")
@@ -39,7 +52,7 @@ export async function analyzeCampaignCall(opts: {
   if (!dialog.trim()) return null;
 
   const apiKey =
-    process.env.REALTIME_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
+    transport.apiKey ?? process.env.REALTIME_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
   if (!apiKey) return null;
 
   const lang = LANG_LABEL[opts.language ?? "fr"] ?? "français";
@@ -60,7 +73,7 @@ Règles :
 - Réponds UNIQUEMENT avec le JSON.`;
 
   try {
-    const res = await fetch(OPENAI_CHAT_URL, {
+    const res = await (transport.fetch ?? fetch)(OPENAI_CHAT_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -78,6 +91,9 @@ Règles :
       // Bounded: it now runs inside the cron tick and after() too.
       signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     });
+    // A rejected key: typed, so it does not burn an attempt. Everything else
+    // (5xx, 429, bad JSON, timeout) stays null, as before.
+    if (res.status === 401 || res.status === 403) return ANALYSIS_AUTH_FAILED;
     if (!res.ok) return null;
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
