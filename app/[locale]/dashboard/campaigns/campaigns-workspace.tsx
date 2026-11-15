@@ -40,7 +40,14 @@ import {
   snapshot,
 } from "@/lib/campaigns/edit-guard";
 import { StatusPill } from "./_ui";
-import { storedCaptureKeys } from "@/lib/campaigns/capture-editor";
+import {
+  MAX_CAPTURE_FIELDS,
+  captureEditorView,
+  isTooManyCaptureFields,
+  storedCaptureFields,
+  storedCaptureKeys,
+  unlabeledCaptureRows,
+} from "@/lib/campaigns/capture-editor";
 import { presetOnAgentPick, presetRefusal } from "@/components/bricks/mission/mission-ui";
 import type { ToolsResponse } from "@/components/bricks/tools/tools-ui";
 import type { EffectiveCapabilities } from "@/lib/tools/contract";
@@ -117,6 +124,9 @@ export function CampaignsWorkspace({
   const [dispatchMode, setDispatchMode] = useState<DispatchMode | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Bumped by each save refused for an unlabeled capture row: the editor marks
+  // the rows and moves focus to the first one (0 = no refused save yet).
+  const [captureSaveCheck, setCaptureSaveCheck] = useState(0);
   // Feedback de sauvegarde réussie (badge "✓ Enregistré" + bouton Suivant).
   const [justSaved, setJustSaved] = useState(false);
   // Bumped after each successful save → the live console remounts and
@@ -229,6 +239,7 @@ export function CampaignsWorkspace({
     setSavedSnapshot(null);
     setActiveStatus("draft");
     setSaveError(null);
+    setCaptureSaveCheck(0);
     setTab("setup");
     setView("editor");
   };
@@ -252,6 +263,7 @@ export function CampaignsWorkspace({
     cardPicked.current = false;
     setActiveStatus(c.status);
     setSaveError(null);
+    setCaptureSaveCheck(0);
     setTab("setup");
     setView("editor");
   };
@@ -322,6 +334,17 @@ export function CampaignsWorkspace({
       setSaveError(t("nameRequired"));
       return false;
     }
+    // An unlabeled capture row blocks the save (it used to be dropped
+    // silently). Only when the editor is shown: a hidden editor can't be fixed.
+    if (
+      captureEditorView(captureOn, isAdmin) !== "hidden" &&
+      unlabeledCaptureRows(draft.extractionSchema, storedCaptureFields(savedSnapshot)).length > 0
+    ) {
+      setSaveError(null);
+      setJustSaved(false);
+      setCaptureSaveCheck((n) => n + 1);
+      return false;
+    }
     if (!isDirty) {
       // Nothing changed since the last load/save: no PATCH.
       setSaveError(null);
@@ -358,11 +381,18 @@ export function CampaignsWorkspace({
           return false;
         }
       }
+      if (res.status === 400 && isTooManyCaptureFields(400, await res.json().catch(() => null))) {
+        // #325 cap: our sentence, never the server's text.
+        setJustSaved(false);
+        setSaveError(t("extractionMax", { max: MAX_CAPTURE_FIELDS }));
+        return false;
+      }
       if (!res.ok) throw new Error("save");
       const data = (await res.json()) as { campaign: { id: string; status: string } };
       const saved = { ...draft, id: data.campaign.id };
       setDraft(saved);
       setSavedSnapshot(snapshot(saved));
+      setCaptureSaveCheck(0);
       setActiveStatus(data.campaign.status);
       await loadList();
       // Succès : on reste sur l'étape 1 avec un feedback clair + bouton Suivant
@@ -594,6 +624,8 @@ export function CampaignsWorkspace({
                 capabilities={capabilities}
                 captureOn={captureOn}
                 storedCaptureKeys={storedCaptureKeys(savedSnapshot)}
+                storedCaptureFields={storedCaptureFields(savedSnapshot)}
+                captureSaveCheck={captureSaveCheck}
               />
             )}
 

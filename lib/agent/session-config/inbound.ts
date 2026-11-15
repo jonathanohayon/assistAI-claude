@@ -2,12 +2,9 @@
 // legacy route and the single session-config route run the SAME code: the
 // legacy response stays byte-identical. SERVER-ONLY.
 
-import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
-import { db } from "@/lib/db";
-import { calls } from "@/lib/db/schema";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { servedAgentWebhook } from "@/lib/agent-brain-guard";
 import { alertAdmins } from "@/lib/alerts";
@@ -18,7 +15,6 @@ import { servedInboundVoice } from "@/lib/voice/serve";
 import { workerRuntimeConfig } from "@/lib/agent/worker-runtime-config";
 import { inboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { toEngineSettings } from "@/lib/voice/engine";
-import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
 import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
@@ -26,7 +22,10 @@ import { getTileToggles } from "@/lib/tile-toggles";
 import { clientAgentCallField, receptionistCallFields } from "@/lib/tools/adapters";
 import { openClientAgentTools } from "@/lib/tools/client-agent-secret";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
-import { checkAgentUrl } from "@/lib/net/safe-url";
+import { checkAgentUrl, type CheckOptions, type Resolver } from "@/lib/net/safe-url";
+import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
+import type { OnFallback } from "@/lib/tenant-resolution";
+import { inboundTrialRefusal } from "@/lib/agent/session-config/trial-gate";
 import { receptionistCapabilities } from "@/lib/tools/store";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -64,12 +63,67 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // The worker sends x-internal-secret on every call (src/web-api.ts).
   const auth = requireInternalSecret(req);
   if (!auth.ok) return auth.response;
+  return buildInboundConfig(req.nextUrl.searchParams, LIVE_INBOUND_EFFECTS);
+}
 
-  const phone = req.nextUrl.searchParams.get("phone");
+/**
+ * Every side effect and network step of the inbound resolver, injected so the
+ * dashboard's agentState (lib/agent-state/compute.ts) can run the SAME
+ * resolver as a dry run: no event, no alert, no forwarding mark, no DNS.
+ */
+export interface InboundEffects {
+  logEvent: typeof logEvent;
+  alertAdmins: (args: Parameters<typeof alertAdmins>[0]) => Promise<unknown>;
+  onFallback: OnFallback;
+  markForwardingTestCall: typeof markForwardingTestCall;
+  getClientProfile: typeof getClientProfile;
+  /** Reporter for a sealed secret that can't be opened (E1). */
+  reportUnreadable: UnreadableReporter;
+  /** Options of the serve-time url checks (DNS budget, or an injected resolver). */
+  urlCheck: CheckOptions;
+}
+
+/** The real effects: what the worker's call gets. */
+export const LIVE_INBOUND_EFFECTS: InboundEffects = {
+  logEvent,
+  alertAdmins: (args) => alertAdmins(args),
+  onFallback: reportTenantFallback,
+  markForwardingTestCall,
+  getClientProfile,
+  reportUnreadable: reportUnreadableSecret,
+  urlCheck: { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS },
+};
+
+/** Dry run: no lookup at all; the url checks see a DNS failure (the safe outcome). */
+const noDnsResolver: Resolver = async () => {
+  throw new Error("dry run: no DNS");
+};
+
+/**
+ * Dry-run effects: nothing is written, alerted or looked up. A refused
+ * webhook / client agent never changes the status (the call still gets the
+ * normal Tamara), so skipping DNS can't change whether the config builds.
+ */
+export const DRY_INBOUND_EFFECTS: InboundEffects = {
+  logEvent: async () => {},
+  alertAdmins: async () => false,
+  onFallback: () => {},
+  markForwardingTestCall: async () => false,
+  getClientProfile: async () => null,
+  reportUnreadable: () => {},
+  urlCheck: { resolver: noDnsResolver },
+};
+
+/**
+ * The inbound session config for these query params (phone / userId /
+ * caller / forwardedFrom), the caller already authenticated.
+ */
+export async function buildInboundConfig(params: URLSearchParams, fx: InboundEffects): Promise<Response> {
+  const phone = params.get("phone");
   // Phase 2 (web LiveTest via LiveKit) : le worker passe `userId` extrait
   // du `participant.metadata` JSON pour cibler directement le bon tenant
   // sans chercher un phone_number row. Prioritaire sur `phone` si présent.
-  const userId = req.nextUrl.searchParams.get("userId");
+  const userId = params.get("userId");
   // Inline resolution so we can log WHICH path was taken — silent fallback
   // to default tenant has burned us before (calendar tools used the wrong
   // user's Google credentials → "Google not connected" symptom).
@@ -81,13 +135,13 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
       byPhone: resolveTenantByPhone,
       byDefault: resolveDefaultTenant,
       accountId: (t) => t.user.id,
-      onFallback: reportTenantFallback,
+      onFallback: fx.onFallback,
     },
   );
   const { resolution, tenant } = lookup;
   if (resolution === "unknown_number") {
     // Refuse rather than serve another tenant. The worker hangs up on 404.
-    await logEvent({
+    await fx.logEvent({
       source: "tenant",
       event: "unknown_dialed_number",
       message: "Appel refusé : aucun tenant pour le numéro appelé",
@@ -110,27 +164,13 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // 60-min cap would cut their own number once call durations are recorded.
   // Trialing OR paused (trial ended, not paid): a paused account must be
   // refused too, so it can't skip this block on its status.
-  if (
-    (tenant.user.subscriptionStatus === "trialing" ||
-      tenant.user.subscriptionStatus === TRIAL_PAUSED_STATUS) &&
-    tenant.user.role !== "admin"
-  ) {
-    const [usage] = await db
-      .select({
-        seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
-      })
-      .from(calls)
-      .where(eq(calls.userId, tenant.user.id));
-    const trialSecondsUsed = usage?.seconds ?? 0;
-    if (
-      isTrialExhausted({
-        subscriptionStatus: tenant.user.subscriptionStatus,
-        trialEndsAt: tenant.user.trialEndsAt,
-        trialSecondsUsed,
-        role: tenant.user.role,
-      })
-    ) {
-      await logEvent({
+  // The decision lives in lib/agent/session-config/trial-gate.ts, shared with
+  // the dashboard's agentState (lib/agent-state/compute.ts).
+  {
+    const refusal = await inboundTrialRefusal(tenant.user);
+    if (refusal) {
+      const { trialSecondsUsed } = refusal;
+      await fx.logEvent({
         source: "tenant",
         event: "trial_exhausted_block",
         message: `Appel refusé : essai épuisé (${Math.round(
@@ -164,7 +204,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     blockOrderByPlan,
     greetingFallbackByPlan,
   ] = await Promise.all([
-    logEvent({
+    fx.logEvent({
       source: "tenant",
       event: "agent_config_loaded",
       message: `Config chargée pour ${tenant.user.id} via ${resolution} (userId=${userId ?? "(none)"}, googleConnected=${Boolean(tenant.user.googleRefreshToken)})`,
@@ -273,20 +313,20 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // tester un endpoint sur tous les tenants sans toucher à leurs réglages.
   // Loyalty v1: who is calling (worker passes `caller`, the From number).
   // Capped at 300 ms and null-safe: never delays or breaks the config.
-  const clientProfilePromise = getClientProfile(
+  const clientProfilePromise = fx.getClientProfile(
     tenant.user.id,
-    req.nextUrl.searchParams.get("caller"),
+    params.get("caller"),
   );
   // Forwarding setup check: an inbound PHONE call (?phone=, not the web
   // LiveTest) during the tenant's test window verifies forwarding.
   // Fire-and-forget, never delays the config.
   if (phone && !userId) {
-    void markForwardingTestCall(tenant.user.id, {
-      forwardedFrom: req.nextUrl.searchParams.get("forwardedFrom"),
+    void fx.markForwardingTestCall(tenant.user.id, {
+      forwardedFrom: params.get("forwardedFrom"),
       via: "call_start",
     });
   }
-  const brain = await getAgentBrain(tenant.user.id);
+  const brain = await getAgentBrain(tenant.user.id, fx.reportUnreadable);
   const envOverride = process.env.AGENT_WEBHOOK_URL;
   const candidateWebhook =
     envOverride && envOverride.startsWith("http")
@@ -303,10 +343,10 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // A short DNS budget here: this runs while the call is being set up (the
   // worker gives the whole config fetch 5 s). A slow or failed lookup means
   // the webhook is not served — the safe outcome (the normal Tamara answers).
-  const { webhook: agentWebhook, refused } = await servedAgentWebhook(candidateWebhook, { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS });
+  const { webhook: agentWebhook, refused } = await servedAgentWebhook(candidateWebhook, fx.urlCheck);
   if (refused) {
     const via = envOverride && envOverride.startsWith("http") ? "env_override" : "tenant_setting";
-    await logEvent({
+    await fx.logEvent({
       source: "tenant",
       event: "agent_webhook_unsafe",
       message: `Cerveau externe ignoré pour ${tenant.user.id} : adresse refusée (${refused})`,
@@ -314,7 +354,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
       userId: tenant.user.id,
       metadata: { via, code: refused },
     });
-    void alertAdmins({
+    void fx.alertAdmins({
       key: via === "env_override" ? "unsafe_agent_webhook:env" : `unsafe_agent_webhook:${tenant.user.id}`,
       subject: "External agent address refused",
       body:
@@ -326,7 +366,7 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
     });
   }
   if (agentWebhook) {
-    await logEvent({
+    await fx.logEvent({
       source: "tenant",
       event: "agent_brain_external",
       message: `Cerveau externe actif pour ${tenant.user.id} → ${agentWebhook.url}${envOverride ? " (AGENT_WEBHOOK_URL global override: every tenant goes there)" : ""}`,
@@ -343,13 +383,13 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
   // (DNS) now — else the key is absent, as on main. The worker (T5c) reads it.
   // E1: the secret is opened only to serve; a sealed one that can't be
   // opened = the client agent is NOT served (fail closed, admins alerted).
-  const opened = capabilities.clientAgent.active ? openClientAgentTools(tools) : { tools, unreadable: false };
+  const opened = capabilities.clientAgent.active ? openClientAgentTools(tools, fx.reportUnreadable) : { tools, unreadable: false };
   let clientAgentField = opened.unreadable ? {} : clientAgentCallField(capabilities, opened.tools);
   if ("clientAgent" in clientAgentField) {
-    const safe = await checkAgentUrl(tools.clientAgent.url, { dnsTimeoutMs: SERVE_DNS_TIMEOUT_MS });
+    const safe = await checkAgentUrl(tools.clientAgent.url, fx.urlCheck);
     if (!safe.ok) {
       clientAgentField = {};
-      await logEvent({
+      await fx.logEvent({
         source: "tenant",
         event: "client_agent_unsafe",
         message: `Agent du client ignoré pour ${tenant.user.id} : adresse refusée (${safe.code})`,
