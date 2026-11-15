@@ -1072,7 +1072,8 @@
     "transferInvalid": "Numéro invalide. Exemple : 050 000 0000 ou +972 50 000 0000.",
     "transferHint": "Le numéro vers lequel l'agent transfère l'appel quand un appelant demande à parler à quelqu'un. Appels téléphoniques uniquement, pas WhatsApp.",
     "errVoiceSave": "Les réglages de voix n'ont pas pu être enregistrés. Vérifiez les valeurs et réessayez.",
-    "ownerEmailSenderNotConfigured": "L'adresse d'expédition n'est pas configurée : ce récap n'est pas encore proposé aux comptes et aucun email ne part."
+    "ownerEmailSenderNotConfigured": "L'adresse d'expédition n'est pas configurée : ce récap n'est pas encore proposé aux comptes et aucun email ne part.",
+    "ownerEmailErrSenderNotConfigured": "L'envoi d'emails n'est pas encore configuré : le récap ne peut pas être activé pour l'instant."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",

@@ -1072,7 +1072,8 @@
     "transferInvalid": "Invalid number. Example: 050 000 0000 or +972 50 000 0000.",
     "transferHint": "Number the agent transfers to when a caller asks for a person. Phone calls only, not WhatsApp.",
     "errVoiceSave": "The voice settings could not be saved. Check the highlighted values and try again.",
-    "ownerEmailSenderNotConfigured": "The sending address isn't configured: this recap isn't offered to accounts yet and no email is sent."
+    "ownerEmailSenderNotConfigured": "The sending address isn't configured: this recap isn't offered to accounts yet and no email is sent.",
+    "ownerEmailErrSenderNotConfigured": "Email sending isn't set up yet: the recap can't be turned on for now."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",

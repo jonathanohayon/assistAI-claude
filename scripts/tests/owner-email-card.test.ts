@@ -352,4 +352,13 @@ for (const l of LOCALES) {
   assert.equal(messages("en").DashboardConfig.ownerEmailStateOn, "The recap of your calls is sent to this address.");
 }
 
+// #330: switching the recap on with no sender configured → 409, our line.
+assert.equal(ownerEmailSaveError(409, { error: "sender_not_configured", field: "ownerRecapEmailEnabled" }), "ownerEmailErrSenderNotConfigured");
+assert.equal(ownerEmailSaveError(409, { error: "other" }), "ownerEmailErrSave");
+for (const locale of ["fr", "en", "he"]) {
+  const dc = JSON.parse(readFileSync(join(ROOT, `messages/${locale}.json`), "utf8")).DashboardConfig;
+  assert.ok(dc.ownerEmailErrSenderNotConfigured, `${locale}: sender line`);
+  assert.doesNotMatch(dc.ownerEmailErrSenderNotConfigured, /resend|EMAIL_FROM/i, `${locale}: no supplier or env name`);
+}
+
 console.log("owner-email-card: ok");

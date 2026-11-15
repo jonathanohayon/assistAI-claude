@@ -61,11 +61,14 @@ export type OwnerEmailErrorKey =
   | "ownerEmailErrInvalid"
   | "ownerEmailErrSave"
   | "ownerEmailErrForbidden"
-  | "ownerEmailErrNoConfig";
+  | "ownerEmailErrNoConfig"
+  | "ownerEmailErrSenderNotConfigured";
 
 export function ownerEmailSaveError(status: number, body: unknown): OwnerEmailErrorKey {
   const error = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
   if (status === 400 && error === "invalid_email") return "ownerEmailErrInvalid";
+  // #330: switching the recap on while no sender is configured is refused.
+  if (status === 409 && error === "sender_not_configured") return "ownerEmailErrSenderNotConfigured";
   if (status === 403) return "ownerEmailErrForbidden";
   if (status === 404) return "ownerEmailErrNoConfig";
   // invalid_boolean / invalid_json: our own body was wrong; the user can
