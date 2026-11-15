@@ -25,6 +25,7 @@ import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
 import { renderContactCodeEmail } from "@/lib/contact-code-email";
 import { ltrIsolate } from "@/lib/phone-utils";
 import { configuredEmailSender } from "@/lib/email-sender";
+import { greetingName } from "@/lib/email-greeting";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 const SUPPORTED_LOCALES = ["fr", "he", "en"] as const;
@@ -293,7 +294,8 @@ export async function sendTrialDeletedEmail(
 export async function sendWelcomeEmail(
   to: string,
   opts: {
-    displayName?: string | null;
+    /** The person's own name; never the business name (lib/email-greeting.ts). */
+    personName?: string | null;
     phoneNumber: string;
     planKey: string;
     features: PlanFeatures;
@@ -309,8 +311,7 @@ export async function sendWelcomeEmail(
 
   const plan = getLocalizedPlan(locale, opts.planKey);
   const planLabel = plan.name;
-  const firstName =
-    (opts.displayName ?? "").trim().split(/\s+/)[0] || null;
+  const firstName = greetingName({ personName: opts.personName });
   const helloHtml = firstName
     ? t("introHtmlWithName", { name: firstName })
     : t("introHtmlNoName");
@@ -456,7 +457,8 @@ export async function sendSubscriptionConfirmationEmail(
     amount: number;
     /** "EUR" | "ILS" */
     currency: string;
-    displayName?: string | null;
+    /** The person's own name; never the business name (lib/email-greeting.ts). */
+    personName?: string | null;
     locale?: string | null;
   },
 ): Promise<SendResult> {
@@ -478,7 +480,7 @@ export async function sendSubscriptionConfirmationEmail(
   })} ${symbol}`;
   const periodLabel =
     opts.period === "annual" ? t("periodAnnual") : t("periodMonthly");
-  const firstName = (opts.displayName ?? "").trim().split(/\s+/)[0] || null;
+  const firstName = greetingName({ personName: opts.personName });
   const helloHtml = firstName
     ? t("helloWithName", { name: firstName })
     : t("helloNoName");
@@ -518,10 +520,12 @@ export async function sendSubscriptionConfirmationEmail(
       `</ul>`
     : "";
 
+  // Header: the magenta→rose signature (as the recap and test mails); white
+  // text stays AA on both stops (≥ 4.6:1).
   const html = `
     <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:0;background:#fff;">
-      <div style="background:linear-gradient(135deg,#be185d 0%,#ec4899 50%,#22d3ee 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
-        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.85);font-weight:600;">${t("eyebrow")}</p>
+      <div style="background:linear-gradient(135deg,#be185d 0%,#db2777 100%);padding:36px 32px;text-align:center;border-radius:16px 16px 0 0;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#fff;font-weight:600;">${t("eyebrow")}</p>
         <h1 style="margin:0;font-size:28px;font-weight:700;color:#fff;letter-spacing:-0.01em;">Tamara</h1>
       </div>
       <div style="padding:32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">
@@ -582,7 +586,11 @@ export async function sendSubscriptionConfirmationEmail(
 // ──────────────────────────────────────────────────────────────────────
 export async function sendNotificationTestEmail(
   to: string,
-  opts: { recipientName?: string | null; locale?: string | null } = {},
+  opts: {
+    /** The person's own name; never the business name (lib/email-greeting.ts). */
+    personName?: string | null;
+    locale?: string | null;
+  } = {},
 ): Promise<SendResult> {
   const locale = normalizeLocale(opts.locale);
   const t = await getTranslations({ locale, namespace: "Email.notificationTest" });
@@ -591,7 +599,8 @@ export async function sendNotificationTestEmail(
   const from = configuredEmailSender();
   if (!from) return { ok: false, error: "sender_not_configured" };
   const client = getResend();
-  const name = opts.recipientName?.trim() || t("defaultGreeting");
+  const name = greetingName({ personName: opts.personName });
+  const hello = name ? t("hello", { name }) : t("helloNoName");
   const subject = t("subject");
 
   if (!client) {
@@ -600,14 +609,14 @@ export async function sendNotificationTestEmail(
         `\nTo:      ${to}` +
         `\nFrom:    ${from}` +
         `\nSubject: ${subject}` +
-        `\nName:    ${name}` +
+        `\nName:    ${name ?? "-"}` +
         `\n==========================================================================\n`,
     );
     return { ok: true, fallback: "console_log" };
   }
 
   const text =
-    `${t("hello", { name })}\n\n` +
+    `${hello}\n\n` +
     `${t("intro")}\n\n` +
     `${t("confirm")}\n\n` +
     t("signature");
@@ -623,7 +632,7 @@ export async function sendNotificationTestEmail(
       <div style="padding:32px;background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;">
         <h2 style="font-size:20px;margin:0 0 12px;color:#0e7490;font-weight:700;">${t("heading")}</h2>
         <p style="font-size:15px;line-height:1.6;margin:0 0 20px;color:#1f2937;">
-          ${t("hello", { name })}
+          ${hello}
         </p>
         <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#475569;">
           ${t("intro")}

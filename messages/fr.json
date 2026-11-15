@@ -1903,7 +1903,7 @@
       "subject": "🔔 Test des notifications Tamara",
       "eyebrow": "Test des notifications",
       "heading": "Vos notifications email sont OK ✓",
-      "defaultGreeting": "à vous",
+      "helloNoName": "Bonjour,",
       "hello": "Bonjour {name},",
       "intro": "Ceci est un email de test envoyé depuis votre tableau de bord Tamara. Si vous lisez ce message, cela veut dire que les notifications email sont correctement configurées sur votre compte.",
       "confirm": "Vous recevrez désormais un récap email après chaque appel.",

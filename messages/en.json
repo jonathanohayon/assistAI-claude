@@ -1893,7 +1893,7 @@
       "subject": "🔔 Tamara — notification test",
       "eyebrow": "Notification test",
       "heading": "Your email notifications work ✓",
-      "defaultGreeting": "there",
+      "helloNoName": "Hi,",
       "hello": "Hi {name},",
       "intro": "This is a test email sent from your Tamara dashboard. If you're reading this, email notifications are correctly configured on your account.",
       "confirm": "You'll now receive an email recap after every call.",
