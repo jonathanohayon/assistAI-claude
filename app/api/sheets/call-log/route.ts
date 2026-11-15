@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
-import { resolveAgentCallerGoogle } from "@/lib/google";
+import { AGENT_CALLER_UNAUTHORIZED_BODY, resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import {
   ensureSheet,
@@ -42,6 +42,10 @@ export async function POST(req: NextRequest) {
   };
 
   const caller = await resolveAgentCallerGoogle(req);
+  if (caller.mode === "anonymous") {
+    // Unreachable behind requireInternalSecret; kept so no path can use a client.
+    return NextResponse.json(AGENT_CALLER_UNAUTHORIZED_BODY, { status: 401 });
+  }
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Sheet non connecté pour ce compte." },

@@ -6,9 +6,10 @@
 // GOOGLE_CALENDAR_ID, and a signed-in visitor used to book into their own
 // calendar and sheet. Here every answer is built from the clock alone.
 //
-// Shapes are copied from the anonymous "demo" branch of /api/calendar/* and
-// /api/sheets/contact (lib/demo-sandbox.ts), so the model sees the same field
-// names and value types as before:
+// Shapes are copied from the anonymous "demo" branch /api/calendar/* and
+// /api/sheets/contact used to have (removed: those routes now answer 401 to
+// anonymous callers), so the model sees the same field names and value types
+// as before:
 //   check_availability → { date, center, label, available_slots[, reason, suggested_dates] }
 //   book_appointment   → { success, simulated, center, summary }
 //   save_contact       → { success, simulated }

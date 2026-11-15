@@ -65,13 +65,22 @@ const checks: Check[] = [
   {
     name: "anonymous calendar find/cancel refused (401)",
     run: async () => {
-      // A fake phone/eventId: even if the sandbox were missing, nothing matches.
+      // A fake phone/eventId: even if the auth gate were missing, nothing matches.
       const find = await call("/api/calendar/find", json({ phone: "+15555550100" }));
       const cancel = await call("/api/calendar/cancel", json({ eventId: "smoke-test-nonexistent" }));
       return expect(
         find.status === 401 && cancel.status === 401,
         `find → ${find.status}, cancel → ${cancel.status}`,
       );
+    },
+  },
+  {
+    name: "anonymous calendar availability refused (401)",
+    run: async () => {
+      // Read-only probe. A 200 here means anyone can read the env calendar's
+      // free/busy again (the removed anonymous "demo" mode).
+      const r = await call("/api/calendar/availability", json({ date: "2030-01-07" }));
+      return expect(r.status === 401, `→ ${r.status}`);
     },
   },
   {

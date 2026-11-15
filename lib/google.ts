@@ -2,6 +2,7 @@ import { calendar as calendarApi } from "@googleapis/calendar";
 import { sheets as sheetsApi } from "@googleapis/sheets";
 import { eq } from "drizzle-orm";
 import { OAuth2Client } from "google-auth-library";
+import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -38,17 +39,6 @@ export function getOAuthClient(redirectUri?: string) {
 }
 
 /**
- * Legacy global client — uses GOOGLE_REFRESH_TOKEN from env. Used by the
- * agent's calendar/sheets tools when a tenant hasn't connected their own
- * Google account yet.
- */
-export function getAuthenticatedClient() {
-  const auth = getOAuthClient();
-  auth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return auth;
-}
-
-/**
  * Per-tenant OAuth client — call with the tenant's stored refresh_token.
  * Calendar and Sheets share scopes so a single refresh_token covers both.
  */
@@ -56,14 +46,6 @@ export function getAuthenticatedClientFor(refreshToken: string) {
   const auth = getOAuthClient();
   auth.setCredentials({ refresh_token: refreshToken });
   return auth;
-}
-
-export function getCalendar() {
-  return calendarApi({ version: "v3", auth: getAuthenticatedClient() });
-}
-
-export function getSheets() {
-  return sheetsApi({ version: "v4", auth: getAuthenticatedClient() });
 }
 
 export function getCalendarFor(refreshToken: string) {
@@ -140,13 +122,8 @@ export type AgentCallerGoogle =
     }
   | { mode: "user_no_google" }
   | { mode: "unknown_tenant"; dialedPhone: string }
-  | {
-      mode: "demo";
-      calendar: ReturnType<typeof getCalendar>;
-      sheets: ReturnType<typeof getSheets>;
-      calendarId: string;
-      sheetId: string | null;
-    };
+  /** Neither the worker's secret nor a session: no Google client at all. */
+  | { mode: "anonymous" };
 
 /**
  * Resolves the Google clients an agent route should use, in priority order:
@@ -161,8 +138,11 @@ export type AgentCallerGoogle =
  *      own credentials. Refuses with `user_no_google` if they haven't
  *      connected Google yet.
  *
- *   3. **Public demo** (marketing Hero, no session) — uses the global admin
- *      credentials so the homepage demo keeps working.
+ *   3. **Anonymous** (neither) — `anonymous`, no client. There used to be a
+ *      "demo" mode here that ran on the env GOOGLE_CALENDAR_ID calendar, so
+ *      anyone could read its free/busy; the home demo now uses canned tools
+ *      (app/api/demo/tools, lib/demo-tools.ts) and the routes answer 401
+ *      (requireAgentCaller below).
  *
  * `req` is optional only so callers without one (none currently) keep
  * compiling; pass it whenever available so SIP routing works.
@@ -176,7 +156,7 @@ export async function resolveAgentCallerGoogle(
     // Outbound call (T4, lib/call-direction.ts): the account id ONLY — the
     // phone is our caller id (maybe the trunk's default number), never an
     // identity. No account id, or no valid secret → refused, never a
-    // session / demo / phone fallback.
+    // session / phone fallback.
     const outboundUserId = outboundCallerUserId(req.headers);
     if (outboundUserId !== null) {
       if (!expected || secret !== expected || !outboundUserId) return { mode: "unknown_tenant", dialedPhone: "" };
@@ -187,7 +167,7 @@ export async function resolveAgentCallerGoogle(
     if (expected && secret === expected) {
       // Routing : priorité x-tenant-phone (SIP). Sinon x-tenant-user-id
       // (web LiveTest, où il n'y a pas de phone dialed). Sinon
-      // unknown_tenant → fallback demo.
+      // unknown_tenant (refused).
       const dialed = (req.headers.get("x-tenant-phone") ?? "").trim();
       const tenantUserId = (req.headers.get("x-tenant-user-id") ?? "").trim();
       if (dialed) {
@@ -213,11 +193,31 @@ export async function resolveAgentCallerGoogle(
     return { mode: "user_no_google" };
   }
 
+  return { mode: "anonymous" };
+}
+
+export const AGENT_CALLER_UNAUTHORIZED_BODY = {
+  error: "unauthorized",
+  message: "Authentication required (x-internal-secret or a session).",
+} as const;
+
+/**
+ * Gate for the agent-facing calendar / sheets routes, run FIRST in the
+ * handler: a request with neither the worker's internal secret nor a
+ * signed-in session gets 401 before any validation, log write or Google
+ * call. Anything else passes through untouched, so the worker and session
+ * paths keep their exact behaviour (resolveAgentCallerGoogle decides the
+ * rest). The secret test is the resolver's own.
+ */
+export async function requireAgentCaller(
+  req: { headers: Headers },
+): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
+  const expected = process.env.INTERNAL_SECRET;
+  if (expected && req.headers.get("x-internal-secret") === expected) return { ok: true };
+  const session = await agentCallerDeps.auth();
+  if (session?.user?.id) return { ok: true };
   return {
-    mode: "demo",
-    calendar: getCalendar(),
-    sheets: getSheets(),
-    calendarId: process.env.GOOGLE_CALENDAR_ID || "primary",
-    sheetId: process.env.GOOGLE_SHEET_ID || null,
+    ok: false,
+    response: NextResponse.json(AGENT_CALLER_UNAUTHORIZED_BODY, { status: 401 }),
   };
 }
