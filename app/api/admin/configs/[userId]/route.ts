@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
+import { withoutContactConfirmations } from "@/lib/contact-confirmation";
+import { contactConfirmationsWrite } from "@/lib/contact-confirmation-store";
 import { logEvent } from "@/lib/logger";
 import { clamp } from "@/lib/numbers";
 import { sanitizePersonality } from "@/lib/personality";
@@ -47,7 +49,8 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     user,
     config: cfg
       ? {
-          ...withoutToolsStore(cfg),
+          // N1: the confirmation record is never returned (N2 adds its own view).
+          ...withoutContactConfirmations(withoutToolsStore(cfg)),
           voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg),
           voiceChoice: await voiceChoiceFor(cfg, true),
           personaConfig: currentInboundPersona(cfg.personaConfig, cfg),
@@ -202,9 +205,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (personaWrite) Object.assign(updates, personaWrite.updates);
   else updates.personaConfig = inboundPersonaAfterLegacy(currentRow, updates);
 
+  // Verified numbers (N1), same rule as the tenant route: an admin SAVING a
+  // new value records it unconfirmed too (vouching is a separate action,
+  // lib/contact-confirmation-store.ts). Kept out of `updates` (event unchanged).
+  const confirmations = contactConfirmationsWrite(currentRow, updates);
+
   const [updated] = await db
     .update(agentConfigs)
-    .set(updates)
+    .set({ ...updates, ...confirmations })
     .where(eq(agentConfigs.userId, userId))
     .returning();
 
@@ -223,7 +231,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   void warmGreetingAudioForUser(userId);
 
   return NextResponse.json({
-    ...withoutToolsStore(updated),
+    ...withoutContactConfirmations(withoutToolsStore(updated)),
     voiceConfig: currentInboundVoice(updated.voiceConfig, updated),
     // V8c: recomputed after the write — which of OUR ids is now selected.
     voiceChoice: await voiceChoiceFor(updated, true),
