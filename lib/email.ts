@@ -22,6 +22,7 @@ import { Resend } from "resend";
 import type { PlanFeatures } from "@/lib/plan-features";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
+import { renderContactCodeEmail } from "@/lib/contact-code-email";
 import { ltrIsolate } from "@/lib/phone-utils";
 import { configuredEmailSender } from "@/lib/email-sender";
 
@@ -675,6 +676,37 @@ export async function sendOwnerRecapEmail(
     return { ok: true, fallback: "console_log" };
   }
 
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) {
+      return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "send error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Confirmation code for the owner recap address (verified contacts, N2;
+//   lib/recap-email-code/*). Tenant-triggered: never from the supplier's
+//   default sender. The code is NEVER logged: without a key nothing is
+//   printed but a neutral line, and the caller answers not_configured.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendContactCodeEmail(
+  to: string,
+  opts: { code: string; locale?: string | null },
+): Promise<SendResult> {
+  const locale = normalizeLocale(opts.locale);
+  const t = await getTranslations({ locale, namespace: "Email.contactCode" });
+  const { subject, text, html } = renderContactCodeEmail({ locale, code: opts.code }, (key) => t(key));
+  const from = configuredEmailSender();
+  if (!from) return { ok: false, error: "sender_not_configured" };
+  const client = getResend();
+  if (!client) {
+    console.warn("[email] confirmation code not sent (no email key configured)");
+    return { ok: true, fallback: "console_log" };
+  }
   try {
     const res = await client.emails.send({ from, to: [to], subject, text, html });
     if (res.error) {
