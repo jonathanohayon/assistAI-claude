@@ -73,6 +73,13 @@ export function scrubMetadata(meta: Record<string, unknown>, path = ""): Record<
       out[key] = value;
       continue;
     }
+    // A raw LiveKit room name used as call id (workers before 2026-11-05) can
+    // hold the caller's number: store its sha256/16 instead, the form the
+    // Calls join already accepts (lib/calls/core.ts callKeys, hashCallId).
+    if (key === "callId" && typeof value === "string" && hasPii(value)) {
+      out[key] = createHash("sha256").update(value, "utf8").digest("hex").slice(0, 16);
+      continue;
+    }
     if (typeof value === "string" && (isPhone(value) || isEmail(value))) {
       const base = baseName(key);
       out[`${base}Hash`] = piiHash(value);

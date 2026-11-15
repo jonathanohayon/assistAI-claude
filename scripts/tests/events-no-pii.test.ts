@@ -22,7 +22,7 @@ import {
   maskPii,
   piiHash,
 } from "../../lib/event-pii";
-import { attachEvents, type JoinEvent } from "../../lib/calls/core";
+import { attachEvents, hashCallId, type JoinEvent } from "../../lib/calls/core";
 import { assertScanRead, scanSources } from "./helpers/source-scan";
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/;
@@ -191,6 +191,18 @@ for (const [label, ev] of RAW) assertClean(label, eventForStorage(ev));
 }
 
 // ── 3. Readers on the new shape ─────────────────────────────────────────
+{
+  // A raw room-name call id holding the caller's number is stored as its
+  // sha256/16: the Calls join still ties the event to its call.
+  const room = "call-_+15550100123_AbCd";
+  const stored = eventForStorage({ message: "Transfer", metadata: { callId: room, roomName: room, ok: true } });
+  assertClean("raw room-name callId", stored);
+  assert.equal(stored.metadata["callId"], hashCallId(room));
+  assert.equal(stored.metadata["roomName"], "call-_…0123_AbCd", "room name masked, prefix kept for the inbound filter");
+  const e: JoinEvent = { id: "t1", userId: "u1", event: "call_transfer", createdAt: new Date("2026-11-01T10:00:00Z"), metadata: stored.metadata };
+  const joined = attachEvents([{ id: "c9", userId: "u1", callId: room, createdAt: new Date("2026-11-01T10:00:05Z"), durationSeconds: 60 }], [e]);
+  assert.ok(joined.get("c9")?.some((x) => x.id === "t1"), "hashed call id joins the raw-id call");
+}
 {
   // Calls page join: call_received is attached by callId (stamped with calls.id).
   const stored = eventForStorage(RAW[0][1]);
