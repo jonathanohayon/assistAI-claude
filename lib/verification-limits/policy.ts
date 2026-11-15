@@ -1,6 +1,8 @@
 // Caps on the two public paths that send a verification email:
 //   - POST /api/auth/resend-verification (email from the body, no session)
 //   - the signup server action (each new address = a trial tenant + 1 email)
+// and on the public path that checks the emailed code:
+//   - POST /api/auth/verify-email (email + code from the body, no session)
 // Counts live in the shared DB limiter (lib/rate-limit-db.ts). Limiter keys
 // are sha256 hex digests, so no address and no IP is stored in clear.
 
@@ -27,8 +29,18 @@ export const SIGNUP_BUCKET = "signup";
 export const SIGNUP_PER_IP_PER_HOUR = 5;
 export const SIGNUP_GLOBAL_PER_HOUR = 100;
 
+// Verify: 10 per hour per client IP, 10 per hour per address (a code allows 5
+// tries, so a real user who mistypes and asks for a new code still fits),
+// 300 per hour in total.
+export const VERIFY_IP_BUCKET = "verif_verify_ip";
+export const VERIFY_PER_IP_PER_HOUR = 10;
+export const VERIFY_ADDRESS_BUCKET = "verif_verify_address";
+export const VERIFY_PER_ADDRESS_PER_HOUR = 10;
+export const VERIFY_GLOBAL_BUCKET = "verif_verify_global";
+export const VERIFY_GLOBAL_PER_HOUR = 300;
+
 /** Neutral error codes these paths may return. No supplier, no env var, no raw error. */
-export const VERIFICATION_ERRORS = ["invalid_email", "cooldown", "rate_limited"] as const;
+export const VERIFICATION_ERRORS = ["invalid_email", "cooldown", "rate_limited", "invalid_request", "invalid_code"] as const;
 export type VerificationError = (typeof VERIFICATION_ERRORS)[number];
 
 /** Limiter key for an address or an IP: sha256 hex of the normalised value. */

@@ -18,6 +18,23 @@ const CODE_LENGTH = 4;
 const CODE_TTL_MS = 15 * 60 * 1000; // 15min
 const MAX_ATTEMPTS = 5;
 const MIN_RESEND_INTERVAL_MS = 60 * 1000; // 60s
+const CODE_HASH_COST = 10;
+
+// Equal-time padding for the public verify route: every outcome that does not
+// reach a real comparison (unknown address, no active code, expired code,
+// attempts exhausted) runs one bcrypt compare against this throwaway hash, at
+// the same cost as a real code hash, so the answer time does not tell which
+// case it was. The hashed value is random and never stored.
+let dummyHash: Promise<string> | null = null;
+const getDummyHash = (): Promise<string> => {
+  dummyHash ??= bcrypt.hash(crypto.randomUUID(), CODE_HASH_COST);
+  return dummyHash;
+};
+
+/** One bcrypt compare that can never match. */
+export async function burnCodeCompare(code: string): Promise<void> {
+  await bcrypt.compare(code, await getDummyHash());
+}
 
 /**
  * 4 chiffres aléatoires sécurisés via crypto.getRandomValues. Évite le
@@ -86,7 +103,7 @@ export async function createEmailVerification(
     );
 
   const code = generateCode();
-  const codeHash = await bcrypt.hash(code, 10);
+  const codeHash = await bcrypt.hash(code, CODE_HASH_COST);
   const expiresAt = new Date(Date.now() + CODE_TTL_MS);
 
   await db.insert(emailVerifications).values({
@@ -131,6 +148,7 @@ export async function verifyEmailCode(
     .limit(1);
 
   if (!active) {
+    await burnCodeCompare(cleaned);
     return { ok: false, reason: "no_code" };
   }
 
@@ -140,6 +158,7 @@ export async function verifyEmailCode(
       .update(emailVerifications)
       .set({ consumedAt: drizzleSql`now()` })
       .where(eq(emailVerifications.id, active.id));
+    await burnCodeCompare(cleaned);
     return { ok: false, reason: "expired" };
   }
 
@@ -148,6 +167,7 @@ export async function verifyEmailCode(
       .update(emailVerifications)
       .set({ consumedAt: drizzleSql`now()` })
       .where(eq(emailVerifications.id, active.id));
+    await burnCodeCompare(cleaned);
     return { ok: false, reason: "max_attempts" };
   }
 
@@ -176,4 +196,34 @@ export async function verifyEmailCode(
     .where(eq(users.id, userId));
 
   return { ok: true };
+}
+
+/**
+ * Code check for an account that is ALREADY verified (the public verify route
+ * answers it like a first success, see lib/verification-limits/verify.ts).
+ * Accepts only the latest code issued to the user, consumed or not, while it
+ * is within its TTL and its attempt budget; a wrong guess spends an attempt,
+ * as it would before verification. Always runs exactly one bcrypt compare.
+ * Changes nothing else: the account stays verified either way.
+ */
+export async function matchesLatestCode(userId: string, code: string): Promise<boolean> {
+  const cleaned = (code ?? "").trim();
+  const [latest] = await db
+    .select()
+    .from(emailVerifications)
+    .where(eq(emailVerifications.userId, userId))
+    .orderBy(desc(emailVerifications.createdAt))
+    .limit(1);
+  if (!latest || new Date(latest.expiresAt).getTime() < Date.now() || latest.attempts >= MAX_ATTEMPTS) {
+    await burnCodeCompare(cleaned);
+    return false;
+  }
+  const ok = await bcrypt.compare(cleaned, latest.codeHash);
+  if (!ok) {
+    await db
+      .update(emailVerifications)
+      .set({ attempts: latest.attempts + 1 })
+      .where(eq(emailVerifications.id, latest.id));
+  }
+  return ok;
 }
