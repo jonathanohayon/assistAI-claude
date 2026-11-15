@@ -14,8 +14,21 @@
 // tenant never sees. Developer-mode and admin-only areas are not rendered
 // for the mock tenant (developer mode off, role "user"), so they are out of
 // the scan by construction. Exit 1 on any match.
+//
+// Not scanned (each one printed when it applies):
+//   - e-mail addresses (the tenant's own data: tenant@example.test);
+//   - the plan cards' feature lines (Plans.*.features / excludedFeatures),
+//     shown on /dashboard/billing but shared word for word with the public
+//     pricing cards, whose copy is a separate decision (audit section D).
 
+import { readFileSync } from "node:fs";
 import { visibleText, wordHits } from "./tenant-words-match.mjs";
+
+/** The plan cards' feature lines for a locale (shared with the public pricing). */
+function planCardLines(locale) {
+  const plans = JSON.parse(readFileSync(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")).Plans ?? {};
+  return Object.values(plans).flatMap((p) => [...(p?.features ?? []), ...(p?.excludedFeatures ?? [])]);
+}
 
 const [base, email, password] = process.argv.slice(2);
 if (!base || !email || !password) {
@@ -78,8 +91,16 @@ for (const locale of LOCALES) {
       console.log(`${page}: HTTP ${res.status} (not reachable for this tenant, skipped)`);
       continue;
     }
-    const text = visibleText(await res.text());
+    let text = visibleText(await res.text());
+    const skipped = planCardLines(locale).filter((line) => wordHits(line, locale).size && text.includes(line));
+    for (const line of skipped) text = text.split(line).join(" ");
+    if (skipped.length) console.log(`  · not scanned: ${skipped.length} plan-card line(s) shared with the public pricing: ${skipped.map((l) => `"${l}"`).join(", ")}`);
     scanned++;
+    // A near-empty page (a loading shell) would pass without proving anything.
+    if (text.trim().length < 200) {
+      failed = true;
+      console.log(`  ✗ only ${text.trim().length} chars of visible text: nothing to scan`);
+    }
     const h = wordHits(text, locale);
     console.log(`${page}: ${text.length} chars of visible text${h.size ? "" : ", clean"}`);
     for (const [word, ctx] of h) {

@@ -47,9 +47,15 @@ const withoutProductName = (text) => text.replace(/\bGoogle Sheets\b/g, "Google 
  */
 export const stripIcuArguments = (message) => message.replace(/\{\s*[A-Za-z_]\w*\s*(?=[,}])/g, "{");
 
+/**
+ * Removes e-mail addresses: they are the tenant's own data, not copy (the
+ * mock tenant is tenant@example.test, a real one may be anything).
+ */
+export const withoutEmails = (text) => text.replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "[email]");
+
 /** Map word -> up to 3 short contexts where it occurs in `text`. */
 export function wordHits(text, locale) {
-  const t = withoutProductName(text);
+  const t = withoutProductName(withoutEmails(text));
   const out = new Map();
   for (const [label, re] of wordRules(locale)) {
     for (const m of t.matchAll(re)) {
