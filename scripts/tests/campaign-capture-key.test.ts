@@ -85,7 +85,7 @@ for (const l of LOCALES) {
 // The real component (store-backed): developer mode is unknown on the server → off.
 {
   const draft: CampaignDraft = {
-    id: null,
+    id: undefined,
     name: "Mock campaign",
     goalPreset: "custom",
     objective: "Mock objective",
@@ -96,7 +96,7 @@ for (const l of LOCALES) {
     concurrency: DEFAULT_CONCURRENCY,
     retryRules: { ...DEFAULT_RETRY_RULES },
     callWindow: { ...DEFAULT_CALL_WINDOW },
-  } as CampaignDraft;
+  };
   const setup = (isAdmin: boolean) =>
     html(createElement(CampaignSetupStep, { draft, onChange: () => {}, agents: [], fromNumbers: [], isAdmin, captureOn: true }));
   assert.equal(keyInputs(setup(false)).length, 0, "tenant via the setup step: no key");
