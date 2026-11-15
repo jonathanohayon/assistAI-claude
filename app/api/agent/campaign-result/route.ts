@@ -9,6 +9,8 @@ import { CALL_OUTCOMES, type CallOutcome } from "@/lib/campaigns/constants";
 import { campaignCallRow } from "@/lib/campaigns/campaign-call-row";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { scheduleCampaignCapture } from "@/lib/campaigns/capture-runtime";
+import { shouldAnalyze } from "@/lib/campaigns/analysis";
+import { scheduleCampaignAnalysis } from "@/lib/campaigns/analysis-runtime";
 import { logEvent } from "@/lib/logger";
 
 // POST /api/agent/campaign-result  (x-internal-secret)
@@ -99,6 +101,13 @@ export async function POST(req: NextRequest) {
       transcript,
       schema: campaign.extractionSchema,
     });
+  }
+
+  // Post-call analysis (success verdict, sentiment, summary), after the
+  // response; write-once through the analysis claim. The cron catch-up picks
+  // up a call after() missed. No switch: it used to run on the results GET.
+  if (inserted && shouldAnalyze(outcome, transcript)) {
+    scheduleCampaignAnalysis(inserted.id);
   }
 
   // Retry si l'issue est dans retryOn et qu'il reste des tentatives.

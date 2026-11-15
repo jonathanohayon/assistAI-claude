@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { runCampaignCaptureCatchUp } from "@/lib/campaigns/capture-runtime";
+import { runCampaignAnalysisCatchUp } from "@/lib/campaigns/analysis-runtime";
 import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 
 // GET /api/cron/campaign-dispatch?limit=N  (x-internal-secret)
@@ -13,7 +14,12 @@ import { dispatchDueJobs } from "@/lib/campaigns/dispatch";
 // one bounded capture catch-up pass (calls after() missed), INDEPENDENT of
 // CAMPAIGN_DISPATCH (it runs when dispatch is off or dry too) and it never
 // dials. The response then gains one counts-only `capture` field. OFF: the
-// exact pre-catch-up code path and response bytes.
+// pre-catch-up response bytes.
+//
+// Every tick (no switch) also runs one bounded post-call ANALYSIS catch-up
+// pass (lib/campaigns/analysis.ts: calls after() missed), independent of
+// CAMPAIGN_DISPATCH and CAMPAIGN_CAPTURE, never dials. Its counts go to the
+// `campaign_analysis_catchup` event only: the response bytes are unchanged.
 
 export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
@@ -22,13 +28,15 @@ export async function GET(req: NextRequest) {
     Math.max(Number(req.nextUrl.searchParams.get("limit")) || 10, 1),
     50,
   );
+  const analysis = runCampaignAnalysisCatchUp(); // never rejects
   if (captureMode() !== "on") {
-    const result = await dispatchDueJobs(limit);
-    return NextResponse.json({ ok: true, ...result });
+    const [dispatch] = await Promise.allSettled([dispatchDueJobs(limit), analysis]);
+    if (dispatch.status === "rejected") throw dispatch.reason;
+    return NextResponse.json({ ok: true, ...dispatch.value });
   }
-  // Both run; a dispatch failure still lets the catch-up finish, then
-  // surfaces exactly as before (the catch-up itself never rejects).
-  const [dispatch, capture] = await Promise.allSettled([dispatchDueJobs(limit), runCampaignCaptureCatchUp()]);
+  // All run; a dispatch failure still lets the catch-ups finish, then
+  // surfaces exactly as before (the catch-ups themselves never reject).
+  const [dispatch, capture] = await Promise.allSettled([dispatchDueJobs(limit), runCampaignCaptureCatchUp(), analysis]);
   if (dispatch.status === "rejected") throw dispatch.reason;
   return NextResponse.json({
     ok: true,

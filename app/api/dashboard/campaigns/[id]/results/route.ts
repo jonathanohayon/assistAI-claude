@@ -2,31 +2,23 @@ import { and, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { campaignCalls, campaigns, outboundAgents } from "@/lib/db/schema";
-import { analyzeCampaignCall } from "@/lib/campaigns/analyze";
+import { campaignCalls, campaigns } from "@/lib/db/schema";
+import { isAnalysisPending } from "@/lib/campaigns/analysis";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
 import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { resultsCallView } from "@/lib/campaigns/results-call-view";
 
-// Node runtime (analyse LLM). L'analyse paresseuse peut prendre du temps.
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
 
 interface Ctx {
   params: Promise<{ id: string }>;
 }
 
-// Combien d'appels non encore analysés on traite par requête (borne latence ;
-// les suivants seront analysés au prochain chargement).
-const ANALYZE_BUDGET = 24;
-const ANALYZE_CONCURRENCY = 5;
-
 // GET /api/dashboard/campaigns/[id]/results?asUserId=
 // Renvoie les discussions de la campagne (transcriptions + verdict critères de
-// succès + sentiment + résumé) et des agrégats pour les graphes. Analyse
-// paresseusement (LLM) les appels connectés pas encore analysés et met en
-// cache le résultat dans campaign_calls.
+// succès + sentiment + résumé) et des agrégats pour les graphes.
+// Read-only: returns what is stored; the analysis runs after the call.
 export async function GET(req: NextRequest, ctx: Ctx) {
   const r = await resolveTargetUserId(req);
   if ("unauthorized" in r)
@@ -54,50 +46,14 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .orderBy(desc(campaignCalls.createdAt))
     .limit(500);
 
-  // ── Analyse paresseuse des appels connectés non encore analysés ─────────
-  // Critère de succès : niveau campagne. Langue : depuis l'agent, fallback "fr".
-  const agent = campaign.agentId
-    ? ((
-        await db
-          .select({ language: outboundAgents.language })
-          .from(outboundAgents)
-          .where(eq(outboundAgents.id, campaign.agentId))
-          .limit(1)
-      )[0] ?? null)
-    : null;
+  // READ-ONLY: no LLM call, no write. The analysis runs after the call
+  // (lib/campaigns/analysis.ts); a call not analysed yet shows success null,
+  // sentiment null, summary "" (as before its analysis). analyzedNow stays in
+  // the shape and is always 0; pendingAnalysis counts the calls still
+  // waiting for their analysis.
   const successCriteria = campaign.successCriteria || "";
-  const language = agent?.language ?? "fr";
-  const toAnalyze = rows.filter(
-    (c) =>
-      c.outcome === "connected" &&
-      Array.isArray(c.transcript) &&
-      c.transcript.length > 0 &&
-      !c.summary,
-  );
-  let analyzed = 0;
-  const queue = toAnalyze.slice(0, ANALYZE_BUDGET);
-  for (let i = 0; i < queue.length; i += ANALYZE_CONCURRENCY) {
-    const batch = queue.slice(i, i + ANALYZE_CONCURRENCY);
-    await Promise.all(
-      batch.map(async (c) => {
-        const a = await analyzeCampaignCall({
-          transcript: c.transcript,
-          objective: campaign.objective,
-          successCriteria,
-          language,
-        });
-        if (!a) return;
-        analyzed++;
-        c.disposition = a.success;
-        c.sentiment = a.sentiment;
-        c.summary = a.summary;
-        await db
-          .update(campaignCalls)
-          .set({ disposition: a.success, sentiment: a.sentiment, summary: a.summary })
-          .where(eq(campaignCalls.id, c.id));
-      }),
-    );
-  }
+  const now = new Date();
+  const pendingAnalysis = rows.filter((c) => isAnalysisPending(c, now)).length;
 
   // ── Agrégats pour les graphes ───────────────────────────────────────────
   const byOutcome: Record<string, number> = {};
@@ -143,8 +99,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       byOutcome,
       bySentiment,
       perDay,
-      analyzedNow: analyzed,
-      pendingAnalysis: Math.max(0, toAnalyze.length - queue.length),
+      analyzedNow: 0,
+      pendingAnalysis,
     },
     // `captured` (M3a) is present ONLY when CAMPAIGN_CAPTURE is on.
     calls: rows.map((c) => resultsCallView(c, mode)),

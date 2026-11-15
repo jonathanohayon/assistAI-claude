@@ -2,9 +2,11 @@
 // critères de succès sont remplis, le sentiment, et un résumé d'une ligne.
 // Le résultat est mis en cache dans campaign_calls (disposition/sentiment/
 // summary) pour que l'écran analytics se charge instantanément ensuite.
+// Called after the call only (lib/campaigns/analysis-runtime.ts), never from a GET.
 // SERVER-ONLY.
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+const LLM_TIMEOUT_MS = 30_000;
 const MODEL =
   process.env.CAMPAIGN_ANALYZE_MODEL ??
   process.env.SUMMARY_MODEL ??
@@ -73,6 +75,8 @@ Règles :
           { role: "user", content: `Transcription :\n\n${dialog}` },
         ],
       }),
+      // Bounded: it now runs inside the cron tick and after() too.
+      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const data = (await res.json()) as {
