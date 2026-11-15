@@ -83,9 +83,7 @@ const LIVE: AgentState = { state: "live", reason: null };
 const TO_ACTIVATE: AgentState = { state: "to_activate", reason: null };
 const SUB: AgentState = { state: "attention", reason: "subscription_inactive" };
 const CONFIG: AgentState = { state: "attention", reason: "config_unavailable" };
-// #339 adds this reason to AgentState; built as a plain object so the test
-// compiles on main before it lands.
-const ENGINE = { state: "attention", reason: "engine_unreachable" } as const;
+const ENGINE: AgentState = { state: "attention", reason: "engine_unreachable" };
 
 const PLANS_HREF = /href="(\/[a-z]{2})?\/dashboard\/billing"/;
 const SUPPORT_HREF = /href="https:\/\/wa\.me\/\d+\?text=/;

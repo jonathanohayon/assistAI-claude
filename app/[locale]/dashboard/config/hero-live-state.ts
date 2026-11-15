@@ -2,17 +2,18 @@
  * What the dashboard hero may claim about the agent answering calls.
  *
  * Source of truth: `stats.agentState`, computed by the server
- * (lib/agent-state/compute.ts: number → subscription/trial → inbound config).
+ * (lib/agent-state/compute.ts: number → subscription/trial → inbound config
+ * → worker heartbeat).
  * When it is missing or not a shape we know, we fall back to the older rule
  * (#319): a phone number means "live", no number means "to activate". The
  * fallback NEVER yields "attention": a warning is only shown when the server
  * said so.
  *
  * Adding a state is one row in HERO_STATES plus its message keys. Rows are
- * keyed by "state" or "attention:<reason>" as plain strings, so a reason the
- * server adds before this build knows its type (e.g. engine_unreachable,
- * #339) still compiles; an attention reason without a row falls back to the
- * number rule. The server shape is lib/agent-state/types.ts (AgentState).
+ * keyed by "state" or "attention:<reason>" as plain strings, so a payload
+ * newer than this build still renders safely: an attention reason without a
+ * row falls back to the number rule. The server shape is
+ * lib/agent-state/types.ts (AgentState).
  */
 
 export type HeroStatus = "live" | "to_activate" | "attention";
