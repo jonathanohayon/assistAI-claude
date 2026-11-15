@@ -3,6 +3,9 @@
 // (DashboardConfig.pageSubtitle, DashboardConfig.instructionsLabel). Proves
 // they are gone from fr/en/he AND that no source file still reads them, so
 // next-intl can't render a raw key on a tenant screen.
+// Public pass (audit section D): Hero.stats.latency (the hero shows
+// availability, languages and calls) and the whole HowItWorks namespace
+// (replaced by Journey), neither rendered anywhere.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -14,12 +17,18 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["LiveTest", "kicker"],
   ["DashboardConfig", "pageSubtitle"],
   ["DashboardConfig", "instructionsLabel"],
+  ["Hero", "stats.latency"],
 ];
+// Whole namespaces removed: no translator may be bound to them.
+const REMOVED_NAMESPACES = ["HowItWorks"];
+const at = (m: Record<string, unknown>, path: string) =>
+  path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], m);
 
 // 1. Gone from the three message files.
 for (const l of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(join(ROOT, `messages/${l}.json`), "utf8"));
-  for (const [ns, key] of REMOVED) assert.equal(m[ns]?.[key], undefined, `${l}: ${ns}.${key} removed`);
+  for (const [ns, key] of REMOVED) assert.equal(at(m, `${ns}.${key}`), undefined, `${l}: ${ns}.${key} removed`);
+  for (const ns of REMOVED_NAMESPACES) assert.equal(m[ns], undefined, `${l}: namespace ${ns} removed`);
 }
 
 // 2. No source file reads them. A key is read either as a dotted literal
@@ -52,9 +61,15 @@ for (const dir of ["app", "components", "lib", "hooks", "i18n"]) {
       if (src.includes(`${ns}.${key}`)) offenders.push(`${relative(ROOT, file)}: "${ns}.${key}"`);
       const binding = new RegExp(`(?:const|let)\\s+(\\w+)\\s*=\\s*(?:await\\s+)?(?:useTranslations|getTranslations)\\(\\s*(?:["'\`]${ns}["'\`]|\\{[^}]*namespace:\\s*["'\`]${ns}["'\`][^}]*\\})`, "g");
       for (const [, t] of src.matchAll(binding)) {
-        if (new RegExp(`\\b${escape(t)}\\(\\s*["'\`]${key}["'\`]`).test(src)) offenders.push(`${relative(ROOT, file)}: ${t}("${key}") on ${ns}`);
+        if (new RegExp(`\\b${escape(t)}\\(\\s*["'\`]${escape(key)}["'\`]`).test(src)) offenders.push(`${relative(ROOT, file)}: ${t}("${key}") on ${ns}`);
       }
     }
+    for (const ns of REMOVED_NAMESPACES) {
+      if (new RegExp(`["'\`]${ns}(?:\\.\\w|["'\`])`).test(src)) offenders.push(`${relative(ROOT, file)}: reads namespace ${ns}`);
+    }
+    // The hero renders t(`stats.${stat.labelKey}`): a stat declared with
+    // labelKey "latency" would read the removed Hero.stats.latency.
+    if (/labelKey:\s*["'`]latency["'`]/.test(src)) offenders.push(`${relative(ROOT, file)}: a hero stat with labelKey "latency"`);
   }
 }
 assert.ok(scanned > 100, `source files scanned (${scanned})`);

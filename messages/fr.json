@@ -86,7 +86,6 @@
     "ctaLiveDemo": "Parler à Tamara maintenant",
     "stats": {
       "availability": "Disponibilité",
-      "latency": "Temps de réponse",
       "languages": "Langues · FR · HE · EN",
       "calls": "Appels simultanés"
     },
@@ -146,26 +145,6 @@
       "f3": "Notifications client"
     }
   },
-  "HowItWorks": {
-    "kicker": "Comment ça marche",
-    "title": "Quatre étapes. Zéro friction.",
-    "step1": {
-      "title": "Configurez votre assistante",
-      "desc": "Centres, horaires, prestations, ton de la voix, langues — depuis un dashboard simple. Aucune ligne de code."
-    },
-    "step2": {
-      "title": "Connectez votre calendrier",
-      "desc": "Google Calendar en deux clics. L'agent voit vos créneaux et écrit dedans en temps réel."
-    },
-    "step3": {
-      "title": "Rebranchez votre numéro",
-      "desc": "Un numéro dédié, ou redirection de votre ligne existante. Vous gardez votre numéro."
-    },
-    "step4": {
-      "title": "Vos clients parlent à l'IA",
-      "desc": "La conversation est naturelle, polie, et toujours dans la langue du client."
-    }
-  },
   "Features": {
     "kicker": "Fonctionnalités",
     "title": "Tout ce qu'une vraie secrétaire fait. Sans pause-café.",
@@ -183,7 +162,7 @@
         "desc": "Lit et écrit dans Google Calendar en temps réel. Aucun double booking."
       },
       "crm": {
-        "title": "Fiche client remplie toute seule",
+        "title": "Fiche client remplie automatiquement",
         "desc": "Chaque appel enregistre la cliente dans votre tableau Google Sheets. Aucune fiche perdue."
       },
       "reschedule": {

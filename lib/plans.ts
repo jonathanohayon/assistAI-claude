@@ -101,7 +101,7 @@ export const PLANS: readonly Plan[] = [
     bestFor: "cliniques et entreprises multi-sites",
     onboardingNotes: [
       "Tu peux rattacher jusqu'à 3 établissements / calendriers distincts.",
-      "Notre équipe te contactera sous 24h pour la configuration (personnalité, voix, centres).",
+      "Notre équipe te contactera sous 24h pour la configuration (personnalité, voix, établissements).",
     ],
   },
   {
