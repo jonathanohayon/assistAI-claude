@@ -5,9 +5,11 @@
 //
 // What is personal data here: a caller's phone number, a lead's number, the
 // owner's WhatsApp number, any user's email address. They are stored as
-//   - `<key>Hash`  : sha256 of the normalised value, first 12 hex. Enough to
-//                    correlate two events about the same person; NOT
-//                    anonymisation (a phone number space can be enumerated).
+//   - `<key>Hash`  : HMAC-SHA256 of the normalised value under a server key
+//                    (EVENT_PII_HASH_KEY), first 12 hex. Enough to correlate
+//                    two events about the same person. Without the key it
+//                    falls back to a plain sha256, which is pseudonymisation
+//                    only (a phone number space can be enumerated).
 //   - `<key>Last4` : the last 4 digits of a phone number, for display ("…1234").
 // and masked inside free text ("…1234" for a number, "[email]" for an address).
 //
@@ -18,7 +20,7 @@
 //   - lib/calls/query.ts tells web sessions from calls by toNumber = '';
 //   - /api/dashboard/call-metrics and the Monitoring view label SIP calls by it.
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 /** Metadata paths whose value is the tenant's own line, kept in clear. */
 export const KEPT_KEY_PATHS: readonly string[] = ["toNumber", "tenantLine", "origin.calledNumber"];
@@ -30,11 +32,32 @@ export const PHONE_RE = /(?:whatsapp:)?\+[1-9](?:[\s().-]?\d){6,14}/g;
 
 const digits = (v: string) => v.replace(/\D/g, "");
 
-/** sha256 of the normalised value (lower-cased email, digits-only phone), first 12 hex. */
+/**
+ * The server key for piiHash, or null when unset / blank. The ONLY place that
+ * reads EVENT_PII_HASH_KEY. Read at call time (not cached) so tests can flip
+ * it. Never log it, print it or put it in a response or an error message.
+ */
+function piiHashKey(): string | null {
+  const k = process.env.EVENT_PII_HASH_KEY;
+  return k && k.trim() ? k : null;
+}
+
+/**
+ * Hash of the normalised value (lower-cased email, digits-only phone), first
+ * 12 hex.
+ *   - EVENT_PII_HASH_KEY set   : HMAC-SHA256 under that key, so the hash can't
+ *                                be reversed by hashing every phone number.
+ *   - EVENT_PII_HASH_KEY unset : plain sha256, byte for byte the pre-key output.
+ * Once the key is set, new hashes no longer match old ones for the same
+ * value (and rotating the key does the same). Accepted: these hashes only
+ * spot repeats of the same person across events, nothing joins on them.
+ */
 export function piiHash(value: string): string {
   const v = value.trim();
   const norm = v.includes("@") ? v.toLowerCase() : `+${digits(v)}`;
-  return createHash("sha256").update(norm, "utf8").digest("hex").slice(0, 12);
+  const key = piiHashKey();
+  const h = key ? createHmac("sha256", key) : createHash("sha256");
+  return h.update(norm, "utf8").digest("hex").slice(0, 12);
 }
 
 /** Last 4 digits of a phone number ("" when it has fewer than 4). */
@@ -76,6 +99,10 @@ export function scrubMetadata(meta: Record<string, unknown>, path = ""): Record<
     // A raw LiveKit room name used as call id (workers before 2026-11-05) can
     // hold the caller's number: store its sha256/16 instead, the form the
     // Calls join already accepts (lib/calls/core.ts callKeys, hashCallId).
+    // This MUST stay a plain, unkeyed sha256 (never piiHash / HMAC): the Calls
+    // page matches it against hashCallId(calls.call_id), the SQL in
+    // lib/calls/query.ts and the worker compute the same plain hash, so a
+    // keyed hash here would silently break the join.
     if (key === "callId" && typeof value === "string" && hasPii(value)) {
       out[key] = createHash("sha256").update(value, "utf8").digest("hex").slice(0, 16);
       continue;
