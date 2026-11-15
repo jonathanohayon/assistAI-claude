@@ -34,7 +34,27 @@ const AGENT = "00000000-0000-4000-8000-0000000000c3";
 const ROLES: Record<string, string> = { [TENANT]: "user", [OTHER]: "user", [ADMIN]: "admin" };
 const EMAILS: Record<string, string> = { [TENANT]: "owner@example.com", [OTHER]: "other@example.com", [ADMIN]: "admin@example.com" };
 
-function makeWorld(opts: { configured?: boolean; claim?: LiveTestDeps["claim"]; planAllows?: boolean } = {}) {
+/** Runs `fn` with `new Date()` / `Date.now()` pinned to `at` (ms), then restores Date. */
+async function withFrozenDate<T>(at: number, fn: () => Promise<T>): Promise<T> {
+  const RealDate = Date;
+  class FrozenDate extends RealDate {
+    constructor(...args: ConstructorParameters<typeof Date> | []) {
+      if (args.length === 0) super(at);
+      else super(...(args as ConstructorParameters<typeof Date>));
+    }
+    static now() {
+      return at;
+    }
+  }
+  globalThis.Date = FrozenDate as DateConstructor;
+  try {
+    return await fn();
+  } finally {
+    globalThis.Date = RealDate;
+  }
+}
+
+function makeWorld(opts:{ configured?: boolean; claim?: LiveTestDeps["claim"]; planAllows?: boolean } = {}) {
   let ledger: RateLimitLedger = {};
   let clock = 1_800_000_000_000;
   const minted: { userId: string; testAgentId: string | null }[] = [];
@@ -99,7 +119,10 @@ async function main() {
   // ── Under the limit: the response and the token claims are unchanged ──────
   {
     const w = makeWorld();
-    const r = await w.post();
+    // The token library reads the clock twice (exp, then nbf via `new Date()`):
+    // a second boundary between the two made exp - nbf 899 instead of 900.
+    // Freeze Date for this one mint so both claims come from one timestamp.
+    const r = await withFrozenDate(Date.UTC(2026, 10, 15, 12, 0, 0, 500), () => w.post());
     assert.equal(r.status, 200);
     assert.deepEqual(Object.keys(r.json).sort(), ["identity", "roomName", "token", "url"]);
     assert.equal(r.json.url, DUMMY.url);
