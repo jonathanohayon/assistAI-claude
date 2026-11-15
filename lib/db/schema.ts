@@ -158,6 +158,12 @@ export const agentConfigs = pgTable("agent_configs", {
   // lowercased, '' = none. Owner-scoped (tenant or admin via ?asUserId).
   ownerRecapEmail: text("owner_recap_email").notNull().default(""),
   ownerRecapEmailEnabled: boolean("owner_recap_email_enabled").notNull().default(false),
+  // Verified numbers (N1, lib/contact-confirmation.ts): per contact value
+  // (owner_whatsapp, transfer_number, owner_recap_email) whether its owner
+  // proved it, bound to the exact normalised value. Recorded only: nothing
+  // is enforced yet. Never holds a code. Never served to the worker, never
+  // returned by the config routes.
+  contactConfirmations: jsonb("contact_confirmations").notNull().default({}),
   // Call-forwarding setup check (onboarding wizard): the owner starts a
   // 10-min test window, then has someone call the usual business number.
   // The first inbound call to the tenant's number inside the window sets
