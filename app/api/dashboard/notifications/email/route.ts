@@ -7,6 +7,8 @@ import { emailSenderConfigured } from "@/lib/email-sender";
 import { logEvent } from "@/lib/logger";
 import { ownerRecapEmailView } from "@/lib/owner-recap-email";
 import { loadOwnerRecapEmail, saveOwnerRecapEmail } from "@/lib/owner-recap-email-store";
+import { loadContactForCode } from "@/lib/contact-code-store";
+import { RECAP_EMAIL_KIND, recapEmailConfirmationView } from "@/lib/recap-email-code/policy";
 
 // GET /api/dashboard/notifications/email[?asUserId=<uuid>]
 // PUT /api/dashboard/notifications/email[?asUserId=<uuid>]
@@ -22,8 +24,13 @@ import { loadOwnerRecapEmail, saveOwnerRecapEmail } from "@/lib/owner-recap-emai
 // While it is false, a PUT that CHANGES the switch to ON is refused (409);
 // turning it OFF, saving the address and an unchanged re-send still pass.
 //
+// `recapEmailConfirmation` (GET only, verified contacts N2): the state of the
+// SAVED address, { state: "confirmed" | "unconfirmed", at? }, null when no
+// address is saved; never a code. Sending and typing the code:
+// ./code and ./confirm (lib/recap-email-code/handler.ts).
+//
 // Responses:
-//   200 GET { ownerRecapEmail, ownerRecapEmailEnabled, senderConfigured }
+//   200 GET { ownerRecapEmail, ownerRecapEmailEnabled, senderConfigured, recapEmailConfirmation }
 //   200 PUT { ownerRecapEmail, ownerRecapEmailEnabled, changedFields }
 //   400 { error: "invalid_email" | "invalid_boolean", fields: [field] } · 400 { error: "invalid_json" }
 //   409 { error: "sender_not_configured", field: "ownerRecapEmailEnabled" }  (nothing written)
@@ -44,7 +51,11 @@ export async function GET(req: NextRequest) {
   if ("response" in s) return s.response;
   const settings = await loadOwnerRecapEmail(s.userId);
   if (!settings) return NextResponse.json({ error: "no_config" }, { status: 404 });
-  return NextResponse.json(ownerRecapEmailView(settings, emailSenderConfigured()));
+  const contact = await loadContactForCode(s.userId, RECAP_EMAIL_KIND);
+  return NextResponse.json({
+    ...ownerRecapEmailView(settings, emailSenderConfigured()),
+    recapEmailConfirmation: contact ? recapEmailConfirmationView(contact.value, contact.record) : null,
+  });
 }
 
 export async function PUT(req: NextRequest) {

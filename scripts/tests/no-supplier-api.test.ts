@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { EMAIL_TEST_ERRORS } from "../../lib/email-test/policy";
 import { VERIFICATION_ERRORS } from "../../lib/verification-limits/policy";
 import { LIVE_TEST_ERRORS } from "../../lib/live-test/policy";
+import { RECAP_EMAIL_CODE_ERRORS } from "../../lib/recap-email-code/policy";
 import { PATTERN } from "../tenant-bundle-match.mjs";
 
 // The live-test token has a neutral path, same handler as the old alias.
@@ -107,6 +108,39 @@ for (const f of ["app/api/dashboard/notifications/whatsapp-test/route.ts", "lib/
   }
   // Responses are built from the code only: no `hint`, `provider` or raw `result.error` field.
   assert.doesNotMatch(src, /\bhint:|\bprovider:|error: result\.error/, `${f}: leaks provider details`);
+}
+
+// The recap email confirmation code (N2): routes, handler, policy, store,
+// renderer and the email strings name no supplier and no env var; every
+// error is a listed neutral code, through fail() only.
+for (const f of [
+  "app/api/dashboard/notifications/email/code/route.ts",
+  "app/api/dashboard/notifications/email/confirm/route.ts",
+  "lib/recap-email-code/handler.ts",
+  "lib/recap-email-code/policy.ts",
+  "lib/recap-email-code/deps.ts",
+  "lib/contact-code.ts",
+  "lib/contact-code-store.ts",
+  "lib/contact-code-email.ts",
+]) {
+  const src = code(f);
+  assert.doesNotMatch(src, SUPPLIER, `${f} names a supplier`);
+  assert.doesNotMatch(src, /resend/i, `${f} names the email supplier`);
+  assert.doesNotMatch(src, /process\.env|[A-Z][A-Z0-9]*_(API_KEY|FROM|SECRET|TOKEN)\b/, `${f} names an env var`);
+}
+{
+  const src = code("lib/recap-email-code/handler.ts");
+  const codes = [...src.matchAll(/fail\("([a-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(codes.length >= 10);
+  for (const c of codes) assert.ok((RECAP_EMAIL_CODE_ERRORS as readonly string[]).includes(c), `non-neutral code ${c}`);
+  for (const c of RECAP_EMAIL_CODE_ERRORS) assert.doesNotMatch(c, SUPPLIER);
+  assert.equal([...src.matchAll(/NextResponse\.json\(/g)].length, 3, "only fail() and the two 200s build responses");
+  assert.doesNotMatch(src, /\bhint:|\bprovider:|error: result\.error/);
+  for (const loc of ["fr", "en", "he"]) {
+    const strings = JSON.stringify(JSON.parse(readFileSync(`messages/${loc}.json`, "utf8")).Email.contactCode);
+    assert.doesNotMatch(strings, SUPPLIER, `${loc} code email names a supplier`);
+    assert.doesNotMatch(strings, /resend/i, `${loc} code email names the email supplier`);
+  }
 }
 
 console.log("ALL NO-SUPPLIER-API TESTS PASSED");

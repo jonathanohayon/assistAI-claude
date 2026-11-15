@@ -32,7 +32,9 @@ mkdir -p "$MAIN"
 git archive origin/main | tar -x -C "$MAIN"
 ln -s "$PWD/node_modules" "$MAIN/node_modules"
 
-echo "== 0. migration 0052 is add-only: table md5 before/after, on origin/main's schema"
+echo "== 0. migration 0053 is add-only: table md5 before/after, on origin/main's schema"
+source scripts/lib/migrate-upto.sh
+migration_sorts_after_all_before 0053_campaign_calls_analysis_claim
 (cd "$MAIN" && "${CLEAN[@]}" DATABASE_URL="$URL" node scripts/migrate.mjs)
 psql -q -v ON_ERROR_STOP=1 "$URL" <<'SQL'
 INSERT INTO users (id, email, password_hash) VALUES ('00000000-0000-4000-8000-0000000000f1', 'mig@example.test', 'x');

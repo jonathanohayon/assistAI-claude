@@ -186,7 +186,9 @@ async function main() {
     assert.doesNotMatch(JSON.stringify(view), LEAK, "GET carries no configuration name or value");
   }
   const route = code("app/api/dashboard/notifications/email/route.ts");
-  assert.match(route, /NextResponse\.json\(ownerRecapEmailView\(settings, emailSenderConfigured\(\)\)\)/, "GET uses the view + the one check");
+  assert.match(route, /\.\.\.ownerRecapEmailView\(settings, emailSenderConfigured\(\)\),/, "GET uses the view + the one check");
+  // N2: the GET adds the saved address's confirmation state (never a code), nothing else.
+  assert.match(route, /NextResponse\.json\(\{\s*\.\.\.ownerRecapEmailView\(settings, emailSenderConfigured\(\)\),\s*recapEmailConfirmation: contact \? recapEmailConfirmationView\(contact\.value, contact\.record\) : null,\s*\}\)/);
   assert.match(
     route,
     /saveOwnerRecapEmail\(s\.userId, parsed\.data, \{ senderConfigured: emailSenderConfigured\(\) \}\)/,

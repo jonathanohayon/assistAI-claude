@@ -1878,6 +1878,13 @@
       "signature": "— The Tamara team",
       "footer": "You can change the email address or disable notifications anytime from your dashboard. This is a purely transactional email."
     },
+    "contactCode": {
+      "subject": "Confirm your email address for call recaps",
+      "heading": "Your confirmation code",
+      "intro": "Enter this code in your dashboard to confirm this address for call recaps:",
+      "expires": "The code is valid for 10 minutes.",
+      "ignore": "If you did not ask for this code, you can ignore this email: nothing changes until the code is entered."
+    },
     "ownerRecap": {
       "subject": "📞 New call received",
       "eyebrow": "Call recap",

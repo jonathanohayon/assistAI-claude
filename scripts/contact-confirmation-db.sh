@@ -6,7 +6,8 @@
 # (no messaging, email or voice provider credential). set -e: nothing runs
 # after a failed initdb / pg_ctl / check.
 #
-# 1. Migration 0051 writes NO data: on a seeded database put back in the
+# 1. Migration 0051 writes NO data (migrations up to 0051 only, see
+#    scripts/lib/migrate-upto.sh): on a seeded database put back in the
 #    state before 0051 (column dropped, its ledger row removed), the md5 of
 #    EVERY public table's rows (over the columns that existed before) is
 #    identical before and after `node scripts/migrate.mjs`; the only schema
@@ -31,6 +32,9 @@ q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 migrate() { env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
 
 # ── 1. Migration 0051 writes no data ────────────────────────────────────
+# Up to 0051 only (later migrations would hide it from a re-run).
+source scripts/lib/migrate-upto.sh
+migrate() { migrate_upto 0051_contact_confirmations "$URL" "$DIR.work/m"; }
 migrate
 q -f scripts/fixtures/mission-m2a-seed.sql
 # Mock contact values (existing accounts): owner WhatsApp, a parked
@@ -40,15 +44,10 @@ q -c "UPDATE agent_configs SET owner_whatsapp = '+15550100001', owner_recap_emai
       INSERT INTO events (user_id, source, event, message) VALUES ('00000000-0000-0000-0000-00000000000a', 'web', 'config_updated', 'mock');
       INSERT INTO calls (user_id, duration_seconds) VALUES ('00000000-0000-0000-0000-00000000000a', 42);"
 WHEN="$(node -e 'const j=require("./drizzle/meta/_journal.json");const e=j.entries.find(x=>x.tag==="0051_contact_confirmations");if(!e)process.exit(1);console.log(e.when)')"
-# Every earlier migration sorts before 0051 (later ones, e.g. 0052, sort after).
-node -e 'const j=require("./drizzle/meta/_journal.json").entries;const i=j.findIndex(x=>x.tag==="0051_contact_confirmations");if(j.slice(0,i).some(e=>e.when>=j[i].when)){console.error("an earlier migration sorts after 0051");process.exit(1)}'
-LATER="$(node -e 'const j=require("./drizzle/meta/_journal.json").entries;const i=j.findIndex(x=>x.tag==="0051_contact_confirmations");console.log(j.length-1-i)')"
-[ "$LATER" -le 1 ] || { echo "update this suite: $LATER migrations after 0051" >&2; exit 1; }
-# Back to the state before 0051 (and before 0052, which sorts after it: the
-# migrator only applies migrations newer than the last ledger row).
+migration_sorts_after_all_before 0051_contact_confirmations
+# Back to the state before 0051.
 q -c "ALTER TABLE agent_configs DROP COLUMN contact_confirmations"
-[ "$LATER" = "0" ] || q -c "ALTER TABLE campaign_calls DROP COLUMN analysis_claim"
-[ "$(q -c "WITH d AS (DELETE FROM drizzle.__drizzle_migrations WHERE created_at >= ${WHEN} RETURNING 1) SELECT count(*) FROM d")" = "$((LATER + 1))" ]
+[ "$(q -c "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = ${WHEN} RETURNING 1")" = "1" ]
 LEDGER_BEFORE="$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')"
 schema() { q -c "SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1"; }
 schema > "$DIR.work/schema-before"
@@ -71,11 +70,8 @@ if ! diff -u "$DIR.work/md5-before" "$DIR.work/md5-after"; then
   exit 1
 fi
 SCHEMA_DIFF="$(diff "$DIR.work/schema-before" "$DIR.work/schema-after" | grep '^[<>]' || true)"
-EXPECTED_DIFF="> agent_configs.contact_confirmations jsonb NO '{}'::jsonb"
-[ "$LATER" = "0" ] || EXPECTED_DIFF="$EXPECTED_DIFF
-> campaign_calls.analysis_claim jsonb YES "
-[ "$SCHEMA_DIFF" = "$EXPECTED_DIFF" ] || { echo "unexpected schema diff: $SCHEMA_DIFF" >&2; exit 1; }
-[ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1 + LATER))" ]
+[ "$SCHEMA_DIFF" = "> agent_configs.contact_confirmations jsonb NO '{}'::jsonb" ] || { echo "unexpected schema diff: $SCHEMA_DIFF" >&2; exit 1; }
+[ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
 [ "$(q -c "SELECT count(*) FROM agent_configs WHERE contact_confirmations <> '{}'::jsonb")" = "0" ]
 # A re-run applies nothing and rewrites nothing.
 XMIN="$(q -c "SELECT string_agg(xmin::text, ',' ORDER BY id) FROM agent_configs")"
@@ -85,6 +81,8 @@ q -f drizzle/0051_contact_confirmations.sql 2>/dev/null
 echo "migration 0051: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after; schema diff = the new column only; ledger +1; re-run no-op"
 
 # ── 2. Writes, admin confirm, sends ─────────────────────────────────────
+# Every migration from here on.
+env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 # /api/calls/end calls next-intl's getTranslations: the shared test tsconfig
 # maps "next-intl/server" to a stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
 source scripts/lib/next-intl-stub-tsconfig.sh

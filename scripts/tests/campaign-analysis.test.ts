@@ -148,13 +148,15 @@ async function run() {
     assert.ok(!("workerCallId" in campaignCallPublicColumns));
   });
 
-  await test("migration 0052 is add-only and sorts last", () => {
-    const m = read("drizzle/0052_campaign_calls_analysis_claim.sql");
+  await test("migration 0053 is add-only and sorts after every earlier migration", () => {
+    const tag = "0053_campaign_calls_analysis_claim";
+    const m = read(`drizzle/${tag}.sql`);
     assert.equal(m.trim(), 'ALTER TABLE "campaign_calls" ADD COLUMN IF NOT EXISTS "analysis_claim" jsonb;');
     const j = JSON.parse(read("drizzle/meta/_journal.json")) as { entries: Array<{ tag: string; when: number }> };
-    const last = j.entries[j.entries.length - 1]!;
-    assert.equal(last.tag, "0052_campaign_calls_analysis_claim");
-    assert.ok(j.entries.slice(0, -1).every((e) => e.when < last.when));
+    const i = j.entries.findIndex((e) => e.tag === tag);
+    assert.ok(i >= 0, "journal entry present");
+    // Every EARLIER migration sorts before it (later ones sort after).
+    for (const e of j.entries.slice(0, i)) assert.ok(e.when < j.entries[i]!.when, `${e.tag} sorts before ${tag}`);
   });
 
   console.log(`\n${passed} campaign-analysis tests passed`);
