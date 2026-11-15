@@ -5,6 +5,7 @@ import {
   DEMO_TOOLS_GLOBAL,
   DEMO_TOOLS_PER_IP,
   DEMO_TOOLS_WINDOW_MS,
+  demoEndpointText,
   isDemoToolName,
   runDemoTool,
 } from "@/lib/demo-tools";
@@ -17,15 +18,18 @@ import { limiterKey } from "@/lib/verification-limits/policy";
 // signed-in visitor gets the same sandbox as an anonymous one. The only DB
 // touch is the shared rate limiter, which fails closed like /api/session's.
 
-const RATE_LIMITED = {
+// `error` stays the machine code; `message` is in the visitor's language.
+const rateLimited = (lang: string | null) => ({
   error: "rate_limited",
-  message: "Too many demo requests, try again later.",
-} as const;
+  message: demoEndpointText(lang).rateLimited,
+});
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ tool: string }> }) {
   const { tool } = await params;
+  // The language the session wrote into the route table (lib/demo-session.ts).
+  const lang = req.nextUrl.searchParams.get("lang");
   if (!isDemoToolName(tool)) {
-    return NextResponse.json({ error: `Outil inconnu: ${tool}` }, { status: 404 });
+    return NextResponse.json({ error: demoEndpointText(lang).unknownTool(tool) }, { status: 404 });
   }
 
   let allowed = false;
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ too
       global: DEMO_TOOLS_GLOBAL,
     });
     if (!rl.ok) {
-      return NextResponse.json(RATE_LIMITED, {
+      return NextResponse.json(rateLimited(lang), {
         status: 429,
         headers: { "Retry-After": String(rl.retryAfterSec) },
       });
@@ -47,10 +51,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ too
   } catch (e) {
     console.error("[demo-tools] rate limiter unavailable", e);
   }
-  if (!allowed) return NextResponse.json(RATE_LIMITED, { status: 429 });
+  if (!allowed) return NextResponse.json(rateLimited(lang), { status: 429 });
 
   const args: unknown = await req.json().catch(() => ({}));
-  // The language the session wrote into the route table (lib/demo-session.ts).
-  const { status, body } = runDemoTool(tool, args, Date.now(), req.nextUrl.searchParams.get("lang"));
+  const { status, body } = runDemoTool(tool, args, Date.now(), lang);
   return NextResponse.json(body, { status });
 }

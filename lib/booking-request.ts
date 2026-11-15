@@ -18,7 +18,10 @@ export interface BookingRequest {
 
 export type BookingParse =
   | { ok: true; value: BookingRequest }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code: BookingParseError };
+
+/** Which check failed, so a caller can word the error in its own language (lib/demo-tools.ts). */
+export type BookingParseError = "missing_fields" | "invalid_date" | "invalid_time" | "invalid_duration";
 
 export const MIN_DURATION = 5;
 export const MAX_DURATION = 480;
@@ -41,16 +44,16 @@ export function parseBookingRequest(raw: unknown): BookingParse {
   const date = str(b.date);
   const time = str(b.time);
   if (!name || !phone || !date || !time) {
-    return { ok: false, error: "Champs requis manquants (name, phone, date, time)" };
+    return { ok: false, error: "Champs requis manquants (name, phone, date, time)", code: "missing_fields" };
   }
   if (!isRealDate(date)) {
-    return { ok: false, error: `Date invalide : ${date} (format attendu YYYY-MM-DD)` };
+    return { ok: false, error: `Date invalide : ${date} (format attendu YYYY-MM-DD)`, code: "invalid_date" };
   }
   // "9:30" is normalised to "09:30" rather than refused: losing a booking
   // mid-call over a missing zero is worse than accepting it.
   const tm = /^(\d{1,2}):([0-5]\d)$/.exec(time);
   if (!tm || Number(tm[1]) > 23) {
-    return { ok: false, error: `Heure invalide : ${time} (format attendu HH:MM, 00:00–23:59)` };
+    return { ok: false, error: `Heure invalide : ${time} (format attendu HH:MM, 00:00–23:59)`, code: "invalid_time" };
   }
   const normalizedTime = `${tm[1].padStart(2, "0")}:${tm[2]}`;
   let duration = DEFAULT_DURATION;
@@ -60,6 +63,7 @@ export function parseBookingRequest(raw: unknown): BookingParse {
       return {
         ok: false,
         error: `Durée invalide : ${String(b.duration)} (minutes, entier entre ${MIN_DURATION} et ${MAX_DURATION})`,
+        code: "invalid_duration",
       };
     }
     duration = n;
