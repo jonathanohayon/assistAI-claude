@@ -40,11 +40,15 @@ q -c "UPDATE agent_configs SET owner_whatsapp = '+15550100001', owner_recap_emai
       INSERT INTO events (user_id, source, event, message) VALUES ('00000000-0000-0000-0000-00000000000a', 'web', 'config_updated', 'mock');
       INSERT INTO calls (user_id, duration_seconds) VALUES ('00000000-0000-0000-0000-00000000000a', 42);"
 WHEN="$(node -e 'const j=require("./drizzle/meta/_journal.json");const e=j.entries.find(x=>x.tag==="0051_contact_confirmations");if(!e)process.exit(1);console.log(e.when)')"
-LAST="$(node -e 'const j=require("./drizzle/meta/_journal.json");console.log(j.entries.at(-1).tag)')"
-[ "$LAST" = "0051_contact_confirmations" ] || { echo "0051 must sort last (last is $LAST)" >&2; exit 1; }
-# Back to the state before 0051.
+# Every earlier migration sorts before 0051 (later ones, e.g. 0052, sort after).
+node -e 'const j=require("./drizzle/meta/_journal.json").entries;const i=j.findIndex(x=>x.tag==="0051_contact_confirmations");if(j.slice(0,i).some(e=>e.when>=j[i].when)){console.error("an earlier migration sorts after 0051");process.exit(1)}'
+LATER="$(node -e 'const j=require("./drizzle/meta/_journal.json").entries;const i=j.findIndex(x=>x.tag==="0051_contact_confirmations");console.log(j.length-1-i)')"
+[ "$LATER" -le 1 ] || { echo "update this suite: $LATER migrations after 0051" >&2; exit 1; }
+# Back to the state before 0051 (and before 0052, which sorts after it: the
+# migrator only applies migrations newer than the last ledger row).
 q -c "ALTER TABLE agent_configs DROP COLUMN contact_confirmations"
-[ "$(q -c "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = ${WHEN} RETURNING 1")" = "1" ]
+[ "$LATER" = "0" ] || q -c "ALTER TABLE campaign_calls DROP COLUMN analysis_claim"
+[ "$(q -c "WITH d AS (DELETE FROM drizzle.__drizzle_migrations WHERE created_at >= ${WHEN} RETURNING 1) SELECT count(*) FROM d")" = "$((LATER + 1))" ]
 LEDGER_BEFORE="$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')"
 schema() { q -c "SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1"; }
 schema > "$DIR.work/schema-before"
@@ -67,8 +71,11 @@ if ! diff -u "$DIR.work/md5-before" "$DIR.work/md5-after"; then
   exit 1
 fi
 SCHEMA_DIFF="$(diff "$DIR.work/schema-before" "$DIR.work/schema-after" | grep '^[<>]' || true)"
-[ "$SCHEMA_DIFF" = "> agent_configs.contact_confirmations jsonb NO '{}'::jsonb" ] || { echo "unexpected schema diff: $SCHEMA_DIFF" >&2; exit 1; }
-[ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
+EXPECTED_DIFF="> agent_configs.contact_confirmations jsonb NO '{}'::jsonb"
+[ "$LATER" = "0" ] || EXPECTED_DIFF="$EXPECTED_DIFF
+> campaign_calls.analysis_claim jsonb YES "
+[ "$SCHEMA_DIFF" = "$EXPECTED_DIFF" ] || { echo "unexpected schema diff: $SCHEMA_DIFF" >&2; exit 1; }
+[ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1 + LATER))" ]
 [ "$(q -c "SELECT count(*) FROM agent_configs WHERE contact_confirmations <> '{}'::jsonb")" = "0" ]
 # A re-run applies nothing and rewrites nothing.
 XMIN="$(q -c "SELECT string_agg(xmin::text, ',' ORDER BY id) FROM agent_configs")"
