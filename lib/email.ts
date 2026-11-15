@@ -23,6 +23,7 @@ import type { PlanFeatures } from "@/lib/plan-features";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
 import { ltrIsolate } from "@/lib/phone-utils";
+import { configuredEmailSender } from "@/lib/email-sender";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 const SUPPORTED_LOCALES = ["fr", "he", "en"] as const;
@@ -584,8 +585,11 @@ export async function sendNotificationTestEmail(
 ): Promise<SendResult> {
   const locale = normalizeLocale(opts.locale);
   const t = await getTranslations({ locale, namespace: "Email.notificationTest" });
+  // Tenant-triggered: never from the supplier's default sender (the route
+  // already answers 503 not_configured; this is the second lock).
+  const from = configuredEmailSender();
+  if (!from) return { ok: false, error: "sender_not_configured" };
   const client = getResend();
-  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const name = opts.recipientName?.trim() || t("defaultGreeting");
   const subject = t("subject");
 
@@ -659,8 +663,11 @@ export async function sendOwnerRecapEmail(
     { locale, forOwner: opts.forOwner, fromNumber: opts.fromNumber, businessName: opts.businessName },
     (key, vars) => t(key, vars),
   );
+  // Tenant-triggered: never from the supplier's default sender
+  // (lib/owner-recap-email-send.ts already skips; this is the second lock).
+  const from = configuredEmailSender();
+  if (!from) return { ok: false, error: "sender_not_configured" };
   const client = getResend();
-  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
 
   if (!client) {
     // No recipient and no body in the logs: the recap is customer data.

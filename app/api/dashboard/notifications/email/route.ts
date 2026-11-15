@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
 import { requireSession } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
+import { emailSenderConfigured } from "@/lib/email-sender";
 import { logEvent } from "@/lib/logger";
+import { ownerRecapEmailView } from "@/lib/owner-recap-email";
 import { loadOwnerRecapEmail, saveOwnerRecapEmail } from "@/lib/owner-recap-email-store";
 
 // GET /api/dashboard/notifications/email[?asUserId=<uuid>]
@@ -15,9 +17,16 @@ import { loadOwnerRecapEmail, saveOwnerRecapEmail } from "@/lib/owner-recap-emai
 // ?asUserId. Nothing here is admin-only. A field absent from the PUT body
 // keeps its stored value; `ownerRecapEmail: ""` (or null) clears the address.
 //
+// `senderConfigured` (GET only): an email sender is set up, so the recap can
+// actually be sent. A boolean only: no configuration name, value or address.
+// While it is false, a PUT that CHANGES the switch to ON is refused (409);
+// turning it OFF, saving the address and an unchanged re-send still pass.
+//
 // Responses:
-//   200 { ownerRecapEmail, ownerRecapEmailEnabled }  (+ changedFields on PUT)
+//   200 GET { ownerRecapEmail, ownerRecapEmailEnabled, senderConfigured }
+//   200 PUT { ownerRecapEmail, ownerRecapEmailEnabled, changedFields }
 //   400 { error: "invalid_email" | "invalid_boolean", fields: [field] } · 400 { error: "invalid_json" }
+//   409 { error: "sender_not_configured", field: "ownerRecapEmailEnabled" }  (nothing written)
 //   401 not signed in · 403 asUserId by a non-admin · 404 no agent config
 async function scope(req: NextRequest) {
   const guard = await requireSession();
@@ -35,7 +44,7 @@ export async function GET(req: NextRequest) {
   if ("response" in s) return s.response;
   const settings = await loadOwnerRecapEmail(s.userId);
   if (!settings) return NextResponse.json({ error: "no_config" }, { status: 404 });
-  return NextResponse.json(settings);
+  return NextResponse.json(ownerRecapEmailView(settings, emailSenderConfigured()));
 }
 
 export async function PUT(req: NextRequest) {
@@ -43,7 +52,7 @@ export async function PUT(req: NextRequest) {
   if ("response" in s) return s.response;
   const parsed = await parseJsonBody<Record<string, unknown>>(req);
   if (!parsed.ok) return parsed.response;
-  const result = await saveOwnerRecapEmail(s.userId, parsed.data);
+  const result = await saveOwnerRecapEmail(s.userId, parsed.data, { senderConfigured: emailSenderConfigured() });
   if (result.status === 200 && result.body.changedFields.length > 0) {
     // No address in the event: field names only.
     await logEvent({

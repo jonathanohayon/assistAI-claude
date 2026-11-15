@@ -11,6 +11,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { events } from "@/lib/db/schema";
 import { sendOwnerRecapEmail } from "@/lib/email";
+import { emailSenderConfigured } from "@/lib/email-sender";
 import { logEvent } from "@/lib/logger";
 import { ownerRecapEmailTarget, redactEmailError } from "@/lib/owner-recap-email";
 import { summarySignature } from "@/lib/summarize";
@@ -38,6 +39,8 @@ export const ownerRecapEmailDeps = {
   send: sendOwnerRecapEmail,
   log: logEvent,
   recentSent: recentOwnerRecapEmailSent,
+  /** No configured sender → the recap is refused, never sent from the default. */
+  senderConfigured: (): boolean => emailSenderConfigured(),
   now: () => Date.now(),
 };
 
@@ -64,6 +67,7 @@ export type OwnerRecapEmailOutcome =
   | "feature_off"
   | "transcript_too_short"
   | "dedup_recent_owner_email"
+  | "sender_not_configured"
   | "sent"
   | "failed";
 
@@ -78,6 +82,20 @@ export async function sendOwnerRecapEmailBestEffort(input: OwnerRecapEmailInput)
   try {
     if (!input.recapFeatureOn) return "feature_off";
     if (input.transcriptEntries <= 1) return "transcript_too_short";
+    // A tenant never triggers an email from the supplier's default sender:
+    // no configured sender → nothing sent, one event (no address, no config
+    // name or value in it).
+    if (!ownerRecapEmailDeps.senderConfigured()) {
+      await ownerRecapEmailDeps.log({
+        source: "email",
+        event: "email_skipped_owner_not_configured",
+        message: "Owner recap email skipped (no email sender configured)",
+        level: "warn",
+        userId: input.userId,
+        metadata: { callId: input.callId, reason: "sender_not_configured" },
+      });
+      return "sender_not_configured";
+    }
     const since = new Date(ownerRecapEmailDeps.now() - OWNER_RECAP_EMAIL_DEDUP_MS);
     if (await ownerRecapEmailDeps.recentSent(input.userId, since)) {
       await ownerRecapEmailDeps.log({
