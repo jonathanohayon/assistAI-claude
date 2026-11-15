@@ -4,15 +4,17 @@
 
 import { heartbeatProblem, type WorkerHeartbeat } from "@/lib/monitoring-rules";
 
-import type { AgentState } from "./types";
+import type { TrialExhaustionCause } from "@/lib/trial";
+
+import type { AgentState, AgentStateTrialReason } from "./types";
 
 type Check = () => boolean | Promise<boolean>;
 
 export interface AgentStateChecks {
   /** 1. The account has a number (false → to_activate). */
   hasNumber: Check;
-  /** 2. The plan or trial allows calls now (false → subscription_inactive). */
-  subscriptionAllowsCalls: Check;
+  /** 2. Why the trial refuses calls now, or null when it doesn't (see trialReason). */
+  trialRefusal: () => AgentStateTrialReason | null | Promise<AgentStateTrialReason | null>;
   /** 3. The inbound session config builds for the number (false → config_unavailable). */
   configAvailable: Check;
   /** 4. The voice worker is alive (false → engine_unreachable). See engineReachable. */
@@ -21,10 +23,22 @@ export interface AgentStateChecks {
 
 export async function decideAgentState(checks: AgentStateChecks): Promise<AgentState> {
   if (!(await checks.hasNumber())) return { state: "to_activate", reason: null };
-  if (!(await checks.subscriptionAllowsCalls())) return { state: "attention", reason: "subscription_inactive" };
+  const trial = await checks.trialRefusal();
+  if (trial) return { state: "attention", reason: trial };
   if (!(await checks.configAvailable())) return { state: "attention", reason: "config_unavailable" };
   if (!(await checks.engineReachable())) return { state: "attention", reason: "engine_unreachable" };
   return { state: "live", reason: null };
+}
+
+/**
+ * The trial gate's cause (lib/trial.ts trialExhaustionCause) → agentState
+ * reason: an ended or paused trial is trial_ended; a running trial out of
+ * minutes is trial_minutes_exhausted (time wins when both are up, decided by
+ * the cause itself).
+ */
+export function trialReason(cause: TrialExhaustionCause | null | undefined): AgentStateTrialReason | null {
+  if (!cause) return null;
+  return cause === "minutes" ? "trial_minutes_exhausted" : "trial_ended";
 }
 
 /**

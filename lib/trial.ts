@@ -56,6 +56,37 @@ export function computeTrialEndsAt(from: Date = new Date()): Date {
  * gérée par le cron trial-cleanup ; ce helper coupe le service en amont (ex:
  * 60 min atteintes avant la fin des 24h).
  */
+/** Which trial limit refuses calls now (see trialExhaustionCause). */
+export type TrialExhaustionCause = "time" | "minutes" | "paused";
+
+/**
+ * The ONE definition of "this trial refuses calls now", naming WHICH condition
+ * refused: "paused" (status trial_paused), "time" (trialing, trialEndsAt
+ * passed) or "minutes" (trialing, trialSecondsUsed >= TRIAL_SECONDS_LIMIT).
+ * When both time and minutes are up, "time" wins. null = calls allowed:
+ * admins, paid plans (no minutes refusal: overage) and trials within limits.
+ */
+export function trialExhaustionCause(args: {
+  subscriptionStatus: string;
+  trialEndsAt: Date | null;
+  trialSecondsUsed: number;
+  /** Admins never run out: the admin account is `trialing` in prod. */
+  role?: string | null;
+  now?: Date;
+}): TrialExhaustionCause | null {
+  if (args.role === "admin") return null;
+  // A paused trial (ended, not paid) refuses calls like an exhausted one.
+  if (args.subscriptionStatus === TRIAL_PAUSED_STATUS) return "paused";
+  if (args.subscriptionStatus !== "trialing") return null;
+  const now = args.now ?? new Date();
+  const timeUp = args.trialEndsAt
+    ? now.getTime() >= args.trialEndsAt.getTime()
+    : false;
+  if (timeUp) return "time";
+  if (args.trialSecondsUsed >= TRIAL_SECONDS_LIMIT) return "minutes";
+  return null;
+}
+
 export function isTrialExhausted(args: {
   subscriptionStatus: string;
   trialEndsAt: Date | null;
@@ -64,14 +95,5 @@ export function isTrialExhausted(args: {
   role?: string | null;
   now?: Date;
 }): boolean {
-  if (args.role === "admin") return false;
-  // A paused trial (ended, not paid) refuses calls like an exhausted one.
-  if (args.subscriptionStatus === TRIAL_PAUSED_STATUS) return true;
-  if (args.subscriptionStatus !== "trialing") return false;
-  const now = args.now ?? new Date();
-  const timeUp = args.trialEndsAt
-    ? now.getTime() >= args.trialEndsAt.getTime()
-    : false;
-  const minutesUp = args.trialSecondsUsed >= TRIAL_SECONDS_LIMIT;
-  return timeUp || minutesUp;
+  return trialExhaustionCause(args) !== null;
 }

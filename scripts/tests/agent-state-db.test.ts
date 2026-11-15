@@ -1,6 +1,7 @@
 // agentState against a THROWAWAY Postgres seeded with mock accounts:
-//   - the state table (to_activate / live / attention:subscription_inactive /
-//     attention:config_unavailable / attention:engine_unreachable) from the
+//   - the state table (to_activate / live / attention:trial_ended /
+//     attention:trial_minutes_exhausted / attention:config_unavailable /
+//     attention:engine_unreachable) from the
 //     REAL inbound resolver, run dry, for each worker heartbeat (absent,
 //     unparseable, fresh, stale);
 //   - the dry run has no side effect: every table byte-identical before/after
@@ -72,9 +73,11 @@ async function main() {
   // ── Seed ────────────────────────────────────────────────────────────────
   const A = id("a1"); // no number → to_activate
   const B = id("b1"); // paid, number, config, open forwarding test, unreadable brain secret → live
-  const C = id("c1"); // trial ended → subscription_inactive
-  const C2 = id("c2"); // trial paused → subscription_inactive
-  const C3 = id("c3"); // trial minutes used up → subscription_inactive
+  const C = id("c1"); // trial ended → trial_ended
+  const C2 = id("c2"); // trial paused → trial_ended
+  const C3 = id("c3"); // trial minutes used up → trial_minutes_exhausted
+  const C4 = id("c4"); // trial ended AND minutes used up → trial_ended (time wins)
+  const G = id("a7"); // paid, number, config, OVER the trial minutes → live (overage, no refusal)
   const D = id("d1"); // paid, number, NO agent config → config_unavailable
   const E = id("e1"); // admin, trialing with no end date → live
   const F = id("f1"); // trial running, external brain url (DNS path) → live
@@ -86,6 +89,8 @@ async function main() {
     [D]: "+15555550105",
     [E]: "+15555550106",
     [F]: "+15555550107",
+    [C4]: "+15555550108",
+    [G]: "+15555550109",
   };
   const DAY = 24 * 60 * 60 * 1000;
   const past = new Date(Date.now() - DAY).toISOString();
@@ -100,6 +105,8 @@ async function main() {
     [D, "user", "active", null, "global", false],
     [E, "admin", "trialing", null, "premium", true],
     [F, "user", "trialing", future, "global", true],
+    [C4, "user", "trialing", past, "global", true],
+    [G, "user", "active", null, "global", true],
   ];
   for (const [uid, role, status, ends, plan, hasConfig] of accounts) {
     await exec(sql`INSERT INTO users (id, email, password_hash, role, subscription_status, trial_ends_at, subscription_plan, display_name)
@@ -114,6 +121,8 @@ async function main() {
   await exec(sql`UPDATE agent_configs SET forwarding_test_started_at = now() WHERE user_id = ${B}`);
   // C3: 100 min of calls (the trial cap). B: calls + bookings for the hero stats.
   await exec(sql`INSERT INTO calls (user_id, duration_seconds) VALUES (${C3}, 6000)`);
+  // C4: over the cap too; G (paid): far over the trial cap.
+  await exec(sql`INSERT INTO calls (user_id, duration_seconds) VALUES (${C4}, 7200), (${G}, 30000)`);
   await exec(sql`INSERT INTO calls (user_id, duration_seconds, created_at) VALUES (${B}, 95, now()), (${B}, 40, now() - interval '3 days'), (${B}, 300, now() - interval '40 days')`);
   await exec(sql`INSERT INTO calls (user_id, duration_seconds) VALUES (${F}, 120)`);
   await exec(sql`INSERT INTO events (user_id, source, event, message, created_at) VALUES
@@ -132,9 +141,11 @@ async function main() {
   const expectedAbsent: Record<string, unknown> = {
     [A]: { state: "to_activate", reason: null },
     [B]: { state: "live", reason: null },
-    [C]: { state: "attention", reason: "subscription_inactive" },
-    [C2]: { state: "attention", reason: "subscription_inactive" },
-    [C3]: { state: "attention", reason: "subscription_inactive" },
+    [C]: { state: "attention", reason: "trial_ended" },
+    [C2]: { state: "attention", reason: "trial_ended" },
+    [C3]: { state: "attention", reason: "trial_minutes_exhausted" },
+    [C4]: { state: "attention", reason: "trial_ended" },
+    [G]: { state: "live", reason: null },
     [D]: { state: "attention", reason: "config_unavailable" },
     [E]: { state: "live", reason: null },
     [F]: { state: "live", reason: null },
@@ -147,7 +158,7 @@ async function main() {
     { name: "absent (never recorded → skipped)", value: null, expected: expectedAbsent },
     { name: "unparseable at (→ never recorded → skipped)", value: JSON.stringify({ at: "yesterday", agentName: "mock-agent" }), expected: expectedAbsent },
     { name: "fresh (2 min)", value: heartbeatRow(2 * MIN), expected: expectedAbsent },
-    { name: "stale (13 min)", value: heartbeatRow(13 * MIN), expected: { ...expectedAbsent, [B]: unreachable, [E]: unreachable, [F]: unreachable } },
+    { name: "stale (13 min)", value: heartbeatRow(13 * MIN), expected: { ...expectedAbsent, [B]: unreachable, [E]: unreachable, [F]: unreachable, [G]: unreachable } },
   ];
   const setHeartbeat = async (value: string | null) => {
     await exec(sql`DELETE FROM app_settings WHERE key = 'worker_heartbeat'`);
@@ -177,7 +188,7 @@ async function main() {
     }
     const bStats = await computeHeroStats(B);
     assert.equal(bStats.rdv, 2, "seeded bookings are counted (the comparison is not over empty stats)");
-    console.log(`heartbeat ${sc.name}: state table ok, every table identical, 0 fetch, 0 DNS, hero fields byte-identical to origin/main for 8 accounts`);
+    console.log(`heartbeat ${sc.name}: state table ok, every table identical, 0 fetch, 0 DNS, hero fields byte-identical to origin/main for ${accounts.length} accounts`);
   }
   // Timing and contrast below run with a fresh heartbeat (check 4 runs in full).
   await setHeartbeat(heartbeatRow(2 * MIN));
@@ -205,7 +216,13 @@ async function main() {
     liveRoute.GET(new NextRequest(`http://localhost/api/agent/config?${q}`, { headers: { "x-internal-secret": "test-internal-secret" } }));
   assert.equal((await call(`phone=${encodeURIComponent(NUM[B])}`)).status, 200);
   assert.equal((await call(`phone=${encodeURIComponent(NUM[F])}`)).status, 200);
-  assert.equal((await call(`phone=${encodeURIComponent(NUM[C])}`)).status, 403);
+  // Every trial cause gets the same worker-facing 403 body; the paid account over the trial minutes is served.
+  for (const uid of [C, C2, C3, C4]) {
+    const res = await call(`phone=${encodeURIComponent(NUM[uid])}`);
+    assert.equal(res.status, 403, `live handler refuses ${uid}`);
+    assert.equal(await res.text(), JSON.stringify({ error: "trial_exhausted" }), `same 403 body for ${uid}`);
+  }
+  assert.equal((await call(`phone=${encodeURIComponent(NUM[G])}`)).status, 200, "paid over the trial minutes is served");
   assert.equal((await call(`phone=${encodeURIComponent(NUM[D])}`)).status, 404);
   await new Promise((r) => setTimeout(r, 300));
   const evs = rows<{ event: string }>(await exec(sql`SELECT event FROM events WHERE event <> 'book_success' ORDER BY event`)).map((r) => r.event);

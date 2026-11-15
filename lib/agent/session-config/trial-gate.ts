@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
-import { TRIAL_PAUSED_STATUS, isTrialExhausted } from "@/lib/trial";
+import { TRIAL_PAUSED_STATUS, trialExhaustionCause, type TrialExhaustionCause } from "@/lib/trial";
 
 export interface TrialGateUser {
   id: string;
@@ -20,8 +20,13 @@ export interface TrialGateUser {
  * trial_exhausted): a trialing account past its time or minutes, or a paused
  * one. Admins are exempt. Reads call durations only for a trialing / paused
  * non-admin account, exactly as the inbound handler always did.
+ * `cause` names the condition that refused (lib/trial.ts
+ * trialExhaustionCause); the inbound handler ignores it (its 403 and event
+ * are unchanged), agentState maps it to its reason.
  */
-export async function inboundTrialRefusal(user: TrialGateUser): Promise<{ trialSecondsUsed: number } | null> {
+export async function inboundTrialRefusal(
+  user: TrialGateUser,
+): Promise<{ trialSecondsUsed: number; cause: TrialExhaustionCause } | null> {
   if (
     !(user.subscriptionStatus === "trialing" || user.subscriptionStatus === TRIAL_PAUSED_STATUS) ||
     user.role === "admin"
@@ -35,12 +40,11 @@ export async function inboundTrialRefusal(user: TrialGateUser): Promise<{ trialS
     .from(calls)
     .where(eq(calls.userId, user.id));
   const trialSecondsUsed = usage?.seconds ?? 0;
-  return isTrialExhausted({
+  const cause = trialExhaustionCause({
     subscriptionStatus: user.subscriptionStatus,
     trialEndsAt: user.trialEndsAt,
     trialSecondsUsed,
     role: user.role,
-  })
-    ? { trialSecondsUsed }
-    : null;
+  });
+  return cause ? { trialSecondsUsed, cause } : null;
 }
