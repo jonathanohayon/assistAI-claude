@@ -16,7 +16,7 @@
         "Rapports d'activité hebdomadaires"
       ],
       "excludedFeatures": [
-        "Intégration CRM",
+        "Contacts dans Google Sheets",
         "Calendrier connecté (prise de RDV)"
       ],
       "bestFor": "indépendants, commerces et petites équipes",
@@ -31,7 +31,7 @@
       "features": [
         "{minutes} minutes incluses",
         "Prise d'appels et de rendez-vous automatique, 24/7",
-        "Calendrier connecté & CRM",
+        "Calendrier connecté & contacts",
         "Récap de chaque appel sur WhatsApp",
         "Réponses aux questions fréquentes",
         "Voix naturelle, en français, hébreu et anglais"
@@ -39,7 +39,7 @@
       "excludedFeatures": [],
       "bestFor": "salons, cabinets et commerces avec un seul établissement",
       "onboardingNotes": [
-        "Le CRM Google Sheet sera créé et partagé avec vous pendant la connexion Google.",
+        "Votre tableau Google Sheets de contacts sera créé et partagé avec vous pendant la connexion Google.",
         "Renseignez votre numéro WhatsApp pour recevoir les récaps d'appels."
       ]
     },
@@ -57,7 +57,7 @@
       "bestFor": "cliniques et entreprises multi-sites",
       "onboardingNotes": [
         "Vous pouvez rattacher jusqu'à 3 établissements / calendriers distincts.",
-        "Notre équipe vous contactera sous 24h pour la configuration (persona, voix, établissements)."
+        "Notre équipe vous contactera sous 24h pour la configuration (personnalité, voix, établissements)."
       ]
     }
   },
@@ -86,7 +86,6 @@
     "ctaLiveDemo": "Parler à Tamara maintenant",
     "stats": {
       "availability": "Disponibilité",
-      "latency": "Latence vocale",
       "languages": "Langues · FR · HE · EN",
       "calls": "Appels simultanés"
     },
@@ -99,7 +98,7 @@
     "kicker": "Connecté à vos outils",
     "whatsapp": "Compte rendu d'appel sur WhatsApp",
     "calendar": "RDV synchronisés dans Google Calendar",
-    "crm": "Contacts enregistrés dans votre CRM Google Sheets",
+    "crm": "Contacts enregistrés dans votre tableau Google Sheets",
     "gmail": "Notifications et résumés par Gmail"
   },
   "OutboundCalling": {
@@ -146,26 +145,6 @@
       "f3": "Notifications client"
     }
   },
-  "HowItWorks": {
-    "kicker": "Comment ça marche",
-    "title": "Quatre étapes. Zéro friction.",
-    "step1": {
-      "title": "Configurez votre persona",
-      "desc": "Centres, horaires, prestations, ton de la voix, langues — depuis un dashboard simple. Aucune ligne de code."
-    },
-    "step2": {
-      "title": "Connectez votre calendrier",
-      "desc": "Google Calendar en deux clics. L'agent voit vos créneaux et écrit dedans en temps réel."
-    },
-    "step3": {
-      "title": "Rebranchez votre numéro",
-      "desc": "Un numéro dédié, ou redirection de votre ligne existante. Vous gardez votre numéro."
-    },
-    "step4": {
-      "title": "Vos clients parlent à l'IA",
-      "desc": "La conversation est naturelle, polie, et toujours dans la langue du client."
-    }
-  },
   "Features": {
     "kicker": "Fonctionnalités",
     "title": "Tout ce qu'une vraie secrétaire fait. Sans pause-café.",
@@ -183,8 +162,8 @@
         "desc": "Lit et écrit dans Google Calendar en temps réel. Aucun double booking."
       },
       "crm": {
-        "title": "CRM auto-rempli",
-        "desc": "Chaque appel enregistre la cliente dans votre Sheet. Aucune fiche perdue."
+        "title": "Fiche client remplie automatiquement",
+        "desc": "Chaque appel enregistre la cliente dans votre tableau Google Sheets. Aucune fiche perdue."
       },
       "reschedule": {
         "title": "Annulations & déplacements",
@@ -235,7 +214,7 @@
       },
       "agent": {
         "title": "Agent configuré",
-        "sub": "Voix, persona, horaires — pré-réglés par défaut."
+        "sub": "Voix, personnalité, horaires — pré-réglés par défaut."
       },
       "live": {
         "title": "EN LIVE",
@@ -325,7 +304,7 @@
     "rowInbound": "Appels entrants 24/7",
     "rowMessages": "Messages & recap WhatsApp",
     "rowCalendar": "Agenda connecté & prise de RDV",
-    "rowCrm": "CRM / contacts",
+    "rowCrm": "Contacts dans Google Sheets",
     "rowMulticall": "Appels simultanés en parallèle",
     "rowAnalytics": "Analytics temps réel",
     "rowSupport": "Support",
@@ -394,7 +373,7 @@
   "CTA": {
     "kicker": "Prêt à essayer ?",
     "title": "Donnez une voix à votre cabinet en 5 minutes.",
-    "subtitle": "Pas de carte bleue. Pas d'engagement. Configurez votre persona, testez la voix dans le dashboard, et basculez votre numéro quand vous êtes prêt.",
+    "subtitle": "Pas de carte bleue. Pas d'engagement. Choisissez la personnalité, testez la voix dans le dashboard, et basculez votre numéro quand vous êtes prêt.",
     "ctaPrimary": "Démarrer gratuitement",
     "ctaSecondary": "Tester la voix",
     "footer": "Conforme RGPD · Hébergé en Europe · Données chiffrées en transit"

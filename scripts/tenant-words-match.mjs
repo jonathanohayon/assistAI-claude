@@ -1,8 +1,8 @@
 // Internal words a tenant must not read on their screens (design decision of
 // 15/11, internal-words audit sections A and B): tenants read plain words,
 // e.g. "Personnalité" not "Persona", "votre tableau Google" not "le Sheet".
-// Used by scripts/check-tenant-words.mjs (rendered tenant pages) and
-// scripts/tests/tenant-words.test.ts (L1 message namespaces). Pure.
+// Used by scripts/check-tenant-words.mjs (rendered tenant AND public pages)
+// and scripts/tests/tenant-words.test.ts (message namespaces). Pure.
 //
 // Whole words only. Case-insensitive except where a lowercase form is a
 // legitimate word:
@@ -38,8 +38,33 @@ export function wordRules(locale) {
   return [...COMMON, ["Sheet", sheet], ...(locale === "he" ? HEBREW : [])];
 }
 
-/** Removes the product name "Google Sheets" so the Sheet rule ignores it. */
-const withoutProductName = (text) => text.replace(/\bGoogle Sheets\b/g, "Google ·");
+/**
+ * The rules for the PUBLIC pages (home, landings, login, signup; audit
+ * section D): what a prospect reads first. Persona, CRM, Sheet (same
+ * per-locale case rule as above) and the latency jargon the hero used
+ * ("Latence vocale", now "Temps de réponse").
+ */
+export function publicWordRules(locale) {
+  const sheet = locale === "en" ? SHEET_CAPITAL : SHEET_ANY_CASE;
+  const latency = {
+    fr: ["Latence", /\blatences?\b/gi],
+    en: ["Latency", /\blatency\b/gi],
+    he: ["Latency", /השהי/g],
+  }[locale] ?? ["Latency", /\blaten(?:ce|cy)s?\b/gi];
+  return [
+    ["Persona", /\bpersonas?\b/gi],
+    ["CRM", /\bCRM\b/gi],
+    ["Sheet", sheet],
+    latency,
+    ...(locale === "he" ? [["Persona", /פרסונ/g]] : []),
+  ];
+}
+
+/**
+ * Removes the product name "Google Sheets" so the Sheet rule ignores it, in
+ * any case: the home's logo strip writes it in capitals ("GOOGLE SHEETS").
+ */
+const withoutProductName = (text) => text.replace(/\bGoogle Sheets\b/gi, "Google ·");
 
 /**
  * Removes ICU argument names from a message ("{token} est remplacé",
@@ -53,11 +78,14 @@ export const stripIcuArguments = (message) => message.replace(/\{\s*[A-Za-z_]\w*
  */
 export const withoutEmails = (text) => text.replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "[email]");
 
-/** Map word -> up to 3 short contexts where it occurs in `text`. */
-export function wordHits(text, locale) {
+/**
+ * Map word -> up to 3 short contexts where it occurs in `text`. `rules`
+ * defaults to the tenant rules; pass publicWordRules(locale) for public pages.
+ */
+export function wordHits(text, locale, rules = wordRules(locale)) {
   const t = withoutProductName(withoutEmails(text));
   const out = new Map();
-  for (const [label, re] of wordRules(locale)) {
+  for (const [label, re] of rules) {
     for (const m of t.matchAll(re)) {
       const ctx = t.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40).replace(/\s+/g, " ");
       const list = out.get(label) ?? [];

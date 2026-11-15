@@ -27,7 +27,7 @@ const MODULES: readonly { id: ModuleId; title: Localized; body: Localized }[] = 
   },
   {
     id: "persona",
-    title: { fr: "Personnage", en: "Persona", he: "דמות" },
+    title: { fr: "Personnage", en: "Personality", he: "דמות" },
     body: { fr: "Son prénom, son ton, ses langues.", en: "Its name, its tone, its languages.", he: "שם, טון ושפות." },
   },
   {

@@ -1,8 +1,12 @@
 #!/usr/bin/env node
-// Proof that a TENANT reads plain words on their screens: no "Persona",
-// "PSTN", "CRM", "Sheet" (outside the product name "Google Sheets"),
-// "Live Test"/"LiveTest", "OAuth", "token" or "tenant" in the text of the
-// RENDERED tenant pages, in fr/en/he (rules in tenant-words-match.mjs).
+// Proof that people read plain words, on the RENDERED pages, in fr/en/he
+// (rules in tenant-words-match.mjs):
+//   1. public pages (home, landings, login, signup…; signed out): no
+//      "Persona", "CRM", "Sheet" (outside the product name "Google Sheets")
+//      or latency jargon ("Latence vocale"). Internal-words audit section D.
+//   2. tenant pages (signed in as the mock tenant): no "Persona", "PSTN",
+//      "CRM", "Sheet", "Live Test"/"LiveTest", "OAuth", "token" or "tenant".
+//      Audit sections A and B.
 // Same harness as check-tenant-bundle.mjs: a PRODUCTION build backed by a
 // throwaway database with a mock tenant — never production.
 //
@@ -15,20 +19,11 @@
 // for the mock tenant (developer mode off, role "user"), so they are out of
 // the scan by construction. Exit 1 on any match.
 //
-// Not scanned (each one printed when it applies):
-//   - e-mail addresses (the tenant's own data: tenant@example.test);
-//   - the plan cards' feature lines (Plans.*.features / excludedFeatures),
-//     shown on /dashboard/billing but shared word for word with the public
-//     pricing cards, whose copy is a separate decision (audit section D).
+// Not scanned: e-mail addresses (the tenant's own data:
+// tenant@example.test). The plan cards' feature lines (Plans.*) are scanned
+// on both sides: they are shared by the public pricing and /dashboard/billing.
 
-import { readFileSync } from "node:fs";
-import { visibleText, wordHits } from "./tenant-words-match.mjs";
-
-/** The plan cards' feature lines for a locale (shared with the public pricing). */
-function planCardLines(locale) {
-  const plans = JSON.parse(readFileSync(new URL(`../messages/${locale}.json`, import.meta.url), "utf8")).Plans ?? {};
-  return Object.values(plans).flatMap((p) => [...(p?.features ?? []), ...(p?.excludedFeatures ?? [])]);
-}
+import { publicWordRules, visibleText, wordHits } from "./tenant-words-match.mjs";
 
 const [base, email, password] = process.argv.slice(2);
 if (!base || !email || !password) {
@@ -38,6 +33,8 @@ if (!base || !email || !password) {
 
 // NextAuth basePath (auth.ts).
 const AUTH = "/api/admin/auth";
+// The public pages of the harness's public-pages-check.mjs ("" = the home).
+const PUBLIC_PATHS = ["", "/login", "/signup", "/verify-email", "/forgot-password", "/sales", "/connect"];
 // The tenant pages of check-tenant-bundle.mjs, plus onboarding.
 const TENANT_PATHS = [
   "/dashboard",
@@ -67,8 +64,40 @@ async function get(path, opts = {}) {
   return res;
 }
 
-// Sign in (NextAuth credentials).
+let failed = false;
+
+/** Scans one page; returns false when it was not reachable (not 200). */
+async function scan(page, rulesFor) {
+  const res = await get(page);
+  if (res.status !== 200) {
+    console.log(`${page}: HTTP ${res.status} (not reachable, skipped)`);
+    return false;
+  }
+  const text = visibleText(await res.text());
+  const locale = page.split("/")[1];
+  // A near-empty page (a loading shell) would pass without proving anything.
+  if (text.trim().length < 200) {
+    failed = true;
+    console.log(`  ✗ ${page}: only ${text.trim().length} chars of visible text: nothing to scan`);
+  }
+  const h = wordHits(text, locale, rulesFor(locale));
+  console.log(`${page}: ${text.length} chars of visible text${h.size ? "" : ", clean"}`);
+  for (const [word, ctx] of h) {
+    failed = true;
+    for (const c of ctx) console.log(`  ✗ "${word}" …${c}…`);
+  }
+  return true;
+}
+
+// 1. Public pages, signed out (no cookie yet).
+let publicScanned = 0;
+for (const locale of LOCALES) {
+  for (const p of PUBLIC_PATHS) if (await scan(`/${locale}${p}`, publicWordRules)) publicScanned++;
+}
+
+// 2. Sign in (NextAuth credentials), then the tenant pages.
 {
+  cookie = "";
   const csrf = await (await get(`${AUTH}/csrf`)).json();
   const res = await get(`${AUTH}/callback/credentials`, {
     method: "POST",
@@ -80,39 +109,18 @@ async function get(path, opts = {}) {
     process.exit(2);
   }
 }
-
-let failed = false;
-let scanned = 0;
+let tenantScanned = 0;
 for (const locale of LOCALES) {
-  for (const p of TENANT_PATHS) {
-    const page = `/${locale}${p}`;
-    const res = await get(page);
-    if (res.status !== 200) {
-      console.log(`${page}: HTTP ${res.status} (not reachable for this tenant, skipped)`);
-      continue;
-    }
-    let text = visibleText(await res.text());
-    const skipped = planCardLines(locale).filter((line) => wordHits(line, locale).size && text.includes(line));
-    for (const line of skipped) text = text.split(line).join(" ");
-    if (skipped.length) console.log(`  · not scanned: ${skipped.length} plan-card line(s) shared with the public pricing: ${skipped.map((l) => `"${l}"`).join(", ")}`);
-    scanned++;
-    // A near-empty page (a loading shell) would pass without proving anything.
-    if (text.trim().length < 200) {
-      failed = true;
-      console.log(`  ✗ only ${text.trim().length} chars of visible text: nothing to scan`);
-    }
-    const h = wordHits(text, locale);
-    console.log(`${page}: ${text.length} chars of visible text${h.size ? "" : ", clean"}`);
-    for (const [word, ctx] of h) {
-      failed = true;
-      for (const c of ctx) console.log(`  ✗ "${word}" …${c}…`);
-    }
-  }
+  for (const p of TENANT_PATHS) if (await scan(`/${locale}${p}`, () => undefined)) tenantScanned++;
 }
 
-if (scanned === 0) {
-  console.log("FAIL: no tenant page was reachable");
+if (publicScanned === 0 || tenantScanned === 0) {
+  console.log(`FAIL: no ${publicScanned === 0 ? "public" : "tenant"} page was reachable`);
   process.exit(1);
 }
-console.log(failed ? "FAIL: internal words on a tenant page" : `PASS: 0 internal words on ${scanned} tenant pages`);
+console.log(
+  failed
+    ? "FAIL: internal words on a rendered page"
+    : `PASS: 0 internal words on ${tenantScanned} tenant pages and ${publicScanned} public pages`,
+);
 process.exit(failed ? 1 : 0);

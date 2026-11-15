@@ -77,7 +77,7 @@ export function WowDashboard() {
     },
     {
       id: "persona",
-      label: "Persona",
+      label: "Personnalité",
       tagline: "Qui elle est, comment elle parle.",
       summary: `${persona.name || "—"} · ${LANGUAGES.find((l) => l.id === lang)?.flag ?? "—"}`,
       accent: "from-[#be185d] to-[#ec4899]",
