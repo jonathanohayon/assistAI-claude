@@ -4,6 +4,7 @@ import { DEMO_DENIED_BODY } from "@/lib/demo-sandbox";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
+import { cancelledAppointmentMeta } from "@/lib/client-confirm/core";
 
 export async function POST(req: NextRequest) {
   const { eventId } = await req.json();
@@ -30,6 +31,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // The appointment being cancelled (date, time, place), read BEFORE the
+  // delete so the client confirm can state it (lib/client-confirm). The
+  // delete alone returns nothing. A failed read changes nothing else: the
+  // cancel goes on and the event is logged without a date, as before.
+  let appointment: ReturnType<typeof cancelledAppointmentMeta> = null;
+  try {
+    const existing = await caller.calendar.events.get({ calendarId: caller.calendarId, eventId });
+    appointment = cancelledAppointmentMeta(existing.data);
+  } catch {
+    appointment = null;
+  }
+
   try {
     await caller.calendar.events.delete({
       calendarId: caller.calendarId,
@@ -42,7 +55,9 @@ export async function POST(req: NextRequest) {
       // Attributed to the tenant (like book_success): the call type and the
       // dashboard read tool events by user_id.
       ...(caller.mode === "tenant" ? { userId: caller.userId } : {}),
-      metadata: { ...callIdMeta(req), eventId },
+      // Date / time / place only: no caller name or number (they live in
+      // the event's title and description, which are never copied here).
+      metadata: { ...callIdMeta(req), eventId, ...(appointment ?? {}) },
     });
     return NextResponse.json({ success: true, message: "RDV annulé." });
   } catch (err) {

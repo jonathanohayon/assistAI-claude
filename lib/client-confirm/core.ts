@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 
 import type { JoinEvent } from "@/lib/calls/core";
 import { formatDateLabel, type ReminderLang } from "@/lib/reminders";
+import { JERUSALEM_TZ } from "@/lib/tz";
 import { signClientMessage } from "@/lib/summarize";
 import { withCallUsLine } from "@/lib/whatsapp-call-line";
 
@@ -42,7 +43,7 @@ export interface ProvenEvent {
   /** HH:MM, or null. */
   time: string | null;
   place: string | null;
-  /** cancel_success only: the calendar event cancelled (to look up its date). */
+  /** cancel_success only: the calendar event cancelled (to look up its date when the event has none). */
   eventId: string | null;
 }
 
@@ -77,8 +78,21 @@ function provenOf(e: Pick<JoinEvent, "event" | "metadata">): ProvenEvent | null 
       return date && time ? { kind: "rescheduled", date, time, place: placeOf(m), eventId: null } : null;
     }
     case "cancel_success": {
+      // The cancel route stores the appointment it deleted (date, time, place,
+      // read from the calendar event just before deleting it). Older events,
+      // or a failed read, carry only eventId: date null → the caller looks up
+      // that event's last book/reschedule instead.
       const id = m["eventId"];
-      return { kind: "cancelled", date: null, time: null, place: null, eventId: typeof id === "string" && id ? id : null };
+      const date = str(m["date"], DATE_RE);
+      const time = str(m["time"], TIME_RE);
+      const dated = date !== null && time !== null;
+      return {
+        kind: "cancelled",
+        date: dated ? date : null,
+        time: dated ? time : null,
+        place: dated ? placeOf(m) : null,
+        eventId: typeof id === "string" && id ? id : null,
+      };
     }
     default:
       return null;
@@ -99,7 +113,7 @@ export function lastProvenEvent(events: Array<Pick<JoinEvent, "event" | "metadat
   return null;
 }
 
-/** The appointment a cancel_success cancelled, from that event's last book/reschedule. */
+/** The appointment a cancel_success cancelled, from that event's last book/reschedule (fallback). */
 export function appointmentFromEvent(e: Pick<JoinEvent, "event" | "metadata"> | null): Pick<ProvenEvent, "date" | "time" | "place"> | null {
   if (!e) return null;
   const p = provenOf(e);
@@ -154,4 +168,46 @@ export function callDestinationKey(callKey: string, e164: string): string {
 /** Provider error text with any phone-number-like run masked (logs carry no number). */
 export function redactNumbers(s: string | null | undefined): string {
   return (s ?? "").replace(/\+?\d[\d\s().-]{5,}\d/g, "[number]");
+}
+
+/** The parts of a Google Calendar event the cancel route reads (googleapis Schema$Event subset). */
+export interface CalendarEventLike {
+  start?: { dateTime?: string | null; date?: string | null } | null;
+  location?: string | null;
+  description?: string | null;
+}
+
+/** The place line the booking route writes in the event description (lib/booking-place.ts eventPlaceLine). */
+const PLACE_LINE_RE = /^(?:Lieu|Centre) : (.+)$/m;
+
+/**
+ * The appointment of a calendar event about to be cancelled, for the
+ * cancel_success metadata: date + time (Asia/Jerusalem wall clock, the zone
+ * the booking route writes in) and the place when known. Never the title or
+ * the rest of the description (they carry the caller's name and number).
+ * null when the event has no timed start (all-day, missing, unparsable).
+ */
+export function cancelledAppointmentMeta(e: CalendarEventLike | null | undefined): { date: string; time: string; location?: string } | null {
+  const iso = e?.start?.dateTime;
+  if (!iso) return null;
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return null;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: JERUSALEM_TZ,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value]),
+  );
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  const time = `${parts.hour}:${parts.minute}`;
+  if (!DATE_RE.test(date) || !TIME_RE.test(time)) return null;
+  const location = placeOf({ location: e?.location || e?.description?.match(PLACE_LINE_RE)?.[1] });
+  return location ? { date, time, location } : { date, time };
 }

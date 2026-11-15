@@ -84,7 +84,9 @@ export async function sendClientConfirm(input: ClientConfirmInput, deps: ClientC
   const events = await deps.loadToolEvents(userId, call);
   const proven = lastProvenEvent(events);
   if (!proven) return skip("no_proven_event", { toolEvents: events.length });
-  if (proven.kind === "cancelled" && proven.eventId) {
+  // A cancel without its own date (older event, failed read): the date of
+  // that calendar event's last book/reschedule, else a text with no date.
+  if (proven.kind === "cancelled" && !proven.date && proven.eventId) {
     const appt = appointmentFromEvent(await deps.lastEventOfAppointment(userId, proven.eventId, call.createdAt));
     if (appt) Object.assign(proven, appt);
   }
