@@ -23,6 +23,7 @@ export type Translator = ReturnType<typeof useTranslations<"DashboardConfig">>;
 
 import type { ServedVoice, ServedVoiceChoice } from "@/components/bricks/voice/voice-ui";
 import type { Persona } from "@/lib/persona/contract";
+import type { AgentState } from "@/lib/agent-state/types";
 
 export type Personality = Partial<
   Record<(typeof PERSONALITY_KEYS)[number], number>
@@ -136,6 +137,11 @@ export type DashboardStats = {
   /** First attributed booking (YYYY-MM-DD), null if none: label "since …". */
   rdvSince?: string | null;
   minutesThisMonth: number;
+  /**
+   * "Will the agent answer a call now?" — server-computed, plain value
+   * (lib/agent-state/types.ts). Absent where the hero data has none.
+   */
+  agentState?: AgentState;
 };
 
 export const WEEKDAY_ORDER: readonly WeekDay[] = [

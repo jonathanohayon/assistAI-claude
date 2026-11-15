@@ -13,7 +13,7 @@ import {
 } from "@/lib/agent-prompt-defaults";
 import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
-import { computeDashboardStats } from "@/lib/dashboard-stats";
+import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
@@ -86,7 +86,7 @@ export default async function AdminTenantPage({
   });
 
   // Stats du tenant cible — même calcul que /dashboard (lib/dashboard-stats).
-  const stats = await computeDashboardStats(userId);
+  const stats = await computeHeroStats(userId);
 
   // Preview des blocs admin hérités + prompt complet (alimente la tuile
   // admin-only "Prompt système").
