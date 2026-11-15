@@ -11,6 +11,13 @@
 //   429 { ok: false, error: "cooldown", cooldownSeconds } 1 per 60 s per address
 //   429 { ok: false, error: "rate_limited" } + Retry-After  5/day/address or the hourly ceiling
 // Failures are logged server-side only.
+//
+// Timing: the answer must not tell either, so the slow work for an existing
+// unverified account (code generation + bcrypt hash + the email send) runs OFF
+// the response path, through deps.defer (next/server after() in production).
+// What stays on the path is the same for every address: the limits, then one
+// indexed lookup. When defer cannot schedule (no request scope, e.g. a script),
+// the work runs inline instead: correct, just not constant-time.
 
 import type { LogEvent } from "@/lib/logger";
 import type { RateLimitResult } from "@/lib/rate-limit-db-core";
@@ -51,6 +58,12 @@ export interface ResendDeps {
   createCode(userId: string): Promise<{ ok: boolean; code?: string; reason?: string; cooldownSeconds?: number }>;
   send(to: string, code: string, locale: string | null): Promise<VerificationSendResult>;
   log(ev: LogEvent): Promise<void>;
+  /**
+   * Runs `task` after the response is sent. Returns false when it could not be
+   * scheduled (outside a request scope); the handler then runs it inline.
+   * The task never throws.
+   */
+  defer(task: () => Promise<void>): boolean;
 }
 
 export interface HandlerResponse {
@@ -117,45 +130,66 @@ export async function handleResendVerification(body: unknown, deps: ResendDeps):
   const user = await deps.findUser(email);
   if (!user || user.emailVerified) return ACCEPTED;
 
-  const verif = await deps.createCode(user.id);
-  // DB cooldown (a code from < 60 s ago, e.g. the signup one): that code is
-  // still valid, nothing is sent, and the answer stays the uniform 200.
-  if (!verif.ok || !verif.code) {
-    if (verif.reason !== "cooldown") {
-      await deps.log({
+  const userId = user.id;
+  const locale = user.locale;
+  const task = () => deliverCode(email, userId, locale, deps);
+  if (!deps.defer(task)) await task();
+  return ACCEPTED;
+}
+
+/** Code + send + log for an existing unverified account. Never throws. */
+async function deliverCode(email: string, userId: string, locale: string | null, deps: ResendDeps): Promise<void> {
+  try {
+    const verif = await deps.createCode(userId);
+    // DB cooldown (a code from < 60 s ago, e.g. the signup one): that code is
+    // still valid and nothing is sent.
+    if (!verif.ok || !verif.code) {
+      if (verif.reason !== "cooldown") {
+        await deps.log({
+          source: "auth",
+          level: "error",
+          event: "verification_resend_failed",
+          message: "Verification resend: code creation failed",
+          userId,
+        });
+      }
+      return;
+    }
+
+    let sent: VerificationSendResult;
+    try {
+      sent = await deps.send(email, verif.code, locale);
+    } catch {
+      sent = { ok: false, error: "exception" };
+    }
+    const isDevFallback = sent.fallback === "console_log";
+    await deps.log({
+      source: "auth",
+      event: sent.ok ? "verification_resent" : "verification_resend_failed",
+      message: sent.ok
+        ? isDevFallback
+          ? `[DEV] Code renvoyé à ${email} : ${verif.code} (no email sender configured)`
+          : `Code renvoyé à ${email}`
+        : "Verification resend: send failed",
+      level: sent.ok ? (isDevFallback ? "warn" : "info") : "error",
+      userId,
+      metadata: {
+        fallback: sent.fallback,
+        // Server-side log only; never in the response.
+        error: sent.error,
+        devCode: isDevFallback ? verif.code : undefined,
+      },
+    });
+  } catch {
+    // Deferred: nobody awaits this, so nothing may escape. No address here.
+    await deps
+      .log({
         source: "auth",
         level: "error",
         event: "verification_resend_failed",
-        message: "Verification resend: code creation failed",
-        userId: user.id,
-      });
-    }
-    return ACCEPTED;
+        message: "Verification resend: deferred delivery failed",
+        userId,
+      })
+      .catch(() => {});
   }
-
-  let sent: VerificationSendResult;
-  try {
-    sent = await deps.send(email, verif.code, user.locale);
-  } catch {
-    sent = { ok: false, error: "exception" };
-  }
-  const isDevFallback = sent.fallback === "console_log";
-  await deps.log({
-    source: "auth",
-    event: sent.ok ? "verification_resent" : "verification_resend_failed",
-    message: sent.ok
-      ? isDevFallback
-        ? `[DEV] Code renvoyé à ${email} : ${verif.code} (no email sender configured)`
-        : `Code renvoyé à ${email}`
-      : `Renvoi du code à ${email} échoué`,
-    level: sent.ok ? (isDevFallback ? "warn" : "info") : "error",
-    userId: user.id,
-    metadata: {
-      fallback: sent.fallback,
-      // Server-side log only; never in the response.
-      error: sent.error,
-      devCode: isDevFallback ? verif.code : undefined,
-    },
-  });
-  return ACCEPTED;
 }

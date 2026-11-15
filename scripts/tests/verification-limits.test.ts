@@ -41,6 +41,22 @@ function fakeLimiter() {
 
 const MIN = 60_000;
 
+// Deferred work (deps.defer) is queued here and run by handle() after the
+// handler has answered, like after() does in production.
+const queued: Array<() => Promise<void>> = [];
+const queueDefer: ResendDeps["defer"] = (task) => {
+  queued.push(task);
+  return true;
+};
+async function flushDeferred() {
+  while (queued.length) await queued.shift()!();
+}
+async function handle(body: unknown, deps: ResendDeps) {
+  const r = await handleResendVerification(body, deps);
+  await flushDeferred();
+  return r;
+}
+
 // ── Resend ────────────────────────────────────────────────────────────────
 function resendWorld(users: Record<string, { id: string; emailVerified: boolean }> = {}) {
   const lim = fakeLimiter();
@@ -56,6 +72,7 @@ function resendWorld(users: Record<string, { id: string; emailVerified: boolean 
       return { ok: true };
     },
     log: async () => {},
+    defer: queueDefer,
   };
   return { ...lim, sent, state, deps };
 }
@@ -65,12 +82,12 @@ async function resendCases() {
   const w = resendWorld({ [known]: { id: "u1", emailVerified: false } });
 
   // A normal resend: 200 { ok: true }, one email.
-  let r = await handleResendVerification({ email: " Known@Example.com " }, w.deps);
+  let r = await handle({ email: " Known@Example.com " }, w.deps);
   assert.deepEqual([r.status, r.body], [200, { ok: true }]);
   assert.deepEqual(w.sent, [known]);
 
   // Cooldown still applies (60 s per address): 429 cooldown, nothing sent.
-  r = await handleResendVerification({ email: known }, w.deps);
+  r = await handle({ email: known }, w.deps);
   assert.equal(r.status, 429);
   assert.equal(r.body.error, "cooldown");
   assert.ok((r.body.cooldownSeconds as number) >= 1 && (r.body.cooldownSeconds as number) <= 60);
@@ -78,7 +95,7 @@ async function resendCases() {
   // The DB cooldown (code < 60 s old, e.g. from signup) → uniform 200, nothing sent.
   w.clock.now += MIN;
   w.state.dbCooldown = true;
-  r = await handleResendVerification({ email: known }, w.deps);
+  r = await handle({ email: known }, w.deps);
   assert.deepEqual([r.status, r.body], [200, { ok: true }]);
   assert.equal(w.sent.length, 1);
   w.state.dbCooldown = false;
@@ -86,18 +103,18 @@ async function resendCases() {
   // 5 per day per address: sends 3, 4, 5 go through, the 6th is 429 rate_limited.
   for (let i = 3; i <= RESEND_PER_ADDRESS_PER_DAY; i++) {
     w.clock.now += MIN;
-    r = await handleResendVerification({ email: known }, w.deps);
+    r = await handle({ email: known }, w.deps);
     assert.equal(r.status, 200, `send #${i}`);
   }
   assert.equal(w.sent.length, RESEND_PER_ADDRESS_PER_DAY - 1);
   w.clock.now += MIN;
-  r = await handleResendVerification({ email: known }, w.deps);
+  r = await handle({ email: known }, w.deps);
   assert.deepEqual([r.status, r.body], [429, { ok: false, error: "rate_limited" }]);
   assert.ok(r.retryAfterSec && r.retryAfterSec > 3600, "frees up after a day, not an hour");
   assert.equal(w.sent.length, RESEND_PER_ADDRESS_PER_DAY - 1, "nothing sent once over the limit");
   // A day later the address frees up.
   w.clock.now += 24 * 60 * MIN;
-  assert.equal((await handleResendVerification({ email: known }, w.deps)).status, 200);
+  assert.equal((await handle({ email: known }, w.deps)).status, 200);
 
   // No address in the limiter's stored rows: keys are sha256 hex.
   for (const [bucket, ledger] of w.ledgers) {
@@ -113,15 +130,15 @@ async function resendCases() {
 async function resendGlobal() {
   const w = resendWorld();
   for (let i = 0; i < RESEND_GLOBAL_PER_HOUR; i++) {
-    const r = await handleResendVerification({ email: `user${i}@example.com` }, w.deps);
+    const r = await handle({ email: `user${i}@example.com` }, w.deps);
     assert.equal(r.status, 200, `address ${i}`);
   }
-  const r = await handleResendVerification({ email: "one-more@example.com" }, w.deps);
+  const r = await handle({ email: "one-more@example.com" }, w.deps);
   assert.deepEqual([r.status, r.body], [429, { ok: false, error: "rate_limited" }]);
   assert.ok(r.retryAfterSec && r.retryAfterSec <= 3600);
   // An hour later the ceiling frees up.
   w.clock.now += 60 * MIN;
-  assert.equal((await handleResendVerification({ email: "later@example.com" }, w.deps)).status, 200);
+  assert.equal((await handle({ email: "later@example.com" }, w.deps)).status, 200);
   console.log("resend: global hourly ceiling passed");
 }
 
@@ -135,39 +152,39 @@ async function resendNoExistenceLeak() {
   const w = resendWorld(users);
   const answers = [];
   for (const email of ["nobody@example.com", "unverified@example.com", "verified@example.com"]) {
-    answers.push(await handleResendVerification({ email }, w.deps));
+    answers.push(await handle({ email }, w.deps));
   }
   w.state.sendFails = true;
-  answers.push(await handleResendVerification({ email: "failing@example.com" }, w.deps));
+  answers.push(await handle({ email: "failing@example.com" }, w.deps));
   for (const a of answers) {
     assert.deepEqual([a.status, a.body, a.retryAfterSec], [200, { ok: true }, undefined]);
   }
   // Cooldown and day cap: same answer for an unknown and a known address.
   w.state.sendFails = false;
-  const cdUnknown = await handleResendVerification({ email: "nobody@example.com" }, w.deps);
-  const cdKnown = await handleResendVerification({ email: "unverified@example.com" }, w.deps);
+  const cdUnknown = await handle({ email: "nobody@example.com" }, w.deps);
+  const cdKnown = await handle({ email: "unverified@example.com" }, w.deps);
   assert.equal(cdUnknown.status, 429);
   assert.deepEqual(Object.keys(cdUnknown.body).sort(), Object.keys(cdKnown.body).sort());
   assert.equal(cdUnknown.body.error, cdKnown.body.error);
   for (let i = 0; i < RESEND_PER_ADDRESS_PER_DAY; i++) {
     w.clock.now += MIN;
-    await handleResendVerification({ email: "nobody@example.com" }, w.deps);
-    await handleResendVerification({ email: "unverified@example.com" }, w.deps);
+    await handle({ email: "nobody@example.com" }, w.deps);
+    await handle({ email: "unverified@example.com" }, w.deps);
   }
   w.clock.now += MIN;
-  const capUnknown = await handleResendVerification({ email: "nobody@example.com" }, w.deps);
-  const capKnown = await handleResendVerification({ email: "unverified@example.com" }, w.deps);
+  const capUnknown = await handle({ email: "nobody@example.com" }, w.deps);
+  const capKnown = await handle({ email: "unverified@example.com" }, w.deps);
   assert.deepEqual([capUnknown.status, capUnknown.body], [429, { ok: false, error: "rate_limited" }]);
   assert.deepEqual([capKnown.status, capKnown.body], [429, { ok: false, error: "rate_limited" }]);
 
   // Invalid address → 400 invalid_email, and it counts nothing.
   for (const body of [{}, { email: "" }, { email: "no-at-sign" }, { email: 42 }, null, "x"]) {
-    const r = await handleResendVerification(body, w.deps);
+    const r = await handle(body, w.deps);
     assert.deepEqual([r.status, r.body], [400, { ok: false, error: "invalid_email" }]);
   }
   // Limiter down → fail closed, neutral.
   const down = { ...w.deps, consume: async () => { throw new Error("connection refused DATABASE_URL"); } };
-  const r = await handleResendVerification({ email: "x@example.com" }, down);
+  const r = await handle({ email: "x@example.com" }, down);
   assert.deepEqual([r.status, r.body], [429, { ok: false, error: "rate_limited" }]);
 
   for (const a of [...answers, cdUnknown, cdKnown, capUnknown, capKnown, r]) {
@@ -175,6 +192,106 @@ async function resendNoExistenceLeak() {
     if (a.body.error) assert.ok((VERIFICATION_ERRORS as readonly string[]).includes(a.body.error as string));
   }
   console.log("resend: no existence leak, neutral answers passed");
+}
+
+async function resendConstantTime() {
+  const users = {
+    "unverified@example.com": { id: "u1", emailVerified: false },
+    "verified@example.com": { id: "u2", emailVerified: true },
+  };
+
+  // The handler answers before a slow send completes (200 ms sender).
+  {
+    const w = resendWorld(users);
+    const pending: Promise<void>[] = [];
+    let sendsDone = 0;
+    w.deps.defer = (task) => {
+      pending.push(task());
+      return true;
+    };
+    w.deps.send = async () => {
+      await new Promise((res) => setTimeout(res, 200));
+      sendsDone++;
+      return { ok: true };
+    };
+    const t0 = performance.now();
+    const r = await handleResendVerification({ email: "unverified@example.com" }, w.deps);
+    const elapsed = performance.now() - t0;
+    assert.deepEqual([r.status, r.body], [200, { ok: true }]);
+    assert.equal(sendsDone, 0, "answered before the send finished");
+    assert.ok(elapsed < 50, `answered in ${elapsed.toFixed(1)} ms`);
+    await Promise.all(pending);
+    assert.equal(sendsDone, 1, "the deferred send still ran, once");
+  }
+
+  // Deterministic: a virtual clock charges each I/O its cost when called; the
+  // time on the clock when the handler answers is the same for every state.
+  const COST = { consume: 1, findUser: 5, createCode: 100, send: 300, log: 1 };
+  const answerTimes: Record<string, number> = {};
+  for (const state of ["unknown", "verified", "unverified", "db-cooldown", "send-error"] as const) {
+    const w = resendWorld(users);
+    const vclock = { t: 0 };
+    const charge = <A extends unknown[], R>(cost: number, f: (...a: A) => Promise<R>) =>
+      async (...a: A) => {
+        vclock.t += cost;
+        return f(...a);
+      };
+    w.state.dbCooldown = state === "db-cooldown";
+    w.state.sendFails = state === "send-error";
+    w.deps.consume = charge(COST.consume, w.deps.consume);
+    w.deps.findUser = charge(COST.findUser, w.deps.findUser);
+    w.deps.createCode = charge(COST.createCode, w.deps.createCode);
+    w.deps.send = charge(COST.send, w.deps.send);
+    w.deps.log = charge(COST.log, w.deps.log);
+    const email = state === "unknown" ? "nobody@example.com" : state === "verified" ? "verified@example.com" : "unverified@example.com";
+    const r = await handleResendVerification({ email }, w.deps);
+    assert.deepEqual([r.status, r.body], [200, { ok: true }], state);
+    answerTimes[state] = vclock.t;
+    await flushDeferred();
+    assert.equal(w.sent.length, state === "unverified" ? 1 : 0, `${state}: emails sent`);
+  }
+  const distinct = new Set(Object.values(answerTimes));
+  assert.equal(distinct.size, 1, `same work before the answer: ${JSON.stringify(answerTimes)}`);
+  assert.equal([...distinct][0], 3 * COST.consume + COST.findUser, "limits + one lookup, nothing else");
+
+  // defer cannot schedule (outside a request) → the delivery runs inline, once.
+  {
+    const w = resendWorld(users);
+    w.deps.defer = () => false;
+    const r = await handleResendVerification({ email: "unverified@example.com" }, w.deps);
+    assert.deepEqual([r.status, r.body], [200, { ok: true }]);
+    assert.deepEqual(w.sent, ["unverified@example.com"]);
+  }
+
+  // A throwing deferred delivery never escapes, and its log carries no address.
+  {
+    const w = resendWorld(users);
+    const logs: string[] = [];
+    w.deps.log = async (ev) => {
+      logs.push(JSON.stringify(ev));
+    };
+    w.deps.createCode = async () => {
+      throw new Error("db down");
+    };
+    w.deps.send = async () => {
+      throw new Error("never reached");
+    };
+    const r = await handle({ email: "unverified@example.com" }, w.deps);
+    assert.deepEqual([r.status, r.body], [200, { ok: true }]);
+    assert.equal(logs.length, 1);
+    assert.doesNotMatch(logs[0], /@|unverified@/);
+    // A failing send: the error log has no address either.
+    const w2 = resendWorld(users);
+    const logs2: string[] = [];
+    w2.deps.log = async (ev) => {
+      logs2.push(JSON.stringify(ev));
+    };
+    w2.state.sendFails = true;
+    await handle({ email: "unverified@example.com" }, w2.deps);
+    assert.equal(logs2.length, 1);
+    assert.doesNotMatch(logs2[0], /@/);
+  }
+  console.log("resend: constant-time answer, deferred send passed");
 }
 
 // ── Signup ────────────────────────────────────────────────────────────────
@@ -269,6 +386,9 @@ function wiring() {
   const route = code("app/api/auth/resend-verification/route.ts");
   assert.match(route, /handleResendVerification\(body, resendDeps\)/);
   assert.doesNotMatch(route, /sendVerificationEmail|createEmailVerification/);
+  const deps = code("lib/verification-limits/deps.ts");
+  assert.match(deps, /import \{ after \} from "next\/server"/);
+  assert.match(deps, /after\(task\)/, "production defers through after()");
   for (const l of ["fr", "en", "he"]) {
     const m = JSON.parse(readFileSync(`messages/${l}.json`, "utf8"));
     assert.ok(m.Signup.errRateLimited, `${l} Signup.errRateLimited`);
@@ -282,6 +402,7 @@ async function main() {
   await resendCases();
   await resendGlobal();
   await resendNoExistenceLeak();
+  await resendConstantTime();
   await signupCases();
   wiring();
   console.log("ALL VERIFICATION-LIMITS TESTS PASSED");
