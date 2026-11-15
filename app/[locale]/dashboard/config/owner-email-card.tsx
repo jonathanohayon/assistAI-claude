@@ -12,6 +12,9 @@
  * Saved by the config form's save bar, like the WhatsApp number
  * (config-form.tsx, step "owner recap email"). Rules: ./owner-email.ts.
  *
+ * Below the address: the confirmation row (N2, ./owner-email-confirm-row.tsx),
+ * hidden in the admin "no sender" mode since no code can be sent then.
+ *
  * Used by: notifs-panel.tsx.
  */
 
@@ -28,6 +31,8 @@ import {
   type OwnerEmailSettings,
   type OwnerEmailTestResult,
 } from "./owner-email";
+import type { RecapEmailConfirmation } from "./owner-email-confirm";
+import { OwnerEmailConfirmRow } from "./owner-email-confirm-row";
 import type { Translator } from "./types";
 
 export function OwnerEmailCard({
@@ -39,6 +44,9 @@ export function OwnerEmailCard({
   locale,
   asUserId,
   senderNotice = false,
+  confirmation = null,
+  onConfirmation = () => {},
+  reloadConfirmation = () => {},
   t,
 }: {
   /** What is on screen (unsaved edits included). */
@@ -55,6 +63,10 @@ export function OwnerEmailCard({
   asUserId?: string | null;
   /** Admin only: the server has no sender configured, so the card is not offered to tenants yet. */
   senderNotice?: boolean;
+  /** The SAVED address's confirmation state (GET recapEmailConfirmation). */
+  confirmation?: RecapEmailConfirmation;
+  onConfirmation?: (next: RecapEmailConfirmation) => void;
+  reloadConfirmation?: () => void;
   t: Translator;
 }) {
   const id = useId();
@@ -202,6 +214,19 @@ export function OwnerEmailCard({
           </button>
         </div>
       </div>
+
+      {!senderNotice && (
+        <OwnerEmailConfirmRow
+          value={value}
+          base={base}
+          confirmation={confirmation}
+          onConfirmation={onConfirmation}
+          reloadConfirmation={reloadConfirmation}
+          locale={locale}
+          asUserId={asUserId}
+          t={t}
+        />
+      )}
 
       {error && (
         <p id={errorId} role="alert" className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5 text-[11px] leading-snug text-[#991b1b]">
