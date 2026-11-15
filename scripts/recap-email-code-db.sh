@@ -6,7 +6,7 @@
 # node runs with a clean env (no messaging, email or voice provider
 # credential). set -e: nothing runs after a failed initdb / pg_ctl / check.
 #
-# 1. Migration 0052 is add-only and writes NO data: it sorts last, its SQL
+# 1. Migration 0052 is add-only and writes NO data: it sorts after every earlier one, its SQL
 #    has no INSERT/UPDATE/DELETE; on a seeded database put back in the state
 #    before 0052 (table dropped, ledger row removed), the md5 of EVERY public
 #    table's rows is identical before and after `node scripts/migrate.mjs`;
@@ -31,9 +31,9 @@ q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 migrate() { env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
 
 # ── 1. Migration 0052 is add-only and writes no data ────────────────────
+# Up to 0052 only (a later migration, e.g. 0053, would hide it from a re-run).
 source scripts/lib/migrate-upto.sh
-LAST="$(node -e 'const j=require("./drizzle/meta/_journal.json");console.log(j.entries.at(-1).tag)')"
-[ "$LAST" = "$TAG" ] || { echo "$TAG must sort last (last is $LAST)" >&2; exit 1; }
+migrate() { migrate_upto "$TAG" "$URL" "$DIR.work/m"; }
 migration_sorts_after_all_before "$TAG"
 # (The foreign key's "ON DELETE cascade ON UPDATE no action" is a clause, not a statement.)
 if sed -E 's/ON (DELETE|UPDATE) (cascade|no action|restrict|set null)//gI' "drizzle/${TAG}.sql" | grep -Eiq '\b(insert|update|delete|truncate|drop|alter)\b'; then
@@ -92,6 +92,8 @@ diff -u "$DIR.work/md5-before" "$DIR.work/md5-rerun"
 echo "migration $TAG: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after; schema diff = the new table only; ledger +1; re-run no-op"
 
 # ── 2. Send / confirm / limits / scans ─────────────────────────────────
+# Every migration from here on.
+env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 # The real sender renders through next-intl's getTranslations: the shared
 # test tsconfig maps "next-intl/server" to a stand-in.
 source scripts/lib/next-intl-stub-tsconfig.sh

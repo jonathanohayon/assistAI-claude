@@ -573,6 +573,12 @@ export const campaignCalls = pgTable("campaign_calls", {
   // before this column, or when the header was absent/malformed. Not read yet.
   // Never returned by the dashboard routes (excluded in campaigns/[id] GET).
   workerCallId: text("worker_call_id"),
+  // Post-call analysis claim (lib/campaigns/analysis.ts): NULL = never
+  // claimed; a pending claim {v, pending, claimedAt, token, attempt} while an
+  // analysis runs or after a failed attempt; NULL again once disposition/
+  // sentiment/summary are written. Internal: never returned by the dashboard
+  // routes (excluded in campaigns/[id] GET, not read by the results GET).
+  analysisClaim: jsonb("analysis_claim").$type<Record<string, unknown>>(),
 }, (t) => ({
   byWorkerCallId: index("campaign_calls_worker_call_id_idx").on(t.workerCallId),
 }));

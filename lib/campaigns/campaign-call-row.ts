@@ -31,10 +31,11 @@ export function campaignCallRow(
 }
 
 // campaign_calls columns the dashboard returns (GET /api/dashboard/campaigns/[id]):
-// every column except worker_call_id, an internal join key to tool events.
-// Same columns, same order as a bare select() before that column existed.
+// every column except worker_call_id (an internal join key to tool events) and
+// analysis_claim (the post-call analysis claim, lib/campaigns/analysis.ts).
+// Same columns, same order as a bare select() before those columns existed.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { workerCallId: _internal, ...publicColumns } = getTableColumns(campaignCalls);
+const { workerCallId: _internal, analysisClaim: _claim, ...publicColumns } = getTableColumns(campaignCalls);
 export const campaignCallPublicColumns = publicColumns;
 
 /**
