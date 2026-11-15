@@ -83,6 +83,9 @@ const LIVE: AgentState = { state: "live", reason: null };
 const TO_ACTIVATE: AgentState = { state: "to_activate", reason: null };
 const SUB: AgentState = { state: "attention", reason: "subscription_inactive" };
 const CONFIG: AgentState = { state: "attention", reason: "config_unavailable" };
+// #339 adds this reason to AgentState; built as a plain object so the test
+// compiles on main before it lands.
+const ENGINE = { state: "attention", reason: "engine_unreachable" } as const;
 
 const PLANS_HREF = /href="(\/[a-z]{2})?\/dashboard\/billing"/;
 const SUPPORT_HREF = /href="https:\/\/wa\.me\/\d+\?text=/;
@@ -92,6 +95,7 @@ const ONBOARDING_HREF = /href="(\/[a-z]{2})?\/onboarding"/;
 assert.deepEqual(heroLiveState({ primaryPhone: MOCK_PHONE }), {
   status: "live",
   live: true,
+  tone: "live",
   eyebrowStatusKey: "heroLive",
   badgeKey: "wowLiveLabel",
   lineKey: null,
@@ -105,6 +109,7 @@ for (const none of [null, undefined, "", "   "]) {
 assert.deepEqual(heroLiveState({ agentState: SUB, primaryPhone: MOCK_PHONE }), {
   status: "attention",
   live: false,
+  tone: "warning",
   eyebrowStatusKey: "heroAttention",
   badgeKey: "wowAttentionLabel",
   lineKey: "heroSubscriptionInactive",
@@ -113,10 +118,20 @@ assert.deepEqual(heroLiveState({ agentState: SUB, primaryPhone: MOCK_PHONE }), {
 assert.deepEqual(heroLiveState({ agentState: CONFIG, primaryPhone: MOCK_PHONE }), {
   status: "attention",
   live: false,
+  tone: "warning",
   eyebrowStatusKey: "heroAttention",
   badgeKey: "wowAttentionLabel",
   lineKey: "heroConfigUnavailable",
   action: "support",
+});
+assert.deepEqual(heroLiveState({ agentState: ENGINE, primaryPhone: MOCK_PHONE }), {
+  status: "attention",
+  live: false,
+  tone: "neutral",
+  eyebrowStatusKey: "heroOffline",
+  badgeKey: "wowOfflineLabel",
+  lineKey: "heroEngineUnreachable",
+  action: null,
 });
 assert.equal(heroLiveState({ agentState: LIVE, primaryPhone: MOCK_PHONE }).status, "live");
 assert.equal(heroLiveState({ agentState: TO_ACTIVATE, primaryPhone: null }).status, "to_activate");
@@ -159,6 +174,9 @@ const HERO_KEYS = [
   "heroSeePlans",
   "heroConfigUnavailable",
   "heroContactTeam",
+  "heroOffline",
+  "wowOfflineLabel",
+  "heroEngineUnreachable",
 ];
 const frKeys = Object.keys(messages("fr").DashboardConfig).sort();
 for (const locale of LOCALES) {
@@ -242,6 +260,38 @@ for (const locale of LOCALES) {
       assert.doesNotMatch(dc[k], TECHNICAL_WORDS, `${locale} ${k}: no technical word`);
     }
   }
+  // 7. engine_unreachable (our side is down): grey "offline" eyebrow and
+  // badge, its line, no action at all, nothing pinging or waving.
+  {
+    const html = render(locale, MOCK_PHONE, ENGINE);
+    const t = text(html);
+    assert.ok(t.includes(dc.heroOffline), `${locale} engine_unreachable: eyebrow says offline`);
+    assert.ok(t.includes(dc.wowOfflineLabel), `${locale} engine_unreachable: badge says offline`);
+    assert.ok(t.includes(dc.heroEngineUnreachable), `${locale} engine_unreachable: its line`);
+    assert.ok(!html.includes("bg-[#fde68a]"), `${locale} engine_unreachable: grey badge, not amber`);
+    assert.ok(html.includes("bg-white/10 text-white"), `${locale} engine_unreachable: grey badge`);
+    for (const re of [PLANS_HREF, SUPPORT_HREF, ONBOARDING_HREF]) {
+      assert.doesNotMatch(html, re, `${locale} engine_unreachable: no action link`);
+    }
+    for (const k of ["heroLive", "wowLiveLabel", "heroAttention", "heroToActivate", "heroNoNumber"]) {
+      assert.ok(!t.includes(dc[k]), `${locale} engine_unreachable: no ${k}`);
+    }
+    assert.ok(!html.includes("animate-ping"), `${locale} engine_unreachable: no live ping`);
+    assert.ok(!html.includes("animate-[wave"), `${locale} engine_unreachable: waveform still`);
+    for (const k of ["heroOffline", "wowOfflineLabel", "heroEngineUnreachable"]) {
+      assert.doesNotMatch(dc[k], TECHNICAL_WORDS, `${locale} ${k}: no technical word`);
+    }
+  }
+
+  // 8. An attention state with a reason this build doesn't know renders as
+  // the number rule (live with a number), never a guessed attention state.
+  {
+    const html = render(locale, MOCK_PHONE, { state: "attention", reason: "mock_future_reason" });
+    const t = text(html);
+    assert.ok(t.includes(dc.heroLive) && t.includes(dc.wowLiveLabel), `${locale} unknown reason: number rule`);
+    for (const k of ["heroAttention", "heroOffline"]) assert.ok(!t.includes(dc[k]), `${locale} unknown reason: no ${k}`);
+  }
+
   // The support link is the shared WhatsApp support link, opened in a new tab.
   const cfg = render(locale, MOCK_PHONE, CONFIG);
   assert.match(cfg, /href="https:\/\/wa\.me\/\d+\?text=[^"]+"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
@@ -259,6 +309,12 @@ assert.equal(en.heroAttention, "To check");
 assert.equal(en.wowAttentionLabel, "To check");
 assert.equal(en.heroSubscriptionInactive, "Your subscription is no longer active: your agent is not answering calls.");
 assert.equal(en.heroSeePlans, "See plans");
+assert.equal(fr.heroOffline, "Hors ligne");
+assert.equal(fr.wowOfflineLabel, "Hors ligne");
+assert.equal(fr.heroEngineUnreachable, "Un incident est en cours de notre côté. Notre équipe est prévenue.");
+assert.equal(en.heroOffline, "Offline");
+assert.equal(en.wowOfflineLabel, "Offline");
+assert.equal(en.heroEngineUnreachable, "An incident is in progress on our side. Our team has been alerted.");
 assert.equal(`${en.heroConfigUnavailable} ${en.heroContactTeam}`, "A setting is stopping your agent from answering. Contact the Tamara team.");
 
 // The support number is never hard-coded in the hero.
@@ -266,7 +322,7 @@ const heroSrc = readFileSync(join(ROOT, "app/[locale]/dashboard/config/hero-sect
 assert.doesNotMatch(heroSrc, /wa\.me|972\d{6,}/, "hero uses supportHref(), no hard-coded number");
 
 // VP review: a never-activated account is a first step, not a breakdown. "Hors ligne / Offline" is
-// kept for the day we can know that an agent that WAS live is down.
+// only for an agent that our side can't reach (engine_unreachable).
 for (const locale of ["fr", "en", "he"]) {
   const dc = JSON.parse(readFileSync(join(ROOT, `messages/${locale}.json`), "utf8")).DashboardConfig;
   for (const k of ["heroToActivate", "wowToActivateLabel", "heroAttention", "wowAttentionLabel"]) {

@@ -52,6 +52,8 @@ export function HeroSection({
   const liveState = heroLiveState({ agentState: stats?.agentState, primaryPhone });
   const live = liveState.live;
   const attention = liveState.status === "attention";
+  // Amber only when the owner can act; "offline" (our side) stays grey.
+  const warning = liveState.tone === "warning";
   // `rdvSince` only exists once stats come from book_success events (and
   // real durations). Until then the figures are summary-regex counts and
   // transcript-length estimates, and the labels say so.
@@ -81,14 +83,14 @@ export function HeroSection({
         <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#be185d]">
           {t("heroEyebrow")} ·{" "}
           <span
-            className={`inline-flex items-center gap-1 ${live ? "text-[#0e7490]" : attention ? "text-[#b45309]" : "text-[#475569]"}`}
+            className={`inline-flex items-center gap-1 ${live ? "text-[#0e7490]" : warning ? "text-[#b45309]" : "text-[#475569]"}`}
           >
             <span className="relative flex h-1.5 w-1.5">
               {live && (
                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-70 motion-safe:animate-ping" />
               )}
               <span
-                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : attention ? "bg-[#f59e0b]" : "bg-[#94a3b8]"}`}
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : warning ? "bg-[#f59e0b]" : "bg-[#94a3b8]"}`}
               />
             </span>
             {t(liveState.eyebrowStatusKey)}
@@ -124,22 +126,28 @@ export function HeroSection({
         )}
 
         {attention && liveState.lineKey && (
-          // The agent has a number but won't answer: one plain line and the
-          // one thing the owner can do about it. No technical detail.
-          <p className="mt-3 flex flex-wrap items-center gap-x-2 text-base text-[#92400e]">
-            <svg
-              aria-hidden
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4 shrink-0 text-[#b45309]"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>{t(liveState.lineKey)}</span>
+          // The agent has a number but won't answer: one plain line and, when
+          // there is one, the thing the owner can do about it. No technical
+          // detail. The icon sits inline with the text so a wrapped line keeps
+          // it at the start (left in LTR, right in RTL).
+          <p
+            className={`mt-3 text-base leading-relaxed ${warning ? "text-[#92400e]" : "text-[#475569]"}`}
+          >
+            {warning && (
+              <svg
+                aria-hidden
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="me-1.5 inline-block h-4 w-4 align-[-2px] text-[#b45309]"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            {t(liveState.lineKey)}{" "}
             {liveState.action === "plans" && (
               <Link href="/dashboard/billing" className={STATUS_LINK}>
                 {t("heroSeePlans")}
@@ -228,7 +236,7 @@ export function HeroSection({
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset backdrop-blur ${
               live
                 ? "bg-[#22d3ee]/20 text-[#a5f3fc] ring-[#22d3ee]/40"
-                : attention
+                : warning
                   ? "bg-[#fde68a] text-[#78350f] ring-[#f59e0b]/60"
                   : "bg-white/10 text-white ring-white/30"
             }`}
@@ -238,7 +246,7 @@ export function HeroSection({
                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#22d3ee] opacity-80 motion-safe:animate-ping" />
               )}
               <span
-                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : attention ? "bg-[#b45309]" : "bg-white/60"}`}
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${live ? "bg-[#22d3ee]" : warning ? "bg-[#b45309]" : "bg-white/60"}`}
               />
             </span>
             {t(liveState.badgeKey)}

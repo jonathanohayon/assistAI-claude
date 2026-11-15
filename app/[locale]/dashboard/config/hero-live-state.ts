@@ -8,12 +8,17 @@
  * fallback NEVER yields "attention": a warning is only shown when the server
  * said so.
  *
- * Adding a state (e.g. a future "engine stale / offline") is one row in
- * HERO_STATES plus its message keys. The server shape is
- * lib/agent-state/types.ts (AgentState).
+ * Adding a state is one row in HERO_STATES plus its message keys. Rows are
+ * keyed by "state" or "attention:<reason>" as plain strings, so a reason the
+ * server adds before this build knows its type (e.g. engine_unreachable,
+ * #339) still compiles; an attention reason without a row falls back to the
+ * number rule. The server shape is lib/agent-state/types.ts (AgentState).
  */
 
 export type HeroStatus = "live" | "to_activate" | "attention";
+
+/** Colour family: cyan (live), amber (the owner can act), grey (nothing to do). */
+export type HeroTone = "live" | "warning" | "neutral";
 
 /** The call to action shown with the hero's status line. */
 export type HeroAction = "get_number" | "plans" | "support";
@@ -22,12 +27,18 @@ export type HeroLiveState = {
   status: HeroStatus;
   /** Only true when the agent answers: drives the pings and the waveform. */
   live: boolean;
+  tone: HeroTone;
   /** DashboardConfig key shown after the eyebrow. */
-  eyebrowStatusKey: "heroLive" | "heroToActivate" | "heroAttention";
+  eyebrowStatusKey: "heroLive" | "heroToActivate" | "heroAttention" | "heroOffline";
   /** DashboardConfig key of the status card badge. */
-  badgeKey: "wowLiveLabel" | "wowToActivateLabel" | "wowAttentionLabel";
+  badgeKey: "wowLiveLabel" | "wowToActivateLabel" | "wowAttentionLabel" | "wowOfflineLabel";
   /** DashboardConfig key of the status line, null when there is none. */
-  lineKey: "heroNoNumber" | "heroSubscriptionInactive" | "heroConfigUnavailable" | null;
+  lineKey:
+    | "heroNoNumber"
+    | "heroSubscriptionInactive"
+    | "heroConfigUnavailable"
+    | "heroEngineUnreachable"
+    | null;
   /** The line's call to action, null when there is none. */
   action: HeroAction | null;
 };
@@ -36,6 +47,7 @@ const HERO_STATES = {
   live: {
     status: "live",
     live: true,
+    tone: "live",
     eyebrowStatusKey: "heroLive",
     badgeKey: "wowLiveLabel",
     lineKey: null,
@@ -44,6 +56,7 @@ const HERO_STATES = {
   to_activate: {
     status: "to_activate",
     live: false,
+    tone: "neutral",
     eyebrowStatusKey: "heroToActivate",
     badgeKey: "wowToActivateLabel",
     lineKey: "heroNoNumber",
@@ -52,6 +65,7 @@ const HERO_STATES = {
   "attention:subscription_inactive": {
     status: "attention",
     live: false,
+    tone: "warning",
     eyebrowStatusKey: "heroAttention",
     badgeKey: "wowAttentionLabel",
     lineKey: "heroSubscriptionInactive",
@@ -60,10 +74,21 @@ const HERO_STATES = {
   "attention:config_unavailable": {
     status: "attention",
     live: false,
+    tone: "warning",
     eyebrowStatusKey: "heroAttention",
     badgeKey: "wowAttentionLabel",
     lineKey: "heroConfigUnavailable",
     action: "support",
+  },
+  // Our side is down: grey, "offline", and nothing for the owner to do.
+  "attention:engine_unreachable": {
+    status: "attention",
+    live: false,
+    tone: "neutral",
+    eyebrowStatusKey: "heroOffline",
+    badgeKey: "wowOfflineLabel",
+    lineKey: "heroEngineUnreachable",
+    action: null,
   },
 } as const satisfies Record<string, HeroLiveState>;
 
