@@ -16,6 +16,11 @@ import { CampaignSetupStep } from "../../app/[locale]/dashboard/campaigns/campai
 import { CaptureFieldsEditorGate } from "../../app/[locale]/dashboard/campaigns/capture-fields-editor";
 import {
   CAPTURE_KEY_SLUG_MAX,
+  MAX_CAPTURE_FIELDS,
+  captureKeyRenamed,
+  isTooManyCaptureFields,
+  storedCaptureFields,
+  unlabeledCaptureRows,
   addCaptureField,
   deriveCaptureKey,
   removeCaptureField,
@@ -260,6 +265,179 @@ for (const l of LOCALES) {
     assert.doesNotMatch(hint, /agent|סוכן/i, `${l}: not agent-centred until M3b`);
   }
   assert.match(read("app/[locale]/dashboard/campaigns/capture-fields-editor.tsx"), /M3b/, "the M3b comment is there");
+}
+
+// 8. Guard: an unlabeled row blocks the save (pure helper).
+{
+  const storedFields = storedCaptureFields(snapshot({ name: "Mock", extractionSchema: STORED }));
+  assert.deepEqual(storedFields.map((f) => f.key), ["budget", "field_2", "decision"]);
+  assert.deepEqual(storedCaptureFields(null), []);
+  assert.deepEqual(storedCaptureFields("not json"), []);
+
+  // An untouched schema is never blocked.
+  assert.deepEqual(unlabeledCaptureRows(STORED, storedFields), []);
+  assert.deepEqual(unlabeledCaptureRows([], []), []);
+  // A new row added and never typed in counts as unlabeled.
+  const added = addCaptureField([...STORED]);
+  assert.deepEqual(unlabeledCaptureRows(added, storedFields), [3]);
+  // A row whose label was typed then erased, or is blank.
+  let s = setCaptureLabel(added, 3, "Budget", storedFields.map((f) => f.key));
+  assert.deepEqual(unlabeledCaptureRows(s, storedFields), [], "labelled: not blocked");
+  s = setCaptureLabel(s, 3, "   ", storedFields.map((f) => f.key));
+  assert.deepEqual(unlabeledCaptureRows(s, storedFields), [3], "blank label blocks");
+  // Clearing a stored row's label blocks too.
+  assert.deepEqual(unlabeledCaptureRows(setCaptureLabel([...STORED], 1, ""), storedFields), [1]);
+  // A stored item whose stored label is empty: not blocked (it came that way).
+  const legacy: ExtractionField[] = [{ key: "legacy_key", label: "", type: "string" }, ...STORED];
+  const legacyStored = storedCaptureFields(snapshot({ name: "Mock", extractionSchema: legacy }));
+  assert.deepEqual(unlabeledCaptureRows(legacy, legacyStored), [], "stored empty label: not blocked");
+  assert.deepEqual(unlabeledCaptureRows(addCaptureField(legacy), legacyStored), [4], "but a new empty row still is");
+  // The server would have kept it with the key as its label.
+  assert.equal(normalizeExtractionSchema(legacy)[0].label, "legacy_key");
+}
+
+// 9. The marked row and its line render with the aria wiring.
+for (const l of LOCALES) {
+  const schema = addCaptureField([...STORED]);
+  const render = (saveCheck: number) =>
+    html(
+      createElement(CaptureFieldsEditorGate, {
+        schema,
+        onChange: () => {},
+        captureOn: true,
+        isAdmin: false,
+        developerMode: false,
+        storedKeys: STORED.map((f) => f.key),
+        storedFields: STORED.map(({ key, label }) => ({ key, label })),
+        saveCheck,
+      }),
+      l,
+    );
+  const line = esc(messages(l).DashboardCampaigns.extractionUnlabeled);
+  const before = render(0);
+  assert.ok(!before.includes("aria-invalid"), `${l}: no mark before a save attempt`);
+  assert.ok(!before.includes(line), `${l}: no line before a save attempt`);
+
+  const out = render(1);
+  const labels = out.match(/<input[^>]*data-capture-label[^>]*>/g) ?? [];
+  assert.equal(labels.length, 4);
+  const marked = labels.filter((x) => /aria-invalid="true"/.test(x));
+  assert.equal(marked.length, 1, `${l}: only the unlabeled row is marked`);
+  assert.equal(marked[0], labels[3], `${l}: the new row`);
+  assert.match(marked[0], /border-\[#dc2626\]/, `${l}: visible border state`);
+  const describedBy = marked[0].match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(describedBy, `${l}: aria-describedby`);
+  const p = out.match(new RegExp(`<p id="${describedBy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*>([^<]*)</p>`));
+  assert.ok(p, `${l}: the described element exists`);
+  assert.equal(p[1], line, `${l}: our line`);
+  assert.equal((out.match(/data-capture-unlabeled-line/g) ?? []).length, 1, `${l}: one line`);
+  assert.equal((out.match(/data-capture-unlabeled=""/g) ?? []).length, 1, `${l}: one marked row`);
+  // An untouched schema after a refused save elsewhere: nothing marked.
+  const untouched = html(
+    createElement(CaptureFieldsEditorGate, {
+      schema: STORED,
+      onChange: () => {},
+      captureOn: true,
+      isAdmin: false,
+      developerMode: false,
+      storedKeys: STORED.map((f) => f.key),
+      storedFields: STORED.map(({ key, label }) => ({ key, label })),
+      saveCheck: 3,
+    }),
+    l,
+  );
+  assert.ok(!untouched.includes("aria-invalid"), `${l}: untouched schema never marked`);
+}
+// The workspace refuses the save before the fetch, and focus goes to the row.
+{
+  const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
+  const save = ws.slice(ws.indexOf("const save = async"));
+  assert.ok(save.indexOf("unlabeledCaptureRows(") > 0 && save.indexOf("unlabeledCaptureRows(") < save.indexOf("fetch("), "checked before the fetch");
+  const src = read("app/[locale]/dashboard/campaigns/capture-fields-editor.tsx");
+  assert.match(src, /data-capture-label\]\[aria-invalid="true"\]'\)\?\.focus\(\)/, "focus moves to the marked label input");
+}
+
+// 10. Developer mode: the rename warning only for a stored key that differs.
+{
+  const stored = STORED.map((f) => f.key);
+  assert.equal(captureKeyRenamed("budget", "budget", stored), false, "unchanged");
+  assert.equal(captureKeyRenamed("budget", "budget_total", stored), true, "stored key renamed");
+  assert.equal(captureKeyRenamed(null, "anything", stored), false, "new row");
+  assert.equal(captureKeyRenamed("not_stored", "other", stored), false, "origin not stored");
+  assert.equal(captureKeyRenamed("budget", "budget_total", []), false, "nothing stored");
+
+  const renamedSchema = STORED.map((f, i) => (i === 0 ? { ...f, key: "budget_total" } : f));
+  const withNew = addCaptureField(renamedSchema).map((f, i) => (i === 3 ? { ...f, label: "New", key: "custom" } : f));
+  const render = (o: { developerMode?: boolean; isAdmin?: boolean }, l = "fr") =>
+    html(
+      createElement(CaptureFieldsEditorGate, {
+        schema: withNew,
+        onChange: () => {},
+        captureOn: true,
+        isAdmin: o.isAdmin ?? false,
+        developerMode: o.developerMode ?? false,
+        storedKeys: stored,
+        initialKeyOrigins: [...stored, null],
+      }),
+      l,
+    );
+  for (const l of LOCALES) {
+    const line = esc(messages(l).DashboardCampaigns.extractionKeyRenamed);
+    const out = render({ developerMode: true }, l);
+    assert.equal((out.match(/data-capture-renamed/g) ?? []).length, 1, `${l}: one warning (row 0 only)`);
+    assert.ok(out.includes(line), `${l}: the warning's words`);
+    const keys = keyInputs(out);
+    const describedBy = (keys[0] ?? "").match(/aria-describedby="([^"]+)"/)?.[1];
+    assert.ok(describedBy && out.includes(`id="${describedBy}"`), `${l}: key input described by the warning`);
+    assert.ok(keys.slice(1).every((k) => !k.includes("aria-describedby")), `${l}: other keys: no warning`);
+    // Tenant: no key input, no warning.
+    assert.ok(!render({}, l).includes(line), `${l}: tenant never sees it`);
+  }
+  // At mount (default origins) nothing is renamed.
+  const fresh = html(
+    createElement(CaptureFieldsEditorGate, {
+      schema: STORED,
+      onChange: () => {},
+      captureOn: true,
+      isAdmin: true,
+      developerMode: true,
+      storedKeys: stored,
+    }),
+  );
+  assert.ok(!fresh.includes("data-capture-renamed"), "untouched: no warning");
+}
+
+// 11. Server 400 too_many_fields → our line, never the server's text.
+{
+  const body = { error: "too_many_fields", field: "extractionSchema", max: 20 };
+  assert.equal(isTooManyCaptureFields(400, body), true);
+  assert.equal(isTooManyCaptureFields(409, body), false);
+  assert.equal(isTooManyCaptureFields(400, { error: "too_many_fields", field: "locations" }), false);
+  assert.equal(isTooManyCaptureFields(400, null), false);
+  assert.equal(isTooManyCaptureFields(400, "too_many_fields"), false);
+  const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
+  assert.match(ws, /isTooManyCaptureFields\(400, await res\.json\(\)[^\n]*\n[^\n]*\n[^\n]*\n\s*setSaveError\(t\("extractionMax", \{ max: MAX_CAPTURE_FIELDS \}\)\)/, "our sentence in the save error line");
+  assert.match(ws, /<span role="alert"[^>]*>\{saveError\}<\/span>/, "shown where save errors appear");
+  for (const l of LOCALES) assert.equal(messages(l).DashboardCampaigns.extractionMax.replace("{max}", String(MAX_CAPTURE_FIELDS)).includes("too_many"), false);
+}
+
+// 12. Identical keys in fr/en/he, and the copy.
+{
+  const fr = messages("fr").DashboardCampaigns;
+  const en = messages("en").DashboardCampaigns;
+  assert.equal(fr.extractionUnlabeled, "Donnez un nom à cette information");
+  assert.equal(en.extractionUnlabeled, "Give this information a name");
+  assert.equal(fr.extractionKeyRenamed, "Les relevés déjà faits gardent l'ancienne clé");
+  assert.equal(en.extractionKeyRenamed, "Values already captured keep the old key");
+  for (const l of LOCALES)
+    for (const k of ["extractionUnlabeled", "extractionKeyRenamed"]) {
+      const v = messages(l).DashboardCampaigns[k];
+      assert.ok(typeof v === "string" && v.trim(), `${l}.${k}`);
+      assert.doesNotMatch(v, /extrai|extract|חילוץ/i, `${l}.${k}: no "extract"`);
+    }
+  const keys = (l: string) => Object.keys(messages(l).DashboardCampaigns).sort();
+  assert.deepEqual(keys("en"), keys("fr"));
+  assert.deepEqual(keys("he"), keys("fr"));
 }
 
 console.log("campaign-capture-key: all assertions passed");

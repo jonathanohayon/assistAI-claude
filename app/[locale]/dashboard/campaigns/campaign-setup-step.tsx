@@ -24,6 +24,8 @@ export function CampaignSetupStep({
   capabilities = null,
   captureOn = false,
   storedCaptureKeys = [],
+  storedCaptureFields = [],
+  captureSaveCheck = 0,
 }: {
   draft: CampaignDraft;
   onChange: (patch: Partial<CampaignDraft>) => void;
@@ -37,6 +39,10 @@ export function CampaignSetupStep({
   captureOn?: boolean;
   /** Capture keys of the schema as last loaded or saved: never re-derived. */
   storedCaptureKeys?: readonly string[];
+  /** The same schema's key + label (an empty stored label never blocks). */
+  storedCaptureFields?: readonly { key: string; label: string }[];
+  /** Bumped by each save refused for an unlabeled capture row (0 = none yet). */
+  captureSaveCheck?: number;
 }) {
   const t = useTranslations("DashboardCampaigns");
   const voiceLabel = useVoiceLabel();
@@ -327,6 +333,8 @@ export function CampaignSetupStep({
         captureOn={captureOn}
         isAdmin={isAdmin}
         storedKeys={storedCaptureKeys}
+        storedFields={storedCaptureFields}
+        saveCheck={captureSaveCheck}
       />
     </div>
   );
