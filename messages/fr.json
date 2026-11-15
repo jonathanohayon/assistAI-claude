@@ -1295,6 +1295,8 @@
     "extractionRemove": "Supprimer",
     "extractionCaptureOff": "le relevé des informations est éteint sur la plateforme, rien n'est rempli pour l'instant.",
     "extractionMax": "{max} informations maximum par campagne.",
+    "extractionUnlabeled": "Donnez un nom à cette information",
+    "extractionKeyRenamed": "Les relevés déjà faits gardent l'ancienne clé",
     "type_string": "Texte",
     "type_number": "Nombre",
     "type_boolean": "Oui / Non",

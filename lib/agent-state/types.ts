@@ -18,5 +18,8 @@ export type AgentState = AgentStateToActivate | AgentStateLive | AgentStateAtten
  *   trial gate, lib/agent/session-config/trial-gate.ts).
  * - config_unavailable: the inbound session config can't be built for the
  *   number (the worker's resolver, run dry).
+ * - engine_unreachable: the voice worker's global heartbeat is stale (more
+ *   than 12 min old). Only where a heartbeat was ever recorded; see
+ *   lib/agent-state/decide.ts for the limits of this check.
  */
-export type AgentStateReason = "subscription_inactive" | "config_unavailable";
+export type AgentStateReason = "subscription_inactive" | "config_unavailable" | "engine_unreachable";

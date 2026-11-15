@@ -1295,6 +1295,8 @@
     "extractionRemove": "הסרה",
     "extractionCaptureOff": "איסוף המידע כבוי בפלטפורמה, שום דבר לא מתמלא כרגע.",
     "extractionMax": "עד {max} פריטי מידע לכל קמפיין.",
+    "extractionUnlabeled": "תנו שם לפריט המידע הזה",
+    "extractionKeyRenamed": "ערכים שכבר נאספו שומרים על המפתח הישן",
     "type_string": "טקסט",
     "type_number": "מספר",
     "type_boolean": "כן / לא",

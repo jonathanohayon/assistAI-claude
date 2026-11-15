@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { EXTRACTION_FIELD_TYPES, type ExtractionField } from "@/lib/campaigns/constants";
@@ -9,8 +9,10 @@ import {
   addCaptureField,
   canAddCaptureField,
   captureEditorView,
+  captureKeyRenamed,
   removeCaptureField,
   setCaptureLabel,
+  unlabeledCaptureRows,
 } from "@/lib/campaigns/capture-editor";
 import { showLevel3 } from "@/components/bricks/level3";
 import { useDeveloperMode } from "@/components/bricks/use-developer-mode";
@@ -25,6 +27,19 @@ type EditorProps = {
   isAdmin: boolean;
   /** Keys of the schema as last loaded or saved: never re-derived. */
   storedKeys?: readonly string[];
+  /** The same schema's key + label: a label stored empty never blocks. */
+  storedFields?: readonly { key: string; label: string }[];
+  /**
+   * Bumped by the workspace each time a save is refused for an unlabeled row
+   * (0 = none yet): from then on unlabeled rows are marked, and each bump
+   * moves focus to the first one.
+   */
+  saveCheck?: number;
+  /**
+   * Each row's key as last seen stored (null = a new row). Defaults to the
+   * schema's stored keys at mount; tests pass it to render a renamed key.
+   */
+  initialKeyOrigins?: readonly (string | null)[];
 };
 
 /**
@@ -50,13 +65,47 @@ export function CaptureFieldsEditorGate({
   captureOn,
   isAdmin,
   storedKeys = [],
+  storedFields = [],
+  saveCheck = 0,
+  initialKeyOrigins,
   developerMode,
 }: EditorProps & { developerMode: boolean }) {
   const t = useTranslations("DashboardCampaigns");
   const tTools = useTranslations("ToolsBrick");
   const capId = useId();
+  const rowsRef = useRef<HTMLDivElement>(null);
+
+  // Each row's key as last seen stored, so the rename warning compares with
+  // the row's OWN stored key (removing a row shifts indexes). Re-read when
+  // the stored keys change (after a save the new keys are the stored ones).
+  const baseline = () => schema.map((f) => (storedKeys.includes(f.key) ? f.key : null));
+  const [origins, setOrigins] = useState<readonly (string | null)[]>(() => initialKeyOrigins ?? baseline());
+  const storedSig = storedKeys.join("\n");
+  const [seenSig, setSeenSig] = useState(storedSig);
+  if (storedSig !== seenSig) {
+    setSeenSig(storedSig);
+    setOrigins(baseline());
+  }
+
+  // A refused save: focus the first marked label input (it scrolls there).
+  useEffect(() => {
+    if (saveCheck > 0) rowsRef.current?.querySelector<HTMLInputElement>('input[data-capture-label][aria-invalid="true"]')?.focus();
+  }, [saveCheck]);
+
   const view = captureEditorView(captureOn, isAdmin);
   if (view === "hidden") return null;
+
+  const invalid = new Set(saveCheck > 0 ? unlabeledCaptureRows(schema, storedFields) : []);
+  const add = () => {
+    const next = addCaptureField(schema);
+    if (next === schema) return;
+    setOrigins(schema.map((_, i) => origins[i] ?? null).concat(null));
+    onChange(next);
+  };
+  const remove = (i: number) => {
+    setOrigins(origins.filter((_, idx) => idx !== i));
+    onChange(removeCaptureField(schema, i));
+  };
 
   const showKey = showLevel3({ isAdmin, developerMode });
   const canAdd = canAddCaptureField(schema);
@@ -86,17 +135,28 @@ export function CaptureFieldsEditorGate({
           agent-centred wording ("what the agent asks/captures") comes back
           once the agent is told to ask (M3b). HE copy: [HE] to confirm. */}
       <p className="mb-2 text-[11px] text-[#94a3b8]">{t("extractionHint")}</p>
-      <div className="space-y-2">
-        {schema.map((f, i) => (
+      <div ref={rowsRef} className="space-y-2">
+        {schema.map((f, i) => {
+          const unlabeled = invalid.has(i);
+          const renamed = showKey && captureKeyRenamed(origins[i], f.key, storedKeys);
+          const errId = `${capId}-label-${i}`;
+          const warnId = `${capId}-key-${i}`;
+          return (
           <div
             key={i}
             data-capture-field
-            className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white p-2"
+            data-capture-unlabeled={unlabeled ? "" : undefined}
+            className={`flex flex-wrap items-center gap-2 rounded-xl border bg-white p-2 ${
+              unlabeled ? "border-[#dc2626] ring-1 ring-[#dc2626]/30" : "border-[#e2e8f0]"
+            }`}
           >
             <input
-              className={`${field} min-w-[110px] flex-1`}
+              data-capture-label
+              className={`${field} min-w-[110px] flex-1 ${unlabeled ? "!border-[#dc2626]" : ""}`}
               placeholder={t("extractionLabelField")}
               aria-label={t("extractionLabelField")}
+              aria-invalid={unlabeled ? true : undefined}
+              aria-describedby={unlabeled ? errId : undefined}
               value={f.label}
               onChange={(e) => onChange(setCaptureLabel(schema, i, e.target.value, storedKeys))}
             />
@@ -109,6 +169,7 @@ export function CaptureFieldsEditorGate({
                 className={`${field} min-w-[110px] flex-1 font-mono text-[12px]`}
                 placeholder={t("extractionKey")}
                 aria-label={t("extractionKey")}
+                aria-describedby={renamed ? warnId : undefined}
                 value={f.key}
                 onChange={(e) => update(i, { key: e.target.value })}
               />
@@ -145,7 +206,7 @@ export function CaptureFieldsEditorGate({
             <button
               type="button"
               data-capture-remove
-              onClick={() => onChange(removeCaptureField(schema, i))}
+              onClick={() => remove(i)}
               aria-label={t("extractionRemove")}
               className="flex h-11 w-11 items-center justify-center rounded-lg text-[#64748b] transition hover:bg-[#fee2e2] hover:text-[#dc2626]"
             >
@@ -153,13 +214,25 @@ export function CaptureFieldsEditorGate({
                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6" />
               </svg>
             </button>
+            {/* The two lines below: HE copy [HE] to confirm. */}
+            {unlabeled && (
+              <p id={errId} data-capture-unlabeled-line className="basis-full px-1 text-[12px] font-semibold text-[#b91c1c]">
+                {t("extractionUnlabeled")}
+              </p>
+            )}
+            {renamed && (
+              <p id={warnId} data-capture-renamed className="basis-full px-1 text-[12px] text-[#92400e]">
+                {t("extractionKeyRenamed")}
+              </p>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
       <button
         type="button"
         data-capture-add
-        onClick={() => onChange(addCaptureField(schema))}
+        onClick={add}
         disabled={!canAdd}
         aria-describedby={canAdd ? undefined : capId}
         className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-dashed border-[#f97316]/50 px-3 py-1.5 text-[12px] font-semibold text-[#c2410c] transition hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:border-[#cbd5e1] disabled:text-[#64748b] disabled:hover:bg-transparent"

@@ -125,3 +125,66 @@ export function setCaptureLabel(
   const key = follows ? deriveCaptureKey(label, i, taken) : f.key;
   return schema.map((g, idx) => (idx === i ? { ...g, label, key } : g));
 }
+
+/** The schema as last loaded or saved (the workspace's snapshot): key + label. */
+export function storedCaptureFields(savedSnapshot: string | null): { key: string; label: string }[] {
+  if (!savedSnapshot) return [];
+  try {
+    const d = JSON.parse(savedSnapshot) as { extractionSchema?: unknown };
+    if (!Array.isArray(d.extractionSchema)) return [];
+    return d.extractionSchema.flatMap((f) => {
+      if (!f || typeof f !== "object") return [];
+      const { key, label } = f as { key?: unknown; label?: unknown };
+      if (typeof key !== "string" || key === "") return [];
+      return [{ key, label: typeof label === "string" ? label : "" }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Rows that block the save: an empty (or blank) label. A new row the user
+ * added and never typed in counts too. One exception, so an untouched schema
+ * is never blocked: a row whose key is stored AND whose stored label is
+ * empty too (it came from the server like that; the server falls back to the
+ * key as the label, lib/campaigns/validate.ts). Clearing a stored row's
+ * label still blocks.
+ */
+export function unlabeledCaptureRows(
+  schema: readonly ExtractionField[],
+  stored: readonly { key: string; label: string }[] = [],
+): number[] {
+  const storedEmpty = new Set(stored.filter((f) => !f.label.trim()).map((f) => f.key));
+  const out: number[] = [];
+  schema.forEach((f, i) => {
+    if ((f.label ?? "").trim()) return;
+    if (f.key && storedEmpty.has(f.key)) return;
+    out.push(i);
+  });
+  return out;
+}
+
+/**
+ * Developer-mode warning: the row's key as the editor last saw it stored
+ * (`origin`) is a stored key, and the edited key differs from it. Values
+ * already captured keep the old key.
+ */
+export function captureKeyRenamed(
+  origin: string | null | undefined,
+  current: string,
+  stored: readonly string[],
+): boolean {
+  return !!origin && stored.includes(origin) && current !== origin;
+}
+
+/**
+ * The server's 400 { error: "too_many_fields", field: "extractionSchema" }
+ * (lib/campaigns/extraction-cap.ts) → true. The caller shows our own
+ * sentence with MAX_CAPTURE_FIELDS, never the server's text.
+ */
+export function isTooManyCaptureFields(status: number, body: unknown): boolean {
+  if (status !== 400 || !body || typeof body !== "object") return false;
+  const b = body as { error?: unknown; field?: unknown };
+  return b.error === "too_many_fields" && b.field === "extractionSchema";
+}

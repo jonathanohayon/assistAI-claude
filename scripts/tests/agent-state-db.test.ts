@@ -1,6 +1,8 @@
 // agentState against a THROWAWAY Postgres seeded with mock accounts:
 //   - the state table (to_activate / live / attention:subscription_inactive /
-//     attention:config_unavailable) from the REAL inbound resolver, run dry;
+//     attention:config_unavailable / attention:engine_unreachable) from the
+//     REAL inbound resolver, run dry, for each worker heartbeat (absent,
+//     unparseable, fresh, stale);
 //   - the dry run has no side effect: every table byte-identical before/after
 //     (events, app_settings incl. the alert ledger, agent_configs forwarding
 //     columns…), no fetch, no DNS lookup — while the LIVE handler on the same
@@ -123,8 +125,11 @@ async function main() {
     [F]: { enabled: true, url: "https://brain-f.example.com/hook" },
   })})`);
 
-  // ── The state table (dry run) ───────────────────────────────────────────
-  const expected: Record<string, unknown> = {
+  // ── The state table (dry run), per worker heartbeat ────────────────────
+  // The heartbeat is global (one app_settings row): each scenario sets it,
+  // then checks every account. Stale only changes the accounts that pass
+  // checks 1–3; an earlier failure still wins.
+  const expectedAbsent: Record<string, unknown> = {
     [A]: { state: "to_activate", reason: null },
     [B]: { state: "live", reason: null },
     [C]: { state: "attention", reason: "subscription_inactive" },
@@ -134,32 +139,49 @@ async function main() {
     [E]: { state: "live", reason: null },
     [F]: { state: "live", reason: null },
   };
-  const before = await fingerprint();
-  for (const [uid] of accounts) {
-    assert.deepEqual(await computeAgentState(uid), expected[uid], `agentState of ${uid}`);
-  }
-  console.log("state table: to_activate / live / attention:subscription_inactive / attention:config_unavailable ok");
+  const unreachable = { state: "attention", reason: "engine_unreachable" };
+  const MIN = 60_000;
+  const heartbeatRow = (ageMs: number) =>
+    JSON.stringify({ at: Date.now() - ageMs, agentName: "mock-agent", version: "0.0.0-test", keys: { openai: "ok" } });
+  const scenarios: Array<{ name: string; value: string | null; expected: Record<string, unknown> }> = [
+    { name: "absent (never recorded → skipped)", value: null, expected: expectedAbsent },
+    { name: "unparseable at (→ never recorded → skipped)", value: JSON.stringify({ at: "yesterday", agentName: "mock-agent" }), expected: expectedAbsent },
+    { name: "fresh (2 min)", value: heartbeatRow(2 * MIN), expected: expectedAbsent },
+    { name: "stale (13 min)", value: heartbeatRow(13 * MIN), expected: { ...expectedAbsent, [B]: unreachable, [E]: unreachable, [F]: unreachable } },
+  ];
+  const setHeartbeat = async (value: string | null) => {
+    await exec(sql`DELETE FROM app_settings WHERE key = 'worker_heartbeat'`);
+    if (value !== null) await exec(sql`INSERT INTO app_settings (key, value) VALUES ('worker_heartbeat', ${value})`);
+  };
+  let before: Record<string, string> = {};
+  for (const sc of scenarios) {
+    await setHeartbeat(sc.value);
+    before = await fingerprint();
+    for (const [uid] of accounts) {
+      assert.deepEqual(await computeAgentState(uid), sc.expected[uid], `agentState of ${uid}, heartbeat ${sc.name}`);
+    }
+    // No side effect. Let any fire-and-forget work settle before comparing.
+    await new Promise((r) => setTimeout(r, 300));
+    assert.deepEqual(await fingerprint(), before, `the dry run writes nothing (every table identical), heartbeat ${sc.name}`);
+    assert.deepEqual(network, { fetch: [], dns: [] }, "the dry run makes no network call and no DNS lookup");
+    const [fwd] = rows<{ v: string | null }>(await exec(sql`SELECT forwarding_verified_at AS v FROM agent_configs WHERE user_id = ${B}`));
+    assert.equal(fwd.v, null, "the dry run never verifies forwarding");
 
-  // ── No side effect ──────────────────────────────────────────────────────
-  // Let any fire-and-forget work settle before comparing.
-  await new Promise((r) => setTimeout(r, 300));
-  assert.deepEqual(await fingerprint(), before, "the dry run writes nothing (every table identical)");
-  assert.deepEqual(network, { fetch: [], dns: [] }, "the dry run makes no network call and no DNS lookup");
-  const [fwd] = rows<{ v: string | null }>(await exec(sql`SELECT forwarding_verified_at AS v FROM agent_configs WHERE user_id = ${B}`));
-  assert.equal(fwd.v, null, "the dry run never verifies forwarding");
-  console.log("dry run: every table identical, 0 fetch, 0 DNS");
-
-  // ── Hero: other fields byte-identical to origin/main ────────────────────
-  for (const [uid] of accounts) {
-    const hero = await computeHeroStats(uid);
-    const { agentState, ...rest } = hero;
-    assert.deepEqual(agentState, expected[uid], `hero agentState of ${uid}`);
-    assert.equal(Object.keys(hero).at(-1), "agentState", "agentState is appended after the existing fields");
-    assert.equal(JSON.stringify(rest), JSON.stringify(await mainStats.computeDashboardStats(uid)), `hero fields of ${uid} byte-identical to main`);
+    // Hero: other fields byte-identical to origin/main.
+    for (const [uid] of accounts) {
+      const hero = await computeHeroStats(uid);
+      const { agentState, ...rest } = hero;
+      assert.deepEqual(agentState, sc.expected[uid], `hero agentState of ${uid}, heartbeat ${sc.name}`);
+      assert.equal(Object.keys(hero).at(-1), "agentState", "agentState is appended after the existing fields");
+      assert.equal(JSON.stringify(rest), JSON.stringify(await mainStats.computeDashboardStats(uid)), `hero fields of ${uid} byte-identical to main, heartbeat ${sc.name}`);
+    }
+    const bStats = await computeHeroStats(B);
+    assert.equal(bStats.rdv, 2, "seeded bookings are counted (the comparison is not over empty stats)");
+    console.log(`heartbeat ${sc.name}: state table ok, every table identical, 0 fetch, 0 DNS, hero fields byte-identical to origin/main for 8 accounts`);
   }
-  const bStats = await computeHeroStats(B);
-  assert.equal(bStats.rdv, 2, "seeded bookings are counted (the comparison is not over empty stats)");
-  console.log("hero: other fields byte-identical to origin/main for 8 accounts");
+  // Timing and contrast below run with a fresh heartbeat (check 4 runs in full).
+  await setHeartbeat(heartbeatRow(2 * MIN));
+  before = await fingerprint();
 
   // ── Timing (printed, not asserted: machine-dependent) ───────────────────
   const time = async (fn: () => Promise<unknown>, n = 30) => {
