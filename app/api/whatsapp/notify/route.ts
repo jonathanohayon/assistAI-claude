@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { logEvent } from "@/lib/logger";
+import { last4, phoneFields } from "@/lib/event-pii";
 import { outboundCallerUserId } from "@/lib/call-direction";
 import { resolveTenant, resolveTenantByUserId } from "@/lib/tenant";
 import { sendWhatsApp } from "@/lib/whatsapp";
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "whatsapp",
       event: "owner_unconfigured",
-      message: `Pas de owner_whatsapp configuré pour ${tenant.user.email}`,
+      message: `Pas de owner_whatsapp configuré pour ${tenant.user.id}`,
       level: "warn",
       userId: tenant.user.id,
     });
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
       message: `Envoi WhatsApp échoué : ${result.error}`,
       level: "error",
       userId: tenant.user.id,
-      metadata: { ownerWa, callerName, callerPhone, error: result.error },
+      metadata: { ...phoneFields("owner", ownerWa), callerName, ...phoneFields("caller", callerPhone), error: result.error },
     });
     return NextResponse.json(
       { error: result.error ?? "envoi WhatsApp échoué" },
@@ -104,12 +105,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Masked caller: last 4 digits only, never the number.
+  const callerTail = callerPhone ? `…${last4(callerPhone)}` : "";
   await logEvent({
     source: "whatsapp",
     event: "notify_sent",
-    message: `Message transmis à ${ownerWa} (${callerName || callerPhone || "anonyme"})`,
+    message: `Message transmis au proprio (${callerName || callerTail || "anonyme"})`,
     userId: tenant.user.id,
-    metadata: { ownerWa, callerName, callerPhone, sid: result.sid },
+    metadata: { ...phoneFields("owner", ownerWa), callerName, ...phoneFields("caller", callerPhone), sid: result.sid },
   });
 
   return NextResponse.json({ ok: true, sid: result.sid });

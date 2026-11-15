@@ -259,7 +259,7 @@ export async function GET(req: NextRequest) {
         await logEvent({
           source: "auth",
           event: "subscription_email_failed",
-          message: `Échec envoi email de confirmation à ${u.email} : ${mail.error?.slice(0, 200) ?? "?"}`,
+          message: `Échec envoi email de confirmation : ${mail.error?.slice(0, 200) ?? "?"}`,
           level: "warn",
           userId: order.userId,
           metadata: { error: mail.error },

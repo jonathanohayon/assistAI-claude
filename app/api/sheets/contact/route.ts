@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { emailFields, phoneFields } from "@/lib/event-pii";
 import {
   ensureSheet,
   forceTextPhone,
@@ -118,8 +119,8 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sheets",
       event: result.action === "inserted" ? "client_added" : "client_updated",
-      message: `Client ${result.action === "inserted" ? "ajouté" : "mis à jour"} : ${name} · ${phone}`,
-      metadata: { name, phone, email, notes, action: result.action },
+      message: `Client ${result.action === "inserted" ? "ajouté" : "mis à jour"} : ${name}`,
+      metadata: { name, ...phoneFields("phone", phone), ...emailFields(email), notes, action: result.action },
     });
 
     return NextResponse.json({
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
       event: "contact_failed",
       message: `Upsert client échoué : ${msg.slice(0, 200)}`,
       level: "error",
-      metadata: { name, phone, error: msg },
+      metadata: { name, ...phoneFields("phone", phone), error: msg },
     });
     return NextResponse.json({ error: msg }, { status: 500 });
   }

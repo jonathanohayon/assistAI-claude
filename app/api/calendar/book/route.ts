@@ -4,6 +4,7 @@ import { parseBookingRequest } from "@/lib/booking-request";
 import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { phoneFields } from "@/lib/event-pii";
 import { callIdMeta } from "@/lib/call-id";
 import { atPlace, eventPlaceLine, eventTitle, resolvePlace } from "@/lib/booking-place";
 import { type Center, nextDatesForCenter } from "@/lib/schedule";
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
       level: "warn",
       metadata: {
         name,
-        phone,
+        ...phoneFields("phone", phone),
         date,
         time,
         requestedCenter: center,
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         event: "book_past",
         message: `Réservation refusée : créneau dans le passé (${date} ${time})`,
         level: "warn",
-        metadata: { name, phone, date, time },
+        metadata: { name, ...phoneFields("phone", phone), date, time },
       });
       return NextResponse.json(
         {
@@ -154,7 +155,7 @@ export async function POST(req: NextRequest) {
         event: "book_conflict",
         message: `Réservation refusée : chevauchement (${date} ${time}, ${duration} min)`,
         level: "warn",
-        metadata: { name, phone, date, time, duration, conflicts },
+        metadata: { name, ...phoneFields("phone", phone), date, time, duration, conflicts },
       });
       return NextResponse.json(
         {
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
       event: "book_conflict_check_failed",
       message: `Vérification créneau échouée : ${msg.slice(0, 200)}`,
       level: "error",
-      metadata: { name, phone, date, time, duration, error: msg },
+      metadata: { name, ...phoneFields("phone", phone), date, time, duration, error: msg },
     });
     return NextResponse.json(
       { error: `Impossible de vérifier la disponibilité : ${msg}` },
@@ -215,7 +216,7 @@ export async function POST(req: NextRequest) {
         ...callIdMeta(req),
         eventId: event.data.id,
         name,
-        phone,
+        ...phoneFields("phone", phone),
         date,
         time,
         duration,
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
       event: "book_failed",
       message: `Réservation échouée : ${msg.slice(0, 200)}`,
       level: "error",
-      metadata: { name, phone, date, time, error: msg },
+      metadata: { name, ...phoneFields("phone", phone), date, time, error: msg },
     });
     return NextResponse.json({ error: msg }, { status: 500 });
   }

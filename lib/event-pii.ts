@@ -101,12 +101,17 @@ export function eventForStorage(ev: { message: string; metadata?: Record<string,
   return { message: maskPii(ev.message), metadata: scrubMetadata(ev.metadata ?? {}) };
 }
 
-/** Safe caller fields for an event: hash + last 4 digits, never the number. */
-export function callerFields(fromNumber: string | null | undefined): { fromHash?: string; fromLast4?: string } {
-  const v = (fromNumber ?? "").trim();
+/** Safe fields for a phone number: `<base>Hash` + `<base>Last4`, never the number. */
+export function phoneFields(base: string, phone: string | null | undefined): Record<string, string> {
+  const v = (phone ?? "").trim();
   if (!v) return {};
   const l4 = last4(v);
-  return { fromHash: piiHash(v), ...(l4 ? { fromLast4: l4 } : {}) };
+  return { [`${base}Hash`]: piiHash(v), ...(l4 ? { [`${base}Last4`]: l4 } : {}) };
+}
+
+/** Safe caller fields for an event: { fromHash, fromLast4 }, never the number. */
+export function callerFields(fromNumber: string | null | undefined): { fromHash?: string; fromLast4?: string } {
+  return phoneFields("from", fromNumber);
 }
 
 /** Safe email field for an event. */
