@@ -73,6 +73,76 @@ export function reminderText(
   return `Bonjour${name}, petit rappel de votre rendez-vous demain ${opts.dateLabel} à ${opts.time}${center}. À demain ! 😊`;
 }
 
+/** One appointment of a number's day: its time ("HH:MM") and place. */
+export interface ReminderSlot {
+  time: string;
+  center: string;
+}
+
+/** At most this many times are listed; the rest become "and N more". */
+export const REMINDER_MAX_LISTED_SLOTS = 5;
+/** Length cap of one place inside the list, and of the whole times label. */
+export const REMINDER_CENTER_MAX = 60;
+export const REMINDER_TIMES_LABEL_MAX = 300;
+
+const LIST_LOCALE: Record<ReminderLang, string> = { fr: "fr-FR", en: "en-US", he: "he-IL" };
+
+function clip(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + "…" : s;
+}
+
+function moreLabel(lang: ReminderLang, n: number): string {
+  if (lang === "he") return `עוד ${n}`;
+  if (lang === "en") return `${n} more`;
+  return n > 1 ? `${n} autres` : "1 autre";
+}
+
+/**
+ * Times of several appointments as one localised list, plus the place:
+ * - same place for all (or none) → "10:00 et 15:30", place once at the end;
+ * - different places → each time carries its own: "10:00 (A) et 15:30 (B)".
+ * Lists at most REMINDER_MAX_LISTED_SLOTS times; the label is capped at
+ * REMINDER_TIMES_LABEL_MAX chars. Conjunction from Intl.ListFormat
+ * (fr "et", en "and", he "ו-").
+ */
+export function reminderTimesLabel(
+  lang: ReminderLang,
+  slots: ReminderSlot[],
+): { times: string; center: string } {
+  const raw = slots.map((s) => s.center.trim());
+  // Compared before clipping: two long places sharing a prefix stay distinct.
+  const sameCenter = raw.every((c) => c === raw[0]);
+  const centers = raw.map((c) => clip(c, REMINDER_CENTER_MAX));
+  const shown = slots.slice(0, REMINDER_MAX_LISTED_SLOTS).map((s, i) =>
+    !sameCenter && centers[i] ? `${s.time} (${centers[i]})` : s.time,
+  );
+  const extra = slots.length - shown.length;
+  if (extra > 0) shown.push(moreLabel(lang, extra));
+  const times = new Intl.ListFormat(LIST_LOCALE[lang], { type: "conjunction" }).format(shown);
+  return { times: clip(times, REMINDER_TIMES_LABEL_MAX), center: sameCenter ? centers[0] : "" };
+}
+
+/**
+ * Reminder text for a number with SEVERAL appointments tomorrow (value of
+ * the template variable {{1}}; the template itself is unchanged). One
+ * appointment → use reminderText, unchanged.
+ */
+export function reminderTextMany(
+  lang: ReminderLang,
+  opts: { name: string; dateLabel: string; slots: ReminderSlot[] },
+): string {
+  const { times, center: c } = reminderTimesLabel(lang, opts.slots);
+  const name = opts.name ? ` ${opts.name}` : "";
+  const center = c ? ` (${c})` : "";
+  if (lang === "he") {
+    return `שלום${name}, תזכורת לתורים שלך מחר ${opts.dateLabel} בשעות ${times}${center}. נתראה! 😊`;
+  }
+  if (lang === "en") {
+    return `Hi${name}, a friendly reminder of your appointments tomorrow ${opts.dateLabel} at ${times}${center}. See you then! 😊`;
+  }
+  return `Bonjour${name}, petit rappel de vos rendez-vous demain ${opts.dateLabel} à ${times}${center}. À demain ! 😊`;
+}
+
 /**
  * SID du template Twilio Content pour le rappel, par langue, avec fallback :
  * REMINDER_<LANG> → REMINDER → CLIENT_<LANG> → CLIENT (le template client
