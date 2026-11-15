@@ -1149,7 +1149,7 @@
     "analyticsLoading": "מנתח שיחות…",
     "analyticsError": "לא ניתן לטעון את הנתונים.",
     "analyticsEmpty": "אין שיחות עדיין.",
-    "analyticsPending": "{count} שיחות עדיין בניתוח — פתחי שוב עוד רגע.",
+    "analyticsPending": "{count, plural, one {שיחה אחת תנותח} other {# שיחות ינותחו}} בדקות הקרובות. פתחו את הדף שוב כדי לראות את התוצאות.",
     "kpiTotal": "שיחות",
     "kpiConnected": "נקלטו",
     "kpiEstimatedSuccessRate": "שיעור הצלחה משוער",

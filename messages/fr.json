@@ -1149,7 +1149,7 @@
     "analyticsLoading": "Analyse des discussions…",
     "analyticsError": "Impossible de charger les analytics.",
     "analyticsEmpty": "Aucun appel pour le moment.",
-    "analyticsPending": "{count} discussion(s) encore en cours d'analyse — rouvre dans un instant.",
+    "analyticsPending": "{count, plural, one {# discussion sera analysée} other {# discussions seront analysées}} dans les prochaines minutes. Rouvrez cette page pour voir les résultats.",
     "kpiTotal": "Appels",
     "kpiConnected": "Connectés",
     "kpiEstimatedSuccessRate": "Taux de succès estimé",
