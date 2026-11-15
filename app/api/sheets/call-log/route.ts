@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { AGENT_CALLER_UNAUTHORIZED_BODY, resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callerFields } from "@/lib/event-pii";
 import {
   ensureSheet,
   forceTextPhone,
@@ -116,9 +117,9 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sheets",
       event: "call_log_added",
-      message: `Appel loggé dans Sheets : ${body.callerName || "?"} · ${body.fromNumber || "?"}`,
+      message: `Appel loggé dans Sheets : ${body.callerName || "?"}`,
       metadata: {
-        fromNumber: body.fromNumber,
+        ...callerFields(body.fromNumber),
         callerName: body.callerName,
         type: body.type,
         durationSeconds: body.durationSeconds,
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       event: "call_log_failed",
       message: `Push appel échoué : ${msg.slice(0, 200)}`,
       level: "error",
-      metadata: { fromNumber: body.fromNumber, error: msg },
+      metadata: { ...callerFields(body.fromNumber), error: msg },
     });
     return NextResponse.json({ error: msg }, { status: 500 });
   }

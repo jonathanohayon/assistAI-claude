@@ -88,16 +88,16 @@ export async function GET(req: NextRequest) {
       await logEvent({
         source: "auth",
         event: "trial_warning_sent",
-        message: `Trial warning envoyé à ${u.email} (expire dans ${minutesLeft} min)`,
+        message: `Trial warning envoyé à ${u.id} (expire dans ${minutesLeft} min)`,
         userId: u.id,
-        metadata: { minutesLeft, phoneNumber: pn?.phoneNumber ?? null, emailId: res.id },
+        metadata: { minutesLeft, tenantLine: pn?.phoneNumber ?? null, emailId: res.id },
       });
     } else {
       warned.push({ email: u.email, ok: false, reason: res.error });
       await logEvent({
         source: "auth",
         event: "trial_warning_failed",
-        message: `Échec envoi warning trial à ${u.email} : ${res.error?.slice(0, 200) ?? "?"}`,
+        message: `Échec envoi warning trial à ${u.id} : ${res.error?.slice(0, 200) ?? "?"}`,
         level: "error",
         userId: u.id,
         metadata: { error: res.error },
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
     await logEvent({
       source: "auth",
       event: "trial_paused",
-      message: `Essai terminé : compte ${u.email} mis en pause (données et numéro conservés)`,
+      message: `Essai terminé : compte ${u.id} mis en pause (données et numéro conservés)`,
       userId: u.id,
       metadata: { trialEndsAt: u.trialEndsAt },
     });
@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
       await logEvent({
         source: "auth",
         event: "trial_number_released",
-        message: `Essai en pause depuis 30 j : numéro(s) de ${u.email} libéré(s) · ${r.releasedCount} ok, ${r.failedCount} échec(s) — compte conservé`,
+        message: `Essai en pause depuis 30 j : numéro(s) de ${u.id} libéré(s) · ${r.releasedCount} ok, ${r.failedCount} échec(s) — compte conservé`,
         level: r.failedCount ? "warn" : "info",
         userId: u.id,
         metadata: { released: r.releasedCount, failed: r.failedCount, errors: r.errors },
@@ -182,7 +182,7 @@ export async function GET(req: NextRequest) {
       await logEvent({
         source: "auth",
         event: "trial_number_release_failed",
-        message: `Libération numéro ${u.email} crashed : ${msg.slice(0, 200)}`,
+        message: `Libération numéro ${u.id} crashed : ${msg.slice(0, 200)}`,
         level: "error",
         userId: u.id,
         metadata: { error: msg },

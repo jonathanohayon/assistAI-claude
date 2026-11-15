@@ -6,6 +6,7 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { emailFields } from "@/lib/event-pii";
 import { isValidPlanKey } from "@/lib/plans";
 import { fullyDeleteUser } from "@/lib/release-user";
 
@@ -88,7 +89,7 @@ export async function PATCH(
   await logEvent({
     source: "web",
     event: "admin_subscription_set",
-    message: `Admin ${me.email} → ${target.email} : ${changed.join(", ")}`,
+    message: `Admin ${me.id} → ${target.id} : ${changed.join(", ")}`,
     userId: me.id,
     metadata: { targetUserId: userId, changed },
   });
@@ -136,11 +137,11 @@ export async function DELETE(
   await logEvent({
     source: "web",
     event: "tenant_deleted",
-    message: `Admin ${me.email} a supprimé le tenant ${email} · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
+    message: `Admin ${me.id} a supprimé le tenant ${userId} · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
     userId: me.id,
     metadata: {
       deletedUserId: userId,
-      deletedEmail: email,
+      ...emailFields(email),
       twilioReleased: release.releasedCount,
       twilioFailed: release.failedCount,
       twilioErrors: release.errors,

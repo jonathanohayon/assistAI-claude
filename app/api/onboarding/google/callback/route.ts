@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     await logEvent({
       source: "auth",
       event: "google_oauth_connected",
-      message: `Google connecté pour ${session.user.email}`,
+      message: `Google connecté pour ${session.user.id}`,
       userId: session.user.id,
     });
 

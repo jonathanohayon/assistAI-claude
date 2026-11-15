@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "agent",
     event: "campaign_call_progress",
-    message: `${MESSAGES[state]} — ${contact.phoneNumber}${durationSeconds !== undefined ? ` (${durationSeconds}s)` : ""}`,
+    message: `${MESSAGES[state]}${durationSeconds !== undefined ? ` (${durationSeconds}s)` : ""}`,
     userId: contact.userId,
     metadata: { campaignId, contactId, state, sipStatus, durationSeconds, applied },
   });

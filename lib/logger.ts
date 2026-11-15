@@ -21,6 +21,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { events, phoneNumbers } from "@/lib/db/schema";
+import { eventForStorage } from "@/lib/event-pii";
 
 export type LogLevel = "info" | "warn" | "error";
 export type LogSource =
@@ -90,14 +91,19 @@ export async function logEvent(ev: LogEvent): Promise<void> {
     }
   }
 
+  // No caller number or email address in clear (lib/event-pii.ts): the
+  // tenant was resolved above from the raw values; what is stored and
+  // mirrored is the scrubbed copy.
+  const stored = eventForStorage(ev);
+
   try {
     await db.insert(events).values({
       level: ev.level ?? "info",
       source: ev.source,
       event: ev.event,
-      message: ev.message,
+      message: stored.message,
       userId: resolvedUserId,
-      metadata: ev.metadata ?? {},
+      metadata: stored.metadata,
     });
   } catch (e) {
     // Never bubble — logging must never break a request.
@@ -107,10 +113,10 @@ export async function logEvent(ev: LogEvent): Promise<void> {
   // Mirror to stdout so Railway/PM2 logs still capture it for forensics.
   const tag = `[${ev.source}:${ev.event}]`;
   if (ev.level === "error") {
-    console.error(tag, ev.message, ev.metadata ?? "");
+    console.error(tag, stored.message, stored.metadata);
   } else if (ev.level === "warn") {
-    console.warn(tag, ev.message, ev.metadata ?? "");
+    console.warn(tag, stored.message, stored.metadata);
   } else {
-    console.log(tag, ev.message, ev.metadata ?? "");
+    console.log(tag, stored.message, stored.metadata);
   }
 }

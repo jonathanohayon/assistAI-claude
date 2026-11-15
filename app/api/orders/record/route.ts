@@ -5,6 +5,7 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { outboundCallerUserId } from "@/lib/call-direction";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { phoneFields } from "@/lib/event-pii";
 import { ensureSheet, forceTextPhone, prependRow } from "@/lib/sheets-helpers";
 import { resolveTenantByPhone, resolveTenantByUserId } from "@/lib/tenant";
 import { getOrdersSheetId } from "@/lib/tenant-sheets";
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       event: "order_recorded",
       message: `Commande enregistrée : ${name} · ${description}`,
       userId,
-      metadata: { name, phone, description, center: b.center },
+      metadata: { name, ...phoneFields("phone", phone), description, center: b.center },
     });
     return NextResponse.json({ success: true });
   } catch (err) {

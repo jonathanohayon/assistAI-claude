@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
       await logEvent({
         source: "calendar",
         event: "appointment_reminders_tenant_failed",
-        message: `Rappels J-1 crash pour ${t.email} : ${reason}`,
+        message: `Rappels J-1 crash pour ${t.id} : ${reason}`,
         level: "error",
         userId: t.id,
         metadata: { error: reason },

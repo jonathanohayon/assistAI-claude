@@ -13,6 +13,8 @@ import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callReceivedEvent } from "@/lib/call-received-event";
+import { phoneFields } from "@/lib/event-pii";
 import { clientConfirmDeps } from "@/lib/client-confirm/deps";
 import { sendClientConfirm } from "@/lib/client-confirm/run";
 import { featuresForPlan } from "@/lib/plan-features";
@@ -65,12 +67,12 @@ async function verifyDelivery(
     await logEvent({
       source: "whatsapp",
       event: `whatsapp_undelivered_${recipient}`,
-      message: `WhatsApp ${recipient} non livré${to ? ` à ${to}` : ""} (status=${status.status}${
+      message: `WhatsApp ${recipient} non livré (status=${status.status}${
         status.errorCode ? ` code=${status.errorCode}` : ""
       })${status.errorMessage ? ` : ${status.errorMessage.slice(0, 150)}` : ""}`,
       level: "error",
       userId,
-      metadata: to ? { callId, sid, to, ...status } : { callId, sid, ...status },
+      metadata: { callId, sid, ...phoneFields("to", to), ...status },
     });
   }
 }
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "tenant",
       event: "tenant_not_found",
-      message: `Aucun tenant pour userId=${userId || "(none)"} toNumber=${toNumber || "(none)"}`,
+      message: `Aucun tenant pour userId=${userId || "(none)"}`,
       level: "error",
       metadata: { userId, toNumber },
     });
@@ -130,14 +132,8 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "agent",
     event: "call_received",
-    message: `Appel reçu de ${fromNumber || "?"} pour ${user.email}`,
     userId: user.id,
-    metadata: {
-      callId: callRow.id,
-      fromNumber,
-      toNumber,
-      transcriptEntries: transcript.length,
-    },
+    ...callReceivedEvent({ fromNumber, toNumber, callId: callRow.id, transcriptEntries: transcript.length }),
   });
 
   if (transcript.length === 0) {
@@ -342,11 +338,11 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "whatsapp",
       event: "whatsapp_skipped_owner_dedup",
-      message: `Recap proprio sauté (${skipOwnerReason}) — to=${cfg.ownerWhatsapp}, transcript=${transcript.length} entries`,
+      message: `Recap proprio sauté (${skipOwnerReason}) — transcript=${transcript.length} entries`,
       userId: user.id,
       metadata: {
         callId: callRow.id,
-        to: cfg.ownerWhatsapp,
+        ...phoneFields("to", cfg.ownerWhatsapp),
         reason: skipOwnerReason,
         transcriptEntries: transcript.length,
       },
@@ -376,9 +372,9 @@ export async function POST(req: NextRequest) {
       await logEvent({
         source: "whatsapp",
         event: "whatsapp_sent_owner",
-        message: `WhatsApp envoyé au proprio ${cfg.ownerWhatsapp}`,
+        message: "WhatsApp envoyé au proprio",
         userId: user.id,
-        metadata: { callId: callRow.id, sid: r.sid, to: cfg.ownerWhatsapp },
+        metadata: { callId: callRow.id, sid: r.sid, ...phoneFields("to", cfg.ownerWhatsapp) },
       });
       // Status check delayed : Twilio peut accepter (201 OK) puis bloquer
       // la livraison silencieusement (status undelivered, error 63016 = hors
@@ -392,7 +388,7 @@ export async function POST(req: NextRequest) {
         message: `WhatsApp owner échoué : ${r.error?.slice(0, 200)}`,
         level: "error",
         userId: user.id,
-        metadata: { callId: callRow.id, to: cfg.ownerWhatsapp, error: r.error },
+        metadata: { callId: callRow.id, ...phoneFields("to", cfg.ownerWhatsapp), error: r.error },
       });
     }
   }
@@ -471,7 +467,7 @@ export async function POST(req: NextRequest) {
       await logEvent({
         source: "sheets",
         event: "call_log_added",
-        message: `Appel loggé dans Sheets : ${localFromNumber || "?"} · ${callType}`,
+        message: `Appel loggé dans Sheets · ${callType}`,
         userId: user.id,
         metadata: { callId: callRow.id, type: callType },
       });
