@@ -1169,7 +1169,7 @@
     "capturedYes": "כן",
     "capturedNo": "לא",
     "capturedCount": "<n>{got}/{total}</n> נאספו",
-    "capturedCountA11y": "נאספו {got} מתוך {total} פרטים",
+    "capturedCountA11y": "{got, plural, =0 {לא נאסף אף פריט מתוך {total}} other {נאספו # מתוך {total} פרטים}}",
     "estimatedSuccess_success": "הצלחה משוערת",
     "estimatedSuccess_partial": "חלקי (משוער)",
     "estimatedSuccess_fail": "כישלון משוער",

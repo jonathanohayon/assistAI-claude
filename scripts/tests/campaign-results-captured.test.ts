@@ -256,7 +256,9 @@ test("chip: the fraction is LTR-isolated and the visible text is hidden from ass
 test("chip: the accessible name reads as a sentence", () => {
   const name = (c: CapturedView, l = "fr") => srText(chip({ schema: SCHEMA, captured: c, captureOn: true }, l));
   assert.equal(name(CAPTURED), "3 informations relevées sur 4");
-  assert.equal(name(NOTHING), "0 information relevée sur 4");
+  assert.equal(name(NOTHING), "Aucune information relevée sur 4");
+  assert.equal(name(NOTHING, "en"), "No information captured out of 4");
+  assert.equal(name(NOTHING, "he"), "לא נאסף אף פריט מתוך 4");
   assert.equal(name(capturedView({ ...STORED, values: { best_slot: "Soir" } })), "1 information relevée sur 4");
   assert.equal(name(CAPTURED, "en"), "3 of 4 items captured");
   assert.equal(name(CAPTURED, "he"), "נאספו 3 מתוך 4 פרטים");
