@@ -168,6 +168,8 @@ async function main() {
   ownerRecapEmailDeps.log = async (ev) => {
     logs.push(ev);
   };
+  // A sender is configured here (the unconfigured refusal: email-sender-refusal.test.ts).
+  ownerRecapEmailDeps.senderConfigured = () => true;
   ownerRecapEmailDeps.recentSent = async () => {
     recentQueries++;
     return recent;

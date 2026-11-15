@@ -6,7 +6,12 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
-import { ownerRecapEmailWrite, type OwnerRecapEmailSettings } from "@/lib/owner-recap-email";
+import {
+  ownerRecapEmailSenderGate,
+  ownerRecapEmailWrite,
+  type OwnerRecapEmailSettings,
+  type SenderNotConfiguredBody,
+} from "@/lib/owner-recap-email";
 
 export async function loadOwnerRecapEmail(userId: string): Promise<OwnerRecapEmailSettings | null> {
   const [row] = await db
@@ -23,14 +28,25 @@ export async function loadOwnerRecapEmail(userId: string): Promise<OwnerRecapEma
 export type SaveResult =
   | { status: 200; body: OwnerRecapEmailSettings & { changedFields: string[] } }
   | { status: 400; body: { error: string; fields: string[] } }
-  | { status: 404; body: { error: "no_config" } };
+  | { status: 404; body: { error: "no_config" } }
+  | { status: 409; body: SenderNotConfiguredBody };
 
-/** Validates the body, writes only the fields it carries, returns the stored values. */
-export async function saveOwnerRecapEmail(userId: string, body: unknown): Promise<SaveResult> {
+/**
+ * Validates the body, writes only the fields it carries, returns the stored
+ * values. `senderConfigured` (lib/email-sender.ts) gates switching the recap
+ * ON (ownerRecapEmailSenderGate): a refused save writes nothing at all.
+ */
+export async function saveOwnerRecapEmail(
+  userId: string,
+  body: unknown,
+  opts: { senderConfigured: boolean },
+): Promise<SaveResult> {
   const write = ownerRecapEmailWrite(body);
   if (!write.ok) return { status: 400, body: write.body };
   const current = await loadOwnerRecapEmail(userId);
   if (!current) return { status: 404, body: { error: "no_config" } };
+  const refused = ownerRecapEmailSenderGate(current, write.updates, opts.senderConfigured);
+  if (refused) return { status: 409, body: refused };
   const changedFields = Object.keys(write.updates);
   if (changedFields.length === 0) return { status: 200, body: { ...current, changedFields } };
   const [updated] = await db

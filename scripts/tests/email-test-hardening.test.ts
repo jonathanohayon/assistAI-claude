@@ -42,9 +42,15 @@ const ACCOUNTS: Record<string, { loginEmail: string; ownerRecapEmail: string; di
 const RAW_PROVIDER_ERROR =
   "Resend: domain not verified, check EMAIL_FROM / RESEND_API_KEY=re_FAKE_secret_0123456789 for owner@example.com";
 
-function makeWorld(opts: { session: string | null; sendResult?: EmailTestSendResult; claim?: EmailTestDeps["claim"] }) {
+function makeWorld(opts: {
+  session: string | null;
+  sendResult?: EmailTestSendResult;
+  claim?: EmailTestDeps["claim"];
+  senderConfigured?: boolean;
+}) {
   let ledger: EmailTestLedger = {};
   let clock = 1_800_000_000_000;
+  let claims = 0;
   const sent: string[] = [];
   const logs: LogEvent[] = [];
   const deps: EmailTestDeps = {
@@ -63,6 +69,7 @@ function makeWorld(opts: { session: string | null; sendResult?: EmailTestSendRes
       opts.claim ??
       // Same decision as lib/rate-limit-db.ts, in memory, on the test clock.
       (async (userId) => {
+        claims++;
         const { result, next } = decideRateLimit(ledger, userId, clock, {
           windowMs: EMAIL_TEST_WINDOW_MS,
           perAccount: EMAIL_TEST_PER_ACCOUNT_LIMIT,
@@ -79,6 +86,7 @@ function makeWorld(opts: { session: string | null; sendResult?: EmailTestSendRes
       logs.push(ev);
     },
     secrets: () => ["re_FAKE_secret_0123456789"],
+    senderConfigured: () => opts.senderConfigured ?? true,
   };
   const responses: string[] = [];
   const post = async (body: unknown, query = "", raw?: string) => {
@@ -99,6 +107,7 @@ function makeWorld(opts: { session: string | null; sendResult?: EmailTestSendRes
     sent,
     logs,
     responses,
+    claims: () => claims,
     tick: (ms: number) => {
       clock += ms;
     },
@@ -267,6 +276,28 @@ async function main() {
     assert.deepEqual([u.status, u.json], [500, { error: "not_configured" }]);
     allResponses.push(...unconfigured.responses);
     allLogs.push(...unconfigured.logs);
+
+    // No email sender configured: 503 not_configured, for the tenant and for
+    // an admin on the tenant; nothing sent, nothing counted, no address logged.
+    for (const [session, query] of [
+      [TENANT, ""],
+      [ADMIN, `?asUserId=${TENANT}`],
+    ] as const) {
+      const noSender = makeWorld({ session, senderConfigured: false });
+      for (const to of ["owner@example.com", "recap@example.com", "stranger@example.com"]) {
+        const n = await noSender.post({ to }, query);
+        assert.deepEqual([n.status, n.json], [503, { error: "not_configured" }], `no sender (${query || "tenant"}) → 503`);
+      }
+      assert.equal(noSender.sent.length, 0, "no sender: sender never called");
+      assert.equal(noSender.claims(), 0, "no sender: no quota used");
+      allResponses.push(...noSender.responses);
+      allLogs.push(...noSender.logs);
+    }
+    // Still 401 before anything else.
+    {
+      const anonNoSender = makeWorld({ session: null, senderConfigured: false });
+      assert.equal((await anonNoSender.post({ to: "owner@example.com" })).status, 401);
+    }
 
     const ledgerDown = makeWorld({
       session: TENANT,
