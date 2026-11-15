@@ -545,7 +545,9 @@
     "restartConfirm": "Supprimer ce signup et recommencer ?\n\nLe compte créé sera définitivement effacé. Vous pourrez vous réinscrire avec le même ou un autre email.",
     "restartButton": "Recommencer avec un autre email",
     "errNetwork": "Erreur réseau",
-    "errResendRateLimited": "Trop de demandes de code. Réessayez plus tard."
+    "errResendRateLimited": "Trop de demandes de code. Réessayez plus tard.",
+    "errInvalidCode": "Code invalide ou expiré. Vérifiez-le ou cliquez sur « Renvoyer le code ».",
+    "errVerifyRateLimited": "Trop d'essais. Réessayez plus tard."
   },
   "Onboarding": {
     "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",

@@ -71,15 +71,20 @@ export function VerifyForm({ email }: VerifyFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code }),
       });
-      const data = (await res.json()) as {
+      const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: string;
       };
       if (!res.ok || !data.ok) {
-        // L'API renvoie un message d'erreur localisé/structuré côté serveur
-        // (ex: "Code expiré"). On l'affiche brut s'il est présent ; sinon
-        // fallback générique. Pas idéal i18n côté serveur — TODO plus tard.
-        setError(data.error ?? t("errFallback"));
+        // Neutral codes from the route (lib/verification-limits/verify.ts):
+        // the same answer whether or not the address has an account.
+        setError(
+          data.error === "rate_limited"
+            ? t("errVerifyRateLimited")
+            : data.error === "invalid_code"
+              ? t("errInvalidCode")
+              : t("errFallback"),
+        );
         setDigits(["", "", "", ""]);
         inputsRef.current[0]?.focus();
         return;

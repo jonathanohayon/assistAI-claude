@@ -545,7 +545,9 @@
     "restartConfirm": "Delete this signup and start over?\n\nThe account will be permanently deleted. You can re-register with the same or another email.",
     "restartButton": "Start over with another email",
     "errNetwork": "Network error",
-    "errResendRateLimited": "Too many code requests. Please try again later."
+    "errResendRateLimited": "Too many code requests. Please try again later.",
+    "errInvalidCode": "Invalid or expired code. Check it or click “Resend code”.",
+    "errVerifyRateLimited": "Too many attempts. Please try again later."
   },
   "Onboarding": {
     "trialLabel": "Free trial — 60 call minutes or 24h",
