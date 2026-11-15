@@ -242,7 +242,7 @@ export function HeroSection({
                 ? "bg-[#22d3ee]/20 text-[#a5f3fc] ring-[#22d3ee]/40"
                 : warning
                   ? "bg-[#fde68a] text-[#78350f] ring-[#f59e0b]/60"
-                  : "bg-white/10 text-white ring-white/30"
+                  : "bg-black/20 text-white ring-white/30"
             }`}
           >
             <span className="relative flex h-1.5 w-1.5">
