@@ -177,7 +177,7 @@ for (const isAdmin of [false, true]) {
 {
   // As stored: the server's own normalization (the POST/PATCH write path).
   const stored = normalizeExtractionSchema(fields(23));
-  assert.equal(stored.length, 23, "the server keeps 23 (its own cap is 30)");
+  assert.equal(stored.length, 23, "the server keeps a stored 23 (no slice)");
   const storedJson = JSON.stringify(stored);
 
   // Loaded into the editor as the workspace does (openExisting), then render.

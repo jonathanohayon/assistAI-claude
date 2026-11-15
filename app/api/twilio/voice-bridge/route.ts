@@ -77,8 +77,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       source: "web",
       event: valid ? "twilio_signature_valid" : "twilio_signature_invalid",
       message: valid
-        ? `Signature Twilio valide sur voice-bridge (to=${to || "?"})`
-        : `Signature Twilio invalide sur voice-bridge (to=${to || "?"})${enforce ? " — refusé" : " — mode log"}`,
+        ? "Signature Twilio valide sur voice-bridge"
+        : `Signature Twilio invalide sur voice-bridge${enforce ? " — refusé" : " — mode log"}`,
       level: valid ? "info" : "error",
       metadata: { toNumber: to, enforce },
     });

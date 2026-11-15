@@ -7,6 +7,7 @@ import { parseJsonBody } from "@/lib/api/request-parsing";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
+import { emailFields } from "@/lib/event-pii";
 import { fullyDeleteUser } from "@/lib/release-user";
 
 // POST /api/dashboard/delete-account
@@ -61,9 +62,10 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "auth",
     event: "self_account_deleted",
-    message: `Self-suppression compte ${me.email} · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
+    message: `Self-suppression compte ${me.id} · Twilio: ${release.releasedCount} libérés, ${release.failedCount} échecs`,
     metadata: {
-      email: me.email,
+      deletedUserId: me.id,
+      ...emailFields(me.email),
       twilioReleased: release.releasedCount,
       twilioFailed: release.failedCount,
       twilioErrors: release.errors,

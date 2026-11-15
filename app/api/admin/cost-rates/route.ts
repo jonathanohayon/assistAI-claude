@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest) {
   await logEvent({
     source: "web",
     event: "admin_cost_rates_updated",
-    message: `Admin ${me.email} a mis à jour la grille tarifaire`,
+    message: `Admin ${me.id} a mis à jour la grille tarifaire`,
     userId: me.id,
   });
 

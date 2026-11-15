@@ -38,6 +38,15 @@ for (const c of codes) assert.ok((EMAIL_TEST_ERRORS as readonly string[]).includ
 for (const c of EMAIL_TEST_ERRORS) assert.doesNotMatch(c, SUPPLIER);
 assert.equal([...handler.matchAll(/NextResponse\.json\(/g)].length, 2, "only fail() and the 200 build responses");
 
+// The owner recap email settings route (+ its pure helpers): the GET's
+// senderConfigured is a boolean only; no supplier, no env var name or read.
+for (const f of ["app/api/dashboard/notifications/email/route.ts", "lib/owner-recap-email.ts", "lib/owner-recap-email-store.ts"]) {
+  const src = code(f);
+  assert.doesNotMatch(src, SUPPLIER, `${f} names a supplier`);
+  assert.doesNotMatch(src, /resend/i, `${f} names the email supplier`);
+  assert.doesNotMatch(src, /process\.env|[A-Z][A-Z0-9]*_(API_KEY|FROM|SECRET|TOKEN)\b/, `${f} names an env var`);
+}
+
 // The public verification paths (resend route + signup action): no supplier,
 // no env var in code; the route answers only through fail() / ACCEPTED with a
 // neutral code (provider errors stay in the server log).

@@ -12,9 +12,9 @@
 //   - Tenants type a LABEL only; the technical key is derived and hidden
 //     (editable in developer mode and for admins). A key the server already
 //     stores is never re-derived: see setCaptureLabel below.
-import type { ExtractionField } from "./constants";
+import { EXTRACTION_SCHEMA_MAX_FIELDS, type ExtractionField } from "./constants";
 
-export const MAX_CAPTURE_FIELDS = 20;
+export const MAX_CAPTURE_FIELDS = EXTRACTION_SCHEMA_MAX_FIELDS;
 
 export type CaptureEditorView = "hidden" | "off_admin" | "on";
 

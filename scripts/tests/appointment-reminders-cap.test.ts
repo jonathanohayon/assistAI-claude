@@ -18,7 +18,13 @@ import {
   remindTenant,
 } from "../../lib/appointment-reminders-run";
 import { decideRateLimit, type RateLimitLedger, type RateLimitResult } from "../../lib/rate-limit-db-core";
-import { formatDateLabel, parseEventContact, reminderText } from "../../lib/reminders";
+import {
+  REMINDER_TIMES_LABEL_MAX,
+  formatDateLabel,
+  parseEventContact,
+  reminderText,
+  reminderTimesLabel,
+} from "../../lib/reminders";
 import { JERUSALEM_TZ } from "../../lib/tz";
 import { withCallUsLine } from "../../lib/whatsapp-call-line";
 
@@ -41,6 +47,8 @@ function mockEvent(i: number, phoneIndex = i): ReminderCalendarEvent {
 }
 
 type Sent = { to: string; body: string };
+type SentFull = { to: string; body: string; templateSid: string | undefined; templateVariables: Record<string, string> | undefined };
+type Recorded = Parameters<ReminderDeps["record"]>[0];
 
 /** Fake deps; `limiter` is shared between tenants to model the global ceiling. */
 function fakeDeps(
@@ -50,6 +58,8 @@ function fakeDeps(
   opts: { stored?: Array<{ eventId: string; clientPhone: string; status: string }>; failTo?: Set<string> } = {},
 ) {
   const sends: Sent[] = [];
+  const full: SentFull[] = [];
+  const rows: Recorded[] = [];
   const recorded: string[] = [];
   const logs: ReminderLogEvent[] = [];
   const deps: ReminderDeps = {
@@ -57,18 +67,21 @@ function fakeDeps(
     alreadyReminded: async (ids) => (opts.stored ?? []).filter((r) => ids.includes(r.eventId)),
     callNumber: async () => CALL_NUMBER,
     consume: () => limiter(tenantId),
-    send: async ({ to, body }) => {
+    send: async (o) => {
+      const { to, body } = o;
       sends.push({ to, body });
+      full.push({ ...o });
       return opts.failTo?.has(to) ? { ok: false, error: "mock failure" } : { ok: true, sid: `SM${sends.length}` };
     },
     record: async (row) => {
       recorded.push(row.eventId);
+      rows.push(row);
     },
     log: async (ev) => {
       logs.push(ev);
     },
   };
-  return { deps, sends, recorded, logs };
+  return { deps, sends, full, rows, recorded, logs };
 }
 
 function memoryLimiter(rule = { windowMs: REMINDERS_CAP_WINDOW_MS, perAccount: REMINDERS_PER_TENANT_PER_DAY, global: REMINDERS_GLOBAL_PER_DAY }) {
@@ -115,7 +128,7 @@ async function part1() {
     const c = await remindTenant(TENANT_A, TOMORROW, f.deps);
     assert.deepEqual(f.sends, mainLogicSends("en", events, new Set(["evt-0005"])));
     assert.equal(f.sends.length, 29);
-    assert.deepEqual(c, { events: 31, sent: 29, failed: 0, skipped: 2, capped: 0, deduped: 0 });
+    assert.deepEqual(c, { events: 31, sent: 29, failed: 0, skipped: 2, capped: 0, deduped: 0, merged: 0 });
     assert.equal(capped(f.logs).length, 0, "no capped event under the cap");
   }
 
@@ -155,7 +168,7 @@ async function part1() {
     const failTo = new Set([parseEventContact(events[1]).phone as string]);
     const f = fakeDeps(TENANT_A.id, events, memoryLimiter({ windowMs: 1000, perAccount: 2, global: 100 }), { failTo });
     const c = await remindTenant(TENANT_A, TOMORROW, f.deps);
-    assert.deepEqual(c, { events: 3, sent: 1, failed: 1, skipped: 1, capped: 1, deduped: 0 });
+    assert.deepEqual(c, { events: 3, sent: 1, failed: 1, skipped: 1, capped: 1, deduped: 0, merged: 0 });
     assert.deepEqual(capped(f.logs)[0].metadata, { sent: 2, skipped: 1, scope: "account" });
   }
 
@@ -178,8 +191,9 @@ async function part1() {
     assert.equal(c.sends.length, 0);
   }
 
-  // Per-destination dedup: one number with 3 events → one reminder, for the
-  // earliest event; dedup does not consume the cap.
+  // One number with 3 events (+ another number) → one reminder per number,
+  // listing all 3 times in order; all events recorded; the cap is consumed
+  // once per number.
   {
     const events = [mockEvent(7, 42), mockEvent(2, 42), mockEvent(4, 43), mockEvent(9, 42)];
     let consumed = 0;
@@ -189,9 +203,11 @@ async function part1() {
       return lim(id);
     });
     const c = await remindTenant(TENANT_A, TOMORROW, f.deps);
-    assert.deepEqual(f.recorded, ["evt-0002", "evt-0004"]);
-    assert.deepEqual(c, { events: 4, sent: 2, failed: 0, skipped: 2, capped: 0, deduped: 2 });
+    assert.deepEqual(f.recorded, ["evt-0002", "evt-0007", "evt-0009", "evt-0004"]);
+    assert.deepEqual(c, { events: 4, sent: 2, failed: 0, skipped: 0, capped: 0, deduped: 0, merged: 2 });
     assert.equal(consumed, 2);
+    assert.equal(f.sends.length, 2);
+    assert.match(f.sends[0].body, /at 08:02, 08:07, and 08:09 \(Test centre\)\./);
   }
 
   // Dedup across a rerun: a number already reminded (stored "sent") for
@@ -211,7 +227,178 @@ async function part1() {
     assert.equal(c.deduped, 1);
   }
 
+  await sameNumberSeveralAppointments();
   console.log("appointment-reminders-cap pure part passed");
+}
+
+/** Mock event at a Jerusalem wall-clock time on TOMORROW (January: UTC+2). */
+function evAt(id: string, hhmm: string, phoneIndex: number, center = "Test centre", name = "Dana"): ReminderCalendarEvent {
+  const [h, m] = hhmm.split(":").map(Number);
+  return {
+    id,
+    summary: `RDV ${center} — ${name}`,
+    description: `${center ? `Centre : ${center}\n` : ""}Tel : +1555${String(1_000_000 + phoneIndex).slice(1)}`,
+    start: { dateTime: new Date(Date.UTC(2030, 0, 15, h - 2, m)).toISOString() },
+  };
+}
+
+const FAKE_SID = "HX00000000000000000000000000000000";
+
+/** main's full per-event payload (send + record + log), one event per number. */
+function mainLogicFull(tenantId: string, lang: "fr" | "he" | "en", events: ReminderCalendarEvent[]) {
+  const sends: SentFull[] = [];
+  const rows: Recorded[] = [];
+  const logs: ReminderLogEvent[] = [];
+  for (const ev of events) {
+    const { name, phone, center } = parseEventContact(ev);
+    const startISO = ev.start?.dateTime ?? null;
+    const time = startISO
+      ? new Intl.DateTimeFormat("fr-FR", { timeZone: JERUSALEM_TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(startISO))
+      : "";
+    const text = withCallUsLine(reminderText(lang, { name, dateLabel: formatDateLabel(TOMORROW, lang), time, center }), lang, CALL_NUMBER);
+    sends.push({ to: phone as string, body: text, templateSid: FAKE_SID, templateVariables: { "1": text } });
+    rows.push({ eventId: ev.id as string, status: "sent", clientPhone: phone as string, error: "", appointmentStart: startISO ? new Date(startISO) : null });
+    logs.push({
+      source: "whatsapp",
+      event: "appointment_reminder_sent",
+      message: `Rappel J-1 → ${phone} (${TOMORROW} ${time})`,
+      userId: tenantId,
+      metadata: { eventId: ev.id, phone, sid: `SM${sends.length}` },
+    });
+  }
+  return { sends, rows, logs };
+}
+
+async function run(lang: "fr" | "he" | "en", events: ReminderCalendarEvent[], opts: Parameters<typeof fakeDeps>[3] = {}) {
+  const tenant = { id: TENANT_A.id, primaryLanguage: lang };
+  const f = fakeDeps(tenant.id, events, memoryLimiter(), opts);
+  const counts = await remindTenant(tenant, TOMORROW, f.deps);
+  return { ...f, counts };
+}
+
+/** Message body without the call line, i.e. the reminder sentence itself. */
+const sentence = (body: string) => body.split("\n\n")[0];
+
+async function sameNumberSeveralAppointments() {
+  process.env.WHATSAPP_REMINDER_TEMPLATE_SID = FAKE_SID;
+  try {
+    // 1 appointment per number → byte-identical payload, records and logs to main.
+    for (const lang of ["fr", "en", "he"] as const) {
+      const events = [evAt("e1", "10:00", 1), evAt("e2", "15:30", 2, ""), evAt("e3", "09:15", 3, "Other place", "")];
+      const sorted = [events[2], events[0], events[1]];
+      const r = await run(lang, events);
+      const ref = mainLogicFull(TENANT_A.id, lang, sorted);
+      assert.deepEqual(r.full, ref.sends, `${lang}: same sends as main`);
+      assert.deepEqual(r.rows, ref.rows, `${lang}: same records as main`);
+      assert.deepEqual(r.logs, ref.logs, `${lang}: same logs as main`);
+      assert.equal(r.counts.merged, 0);
+    }
+
+    // 2 appointments, same number, same place → one send whose {{1}} lists both times in order.
+    {
+      const events = [evAt("b", "15:30", 7), evAt("a", "10:00", 7)];
+      const r = await run("fr", events);
+      assert.equal(r.full.length, 1);
+      assert.equal(r.full[0].templateSid, FAKE_SID, "same template SID");
+      assert.deepEqual(Object.keys(r.full[0].templateVariables ?? {}), ["1"], "only variable {{1}}");
+      assert.equal(r.full[0].templateVariables?.["1"], r.full[0].body);
+      assert.equal(
+        sentence(r.full[0].body),
+        `Bonjour Dana, petit rappel de vos rendez-vous demain ${formatDateLabel(TOMORROW, "fr")} à 10:00 et 15:30 (Test centre). À demain ! 😊`,
+      );
+      assert.deepEqual(r.rows.map((x) => [x.eventId, x.status, x.clientPhone, x.appointmentStart?.toISOString()]), [
+        ["a", "sent", "+1555000007", "2030-01-15T08:00:00.000Z"],
+        ["b", "sent", "+1555000007", "2030-01-15T13:30:00.000Z"],
+      ]);
+      assert.deepEqual(r.counts, { events: 2, sent: 1, failed: 0, skipped: 0, capped: 0, deduped: 0, merged: 1 });
+      assert.deepEqual(r.logs[0].metadata, { eventId: "a", phone: "+1555000007", sid: "SM1", eventIds: ["a", "b"] });
+
+      // Rerun: both events are stored → nothing is sent again.
+      const stored = r.rows.map((x) => ({ eventId: x.eventId, clientPhone: x.clientPhone, status: x.status }));
+      const again = await run("fr", events, { stored });
+      assert.equal(again.full.length, 0);
+      assert.equal(again.rows.length, 0);
+    }
+
+    // fr / en / he formatting, 2 and 3 appointments.
+    const label = (l: "fr" | "en" | "he") => formatDateLabel(TOMORROW, l);
+    const three = [evAt("x", "12:00", 8), evAt("y", "15:30", 8), evAt("w", "10:00", 8)];
+    const two = three.slice(1);
+    const expect: Record<"fr" | "en" | "he", [string, string]> = {
+      fr: [
+        `Bonjour Dana, petit rappel de vos rendez-vous demain ${label("fr")} à 10:00 et 15:30 (Test centre). À demain ! 😊`,
+        `Bonjour Dana, petit rappel de vos rendez-vous demain ${label("fr")} à 10:00, 12:00 et 15:30 (Test centre). À demain ! 😊`,
+      ],
+      en: [
+        `Hi Dana, a friendly reminder of your appointments tomorrow ${label("en")} at 10:00 and 15:30 (Test centre). See you then! 😊`,
+        `Hi Dana, a friendly reminder of your appointments tomorrow ${label("en")} at 10:00, 12:00, and 15:30 (Test centre). See you then! 😊`,
+      ],
+      he: [
+        `שלום Dana, תזכורת לתורים שלך מחר ${label("he")} בשעות 10:00 ו-15:30 (Test centre). נתראה! 😊`,
+        `שלום Dana, תזכורת לתורים שלך מחר ${label("he")} בשעות 10:00, 12:00 ו-15:30 (Test centre). נתראה! 😊`,
+      ],
+    };
+    for (const lang of ["fr", "en", "he"] as const) {
+      const r2 = await run(lang, two);
+      assert.equal(r2.full.length, 1);
+      assert.equal(sentence(r2.full[0].body), expect[lang][0], `${lang}: 2 appointments`);
+      const r3 = await run(lang, three);
+      assert.equal(r3.full.length, 1, `${lang}: one send for 3 appointments`);
+      assert.equal(sentence(r3.full[0].body), expect[lang][1], `${lang}: 3 appointments`);
+      assert.deepEqual(r3.recorded, ["w", "x", "y"]);
+      assert.equal(r3.counts.merged, 2);
+      // The call line is still there.
+      assert.ok(r3.full[0].body.endsWith(CALL_NUMBER) || r3.full[0].body.includes(CALL_NUMBER));
+    }
+
+    // Different places → each time carries its own place; none at the end.
+    {
+      const events = [evAt("p1", "10:00", 9, "Centre A"), evAt("p2", "15:30", 9, "Centre B"), evAt("p3", "17:00", 9, "")];
+      const r = await run("en", events);
+      assert.equal(
+        sentence(r.full[0].body),
+        `Hi Dana, a friendly reminder of your appointments tomorrow ${label("en")} at 10:00 (Centre A), 15:30 (Centre B), and 17:00. See you then! 😊`,
+      );
+    }
+
+    // Length cap: at most 5 times listed, then "and N more"; long places clipped; label ≤ cap.
+    {
+      const hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00"];
+      const r = await run("en", hours.map((h, i) => evAt(`l${i}`, h, 10)));
+      assert.match(sentence(r.full[0].body), / at 08:00, 09:00, 10:00, 11:00, 12:00, and 3 more \(Test centre\)\./);
+      assert.equal(r.recorded.length, 8, "all 8 events recorded");
+      assert.match(sentence((await run("fr", hours.map((h, i) => evAt(`l${i}`, h, 10)))).full[0].body), /12:00 et 3 autres/);
+      assert.match(sentence((await run("he", hours.map((h, i) => evAt(`l${i}`, h, 10)))).full[0].body), /12:00 ועוד 3/);
+      const long = "P".repeat(200);
+      const lr = reminderTimesLabel("en", hours.map((h, i) => ({ time: h, center: `${long}${i}` })));
+      assert.ok(lr.times.length <= REMINDER_TIMES_LABEL_MAX, "times label capped");
+      assert.equal(lr.center, "");
+      const big = await run("en", hours.map((h, i) => evAt(`g${i}`, h, 11, `${long}${i}`)));
+      assert.ok(big.full[0].body.length <= 1000, "whole variable within the template limit");
+      assert.ok(big.full[0].body.includes(CALL_NUMBER));
+    }
+
+    // Failed send: every event of the number is recorded as failed; one failure counted.
+    {
+      const r = await run("fr", [evAt("f1", "10:00", 12), evAt("f2", "11:00", 12)], { failTo: new Set(["+1555000012"]) });
+      assert.deepEqual(r.rows.map((x) => [x.eventId, x.status]), [["f1", "failed"], ["f2", "failed"]]);
+      assert.equal(r.counts.failed, 1);
+    }
+
+    // Cap counts one send per number: cap 1 → the first number (2 events) is
+    // sent, the second number's 2 events are capped and not recorded.
+    {
+      const events = [evAt("c1", "10:00", 13), evAt("c2", "11:00", 13), evAt("c3", "12:00", 14), evAt("c4", "13:00", 14)];
+      const f = fakeDeps(TENANT_A.id, events, memoryLimiter({ windowMs: 1000, perAccount: 1, global: 100 }));
+      const c = await remindTenant(TENANT_A, TOMORROW, f.deps);
+      assert.equal(f.sends.length, 1);
+      assert.deepEqual(f.recorded, ["c1", "c2"]);
+      assert.deepEqual(c, { events: 4, sent: 1, failed: 0, skipped: 2, capped: 2, deduped: 0, merged: 1 });
+      assert.deepEqual(capped(f.logs)[0].metadata, { sent: 1, skipped: 2, scope: "account" });
+    }
+  } finally {
+    delete process.env.WHATSAPP_REMINDER_TEMPLATE_SID;
+  }
 }
 
 async function part2(url: string) {

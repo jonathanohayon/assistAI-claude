@@ -211,7 +211,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   await logEvent({
     source: "web",
     event: "admin_config_updated",
-    message: `Admin ${me.email} a édité la config de ${userId}`,
+    message: `Admin ${me.id} a édité la config de ${userId}`,
     userId: me.id,
     metadata: {
       targetUserId: userId,

@@ -97,7 +97,7 @@ export async function dispatchDueJobs(
       await logEvent({
         source: "web",
         event: "campaign_dial",
-        message: `Dialling ${job.phoneNumber} (attempt ${job.attempts})`,
+        message: `Dialling contact ${job.contactId} (attempt ${job.attempts})`,
         userId: job.userId,
         metadata: { campaignId: job.campaignId, contactId: job.contactId, attempt: job.attempts },
       });
@@ -109,7 +109,7 @@ export async function dispatchDueJobs(
         source: "web",
         event: "campaign_dial_failed",
         level: "error",
-        message: `Échec de composition ${job.phoneNumber} : ${
+        message: `Échec de composition (contact ${job.contactId}) : ${
           e instanceof Error ? e.message : "unknown"
         }`,
         userId: job.userId,

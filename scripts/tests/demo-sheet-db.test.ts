@@ -176,7 +176,7 @@ async function main() {
   const { DEMO_PLACE, DEMO_SERVICES, demoSheetBlock } = await import("../../lib/demo-place");
   const { DEMO_PERSONA, anonymousDemoInstructions } = await import("../../lib/demo-instructions");
   const { REALTIME_INSTRUCTIONS } = await import("../../lib/realtime");
-  // Sanity: main did speak the seeded text (this is the bug).
+  // Sanity: the pre-#323 baseline (scripts/demo-sheet-db.sh BASE) did speak the seeded text (the bug).
   const mainConfigured = String(main.payloads["configured:fr"]!.session.instructions);
   for (const s of [FAKE_CENTRE, FAKE_RULE, PERSONA_NAME, BRAND_LINE, PLACE_LINE]) {
     assert.ok(mainConfigured.includes(s), `main snapshot should carry the seeded "${s}"`);

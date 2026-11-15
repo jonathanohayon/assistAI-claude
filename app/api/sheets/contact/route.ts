@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { resolveAgentCallerGoogle } from "@/lib/google";
+import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { emailFields, phoneFields } from "@/lib/event-pii";
 import {
   ensureSheet,
   forceTextPhone,
@@ -27,6 +28,9 @@ const CLIENTS_HEADERS = [
 //
 // Téléphone forcé en texte (préfixe apostrophe) → Sheets ne drop plus le 0.
 export async function POST(req: NextRequest) {
+  // No internal secret and no session → 401 before anything else.
+  const gate = await requireAgentCaller(req);
+  if (!gate.ok) return gate.response;
   const { name, phone, email = "", notes = "" } = await req.json();
 
   if (!name || !phone) {
@@ -37,6 +41,10 @@ export async function POST(req: NextRequest) {
   }
 
   const caller = await resolveAgentCallerGoogle(req);
+  if (caller.mode === "anonymous") {
+    // Unreachable behind the gate above; kept so no path can use a client.
+    return NextResponse.json(AGENT_CALLER_UNAUTHORIZED_BODY, { status: 401 });
+  }
   if (caller.mode === "user_no_google") {
     return NextResponse.json(
       { error: "Google Sheet non connecté pour ce compte." },
@@ -48,10 +56,6 @@ export async function POST(req: NextRequest) {
       { error: `Tenant inconnu pour ${caller.dialedPhone || "(numéro absent)"}` },
       { status: 404 },
     );
-  }
-  if (caller.mode === "demo") {
-    // Public landing demo: acknowledge, store nothing (lib/demo-sandbox).
-    return NextResponse.json({ success: true, simulated: true });
   }
   if (!caller.sheetId) {
     await logEvent({
@@ -118,8 +122,8 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "sheets",
       event: result.action === "inserted" ? "client_added" : "client_updated",
-      message: `Client ${result.action === "inserted" ? "ajouté" : "mis à jour"} : ${name} · ${phone}`,
-      metadata: { name, phone, email, notes, action: result.action },
+      message: `Client ${result.action === "inserted" ? "ajouté" : "mis à jour"} : ${name}`,
+      metadata: { name, ...phoneFields("phone", phone), ...emailFields(email), notes, action: result.action },
     });
 
     return NextResponse.json({
@@ -137,7 +141,7 @@ export async function POST(req: NextRequest) {
       event: "contact_failed",
       message: `Upsert client échoué : ${msg.slice(0, 200)}`,
       level: "error",
-      metadata: { name, phone, error: msg },
+      metadata: { name, ...phoneFields("phone", phone), error: msg },
     });
     return NextResponse.json({ error: msg }, { status: 500 });
   }

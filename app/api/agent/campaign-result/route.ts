@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "agent",
     event: "campaign_call_done",
-    message: `Appel campagne ${outcome} — ${contact.phoneNumber}`,
+    message: `Appel campagne ${outcome}`,
     userId: campaign.userId,
     metadata: {
       campaignId,

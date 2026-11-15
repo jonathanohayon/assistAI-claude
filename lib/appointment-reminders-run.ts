@@ -9,9 +9,11 @@
 // cap is neither sent nor recorded in appointment_reminders, so it is not
 // treated as done. One counts-only `reminders_capped` event per tenant.
 //
-// Order: earliest appointment first. Dedup: one reminder per destination
-// number per day (the earliest event wins; later events for a number that
-// already got a reminder are skipped, not recorded).
+// Order: earliest appointment first. One reminder per destination number per
+// day: a number with several events tomorrow gets ONE message listing all of
+// their times (lib/reminders.ts reminderTextMany), every one of those events
+// is recorded, and the cap counts that one send. A number already reminded
+// on an earlier run is skipped for its other events (deduped, not recorded).
 
 import type { RateLimitResult } from "@/lib/rate-limit-db-core";
 import {
@@ -19,6 +21,7 @@ import {
   formatDateLabel,
   parseEventContact,
   reminderText,
+  reminderTextMany,
   resolveReminderTemplateSid,
 } from "@/lib/reminders";
 import { JERUSALEM_TZ } from "@/lib/tz";
@@ -83,9 +86,18 @@ export interface TenantReminderCounts {
   sent: number;
   failed: number;
   skipped: number; // includes `capped` and `deduped`
-  capped: number;
-  deduped: number;
+  capped: number; // events (of capped numbers) not sent
+  deduped: number; // events of a number already reminded on an earlier run
+  merged: number; // events folded into the same number's reminder (not skipped)
 }
+
+const TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: JERUSALEM_TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const formatTime = (iso: string) => TIME_FMT.format(new Date(iso));
 
 const startMs = (e: ReminderCalendarEvent) => {
   const t = Date.parse(e.start?.dateTime ?? "");
@@ -97,7 +109,7 @@ export async function remindTenant(
   tomorrow: string,
   deps: ReminderDeps,
 ): Promise<TenantReminderCounts> {
-  const counts: TenantReminderCounts = { events: 0, sent: 0, failed: 0, skipped: 0, capped: 0, deduped: 0 };
+  const counts: TenantReminderCounts = { events: 0, sent: 0, failed: 0, skipped: 0, capped: 0, deduped: 0, merged: 0 };
 
   const items = (await deps.listEvents())
     .filter((e) => e.id && e.start?.dateTime) // ignore all-day / no id
@@ -120,6 +132,9 @@ export async function remindTenant(
 
   let cappedScope: "account" | "global" | null = null;
 
+  // Group tomorrow's not-yet-reminded events by destination number, earliest
+  // first (Map keeps insertion order, items are sorted by start).
+  const groups = new Map<string, Array<{ eventId: string; name: string; center: string; startISO: string | null }>>();
   for (const ev of items) {
     const eventId = ev.id as string;
     if (already.has(eventId)) {
@@ -137,36 +152,36 @@ export async function remindTenant(
     if (remindedNumbers.has(phone)) {
       counts.skipped++;
       counts.deduped++;
-      continue; // this number already gets (or got) a reminder for tomorrow
+      continue; // this number already got a reminder for tomorrow (earlier run)
     }
+    const g = groups.get(phone) ?? [];
+    g.push({ eventId, name, center, startISO: ev.start?.dateTime ?? null });
+    groups.set(phone, g);
+  }
 
+  for (const [phone, group] of groups) {
     if (cappedScope === null) {
-      const rl = await deps.consume();
+      const rl = await deps.consume(); // one attempt per number, not per event
       if (!rl.ok) cappedScope = rl.scope;
     }
     if (cappedScope !== null) {
-      counts.skipped++;
-      counts.capped++;
+      counts.skipped += group.length;
+      counts.capped += group.length;
       continue; // over the cap: not sent, not recorded
     }
-    remindedNumbers.add(phone);
 
-    const startISO = ev.start?.dateTime ?? null;
-    const time = startISO
-      ? new Intl.DateTimeFormat("fr-FR", {
-          timeZone: JERUSALEM_TZ,
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).format(new Date(startISO))
-      : "";
+    const first = group[0];
+    const times = group.map((e) => (e.startISO ? formatTime(e.startISO) : ""));
+    const time = group.length === 1 ? times[0] : times.join(", ");
+    const dateLabel = formatDateLabel(tomorrow, lang);
     const text = withCallUsLine(
-      reminderText(lang, {
-        name,
-        dateLabel: formatDateLabel(tomorrow, lang),
-        time,
-        center,
-      }),
+      group.length === 1
+        ? reminderText(lang, { name: first.name, dateLabel, time, center: first.center })
+        : reminderTextMany(lang, {
+            name: first.name,
+            dateLabel,
+            slots: group.map((e, i) => ({ time: times[i], center: e.center })),
+          }),
       lang,
       callNumber,
     );
@@ -178,13 +193,18 @@ export async function remindTenant(
       templateVariables: templateSid ? { "1": text } : undefined,
     });
 
-    await deps.record({
-      eventId,
-      status: r.ok ? "sent" : "failed",
-      clientPhone: phone,
-      error: r.ok ? "" : (r.error ?? "").slice(0, 500),
-      appointmentStart: startISO ? new Date(startISO) : null,
-    });
+    // Every event of the number is recorded, so a rerun sends nothing again.
+    for (const e of group) {
+      await deps.record({
+        eventId: e.eventId,
+        status: r.ok ? "sent" : "failed",
+        clientPhone: phone,
+        error: r.ok ? "" : (r.error ?? "").slice(0, 500),
+        appointmentStart: e.startISO ? new Date(e.startISO) : null,
+      });
+    }
+    const extraMeta = group.length > 1 ? { eventIds: group.map((e) => e.eventId) } : {};
+    counts.merged += group.length - 1;
 
     if (r.ok) {
       counts.sent++;
@@ -193,7 +213,7 @@ export async function remindTenant(
         event: "appointment_reminder_sent",
         message: `Rappel J-1 → ${phone} (${tomorrow} ${time})`,
         userId: tenant.id,
-        metadata: { eventId, phone, sid: r.sid },
+        metadata: { eventId: first.eventId, phone, sid: r.sid, ...extraMeta },
       });
     } else {
       counts.failed++;
@@ -203,7 +223,7 @@ export async function remindTenant(
         message: `Rappel J-1 KO → ${phone} : ${(r.error ?? "").slice(0, 150)}`,
         level: "warn",
         userId: tenant.id,
-        metadata: { eventId, phone, error: r.error },
+        metadata: { eventId: first.eventId, phone, error: r.error, ...extraMeta },
       });
     }
   }

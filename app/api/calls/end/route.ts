@@ -13,6 +13,8 @@ import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
+import { callReceivedEvent } from "@/lib/call-received-event";
+import { phoneFields } from "@/lib/event-pii";
 import { clientConfirmDeps } from "@/lib/client-confirm/deps";
 import { sendClientConfirm } from "@/lib/client-confirm/run";
 import { featuresForPlan } from "@/lib/plan-features";
@@ -65,12 +67,12 @@ async function verifyDelivery(
     await logEvent({
       source: "whatsapp",
       event: `whatsapp_undelivered_${recipient}`,
-      message: `WhatsApp ${recipient} non livré${to ? ` à ${to}` : ""} (status=${status.status}${
+      message: `WhatsApp ${recipient} non livré (status=${status.status}${
         status.errorCode ? ` code=${status.errorCode}` : ""
       })${status.errorMessage ? ` : ${status.errorMessage.slice(0, 150)}` : ""}`,
       level: "error",
       userId,
-      metadata: to ? { callId, sid, to, ...status } : { callId, sid, ...status },
+      metadata: { callId, sid, ...phoneFields("to", to), ...status },
     });
   }
 }
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "tenant",
       event: "tenant_not_found",
-      message: `Aucun tenant pour userId=${userId || "(none)"} toNumber=${toNumber || "(none)"}`,
+      message: `Aucun tenant pour userId=${userId || "(none)"}`,
       level: "error",
       metadata: { userId, toNumber },
     });
@@ -130,95 +132,9 @@ export async function POST(req: NextRequest) {
   await logEvent({
     source: "agent",
     event: "call_received",
-    message: `Appel reçu de ${fromNumber || "?"} pour ${user.email}`,
     userId: user.id,
-    metadata: {
-      callId: callRow.id,
-      fromNumber,
-      toNumber,
-      transcriptEntries: transcript.length,
-    },
+    ...callReceivedEvent({ fromNumber, toNumber, callId: callRow.id, transcriptEntries: transcript.length }),
   });
-
-  if (transcript.length === 0) {
-    await logEvent({
-      source: "agent",
-      event: "call_skipped_empty",
-      message: "Transcript vide — aucun récap envoyé",
-      level: "warn",
-      userId: user.id,
-      metadata: { callId: callRow.id },
-    });
-    return NextResponse.json({
-      ok: true,
-      callId: callRow.id,
-      skipped: "empty transcript",
-    });
-  }
-
-  let summary;
-  try {
-    // Optional per-plan custom system prompt from /admin. Fallback sur le
-    // DEFAULT_SUMMARY_PROMPT hardcodé si l'admin n'a rien défini pour ce plan.
-    const summaryByPlan = await getSummaryPromptByPlan();
-    const planKey: PlanKey = isValidPlanKey(user.subscriptionPlan)
-      ? user.subscriptionPlan
-      : DEFAULT_PLAN_KEY;
-    const customPrompt = summaryByPlan[planKey] || null;
-    // Génère le summary dans la langue principale du tenant
-    // (cfg.primaryLanguage) pour que for_client / for_owner soient en
-    // FR/HE/EN selon le choix du tenant. Fallback fr si non set.
-    const targetLang = cfg.primaryLanguage ?? "fr";
-    // Signed with the tenant's OWN business name (company sheet, read from
-    // agent_configs.business), or not signed at all when it has none.
-    summary = await summarizeCall(transcript, customPrompt, targetLang, summarySignature(cfg.business));
-    await logEvent({
-      source: "summary",
-      event: "summary_generated",
-      message: `Résumé généré (${summary.raw.length} chars)`,
-      userId: user.id,
-      metadata: { callId: callRow.id },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "summary failed";
-    await db
-      .update(calls)
-      .set({
-        whatsappError: `summary: ${msg}`,
-        callType: await callTypeForCall({
-          userId: user.id,
-          endedAt: callRow.createdAt,
-          callId,
-          durationSeconds: durationSeconds ?? 0,
-          summary: "",
-          transcript: transcript.map((t) => t.text),
-        }),
-      })
-      .where(eq(calls.id, callRow.id));
-    await logEvent({
-      source: "summary",
-      event: "summary_failed",
-      message: `Résumé échoué : ${msg.slice(0, 200)}`,
-      level: "error",
-      userId: user.id,
-      metadata: { callId: callRow.id, error: msg },
-    });
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
-  }
-
-  // Call type: deterministic tool events first, keywords as fallback.
-  const callType = await callTypeForCall({
-    userId: user.id,
-    endedAt: callRow.createdAt,
-    callId,
-    durationSeconds: durationSeconds ?? 0,
-    summary: summary.raw,
-    transcript: transcript.map((t) => t.text),
-  });
-  await db
-    .update(calls)
-    .set({ summary: summary.raw, callType })
-    .where(eq(calls.id, callRow.id));
 
   let clientSid: string | null = null;
   let ownerSid: string | null = null;
@@ -234,6 +150,9 @@ export async function POST(req: NextRequest) {
   // call, with a text built from that tool event (never the model's recap:
   // the caller ID can be spoofed). One per destination per call, at most 3
   // per number per day. lib/client-confirm/run.ts.
+  // It needs neither the transcript nor the summary, so it runs BEFORE the
+  // empty-transcript and failed-summary exits below: a proven booking still
+  // gets its confirm. The owner recap stays after them, unchanged.
   //
   // PSTN: the per-language approved template (WHATSAPP_CLIENT_TEMPLATE_SID_<LANG>,
   // else the legacy SID), only its {{1}} value is ours. WhatsApp channel: the
@@ -272,6 +191,93 @@ export async function POST(req: NextRequest) {
       waError = `client: ${confirm.error}`;
     }
   }
+
+  if (transcript.length === 0) {
+    await logEvent({
+      source: "agent",
+      event: "call_skipped_empty",
+      message: "Transcript vide — aucun récap envoyé",
+      level: "warn",
+      userId: user.id,
+      metadata: { callId: callRow.id },
+    });
+    if (clientSid || waError) {
+      await db
+        .update(calls)
+        .set({ whatsappClientSid: clientSid, whatsappError: waError })
+        .where(eq(calls.id, callRow.id));
+    }
+    return NextResponse.json({
+      ok: true,
+      callId: callRow.id,
+      skipped: "empty transcript",
+    });
+  }
+
+  let summary;
+  try {
+    // Optional per-plan custom system prompt from /admin. Fallback sur le
+    // DEFAULT_SUMMARY_PROMPT hardcodé si l'admin n'a rien défini pour ce plan.
+    const summaryByPlan = await getSummaryPromptByPlan();
+    const planKey: PlanKey = isValidPlanKey(user.subscriptionPlan)
+      ? user.subscriptionPlan
+      : DEFAULT_PLAN_KEY;
+    const customPrompt = summaryByPlan[planKey] || null;
+    // Génère le summary dans la langue principale du tenant
+    // (cfg.primaryLanguage) pour que for_client / for_owner soient en
+    // FR/HE/EN selon le choix du tenant. Fallback fr si non set.
+    const targetLang = cfg.primaryLanguage ?? "fr";
+    // Signed with the tenant's OWN business name (company sheet, read from
+    // agent_configs.business), or not signed at all when it has none.
+    summary = await summarizeCall(transcript, customPrompt, targetLang, summarySignature(cfg.business));
+    await logEvent({
+      source: "summary",
+      event: "summary_generated",
+      message: `Résumé généré (${summary.raw.length} chars)`,
+      userId: user.id,
+      metadata: { callId: callRow.id },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "summary failed";
+    await db
+      .update(calls)
+      .set({
+        whatsappClientSid: clientSid,
+        whatsappError: waError ? `summary: ${msg} | ${waError}` : `summary: ${msg}`,
+        callType: await callTypeForCall({
+          userId: user.id,
+          endedAt: callRow.createdAt,
+          callId,
+          durationSeconds: durationSeconds ?? 0,
+          summary: "",
+          transcript: transcript.map((t) => t.text),
+        }),
+      })
+      .where(eq(calls.id, callRow.id));
+    await logEvent({
+      source: "summary",
+      event: "summary_failed",
+      message: `Résumé échoué : ${msg.slice(0, 200)}`,
+      level: "error",
+      userId: user.id,
+      metadata: { callId: callRow.id, error: msg },
+    });
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+
+  // Call type: deterministic tool events first, keywords as fallback.
+  const callType = await callTypeForCall({
+    userId: user.id,
+    endedAt: callRow.createdAt,
+    callId,
+    durationSeconds: durationSeconds ?? 0,
+    summary: summary.raw,
+    transcript: transcript.map((t) => t.text),
+  });
+  await db
+    .update(calls)
+    .set({ summary: summary.raw, callType })
+    .where(eq(calls.id, callRow.id));
 
   // Dedup proprio : on évite de spammer le proprio si :
   //   (a) un message LIVRÉ AVEC SUCCÈS récent existe (5 min) → cas où
@@ -342,11 +348,11 @@ export async function POST(req: NextRequest) {
     await logEvent({
       source: "whatsapp",
       event: "whatsapp_skipped_owner_dedup",
-      message: `Recap proprio sauté (${skipOwnerReason}) — to=${cfg.ownerWhatsapp}, transcript=${transcript.length} entries`,
+      message: `Recap proprio sauté (${skipOwnerReason}) — transcript=${transcript.length} entries`,
       userId: user.id,
       metadata: {
         callId: callRow.id,
-        to: cfg.ownerWhatsapp,
+        ...phoneFields("to", cfg.ownerWhatsapp),
         reason: skipOwnerReason,
         transcriptEntries: transcript.length,
       },
@@ -376,9 +382,9 @@ export async function POST(req: NextRequest) {
       await logEvent({
         source: "whatsapp",
         event: "whatsapp_sent_owner",
-        message: `WhatsApp envoyé au proprio ${cfg.ownerWhatsapp}`,
+        message: "WhatsApp envoyé au proprio",
         userId: user.id,
-        metadata: { callId: callRow.id, sid: r.sid, to: cfg.ownerWhatsapp },
+        metadata: { callId: callRow.id, sid: r.sid, ...phoneFields("to", cfg.ownerWhatsapp) },
       });
       // Status check delayed : Twilio peut accepter (201 OK) puis bloquer
       // la livraison silencieusement (status undelivered, error 63016 = hors
@@ -392,7 +398,7 @@ export async function POST(req: NextRequest) {
         message: `WhatsApp owner échoué : ${r.error?.slice(0, 200)}`,
         level: "error",
         userId: user.id,
-        metadata: { callId: callRow.id, to: cfg.ownerWhatsapp, error: r.error },
+        metadata: { callId: callRow.id, ...phoneFields("to", cfg.ownerWhatsapp), error: r.error },
       });
     }
   }
@@ -471,7 +477,7 @@ export async function POST(req: NextRequest) {
       await logEvent({
         source: "sheets",
         event: "call_log_added",
-        message: `Appel loggé dans Sheets : ${localFromNumber || "?"} · ${callType}`,
+        message: `Appel loggé dans Sheets · ${callType}`,
         userId: user.id,
         metadata: { callId: callRow.id, type: callType },
       });

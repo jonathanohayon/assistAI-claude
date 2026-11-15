@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs scripts/tests/demo-sheet-db.test.ts against a THROWAWAY
 # Postgres (127.0.0.1:55481, data in the git-ignored .tmp/ folder), then stops it:
-#   1. origin/main's tree: the demo sessions through main's route → snapshot;
+#   1. the pre-#323 baseline tree (8567c7a, the leaky main): the demo sessions through its route → snapshot;
 #   2. this branch: no seeded business fact and no lib/schedule place in what
 #      the provider receives, the rest identical to the snapshot, and a regular
 #      tenant still gets its own business block.
@@ -31,9 +31,16 @@ trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null 2>&1
 
-echo "== 1. origin/main route"
+echo "== 1. baseline route (pre-#323 main, \${DEMO_SHEET_BASE:-8567c7a})"
 mkdir -p "$MAIN"
-git archive origin/main | tar -x -C "$MAIN"
+# The baseline is PINNED to the last main BEFORE #323 (a1dfec0^1 = 8567c7a, the
+# parent of #323's merge commit): the tree that leaked the stored account
+# text. origin/main already contains #323's fix, so comparing against it would
+# compare the fix with itself and the "main snapshot carries the seeded
+# Centre Zzyzx-Mock" sanity check would fail. Full SHA so it never becomes
+# ambiguous. Override with DEMO_SHEET_BASE=<commit>.
+BASE="${DEMO_SHEET_BASE:-8567c7a2e4b45c40c5edb9df2104e354e38f4899}"
+git archive "$BASE" | tar -x -C "$MAIN"
 mkdir -p "$MAIN/scripts/tests/fixtures"
 cp -R scripts/tests/fixtures/demo-sheet "$MAIN/scripts/tests/fixtures/"
 cp "$TEST" "$MAIN/scripts/tests/"
