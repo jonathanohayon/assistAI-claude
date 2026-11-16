@@ -128,6 +128,14 @@ export function withDoorParam(path: string, raw: unknown): string {
 /** localStorage key of the customer's own tile order (config-form.tsx). */
 export const TILE_ORDER_KEY = "tamara.config.tileOrder";
 
+/**
+ * Whether picking `next` must save: only a DIFFERENT door. The same door
+ * sends no PUT and keeps the saved tile order.
+ */
+export function doorChangeNeeded(current: Door, next: unknown): next is Door {
+  return typeof next === "string" && (DOORS as readonly string[]).includes(next) && next !== current;
+}
+
 /** The PUT the "main use" selector sends (?asUserId= in the admin tenant view). */
 export function doorPutRequest(door: Door, asUserId?: string | null): { url: string; init: RequestInit } {
   return {

@@ -12,7 +12,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import { DOORS, type Door } from "@/lib/door-values";
-import { doorOf, doorPutRequest, TILE_ORDER_KEY } from "@/lib/doors-ui";
+import { doorChangeNeeded, doorOf, doorPutRequest, TILE_ORDER_KEY } from "@/lib/doors-ui";
 
 const OPTION_KEY: Record<Door, "doorOptionReception" | "doorOptionSales" | "doorOptionConnect"> = {
   reception: "doorOptionReception",
@@ -40,6 +40,8 @@ export function DoorSelect({
   const [, startTransition] = useTransition();
 
   const choose = async (next: Door) => {
+    // The same door: no PUT, the saved tile order is kept.
+    if (!doorChangeNeeded(door, next)) return;
     const previous = door;
     setDoor(next);
     setSaving(true);
@@ -76,6 +78,7 @@ export function DoorSelect({
       {!compact && (
         <p id={`${id}-hint`} className="mt-1 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
           {t("doorHint")}
+          <span className="block">{t("doorResetNote")}</span>
         </p>
       )}
       <select
@@ -86,6 +89,7 @@ export function DoorSelect({
         aria-describedby={[compact ? null : `${id}-hint`, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined}
         aria-invalid={error || undefined}
         onChange={(e) => void choose(doorOf(e.target.value))}
+        title={compact ? t("doorResetNote") : undefined}
         className={
           compact
             ? "min-h-9 rounded-full border border-[#d97706]/40 bg-white px-3 text-xs text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] disabled:cursor-wait disabled:opacity-60"

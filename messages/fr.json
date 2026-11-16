@@ -1645,7 +1645,8 @@
     "doorOptionReception": "Réception d'appels",
     "doorOptionSales": "Ventes (appels sortants)",
     "doorOptionConnect": "Connecter mon agent",
-    "doorSaveError": "Votre choix n'a pas été enregistré. Réessayez."
+    "doorSaveError": "Votre choix n'a pas été enregistré. Réessayez.",
+    "doorResetNote": "Changer d'usage remet l'ordre de vos tuiles par défaut."
   },
   "DashboardBilling": {
     "header": "Abonnement",

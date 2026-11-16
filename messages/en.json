@@ -1645,7 +1645,8 @@
     "doorOptionReception": "Answering calls",
     "doorOptionSales": "Sales (outbound calls)",
     "doorOptionConnect": "Connect my agent",
-    "doorSaveError": "Your choice wasn't saved. Try again."
+    "doorSaveError": "Your choice wasn't saved. Try again.",
+    "doorResetNote": "Changing it resets the order of your tiles."
   },
   "DashboardBilling": {
     "header": "Billing",

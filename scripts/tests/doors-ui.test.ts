@@ -14,6 +14,7 @@ import { checklistSteps, nextStep } from "../../components/dashboard/setup-check
 import { DEFAULT_DOOR, DOORS, type Door } from "../../lib/door-values";
 import {
   DOOR_UI,
+  doorChangeNeeded,
   doorOf,
   doorPutRequest,
   doorUi,
@@ -170,6 +171,23 @@ assert.deepEqual(JSON.parse(String(forTenant.init.body)), { door: "connect" });
 assert.equal(doorPutRequest("sales", null).url, "/api/dashboard/account");
 assert.equal(doorPutRequest("sales", "").url, "/api/dashboard/account");
 
+// The same door does nothing: no PUT and no reset of the saved tile order.
+for (const d of DOORS) {
+  assert.equal(doorChangeNeeded(d, d), false, `${d} → ${d}: no save`);
+  for (const other of DOORS.filter((x) => x !== d)) assert.equal(doorChangeNeeded(d, other), true);
+}
+for (const bad of ["", "junk", null, undefined, 1]) assert.equal(doorChangeNeeded("sales", bad), false);
+{
+  // The guard sits BEFORE the fetch and the localStorage reset in choose().
+  const selectSrc = code("components/dashboard/DoorSelect.tsx");
+  const body = selectSrc.slice(selectSrc.indexOf("const choose"));
+  const guard = body.indexOf("if (!doorChangeNeeded(door, next)) return;");
+  assert.ok(guard > 0, "choose() starts with the same-door guard");
+  assert.ok(guard < body.indexOf("fetch(url"), "no PUT for the same door");
+  assert.ok(guard < body.indexOf("localStorage.removeItem"), "no order reset for the same door");
+  assert.match(selectSrc, /t\("doorResetNote"\)/, "the selector says a change resets the tile order");
+}
+
 // ── ?door forwarding (signup ↔ login) ───────────────────────────────────────
 assert.equal(withDoorParam("/signup", "sales"), "/signup?door=sales");
 assert.equal(withDoorParam("/login", "connect"), "/login?door=connect");
@@ -197,6 +215,17 @@ assert.match(code("app/admin/users/[userId]/layout.tsx"), /<DoorSelect initialDo
 assert.match(code("app/admin/users/[userId]/layout.tsx"), /<AdminTenantTabs userId=\{target\.id\} door=\{door\} \/>/);
 assert.match(code("app/[locale]/dashboard/layout.tsx"), /door=\{resolveDoor\(me\?\.door \?\? null\)\}/);
 assert.match(code("app/[locale]/login/page.tsx"), /href=\{withDoorParam\("\/signup", door\)\}/, "login → signup keeps ?door");
+{
+  // The login page reads ?door ONLY to forward it to /signup: it never reaches
+  // the sign-in actions, a cookie, a redirect or the database (an existing
+  // account's door is never changed by a link). The DB side of sign-in is
+  // pinned in account-door-db.test.ts (googleSignIn keeps an existing door).
+  const login = code("app/[locale]/login/page.tsx");
+  const uses = [...login.matchAll(/\bdoor\b/g)].length;
+  assert.equal(uses, 3, "door: the searchParams type, the destructure, the /signup link; nothing else");
+  assert.doesNotMatch(login, /signup_door|cookies\(/, "login sets no door cookie");
+  assert.doesNotMatch(login, /lib\/door"|parseDoor|users\.door/, "login never parses or writes a door");
+}
 assert.match(code("app/[locale]/signup/signup-content.tsx"), /href=\{withDoorParam\("\/login", door\)\}/, "signup → login keeps ?door");
 assert.match(code("app/[locale]/dashboard/config-form.tsx"), /gridTiles\(TILES, tileOrder, door, campaignsEnabled\)/);
 assert.doesNotMatch(code("app/[locale]/dashboard/config-form.tsx"), /applyTileOrder/);
@@ -206,7 +235,7 @@ for (const locale of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
   for (const d of DOORS) assert.equal(typeof m.Dashboard[DOOR_UI[d].headerKey], "string", `${locale}: ${DOOR_UI[d].headerKey}`);
   assert.equal(typeof m.Dashboard.tabConfiguration, "string", "the existing key is kept");
-  for (const k of ["doorLabel", "doorHint", "doorOptionReception", "doorOptionSales", "doorOptionConnect", "doorSaveError"]) {
+  for (const k of ["doorLabel", "doorHint", "doorOptionReception", "doorOptionSales", "doorOptionConnect", "doorResetNote", "doorSaveError"]) {
     assert.equal(typeof m.DashboardSettings[k], "string", `${locale}: DashboardSettings.${k}`);
   }
   for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "agentUrlTitle", "agentUrlDesc", "agentUrlCta"]) {

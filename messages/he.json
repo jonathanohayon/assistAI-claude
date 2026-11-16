@@ -1645,7 +1645,8 @@
     "doorOptionReception": "קבלת שיחות",
     "doorOptionSales": "מכירות (שיחות יוצאות)",
     "doorOptionConnect": "חיבור הסוכן שלכם",
-    "doorSaveError": "הבחירה שלכם לא נשמרה. נסו שוב."
+    "doorSaveError": "הבחירה שלכם לא נשמרה. נסו שוב.",
+    "doorResetNote": "שינוי השימוש מחזיר את סדר האריחים שלכם לברירת המחדל."
   },
   "DashboardBilling": {
     "header": "מנוי",
