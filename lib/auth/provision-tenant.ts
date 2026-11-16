@@ -1,6 +1,7 @@
 import { alertAdmins } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
+import type { Door } from "@/lib/door-values";
 import { seedForNewAccount } from "@/lib/neutral-seed";
 import { type PlanKey } from "@/lib/plans";
 import {
@@ -21,6 +22,11 @@ interface ProvisionTenantInput {
    * sans mot de passe — un hash d'un secret aleatoire est alors stocke.
    */
   passwordHash?: string | null;
+  /**
+   * The landing page's door (lib/door.ts), set ONCE here at account creation.
+   * Omitted / null = NULL in the DB, read as "reception".
+   */
+  door?: Door | null;
 }
 
 /**
@@ -57,6 +63,7 @@ export async function provisionTenant(input: ProvisionTenantInput) {
       trialEndsAt,
       emailVerified,
       locale,
+      door: input.door ?? null,
     })
     .returning();
 

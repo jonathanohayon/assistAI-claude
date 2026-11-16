@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -45,6 +46,10 @@ export const users = pgTable("users", {
   // Account display preference: show level-3 ("developer") settings in the
   // dashboard. Display only — admin-only fields stay admin-only whatever it says.
   developerMode: boolean("developer_mode").notNull().default(false),
+  // The account's "door": the landing page the visitor signed up from
+  // (lib/door.ts). Dashboard presentation ONLY, never a right, never served
+  // to the worker. NULL = "reception" at read time (resolveDoor).
+  door: text("door"),
   // Knowledge contract (S4): the ACCOUNT's companySheet, shared by all its
   // agents (lib/knowledge/contract.ts). Written alongside agent_configs.business,
   // which stays the calls' read source. NULL = built lazily from business.
@@ -99,7 +104,9 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-});
+}, (t) => [
+  check("users_door_check", sql`${t.door} IN ('reception', 'sales', 'connect')`),
+]);
 
 // 4-digit codes envoyés par email pour valider l'adresse au signup.
 // Une ligne par tentative : on garde l'historique pour audit, le code

@@ -54,8 +54,8 @@ export const signupDeps: SignupDeps = {
   hashPassword: (password) => bcrypt.hash(password, 12),
   // emailVerified=false → the /verify-email gate. The trial gets every feature
   // (TRIAL_PLAN_KEY); the display name is collected at onboarding.
-  provision: ({ email, locale, passwordHash }) =>
-    provisionTenant({ email, displayName: "", plan: TRIAL_PLAN_KEY, locale, emailVerified: false, passwordHash }),
+  provision: ({ email, locale, passwordHash, door }) =>
+    provisionTenant({ email, displayName: "", plan: TRIAL_PLAN_KEY, locale, emailVerified: false, passwordHash, door }),
   createCode: (userId) => createEmailVerification(userId, { skipCooldown: true }),
   send: sendVerificationEmail,
   log: logEvent,

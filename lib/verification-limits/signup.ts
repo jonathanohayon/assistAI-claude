@@ -6,6 +6,7 @@
 // The page signs the new user in on { ok: true } and redirects with
 // ?error=<code> otherwise.
 
+import type { Door } from "@/lib/door-values";
 import type { LogEvent } from "@/lib/logger";
 import type { RateLimitResult } from "@/lib/rate-limit-db-core";
 import {
@@ -25,14 +26,15 @@ export interface SignupDeps {
   consume(opts: { bucket: string; accountId: string; windowMs: number; perAccount: number; global: number }): Promise<RateLimitResult>;
   findUser(email: string): Promise<{ passwordHash: string } | null>;
   hashPassword(password: string): Promise<string>;
-  provision(input: { email: string; locale: string; passwordHash: string }): Promise<{ id: string }>;
+  /** `door`: the landing page's door, stored at account creation only. */
+  provision(input: { email: string; locale: string; passwordHash: string; door: Door }): Promise<{ id: string }>;
   createCode(userId: string): Promise<{ ok: boolean; code?: string; reason?: string }>;
   send(to: string, code: string, locale: string): Promise<VerificationSendResult>;
   log(ev: LogEvent): Promise<void>;
 }
 
 export async function signupWithEmail(
-  input: { email: unknown; password: unknown; locale: string; ip: string },
+  input: { email: unknown; password: unknown; locale: string; ip: string; door?: Door },
   deps: SignupDeps,
 ): Promise<SignupOutcome> {
   const email = normaliseEmail(input.email);
@@ -76,7 +78,7 @@ export async function signupWithEmail(
   }
 
   const passwordHash = await deps.hashPassword(password);
-  const created = await deps.provision({ email, locale: input.locale, passwordHash });
+  const created = await deps.provision({ email, locale: input.locale, passwordHash, door: input.door ?? "reception" });
 
   // Verification gate: a 4-digit code by email. The page signs the user in
   // right after; the layouts send emailVerified=false users to /verify-email.
