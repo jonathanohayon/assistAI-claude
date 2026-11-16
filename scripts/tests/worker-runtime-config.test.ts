@@ -11,8 +11,9 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 
 import { getTableColumns } from "drizzle-orm";
 
+import { accountFrom } from "../../lib/agent/adapters";
 import { WORKER_HIDDEN_CONFIG_COLUMNS, workerRuntimeConfig } from "../../lib/agent/worker-runtime-config";
-import { agentConfigs } from "../../lib/db/schema";
+import { agentConfigs, users } from "../../lib/db/schema";
 
 // Served today (main), in row order. Adding a column here is a decision:
 // the worker will receive it.
@@ -113,6 +114,46 @@ assert.ok(!("agentState" in served), "agentState never served");
   assert.ok(files.length >= 10, "worker-facing files found");
   for (const f of files) {
     assert.doesNotMatch(code(f), /agentState|agent-state/, `${f.pathname} must not reference agentState`);
+  }
+}
+
+// users columns that must NEVER reach a worker payload. The handlers read
+// the users row field by field (tenant.user.<field>; accountFrom picks its
+// fields), never spread it; these columns must not be read at all by
+// worker-facing code.
+//   door — dashboard presentation only (lib/door.ts, migration 0054).
+const USERS_NEVER_SERVED = ["door"];
+{
+  const userColumns = Object.keys(getTableColumns(users));
+  for (const c of USERS_NEVER_SERVED) assert.ok(userColumns.includes(c), `users.${c} exists`);
+  const user = Object.fromEntries(userColumns.map((c) => [c, `mock-${c}`])) as unknown as Parameters<typeof accountFrom>[0] & Record<string, unknown>;
+  user.door = "connect";
+  user.companySheet = null;
+  const cfgRow = { ...(row as unknown as Record<string, unknown>), forwardingVerifiedAt: null, business: null, knowledge: null };
+  for (const cfg of [null, cfgRow as unknown as Parameters<typeof accountFrom>[1]]) {
+    const acct = accountFrom(user, cfg) as unknown as Record<string, unknown>;
+    for (const c of USERS_NEVER_SERVED) {
+      assert.ok(!(c in acct), `users.${c} never in the account settings`);
+      assert.ok(!JSON.stringify(acct).includes(`mock-${c}`), `users.${c} value never served`);
+    }
+    assert.ok(!JSON.stringify(acct).includes("connect"), "the door value never served");
+  }
+  const code = (u: URL) => readFileSync(u, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const files: URL[] = [];
+  const walk = (dir: URL) => {
+    for (const name of readdirSync(dir)) {
+      const u = new URL(name, dir);
+      if (statSync(u).isDirectory()) walk(new URL(`${name}/`, dir));
+      else if (/\.tsx?$/.test(name)) files.push(u);
+    }
+  };
+  walk(new URL("../../lib/agent/", import.meta.url));
+  walk(new URL("../../app/api/agent/", import.meta.url));
+  files.push(new URL("../../lib/tenant.ts", import.meta.url), new URL("../../lib/tenant-resolution.ts", import.meta.url));
+  for (const f of files) {
+    const src = code(f);
+    assert.doesNotMatch(src, /\bdoor\b|lib\/door/, `${f.pathname} must not read the door`);
+    assert.doesNotMatch(src, /\.\.\.(user|tenant\.user|u)\b/, `${f.pathname} must not spread a users row`);
   }
 }
 
