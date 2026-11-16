@@ -105,12 +105,27 @@ export function highlightedTile(door: unknown, shownIds: readonly string[]): str
   return doorUi(door).highlightTiles.find((id) => shownIds.includes(id)) ?? null;
 }
 
-/** The checklist with the door's first step moved to the top (no step added or dropped). */
-export function withFirstStep<T extends { id: string }>(items: readonly T[], door: unknown): T[] {
+/**
+ * Steps that can't be done before others: a test call or the forwarding
+ * check needs the number first (both are done only once a number exists).
+ */
+export const STEP_PREREQUISITES: Readonly<Partial<Record<DoorStepId, readonly DoorStepId[]>>> = {
+  testCall: ["number"],
+  forwarding: ["number"],
+};
+
+/**
+ * The checklist with the door's first step moved to the top (no step added
+ * or dropped). While one of that step's prerequisites is still to do, the
+ * prerequisite goes first and the door's step right after it.
+ */
+export function withFirstStep<T extends { id: string; done?: boolean }>(items: readonly T[], door: unknown): T[] {
   const first = doorUi(door).firstStepId;
-  const i = items.findIndex((x) => x.id === first);
-  if (i <= 0) return [...items];
-  return [items[i], ...items.slice(0, i), ...items.slice(i + 1)];
+  if (!items.some((x) => x.id === first)) return [...items];
+  const pending = (STEP_PREREQUISITES[first] ?? []).filter((p) => items.some((x) => x.id === p && !x.done));
+  const lead = [...pending, first];
+  const head = lead.map((id) => items.find((x) => x.id === id)!);
+  return [...head, ...items.filter((x) => !lead.includes(x.id as DoorStepId))];
 }
 
 /**

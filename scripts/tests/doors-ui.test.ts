@@ -21,6 +21,7 @@ import {
   highlightedTile,
   initialTileOrder,
   orderBy,
+  STEP_PREREQUISITES,
   withDoorParam,
   withFirstStep,
 } from "../../lib/doors-ui";
@@ -140,10 +141,17 @@ const steps = [
   { id: "whatsapp", done: false },
 ];
 for (const d of ALL_DOORS) assert.deepEqual(sorted(ids(withFirstStep(steps, d))), sorted(ids(steps)), "no step added or dropped");
-assert.equal(withFirstStep(steps, "reception")[0].id, "testCall");
+// Reception with NO number: the number first (a call can't be tested without
+// one), the test call right after it, the rest in its usual order.
+assert.deepEqual(ids(withFirstStep(steps, "reception")).slice(0, 3), ["number", "testCall", "contacts"]);
+assert.deepEqual(ids(withFirstStep(steps, null)).slice(0, 2), ["number", "testCall"]);
+// Reception WITH a number: the test call first.
+const withNumber = steps.map((s) => (s.id === "number" ? { ...s, done: true } : s));
+assert.deepEqual(ids(withFirstStep(withNumber, "reception")).slice(0, 2), ["testCall", "contacts"]);
+assert.deepEqual(sorted(ids(withFirstStep(withNumber, "reception"))), sorted(ids(steps)));
+assert.deepEqual(STEP_PREREQUISITES, { testCall: ["number"], forwarding: ["number"] });
 assert.equal(withFirstStep(steps, "sales")[0].id, "contacts");
 assert.equal(withFirstStep(steps, "connect")[0].id, "agentUrl");
-assert.equal(withFirstStep(steps, null)[0].id, "testCall");
 // The door's step absent (e.g. "Ask your agent" not open for the account): order unchanged.
 const noAgent = steps.filter((s) => s.id !== "agentUrl");
 assert.deepEqual(ids(withFirstStep(noAgent, "connect")), ids(noAgent));
