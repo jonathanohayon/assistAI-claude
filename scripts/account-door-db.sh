@@ -9,9 +9,9 @@
 #      no-op;
 #   2. scripts/tests/account-door-db.test.ts: the CHECK, the email sign-up,
 #      the Google callback (injected cookies), the PUT gate cases;
-#   3. worker payloads: scripts/config-bytes-snapshot.ts on origin/main's tree
-#      vs this branch, same seed, byte-identical; then again with a door set
-#      on every account: still byte-identical (the door is never served).
+#   3. worker payloads: scripts/config-bytes-snapshot.ts on ONE seeded
+#      database with every door NULL, then a door on every account, then all
+#      'reception': byte-identical (a door never changes a worker payload).
 # Never uses DATABASE_URL from your shell; clean env (no provider key).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -21,7 +21,6 @@ TMP=".tmp/account-door-${PORT}"
 DIR="$TMP/pg"
 BASE="postgres://postgres@127.0.0.1:${PORT}"
 URL="$BASE/postgres"
-MAIN="$TMP/main-tree"
 HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
 rm -rf "$TMP" && mkdir -p "$TMP/work"
 initdb -D "$DIR" -A trust -U postgres >/dev/null
@@ -79,30 +78,33 @@ echo "migration 0054: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 iden
 "${CLEAN[@]}" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 "${CLEAN[@]}" ACCOUNT_DOOR_DB_TEST_URL="$URL" npx tsx --import "./$HOOKS" scripts/tests/account-door-db.test.ts
 
-# ── 3. Worker payloads: origin/main vs this branch, byte for byte ───────
-mkdir -p "$MAIN"
-git archive origin/main | tar -x -C "$MAIN"
-ln -s "$PWD/node_modules" "$MAIN/node_modules"
-# ONE database (the seed has random agent_configs ids): origin/main's
-# migrations + seed → main's snapshot; then this branch's migration on the
-# same rows → the branch's snapshot; then a door on every account → again.
+# ── 3. Worker payloads: a door never changes a worker payload ───────────
+# A permanent invariant (not a main-vs-branch diff): ONE throwaway database
+# with this tree's migrations + the seed (its agent_configs ids are random, so
+# every snapshot must come from the same rows). Snapshot with every door
+# NULL, then with a door on every account, then with every door 'reception':
+# all three byte-identical, so the door is never served to the worker.
 SNAP="$BASE/snap"
 q -c "CREATE DATABASE snap"
-(cd "$MAIN" && "${CLEAN[@]}" DATABASE_URL="$SNAP" node scripts/migrate.mjs >/dev/null)
-psql -X -q -v ON_ERROR_STOP=1 "$SNAP" -f scripts/fixtures/mission-m2a-seed.sql
-door_cols() { psql -At "$SNAP" -c "SELECT count(*) FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'door'"; }
-[ "$(door_cols)" = "0" ]
-(cd "$MAIN" && "${CLEAN[@]}" SNAP_OUT="$PWD/../snap-main.json" DATABASE_URL="$SNAP" INTERNAL_SECRET=mock npx tsx scripts/config-bytes-snapshot.ts)
 "${CLEAN[@]}" DATABASE_URL="$SNAP" node scripts/migrate.mjs >/dev/null
-[ "$(door_cols)" = "1" ]
-"${CLEAN[@]}" SNAP_OUT="$PWD/$TMP/snap-branch.json" DATABASE_URL="$SNAP" INTERNAL_SECRET=mock npx tsx scripts/config-bytes-snapshot.ts
-psql -X -q -v ON_ERROR_STOP=1 "$SNAP" -c "UPDATE users SET door = CASE WHEN id::text LIKE '%a' THEN 'sales' ELSE 'connect' END"
-[ "$(psql -At "$SNAP" -c "SELECT count(*) FROM users WHERE door IS NULL")" = "0" ]
-"${CLEAN[@]}" SNAP_OUT="$PWD/$TMP/snap-branch-door.json" DATABASE_URL="$SNAP" INTERNAL_SECRET=mock npx tsx scripts/config-bytes-snapshot.ts
-N="$(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))).length)' "$TMP/snap-main.json")"
+psql -X -q -v ON_ERROR_STOP=1 "$SNAP" -f scripts/fixtures/mission-m2a-seed.sql
+sq() { psql -X -q -At -v ON_ERROR_STOP=1 "$SNAP" "$@"; }
+[ "$(sq -c "SELECT count(*) FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'door'")" = "1" ]
+[ "$(sq -c "SELECT count(*) FROM users WHERE door IS NOT NULL")" = "0" ]
+snapshot() { "${CLEAN[@]}" SNAP_OUT="$PWD/$TMP/$1" DATABASE_URL="$SNAP" INTERNAL_SECRET=mock npx tsx scripts/config-bytes-snapshot.ts; }
+snapshot snap-null.json
+sq -c "UPDATE users SET door = CASE WHEN id::text LIKE '%a' THEN 'sales' ELSE 'connect' END"
+[ "$(sq -c "SELECT count(*) FROM users WHERE door IS NULL")" = "0" ]
+[ "$(sq -c "SELECT count(DISTINCT door) FROM users")" = "2" ]
+snapshot snap-door.json
+sq -c "UPDATE users SET door = 'reception'"
+[ "$(sq -c "SELECT count(*) FROM users WHERE door IS DISTINCT FROM 'reception'")" = "0" ]
+snapshot snap-reception.json
+N="$(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))).length)' "$TMP/snap-null.json")"
+[ "$N" -gt 0 ] || { echo "empty payload snapshot" >&2; exit 1; }
 same() {
   cmp -s "$1" "$2" && return 0
-  echo "payload snapshot differs: $1 vs $2" >&2
+  echo "payload snapshot differs: $1 vs $2 (a door changed a worker payload)" >&2
   node -e '
     const fs = require("fs");
     const [a, b] = process.argv.slice(1).map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
@@ -111,6 +113,6 @@ same() {
     }' "$1" "$2"
   return 1
 }
-same "$TMP/snap-main.json" "$TMP/snap-branch.json"
-same "$TMP/snap-main.json" "$TMP/snap-branch-door.json"
-echo "worker payloads: ${N} responses byte-identical main vs branch (md5 $(md5 -q "$TMP/snap-main.json" 2>/dev/null || md5sum "$TMP/snap-main.json" | cut -d' ' -f1)), and with a door on every account"
+same "$TMP/snap-null.json" "$TMP/snap-door.json"
+same "$TMP/snap-null.json" "$TMP/snap-reception.json"
+echo "worker payloads: ${N} responses byte-identical with every door NULL, sales/connect, and reception (md5 $(md5 -q "$TMP/snap-null.json" 2>/dev/null || md5sum "$TMP/snap-null.json" | cut -d' ' -f1))"
