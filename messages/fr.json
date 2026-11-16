@@ -175,11 +175,11 @@
       },
       "voice": {
         "title": "Voix premium",
-        "desc": "Voix naturelles, masculines et féminines, à choisir depuis votre dashboard."
+        "desc": "Voix naturelles, masculines et féminines, à choisir depuis votre tableau de bord."
       },
       "config": {
-        "title": "Configuration live",
-        "desc": "Modifiez le ton ou les workflows depuis le dashboard. Effet immédiat au prochain appel."
+        "title": "Réglages en un clic",
+        "desc": "Modifiez ces réglages depuis votre tableau de bord. Pris en compte dès le prochain appel."
       }
     }
   },
@@ -251,19 +251,15 @@
         "desc": "Écoutez votre config avant de la pousser en prod"
       }
     },
-    "sliders": {
-      "warmth": "Chaleur",
-      "formality": "Formalité",
-      "energy": "Énergie",
-      "speed": "Vitesse"
-    },
     "panel": {
+      "breadcrumb": "tableau de bord / voix",
       "agentVoice": "Voix de l'agent",
       "personality": "Personnalité",
       "liveBadge": "live",
-      "voiceGenderF": "Femme",
+      "voiceName": "Voix 1",
+      "voiceGenderF": "féminine",
       "previewVoiceAria": "Prévisualiser la voix",
-      "primaryLanguage": "Langue principale",
+      "defaultLanguage": "Langue par défaut",
       "agentName": "Nom de l'agent"
     }
   },

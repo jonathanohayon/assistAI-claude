@@ -43,11 +43,66 @@ export function wordRules(locale) {
   return [...COMMON, ["Sheet", sheet], ...(locale === "he" ? HEBREW : []), ...FIRST_CUSTOMER_NAME_RULES];
 }
 
+// Supplier voice names (Voice brick rule: a voice is shown as the dashboard
+// shows it, "Voix 1 · féminine", never by its supplier's name). The home's
+// voice-studio mock showed "Coral" until 16/11.
+// Sources (this file is plain .mjs, so the lists are copied; the public words
+// test checks they still match):
+//   - OpenAI realtime ids: lib/voice/public.ts VOICE_IDS;
+//   - Gemini and Grok names: lib/voice/catalogue.ts GEMINI / GROK.
+export const OPENAI_VOICE_IDS = [
+  "marin", "cedar", "ballad", "sage", "verse", "alloy", "shimmer",
+  "echo", "fable", "onyx", "nova", "coral", "ash",
+];
+export const GEMINI_VOICE_NAMES = [
+  "Achernar", "Achird", "Algenib", "Algieba", "Alnilam", "Aoede", "Autonoe", "Callirrhoe",
+  "Charon", "Despina", "Enceladus", "Erinome", "Fenrir", "Gacrux", "Iapetus", "Kore",
+  "Laomedeia", "Leda", "Orus", "Pulcherrima", "Puck", "Rasalgethi", "Sadachbia", "Sadaltager",
+  "Schedar", "Sulafat", "Umbriel", "Vindemiatrix", "Zephyr", "Zubenelgenubi",
+];
+// Grok voices, minus the ones that are common first names or ordinary words
+// in our locales (a mock contact or a sentence would trip them): eve, leo,
+// luna, iris, aurora, atlas, orion, rex, sal, lux, lumen, castor (FR
+// "beaver"), celeste, zenith, helix, cosmo, ara, carina, liora.
+export const GROK_VOICE_NAMES = [
+  "altair", "helios", "kepler", "naksh", "perseus", "rigel", "sirius", "ursa", "zagan",
+];
+// OpenAI ids that are ordinary words in a locale: there, only the capitalised
+// voice name matches ("Sage", not "un conseil sage"; "Coral", not "coral
+// reef"). A sentence that starts with one still matches: rephrase it.
+// Hebrew copy has none of them as words: any case matches.
+export const ORDINARY_VOICE_WORDS = {
+  fr: ["sage", "marin", "verse", "fable", "onyx", "nova"],
+  en: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "cedar", "fable", "onyx", "nova"],
+  he: [],
+};
+const NOT_LETTER_BEFORE = "(?<![\\p{L}\\p{N}_])";
+const NOT_LETTER_AFTER = "(?![\\p{L}\\p{M}\\p{N}_])";
+const capitalise = (w) => w[0].toUpperCase() + w.slice(1);
+
+/** Whole-word rules for the supplier voice names, for one locale. */
+export function voiceNameRules(locale) {
+  // An unknown locale gets the union: the strictest case rule for each id.
+  const ordinary = new Set(ORDINARY_VOICE_WORDS[locale] ?? Object.values(ORDINARY_VOICE_WORDS).flat());
+  const anyCase = OPENAI_VOICE_IDS.filter((id) => !ordinary.has(id));
+  const capitalised = [
+    ...OPENAI_VOICE_IDS.filter((id) => ordinary.has(id)).map(capitalise),
+    ...GEMINI_VOICE_NAMES,
+    ...GROK_VOICE_NAMES.map(capitalise),
+  ];
+  const word = (names, flags) => new RegExp(`${NOT_LETTER_BEFORE}(?:${names.join("|")})${NOT_LETTER_AFTER}`, flags);
+  return [
+    // Never an empty alternation: it would match everywhere.
+    ...(anyCase.length ? [["supplier voice name", word(anyCase, "giu")]] : []),
+    ["supplier voice name", word(capitalised, "gu")],
+  ];
+}
+
 /**
  * The rules for the PUBLIC pages (home, landings, login, signup; audit
  * section D): what a prospect reads first. Persona, CRM, Sheet (same
- * per-locale case rule as above) and the latency jargon the hero used
- * ("Latence vocale", now "Temps de réponse").
+ * per-locale case rule as above), the latency jargon the hero used
+ * ("Latence vocale", now "Temps de réponse") and the supplier voice names.
  */
 export function publicWordRules(locale) {
   const sheet = locale === "en" ? SHEET_CAPITAL : SHEET_ANY_CASE;
@@ -62,6 +117,7 @@ export function publicWordRules(locale) {
     ["Sheet", sheet],
     latency,
     ...(locale === "he" ? [["Persona", /פרסונ/g]] : []),
+    ...voiceNameRules(locale),
     ...FIRST_CUSTOMER_NAME_RULES,
   ];
 }
