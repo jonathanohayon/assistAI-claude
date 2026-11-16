@@ -3,10 +3,13 @@
 import { useTranslations } from "next-intl";
 
 import { Logo } from "@/components/ui/Logo";
+import type { Door } from "@/lib/door-values";
 import { Link } from "@/i18n/navigation";
 
 interface SignupContentProps {
   error: string | undefined;
+  /** The landing page's door, posted back in a hidden field (no visible UI). */
+  door: Door;
   handleSignup: (formData: FormData) => Promise<void>;
   startGoogleSignup: (formData: FormData) => Promise<void>;
 }
@@ -43,6 +46,7 @@ function GoogleIcon() {
  */
 export function SignupContent({
   error,
+  door,
   handleSignup,
   startGoogleSignup,
 }: SignupContentProps) {
@@ -115,6 +119,7 @@ export function SignupContent({
         )}
 
         <form action={handleSignup} className="flex flex-col gap-4">
+          <input type="hidden" name="door" value={door} />
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-[var(--color-foreground)]">
               {t("emailLabel")}

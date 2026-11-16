@@ -3,6 +3,8 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
+import { emailSignupAction } from "@/lib/auth/email-signup-action";
+import { parseDoor } from "@/lib/door";
 import { TRIAL_PLAN_KEY } from "@/lib/plans";
 import { clientIp } from "@/lib/rate-limit";
 import { signupDeps } from "@/lib/verification-limits/deps";
@@ -16,10 +18,10 @@ import { SignupContent } from "./signup-content";
 // liens (bookmarks, emails) vers la version localisée.
 export default async function SignupPage(props: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; plan?: string; billing?: string }>;
+  searchParams: Promise<{ error?: string; plan?: string; billing?: string; door?: string }>;
 }) {
   const { locale } = await props.params;
-  const { error, plan: planParam, billing } = await props.searchParams;
+  const { error, plan: planParam, billing, door: doorParam } = await props.searchParams;
 
   const session = await auth();
   if (session?.user) {
@@ -31,6 +33,10 @@ export default async function SignupPage(props: {
     redirect("/dashboard");
   }
 
+  // The account's door (lib/door.ts): which landing page sent the visitor.
+  // Presentation only, stored at account creation. Unknown/absent = reception.
+  const door = parseDoor(doorParam);
+
   async function handleSignup(formData: FormData) {
     "use server";
 
@@ -40,28 +46,15 @@ export default async function SignupPage(props: {
     // clientIp). If a client could set them, it could rotate this value; the
     // route-wide hourly ceiling still bounds the total.
     const ip = clientIp(await headers());
-    const outcome = await signupWithEmail(
-      { email: formData.get("email"), password: formData.get("password"), locale, ip },
-      signupDeps,
-    );
-    if (!outcome.ok) {
-      redirect(`/${locale}/signup?error=${outcome.error}`);
-    }
-    const { email } = outcome;
-    const password = String(formData.get("password") ?? "");
-
-    try {
-      await signIn("credentials", {
-        email,
-        password,
-        redirectTo: "/verify-email",
-      });
-    } catch (e) {
-      if (e instanceof AuthError) {
-        redirect(`/login?error=${e.type}`);
-      }
-      throw e;
-    }
+    // The door arrives in the form's hidden "door" field and is re-parsed
+    // server-side; every bounce back to /signup keeps it
+    // (lib/auth/email-signup-action.ts).
+    await emailSignupAction(formData, { locale, ip }, {
+      signup: (input) => signupWithEmail(input, signupDeps),
+      signIn: (email, password) => signIn("credentials", { email, password, redirectTo: "/verify-email" }),
+      authErrorType: (e) => (e instanceof AuthError ? e.type : null),
+      redirect,
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -80,6 +73,8 @@ export default async function SignupPage(props: {
     };
     cookieStore.set("signup_plan", TRIAL_PLAN_KEY, opts);
     cookieStore.set("signup_locale", locale, opts);
+    // Applied by the signIn callback to a NEW account only (never on login).
+    cookieStore.set("signup_door", door, opts);
     // Nouveau tenant Google → wizard onboarding (choix pays + numéro + langue).
     // Si le compte existe déjà, le callback signIn redirige vers /login (popup).
     await signIn("google", { redirectTo: "/onboarding" });
@@ -93,6 +88,7 @@ export default async function SignupPage(props: {
       />
       <SignupContent
         error={error}
+        door={door}
         handleSignup={handleSignup}
         startGoogleSignup={startGoogleSignup}
       />

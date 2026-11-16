@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
+import { resolveDoor } from "@/lib/door";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { withoutContactConfirmations } from "@/lib/contact-confirmation";
@@ -46,7 +47,9 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
   // Voice contract (V5): stored voice or derived from the columns (admin: full).
   return NextResponse.json({
-    user,
+    // The door is returned resolved ("reception" for NULL), read-only here:
+    // writes go through PUT /api/dashboard/account?asUserId=.
+    user: { ...user, door: resolveDoor(user.door) },
     config: cfg
       ? {
           // N1: the confirmation record is never returned (N2 adds its own view).

@@ -5,14 +5,11 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { cookies } from "next/headers";
 
-import { provisionTenant } from "@/lib/auth/provision-tenant";
+import { googleSignIn } from "@/lib/auth/google-sign-in";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
 import { emailFields } from "@/lib/event-pii";
-import { DEFAULT_PLAN_KEY, isValidPlanKey } from "@/lib/plans";
-
-const SUPPORTED_LOCALES = ["fr", "he", "en"];
 
 declare module "next-auth" {
   interface Session {
@@ -113,91 +110,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    // Find-or-create du tenant pour Google. Stratégie JWT sans adapter DB →
-    // on gère la creation/liaison nous-memes ici. La liaison se fait par email
-    // VERIFIE (email_verified de Google), pattern standard et sur.
-    signIn: async ({ account, profile }) => {
-      if (account?.provider !== "google") return true;
-
-      const email = String(profile?.email ?? "")
-        .trim()
-        .toLowerCase();
-      if (!email) return false;
-      // Refuse un email Google non verifie (rare, mais on ne cree pas de
-      // compte pre-verifie sur un email douteux).
-      if ((profile as { email_verified?: boolean })?.email_verified === false) {
-        return false;
-      }
-
-      // Cookies poses par le bouton "Continuer avec Google" de la page signup
-      // (absents depuis la page login). On les consomme one-shot : leur seule
-      // presence signale une INTENTION d'inscription, ce qui permet de
-      // distinguer un signup-sur-compte-existant (→ popup) d'un simple login.
-      const cookieStore = await cookies();
-      const planCookie = cookieStore.get("signup_plan")?.value;
-      const localeCookie = cookieStore.get("signup_locale")?.value;
-      const isSignupIntent = planCookie !== undefined;
-      const locale =
-        localeCookie && SUPPORTED_LOCALES.includes(localeCookie)
-          ? localeCookie
-          : "fr";
-      cookieStore.delete("signup_plan");
-      cookieStore.delete("signup_locale");
-
-      const [existing] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
-
-      if (existing) {
-        if (isSignupIntent) {
-          // L'user a cliqué "S'inscrire avec Google" mais un compte existe
-          // déjà → on NE le connecte PAS, on le renvoie vers /login avec un
-          // popup "déjà inscrit". Retourner une string = redirect sans créer
-          // de session (cf. @auth/core handleAuthorized).
-          await logEvent({
-            source: "auth",
-            event: "signup_google_exists",
-            message: "Signup Google refusé — compte déjà existant",
-            userId: existing.id,
-          });
-          return `/${locale}/login?notice=exists`;
-        }
-        // Intention login → on relie par email vérifié et on connecte.
-        if (!existing.emailVerified) {
-          await db
-            .update(users)
-            .set({ emailVerified: true })
-            .where(eq(users.id, existing.id));
-        }
-        await logEvent({
-          source: "auth",
-          event: "login_success",
-          message: "Login Google",
-          userId: existing.id,
-        });
-        return true;
-      }
-
-      // Nouveau tenant. Email déjà vérifié → pas de gate /verify-email ; il
-      // sera routé vers /onboarding (redirectTo) pour choisir son numéro.
-      const plan = isValidPlanKey(planCookie) ? planCookie : DEFAULT_PLAN_KEY;
-      const created = await provisionTenant({
-        email,
-        displayName: String(profile?.name ?? "").trim(),
-        plan,
-        locale,
-        emailVerified: true,
-      });
-      await logEvent({
-        source: "auth",
-        event: "signup_google",
-        message: `Signup Google (plan ${plan})`,
-        userId: created.id,
-      });
-      return true;
-    },
+    // Google find-or-create (and the sign-up cookies: plan, locale, door):
+    // lib/auth/google-sign-in.ts. Credentials sign-ins pass straight through.
+    signIn: async ({ account, profile }) => googleSignIn({ account, profile }, await cookies()),
     jwt: async ({ token, user, account }) => {
       // Le `user` Google ne porte pas notre id DB → on resout par email pour
       // que token.sub (et donc session.user.id) pointe sur notre tenant.
