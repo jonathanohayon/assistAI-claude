@@ -436,7 +436,9 @@ async function part2(url: string) {
   const ledger = JSON.parse(rows[0].value) as Record<string, number[]>;
   assert.deepEqual(Object.keys(ledger).sort(), [TENANT_A.id, TENANT_B.id]);
   assert.equal(ledger[TENANT_A.id].length, 100);
-  assert.doesNotMatch(rows[0].value, /1555/);
+  // A phone would be a string ("+1555..."): a bare /1555/ also matched the
+  // millisecond timestamps (e.g. 1794787461555) and failed at random.
+  assert.doesNotMatch(rows[0].value, /"\+?1555/);
   console.log("ALL APPOINTMENT-REMINDERS-CAP DB TESTS PASSED");
 }
 

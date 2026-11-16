@@ -112,6 +112,7 @@ pick_free_port() {
     PG_FREE_PORT_LOCK="$lock"
     PORT="$p"
     export PORT
+    echo "pick_free_port: 127.0.0.1:${PORT} (lock ${lock})" >&2
     trap _pg_free_port_exit EXIT
     # Turn a Ctrl-C / kill into a normal exit so the EXIT trap still cleans up.
     trap 'exit 130' INT
