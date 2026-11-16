@@ -351,7 +351,15 @@
     "forwardingTitle": "Forward your usual number",
     "forwardingDesc": "Keep the number your clients know: forward it to Tamara, then check it with a test call.",
     "forwardingCta": "Set up forwarding",
-    "nextStep": "Next: {step}"
+    "nextStep": "Next: {step}",
+    "contactsTitle": "Import your contacts",
+    "contactsDesc": "Add the list of people to call.",
+    "contactsCta": "Import my contacts",
+    "contactsLockedDesc": "Included in the Pro plan.",
+    "contactsLockedCta": "See the offer",
+    "agentUrlTitle": "Paste your agent's address",
+    "agentUrlDesc": "Tamara asks your own agent during calls.",
+    "agentUrlCta": "Add the address"
   },
   "SocialProof": {
     "facts": {
@@ -649,7 +657,10 @@
     "trialCallMinutesLeft": "{min} call min left",
     "trialDaysLabel": "{days, plural, one {# day} other {# days}}",
     "trialFounderCall": "the founder will call you to set Tamara up",
-    "trialPauseNotice": "then Tamara is paused, nothing is deleted"
+    "trialPauseNotice": "then Tamara is paused, nothing is deleted",
+    "doorTitleReception": "Receptionist",
+    "doorTitleSales": "Sales",
+    "doorTitleConnect": "Your agent"
   },
   "DashboardCrm": {
     "header": "Customer space",
@@ -1084,7 +1095,8 @@
     "ownerEmailConfirmErrInvalidCode": "This code doesn't match. Check the 6 digits you received.",
     "ownerEmailConfirmErrExpired": "This code has expired. Ask for a new code.",
     "ownerEmailConfirmErrTooManyAttempts": "Too many tries: this code is no longer valid. Ask for a new code.",
-    "ownerEmailConfirmErrConfirmFailed": "The confirmation didn't go through. Try again."
+    "ownerEmailConfirmErrConfirmFailed": "The confirmation didn't go through. Try again.",
+    "tileStartHere": "Start here"
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
@@ -1631,7 +1643,13 @@
     "apiEndpointLabel": "Endpoint",
     "apiDocsParams": "Params: phone (required), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
     "apiKeyPlaceholder": "<YOUR_KEY>",
-    "developerSection": "Display"
+    "developerSection": "Display",
+    "doorLabel": "My main use",
+    "doorHint": "Only changes the order of your dashboard. You keep all your settings.",
+    "doorOptionReception": "Answering calls",
+    "doorOptionSales": "Sales (outbound calls)",
+    "doorOptionConnect": "Connect my agent",
+    "doorSaveError": "Your choice wasn't saved. Try again."
   },
   "DashboardBilling": {
     "header": "Billing",

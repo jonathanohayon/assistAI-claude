@@ -81,9 +81,12 @@ export function Tile({
   onDragEnter,
   onDrop,
   onDragEnd,
+  highlightLabel,
 }: {
   tile: TileDef;
   active: boolean;
+  /** Set on the account's door tile: a "start here" ring and badge. */
+  highlightLabel?: string;
   onClick: () => void;
   delay?: number;
   dragging?: boolean;
@@ -122,7 +125,9 @@ export function Tile({
             ? "border-[#0e7490] shadow-[0_0_0_3px_rgba(14,116,144,0.18)]"
             : active
               ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
-              : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
+              : highlightLabel
+                ? "border-[#be185d] bg-white shadow-[0_8px_28px_-10px_rgba(190,24,93,0.45)] ring-2 ring-[#0e7490]/25 ring-offset-2 hover:-translate-y-1 hover:shadow-lg"
+                : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
@@ -153,6 +158,11 @@ export function Tile({
         )}
       </div>
       <div className="relative w-full min-w-0">
+        {highlightLabel && (
+          <span className="mb-1 inline-flex items-center rounded-full bg-[#be185d] px-2 py-0.5 text-[10px] font-bold text-white">
+            {highlightLabel}
+          </span>
+        )}
         <p className="text-base font-extrabold tracking-tight text-[#18181b]">
           {tile.label}
         </p>

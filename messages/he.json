@@ -351,7 +351,15 @@
     "forwardingTitle": "הפנו את המספר הרגיל שלכם",
     "forwardingDesc": "שומרים על המספר שהלקוחות מכירים: מפנים אותו לתמרה ובודקים בשיחת ניסיון.",
     "forwardingCta": "הגדרת הפניה",
-    "nextStep": "השלב הבא: {step}"
+    "nextStep": "השלב הבא: {step}",
+    "contactsTitle": "ייבוא אנשי הקשר שלכם",
+    "contactsDesc": "הוסיפו את רשימת האנשים שאליהם תרצו להתקשר.",
+    "contactsCta": "ייבוא אנשי הקשר",
+    "contactsLockedDesc": "כלול בתוכנית Pro.",
+    "contactsLockedCta": "לצפייה בהצעה",
+    "agentUrlTitle": "הדביקו את הכתובת של הסוכן שלכם",
+    "agentUrlDesc": "תמרה שואלת את הסוכן שלכם במהלך השיחות.",
+    "agentUrlCta": "הוספת הכתובת"
   },
   "SocialProof": {
     "facts": {
@@ -649,7 +657,10 @@
     "trialCallMinutesLeft": "{min} דקות שיחה נותרו",
     "trialDaysLabel": "{days, plural, one {יום אחד} two {יומיים} other {# ימים}}",
     "trialFounderCall": "המייסד יתקשר אליכם כדי להגדיר את תמרה",
-    "trialPauseNotice": "לאחר מכן תמרה תושהה, שום דבר לא נמחק"
+    "trialPauseNotice": "לאחר מכן תמרה תושהה, שום דבר לא נמחק",
+    "doorTitleReception": "פקידת קבלה",
+    "doorTitleSales": "מכירות",
+    "doorTitleConnect": "הסוכן שלכם"
   },
   "DashboardCrm": {
     "header": "מרחב לקוחות",
@@ -1084,7 +1095,8 @@
     "ownerEmailConfirmErrInvalidCode": "הקוד לא תואם. בדקו את 6 הספרות שקיבלתם.",
     "ownerEmailConfirmErrExpired": "תוקף הקוד פג. בקשו קוד חדש.",
     "ownerEmailConfirmErrTooManyAttempts": "יותר מדי ניסיונות: הקוד כבר לא בתוקף. בקשו קוד חדש.",
-    "ownerEmailConfirmErrConfirmFailed": "האישור לא הושלם. נסו שוב."
+    "ownerEmailConfirmErrConfirmFailed": "האישור לא הושלם. נסו שוב.",
+    "tileStartHere": "להתחלה"
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",
@@ -1631,7 +1643,13 @@
     "apiEndpointLabel": "נקודת קצה",
     "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
     "apiKeyPlaceholder": "<המפתח_שלך>",
-    "developerSection": "תצוגה"
+    "developerSection": "תצוגה",
+    "doorLabel": "השימוש העיקרי שלכם",
+    "doorHint": "משנה רק את הסדר בלוח הבקרה. כל ההגדרות שלכם נשמרות.",
+    "doorOptionReception": "קבלת שיחות",
+    "doorOptionSales": "מכירות (שיחות יוצאות)",
+    "doorOptionConnect": "חיבור הסוכן שלכם",
+    "doorSaveError": "הבחירה שלכם לא נשמרה. נסו שוב."
   },
   "DashboardBilling": {
     "header": "מנוי",

@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
 
-import { SETUP_OPEN_KEY, defaultOpen, nextStep, resolveOpen } from "./setup-checklist-ui";
+import type { Door } from "@/lib/door-values";
+
+import { SETUP_OPEN_KEY, checklistSteps, defaultOpen, nextStep, resolveOpen } from "./setup-checklist-ui";
 
 const DISMISS_KEY = "tamara.setupCongratsDismissed";
 
@@ -17,6 +19,12 @@ type SetupChecklistProps = {
   whatsappSet: boolean;
   /** Forwarding test passed once (forwarding_verified_at). */
   forwardingVerified?: boolean;
+  /** The account's door: its step is moved to the top (none added or dropped). */
+  door?: Door | null;
+  /** "Import contacts" (sales door). `locked` = the plan has no outbound calls: today's upsell. */
+  contacts?: { done: boolean; locked: boolean };
+  /** "Paste your agent URL" (connect door), passed only where the Tools tile shows that field. */
+  agentUrl?: { done: boolean };
 };
 
 type SvgProps = { className?: string };
@@ -150,9 +158,49 @@ function ArrowIcon({ className }: SvgProps) {
   );
 }
 
+function UsersIcon({ className }: SvgProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function LinkIcon({ className }: SvgProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
 type ChecklistItem = {
   id: string;
   done: boolean;
+  /** Not in the plan: listed with today's upsell, not counted. */
+  locked?: boolean;
   icon: (props: SvgProps) => React.JSX.Element;
   title: string;
   desc: string;
@@ -166,10 +214,41 @@ export function SetupChecklist({
   businessFilled,
   whatsappSet,
   forwardingVerified = false,
+  door,
+  contacts,
+  agentUrl,
 }: SetupChecklistProps) {
   const t = useTranslations("DashboardSetup");
 
-  const items: ChecklistItem[] = [
+  const baseItems: ChecklistItem[] = [
+    ...(contacts
+      ? [
+          {
+            id: "contacts",
+            done: contacts.done,
+            locked: contacts.locked,
+            icon: UsersIcon,
+            title: t("contactsTitle"),
+            desc: contacts.locked ? t("contactsLockedDesc") : t("contactsDesc"),
+            ctaLabel: contacts.locked ? t("contactsLockedCta") : t("contactsCta"),
+            // Locked: the campaigns tile's upsell, exactly as a click on it.
+            href: contacts.locked ? "/dashboard?tile=campaigns" : "/dashboard/campaigns",
+          },
+        ]
+      : []),
+    ...(agentUrl
+      ? [
+          {
+            id: "agentUrl",
+            done: agentUrl.done,
+            icon: LinkIcon,
+            title: t("agentUrlTitle"),
+            desc: t("agentUrlDesc"),
+            ctaLabel: t("agentUrlCta"),
+            href: "/dashboard?tile=tools",
+          },
+        ]
+      : []),
     {
       id: "number",
       done: hasPhone,
@@ -226,8 +305,8 @@ export function SetupChecklist({
     },
   ];
 
-  const total = items.length;
-  const done = items.filter((i) => i.done).length;
+  // The door's first step on top; every step kept (setup-checklist-ui).
+  const { items, done, total } = checklistSteps(baseItems, door);
   const allDone = done === total;
 
   // Une fois la félicitation masquée, on ne la ré-affiche plus (localStorage).

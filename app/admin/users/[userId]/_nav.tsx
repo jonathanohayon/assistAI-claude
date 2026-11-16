@@ -3,25 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-interface Tab {
-  hrefSuffix: string;
-  label: string;
-}
+import type { Door } from "@/lib/door-values";
 
-const TABS: ReadonlyArray<Tab> = [
-  { hrefSuffix: "", label: "Configuration" },
-  { hrefSuffix: "/calendar", label: "Calendrier" },
-  { hrefSuffix: "/contacts", label: "CRM" },
-  { hrefSuffix: "/logs", label: "Appels" },
-  { hrefSuffix: "/finance", label: "Finance" },
-];
+import { adminTenantTabs } from "./nav-tabs";
 
 // Mirror visuel de /[locale]/dashboard/_nav.tsx mais sans i18n et avec
 // les URLs préfixées /admin/users/[userId]. Onglet actif détecté via
-// pathname strict (égalité exacte sur le suffixe).
-export function AdminTenantTabs({ userId }: { userId: string }) {
+// pathname strict (égalité exacte sur le suffixe). Same order as the
+// tenant's own menu (the tenant's door, lib/doors-ui.ts).
+export function AdminTenantTabs({ userId, door }: { userId: string; door?: Door | null }) {
   const pathname = usePathname();
   const base = `/admin/users/${userId}`;
+  const TABS = adminTenantTabs(door);
   return (
     <nav className="relative z-10 mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 sm:pt-6">
       <div className="scroll-visible -mx-1 overflow-x-auto pb-1">
