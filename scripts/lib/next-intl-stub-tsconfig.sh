@@ -12,12 +12,15 @@
 #   env -i ... TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" npx tsx <test>
 #
 # The file lives in the git-ignored .tmp/ and is rewritten on every call with
-# the same bytes, so suites (always run one after the other) can share it.
+# the same bytes, so suites can share it. The write goes to a per-process temp
+# file then an atomic rename, so a suite running at the same time (another
+# `npm run test:db` in this checkout) never reads a half-written file.
 
 write_next_intl_stub_tsconfig() {
   mkdir -p .tmp
   NEXT_INTL_STUB_TSCONFIG="$PWD/.tmp/tsconfig.next-intl-stub.json"
-  cat > "$NEXT_INTL_STUB_TSCONFIG" <<'JSON'
+  local tmp="$NEXT_INTL_STUB_TSCONFIG.$$.tmp"
+  cat > "$tmp" <<'JSON'
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
@@ -25,4 +28,5 @@ write_next_intl_stub_tsconfig() {
   }
 }
 JSON
+  mv -f "$tmp" "$NEXT_INTL_STUB_TSCONFIG"
 }

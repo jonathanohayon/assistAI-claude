@@ -6,7 +6,7 @@
 // The pure checks always run. The DB checks need a THROWAWAY Postgres, so in
 // a plain `npm test` they skip. Run them with:
 //   bash scripts/migrate-startup-db.sh
-// which starts a local Postgres on 127.0.0.1:55438 and sets
+// which starts a local Postgres on 127.0.0.1:<free port> and sets
 // MIGRATE_STARTUP_TEST_DATABASE_URL. Only a 127.0.0.1/localhost URL is
 // accepted and DATABASE_URL is never read. Mock data only.
 

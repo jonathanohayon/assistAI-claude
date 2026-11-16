@@ -12,7 +12,7 @@
 //
 // Skipped in a plain `npm test`. Run with:
 //   bash scripts/agent-webhook-limit-db.sh
-// (local Postgres on 127.0.0.1:55497, sets AGENT_WEBHOOK_LIMIT_DB_URL).
+// (local Postgres on 127.0.0.1:<free port>, sets AGENT_WEBHOOK_LIMIT_DB_URL).
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read.
 // Mock data only (example.com, documentation IP ranges).
 
@@ -55,8 +55,11 @@ async function main() {
   const { generateAgentToken } = await import("../../lib/agent-tokens");
   const policy = await import("../../lib/agent-webhook/policy");
   const next = (await import("../../app/api/v1/agent/[token]/route")) as unknown as Route;
-  // Written by the .sh only (git-ignored): a variable path keeps tsc off it.
-  const prevPath = "../../.tmp/agent-webhook-main/route";
+  // Written by the .sh only (git-ignored, one dir per run, named after the
+  // run's port): a variable path keeps tsc off it.
+  const prevDir = process.env.AGENT_WEBHOOK_LIMIT_MAIN_DIR;
+  if (!prevDir) throw new Error("AGENT_WEBHOOK_LIMIT_MAIN_DIR not set (see scripts/agent-webhook-limit-db.sh)");
+  const prevPath = `${prevDir}/route`;
   const prev = (await import(prevPath)) as unknown as Route;
 
   const exec = (q: ReturnType<typeof sql>) => db.execute(q);

@@ -2,7 +2,7 @@
 // lib/alerts.ts). They need a THROWAWAY Postgres, so in a plain `npm test`
 // they skip. Run them with:
 //   bash scripts/alert-ledger-claim-db.sh
-// which starts a local Postgres on 127.0.0.1:55436, migrates it, and sets
+// which starts a local Postgres on 127.0.0.1:<free port>, migrates it, and sets
 // ALERT_LEDGER_TEST_DATABASE_URL. Only a 127.0.0.1/localhost URL is accepted,
 // and DATABASE_URL is never read: this can't touch a real database.
 // Email/WhatsApp senders are injected mocks — nothing is ever sent.

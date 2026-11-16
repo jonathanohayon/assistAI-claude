@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/tests/campaign-analysis-db.test.ts against a THROWAWAY Postgres
-# (127.0.0.1:55494, data in the git-ignored .tmp/ folder), then stops it:
+# (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder), then stops it:
 #   1. origin/main's tree: results GET (all calls analysed), campaign-result
 #      POST and a cron tick through main's handlers → snapshot;
 #   2. this branch: same bytes, GET read-only, analysis after the call,
@@ -10,22 +10,19 @@
 # DATABASE_URL from your shell; clean env (no provider key is visible).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=55494
-TMP=".tmp/campaign-analysis"
+source scripts/lib/pg-free-port.sh
+pick_free_port
+TMP=".tmp/campaign-analysis-${PORT}"
 DIR="$TMP/pg"
 URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
 MAIN="$TMP/main-tree"
 SNAP="$PWD/$TMP/main-snapshot.json"
 HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
 TEST="scripts/tests/campaign-analysis-db.test.ts"
-if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port ${PORT} is busy, refusing to start" >&2
-  exit 1
-fi
 rm -rf "$TMP" && mkdir -p "$TMP"
 initdb -D "$DIR" -A trust -U postgres >/dev/null
 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
-trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
+pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 mkdir -p "$MAIN"
