@@ -73,7 +73,8 @@ const renderers: Record<string, RegExp> = {
   contract: /contract: \(slot\) => <ContractSection \{\.\.\.slot\} \/>/,
   demo: /demo: \(slot\) => <TryDemo demo=\{slot\.demo\} \/>/,
   how: /how: \(slot\) => \("steps" in slot \? <LandingSteps \{\.\.\.slot\} \/> : <Journey \/>\)/,
-  features: /features: \(\) => <FeatureBento \/>/,
+  // FeatureBentoSection = FeatureBento + its mock labels resolved server-side.
+  features: /features: \(\) => <FeatureBentoSection \/>/,
   modules: /modules: \(slot\) => <SixModules \{\.\.\.slot\} \/>/,
   useCases: /useCases: \(slot\) => \("items" in slot \? <LandingUseCases \{\.\.\.slot\} \/> : <Industries \/>\)/,
   proof: /proof: \(\) => <Proof \/>/,
