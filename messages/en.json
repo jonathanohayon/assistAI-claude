@@ -255,8 +255,7 @@
       "warmth": "Warmth",
       "formality": "Formality",
       "energy": "Energy",
-      "speed": "Speed",
-      "tone": "Tone"
+      "speed": "Speed"
     },
     "panel": {
       "breadcrumb": "dashboard / voice",
