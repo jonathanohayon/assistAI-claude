@@ -30,7 +30,8 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { resolveScopeUserId } from "@/lib/admin-impersonate";
 
-type UserRow = typeof users.$inferSelect;
+// What requireAdmin hands the route: identity only, never a secret column.
+type UserRow = Pick<typeof users.$inferSelect, "id" | "email" | "role">;
 
 /** Session utilisateur requise. Retourne l'userId de la session. */
 export async function requireSession(): Promise<
@@ -47,7 +48,7 @@ export async function requireSession(): Promise<
 }
 
 /**
- * Session utilisateur AVEC rôle admin requise. Retourne la row complète de
+ * Session utilisateur AVEC rôle admin requise. Retourne id, email et rôle de
  * l'admin (utile pour logEvent, email, etc.).
  */
 export async function requireAdmin(): Promise<
@@ -60,8 +61,9 @@ export async function requireAdmin(): Promise<
       response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     };
   }
+  // Named fields only: the caller never holds the password hash or a token.
   const [me] = await db
-    .select()
+    .select({ id: users.id, email: users.email, role: users.role })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);

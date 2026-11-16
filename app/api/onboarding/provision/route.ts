@@ -140,7 +140,13 @@ export async function POST(req: NextRequest) {
 
     // Refresh trial start so onboarding ⇒ first day of trial.
     const [me] = await db
-      .select()
+      .select({
+        id: users.id,
+        email: users.email,
+        subscriptionPlan: users.subscriptionPlan,
+        locale: users.locale,
+        trialEndsAt: users.trialEndsAt,
+      })
       .from(users)
       .where(eq(users.id, session.user.id))
       .limit(1);

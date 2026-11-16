@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
+import { adminConfigGetDeps } from "@/lib/admin/tenant-config-deps";
+import { handleAdminConfigGet } from "@/lib/admin/tenant-config-view";
 import { requireAdmin } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
-import { agentConfigs, users } from "@/lib/db/schema";
-import { resolveDoor } from "@/lib/door";
+import { agentConfigs } from "@/lib/db/schema";
 import { warmGreetingAudioForUser } from "@/lib/greeting-warm";
 import { parseDisclosureText } from "@/lib/ai-disclosure";
 import { withoutContactConfirmations } from "@/lib/contact-confirmation";
@@ -32,34 +33,10 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   if (!guard.ok) return guard.response;
 
   const { userId } = await ctx.params;
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!user) return NextResponse.json({ error: "not found" }, { status: 404 });
-
-  const [cfg] = await db
-    .select()
-    .from(agentConfigs)
-    .where(eq(agentConfigs.userId, userId))
-    .limit(1);
-
-  // Voice contract (V5): stored voice or derived from the columns (admin: full).
-  return NextResponse.json({
-    // The door is returned resolved ("reception" for NULL), read-only here:
-    // writes go through PUT /api/dashboard/account?asUserId=.
-    user: { ...user, door: resolveDoor(user.door) },
-    config: cfg
-      ? {
-          // N1: the confirmation record is never returned (N2 adds its own view).
-          ...withoutContactConfirmations(withoutToolsStore(cfg)),
-          voiceConfig: currentInboundVoice(cfg.voiceConfig, cfg),
-          voiceChoice: await voiceChoiceFor(cfg, true),
-          personaConfig: currentInboundPersona(cfg.personaConfig, cfg),
-        }
-      : null,
-  });
+  // An explicit field pick (lib/admin/tenant-config-view.ts): no password
+  // hash, card token or other secret column reaches the browser.
+  const r = await handleAdminConfigGet(userId, adminConfigGetDeps);
+  return NextResponse.json(r.body, { status: r.status });
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {

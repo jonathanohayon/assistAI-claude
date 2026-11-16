@@ -19,8 +19,13 @@ export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
   if (!auth.ok) return auth.response;
 
-  const allUsers = await db.select().from(users);
-  const allConfigs = await db.select().from(agentConfigs);
+  // Named fields only: the refresh token is read to say "connected", never sent.
+  const allUsers = await db
+    .select({ id: users.id, email: users.email, role: users.role, googleRefreshToken: users.googleRefreshToken })
+    .from(users);
+  const allConfigs = await db
+    .select({ userId: agentConfigs.userId, ownerWhatsapp: agentConfigs.ownerWhatsapp })
+    .from(agentConfigs);
   const allPhones = await db.select().from(phoneNumbers);
 
   const configByUser = new Map<string, (typeof allConfigs)[number]>();
