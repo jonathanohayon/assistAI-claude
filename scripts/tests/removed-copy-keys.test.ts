@@ -9,6 +9,9 @@
 // Unread name keys (16/11): DashboardConfig.greetingHint,
 // Signup.displayNamePlaceholder and DashboardConfig.wowAgentNamePlaceholder.
 // DashboardCampaigns keeps its own greetingHint, which is read.
+// Home voice mock (16/11): VoiceStudio.sliders.* (warmth, formality, energy,
+// speed). The voice card now shows the Voice tile's own settings
+// (components/marketing/feature-mock-settings.ts).
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -24,6 +27,10 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["DashboardConfig", "greetingHint"],
   ["Signup", "displayNamePlaceholder"],
   ["DashboardConfig", "wowAgentNamePlaceholder"],
+  ["VoiceStudio", "sliders.warmth"],
+  ["VoiceStudio", "sliders.formality"],
+  ["VoiceStudio", "sliders.energy"],
+  ["VoiceStudio", "sliders.speed"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];
@@ -76,6 +83,11 @@ for (const dir of ["app", "components", "lib", "hooks", "i18n"]) {
     // The hero renders t(`stats.${stat.labelKey}`): a stat declared with
     // labelKey "latency" would read the removed Hero.stats.latency.
     if (/labelKey:\s*["'`]latency["'`]/.test(src)) offenders.push(`${relative(ROOT, file)}: a hero stat with labelKey "latency"`);
+    // The old voice card read tv(`sliders.${slider.key}`) on VoiceStudio.
+    const studio = /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(\s*["'`]VoiceStudio["'`]/g;
+    for (const [, t] of src.matchAll(studio)) {
+      if (new RegExp(`\\b${escape(t)}\\(\\s*["'\`]sliders\\.`).test(src)) offenders.push(`${relative(ROOT, file)}: ${t}("sliders.…") on VoiceStudio`);
+    }
   }
 }
 assert.ok(scanned > 100, `source files scanned (${scanned})`);
@@ -86,6 +98,12 @@ assert.deepEqual(offenders, [], `removed keys still read:\n${offenders.join("\n"
   const mock = `const tl = useTranslations("LiveTest");\nreturn <p>{tl("kicker")}</p>;`;
   const [, t] = /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?useTranslations\(\s*["'`]LiveTest["'`]/.exec(mock)!;
   assert.match(mock, new RegExp(`\\b${t}\\(\\s*["'\`]kicker["'\`]`));
+}
+
+{
+  // The old voice card's template read is caught too.
+  const mock = 'const tv = useTranslations("VoiceStudio");\nreturn <span>{tv(`sliders.${slider.key}`)}</span>;';
+  assert.match(mock, new RegExp(`\\btv\\(\\s*["'\`]sliders\\.`));
 }
 
 console.log("removed-copy-keys: ok");

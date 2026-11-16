@@ -179,7 +179,7 @@
       },
       "config": {
         "title": "Live configuration",
-        "desc": "Update tone or workflows from the dashboard. Effect on the next call."
+        "desc": "Change these settings from your dashboard. Takes effect on the next call."
       }
     }
   },
@@ -250,12 +250,6 @@
         "title": "Live test",
         "desc": "Preview your config before pushing it to production"
       }
-    },
-    "sliders": {
-      "warmth": "Warmth",
-      "formality": "Formality",
-      "energy": "Energy",
-      "speed": "Speed"
     },
     "panel": {
       "breadcrumb": "dashboard / voice",
