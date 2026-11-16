@@ -5,8 +5,6 @@
 // e-mail builders under lib/) and the whole of the three message files. The
 // rendered half is scripts/check-tenant-words.mjs (tenant and public passes),
 // which spreads the same rules in.
-// [HE] to confirm: DashboardConfig.greetingHint follows Jonathan's choice of
-// form of address (plural: שמרו).
 // Run with:  npx tsx scripts/tests/first-customer-names.test.ts
 
 import assert from "node:assert/strict";
