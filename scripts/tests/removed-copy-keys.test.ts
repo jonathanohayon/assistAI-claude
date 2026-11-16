@@ -6,6 +6,9 @@
 // Public pass (audit section D): Hero.stats.latency (the hero shows
 // availability, languages and calls) and the whole HowItWorks namespace
 // (replaced by Journey), neither rendered anywhere.
+// Unread name keys (16/11): DashboardConfig.greetingHint,
+// Signup.displayNamePlaceholder and DashboardConfig.wowAgentNamePlaceholder.
+// DashboardCampaigns keeps its own greetingHint, which is read.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -18,6 +21,9 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["DashboardConfig", "pageSubtitle"],
   ["DashboardConfig", "instructionsLabel"],
   ["Hero", "stats.latency"],
+  ["DashboardConfig", "greetingHint"],
+  ["Signup", "displayNamePlaceholder"],
+  ["DashboardConfig", "wowAgentNamePlaceholder"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];
