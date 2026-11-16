@@ -4,7 +4,7 @@
 // Only the sender (and the event logger) are replaced: nothing is ever sent.
 // Skipped in a plain `npm test`. Run with:
 //   bash scripts/verification-limits-db.sh
-// (local Postgres on 127.0.0.1:55475, sets VERIFICATION_LIMITS_DB_URL).
+// (local Postgres on 127.0.0.1:<free port>, sets VERIFICATION_LIMITS_DB_URL).
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read.
 // Mock data only (example.com, documentation IP ranges).
 

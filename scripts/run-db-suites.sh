@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # `npm run test:db`: discovers every scripts/*-db.sh and runs them one after
-# the other (never in parallel: each suite owns a fixed Postgres port). Each
-# script checks its own port and starts/stops its own throwaway Postgres; this
-# runner starts nothing itself. Stops on the first failure.
+# the other. Each script picks and locks a free port for its own throwaway
+# Postgres (scripts/lib/pg-free-port.sh), so several runs at once, from other
+# sessions or the same checkout, never collide; this runner starts nothing
+# itself. Stops on the first failure.
 #   npm run test:db                    run all suites
 #   npm run test:db -- --list          print the discovered suites
 #   npm run test:db -- --only <name>   run one suite (<name> = file name without -db.sh)
