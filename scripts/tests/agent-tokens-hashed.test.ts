@@ -2,7 +2,7 @@
 // Part 1 runs everywhere, against an in-memory store with the same semantics
 // as the Postgres one. Part 2 needs a THROWAWAY Postgres and skips in a plain
 // `npm test`; run it with:  bash scripts/agent-tokens-db.sh
-// (127.0.0.1:55452; only a local URL is accepted, DATABASE_URL is never read).
+// (127.0.0.1:<free port>; only a local URL is accepted, DATABASE_URL is never read).
 // Mock tokens only.
 
 import assert from "node:assert/strict";

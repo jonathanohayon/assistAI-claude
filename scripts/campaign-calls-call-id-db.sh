@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the DB part of scripts/tests/campaign-calls-call-id.test.ts against a
-# THROWAWAY Postgres (127.0.0.1:55441, data in the git-ignored .tmp/ folder):
+# THROWAWAY Postgres (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder):
 #   1. fresh DB → this branch's migrations → checks, re-run no-op, inserts;
 #   2. new DB → the "before" tree's migrations + mock rows + its response
 #      bytes → this branch's migrations → checks, byte-identical, inserts.
@@ -12,24 +12,22 @@
 # with a clean env.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=55441
-TMP=".tmp/campaign-calls-call-id"
+source scripts/lib/pg-free-port.sh
+pick_free_port
+TMP=".tmp/campaign-calls-call-id-${PORT}"
 DIR="$TMP/pg"
 URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
 MAIN="$TMP/main-tree"
 # Parent of "Merge pull request #277" (b31c115^1).
 BEFORE_REF="${CAMPAIGN_CALLS_BEFORE_REF:-333fd9e1b04ed213830731a4d8a5ff560e3da979}"
-if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port ${PORT} is busy, refusing to start" >&2
-  exit 1
-fi
 rm -rf "$TMP" && mkdir -p "$TMP"
 stop() { pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; }
-trap 'stop; rm -rf "$TMP"' EXIT
+pg_on_exit 'stop; rm -rf "$TMP"'
 start() {
   rm -rf "$DIR"
   initdb -D "$DIR" -A trust -U postgres >/dev/null
   pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
+  [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 }
 run_test() {
   env -i PATH="$PATH" HOME="$HOME" CAMPAIGN_CALLS_TEST_DATABASE_URL="$URL" CAMPAIGN_CALLS_TEST_PHASE="$1" \

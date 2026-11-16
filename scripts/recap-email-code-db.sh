@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verified contacts N2 (the owner recap email confirmation code) against a
-# THROWAWAY Postgres (127.0.0.1:55493, data in the git-ignored .tmp/ folder),
+# THROWAWAY Postgres (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder),
 # stopped on exit. Discovered by `npm run test:db` (scripts/run-db-suites.sh).
 # Needs initdb/pg_ctl/psql on PATH. Never uses DATABASE_URL from your shell;
 # node runs with a clean env (no messaging, email or voice provider
@@ -14,18 +14,15 @@
 # 2. scripts/tests/recap-email-code-db.test.ts (the real wiring, sender injected).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=55493
-DIR=".tmp/pg-recap-email-code"
+source scripts/lib/pg-free-port.sh
+pick_free_port
+DIR=".tmp/pg-recap-email-code-${PORT}"
 URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
 TAG="0052_contact_confirmation_codes"
-if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port ${PORT} is busy, refusing to start" >&2
-  exit 1
-fi
 rm -rf "$DIR" "$DIR.work" && mkdir -p "$DIR" "$DIR.work"
 env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 initdb -D "$DIR" -A trust -U postgres >/dev/null
 env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
-trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$DIR.work"' EXIT
+pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$DIR.work"'
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 migrate() { env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }

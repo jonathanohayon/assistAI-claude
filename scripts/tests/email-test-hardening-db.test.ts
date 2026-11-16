@@ -4,7 +4,7 @@
 // Only the session and the sender are replaced: nothing is ever sent.
 // Skipped in a plain `npm test`. Run with:
 //   bash scripts/email-test-hardening-db.sh
-// (local Postgres on 127.0.0.1:55472, sets EMAIL_TEST_HARDENING_DB_URL).
+// (local Postgres on 127.0.0.1:<free port>, sets EMAIL_TEST_HARDENING_DB_URL).
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read.
 // Mock data only (example.com).
 

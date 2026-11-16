@@ -4,7 +4,7 @@
 // lookup. Only the session and the signer's credentials are replaced: tokens
 // are signed with DUMMY keys. Skipped in a plain `npm test`. Run with:
 //   bash scripts/live-test-token-limit-db.sh
-// (local Postgres on 127.0.0.1:55477, sets LIVE_TEST_LIMIT_DB_URL).
+// (local Postgres on 127.0.0.1:<free port>, sets LIVE_TEST_LIMIT_DB_URL).
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read.
 // Mock data only (example.com).
 

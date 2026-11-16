@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/tests/demo-sheet-db.test.ts against a THROWAWAY
-# Postgres (127.0.0.1:55481, data in the git-ignored .tmp/ folder), then stops it:
+# Postgres (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder), then stops it:
 #   1. the pre-#323 baseline tree (8567c7a, the leaky main): the demo sessions through its route → snapshot;
 #   2. this branch: no seeded business fact and no lib/schedule place in what
 #      the provider receives, the rest identical to the snapshot, and a regular
@@ -12,22 +12,19 @@
 # checkout's node_modules by the normal parent-directory lookup (no symlink).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=55481
-TMP=".tmp/demo-sheet"
+source scripts/lib/pg-free-port.sh
+pick_free_port
+TMP=".tmp/demo-sheet-${PORT}"
 DIR="$TMP/pg"
 URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
 MAIN="$TMP/main-tree"
 SNAP="$PWD/$TMP/main-snapshot.json"
 HOOKS="scripts/tests/fixtures/demo-sheet/hooks.mjs"
 TEST="scripts/tests/demo-sheet-db.test.ts"
-if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port ${PORT} is busy, refusing to start" >&2
-  exit 1
-fi
 rm -rf "$TMP" && mkdir -p "$TMP"
 initdb -D "$DIR" -A trust -U postgres >/dev/null
 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
-trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"' EXIT
+pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null 2>&1
 

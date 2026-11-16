@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/tests/client-confirm-db.test.ts against a THROWAWAY Postgres
-# (127.0.0.1:55478, data in the git-ignored .tmp/ folder), then stops it.
+# (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder), then stops it.
 # Needs initdb/pg_ctl on PATH. Never uses DATABASE_URL from your shell, and runs
 # with a clean env so no Twilio/OpenAI credential is visible. Also snapshots
 # the "before" /api/calls/end route into .tmp/ so the test can compare the
@@ -12,14 +12,11 @@
 # CLIENT_CONFIRM_MAIN_REF=<commit>.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PORT=55478
-DIR=".tmp/pg-client-confirm"
-MAIN_ROUTE=".tmp/client-confirm-main/route.ts"
+source scripts/lib/pg-free-port.sh
+pick_free_port
+DIR=".tmp/pg-client-confirm-${PORT}"
+MAIN_ROUTE=".tmp/client-confirm-main-${PORT}/route.ts"
 URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-if lsof -nP -iTCP:${PORT} -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port ${PORT} is busy, refusing to start" >&2
-  exit 1
-fi
 mkdir -p "$(dirname "$MAIN_ROUTE")"
 # Parent of "Merge pull request #306" (07ffeca^1).
 BEFORE_REF="${CLIENT_CONFIRM_MAIN_REF:-e1968760af7bc00e179269a227954fbaa9a05212}"
@@ -31,14 +28,14 @@ git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
 # lib/demo-sandbox, which the a1dfec0 cancel route imported). Override with
 # CLIENT_CONFIRM_PREV_REF=<commit>.
 PREV_REF="${CLIENT_CONFIRM_PREV_REF:-e782b813e666221329fd539e41764694743986da}"
-PREV_END=".tmp/client-confirm-main/prev-end-route.ts"
-PREV_CANCEL=".tmp/client-confirm-main/prev-cancel-route.ts"
+PREV_END=".tmp/client-confirm-main-${PORT}/prev-end-route.ts"
+PREV_CANCEL=".tmp/client-confirm-main-${PORT}/prev-cancel-route.ts"
 git show "${PREV_REF}:app/api/calls/end/route.ts" > "$PREV_END"
 git show "${PREV_REF}:app/api/calendar/cancel/route.ts" > "$PREV_CANCEL"
 rm -rf "$DIR" && mkdir -p "$DIR"
 initdb -D "$DIR" -A trust -U postgres >/dev/null
 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
-trap 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$(dirname "$MAIN_ROUTE")"' EXIT
+pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$(dirname "$MAIN_ROUTE")"'
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # The route's owner recap wrapper calls next-intl's getTranslations, which

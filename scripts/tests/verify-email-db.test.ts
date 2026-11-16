@@ -5,7 +5,7 @@
 // through the real signup action with a fake sender that keeps the code, so
 // nothing is ever sent. Skipped in a plain `npm test`. Run with:
 //   bash scripts/verify-email-db.sh
-// (local Postgres on 127.0.0.1:55496, sets VERIFY_EMAIL_DB_URL).
+// (local Postgres on 127.0.0.1:<free port>, sets VERIFY_EMAIL_DB_URL).
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read.
 // Mock data only (example.com, documentation IP ranges).
 
