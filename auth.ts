@@ -118,7 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // que token.sub (et donc session.user.id) pointe sur notre tenant.
       if (account?.provider === "google" && token.email) {
         const [dbu] = await db
-          .select()
+          .select({ id: users.id })
           .from(users)
           .where(eq(users.email, token.email.toLowerCase()))
           .limit(1);

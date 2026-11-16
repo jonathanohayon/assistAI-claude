@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   // Verify the target tenant exists.
   const [target] = await db
-    .select()
+    .select({ id: users.id })
     .from(users)
     .where(eq(users.id, body.userId))
     .limit(1);
