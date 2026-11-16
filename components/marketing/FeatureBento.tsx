@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { Reveal, EASE } from "./Reveal";
 import type { FeatureMockLabels, MockSwitch } from "./feature-mock-settings";
@@ -308,14 +308,12 @@ const STUDIO_COLORS: ReadonlyArray<{ color: string; track: string }> = [
   { color: "#0e7490", track: "#cffafe" },
 ];
 
-const STUDIO_LANGUAGES: ReadonlyArray<{ code: string; selected: boolean }> = [
-  { code: "FR", selected: true },
-  { code: "HE", selected: false },
-  { code: "EN", selected: false },
-];
+// The checked chip is the page's own locale (an FR visitor sees FR).
+const STUDIO_LANGUAGES = ["fr", "he", "en"] as const;
 
 function VoiceStudioPanel({ reduce, mock }: { reduce: boolean; mock: FeatureMockLabels }) {
   const tv = useTranslations("VoiceStudio");
+  const locale = useLocale();
 
   return (
     <motion.div
@@ -433,7 +431,7 @@ function VoiceStudioPanel({ reduce, mock }: { reduce: boolean; mock: FeatureMock
           {tv("panel.defaultLanguage")}
         </span>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {STUDIO_LANGUAGES.map((lang) => (
+          {STUDIO_LANGUAGES.map((code) => ({ code: code.toUpperCase(), selected: code === locale })).map((lang) => (
             <span
               key={lang.code}
               className={

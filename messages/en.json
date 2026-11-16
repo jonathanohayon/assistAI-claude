@@ -178,8 +178,8 @@
         "desc": "Natural male and female voices, chosen from your dashboard."
       },
       "config": {
-        "title": "Live configuration",
-        "desc": "Change these settings from your dashboard. Takes effect on the next call."
+        "title": "One-click settings",
+        "desc": "Change these settings from your dashboard. They apply from the next call."
       }
     }
   },

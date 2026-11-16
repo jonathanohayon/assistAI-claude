@@ -178,8 +178,8 @@
         "desc": "Voix naturelles, masculines et féminines, à choisir depuis votre tableau de bord."
       },
       "config": {
-        "title": "Configuration live",
-        "desc": "Modifiez ces réglages depuis votre tableau de bord. Effet immédiat au prochain appel."
+        "title": "Réglages en un clic",
+        "desc": "Modifiez ces réglages depuis votre tableau de bord. Pris en compte dès le prochain appel."
       }
     }
   },
