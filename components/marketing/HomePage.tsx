@@ -8,7 +8,7 @@ import {
 
 import { CTA } from "./CTA";
 import { FAQ } from "./FAQ";
-import { FeatureBento } from "./FeatureBento";
+import { FeatureBentoSection } from "./FeatureBentoSection";
 import { Footer } from "./Footer";
 import { Hero } from "./Hero";
 import { Industries } from "./Industries";
@@ -45,7 +45,7 @@ const RENDERERS: {
   demo: (slot) => <TryDemo demo={slot.demo} />,
   how: (slot) => ("steps" in slot ? <LandingSteps {...slot} /> : <Journey />),
   contract: (slot) => <ContractSection {...slot} />,
-  features: () => <FeatureBento />,
+  features: () => <FeatureBentoSection />,
   modules: (slot) => <SixModules {...slot} />,
   useCases: (slot) => ("items" in slot ? <LandingUseCases {...slot} /> : <Industries />),
   proof: () => <Proof />,

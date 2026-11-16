@@ -2,9 +2,10 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { useReducedMotionAfterMount } from "@/lib/use-reduced-motion-after-mount";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { Reveal, EASE } from "./Reveal";
+import type { FeatureMockLabels, MockSwitch } from "./feature-mock-settings";
 
 /* -------------------------------------------------------------------------- */
 /*  Inline icons (SVG, stroke 1.5–2 — jamais d'emoji)                          */
@@ -300,25 +301,19 @@ function ContactCard({ reduce }: { reduce: boolean }) {
 /*  Tuile D — Voice Studio compact (la vedette du bento)                       */
 /* -------------------------------------------------------------------------- */
 
-const STUDIO_SLIDERS: ReadonlyArray<{
-  key: "warmth" | "energy" | "speed";
-  value: number;
-  color: string;
-  track: string;
-}> = [
-  { key: "warmth", value: 70, color: "#be185d", track: "#fbcfe8" },
-  { key: "energy", value: 60, color: "#fb7185", track: "#ffe4e6" },
-  { key: "speed", value: 50, color: "#0e7490", track: "#cffafe" },
+// One colour per slider row (pace, patience, noise).
+const STUDIO_COLORS: ReadonlyArray<{ color: string; track: string }> = [
+  { color: "#be185d", track: "#fbcfe8" },
+  { color: "#fb7185", track: "#ffe4e6" },
+  { color: "#0e7490", track: "#cffafe" },
 ];
 
-const STUDIO_LANGUAGES: ReadonlyArray<{ code: string; selected: boolean }> = [
-  { code: "FR", selected: true },
-  { code: "HE", selected: false },
-  { code: "EN", selected: false },
-];
+// The checked chip is the page's own locale (an FR visitor sees FR).
+const STUDIO_LANGUAGES = ["fr", "he", "en"] as const;
 
-function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
+function VoiceStudioPanel({ reduce, mock }: { reduce: boolean; mock: FeatureMockLabels }) {
   const tv = useTranslations("VoiceStudio");
+  const locale = useLocale();
 
   return (
     <motion.div
@@ -338,7 +333,7 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
         </div>
         <span className="font-mono text-[9px] uppercase tracking-widest text-[#64748b]">
-          dashboard / voice
+          {tv("panel.breadcrumb")}
         </span>
       </div>
 
@@ -350,7 +345,11 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
         >
           <span className="flex items-center gap-1.5">
             <MicIcon className="h-3.5 w-3.5 text-[#0e7490]" />
-            <span className="text-xs font-semibold text-[#18181b]">Coral</span>
+            {/* The dashboard's own label ("Voix 1 · féminine", Voices.display):
+                never a supplier's voice name (public words guard). */}
+            <span className="text-xs font-semibold text-[#18181b]">
+              {tv("panel.voiceName")}
+            </span>
             <span aria-hidden className="text-[10px] text-[#64748b]">·</span>
             <span className="text-[10px] text-[#475569]">
               {tv("panel.voiceGenderF")}
@@ -370,63 +369,69 @@ function VoiceStudioPanel({ reduce }: { reduce: boolean }) {
         </motion.button>
       </div>
 
-      {/* Personality sliders */}
-      <div className="mt-3 space-y-2.5">
-        {STUDIO_SLIDERS.map((slider, i) => (
-          <div key={slider.key}>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[10px] font-medium text-[#475569]">
-                {tv(`sliders.${slider.key}`)}
-              </span>
-              <span
-                className="font-mono text-[9px] font-semibold tabular-nums"
-                style={{ color: slider.color }}
-              >
-                {slider.value}%
-              </span>
-            </div>
-            <div
-              className="relative h-1.5 w-full rounded-full"
-              style={{ backgroundColor: slider.track }}
-            >
-              <div className="absolute inset-0 overflow-hidden rounded-full">
-                <motion.div
-                  initial={reduce ? false : { scaleX: 0 }}
-                  whileInView={{ scaleX: slider.value / 100 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{
-                    duration: 0.9,
-                    delay: 0.35 + i * 0.12,
-                    ease: EASE,
+      {/* The Voice tile's sliders at the product's defaults (labels and
+          positions: feature-mock-settings.ts). Fill and thumb are placed with
+          inset-inline-start, so in right-to-left the fill runs from the right
+          up to the thumb, like the tile's native range. */}
+      <div className="mt-3 space-y-2">
+        {mock.sliders.map((slider, i) => {
+          const c = STUDIO_COLORS[i % STUDIO_COLORS.length];
+          return (
+            <div key={slider.id}>
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <span className="text-[10px] font-medium text-[#475569]">{slider.label}</span>
+                {slider.value && (
+                  <span className="text-[9px] font-semibold" style={{ color: c.color }}>
+                    {slider.value}
+                  </span>
+                )}
+              </div>
+              <div className="relative h-1.5 w-full rounded-full" style={{ backgroundColor: c.track }}>
+                <span
+                  aria-hidden
+                  data-mock-fill
+                  className="absolute inset-y-0 rounded-full"
+                  style={{
+                    backgroundColor: c.color,
+                    insetInlineStart: `${slider.fill[0]}%`,
+                    width: `${slider.fill[1]}%`,
                   }}
-                  className="h-full w-full origin-left rounded-full rtl:origin-right"
-                  style={{ backgroundColor: slider.color }}
+                />
+                {slider.midLabel && (
+                  // The tile's centre mark (pace is a deviation from Normal).
+                  <span
+                    aria-hidden
+                    className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 rounded bg-[#94a3b8]"
+                    style={{ insetInlineStart: "calc(50% - 1px)" }}
+                  />
+                )}
+                <span
+                  aria-hidden
+                  data-mock-thumb
+                  className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 bg-white shadow-md"
+                  style={{ borderColor: c.color, insetInlineStart: `calc(${slider.at}% - 6px)` }}
                 />
               </div>
-              <motion.span
-                initial={reduce ? false : { opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: 0.9 + i * 0.12 }}
-                className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 bg-white shadow-md"
-                style={{
-                  borderColor: slider.color,
-                  insetInlineStart: `calc(${slider.value}% - 6px)`,
-                }}
+              <div
                 aria-hidden
-              />
+                className={`mt-1 grid text-[9px] leading-tight text-[#64748b] ${slider.midLabel ? "grid-cols-3" : "grid-cols-2"}`}
+              >
+                <span className="text-start">{slider.minLabel}</span>
+                {slider.midLabel && <span className="text-center">{slider.midLabel}</span>}
+                <span className="text-end">{slider.maxLabel}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Language pills */}
       <div className="mt-3">
         <span className="text-[9px] font-semibold uppercase tracking-wider text-[#64748b]">
-          {tv("panel.primaryLanguage")}
+          {tv("panel.defaultLanguage")}
         </span>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {STUDIO_LANGUAGES.map((lang) => (
+          {STUDIO_LANGUAGES.map((code) => ({ code: code.toUpperCase(), selected: code === locale })).map((lang) => (
             <span
               key={lang.code}
               className={
@@ -541,42 +546,51 @@ function CalendarMock({ reduce }: { reduce: boolean }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Tuile F — config live : 3 mini sliders qui bougent seuls (scaleX)          */
+/*  Tile F — live config: three real switches of the product, at their         */
+/*  defaults (feature-mock-settings.ts); the first two flip on their own.      */
 /* -------------------------------------------------------------------------- */
 
-function SliderDemo({ reduce }: { reduce: boolean }) {
-  const labels = ["Tone", "Speed", "Warmth"];
-  const [vals, setVals] = useState<number[]>([35, 70, 55]);
+// Rows that flip in the animation; the AI disclosure stays on.
+const FLIPPING_SWITCHES = 2;
+
+function SwitchDemo({ reduce, switches }: { reduce: boolean; switches: MockSwitch[] }) {
+  // Init = the product's defaults (SSR-stable); the flips start after mount.
+  const [on, setOn] = useState<boolean[]>(() => switches.map((s) => s.on));
 
   useEffect(() => {
     if (reduce) return;
+    let step = 0;
     const id = setInterval(() => {
-      setVals((prev) =>
-        prev.map((v) => {
-          const delta = (Math.random() - 0.5) * 30;
-          return Math.max(10, Math.min(90, v + delta));
-        }),
-      );
+      const row = step++ % FLIPPING_SWITCHES;
+      setOn((prev) => prev.map((v, i) => (i === row ? !v : v)));
     }, 1600);
     return () => clearInterval(id);
   }, [reduce]);
 
   return (
     <div className="flex h-full flex-col justify-center gap-3">
-      {labels.map((lbl, i) => (
-        <div key={lbl} className="flex items-center gap-3">
-          <span className="w-14 shrink-0 text-[10px] font-bold uppercase tracking-wider text-[#0e7490]/70">
-            {lbl}
-          </span>
-          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-[#22d3ee]/15">
-            <motion.div
-              className="h-full w-full origin-left rounded-full bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_10px_rgba(34,211,238,0.45)] rtl:origin-right"
-              animate={{ scaleX: (vals[i] ?? 50) / 100 }}
-              transition={{ duration: 1.2, ease: EASE }}
-            />
+      {switches.map((s, i) => {
+        const checked = on[i] ?? s.on;
+        return (
+          <div key={s.id} className="flex items-center justify-between gap-3">
+            <span className="text-[11px] font-semibold leading-snug text-[#0e7490]">{s.label}</span>
+            <span
+              aria-hidden
+              data-mock-switch={checked ? "on" : "off"}
+              className={`relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-300 ${
+                checked
+                  ? "bg-gradient-to-r from-[#22d3ee] to-[#0e7490] shadow-[0_0_10px_rgba(34,211,238,0.45)]"
+                  : "bg-[#22d3ee]/20"
+              }`}
+            >
+              <span
+                className="absolute top-[3px] h-3 w-3 rounded-full bg-white shadow-md transition-[inset-inline-start] duration-300"
+                style={{ insetInlineStart: checked ? "calc(100% - 15px)" : "3px" }}
+              />
+            </span>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -654,7 +668,7 @@ function Tile({
 /*  Section — bento fusionné Features × Voice Studio (6 tuiles)                */
 /* -------------------------------------------------------------------------- */
 
-export function FeatureBento() {
+export function FeatureBento({ mock }: { mock: FeatureMockLabels }) {
   const t = useTranslations("Features");
   const reduce = useReducedMotionAfterMount() ?? false;
 
@@ -726,7 +740,7 @@ export function FeatureBento() {
             title={t("list.voice.title")}
             desc={t("list.voice.desc")}
           >
-            <VoiceStudioPanel reduce={reduce} />
+            <VoiceStudioPanel reduce={reduce} mock={mock} />
           </Tile>
 
           {/* E. Calendrier — 2×2 */}
@@ -748,7 +762,7 @@ export function FeatureBento() {
             title={t("list.config.title")}
             desc={t("list.config.desc")}
           >
-            <SliderDemo reduce={reduce} />
+            <SwitchDemo reduce={reduce} switches={mock.switches} />
           </Tile>
         </div>
       </div>

@@ -178,8 +178,8 @@
         "desc": "Natural male and female voices, chosen from your dashboard."
       },
       "config": {
-        "title": "Live configuration",
-        "desc": "Update tone or workflows from the dashboard. Effect on the next call."
+        "title": "One-click settings",
+        "desc": "Change these settings from your dashboard. They apply from the next call."
       }
     }
   },
@@ -251,19 +251,15 @@
         "desc": "Preview your config before pushing it to production"
       }
     },
-    "sliders": {
-      "warmth": "Warmth",
-      "formality": "Formality",
-      "energy": "Energy",
-      "speed": "Speed"
-    },
     "panel": {
+      "breadcrumb": "dashboard / voice",
       "agentVoice": "Agent voice",
       "personality": "Personality",
       "liveBadge": "live",
-      "voiceGenderF": "Female",
+      "voiceName": "Voice 1",
+      "voiceGenderF": "female",
       "previewVoiceAria": "Preview voice",
-      "primaryLanguage": "Primary language",
+      "defaultLanguage": "Default language",
       "agentName": "Agent name"
     }
   },
