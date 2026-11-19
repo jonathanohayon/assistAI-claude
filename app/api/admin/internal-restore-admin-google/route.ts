@@ -25,7 +25,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "email requis" }, { status: 400 });
   }
   const [u] = await db
-    .select()
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      googleRefreshToken: users.googleRefreshToken,
+      googleCalendarId: users.googleCalendarId,
+      googleSheetId: users.googleSheetId,
+    })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
@@ -35,7 +42,7 @@ export async function GET(req: NextRequest) {
     .from(phoneNumbers)
     .where(eq(phoneNumbers.userId, u.id));
   const [cfg] = await db
-    .select()
+    .select({ id: agentConfigs.id, ownerWhatsapp: agentConfigs.ownerWhatsapp })
     .from(agentConfigs)
     .where(eq(agentConfigs.userId, u.id))
     .limit(1);
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest) {
   let userId = body.userId;
   if (!userId && body.email) {
     const [u] = await db
-      .select()
+      .select({ id: users.id })
       .from(users)
       .where(eq(users.email, body.email.toLowerCase()))
       .limit(1);

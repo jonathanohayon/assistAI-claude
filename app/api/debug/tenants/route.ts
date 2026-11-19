@@ -13,7 +13,11 @@ export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
   if (!auth.ok) return auth.response;
 
-  const allUsers = await db.select().from(users).orderBy(users.createdAt);
+  // Named fields only: no password hash or token is ever loaded here.
+  const allUsers = await db
+    .select({ id: users.id, email: users.email, displayName: users.displayName, role: users.role, createdAt: users.createdAt })
+    .from(users)
+    .orderBy(users.createdAt);
   const result = [];
   for (const u of allUsers) {
     const phones = await db
@@ -21,7 +25,7 @@ export async function GET(req: NextRequest) {
       .from(phoneNumbers)
       .where(eq(phoneNumbers.userId, u.id));
     const [cfg] = await db
-      .select()
+      .select({ instructions: agentConfigs.instructions, ownerWhatsapp: agentConfigs.ownerWhatsapp, updatedAt: agentConfigs.updatedAt })
       .from(agentConfigs)
       .where(eq(agentConfigs.userId, u.id))
       .limit(1);

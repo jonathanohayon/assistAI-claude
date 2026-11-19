@@ -234,7 +234,9 @@ assert.ok("contactConfirmations" in contactConfirmationsWrite({ ownerRecapEmail:
 // ── The record is never returned by the config routes ───────────────────
 assert.deepEqual(withoutContactConfirmations({ a: 1, contactConfirmations: confirmed }), { a: 1 });
 for (const p of ["app/api/dashboard/config/route.ts", "app/api/admin/configs/[userId]/route.ts"]) {
-  const s = src(p).replace(/\/\/.*$/gm, "");
+  // The admin GET body lives in lib/admin/tenant-config-view.ts (explicit field pick).
+  const body = p.startsWith("app/api/admin/") ? src(p) + src("lib/admin/tenant-config-view.ts") : src(p);
+  const s = body.replace(/\/\/.*$/gm, "");
   const spreads: string[] = s.match(/\.\.\.[A-Za-z]+\(/g) ?? [];
   assert.equal(
     (s.match(/\.\.\.withoutContactConfirmations\(withoutToolsStore\((config|cfg|updated)\)\)/g) ?? []).length,

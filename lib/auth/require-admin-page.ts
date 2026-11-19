@@ -25,13 +25,18 @@ import { users } from "@/lib/db/schema";
 
 import { SIGNED_OUT, adminOnlyOr404, isAdminViewer, type PageViewer } from "./admin-viewer";
 
-type UserRow = typeof users.$inferSelect;
+// Named fields only: an admin page never holds the password hash or a token.
+type UserRow = Pick<typeof users.$inferSelect, "id" | "email" | "role" | "displayName">;
 
 async function loadSessionUser(): Promise<{ userId: string | null; me: UserRow | null }> {
   const session = await auth();
   const userId = session?.user?.id ?? null;
   if (!userId) return { userId: null, me: null };
-  const [me] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const [me] = await db
+    .select({ id: users.id, email: users.email, role: users.role, displayName: users.displayName })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
   return { userId, me: me ?? null };
 }
 
