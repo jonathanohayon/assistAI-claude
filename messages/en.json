@@ -351,11 +351,14 @@
     "contactsTitle": "Import your contacts",
     "contactsDesc": "Add the list of people to call.",
     "contactsCta": "Import my contacts",
-    "contactsLockedDesc": "Included in the Pro plan.",
+    "contactsLockedDesc": "Included in the {plan} plan",
     "contactsLockedCta": "See the offer",
     "agentUrlTitle": "Paste your agent's address",
     "agentUrlDesc": "Tamara asks your own agent during calls.",
-    "agentUrlCta": "Add the address"
+    "agentUrlCta": "Add the address",
+    "liveTestTitle": "Test it live",
+    "liveTestDesc": "Talk to your agent from your browser, no number needed.",
+    "liveTestCta": "Start the test"
   },
   "SocialProof": {
     "facts": {
@@ -1015,7 +1018,7 @@
     "campaignsTileLabel": "Outbound calls",
     "campaignsTileTagline": "AI call center — dial leads in parallel",
     "campaignsTileSummary": "Marketing · sales · lead-gen",
-    "campaignsTileLocked": "Pro plan — tap to unlock",
+    "campaignsTileLocked": "Included in the {plan} plan",
     "wowTestSuccess": "Test message sent ✓",
     "ownerEmailTitle": "Recap by email",
     "ownerEmailLabel": "Owner's email address",

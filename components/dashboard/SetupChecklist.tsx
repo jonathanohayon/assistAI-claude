@@ -7,6 +7,7 @@ import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
 
 import type { Door } from "@/lib/door-values";
+import { outboundPlanName } from "@/lib/outbound-plan";
 
 import { SETUP_OPEN_KEY, checklistSteps, defaultOpen, nextStep, resolveOpen } from "./setup-checklist-ui";
 
@@ -25,6 +26,11 @@ type SetupChecklistProps = {
   contacts?: { done: boolean; locked: boolean };
   /** "Paste your agent URL" (connect door), passed only where the Tools tile shows that field. */
   agentUrl?: { done: boolean };
+  /**
+   * "Test it live" (sales door): the dashboard's live test panel, free and
+   * ungated like the panel itself. `done` = the account has had a call.
+   */
+  liveTest?: { done: boolean };
 };
 
 type SvgProps = { className?: string };
@@ -217,8 +223,10 @@ export function SetupChecklist({
   door,
   contacts,
   agentUrl,
+  liveTest,
 }: SetupChecklistProps) {
   const t = useTranslations("DashboardSetup");
+  const tPlans = useTranslations("Plans");
 
   const baseItems: ChecklistItem[] = [
     ...(contacts
@@ -229,10 +237,24 @@ export function SetupChecklist({
             locked: contacts.locked,
             icon: UsersIcon,
             title: t("contactsTitle"),
-            desc: contacts.locked ? t("contactsLockedDesc") : t("contactsDesc"),
+            desc: contacts.locked ? t("contactsLockedDesc", { plan: outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null)) }) : t("contactsDesc"),
             ctaLabel: contacts.locked ? t("contactsLockedCta") : t("contactsCta"),
             // Locked: the campaigns tile's upsell, exactly as a click on it.
             href: contacts.locked ? "/dashboard?tile=campaigns" : "/dashboard/campaigns",
+          },
+        ]
+      : []),
+    ...(liveTest
+      ? [
+          {
+            id: "liveTest",
+            done: liveTest.done,
+            icon: WaveIcon,
+            title: t("liveTestTitle"),
+            desc: t("liveTestDesc"),
+            ctaLabel: t("liveTestCta"),
+            // The live test panel's anchor on the dashboard (config-form.tsx).
+            href: "/dashboard#live-test",
           },
         ]
       : []),

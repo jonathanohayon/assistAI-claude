@@ -1,9 +1,8 @@
 // The dashboard menu entries (pure, client-safe, unit-tested): what each tab
-// is, its gate, and the visible list in the account's door order.
+// is, its gate, and the visible list (today's order for every door).
 // Rendered by ./_nav.tsx.
 
-import type { Door } from "@/lib/door-values";
-import { doorUi, orderBy, type DoorTabId } from "@/lib/doors-ui";
+import type { DoorTabId } from "@/lib/doors-ui";
 import type { FeatureKey, PlanFeatures } from "@/lib/plan-features";
 
 export interface Tab {
@@ -37,16 +36,12 @@ export const TABS: ReadonlyArray<Tab> = [
 ];
 
 /**
- * The tabs this account sees, in its door's order. The door only ORDERS:
- * the gate (plan features, admin bypass) is applied after, the same for
- * every door.
+ * The tabs this account sees, in today's order (home first) for every door:
+ * the door only names the home tab (doorUi(door).headerKey). The gate (plan
+ * features, admin bypass) is unchanged.
  */
-export function visibleTabs(
-  features: PlanFeatures,
-  isAdmin: boolean,
-  door: Door | null | undefined,
-): Tab[] {
-  return orderBy(TABS, (tab) => tab.id, doorUi(door).tabOrder).filter(
+export function visibleTabs(features: PlanFeatures, isAdmin: boolean): Tab[] {
+  return TABS.filter(
     (tab) =>
       isAdmin ||
       (!tab.feature && !tab.featureAny) ||

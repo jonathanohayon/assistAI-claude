@@ -16,9 +16,10 @@ export function gridTiles<T extends { id: string }>(
   savedOrder: readonly string[] | null,
   door: unknown,
   campaignsEnabled: boolean,
+  hasNumber = false,
 ): { tiles: T[]; highlightId: string | null } {
   const shown = orderBy(tiles, (t) => t.id, initialTileOrder(savedOrder, door)).filter(
     (t) => t.id !== "campaigns" || !campaignsEnabled,
   );
-  return { tiles: shown, highlightId: highlightedTile(door, shown.map((t) => t.id)) };
+  return { tiles: shown, highlightId: highlightedTile(door, shown.map((t) => t.id), hasNumber) };
 }

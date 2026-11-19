@@ -3,8 +3,8 @@
 /**
  * "My main use": the account's door, changed by the customer (account
  * settings) or by an admin for a tenant (admin tenant view, `asUserId`).
- * It only reorders the dashboard: same settings, same rights. A native
- * select, so it is keyboard and screen-reader friendly as is.
+ * It only reorders the dashboard: same settings, same rights. Settings use
+ * the bricks' choice chips (a radio group); the admin banner a native select.
  */
 
 import { useId, useState, useTransition } from "react";
@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import { DOORS, type Door } from "@/lib/door-values";
+import { ChipGroup } from "@/components/bricks/controls";
 import { doorChangeNeeded, doorOf, doorPutRequest, TILE_ORDER_KEY } from "@/lib/doors-ui";
 
 const OPTION_KEY: Record<Door, "doorOptionReception" | "doorOptionSales" | "doorOptionConnect"> = {
@@ -67,46 +68,56 @@ export function DoorSelect({
     }
   };
 
+  const errorLine = error && (
+    <p id={`${id}-error`} role="alert" className="mt-2 text-xs font-semibold text-[#b91c1c]">
+      {t("doorSaveError")}
+    </p>
+  );
+
+  // Admin banner: a compact native select.
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={id} className="text-xs font-medium">
+          {t("doorLabel")}
+        </label>
+        <select
+          id={id}
+          value={door}
+          disabled={saving}
+          aria-busy={saving}
+          aria-describedby={error ? `${id}-error` : undefined}
+          aria-invalid={error || undefined}
+          onChange={(e) => void choose(doorOf(e.target.value))}
+          title={t("doorResetNote")}
+          className="min-h-9 rounded-full border border-[#d97706]/40 bg-white px-3 text-xs text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] disabled:cursor-wait disabled:opacity-60"
+        >
+          {DOORS.map((d) => (
+            <option key={d} value={d}>
+              {t(OPTION_KEY[d])}
+            </option>
+          ))}
+        </select>
+        {errorLine}
+      </div>
+    );
+  }
+
+  // Account settings: the bricks' own choice chips (a radio group: arrows,
+  // roving focus, cyan focus ring, RTL-aware; selected = brand magenta).
   return (
-    <div className={compact ? "flex flex-wrap items-center gap-2" : ""}>
-      <label
-        htmlFor={id}
-        className={compact ? "text-xs font-medium" : "block text-sm font-semibold text-[var(--color-foreground)]"}
-      >
-        {t("doorLabel")}
-      </label>
-      {!compact && (
-        <p id={`${id}-hint`} className="mt-1 text-xs leading-relaxed text-[var(--color-muted-foreground)]">
-          {t("doorHint")}
-          <span className="block">{t("doorResetNote")}</span>
-        </p>
-      )}
-      <select
-        id={id}
-        value={door}
-        disabled={saving}
-        aria-busy={saving}
-        aria-describedby={[compact ? null : `${id}-hint`, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined}
-        aria-invalid={error || undefined}
-        onChange={(e) => void choose(doorOf(e.target.value))}
-        title={compact ? t("doorResetNote") : undefined}
-        className={
-          compact
-            ? "min-h-9 rounded-full border border-[#d97706]/40 bg-white px-3 text-xs text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] disabled:cursor-wait disabled:opacity-60"
-            : "mt-3 block min-h-11 w-full rounded-xl border border-[#cbd5e1] bg-white px-3 text-sm text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:min-w-72"
-        }
-      >
-        {DOORS.map((d) => (
-          <option key={d} value={d}>
-            {t(OPTION_KEY[d])}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p id={`${id}-error`} role="alert" className="mt-2 text-xs font-semibold text-[#b91c1c]">
-          {t("doorSaveError")}
-        </p>
-      )}
+    <div aria-busy={saving} className={saving ? "cursor-wait opacity-80" : undefined}>
+      <ChipGroup
+        label={t("doorLabel")}
+        options={DOORS.map((d) => ({ id: d, label: t(OPTION_KEY[d]) }))}
+        selected={door}
+        onPick={(d) => {
+          if (!saving) void choose(doorOf(d));
+        }}
+      />
+      <p className="mt-2 text-xs leading-relaxed text-[var(--color-muted-foreground)]">{t("doorHint")}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-muted-foreground)]">{t("doorResetNote")}</p>
+      {errorLine}
     </div>
   );
 }

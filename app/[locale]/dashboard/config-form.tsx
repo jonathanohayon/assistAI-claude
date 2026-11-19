@@ -36,6 +36,7 @@ import { canUseOutboundCampaigns } from "@/lib/outbound-access";
 import type { PlanFeatures } from "@/lib/plan-features";
 import type { Door } from "@/lib/door-values";
 import { TILE_ORDER_KEY } from "@/lib/doors-ui";
+import { outboundPlanName } from "@/lib/outbound-plan";
 import { gridTiles } from "./config/tile-grid";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
@@ -140,6 +141,7 @@ export function ConfigForm({
   const tTools = useTranslations("ToolsBrick");
   const voiceLabel = useVoiceLabel();
   const tVoices = useTranslations("Voices");
+  const tPlans = useTranslations("Plans");
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
@@ -651,7 +653,7 @@ export function ConfigForm({
       tagline: t("campaignsTileTagline"),
       summary: campaignsEnabled
         ? t("campaignsTileSummary")
-        : t("campaignsTileLocked"),
+        : t("campaignsTileLocked", { plan: outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null)) }),
       accent: "from-[#f97316] to-[#db2777]",
       locked: !campaignsEnabled,
       icon: (
@@ -693,7 +695,7 @@ export function ConfigForm({
   // disparaît de la grille : la feature a son propre onglet de nav « Appels
   // sortants ». On ne garde la tuile que verrouillée (upsell) pour les plans
   // non éligibles, comme point de découverte.
-  const { tiles: orderedTiles, highlightId } = gridTiles(TILES, tileOrder, door, campaignsEnabled);
+  const { tiles: orderedTiles, highlightId } = gridTiles(TILES, tileOrder, door, campaignsEnabled, Boolean(primaryPhone));
 
   // Drag & drop natif HTML5 (même pattern que admin/block-order-form), mais
   // sur une grille → on raisonne par id de tuile, pas par index. Le drop

@@ -11,7 +11,7 @@ import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
-import { agentConfigs, campaignContacts, phoneNumbers, users } from "@/lib/db/schema";
+import { agentConfigs, calls, campaignContacts, phoneNumbers, users } from "@/lib/db/schema";
 import { resolveDoor } from "@/lib/door";
 import { canUseOutboundCampaigns, featuresForPlan } from "@/lib/plan-features";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
@@ -215,6 +215,12 @@ export default async function DashboardPage(props: {
           .where(eq(campaignContacts.userId, session.user.id))
           .limit(1)
       : [];
+  // - "test it live" (sales): the live test panel, free and ungated like the
+  //   panel; done once the account has had a call.
+  const [anyCall] =
+    door === "sales"
+      ? await db.select({ id: calls.id }).from(calls).where(eq(calls.userId, session.user.id)).limit(1)
+      : [];
   const agentUrlVisible = clientAgentEnabled(clientAgentMode(), isAdmin);
   const storedTools = parseTools(config.toolsConfig);
   const agentUrlSet = storedTools.ok && storedTools.value.clientAgent.url.trim() !== "";
@@ -232,6 +238,7 @@ export default async function DashboardPage(props: {
         forwardingVerified={Boolean(config?.forwardingVerifiedAt)}
         door={door}
         contacts={door === "sales" ? { done: Boolean(contactsRow), locked: !outboundUsable } : undefined}
+        liveTest={door === "sales" ? { done: Boolean(anyCall) } : undefined}
         agentUrl={door === "connect" && agentUrlVisible ? { done: agentUrlSet } : undefined}
       />
       <ConfigForm

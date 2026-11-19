@@ -351,11 +351,14 @@
     "contactsTitle": "ייבוא אנשי הקשר שלכם",
     "contactsDesc": "הוסיפו את רשימת האנשים שאליהם תרצו להתקשר.",
     "contactsCta": "ייבוא אנשי הקשר",
-    "contactsLockedDesc": "כלול בתוכנית Pro.",
+    "contactsLockedDesc": "כלול בתוכנית {plan}",
     "contactsLockedCta": "לצפייה בהצעה",
     "agentUrlTitle": "הדביקו את הכתובת של הסוכן שלכם",
     "agentUrlDesc": "תמרה שואלת את הסוכן שלכם במהלך השיחות.",
-    "agentUrlCta": "הוספת הכתובת"
+    "agentUrlCta": "הוספת הכתובת",
+    "liveTestTitle": "בדיקה בזמן אמת",
+    "liveTestDesc": "דברו עם הסוכן שלכם מהדפדפן, בלי מספר.",
+    "liveTestCta": "התחלת הבדיקה"
   },
   "SocialProof": {
     "facts": {
@@ -1015,7 +1018,7 @@
     "campaignsTileLabel": "שיחות יוצאות",
     "campaignsTileTagline": "מוקד שיחות AI — חייגו ללידים במקביל",
     "campaignsTileSummary": "שיווק · מכירות · גיוס לידים",
-    "campaignsTileLocked": "תוכנית Pro — לחצו לשדרוג",
+    "campaignsTileLocked": "כלול בתוכנית {plan}",
     "wowTestSuccess": "הודעת בדיקה נשלחה ✓",
     "ownerEmailTitle": "סיכום במייל",
     "ownerEmailLabel": "כתובת המייל של בעל העסק",

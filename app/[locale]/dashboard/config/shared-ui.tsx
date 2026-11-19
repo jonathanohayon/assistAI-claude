@@ -118,7 +118,7 @@ export function Tile({
         onDrop?.();
       }}
       onDragEnd={() => onDragEnd?.()}
-      className={`anim-bounce-in group relative flex aspect-square cursor-grab flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
+      className={`anim-bounce-in group relative flex aspect-square cursor-grab flex-col items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
         dragging
           ? "border-[#0e7490] opacity-50 ring-2 ring-[#0e7490]/30"
           : dropTarget
@@ -131,11 +131,14 @@ export function Tile({
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
+      {/* The glow is clipped by its own layer, not by the tile: a tile with
+       *  overflow-hidden can't grow past its square, which cut its last line. */}
       {active && (
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br ${tile.accent} opacity-15 blur-2xl`}
-        />
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+          <span
+            className={`absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br ${tile.accent} opacity-15 blur-2xl`}
+          />
+        </span>
       )}
       <div className="relative flex w-full items-start justify-between">
         <span
@@ -146,7 +149,6 @@ export function Tile({
         {tile.adminOnly && <AdminBadge size="xs" />}
         {tile.locked && (
           <span
-            title="Disponible sur le plan Centre d'appels pro"
             className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-br ${tile.accent} px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5" aria-hidden>
@@ -166,10 +168,10 @@ export function Tile({
         <p className="text-base font-extrabold tracking-tight text-[#18181b]">
           {tile.label}
         </p>
-        <p className="mt-0.5 line-clamp-2 text-[11px] font-medium italic leading-snug text-[#0e7490]">
+        <p className="mt-0.5 break-words text-[11px] font-medium italic leading-snug text-[#0e7490]">
           {tile.tagline}
         </p>
-        <p className="mt-1 truncate text-[10px] text-[#475569]">{tile.summary}</p>
+        <p className="mt-1 break-words text-[10px] text-[#475569]">{tile.summary}</p>
       </div>
       {active && (
         <span

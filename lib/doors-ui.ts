@@ -2,10 +2,12 @@
 // It imports lib/door-values.ts only (the tenant bundle check reads what a
 // client component pulls in).
 //
-// The door ONLY orders and highlights. It never adds or removes a tab, a
-// tile or a step: gating (plan features, admin) is applied by the screens
-// exactly as before, after the ordering. scripts/tests/doors-ui.test.ts pins
-// that every door yields the same sets for every plan.
+// The door names the home tab and, for sales and connect, orders the tiles
+// and the first checklist steps. It never adds or removes a tab or a tile:
+// gating (plan features, admin) is applied by the screens exactly as before.
+// Reception (every account without a door) is EXACTLY the dashboard as it
+// was before doors: same tab order, tile order and checklist order.
+// scripts/tests/doors-ui.test.ts pins all of it.
 
 import { DEFAULT_DOOR, DOORS, type Door } from "./door-values";
 
@@ -24,45 +26,51 @@ export type DoorStepId =
   | "calendar"
   | "whatsapp"
   | "contacts"
+  | "liveTest"
   | "agentUrl";
 
 /** Message keys (Dashboard namespace) of the dashboard title per door. */
 export type DoorHeaderKey = "doorTitleReception" | "doorTitleSales" | "doorTitleConnect";
 
 export interface DoorUi {
+  /** The home tab's label (the home tab is first for every door; tabs are never reordered). */
   headerKey: DoorHeaderKey;
-  tabOrder: readonly DoorTabId[];
   tileOrder: readonly DoorTileId[];
   /** The tile to highlight: the first of these the screen actually shows. */
   highlightTiles: readonly DoorTileId[];
-  /** The step offered first (moved to the top of the checklist when shown). */
-  firstStepId: DoorStepId;
+  /** Highlight only while the account has no number yet (reception). */
+  highlightOnlyWithoutNumber: boolean;
+  /** Steps moved to the top of the checklist, in this order (when shown). */
+  firstSteps: readonly DoorStepId[];
 }
 
+/** The tile order before doors existed (main before #370): reception keeps it. */
+export const TODAY_TILE_ORDER: readonly DoorTileId[] = ["voice", "business", "tools", "persona", "notifs", "channels", "campaigns"];
+
 export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
-  // Calls come in: the number and the received calls first.
+  // Today's dashboard, unchanged. "Start here" on the number tile until there is one.
   reception: {
     headerKey: "doorTitleReception",
-    tabOrder: ["home", "calls", "crm", "calendar", "campaigns", "billing"],
-    tileOrder: ["channels", "voice", "business", "persona", "tools", "notifs", "campaigns"],
+    tileOrder: TODAY_TILE_ORDER,
     highlightTiles: ["channels"],
-    firstStepId: "testCall",
+    highlightOnlyWithoutNumber: true,
+    firstSteps: [],
   },
-  // Calls go out: the campaigns and their results first.
+  // Calls go out: the campaigns first; the free live test right after the import.
   sales: {
     headerKey: "doorTitleSales",
-    tabOrder: ["campaigns", "calls", "home", "crm", "calendar", "billing"],
     tileOrder: ["campaigns", "channels", "voice", "persona", "business", "tools", "notifs"],
     highlightTiles: ["campaigns"],
-    firstStepId: "contacts",
+    highlightOnlyWithoutNumber: false,
+    firstSteps: ["contacts", "liveTest"],
   },
   // The customer's own agent answers: its address and the voice first.
   connect: {
     headerKey: "doorTitleConnect",
-    tabOrder: ["home", "calls", "crm", "calendar", "campaigns", "billing"],
     tileOrder: ["tools", "voice", "channels", "persona", "business", "notifs", "campaigns"],
     highlightTiles: ["tools"],
-    firstStepId: "agentUrl",
+    highlightOnlyWithoutNumber: false,
+    firstSteps: ["agentUrl"],
   },
 };
 
@@ -100,9 +108,11 @@ export function initialTileOrder(saved: readonly string[] | null, door: unknown)
   return saved && saved.length > 0 ? saved : doorUi(door).tileOrder;
 }
 
-/** The tile to highlight among those shown, or null when none of the door's is shown. */
-export function highlightedTile(door: unknown, shownIds: readonly string[]): string | null {
-  return doorUi(door).highlightTiles.find((id) => shownIds.includes(id)) ?? null;
+/** The tile to highlight among those shown, or null (none shown, or reception with a number). */
+export function highlightedTile(door: unknown, shownIds: readonly string[], hasNumber = false): string | null {
+  const u = doorUi(door);
+  if (u.highlightOnlyWithoutNumber && hasNumber) return null;
+  return u.highlightTiles.find((id) => shownIds.includes(id)) ?? null;
 }
 
 /**
@@ -115,18 +125,21 @@ export const STEP_PREREQUISITES: Readonly<Partial<Record<DoorStepId, readonly Do
 };
 
 /**
- * The checklist with the door's first step moved to the top (no step added
- * or dropped). While one of that step's prerequisites is still to do, the
- * prerequisite goes first and the door's step right after it.
+ * The checklist with the door's first steps moved to the top, in order (no
+ * step added or dropped). While one of those steps' prerequisites is still to
+ * do, the prerequisite goes right before it. Reception moves nothing.
  */
 export function withFirstStep<T extends { id: string; done?: boolean }>(items: readonly T[], door: unknown): T[] {
-  const first = doorUi(door).firstStepId;
-  if (!items.some((x) => x.id === first)) return [...items];
-  const pending = (STEP_PREREQUISITES[first] ?? []).filter((p) => items.some((x) => x.id === p && !x.done));
-  const lead = [...pending, first];
+  const lead: string[] = [];
+  for (const step of doorUi(door).firstSteps) {
+    if (!items.some((x) => x.id === step)) continue;
+    const pending = (STEP_PREREQUISITES[step] ?? []).filter((p) => items.some((x) => x.id === p && !x.done));
+    for (const id of [...pending, step]) if (!lead.includes(id)) lead.push(id);
+  }
   const head = lead.map((id) => items.find((x) => x.id === id)!);
-  return [...head, ...items.filter((x) => !lead.includes(x.id as DoorStepId))];
+  return [...head, ...items.filter((x) => !lead.includes(x.id))];
 }
+
 
 /**
  * `path` with `door=<door>` when `raw` names a door other than the default

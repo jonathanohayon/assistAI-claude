@@ -21,12 +21,12 @@ export function DashboardTabs({
   // matche aucun PlanKey). Sans ce bypass, certains onglets seraient
   // masqués selon la matrice côté admin.
   isAdmin?: boolean;
-  /** The account's door: orders the tabs and names the home tab. */
+  /** The account's door: names the home tab (first for every door). */
   door?: Door | null;
 }) {
   const t = useTranslations("Dashboard");
   const pathname = usePathname();
-  const tabs = visibleTabs(features, isAdmin, door);
+  const tabs = visibleTabs(features, isAdmin);
   const homeLabel = t(doorUi(door).headerKey);
   // next-intl/navigation/usePathname renvoie le pathname SANS la locale
   // prefix (ex: "/dashboard/calendar" même quand l'URL est "/he/dashboard/..."),
