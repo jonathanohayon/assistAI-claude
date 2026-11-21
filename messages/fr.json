@@ -347,7 +347,18 @@
     "forwardingTitle": "Renvoyez votre numéro habituel",
     "forwardingDesc": "Gardez le numéro que vos clients connaissent : renvoyez-le vers Tamara, puis vérifiez avec un appel test.",
     "forwardingCta": "Configurer le renvoi",
-    "nextStep": "Prochaine étape : {step}"
+    "nextStep": "Prochaine étape : {step}",
+    "contactsTitle": "Importer vos contacts",
+    "contactsDesc": "Ajoutez la liste des personnes à appeler.",
+    "contactsCta": "Importer mes contacts",
+    "contactsLockedDesc": "Inclus dans le plan {plan}",
+    "contactsLockedCta": "Voir l'offre",
+    "agentUrlTitle": "Coller l'adresse de votre agent",
+    "agentUrlDesc": "Tamara pose les questions à votre propre agent pendant les appels.",
+    "agentUrlCta": "Ajouter l'adresse",
+    "liveTestTitle": "Tester en direct",
+    "liveTestDesc": "Parlez à votre agent depuis votre navigateur, sans numéro.",
+    "liveTestCta": "Lancer le test"
   },
   "SocialProof": {
     "facts": {
@@ -645,7 +656,10 @@
     "trialCallMinutesLeft": "{min} min d'appels restantes",
     "trialDaysLabel": "{days, plural, one {# jour} other {# jours}}",
     "trialFounderCall": "le fondateur vous appelle pour configurer Tamara",
-    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé"
+    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé",
+    "doorTitleReception": "Réceptionniste",
+    "doorTitleSales": "Ventes",
+    "doorTitleConnect": "Votre agent"
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -1004,7 +1018,7 @@
     "campaignsTileLabel": "Appels sortants",
     "campaignsTileTagline": "Centre d'appels IA — composez des leads en parallèle",
     "campaignsTileSummary": "Marketing · ventes · génération de leads",
-    "campaignsTileLocked": "Plan Pro — appuyez pour débloquer",
+    "campaignsTileLocked": "Inclus dans le plan {plan}",
     "wowTestSuccess": "Message de test envoyé ✓",
     "ownerEmailTitle": "Récap par email",
     "ownerEmailLabel": "Adresse email du propriétaire",
@@ -1080,7 +1094,8 @@
     "ownerEmailConfirmErrInvalidCode": "Ce code ne correspond pas. Vérifiez les 6 chiffres reçus.",
     "ownerEmailConfirmErrExpired": "Ce code a expiré. Demandez un nouveau code.",
     "ownerEmailConfirmErrTooManyAttempts": "Trop d'essais : ce code n'est plus valable. Demandez un nouveau code.",
-    "ownerEmailConfirmErrConfirmFailed": "La confirmation n'a pas abouti. Réessayez."
+    "ownerEmailConfirmErrConfirmFailed": "La confirmation n'a pas abouti. Réessayez.",
+    "tileStartHere": "Pour commencer"
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",
@@ -1627,7 +1642,14 @@
     "apiEndpointLabel": "Point d’accès",
     "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset.",
     "apiKeyPlaceholder": "<VOTRE_CLE>",
-    "developerSection": "Affichage"
+    "developerSection": "Affichage",
+    "doorLabel": "Mon usage principal",
+    "doorHint": "Change seulement l'ordre de votre tableau de bord. Vous gardez tous vos réglages.",
+    "doorOptionReception": "Réception d'appels",
+    "doorOptionSales": "Ventes (appels sortants)",
+    "doorOptionConnect": "Connecter mon agent",
+    "doorSaveError": "Votre choix n'a pas été enregistré. Réessayez.",
+    "doorResetNote": "Changer d'usage remet l'ordre de vos tuiles par défaut."
   },
   "DashboardBilling": {
     "header": "Abonnement",

@@ -16,6 +16,7 @@ import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { resolveDoor } from "@/lib/door";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
@@ -192,6 +193,7 @@ export default async function AdminTenantPage({
         lastUpdatedLabel={lastUpdated}
         stats={stats}
         asUserId={target.id}
+        door={resolveDoor(target.door)}
         promptBlocks={promptBlocksPreview}
         fullPromptConcat={fullPromptConcat}
       />

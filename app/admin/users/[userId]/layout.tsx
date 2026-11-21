@@ -9,7 +9,9 @@ import { signOut } from "@/auth";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
+import { DoorSelect } from "@/components/dashboard/DoorSelect";
 import { db } from "@/lib/db";
+import { resolveDoor } from "@/lib/door";
 import { users } from "@/lib/db/schema";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { getDemoUserId } from "@/lib/settings";
@@ -42,6 +44,7 @@ export default async function AdminTenantLayout({
       subscriptionPlan: users.subscriptionPlan,
       subscriptionStatus: users.subscriptionStatus,
       paidUntil: users.paidUntil,
+      door: users.door,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -71,6 +74,7 @@ export default async function AdminTenantLayout({
       : PLANS[0].key;
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
   const isDemo = (await getDemoUserId()) === target.id;
+  const door = resolveDoor(target.door);
   // "Illimité gratuit" = actif avec paidUntil très lointain (>= 2090).
   const isUnlimited =
     target.subscriptionStatus === "active" &&
@@ -133,12 +137,13 @@ export default async function AdminTenantLayout({
                 initialUnlimited={isUnlimited}
               />
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
+              <DoorSelect initialDoor={door} asUserId={target.id} compact />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
           </div>
         </div>
 
-        <AdminTenantTabs userId={target.id} />
+        <AdminTenantTabs userId={target.id} door={door} />
 
         <div className="relative z-10">{children}</div>
       </div>

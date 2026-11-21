@@ -8,6 +8,7 @@ import { Logo } from "@/components/ui/Logo";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { Link } from "@/i18n/navigation";
+import { withDoorParam } from "@/lib/doors-ui";
 
 import { AlreadyRegisteredModal } from "./already-registered-modal";
 
@@ -23,6 +24,7 @@ export default async function LoginPage(props: {
     callbackUrl?: string;
     reason?: string;
     notice?: string;
+    door?: string;
   }>;
 }) {
   const { locale } = await props.params;
@@ -34,6 +36,7 @@ export default async function LoginPage(props: {
     callbackUrl = "/dashboard",
     reason,
     notice,
+    door,
   } = await props.searchParams;
   const t = await getTranslations({ locale, namespace: "Login" });
 
@@ -203,7 +206,7 @@ export default async function LoginPage(props: {
           <p className="text-center text-xs text-[var(--color-muted-foreground)]">
             {t("noAccount")}{" "}
             <Link
-              href="/signup"
+              href={withDoorParam("/signup", door)}
               className="text-[var(--color-primary)] hover:underline"
             >
               {t("signupLink")}

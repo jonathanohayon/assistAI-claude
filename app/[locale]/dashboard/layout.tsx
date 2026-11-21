@@ -11,6 +11,7 @@ import { LocaleSwitcher } from "@/components/marketing/LocaleSwitcher";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
+import { resolveDoor } from "@/lib/door";
 import { calls, users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -313,7 +314,7 @@ async function DashboardShell({
         </div>
       )}
 
-      <DashboardTabs features={features} isAdmin={me?.role === "admin"} />
+      <DashboardTabs features={features} isAdmin={me?.role === "admin"} door={resolveDoor(me?.door ?? null)} />
 
       {/* Wrapper relative z-10 → le contenu passe au-dessus du mesh aurora
        *  (qui est en `fixed z-0`). Sans ça, le content static serait derrière. */}
