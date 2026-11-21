@@ -65,4 +65,30 @@ assert.deepEqual(effectiveSpokenLanguages(DEFAULT_PERSONA), [], "default persona
   assert.match(o, /^Mock instructions\n\nLANGUES PARLÉES : hébreu \(he\), français \(fr\)\. Commence en hébreu\./);
 }
 
+// outbound, one language that is not French: one written line (the campaign
+// instructions are French, so without it an EN / HE call drifts to French)
+{
+  const MULTI_FR_EN = "LANGUES PARLÉES : français (fr), anglais (US) (en). Commence en français. Si la personne parle l'une de ces langues, poursuis dans la sienne ; sinon reste en français.";
+  const MULTI_EN_FR = "LANGUES PARLÉES : anglais (US) (en), français (fr). Commence en anglais (US). Si la personne parle l'une de ces langues, poursuis dans la sienne ; sinon reste en anglais (US).";
+  const EN_ONLY = "LANGUE PARLÉE : anglais (US) (en). Parle uniquement en anglais (US), du début à la fin de l'appel.";
+  const HE_ONLY = "LANGUE PARLÉE : hébreu (he). Parle uniquement en hébreu, du début à la fin de l'appel.";
+  // fr-only → "" (byte-identical to today)
+  assert.equal(outboundLanguageBlock("fr", []), "");
+  assert.equal(outboundLanguageBlock("fr", ["fr"]), "");
+  // en-only / he-only → the line
+  assert.equal(outboundLanguageBlock("en", []), EN_ONLY);
+  assert.equal(outboundLanguageBlock("en", ["en"]), EN_ONLY);
+  assert.equal(outboundLanguageBlock("he", []), HE_ONLY);
+  assert.equal(withOutboundLanguages("Mock instructions", "he", []), `Mock instructions\n\n${HE_ONLY}`);
+  // multi-language → today's block, unchanged
+  assert.equal(outboundLanguageBlock("fr", ["en"]), MULTI_FR_EN);
+  assert.equal(outboundLanguageBlock("en", ["fr"]), MULTI_EN_FR);
+  assert.equal(outboundLanguageBlock("en", ["en", "fr"]), MULTI_EN_FR);
+  // empty primary → French behaviour (no block); unknown code → no block
+  assert.equal(outboundLanguageBlock("", []), "");
+  assert.equal(withOutboundLanguages("Mock instructions", "", []), "Mock instructions");
+  assert.equal(outboundLanguageBlock("xx", []), "");
+  assert.equal(outboundLanguageBlock("toString", []), "");
+}
+
 console.log("ALL PERSONA-LANGUAGES TESTS PASSED");
