@@ -31,7 +31,7 @@ const business = {
   services: [], centresRules: "", knowledgeBase: "",
 };
 const input = {
-  config: { inheritAdminGlobals: true, primaryLanguage: "fr", personaConfig: null, business, instructions: "Mock tenant instructions.", knowledge: null },
+  config: { inheritAdminGlobals: true, primaryLanguage: "fr", personaConfig: null, business, instructions: "Mock tenant instructions.", knowledge: null, voiceProfile: null },
   planKey: "premium",
   directives,
   capabilities: { calendar: true, crm: true, orders: false },
