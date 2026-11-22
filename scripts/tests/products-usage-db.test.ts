@@ -7,6 +7,7 @@
 //        and byte-identical whatever calls.product holds;
 //      - record-holder: the SAME bytes once usageByProduct is removed
 //        (purely additive), and the per-entry numbers over real rows;
+//      - trialing / trial_paused: the sign-up trial cap with the gate's count;
 //   3. the dashboard calls list / detail and logs responses are
 //      byte-identical with calls.product NULL and set;
 //   4. usage warnings with the REAL deps (query, claim, usage) and only the
@@ -157,6 +158,71 @@ async function main() {
     });
   }
   console.log("ok: billing-stats grandfathered byte-identical, record-holder additive usageByProduct");
+
+  // ── 2b. billing-stats while trialing: the sign-up trial cap ──────────
+  // The reception entry shows TRIAL_MINUTES_INCLUDED and exactly the seconds
+  // the inbound trial gate counts (all time, not the period), no overage, and
+  // `signupTrial`; once paid, the catalogue over the period again.
+  // Grandfathered trialing: no usageByProduct, bytes unmoved by old calls.
+  {
+    const { TRIAL_MINUTES_INCLUDED } = await import("../../lib/trial");
+    const { inboundTrialRefusal, signupTrialSecondsUsed } = await import("../../lib/agent/session-config/trial-gate");
+    const ends = new Date(NOW + 5 * 86400_000);
+    const old = new Date(NOW - 400 * 86400_000).toISOString(); // far outside any period window
+    await db.execute(sql`UPDATE users SET trial_ends_at = ${ends.toISOString()} WHERE id = ${TRIAL}`);
+    await db.execute(sql`DELETE FROM calls WHERE user_id = ${TRIAL}`);
+    await addCall(TRIAL, 30 * 60, null);
+    await addCall(TRIAL, 5 * 60, "connect");
+    await db.execute(sql`INSERT INTO calls (user_id, from_number, to_number, duration_seconds, product, created_at) VALUES (${TRIAL}, '+15550000103', '+15550000104', ${80 * 60}, NULL, ${old})`);
+    const gateSeconds = await signupTrialSecondsUsed(TRIAL);
+    assert.equal(gateSeconds, (30 + 5 + 80) * 60, "gate count: every calls row, all time");
+    const refusal = await inboundTrialRefusal({ id: TRIAL, subscriptionStatus: "trialing", trialEndsAt: ends, role: "user" });
+    assert.equal(refusal?.cause, "minutes", "115 min > 100: the gate refuses");
+    assert.equal(refusal?.trialSecondsUsed, gateSeconds, "the gate reports the same count");
+    type Entry = Record<string, unknown> & { entry: string };
+    const receptionOf = async () => {
+      const body = JSON.parse(await stats(TRIAL)) as { usageByProduct: { kind: string; entries: Entry[] } };
+      assert.equal(body.usageByProduct.kind, "products");
+      return { all: body.usageByProduct.entries, reception: body.usageByProduct.entries.find((x) => x.entry === "reception")! };
+    };
+    for (const status of ["trialing", "trial_paused"]) {
+      await db.execute(sql`UPDATE users SET subscription_status = ${status} WHERE id = ${TRIAL}`);
+      const { all, reception } = await receptionOf();
+      assert.equal(TRIAL_MINUTES_INCLUDED, 100);
+      assert.deepEqual(reception, {
+        entry: "reception",
+        owned: true,
+        products: ["reception"],
+        usedSeconds: gateSeconds,
+        usedMinutes: Math.round(gateSeconds / 60),
+        includedMinutes: 100,
+        overageMinutes: 0,
+        overageRate: DEFAULT_PRODUCT_CATALOGUE.reception.EUR.overagePerMin,
+        overageAmount: 0,
+        signupTrial: { endsAt: ends.toISOString(), minutesIncluded: 100, usedMinutes: Math.round(gateSeconds / 60) },
+      }, `${status}: the trial cap, the gate's count`);
+      assert.ok(all.every((x) => x.overageMinutes === 0 && x.overageAmount === 0), `${status}: no overage on any entry`);
+    }
+    // Paid: the catalogue minutes over the period, no signupTrial.
+    await db.execute(sql`UPDATE users SET subscription_status = 'active', paid_until = ${paidUntil.toISOString()} WHERE id = ${TRIAL}`);
+    {
+      const { reception } = await receptionOf();
+      assert.ok(!("signupTrial" in reception), "active: no signupTrial");
+      assert.equal(reception.includedMinutes, DEFAULT_PRODUCT_CATALOGUE.reception.EUR.minutes, "active: catalogue minutes");
+      assert.equal(reception.usedSeconds, 30 * 60, "active: the period only (the old call is outside)");
+    }
+    await db.execute(sql`UPDATE users SET subscription_status = 'trialing', paid_until = NULL WHERE id = ${TRIAL}`);
+    // Grandfathered trialing (no record): pre-P2 keys, and old calls change no byte.
+    await db.execute(sql`UPDATE users SET products = NULL WHERE id = ${TRIAL}`);
+    await db.execute(sql`DELETE FROM calls WHERE user_id = ${TRIAL} AND created_at = ${old}`);
+    const gfTrial = await stats(TRIAL);
+    assert.deepEqual(Object.keys(JSON.parse(gfTrial) as object), PRE_P2_KEYS, "grandfathered trialing: the pre-P2 keys");
+    await db.execute(sql`INSERT INTO calls (user_id, from_number, to_number, duration_seconds, product, created_at) VALUES (${TRIAL}, '+15550000103', '+15550000104', ${80 * 60}, NULL, ${old})`);
+    assert.equal(await stats(TRIAL), gfTrial, "grandfathered trialing: byte-identical with an old call added");
+    await db.execute(sql`UPDATE users SET products = ${JSON.stringify({ base: "reception", addons: [] })}::jsonb, trial_ends_at = NULL WHERE id = ${TRIAL}`);
+    await db.execute(sql`DELETE FROM calls WHERE user_id = ${TRIAL}`);
+  }
+  console.log("ok: billing-stats trialing / trial_paused shows the sign-up trial cap with the gate's count; active = catalogue; grandfathered unchanged");
 
   // ── 3. Dashboard calls / logs: byte-identical, calls.product NULL vs set ─
   {

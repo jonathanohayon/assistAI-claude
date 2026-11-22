@@ -22,6 +22,7 @@ import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import type { Entitlement } from "./product-entitlement";
 import type { TrialUsage } from "./product-trials";
 import { PRODUCT_ENTRIES, entryOf, type Product, type ProductEntry } from "./product-values";
+import { TRIAL_MINUTES_INCLUDED } from "./trial";
 
 export type UsageCall = { durationSeconds: number; product: string | null; createdAt: Date };
 export type UsageCampaignCall = { durationSeconds: number; createdAt: Date };
@@ -41,6 +42,21 @@ export type EntryUsage = {
   overageRate: number;
   /** overageMinutes × overageRate, rounded to cents, in `currency`. */
   overageAmount: number;
+  /**
+   * Present only on the reception entry while the account is on its sign-up
+   * trial (trialing / trial_paused, non-admin). The entry then carries the
+   * trial cap instead of the catalogue: includedMinutes =
+   * TRIAL_MINUTES_INCLUDED, usedSeconds / usedMinutes = what the trial gate
+   * counts (all-time calls seconds, not the period), and no overage.
+   */
+  signupTrial?: SignupTrialCap;
+};
+
+export type SignupTrialCap = {
+  /** users.trialEndsAt, ISO; null when unset. */
+  endsAt: string | null;
+  minutesIncluded: number;
+  usedMinutes: number;
 };
 
 export type PoolUsage = {
@@ -75,6 +91,13 @@ export type UsageByProductInput = {
   planMinutes: number;
   /** Grandfathered pool: OVERAGE_RATE_ILS_PER_MIN. */
   planOverage: number;
+  /**
+   * The sign-up trial, when its gate applies (trialing / trial_paused,
+   * non-admin): `secondsUsed` is the gate's own count
+   * (signupTrialSecondsUsed). Absent = a paid account: catalogue minutes over
+   * the period, exactly as before. Ignored for a grandfathered account.
+   */
+  signupTrial?: { endsAt: Date | null; secondsUsed: number };
 };
 
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -126,6 +149,26 @@ export function usageByProduct(input: UsageByProductInput): UsageByProduct {
   for (const entry of PRODUCT_ENTRIES) {
     const products = owned.filter((p) => entryOf(p) === entry);
     const isOwned = products.length > 0;
+    const trial = entry === "reception" ? input.signupTrial : undefined;
+    if (trial) {
+      // The sign-up trial cap: the gate refuses calls at the cap, so there
+      // is no overage; the reception entry is always shown.
+      const usedSeconds = seconds(trial.secondsUsed);
+      const usedMinutes = Math.round(usedSeconds / 60);
+      entries.push({
+        entry,
+        owned: isOwned,
+        products,
+        usedSeconds,
+        usedMinutes,
+        includedMinutes: TRIAL_MINUTES_INCLUDED,
+        overageMinutes: 0,
+        overageRate: input.catalogue[products[0] ?? entry][input.currency].overagePerMin,
+        overageAmount: 0,
+        signupTrial: { endsAt: trial.endsAt ? trial.endsAt.toISOString() : null, minutesIncluded: TRIAL_MINUTES_INCLUDED, usedMinutes },
+      });
+      continue;
+    }
     if (!isOwned && used[entry] === 0) continue;
     const includedMinutes = products.reduce((s, p) => s + input.catalogue[p][input.currency].minutes, 0);
     // The rate: the base product's when it maps here, else the first owned
@@ -133,7 +176,8 @@ export function usageByProduct(input: UsageByProductInput): UsageByProduct {
     const rateProduct: Product = products[0] ?? entry;
     const overageRate = input.catalogue[rateProduct][input.currency].overagePerMin;
     const usedMinutes = Math.round(used[entry] / 60);
-    const overageMinutes = Math.max(0, usedMinutes - includedMinutes);
+    // No overage during the sign-up trial, on any entry.
+    const overageMinutes = input.signupTrial ? 0 : Math.max(0, usedMinutes - includedMinutes);
     entries.push({
       entry,
       owned: isOwned,

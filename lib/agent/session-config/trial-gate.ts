@@ -6,13 +6,30 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { calls } from "@/lib/db/schema";
-import { TRIAL_PAUSED_STATUS, trialExhaustionCause, type TrialExhaustionCause } from "@/lib/trial";
+import { signupTrialGateApplies, trialExhaustionCause, type TrialExhaustionCause } from "@/lib/trial";
+
+export { signupTrialGateApplies };
 
 export interface TrialGateUser {
   id: string;
   subscriptionStatus: string;
   trialEndsAt: Date | null;
   role: string | null;
+}
+
+/**
+ * The seconds the sign-up trial gate counts: every calls row of the account,
+ * all time (no billing period). The ONE count, shared by the gate and the
+ * billing display, so they can never disagree.
+ */
+export async function signupTrialSecondsUsed(userId: string): Promise<number> {
+  const [usage] = await db
+    .select({
+      seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
+    })
+    .from(calls)
+    .where(eq(calls.userId, userId));
+  return usage?.seconds ?? 0;
 }
 
 /**
@@ -27,19 +44,8 @@ export interface TrialGateUser {
 export async function inboundTrialRefusal(
   user: TrialGateUser,
 ): Promise<{ trialSecondsUsed: number; cause: TrialExhaustionCause } | null> {
-  if (
-    !(user.subscriptionStatus === "trialing" || user.subscriptionStatus === TRIAL_PAUSED_STATUS) ||
-    user.role === "admin"
-  ) {
-    return null;
-  }
-  const [usage] = await db
-    .select({
-      seconds: sql<number>`coalesce(sum(${calls.durationSeconds}), 0)::int`,
-    })
-    .from(calls)
-    .where(eq(calls.userId, user.id));
-  const trialSecondsUsed = usage?.seconds ?? 0;
+  if (!signupTrialGateApplies(user)) return null;
+  const trialSecondsUsed = await signupTrialSecondsUsed(user.id);
   const cause = trialExhaustionCause({
     subscriptionStatus: user.subscriptionStatus,
     trialEndsAt: user.trialEndsAt,

@@ -7,6 +7,7 @@
 
 import { and, eq, gte, lte } from "drizzle-orm";
 
+import { signupTrialGateApplies, signupTrialSecondsUsed } from "@/lib/agent/session-config/trial-gate";
 import { db } from "@/lib/db";
 import { calls, campaignCalls } from "@/lib/db/schema";
 import type { CatalogueCurrency } from "@/lib/product-catalogue";
@@ -22,6 +23,11 @@ export async function accountUsageByProduct(opts: {
   currency: CatalogueCurrency;
   planMinutes: number;
   planOverage: number;
+  /**
+   * Status / role / trialEndsAt: decide whether the sign-up trial cap shows.
+   * Absent (usage warnings, paying accounts only) = no trial cap, as before.
+   */
+  account?: { subscriptionStatus: string; role: string | null; trialEndsAt: Date | null };
   now?: Date;
 }): Promise<UsageByProduct> {
   const { userId, window } = opts;
@@ -42,6 +48,11 @@ export async function accountUsageByProduct(opts: {
     currency: opts.currency,
     planMinutes: opts.planMinutes,
     planOverage: opts.planOverage,
+    // While the sign-up trial gate applies, the reception entry shows its
+    // cap, with the gate's own count (one function: they cannot disagree).
+    ...(opts.account && signupTrialGateApplies(opts.account)
+      ? { signupTrial: { endsAt: opts.account.trialEndsAt, secondsUsed: await signupTrialSecondsUsed(userId) } }
+      : {}),
   });
   // P3, additive: per-product trials (minutes included / used since each
   // trial started). No trial row = no extra read beyond the rows lookup and
