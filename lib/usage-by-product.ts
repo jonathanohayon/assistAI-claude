@@ -20,6 +20,7 @@
 
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import type { Entitlement } from "./product-entitlement";
+import type { TrialUsage } from "./product-trials";
 import { PRODUCT_ENTRIES, entryOf, type Product, type ProductEntry } from "./product-values";
 
 export type UsageCall = { durationSeconds: number; product: string | null; createdAt: Date };
@@ -53,7 +54,13 @@ export type PoolUsage = {
 };
 
 export type UsageByProduct =
-  | { kind: "products"; currency: CatalogueCurrency; entries: EntryUsage[] }
+  | {
+      kind: "products";
+      currency: CatalogueCurrency;
+      entries: EntryUsage[];
+      /** P3, additive: present only when the account has per-product trial rows. */
+      trials?: TrialUsage[];
+    }
   | { kind: "pool"; currency: "ILS"; entries: [PoolUsage] };
 
 export type UsageByProductInput = {

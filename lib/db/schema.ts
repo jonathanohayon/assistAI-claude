@@ -386,6 +386,31 @@ export const usageWarnings = pgTable(
   ],
 );
 
+// Per-product trials (P3): 7 days + 30 minutes, no card, ONCE per account ×
+// product. The unique (user_id, product) IS the "once" guarantee: the
+// "Essayer gratuitement" endpoint inserts with ON CONFLICT DO NOTHING.
+// Billing only, never served to the worker. lib/product-trials*.ts.
+export const accountProductTrials = pgTable(
+  "account_product_trials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // A catalogue product ('reception' | 'reception_multi' | 'sales' | 'connect').
+    product: text("product").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    minutesIncluded: integer("minutes_included").notNull(),
+  },
+  (t) => [
+    unique("account_product_trials_once").on(t.userId, t.product),
+    check("account_product_trials_product_check", sql`${t.product} IN ('reception', 'reception_multi', 'sales', 'connect')`),
+  ],
+);
+
 // ─── Outbound call center (campagnes sortantes) ──────────────────────────
 // Un agent sortant réutilisable = une identité d'appel (voix + persona +
 // business/connaissance + notifs + canaux). Plusieurs campagnes peuvent

@@ -9,6 +9,8 @@ import { campaignContacts } from "@/lib/db/schema";
 import { claimCampaignJobs } from "@/lib/campaigns/claim";
 import { dialContact } from "@/lib/campaigns/dial";
 import { dispatchMode, type DryRunCounts } from "@/lib/campaigns/dispatch-mode";
+import type { SalesTrialRefusal } from "@/lib/campaigns/sales-trial-cap";
+import { salesTrialGate } from "@/lib/campaigns/sales-trial-gate";
 import {
   campaignBlockers,
   DISPATCH_TICK_KEY,
@@ -33,13 +35,31 @@ export interface DispatchDeps {
   claim: typeof claimCampaignJobs;
   dial: typeof dialContact;
   env: Record<string, string | undefined>;
+  /** P3: the sales trial cap (null = dial as before). */
+  salesTrialGate: (userId: string) => Promise<SalesTrialRefusal | null>;
 }
-const DEFAULT_DEPS: DispatchDeps = { claim: claimCampaignJobs, dial: dialContact, env: process.env };
+const DEFAULT_DEPS: DispatchDeps = {
+  claim: claimCampaignJobs,
+  dial: dialContact,
+  env: process.env,
+  salesTrialGate: (userId) => salesTrialGate(userId),
+};
 
 async function requeue(contactId: string): Promise<void> {
   await db
     .update(campaignContacts)
     .set({ status: "queued", claimedAt: null, callState: "", callStateAt: null })
+    .where(eq(campaignContacts.id, contactId));
+}
+
+/**
+ * A dial refused by the sales trial cap: the claim is undone (queued again,
+ * the attempt the claim counted given back), so the contact simply waits.
+ */
+async function unclaim(contactId: string): Promise<void> {
+  await db
+    .update(campaignContacts)
+    .set({ status: "queued", claimedAt: null, attempts: sql`greatest(${campaignContacts.attempts} - 1, 0)` })
     .where(eq(campaignContacts.id, contactId));
 }
 
@@ -72,8 +92,30 @@ export async function dispatchDueJobs(
     perCampaign.set(id, r);
   };
 
+  // P3 sales trial cap, once per account per tick. An account with no
+  // sales trial row (paid, grandfathered) is never refused: unchanged.
+  const trialRefusals = new Map<string, SalesTrialRefusal | null>();
+  const trialLogged = new Set<string>();
+
   for (const job of jobs) {
     bump(job.campaignId, "claimed");
+    if (!trialRefusals.has(job.userId)) trialRefusals.set(job.userId, await d.salesTrialGate(job.userId));
+    const refusal = trialRefusals.get(job.userId) ?? null;
+    if (refusal) {
+      await unclaim(job.contactId);
+      // One event per account per tick; no PII (ids and the reason only).
+      if (!trialLogged.has(job.userId)) {
+        trialLogged.add(job.userId);
+        await logEvent({
+          source: "web",
+          event: "campaign_dial_skipped",
+          message: `Not dialled: ${refusal}`,
+          userId: job.userId,
+          metadata: { campaignId: job.campaignId, contactId: job.contactId, reason: refusal },
+        });
+      }
+      continue;
+    }
     // Format parsé par le worker (detectOrigin) pour reconnaître l'appel
     // comme campagne dès l'entrée, sans dépendre de la metadata SIP/job :
     //   campaign__<campaignId>__<contactId>__<attempts>
