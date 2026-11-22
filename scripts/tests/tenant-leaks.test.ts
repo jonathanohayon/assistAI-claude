@@ -16,7 +16,7 @@ const names = new RegExp(`\\b(?:${(TOOL_NAMES as string[]).join("|")})\\b`);
 for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json`), names, `${l}: a message names a tool`);
 
 // The tenant dashboard passes the shared directives to admins only.
-assert.match(read("app/[locale]/dashboard/page.tsx"), /const adminInheritablePreview = isAdmin\s*\?/);
+assert.match(read("app/[locale]/dashboard/config/config-page.tsx"), /const adminInheritablePreview = isAdmin\s*\?/);
 
 // The tenant-facing box listing the technical tool names is gone.
 assert.doesNotMatch(read("app/[locale]/dashboard/config/persona-panel.tsx"), /ToolsAvailableHint/);

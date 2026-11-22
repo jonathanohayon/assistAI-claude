@@ -106,8 +106,8 @@ assert.equal(fetches, 0, "rendering never fetches");
     assert.ok(messages(l).DashboardLogs.metaTitle.startsWith(expected[l]), `${l}: page title`);
   }
   // The menu table lives in lib/dashboard-nav.ts (tenant and admin view).
-  assert.match(read("lib/dashboard-nav.ts"), /calls: "\/calls",[\s\S]*calls: "\/calls",/);
-  assert.match(read("lib/dashboard-nav.ts"), /"\/logs": "\/calls"/);
+  assert.match(read("lib/dashboard-nav.ts"), /calls: "calls",[\s\S]*calls: "calls",/);
+  assert.match(read("lib/dashboard-nav.ts"), /"\/logs": "calls"/);
   assert.match(read(PAGE), /title: t\("metaTitle"\)/, "page metadata uses the Calls title");
 }
 

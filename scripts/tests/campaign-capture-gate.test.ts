@@ -231,7 +231,7 @@ for (const isAdmin of [false, true]) {
 // 7. The switch reaches the client as one boolean from the server page; no
 //    client file reads the env or imports the server reader.
 {
-  const page = read("app/[locale]/dashboard/campaigns/page.tsx");
+  const page = read("app/[locale]/dashboard/sales/page.tsx");
   assert.match(page, /captureOn=\{captureMode\(\) === "on"\}/);
   for (const f of [
     "campaigns-page-client.tsx",

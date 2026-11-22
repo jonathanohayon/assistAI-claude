@@ -24,7 +24,9 @@ if (!base || !email || !password) {
 // NextAuth basePath (auth.ts).
 const AUTH = "/api/admin/auth";
 // Every tenant page under /dashboard, in the three languages.
-const TENANT_PATHS = ["/dashboard", "/dashboard/settings", "/dashboard/billing", "/dashboard/calendar", "/dashboard/contacts", "/dashboard/crm", "/dashboard/logs", "/dashboard/forwarding", "/dashboard/campaigns"];
+// The left menu's pages first; the old URLs after them (they redirect, so a
+// 307 is reported as skipped, not checked twice).
+const TENANT_PATHS = ["/dashboard/reception", "/dashboard/reception/forwarding", "/dashboard/sales", "/dashboard/agent", "/dashboard/my-agent", "/dashboard/calls", "/dashboard/clients", "/dashboard/settings", "/dashboard/billing", "/dashboard", "/dashboard/calendar", "/dashboard/contacts", "/dashboard/crm", "/dashboard/logs", "/dashboard/forwarding", "/dashboard/campaigns"];
 const PAGES = ["fr", "en", "he"].flatMap((l) => TENANT_PATHS.map((p) => `/${l}${p}`));
 
 let cookie = "";

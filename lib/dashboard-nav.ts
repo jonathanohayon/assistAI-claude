@@ -19,30 +19,30 @@ export type NavEntryId = ProductEntry | SharedEntry;
 
 export const SHARED_ENTRIES: readonly SharedEntry[] = ["myAgent", "calls", "clients", "billing", "settings"];
 
-/** Route of each entry, under /dashboard (tenant) — the page's own path. */
+/** Route segment(s) of each entry, under /dashboard (tenant). */
 export const ENTRY_SUFFIX: Readonly<Record<NavEntryId, string>> = {
-  reception: "/reception",
-  sales: "/sales",
-  connect: "/agent",
-  myAgent: "/my-agent",
-  calls: "/calls",
-  clients: "/clients",
-  billing: "/billing",
-  settings: "/settings",
+  reception: "reception",
+  sales: "sales",
+  connect: "agent",
+  myAgent: "my-agent",
+  calls: "calls",
+  clients: "clients",
+  billing: "billing",
+  settings: "settings",
 };
 
 /**
- * Route of each entry in the admin tenant view, under /admin/users/<id>.
+ * Route segment of each entry in the admin tenant view, under /admin/users/<id>.
  * null = no admin page for it (the tenant's own settings): not in the admin menu.
  */
 export const ADMIN_ENTRY_SUFFIX: Readonly<Record<NavEntryId, string | null>> = {
-  reception: "/reception",
-  sales: "/sales",
-  connect: "/agent",
-  myAgent: "/my-agent",
-  calls: "/calls",
-  clients: "/clients",
-  billing: "/finance",
+  reception: "reception",
+  sales: "sales",
+  connect: "agent",
+  myAgent: "my-agent",
+  calls: "calls",
+  clients: "clients",
+  billing: "finance",
   settings: null,
 };
 
@@ -86,7 +86,7 @@ export function navBase(asUserId?: string | null): string {
 
 export function entryHref(id: NavEntryId, asUserId?: string | null): string | null {
   const suffix = asUserId ? ADMIN_ENTRY_SUFFIX[id] : ENTRY_SUFFIX[id];
-  return suffix === null ? null : `${navBase(asUserId)}${suffix}`;
+  return suffix === null ? null : `${navBase(asUserId)}/${suffix}`;
 }
 
 /** The two blocks of the menu for an account (its door and its product menu). */
@@ -147,21 +147,21 @@ export const TILE_ENTRY: Readonly<Record<string, NavEntryId>> = {
   campaigns: "sales",
 };
 
-/** Old tenant paths (under /dashboard) and where they go. "" = /dashboard itself. */
+/** Old tenant paths (under /dashboard) → their new segments. "" (/dashboard itself) is handled by legacyTarget. */
 export const LEGACY_TENANT_PATHS: Readonly<Record<string, string>> = {
-  "/logs": "/calls",
-  "/crm": "/clients",
-  "/calendar": "/clients",
-  "/contacts": "/clients",
-  "/campaigns": "/sales",
-  "/forwarding": "/reception/forwarding",
+  "/logs": "calls",
+  "/crm": "clients",
+  "/calendar": "clients",
+  "/contacts": "clients",
+  "/campaigns": "sales",
+  "/forwarding": "reception/forwarding",
 };
 
-/** Old admin tenant-view paths (under /admin/users/<id>). "" = the view itself. */
+/** Old admin tenant-view paths (under /admin/users/<id>) → their new segments. */
 export const LEGACY_ADMIN_PATHS: Readonly<Record<string, string>> = {
-  "/logs": "/calls",
-  "/calendar": "/clients",
-  "/contacts": "/clients",
+  "/logs": "calls",
+  "/calendar": "clients",
+  "/contacts": "clients",
 };
 
 export type SearchParams = Record<string, string | string[] | undefined>;
@@ -198,5 +198,5 @@ export function legacyTarget(
   }
   const map = asUserId ? LEGACY_ADMIN_PATHS : LEGACY_TENANT_PATHS;
   const to = Object.prototype.hasOwnProperty.call(map, oldSuffix) ? map[oldSuffix] : undefined;
-  return to === undefined ? null : `${base}${to}${q}`;
+  return to === undefined ? null : `${base}/${to}${q}`;
 }
