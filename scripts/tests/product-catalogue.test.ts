@@ -89,12 +89,14 @@ async function main() {
   console.log("ok: strict parser");
 
   // ── Stored row → catalogue ──────────────────────────────────────────────
+  // E2: the stored row also yields its engine overrides (none here).
+  const NONE = { reception: null, reception_multi: null, sales: null, connect: null };
   const edited = clone(D);
   edited.sales.EUR.monthly = 159;
-  assert.deepEqual(catalogueFromStored(null), { catalogue: D, source: "default" });
-  assert.deepEqual(catalogueFromStored(JSON.stringify(edited)), { catalogue: edited, source: "stored" });
+  assert.deepEqual(catalogueFromStored(null), { catalogue: D, engineOverrides: NONE, source: "default" });
+  assert.deepEqual(catalogueFromStored(JSON.stringify(edited)), { catalogue: edited, engineOverrides: NONE, source: "stored" });
   for (const raw of ["", "{", "null", "[]", JSON.stringify({ ...edited, gold: {} }), JSON.stringify({ reception: D.reception })]) {
-    assert.deepEqual(catalogueFromStored(raw), { catalogue: D, source: "invalid" }, `invalid row ${raw.slice(0, 30)} → defaults`);
+    assert.deepEqual(catalogueFromStored(raw), { catalogue: D, engineOverrides: NONE, source: "invalid" }, `invalid row ${raw.slice(0, 30)} → defaults`);
   }
   let alerts = 0;
   const deps = (raw: string | null) => ({ read: async () => raw, onInvalid: () => void alerts++ });
@@ -173,7 +175,8 @@ async function main() {
     const first = body.slice(0, 200);
     assert.match(first, /const guard = await requireAdmin\(\);\s*if \(!guard\.ok\) return guard\.response;/, `${m} is admin-only first`);
   }
-  assert.match(admin, /catalogueWrite\(stored, body\)/, "PUT goes through the raw-body helper");
+  assert.match(admin, /catalogueRowWrite\(stored, body\)/, "PUT goes through the raw-body helper (E2: the row helper, which runs catalogueWrite)");
+  assert.match(code("lib/product-catalogue-row.ts"), /catalogueWrite\(stored\.catalogue, priceBody\)/, "prices keep the catalogueWrite rules");
   assert.match(code("app/api/public/plan-pricing/route.ts"), /publicPlanPricingResponse\(getPlanPricingMap, \(\) => getProductCatalogue\(\)\)/);
   // P2: billing-stats reads products ONLY to add usageByProduct for a valid
   // record (the bytes are proven in scripts/products-usage-db.sh).

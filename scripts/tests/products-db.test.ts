@@ -52,6 +52,7 @@ async function main() {
   const billing = await import("../../app/api/dashboard/billing-stats/route");
 
   const KEY = SETTING_KEYS.PRODUCT_CATALOGUE;
+  const NO_OVERRIDES = { reception: null, reception_multi: null, sales: null, connect: null };
   assert.equal(KEY, "product_catalogue_v1");
   const clearCatalogue = () => db.execute(sql`DELETE FROM app_settings WHERE key = ${KEY}`);
   const setProducts = (uid: string, v: unknown) =>
@@ -136,14 +137,21 @@ async function main() {
   assert.deepEqual(await call(TENANT, "GET"), { status: 403, body: { error: "forbidden" } });
   assert.deepEqual(await call(TENANT, "PUT", { catalogue: { sales: { EUR: { monthly: 1 } } } }), { status: 403, body: { error: "forbidden" } });
   assert.equal(await storedRaw(), null, "a refused write writes nothing");
-  assert.deepEqual(await call(ADMIN, "GET"), { status: 200, body: { catalogue: DEFAULT_PRODUCT_CATALOGUE } });
+  {
+    // E2 added engineOverrides + engineOptions ADDITIVELY (scripts/engine-override-db.sh covers them).
+    const r = await call(ADMIN, "GET");
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.body), ["catalogue", "engineOverrides", "engineOptions"]);
+    assert.deepEqual(r.body.catalogue, DEFAULT_PRODUCT_CATALOGUE);
+    assert.deepEqual(r.body.engineOverrides, NO_OVERRIDES);
+  }
   // (1) the admin changes one field: only it changes.
   {
     const r = await call(ADMIN, "PUT", { catalogue: { sales: { ILS: { monthly: 579, annual: 5790 } } } });
     const exp = structuredClone(DEFAULT_PRODUCT_CATALOGUE);
     exp.sales.ILS.monthly = 579;
     exp.sales.ILS.annual = 5790;
-    assert.deepEqual(r, { status: 200, body: { ok: true, catalogue: exp } });
+    assert.deepEqual(r, { status: 200, body: { ok: true, catalogue: exp, engineOverrides: NO_OVERRIDES } });
     assert.deepEqual(JSON.parse((await storedRaw())!), exp);
   }
   const afterWrite = await storedRaw();
@@ -151,7 +159,7 @@ async function main() {
   {
     const cur = (await call(ADMIN, "GET")).body.catalogue;
     await db.execute(sql`UPDATE app_settings SET updated_at = '2020-01-01T00:00:00Z' WHERE key = ${KEY}`);
-    assert.deepEqual(await call(ADMIN, "PUT", { catalogue: cur }), { status: 200, body: { ok: true, catalogue: cur } });
+    assert.deepEqual(await call(ADMIN, "PUT", { catalogue: cur }), { status: 200, body: { ok: true, catalogue: cur, engineOverrides: NO_OVERRIDES } });
     const [r] = (await db.execute(sql`SELECT updated_at FROM app_settings WHERE key = ${KEY}`)) as unknown as Array<{ updated_at: Date | string }>;
     assert.equal(new Date(r.updated_at).toISOString(), "2020-01-01T00:00:00.000Z", "an unchanged re-send writes nothing");
   }
