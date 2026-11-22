@@ -669,7 +669,16 @@
     "languageFr": "צרפתית",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "נקצה לך מספר ייעודי — כלול בניסיון החינם."
+    "subtitleWhatsapp": "נקצה לך מספר ייעודי — כלול בניסיון החינם.",
+    "welcomeTitle": "ברוכים הבאים. פתיחת {product} בקרוב.",
+    "welcomeRecorded": "הבקשה שלכם נרשמה: אתם תהיו הראשונים לדעת.",
+    "welcomeRecording": "רושמים את הבקשה שלכם…",
+    "welcomeRecordFailed": "לא הצלחנו לרשום את הבקשה שלכם.",
+    "welcomeRecordRetry": "נסו שוב",
+    "welcomePreview": "לצפייה בתצוגה המקדימה",
+    "welcomeTryReception": "נסו את הקבלה בינתיים",
+    "welcomePreviewNote": "התצוגה המקדימה נפתחת בלוח הבקרה שלכם.",
+    "welcomeRequired": "הזינו את שם העסק שלכם ואת שפת הסוכן כדי להמשיך."
   },
   "Dashboard": {
     "header": "דאשבורד",

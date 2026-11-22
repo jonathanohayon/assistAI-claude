@@ -669,7 +669,16 @@
     "languageFr": "French",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "we'll assign you a dedicated number — included in the free trial."
+    "subtitleWhatsapp": "we'll assign you a dedicated number — included in the free trial.",
+    "welcomeTitle": "Welcome. {product} opens soon.",
+    "welcomeRecorded": "Your request is recorded: you'll be the first to know.",
+    "welcomeRecording": "Recording your request…",
+    "welcomeRecordFailed": "We couldn't record your request.",
+    "welcomeRecordRetry": "Try again",
+    "welcomePreview": "See the preview",
+    "welcomeTryReception": "Try Reception in the meantime",
+    "welcomePreviewNote": "The preview opens in your dashboard.",
+    "welcomeRequired": "Enter your company name and the agent's language to continue."
   },
   "Dashboard": {
     "header": "Dashboard",

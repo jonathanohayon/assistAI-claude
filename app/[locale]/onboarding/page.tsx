@@ -1,15 +1,22 @@
 import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
+import { ENTRY_LABEL_KEY } from "@/lib/dashboard-nav";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { getAccountDoor } from "@/lib/door";
+import { onboardingScreen, previewHref } from "@/lib/onboarding-route";
+import { accountProducts } from "@/lib/products";
+import { publicOffer } from "@/lib/public-offer";
 import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 
-import { OnboardingWizard } from "./wizard";
+import { DoorWelcome } from "./door-welcome";
+import { WizardCard } from "./wizard-card";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +79,28 @@ export default async function OnboardingPage(props: {
 
   const t = await getTranslations({ locale, namespace: "Onboarding" });
 
+  // The door decides the first screen (lib/onboarding-route.ts). Reception,
+  // no door, or a usable product: the wizard, exactly as before. A sales or
+  // connect door whose product is not usable yet: the welcome screen, and no
+  // number is searched or bought unless the account opens the wizard itself.
+  const door = await getAccountDoor(session.user.id);
+  let welcome: ReactNode = null;
+  if (door !== "reception" && onboardingScreen(door, publicOffer().available) === "welcome") {
+    const nav = await getTranslations({ locale, namespace: "DashboardNav" });
+    const { notifyRequested } = await accountProducts(session.user.id);
+    welcome = (
+      <DoorWelcome
+        door={door}
+        productName={nav(ENTRY_LABEL_KEY[door])}
+        previewHref={previewHref(door)}
+        notifyRecorded={notifyRequested.includes(door)}
+        initialCompanyName={initialCompanyName}
+        initialLanguage={isLang(config?.primaryLanguage) ? config!.primaryLanguage : null}
+        defaultCountry={defaultCountry}
+      />
+    );
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
       <div
@@ -96,25 +125,16 @@ export default async function OnboardingPage(props: {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[var(--color-border)] bg-white/85 p-7 shadow-lg backdrop-blur sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            {t("sectionHeader")}
-          </p>
-          <h1 className="mt-3 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-            {t("title")}
-          </h1>
-          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            {t("subtitle")}
-          </p>
-
-          <div className="mt-8">
-            <OnboardingWizard
-              initialLanguage={initialLanguage}
-              initialCompanyName={initialCompanyName}
-              defaultCountry={defaultCountry}
-            />
-          </div>
-        </div>
+        {welcome ?? (
+          <WizardCard
+            sectionHeader={t("sectionHeader")}
+            title={t("title")}
+            subtitle={t("subtitle")}
+            initialLanguage={initialLanguage}
+            initialCompanyName={initialCompanyName}
+            defaultCountry={defaultCountry}
+          />
+        )}
       </div>
     </main>
   );
