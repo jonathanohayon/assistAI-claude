@@ -742,6 +742,10 @@ export const paymentOrders = pgTable("payment_orders", {
   // Au-delà de cette date l'ordre pending n'est plus activable (anti-rejeu).
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   paidAt: timestamp("paid_at", { withTimezone: true }),
+  // P4 (migration 0060): the lines of a multi-line order (base + add-ons +
+  // overage, lib/order-lines.ts OrderLine[]). NULL = a legacy single-plan
+  // order, handled exactly as before. expectedAmount = the sum of the lines.
+  products: jsonb("products"),
 });
 
 // Voice samples (V7): one sample per recommended voice × style × language,

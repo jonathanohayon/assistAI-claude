@@ -421,6 +421,13 @@
       "when": 1795356434682,
       "tag": "0059_product_notify_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795358684660,
+      "tag": "0060_payment_orders_products",
+      "breakpoints": true
     }
   ]
 }

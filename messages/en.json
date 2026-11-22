@@ -1894,7 +1894,10 @@
       "includedHeading": "What's included",
       "ctaButton": "Go to my dashboard",
       "footer": "This email is a payment confirmation. You can manage your subscription anytime from your dashboard.",
-      "signature": "— The Tamara team"
+      "signature": "— The Tamara team",
+      "linesHeading": "Your order",
+      "addonLine": "{product} (add-on)",
+      "overageLine": "{product} overage — {minutes} min"
     },
     "notificationTest": {
       "subject": "🔔 Tamara — notification test",

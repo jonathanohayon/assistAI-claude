@@ -1904,7 +1904,10 @@
       "includedHeading": "Ce qui est inclus",
       "ctaButton": "Accéder à mon tableau de bord",
       "footer": "Cet email est une confirmation de paiement. Vous pouvez gérer votre abonnement à tout moment depuis votre tableau de bord.",
-      "signature": "— L'équipe Tamara"
+      "signature": "— L'équipe Tamara",
+      "linesHeading": "Votre commande",
+      "addonLine": "{product} (option)",
+      "overageLine": "Dépassement {product} — {minutes} min"
     },
     "notificationTest": {
       "subject": "🔔 Test des notifications Tamara",

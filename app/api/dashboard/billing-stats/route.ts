@@ -5,6 +5,7 @@ import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, campaignCalls, paymentOrders, users } from "@/lib/db/schema";
 import { currencyForLocale } from "@/lib/hyp";
+import { invoiceLines } from "@/lib/order-lines";
 import { entitledProducts } from "@/lib/product-entitlement";
 import { accountUsageByProduct } from "@/lib/products-usage";
 import {
@@ -193,6 +194,7 @@ export async function GET(req: NextRequest) {
       kind: paymentOrders.kind,
       paidAt: paymentOrders.paidAt,
       createdAt: paymentOrders.createdAt,
+      products: paymentOrders.products,
     })
     .from(paymentOrders)
     .where(
@@ -264,6 +266,9 @@ export async function GET(req: NextRequest) {
       kind: p.kind,
       paidAt: p.paidAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
+      // P4, additive: a multi-line order lists its lines; a legacy order
+      // (products NULL) has no `lines` key, so its row is byte-identical.
+      ...invoiceLines(p.products),
     })),
   });
 }
