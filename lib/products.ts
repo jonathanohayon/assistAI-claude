@@ -26,7 +26,8 @@ import { noEngineOverrides, type EngineOverrides } from "@/lib/engine-override";
 import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/lib/product-catalogue-row";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
 import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialStates } from "@/lib/product-trials";
-import type { Product } from "@/lib/product-values";
+import { loadNotifyRequested } from "@/lib/product-notify";
+import type { Product, ProductEntry } from "@/lib/product-values";
 import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
 
 export type StoredCatalogue = {
@@ -139,19 +140,28 @@ export async function loadProductTrials(userId: string): Promise<ProductTrialRow
     .where(eq(accountProductTrials.userId, userId));
 }
 
-/** The entitlement plus, ADDITIVELY (P3), each entry's per-product trial state. */
-export type AccountProducts = Entitlement & { trials: TrialStates };
+/**
+ * The entitlement plus, ADDITIVELY, each entry's per-product trial state (P3)
+ * and the entries the account asked to be notified about ("Prévenez-moi",
+ * PRODUCT_ENTRIES order).
+ */
+export type AccountProducts = Entitlement & { trials: TrialStates; notifyRequested: ProductEntry[] };
 
 /**
  * The products an account is entitled to. Loads ONLY the explicit pick
  * above (plus its trial rows), for any userId (so the admin ?asUserId=
  * target works). An ACTIVE per-product trial makes its entry entitled for
  * the trial's duration (entitledProducts activeTrials). An unknown account
- * is entitled to nothing (base null), every trial "available".
+ * is entitled to nothing (base null), every trial "available", no notify
+ * request.
  */
 export async function accountProducts(userId: string, now: Date = new Date()): Promise<AccountProducts> {
   const [u] = await db.select(ACCOUNT_PRODUCTS_PICK).from(users).where(eq(users.id, userId)).limit(1);
-  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now) };
-  const rows = await loadProductTrials(userId);
-  return { ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }), trials: trialStates(rows, now) };
+  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now), notifyRequested: [] };
+  const [rows, notifyRequested] = await Promise.all([loadProductTrials(userId), loadNotifyRequested(userId)]);
+  return {
+    ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }),
+    trials: trialStates(rows, now),
+    notifyRequested,
+  };
 }
