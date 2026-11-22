@@ -8,7 +8,9 @@
 // or if it fails, the cards show a placeholder and no amount.
 //
 // Nothing here can buy: until P4 (PRODUCT_ORDERS), every card opens SIGN-UP
-// (free trial) through the product's door, never a checkout or billing page.
+// through the product's door, never a checkout or billing page. The trial
+// lines say what TODAY's sign-up trial is (lib/pricing-grid.ts SIGNUP_TRIAL,
+// from lib/trial.ts); the per-product trial is F4.
 // The old plans (lib/plans.ts) are no longer read here: billing still uses
 // them for existing subscribers.
 
@@ -30,6 +32,8 @@ import {
   GRID_PRODUCTS,
   GRID_SIGNUP_HREF,
   gridCard,
+  inSignupTrial,
+  SIGNUP_TRIAL,
 } from "@/lib/pricing-grid";
 
 function BillingToggle({ value, onChange }: { value: Billing; onChange: (v: Billing) => void }) {
@@ -211,6 +215,9 @@ function ProductCard({
   const name = t(`products.${product}.name`);
   const money = (n: number) => formatGridMoney(n, currency, locale);
   const period = billing === "annual" ? t("perYear") : t("perMonth");
+  // Today's sign-up trial (lib/trial.ts) covers Réception only: the other
+  // cards neither say "free trial" nor promise one.
+  const trial = inSignupTrial(product);
 
   return (
     <article
@@ -262,13 +269,15 @@ function ProductCard({
       <div className="mt-auto pt-6">
         <Link
           href={GRID_SIGNUP_HREF[product]}
-          aria-label={t("ctaAria", { name })}
+          aria-label={trial ? t("ctaAria", { name }) : t("ctaAccountAria", { name })}
           data-cta={product}
           className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
         >
-          {t("cta")}
+          {trial ? t("cta") : t("ctaAccount")}
         </Link>
-        <p className="mt-2.5 text-center text-[11px] leading-snug text-[var(--color-muted-foreground)]">{t("cardTrial")}</p>
+        <p data-trial-line="" className="mt-2.5 text-center text-[11px] leading-snug text-[var(--color-muted-foreground)]">
+          {trial ? t("cardTrial", SIGNUP_TRIAL) : t("notInTrial")}
+        </p>
       </div>
     </article>
   );
@@ -359,9 +368,9 @@ export function Pricing() {
 
         <ProductPricingGrid catalogue={catalogue} currency={currency} billing={billing} />
 
-        <p className="mx-auto mt-10 flex max-w-xl items-start justify-center gap-2 rounded-2xl border border-[#22d3ee]/40 bg-white/80 px-4 py-3 text-center text-sm font-medium text-[#0e7490] shadow-sm">
+        <p data-trial-banner="" className="mx-auto mt-10 flex max-w-xl items-start justify-center gap-2 rounded-2xl border border-[#22d3ee]/40 bg-white/80 px-4 py-3 text-center text-sm font-medium text-[#0e7490] shadow-sm">
           <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#22d3ee]" />
-          {t("trial")}
+          {t("trial", SIGNUP_TRIAL)}
         </p>
         <p className="mt-6 text-center text-xs text-[var(--color-muted-foreground)]">{t("footer")}</p>
       </div>

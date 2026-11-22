@@ -10,12 +10,15 @@
 // by design in the catalogue).
 //
 // HARD RULE (until P4 / PRODUCT_ORDERS): nothing on this page can buy. Every
-// card opens SIGN-UP (free trial) through the product's door.
+// card opens SIGN-UP through the product's door.
 
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import type { Currency } from "./landing-currency";
-import type { Product } from "./product-values";
+import { entitledProducts } from "./product-entitlement";
+import { entryOf, type Product } from "./product-values";
+import { TRIAL_PLAN_KEY } from "./plans";
 import { PUBLIC_PLAN_PRICING_PATH, parsePublicProducts } from "./public-plan-pricing";
+import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "./trial";
 
 export type Billing = "monthly" | "annual";
 
@@ -32,6 +35,28 @@ export const GRID_SIGNUP_HREF: Readonly<Record<Product, string>> = {
   sales: "/signup?door=sales",
   connect: "/signup?door=connect",
 };
+
+// The trial the page may promise is TODAY's sign-up trial (lib/trial.ts),
+// not the per-product trial of F4: its length and minutes come from there,
+// and the products it covers are what a trialing account is entitled to
+// (lib/product-entitlement.ts rule 2: reception_multi, i.e. Réception).
+// Ventes and Connecter votre agent are not in it: their cards say so and
+// their CTA is a neutral "create my account" (still sign-up).
+export const SIGNUP_TRIAL = {
+  days: Math.round(TRIAL_DURATION_MS / 86_400_000),
+  minutes: TRIAL_MINUTES_INCLUDED,
+} as const;
+
+const SIGNUP_TRIAL_ENTRIES = entitledProducts({
+  subscriptionPlan: TRIAL_PLAN_KEY,
+  subscriptionStatus: "trialing",
+  products: null,
+}).entries;
+
+/** Whether today's sign-up trial covers this product's dashboard entry. */
+export function inSignupTrial(p: Product): boolean {
+  return SIGNUP_TRIAL_ENTRIES.includes(entryOf(p));
+}
 
 /** The landing currency of a locale (lib/landing-currency.ts), mapped onto the
  *  catalogue: ILS stays ILS; USD (English), which the catalogue does not

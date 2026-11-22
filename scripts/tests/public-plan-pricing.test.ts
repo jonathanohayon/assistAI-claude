@@ -130,7 +130,9 @@ async function main() {
   // number (price, minutes, overage, add-on) on each of the four cards.
   for (const locale of LOCALES) {
     await test(`${locale}: the prerendered pricing section shows placeholders and no default amount`, () => {
-      const html = renderWithIntl(locale, createElement(Pricing));
+      // The trial lines carry the sign-up trial's own numbers (lib/trial.ts,
+      // e.g. 100 minutes), not prices: they are left out of this check.
+      const html = renderWithIntl(locale, createElement(Pricing)).replace(/<p data-trial-(?:line|banner)=""[\s\S]*?<\/p>/g, "");
       assert.equal(html.match(/data-testid="grid-price-placeholder"/g)?.length, GRID_PRODUCTS.length * 4);
       for (const n of [...DEFAULT_AMOUNTS, ...CATALOGUE_AMOUNTS]) assert.doesNotMatch(html, amountRe(n), `default amount ${n} in the HTML`);
     });

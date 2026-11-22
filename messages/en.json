@@ -288,7 +288,7 @@
       "model": "Model"
     },
     "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
-    "trial": "Free 7-day, 30-minute trial for each offer, no credit card. Once per offer.",
+    "trial": "Free Reception trial: {days} days or {minutes} call minutes, whichever comes first, no credit card.",
     "howLabel": "How it works:",
     "how": "you pick one base offer and add options if you need them. Each offer has its own included minutes.",
     "currency": "Currency",
@@ -303,7 +303,7 @@
       "baseOnly": "Sold as a base offer only",
       "cta": "Try it free",
       "ctaAria": "Try {name} free",
-      "cardTrial": "7 days and 30 minutes free, no card.",
+      "cardTrial": "Free trial: {days} days or {minutes} minutes, no card.",
       "products": {
         "reception": {
           "name": "Reception",
@@ -321,7 +321,10 @@
           "name": "Connect your agent",
           "body": "Already have an AI agent? Tamara gives it a voice and a phone number."
         }
-      }
+      },
+      "ctaAccount": "Create my account",
+      "ctaAccountAria": "Create my account for {name}",
+      "notInTrial": "Not included in the free trial."
     }
   },
   "DashboardSetup": {

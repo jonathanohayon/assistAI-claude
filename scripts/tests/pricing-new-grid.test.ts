@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { NextIntlClientProvider } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -30,10 +30,16 @@ import {
   formatGridPerMinute,
   GRID_PRODUCTS,
   GRID_SIGNUP_HREF,
+  inSignupTrial,
+  SIGNUP_TRIAL,
   type Billing,
 } from "../../lib/pricing-grid";
 import { DEFAULT_PRODUCT_CATALOGUE, type CatalogueCurrency, type ProductCatalogue } from "../../lib/product-catalogue";
-import type { Product } from "../../lib/product-values";
+import { entitledProducts } from "../../lib/product-entitlement";
+import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "../../lib/product-trials";
+import { entryOf, type Product } from "../../lib/product-values";
+import { TRIAL_PLAN_KEY } from "../../lib/plans";
+import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "../../lib/trial";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -151,10 +157,51 @@ async function main() {
           const c = card(out, p);
           const h = c.match(/href="([^"]*)"/)![1];
           assert.ok(h.endsWith(GRID_SIGNUP_HREF[p]), `${l} ${p}: ${h}`);
-          assert.match(c, new RegExp(`aria-label="${esc(messages(l).Pricing.grid.ctaAria.replace("{name}", messages(l).Pricing.grid.products[p].name))}"`));
+          const g = messages(l).Pricing.grid;
+          const aria = inSignupTrial(p) ? g.ctaAria : g.ctaAccountAria;
+          assert.match(c, new RegExp(`aria-label="${esc(aria.replace("{name}", g.products[p].name))}"`));
         }
       }
     }
+  }
+
+  // ── 4b. The trial wording is TODAY's sign-up trial (lib/trial.ts) ─────────
+  // The source of truth: the sign-up trial's length and minutes, and the
+  // products a trialing account is entitled to (Réception only, today).
+  assert.deepEqual(SIGNUP_TRIAL, { days: TRIAL_DURATION_MS / 86_400_000, minutes: TRIAL_MINUTES_INCLUDED });
+  const trialEntries = entitledProducts({ subscriptionPlan: TRIAL_PLAN_KEY, subscriptionStatus: "trialing", products: null }).entries;
+  for (const p of GRID_PRODUCTS) assert.equal(inSignupTrial(p), trialEntries.includes(entryOf(p)), `${p}: in the trial = what a trialing account gets`);
+  assert.deepEqual(GRID_PRODUCTS.filter(inSignupTrial), ["reception", "reception_multi"], "today: Réception (single and multi-site)");
+  for (const l of LOCALES) {
+    const m = messages(l);
+    const fmt = (key: string) =>
+      (createTranslator({ locale: l, messages: m, namespace: "Pricing" }) as unknown as (k: string, v: object) => string)(key, SIGNUP_TRIAL);
+    // One source: the copy takes the numbers as arguments, never writes them.
+    for (const s of [m.Pricing.trial, m.Pricing.grid.cardTrial]) {
+      assert.ok(s.includes("{days}") && s.includes("{minutes}"), `${l}: "${s}" reads the numbers from lib/trial.ts`);
+      assert.doesNotMatch(s.replace(/\{\w+\}/g, ""), /\d/, `${l}: no number written in "${s}"`);
+    }
+    const page = html(l, createElement(Pricing));
+    const banner = page.match(/data-trial-banner=""[^>]*>([\s\S]*?)<\/p>/)![1].replace(/<[^>]+>/g, "");
+    assert.equal(banner, esc(fmt("trial")), `${l}: the banner says today's trial`);
+    assert.ok(banner.includes(String(SIGNUP_TRIAL.days)) && banner.includes(String(SIGNUP_TRIAL.minutes)), `${l}: banner numbers`);
+    for (const p of GRID_PRODUCTS) {
+      const c = card(page, p);
+      const trialLine = c.match(/data-trial-line=""[^>]*>([\s\S]*?)<\/p>/)![1];
+      const cta = c.match(/data-cta="[^"]+"[^>]*>([\s\S]*?)<\/a>/)![1];
+      if (inSignupTrial(p)) {
+        assert.equal(trialLine, esc(fmt("grid.cardTrial")), `${l} ${p}: today's trial`);
+        assert.equal(cta, esc(m.Pricing.grid.cta));
+      } else {
+        assert.equal(trialLine, esc(m.Pricing.grid.notInTrial), `${l} ${p}: not in the trial`);
+        assert.equal(cta, esc(m.Pricing.grid.ctaAccount), `${l} ${p}: neutral CTA`);
+        assert.ok(!c.includes(esc(m.Pricing.grid.cta)) && !c.includes(esc(fmt("grid.cardTrial"))), `${l} ${p}: no free-trial promise`);
+      }
+    }
+    // F4's per-product trial (7 days + 30 minutes) is promised nowhere yet.
+    for (const s of Object.values(m.Pricing.grid).concat(m.Pricing.trial).filter((x): x is string => typeof x === "string"))
+      assert.ok(!s.includes(String(PRODUCT_TRIAL_DAYS)) || PRODUCT_TRIAL_DAYS === SIGNUP_TRIAL.days, `${l}: no ${PRODUCT_TRIAL_DAYS}-day promise in "${s}"`);
+    assert.doesNotMatch(page.replace(/<[^>]+>/g, " "), new RegExp(`(?<!\\d)${PRODUCT_TRIAL_MINUTES}(?!\\d)`), `${l}: no ${PRODUCT_TRIAL_MINUTES}-minute promise`);
   }
   // No form, no button that posts: the only buttons are the toggle and the currency.
   const full = html("fr", createElement(Pricing));
