@@ -2,7 +2,7 @@
 // (lib/finance/rates.ts perMinuteUsd, GET/PUT /api/admin/cost-rates): the
 // defaults (xAI 0.08 from the worker's pricing; OpenAI / Gemini absent, never
 // invented), the historic keys BYTE-IDENTICAL, the strict parser, the PUT
-// helper fed the RAW body (four gate cases) and the lookup. Mock data only.
+// helper fed the RAW body (four gate cases, partial update) and the lookup. Mock data only.
 // Run with:  npx tsx scripts/tests/engine-rates.test.ts
 
 import assert from "node:assert/strict";
@@ -115,14 +115,62 @@ for (const body of [{ rates: withoutPerMinute(stored) }, withoutPerMinute(stored
   assert.ok(w.ok, JSON.stringify(body).slice(0, 60));
   assert.deepEqual(w.ok && w.value.perMinuteUsd, stored.perMinuteUsd, "omitted = unchanged");
 }
-// KNOWN BUG cost-rates-partial-reset (pre-existing, unchanged by E1): an
-// OMITTED historic key is reset to its DEFAULT, not kept, because the PUT
-// normalises the body alone. The Finance form always posts every key, so it
-// is latent. This asserts today's behaviour and must break when it is fixed.
+// Partial update (fixes cost-rates-partial-reset): an OMITTED historic key
+// keeps its STORED value, never the default.
 {
   const w = costRatesWrite(stored, { rates: { eurToUsd: 1.2 } });
-  assert.ok(w.ok);
-  assert.equal(w.ok && w.value.twilioInboundUsdPerMinute, DEFAULT_COST_RATES.twilioInboundUsdPerMinute, "KNOWN BUG cost-rates-partial-reset: omitted historic key → default");
+  assert.ok(w.ok && w.changed);
+  assert.equal(w.ok && w.value.eurToUsd, 1.2);
+  assert.equal(w.ok && w.value.twilioInboundUsdPerMinute, 0.01, "omitted historic key keeps the stored value");
+  assert.equal(JSON.stringify(w.ok && withoutPerMinute(w.value)), JSON.stringify({ ...withoutPerMinute(stored), eurToUsd: 1.2 }), "only the sent key changes");
+  assert.deepEqual(w.ok && w.value.perMinuteUsd, stored.perMinuteUsd);
+  // The bare-object shape is partial too.
+  assert.deepEqual(costRatesWrite(stored, { eurToUsd: 1.2 }), w);
+  // A numeric string is still accepted, as the historic coercion did.
+  const s = costRatesWrite(stored, { rates: { infraUsdPerMonth: "12.5" } });
+  assert.equal(s.ok && s.value.infraUsdPerMonth, 12.5);
+  // An explicit undefined (dropped by JSON anyway) counts as omitted.
+  assert.deepEqual(costRatesWrite(stored, { rates: { eurToUsd: undefined } }), { ok: true, value: stored, changed: false });
+}
+// An empty object is a no-op (200, nothing changes). A truly empty body never
+// reaches the helper: parseJsonBody answers 400 invalid_json, as on main.
+for (const body of [{}, { rates: {} }, { rates: null }]) {
+  assert.deepEqual(costRatesWrite(stored, body), { ok: true, value: stored, changed: false }, `no-op: ${JSON.stringify(body)}`);
+}
+// Invalid historic values → refused naming every bad key; nothing is written
+// (the helper returns no value, and the stored object is untouched).
+{
+  const before = JSON.stringify(stored);
+  for (const [v, why] of [[-1, "negative"], [Number.NaN, "NaN"], [null, "null"], ["", "empty string"], ["abc", "non-numeric string"], [true, "boolean"], [{}, "object"], [[1], "array"]] as Array<[unknown, string]>) {
+    assert.deepEqual(costRatesWrite(stored, { rates: { eurToUsd: 1.2, ilsToUsd: v } }), { ok: false, error: "invalid_cost_rates", fields: ["ilsToUsd"] }, `refused: ${why}`);
+  }
+  assert.deepEqual(
+    costRatesWrite(stored, { rates: { openaiUsdPerMinute: -1, eurToUsd: 1.2, ilsToUsd: "x", perMinuteUsd: { mistral: { "*": 1 } } } }),
+    { ok: false, error: "invalid_cost_rates", fields: ["openaiUsdPerMinute", "ilsToUsd", "perMinuteUsd.mistral"] },
+  );
+  for (const body of [5, "x", [], null, { rates: 5 }, { rates: [] }]) {
+    assert.deepEqual(costRatesWrite(stored, body), { ok: false, error: "invalid_cost_rates", fields: ["rates"] }, `refused body: ${JSON.stringify(body)}`);
+  }
+  assert.equal(JSON.stringify(stored), before, "the stored value is never mutated");
+}
+// The Finance form (RateCardForm posts { rates } with EVERY key, all numbers
+// >= 0): the stored result is byte-identical to the pre-fix behaviour, which
+// was normalizeCostRates(body) with the stored perMinuteUsd kept.
+{
+  const preFix = (st: CostRates, rates: Record<string, unknown>) =>
+    JSON.stringify(normalizeCostRates({ ...rates, perMinuteUsd: st.perMinuteUsd }));
+  const forms: Array<Record<string, unknown>> = [
+    withoutPerMinute(stored),
+    { ...withoutPerMinute(stored), twilioOutboundUsdPerMinute: 0.2, infraUsdPerMonth: 0, eurToUsd: 1.1 },
+    { ...withoutPerMinute(DEFAULT_COST_RATES) },
+    JSON.parse(JSON.stringify(stored)), // the form re-posting the full GET payload
+  ];
+  for (const rates of forms) {
+    const w = costRatesWrite(stored, { rates });
+    assert.ok(w.ok);
+    // What setCostRates persists: JSON.stringify(normalizeCostRates(value)).
+    assert.equal(JSON.stringify(normalizeCostRates(w.ok && w.value)), preFix(stored, rates), "full-body PUT byte-identical to before");
+  }
 }
 // Every accepted write normalises back to itself (what setCostRates stores).
 {
@@ -130,7 +178,7 @@ for (const body of [{ rates: withoutPerMinute(stored) }, withoutPerMinute(stored
   assert.ok(w.ok);
   assert.deepEqual(w.ok && normalizeCostRates(JSON.parse(JSON.stringify(w.value))), w.ok && w.value);
 }
-console.log("ok: PUT helper (4 gate cases + KNOWN BUG marker)");
+console.log("ok: PUT helper (4 gate cases, partial update, full-body form byte-identical)");
 
 // ── Lookup ────────────────────────────────────────────────────────────────
 {
@@ -159,5 +207,6 @@ for (const m of ["GET", "PUT"]) {
 assert.match(route, /return NextResponse\.json\(\{ rates: await getCostRates\(\) \}\);/, "GET serves the normalised rate card as before");
 assert.match(route, /costRatesWrite\(await getCostRates\(\), body\)/, "PUT goes through the raw-body helper");
 assert.match(route, /if \(!w\.ok\) return NextResponse\.json\(\{ error: w\.error, fields: w\.fields \}, \{ status: 400 \}\);\s*await setCostRates\(w\.value\);/);
+assert.match(route, /const rates: CostRates = await getCostRates\(\);\s*return NextResponse\.json\(\{ ok: true, rates \}\);/, "PUT answers the full stored rate card after the write");
 
 console.log("ALL ENGINE-RATES TESTS PASSED");
