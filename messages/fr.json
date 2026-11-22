@@ -287,7 +287,7 @@
       "model": "Modèle"
     },
     "footer": "Prix TTC. Plusieurs établissements ou gros volume ? Parlons-en.",
-    "trial": "Essai gratuit 14 jours ou 100 minutes, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous."
+    "trial": "Essai gratuit {days, plural, one {# jour} other {# jours}} ou {minutes, plural, one {# minute} other {# minutes}}, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous."
   },
   "PricingComparison": {
     "title": "Comparer en détail",
@@ -488,7 +488,7 @@
     "recommendBadge": "★ Recommandé",
     "pricePerMonth": "TTC / mois",
     "annualDiscount": "2 mois offerts en annuel",
-    "freeTrialNoticeStart": "24 h d'essai gratuit. Sans engagement, changeable depuis le dashboard.",
+    "freeTrialNoticeStart": "{days, plural, one {# jour} other {# jours}} d'essai gratuit ou {minutes, plural, one {# minute} other {# minutes}} d'appels, au premier des deux atteint.",
     "comparePlans": "Comparer les formules",
     "freeBadge": "Essai gratuit — toutes les fonctionnalités",
     "title": "Créez votre agent vocal",
@@ -553,7 +553,7 @@
     "errVerifyRateLimited": "Trop d'essais. Réessayez plus tard."
   },
   "Onboarding": {
-    "trialLabel": "Essai gratuit — 60 min d'appels ou 24h",
+    "trialLabel": "Essai gratuit — {minutes} min d'appels ou {days, plural, one {# jour} other {# jours}}",
     "activePlan": "Formule active",
     "popularBadge": "★ Populaire",
     "changeButton": "Changer",
