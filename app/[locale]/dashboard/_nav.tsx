@@ -4,37 +4,16 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
 import { Link } from "@/i18n/navigation";
-import type { FeatureKey, PlanFeatures } from "@/lib/plan-features";
+import type { Door } from "@/lib/door-values";
+import { doorUi } from "@/lib/doors-ui";
+import type { PlanFeatures } from "@/lib/plan-features";
 
-interface Tab {
-  href: string;
-  labelKey: string;
-  // Si défini, l'onglet n'apparaît que si la feature est activée pour le
-  // plan du tenant (matrice admin éditable). Sans gate = toujours visible.
-  feature?: FeatureKey;
-  // Comme `feature`, mais visible si AU MOINS UNE des features est activée.
-  featureAny?: FeatureKey[];
-}
-
-const TABS: ReadonlyArray<Tab> = [
-  { href: "/dashboard", labelKey: "tabConfiguration" },
-  {
-    href: "/dashboard/campaigns",
-    labelKey: "tabOutbound",
-    feature: "outbound_campaigns",
-  },
-  {
-    href: "/dashboard/crm",
-    labelKey: "tabCalendarCrm",
-    featureAny: ["calendar", "crm"],
-  },
-  { href: "/dashboard/billing", labelKey: "tabBilling" },
-  { href: "/dashboard/logs", labelKey: "tabLogs" },
-];
+import { visibleTabs } from "./nav-tabs";
 
 export function DashboardTabs({
   features,
   isAdmin = false,
+  door,
 }: {
   features: PlanFeatures;
   // Admins voient TOUS les onglets indépendamment de leur plan DB (ils
@@ -42,16 +21,13 @@ export function DashboardTabs({
   // matche aucun PlanKey). Sans ce bypass, certains onglets seraient
   // masqués selon la matrice côté admin.
   isAdmin?: boolean;
+  /** The account's door: names the home tab (first for every door). */
+  door?: Door | null;
 }) {
   const t = useTranslations("Dashboard");
   const pathname = usePathname();
-  const visibleTabs = TABS.filter(
-    (tab) =>
-      isAdmin ||
-      (!tab.feature && !tab.featureAny) ||
-      (tab.feature && features[tab.feature]) ||
-      (tab.featureAny && tab.featureAny.some((f) => features[f])),
-  );
+  const tabs = visibleTabs(features, isAdmin);
+  const homeLabel = t(doorUi(door).headerKey);
   // next-intl/navigation/usePathname renvoie le pathname SANS la locale
   // prefix (ex: "/dashboard/calendar" même quand l'URL est "/he/dashboard/..."),
   // donc on compare directement aux hrefs de TABS. Le Link locale-aware
@@ -68,7 +44,7 @@ export function DashboardTabs({
     <nav className="relative z-10 mx-auto w-full max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">
       <div className="scroll-visible -mx-1 overflow-x-auto pb-1">
         <div className="inline-flex min-w-min rounded-full border border-[var(--color-border)] bg-white p-1 shadow-xs">
-          {visibleTabs.map((tab) => {
+          {tabs.map((tab) => {
             const active = cleanPath === tab.href;
             return (
               <Link
@@ -80,7 +56,7 @@ export function DashboardTabs({
                     : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                 }`}
               >
-                {t(tab.labelKey)}
+                {tab.id === "home" ? homeLabel : t(tab.labelKey)}
               </Link>
             );
           })}

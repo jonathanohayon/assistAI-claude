@@ -104,8 +104,9 @@ assert.equal(fetches, 0, "rendering never fetches");
     assert.equal(messages(l).Dashboard.tabLogs, expected[l], `${l}: nav label`);
     assert.ok(messages(l).DashboardLogs.metaTitle.startsWith(expected[l]), `${l}: page title`);
   }
-  assert.match(read("app/[locale]/dashboard/_nav.tsx"), /\{ href: "\/dashboard\/logs", labelKey: "tabLogs" \}/);
-  assert.match(read("app/admin/users/[userId]/_nav.tsx"), /\{ hrefSuffix: "\/logs", label: "Appels" \}/);
+  // The tab tables live in nav-tabs.ts since the door orders them (lib/doors-ui.ts).
+  assert.match(read("app/[locale]/dashboard/nav-tabs.ts"), /\{ id: "calls", href: "\/dashboard\/logs", labelKey: "tabLogs" \}/);
+  assert.match(read("app/admin/users/[userId]/nav-tabs.ts"), /\{ id: "calls", hrefSuffix: "\/logs", label: "Appels" \}/);
   assert.match(read(PAGE), /title: t\("metaTitle"\)/, "page metadata uses the Calls title");
 }
 

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { Logo } from "@/components/ui/Logo";
 import type { Door } from "@/lib/door-values";
+import { withDoorParam } from "@/lib/doors-ui";
 import { Link } from "@/i18n/navigation";
 
 interface SignupContentProps {
@@ -170,7 +171,7 @@ export function SignupContent({
 
       <p className="mt-5 text-center text-xs text-[var(--color-muted-foreground)]">
         {t("alreadyAccount")}{" "}
-        <Link href="/login" className="text-[var(--color-primary)] hover:underline">
+        <Link href={withDoorParam("/login", door)} className="text-[var(--color-primary)] hover:underline">
           {t("loginLink")}
         </Link>
       </p>

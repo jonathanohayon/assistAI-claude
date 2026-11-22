@@ -11,8 +11,11 @@ import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
 import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
-import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
-import { featuresForPlan } from "@/lib/plan-features";
+import { agentConfigs, calls, campaignContacts, phoneNumbers, users } from "@/lib/db/schema";
+import { resolveDoor } from "@/lib/door";
+import { canUseOutboundCampaigns, featuresForPlan } from "@/lib/plan-features";
+import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
+import { parseTools } from "@/lib/tools/store";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import {
@@ -55,6 +58,7 @@ export default async function DashboardPage(props: {
       subscriptionPlan: users.subscriptionPlan,
       googleRefreshToken: users.googleRefreshToken,
       companySheet: users.companySheet,
+      door: users.door,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
@@ -197,6 +201,30 @@ export default async function DashboardPage(props: {
   );
   const whatsappSet = Boolean(config?.ownerWhatsapp?.trim().length);
 
+  // The door's own first steps, gated like the screens they open:
+  // - "import contacts" (sales): the campaigns import; locked = today's upsell;
+  // - "paste your agent URL" (connect): the "Ask your agent" row of the
+  //   Tools tile, shown only where the screen shows that row.
+  const door = resolveDoor(me?.door ?? null);
+  const outboundUsable = canUseOutboundCampaigns(isAdmin, features);
+  const [contactsRow] =
+    door === "sales"
+      ? await db
+          .select({ id: campaignContacts.id })
+          .from(campaignContacts)
+          .where(eq(campaignContacts.userId, session.user.id))
+          .limit(1)
+      : [];
+  // - "test it live" (sales): the live test panel, free and ungated like the
+  //   panel; done once the account has had a call.
+  const [anyCall] =
+    door === "sales"
+      ? await db.select({ id: calls.id }).from(calls).where(eq(calls.userId, session.user.id)).limit(1)
+      : [];
+  const agentUrlVisible = clientAgentEnabled(clientAgentMode(), isAdmin);
+  const storedTools = parseTools(config.toolsConfig);
+  const agentUrlSet = storedTools.ok && storedTools.value.clientAgent.url.trim() !== "";
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
       {/* Checklist de setup. Tant que tout n'est pas configuré → liste d'étapes.
@@ -208,8 +236,13 @@ export default async function DashboardPage(props: {
         businessFilled={businessFilled}
         whatsappSet={whatsappSet}
         forwardingVerified={Boolean(config?.forwardingVerifiedAt)}
+        door={door}
+        contacts={door === "sales" ? { done: Boolean(contactsRow), locked: !outboundUsable } : undefined}
+        liveTest={door === "sales" ? { done: Boolean(anyCall) } : undefined}
+        agentUrl={door === "connect" && agentUrlVisible ? { done: agentUrlSet } : undefined}
       />
       <ConfigForm
+        door={door}
         initial={{
           // Served as the API serves it (tenants: supplier fields removed);
           // the form fills in defaults in the browser.
