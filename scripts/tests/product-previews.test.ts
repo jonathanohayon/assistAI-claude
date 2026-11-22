@@ -28,6 +28,7 @@ import { wordHits, wordRules } from "../tenant-words-match.mjs";
 import { clientNamespaces } from "./client-namespaces";
 
 import { CampaignList } from "../../app/[locale]/dashboard/campaigns/campaign-list";
+import { GRID_TWO, TILE_ROW_SIZE_TWO } from "../../app/[locale]/dashboard/config/sections";
 import { ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { clientAgentSaveRequest, toolsSaveBody, type ScreenTools } from "../../components/bricks/tools/tools-ui";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
@@ -70,12 +71,15 @@ async function main() {
 // ── 1. The sample module is fictional ───────────────────────────────────────
 {
   const all: string[] = [];
+  const perLocale: Record<string, string[]> = {};
+  let into = all;
   const walk = (v: unknown) => {
-    if (typeof v === "string") all.push(v);
+    if (typeof v === "string") (into.push(v), into !== all && all.push(v));
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
   for (const l of LOCALES) {
+    into = perLocale[l] = [];
     walk(samples.previewCampaigns(l));
     walk(samples.previewOutboundAgents(l));
     for (const c of samples.previewCampaigns(l)) {
@@ -84,18 +88,36 @@ async function main() {
     }
     walk(samples.previewLiveTranscript(l));
     walk(samples.PREVIEW_PLAN_LABEL[l]);
+    walk([samples.previewNumber(l), ...samples.previewContactNumbers(l)]);
+    walk((previewAnswer(l, "/api/dashboard/channels").body as { numbers: Array<{ phoneNumber: string }> }).numbers.map((n) => n.phoneNumber));
   }
+  into = all;
   walk(samples.PREVIEW_CLIENT_AGENT);
-  walk([samples.PREVIEW_NUMBER, samples.PREVIEW_AGENT_URL, samples.PREVIEW_EMAIL, ...samples.PREVIEW_CONTACT_NUMBERS]);
+  walk([samples.PREVIEW_AGENT_URL, samples.PREVIEW_EMAIL]);
   const text = all.join("\n");
   assert.ok(all.length > 100, "the walk reached the samples");
   for (const [label, re] of FIRST_CUSTOMER_NAME_RULES as Array<[string, RegExp]>) assert.doesNotMatch(text, re, `no first-customer name (${label})`);
   for (const l of LOCALES) assert.equal(wordHits(text, l, wordRules(l)).size, 0, `${l}: no internal word`);
   for (const s of SUPPLIERS as string[]) assert.ok(!text.toLowerCase().includes(s), `no supplier word: ${s}`);
-  // Every phone number is a +97250000000x; every e-mail @example.test; every address *.example.test.
-  const phones = text.match(/\+\d{6,}/g) ?? [];
-  assert.ok(phones.length >= 6);
-  for (const p of phones) assert.match(p, /^\+97250000000\d$/, `fictional number ${p}`);
+  // Numbers follow the page's language, each from a range reserved for fiction (pinned here,
+  // not imported, so the module can't loosen its own rule):
+  //   fr +33 1 99 00 00 0x, en +1 202-555-01xx, he +972 50-000-000x. Nothing else.
+  const FICTION: Record<string, RegExp> = { fr: /^\+3319900000\d$/, en: /^\+120255501\d\d$/, he: /^\+97250000000\d$/ };
+  for (const l of LOCALES) {
+    const phones = perLocale[l].join("\n").match(/\+\d{6,}/g) ?? [];
+    assert.ok(phones.length >= 10, `${l}: numbers reached`);
+    for (const p of phones) assert.match(p, FICTION[l], `${l}: ${p} is ${l}'s fictional shape`);
+    assert.deepEqual(String(samples.PREVIEW_NUMBER_PATTERNS[l]), String(FICTION[l]), `${l}: the module's own pattern`);
+  }
+  // And in the module's source: every digit run long enough to be a number is one of the three shapes.
+  for (const f of ["lib/preview-samples.ts", "lib/preview-fetch.ts", "components/preview/ReceptionPreview.tsx", "components/preview/LiveTestPreview.tsx", "components/preview/ConnectPreview.tsx", "components/preview/SalesPreview.tsx"]) {
+    const code = read(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\/(?:\\.|[^/\n])+\/[gimsuy]*/g, "");
+    for (const m of code.match(/\+?\d[\d\s-]{6,}\d/g) ?? []) {
+      const n = m.replace(/[\s-]/g, "");
+      if (n.length < 9) continue;
+      assert.ok(Object.values(FICTION).some((re) => re.test(n)), `${f}: "${m}" is not a fictional number shape`);
+    }
+  }
   for (const e of text.match(/[\w.+-]+@[\w.-]+/g) ?? []) assert.match(e, /@example\.test$/, `fictional e-mail ${e}`);
   for (const u of text.match(/https?:\/\/[^\s"]+/g) ?? []) assert.match(new URL(u).hostname, /(^|\.)example\.test$/, `fictional address ${u}`);
   // Two or three campaigns, with contacts and results.
@@ -158,11 +180,16 @@ async function main() {
     const reception = html(l, createElement(ReceptionPreview));
     assert.ok(reception.includes(badge) && reception.includes(note), `${l}: reception says "preview"`);
     assert.match(reception, /<section aria-labelledby="[^"]+-label" aria-describedby="[^"]+-note" data-preview-frame=""/, `${l}: a named, described region`);
-    assert.ok(reception.includes("+972 50-000-0001"), `${l}: the sample number`);
+    const shown = { fr: "+33 1 99 00 00 01", en: "+1 202-555-0101", he: "+972 50-000-0001" }[l];
+    assert.ok(reception.includes(shown), `${l}: the sample number in the page's language (${shown})`);
+    for (const other of ["+33 1 99", "+1 202", "+972 50"].filter((x) => !shown.startsWith(x))) assert.ok(!reception.includes(other), `${l}: no ${other}`);
     assert.ok(reception.includes(">14<") && reception.includes(">27<"), `${l}: the sample figures`);
     assert.match(reception, /data-live-test-preview=""/, `${l}: the static live test`);
     assert.match(reception, /<button type="button" disabled=""[^>]*aria-label="[^"]+"/, `${l}: the mic button is disabled`);
     assert.match(reception, /<fieldset disabled=""/, `${l}: the tiles are disabled`);
+    // Mon agent's grid (#374): two tiles per row at every width, rows as tall as their tallest tile.
+    assert.ok(reception.includes(`class="${GRID_TWO}"`), `${l}: two tiles per row`);
+    assert.equal((reception.match(new RegExp(TILE_ROW_SIZE_TWO.replace(/[[\]().*+?/\\]/g, "\\$&"), "g")) ?? []).length, 2, `${l}: both tiles sized like Mon agent's`);
     for (const line of samples.previewLiveTranscript(l)) assert.ok(reception.includes(esc(line.text)), `${l}: sample line`);
 
     const connect = html(l, createElement(ConnectPreview));

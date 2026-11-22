@@ -673,10 +673,9 @@
     "pitchSales": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel.",
     "pitchConnect": "Branchez votre propre agent : il répond au téléphone avec une voix et un numéro Tamara.",
     "previewTry": "Essayer gratuitement",
-    "previewNotify": "Bientôt, prévenez-moi",
-    "previewNotified": "Nous vous préviendrons.",
     "previewBadge": "Aperçu",
-    "previewNote": "Données d'exemple : rien n'est enregistré ni envoyé."
+    "previewNote": "Données d'exemple : rien n'est enregistré ni envoyé.",
+    "previewSoon": "Bientôt disponible."
   },
   "DashboardCrm": {
     "header": "Espace clients",

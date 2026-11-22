@@ -12,16 +12,10 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { CONFIG_FORM_CSS } from "@/app/[locale]/dashboard/config/config-form-css";
 import { HeroSection } from "@/app/[locale]/dashboard/config/hero-section";
-import { sectionGridClass, sectionTileSize } from "@/app/[locale]/dashboard/config/sections";
+import { GRID_TWO, TILE_ROW_SIZE_TWO } from "@/app/[locale]/dashboard/config/sections";
 import { Tile, type TileDef } from "@/app/[locale]/dashboard/config/shared-ui";
 import { WHATSAPP_VOICE_AVAILABLE } from "@/lib/channels/contract";
-import {
-  PREVIEW_NUMBER,
-  PREVIEW_PLAN_LABEL,
-  PREVIEW_RECEPTION_STATS,
-  PREVIEW_VOICE,
-  previewLang,
-} from "@/lib/preview-samples";
+import { PREVIEW_PLAN_LABEL, PREVIEW_RECEPTION_STATS, PREVIEW_VOICE, previewLang, previewNumber } from "@/lib/preview-samples";
 
 import { LiveTestPreview } from "./LiveTestPreview";
 import { PreviewFrame } from "./PreviewFrame";
@@ -67,7 +61,7 @@ export function ReceptionPreview() {
       {/* The same two-column layout as the owned page (config-form.tsx). */}
       <div className="relative xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
         <HeroSection
-          primaryPhone={PREVIEW_NUMBER}
+          primaryPhone={previewNumber(lang)}
           stats={PREVIEW_RECEPTION_STATS}
           lastUpdatedLabel=""
           planLabel={PREVIEW_PLAN_LABEL[lang]}
@@ -79,9 +73,9 @@ export function ReceptionPreview() {
           <LiveTestPreview />
         </aside>
         <fieldset disabled className="m-0 mb-6 min-w-0 border-0 p-0 xl:col-start-1 xl:row-start-2">
-          <div className={sectionGridClass("reception")}>
+          <div className={GRID_TWO}>
             {tiles.map((tile, i) => (
-              <Tile key={tile.id} tile={tile} active={false} onClick={noop} delay={300 + i * 60} sizeClass={sectionTileSize("reception")} />
+              <Tile key={tile.id} tile={tile} active={false} onClick={noop} delay={300 + i * 60} sizeClass={TILE_ROW_SIZE_TWO} />
             ))}
           </div>
         </fieldset>

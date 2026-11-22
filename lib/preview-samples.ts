@@ -1,7 +1,8 @@
 // The ONE source of sample data for product previews (F2): a product the
 // account does not own opens its real screen read-only, filled from here.
 // Modelled on lib/demo-place.ts: one fictional place (the demo's downtown
-// salon), numbers +97250000000x, e-mails and addresses *@example.test /
+// salon), numbers from ranges reserved for fiction, in the page's language
+// (see NUMBERS), e-mails and addresses *@example.test /
 // *.example.test, first names only. No real business, person, street or
 // town. Texts per language (fr/en/he); everything else is shared.
 //
@@ -21,10 +22,29 @@ import { VOICE_ORDER } from "@/lib/voice/public";
 export type PreviewLang = DemoLang;
 export const previewLang = demoLang;
 
-/** The sample account's own number (the hero, the caller id). */
-export const PREVIEW_NUMBER = "+972500000001";
-/** Sample contacts' numbers: +972500000002 … +972500000006. */
-export const PREVIEW_CONTACT_NUMBERS = ["+972500000002", "+972500000003", "+972500000004", "+972500000005", "+972500000006"] as const;
+/**
+ * Sample numbers follow the page's language, each from a range reserved for
+ * fiction (never a real line):
+ *   fr: +33 1 99 00 00 0x (ARCEP's fiction range 01 99 00 xx xx);
+ *   en: +1 202-555-01xx  (the North American 555-0100…0199 fiction block);
+ *   he: +972 50-000-000x.
+ * Index 0 is the account's own number (the hero, the caller id); 1…5 are contacts.
+ */
+const NUMBERS: Record<PreviewLang, readonly string[]> = {
+  fr: ["+33199000001", "+33199000002", "+33199000003", "+33199000004", "+33199000005", "+33199000006"],
+  en: ["+12025550101", "+12025550102", "+12025550103", "+12025550104", "+12025550105", "+12025550106"],
+  he: ["+972500000001", "+972500000002", "+972500000003", "+972500000004", "+972500000005", "+972500000006"],
+};
+/** The one fictional shape allowed per language (scripts/tests/product-previews.test.ts). */
+export const PREVIEW_NUMBER_PATTERNS: Readonly<Record<PreviewLang, RegExp>> = {
+  fr: /^\+3319900000\d$/,
+  en: /^\+120255501\d\d$/,
+  he: /^\+97250000000\d$/,
+};
+/** The sample account's own number in this language. */
+export const previewNumber = (lang: unknown): string => NUMBERS[previewLang(lang)][0];
+/** The sample contacts' numbers in this language. */
+export const previewContactNumbers = (lang: unknown): readonly string[] => NUMBERS[previewLang(lang)].slice(1);
 /** The sample "your own agent" address (never called: previews make no request). */
 export const PREVIEW_AGENT_URL = "https://agent.example.test/ask";
 export const PREVIEW_EMAIL = "contact@example.test";
@@ -125,7 +145,7 @@ export function previewCampaigns(lang: unknown): CampaignListItem[] {
     goalPreset: PRESETS[i],
     objective: CAMPAIGN_TEXT[l][i].objective,
     status: STATUSES[i],
-    fromNumber: PREVIEW_NUMBER,
+    fromNumber: previewNumber(l),
     agentId: AGENT_ID,
     successCriteria: "",
     extractionSchema: [],
@@ -174,7 +194,7 @@ const CONTACT_STATUSES = [
 export function previewCampaignContacts(lang: unknown, campaignId: string) {
   const l = previewLang(lang);
   const i = Math.max(0, CAMPAIGN_IDS.indexOf(campaignId as (typeof CAMPAIGN_IDS)[number]));
-  return PREVIEW_CONTACT_NUMBERS.map((phoneNumber, k) => ({
+  return previewContactNumbers(l).map((phoneNumber, k) => ({
     id: `${campaignId}-contact-${k + 1}`,
     phoneNumber,
     contactName: CONTACT_NAMES[l][k],
@@ -213,7 +233,7 @@ export function previewCampaignResults(lang: unknown, campaignId: string) {
   const calls = started
     ? CALL_SHAPES.map((s, k) => ({
         id: `${c.id}-call-${k + 1}`,
-        phoneNumber: PREVIEW_CONTACT_NUMBERS[k],
+        phoneNumber: previewContactNumbers(l)[k],
         ...s,
         summary: CALLS[l][k].summary,
         transcript: [

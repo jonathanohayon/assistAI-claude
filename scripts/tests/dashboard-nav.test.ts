@@ -261,26 +261,28 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
       const pitch = m.DashboardNav[`pitch${entry[0].toUpperCase()}${entry.slice(1)}`];
       assert.ok(typeof pitch === "string" && soon.includes(pitch.replace(/'/g, "&#x27;")), `${locale}/${entry}: one sentence on what it does`);
       const q = (x: string) => x.replace(/'/g, "&#x27;");
-      // ONE button per state (F2): "soon" → notify me (local only); "try" → try it free.
-      assert.ok(soon.includes(q(m.DashboardNav.previewNotify)), `${locale}/${entry}: "notify me"`);
+      // "soon": the plain line and NO button (no notify-me endpoint: no promise we can't keep).
+      // "try": ONE button, "try it free".
+      assert.ok(soon.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: "coming soon" line`);
       assert.ok(!soon.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: no "try" while soon`);
-      assert.ok(!soon.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: the confirmation only after the click`);
-      assert.match(soon, /role="status" aria-live="polite"/, `${locale}/${entry}: the confirmation is announced`);
-      assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (soon)`);
+      assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 0, `${locale}/${entry}: no button (soon)`);
       const tryIt = render(locale, entry, "try");
       assert.ok(tryIt.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: "try it free"`);
-      assert.ok(!tryIt.includes(q(m.DashboardNav.previewNotify)));
+      assert.ok(!tryIt.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: no "soon" line while try`);
       assert.equal((tryIt.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (try)`);
       if (entry !== "sales") assert.match(tryIt, /href="\/(fr|en|he)?\/?dashboard\/billing"|href="\/dashboard\/billing"/, `${locale}/${entry}: try → the subscription page`);
       assert.ok(!soon.includes(m.DashboardConfig.wowTileHintIdle), "no generic tile heading in the header");
     }
   }
   const fr = JSON.parse(read("messages/fr.json")).DashboardNav;
-  assert.deepEqual([fr.previewTry, fr.previewNotify, fr.previewNotified, fr.previewBadge], ["Essayer gratuitement", "Bientôt, prévenez-moi", "Nous vous préviendrons.", "Aperçu"]);
-  // No notify-me endpoint yet: the click stores nothing and sends nothing.
+  assert.deepEqual([fr.previewTry, fr.previewSoon, fr.previewBadge], ["Essayer gratuitement", "Bientôt disponible.", "Aperçu"]);
+  for (const l of ["fr", "en", "he"]) {
+    const nav = JSON.parse(read(`messages/${l}.json`)).DashboardNav;
+    assert.ok(!("previewNotify" in nav) && !("previewNotified" in nav), `${l}: no notify-me words`);
+  }
+  // No notify-me endpoint yet: nothing that would record or send a request.
   const hdrSrc = read("components/dashboard/ProductPreviewHeader.tsx");
-  assert.doesNotMatch(hdrSrc, /fetch\(|localStorage|sessionStorage|sendBeacon/, "notify me: local confirmation only");
-  assert.match(hdrSrc, /onClick=\{\(\) => setNotified\(true\)\}/);
+  assert.doesNotMatch(hdrSrc, /fetch\(|localStorage|sessionStorage|sendBeacon|setNotified|previewNotif/, "no notify-me");
   const hdr = code("components/dashboard/ProductPreviewHeader.tsx");
   assert.match(hdr, /entry === "sales" \? \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
   assert.match(hdr, /<Link href="\/dashboard\/billing"/, "other products: the subscription page");

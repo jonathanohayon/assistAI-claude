@@ -14,7 +14,7 @@ import {
   previewCampaigns,
   previewOutboundAgents,
   PREVIEW_CLIENT_AGENT,
-  PREVIEW_NUMBER,
+  previewNumber,
 } from "./preview-samples";
 
 export type PreviewAnswer = { status: number; body: unknown };
@@ -27,7 +27,7 @@ export function previewAnswer(lang: unknown, url: string, method = "GET"): Previ
   const path = new URL(url, "http://preview.invalid").pathname;
   const campaigns = previewCampaigns(lang);
   if (path === "/api/dashboard/campaigns") return { status: 200, body: { campaigns } };
-  if (path === "/api/dashboard/channels") return { status: 200, body: { numbers: [{ phoneNumber: PREVIEW_NUMBER, channel: "pstn" }] } };
+  if (path === "/api/dashboard/channels") return { status: 200, body: { numbers: [{ phoneNumber: previewNumber(lang), channel: "pstn" }] } };
   if (path === "/api/dashboard/outbound-agents") return { status: 200, body: { agents: previewOutboundAgents(lang) } };
   const agent = /^\/api\/dashboard\/outbound-agents\/([^/]+)$/.exec(path);
   if (agent) {

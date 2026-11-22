@@ -673,10 +673,9 @@
     "pitchSales": "Your agent calls your contacts for you and notes how each call went.",
     "pitchConnect": "Connect your own agent: it answers the phone with a Tamara voice and number.",
     "previewTry": "Try it free",
-    "previewNotify": "Coming soon, notify me",
-    "previewNotified": "We'll let you know.",
     "previewBadge": "Preview",
-    "previewNote": "Sample data: nothing is saved or sent."
+    "previewNote": "Sample data: nothing is saved or sent.",
+    "previewSoon": "Coming soon."
   },
   "DashboardCrm": {
     "header": "Customer space",
