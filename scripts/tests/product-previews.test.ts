@@ -178,10 +178,11 @@ async function main() {
     // The workspace's list, over the samples, in preview mode: no create, no delete.
     const list = html(
       l,
-      createElement(PreviewProvider, {
-        lang: l,
-        children: createElement(CampaignList, { campaigns: samples.previewCampaigns(l), loading: false, error: null, onOpen() {}, onCreate() {}, onDelete() {}, onAnalytics() {} }),
-      }),
+      createElement(
+        PreviewProvider as unknown as ComponentType<{ lang: string; children?: ReactNode }>,
+        { lang: l },
+        createElement(CampaignList, { campaigns: samples.previewCampaigns(l), loading: false, error: null, onOpen() {}, onCreate() {}, onDelete() {}, onAnalytics() {} }),
+      ),
     );
     for (const c of samples.previewCampaigns(l)) assert.ok(list.includes(esc(c.name)), `${l}: ${c.name}`);
     assert.ok(!list.includes(`aria-label="${esc(m.DashboardCampaigns.deleteCampaign)}"`), `${l}: no delete in a preview`);
