@@ -27,6 +27,7 @@ import { GlobalInstructionsForm } from "./global-instructions-form";
 import { PlanFeaturesForm } from "./plan-features-form";
 import { PlanPricingForm } from "./plan-pricing-form";
 import { ProductCatalogueAdmin } from "./engine-override/ProductCatalogueForm";
+import { ProductPricesAdmin } from "./engine-override/ProductPricesForm";
 import { SystemDirectivesForm } from "./system-directives-form";
 import { CampaignFramingsForm } from "./campaign-framings-form";
 
@@ -263,8 +264,8 @@ export function AdminShell(props: AdminShellProps) {
     {
       id: "product-catalogue",
       label: "Catalogue des produits",
-      tagline: "Moteur imposé par produit (Réception, Ventes, Connecter votre agent).",
-      summary: "Moteur imposé · coût / min",
+      tagline: "Prix, minutes et moteur imposé par produit (Réception, Ventes, Connecter votre agent).",
+      summary: "Prix · minutes · moteur imposé",
       accent: "from-[#be185d] to-[#db2777]",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
@@ -486,7 +487,12 @@ export function AdminShell(props: AdminShellProps) {
             {active === "pricing" && (
               <PlanPricingForm initialPricing={props.planPricing} />
             )}
-            {active === "product-catalogue" && <ProductCatalogueAdmin />}
+            {active === "product-catalogue" && (
+              <div className="space-y-6">
+                <ProductPricesAdmin />
+                <ProductCatalogueAdmin />
+              </div>
+            )}
             {active === "users" && (
               <AdminTable rows={props.rows} currentUserId={props.currentUserId} />
             )}

@@ -284,6 +284,7 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
     "app/admin/admin-shell.tsx",
     "app/admin/engine-override/EngineChoiceRow.tsx",
     "app/admin/engine-override/ProductCatalogueForm.tsx",
+    "app/admin/engine-override/catalogue-prices-ui.ts",
     "app/admin/users/[userId]/EngineOverrideLine.tsx",
     "app/admin/users/[userId]/layout.tsx",
   ]);
