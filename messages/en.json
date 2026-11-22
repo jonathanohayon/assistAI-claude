@@ -661,7 +661,7 @@
     "blockShared": "Shared",
     "reception": "Reception",
     "sales": "Sales",
-    "connect": "Your agent",
+    "connect": "Connect your agent",
     "myAgent": "My agent",
     "calls": "Calls",
     "clients": "Clients",
@@ -1998,8 +1998,7 @@
       "cta": "See my usage",
       "footer": "You receive this email once per threshold and billing period.",
       "entryReception": "Receptionist",
-      "entrySales": "Sales",
-      "entryConnect": "Your agent"
+      "entrySales": "Sales"
     }
   },
   "LiveTest": {

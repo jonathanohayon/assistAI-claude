@@ -41,7 +41,7 @@ function myAgentLink(asUserId?: string | null) {
 }
 
 /**
- * Menu entry "Votre agent" (connect): the customer's own agent.
+ * Menu entry "Connecter votre agent" (connect): the customer's own agent.
  *   - Owned: who answers (Tamara or the account's own agent) and its probe
  *     (AgentBrainSection); "Ask your agent" (ClientAgentBrick: the agent's
  *     address, its mode, secret and test, with its own save), shown only
