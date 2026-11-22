@@ -51,3 +51,12 @@ export function productMenu(input: ProductMenuInput): ProductMenu {
   }
   return out;
 }
+
+/**
+ * Whether the menu shows this entry as OWNED. "Prévenez-moi" refuses only
+ * these (409 product_owned): an entitled entry whose gate is off is still a
+ * "soon" preview, so asking to be told is accepted.
+ */
+export function shownAsOwned(menu: ProductMenu, entry: ProductEntry): boolean {
+  return menu[entry].state === "owned";
+}

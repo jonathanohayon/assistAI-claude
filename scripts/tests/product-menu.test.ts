@@ -9,7 +9,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { entitledProducts, type EntitlementInput } from "../../lib/product-entitlement";
-import { productMenu, type ProductGates } from "../../lib/product-menu";
+import { productMenu, shownAsOwned, type ProductGates } from "../../lib/product-menu";
+import { PRODUCT_ENTRIES } from "../../lib/product-values";
 import { menuFor, productGates } from "../../lib/product-gates";
 
 // The server does accountProducts(userId) = entitledProducts(the row): the
@@ -180,6 +181,52 @@ assert.equal(
   assert.match(readFileSync("lib/product-gates.ts", "utf8"), /return menuFor\(await accountProducts\(userId\), role, features\);/);
   assert.match(readFileSync("app/[locale]/dashboard/layout.tsx", "utf8"), /await accountProductMenu\(session\.user\.id, me\?\.role, features\)/);
   assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /await accountProductMenu\(target\.id, target\.role, /);
+}
+
+// ── "Prévenez-moi" refuses only what the menu shows as owned ──────────────
+{
+  // Every entry × (entitled, gate) for a non-admin account: refused (409)
+  // exactly when entitled AND the gate is on. Reception has no gate (always on).
+  for (const entry of PRODUCT_ENTRIES) {
+    for (const entitled of [false, true]) {
+      for (const gate of [false, true]) {
+        if (entry === "reception" && !gate) continue;
+        const gates: ProductGates = { sales: false, connect: false };
+        if (entry !== "reception") gates[entry] = gate;
+        const menu = productMenu({ entitlement: { entries: entitled ? [entry] : [] }, gates, isAdmin: false });
+        assert.equal(shownAsOwned(menu, entry), entitled && gate, `notify refuses ${entry} entitled=${entitled} gate=${gate}`);
+        assert.equal(shownAsOwned(menu, entry), menu[entry].state === "owned", `${entry}: the route and the menu agree`);
+      }
+    }
+  }
+  // The same through menuFor (the env-driven gates the route uses), every env.
+  const tenant = featuresForPlan(DEFAULT_MATRIX, "premium");
+  const envs = [{}, { CAMPAIGN_DISPATCH: "on" }, { CLIENT_AGENT: "admin" }, { CLIENT_AGENT: "all" }, { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" }];
+  const subsets: Array<(typeof PRODUCT_ENTRIES)[number][]> = [];
+  for (let m = 0; m < 1 << PRODUCT_ENTRIES.length; m++) subsets.push(PRODUCT_ENTRIES.filter((_, j) => (m >> j) & 1));
+  for (const env of envs) {
+    for (const role of ["user", "admin"]) {
+      for (const entries of subsets) {
+        const menu = menuFor({ entries }, role, tenant, env);
+        const gates = productGates(role === "admin", tenant, env);
+        for (const entry of PRODUCT_ENTRIES) {
+          const gate = entry === "reception" ? true : gates[entry];
+          const want = role === "admin" || (entries.includes(entry) && gate);
+          assert.equal(shownAsOwned(menu, entry), want, `menuFor ${role} ${JSON.stringify(env)} ${entries.join("+") || "none"} → ${entry}`);
+        }
+      }
+    }
+  }
+  // The regression: a grandfathered premium is entitled to sales with dispatch
+  // off → "soon", so notify-me is accepted (it used to answer 409).
+  const premium = entitledProducts({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null });
+  assert.ok(premium.entries.includes("sales"));
+  assert.equal(shownAsOwned(menuFor(premium, "user", tenant, {}), "sales"), false);
+  // The route decides with the layouts' menu, not the bare entitlement.
+  const route = readFileSync("app/api/dashboard/products/notify/route.ts", "utf8");
+  assert.match(route, /shownAsOwned\(await menuForAccount\(r\.userId, owned\), product\)/);
+  assert.doesNotMatch(route, /entries\.includes/);
+  assert.match(readFileSync("lib/product-gates.ts", "utf8"), /return menuFor\(entitlement, u\?\.role, features, env\);/);
 }
 
 // ── Client safety: the menu modules read no env and pull no server module ──
