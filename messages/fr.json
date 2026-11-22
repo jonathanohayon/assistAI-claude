@@ -661,7 +661,7 @@
     "blockShared": "Commun",
     "reception": "Réception",
     "sales": "Ventes",
-    "connect": "Votre agent",
+    "connect": "Connecter votre agent",
     "myAgent": "Mon agent",
     "calls": "Appels",
     "clients": "Clients",
@@ -1998,8 +1998,7 @@
       "cta": "Voir ma consommation",
       "footer": "Vous recevez cet e-mail une seule fois par seuil et par période de facturation.",
       "entryReception": "Réceptionniste",
-      "entrySales": "Ventes",
-      "entryConnect": "Votre agent"
+      "entrySales": "Ventes"
     }
   },
   "LiveTest": {
