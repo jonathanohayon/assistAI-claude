@@ -7,6 +7,7 @@
 
 import { PLANS } from "@/lib/plans";
 import { PRICE_FIELDS, type PlanPricingMap } from "@/lib/plan-pricing";
+import { parseProductCatalogue, type ProductCatalogue } from "@/lib/product-catalogue";
 
 export const PUBLIC_PLAN_PRICING_PATH = "/api/public/plan-pricing";
 
@@ -15,14 +16,19 @@ export const PUBLIC_PLAN_PRICING_PATH = "/api/public/plan-pricing";
 export const PUBLIC_PLAN_PRICING_CACHE_CONTROL =
   "public, s-maxage=60, stale-while-revalidate=300";
 
-/** Builds the API response. A failed load is a 503 that is never cached and
- *  carries no price, so the client shows its placeholder instead. */
+/** Builds the API response: the plan map exactly as before, plus (when
+ *  `loadProducts` is given) the product catalogue under a trailing `products`
+ *  key, an ADDITIVE field: the plan keys keep their bytes. A failed load is a
+ *  503 that is never cached and carries no price, so the client shows its
+ *  placeholder instead. */
 export async function publicPlanPricingResponse(
   load: () => Promise<PlanPricingMap>,
+  loadProducts?: () => Promise<ProductCatalogue>,
 ): Promise<Response> {
   try {
     const pricing = await load();
-    return Response.json(pricing, {
+    const body = loadProducts ? { ...pricing, products: await loadProducts() } : pricing;
+    return Response.json(body, {
       headers: { "Cache-Control": PUBLIC_PLAN_PRICING_CACHE_CONTROL },
     });
   } catch {
@@ -52,6 +58,13 @@ export function parsePublicPlanPricing(raw: unknown): PlanPricingMap | null {
     out[p.key] = price;
   }
   return out;
+}
+
+/** Strict parse of the response's `products` field (the product catalogue),
+ *  else null. Independent of the plan keys. */
+export function parsePublicProducts(raw: unknown): ProductCatalogue | null {
+  if (!raw || typeof raw !== "object") return null;
+  return parseProductCatalogue((raw as Record<string, unknown>).products);
 }
 
 /** Client fetch. Resolves to null on any failure (network, non-2xx, bad

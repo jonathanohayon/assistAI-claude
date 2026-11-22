@@ -386,6 +386,13 @@
       "when": 1794825550057,
       "tag": "0054_account_door",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1795340099305,
+      "tag": "0055_account_products",
+      "breakpoints": true
     }
   ]
 }
