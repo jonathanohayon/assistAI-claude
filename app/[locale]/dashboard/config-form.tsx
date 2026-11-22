@@ -55,7 +55,7 @@ import {
 import { parseRecapEmailConfirmation, type RecapEmailConfirmation } from "./config/owner-email-confirm";
 import { PersonaPanel } from "./config/persona-panel";
 import { personaTileSummary } from "./config/persona-tile-summary";
-import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
+import { AdminBadge, Tile, TILE_ROW_SIZE, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
   DashboardStats,
@@ -776,13 +776,14 @@ export function ConfigForm({
           {/* À partir de xl, la grille des tuiles n'a plus toute la largeur
            *  (la col droite contient le LiveTest sticky), donc on repasse
            *  à 4 colonnes pour que les tuiles ne deviennent pas trop petites. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
+          <div className="@container grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
             {orderedTiles.map((tile, i) => (
               <Tile
                 key={tile.id}
                 tile={tile}
                 active={activeTile === tile.id}
                 highlightLabel={tile.id === highlightId ? t("tileStartHere") : undefined}
+                sizeClass={TILE_ROW_SIZE}
                 onClick={() => {
                   // La tuile campagnes n'apparaît que verrouillée (plans non
                   // éligibles) → elle ouvre l'upsell. Les plans éligibles

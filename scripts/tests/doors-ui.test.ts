@@ -324,4 +324,24 @@ const fr = JSON.parse(readFileSync("messages/fr.json", "utf8"));
 assert.deepEqual([fr.Dashboard.doorTitleReception, fr.Dashboard.doorTitleSales, fr.Dashboard.doorTitleConnect], ["Réceptionniste", "Ventes", "Votre agent"]);
 assert.equal(fr.DashboardSettings.doorLabel, "Mon usage principal");
 
+// ── Tiles in a row share one height (the row stretches to its tallest tile) ─
+{
+  const form = code("app/[locale]/dashboard/config-form.tsx");
+  const grid = form.match(/<div className="(@container grid [^"]+)">\s*\{orderedTiles\.map/);
+  assert.ok(grid, "the tile grid is a size container");
+  assert.match(form, /sizeClass=\{TILE_ROW_SIZE\}/, "config tiles use the row sizing");
+  const shared = readFileSync("app/[locale]/dashboard/config/shared-ui.tsx", "utf8");
+  const size = shared.match(/export const TILE_ROW_SIZE =\s*"([^"]+)"/)![1];
+  assert.doesNotMatch(size, /aspect-|h-full/, "aspect-ratio (or a fixed height) would stop the row stretch");
+  // One square minimum per breakpoint, matching the grid's columns and gap-3.
+  const cols: Record<string, number> = {};
+  for (const m of grid![1].matchAll(/(?:(\w+):)?grid-cols-(\d)/g)) cols[m[1] ?? ""] = Number(m[2]);
+  assert.match(grid![1], /\bgap-3\b/);
+  for (const [bp, n] of Object.entries(cols)) {
+    const gaps = `${((n - 1) * 0.75).toString()}rem`;
+    const cls = `${bp ? `${bp}:` : ""}min-h-[calc((100cqw_-_${gaps})/${n})]`;
+    assert.ok(size.split(" ").includes(cls), `${bp || "base"}: ${cls}`);
+  }
+}
+
 console.log("doors-ui: OK");

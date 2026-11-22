@@ -29,6 +29,16 @@ export type TileDef = {
   locked?: boolean;
 };
 
+/**
+ * Config grid tiles: every tile in a row as tall as the tallest one, and
+ * never shorter than a square. The grid is a size container (`@container`),
+ * so 100cqw is its width; a column is (width − gaps) / columns, with the
+ * grid's own breakpoints (2 / sm 3 / md 4 / lg 5 / xl 4 columns, gap-3).
+ * Without aspect-ratio, the grid's default stretch evens out each row.
+ */
+export const TILE_ROW_SIZE =
+  "min-h-[calc((100cqw_-_0.75rem)/2)] sm:min-h-[calc((100cqw_-_1.5rem)/3)] md:min-h-[calc((100cqw_-_2.25rem)/4)] lg:min-h-[calc((100cqw_-_3rem)/5)] xl:min-h-[calc((100cqw_-_2.25rem)/4)]";
+
 /** Badge violet "ADMIN" — pour marquer les features/UI visibles
  *  uniquement par l'admin agissant sur un tenant. Petit shield + texte.
  *  Centralisé pour un look consistent partout (tuiles, sections, panels). */
@@ -82,11 +92,18 @@ export function Tile({
   onDrop,
   onDragEnd,
   highlightLabel,
+  sizeClass = "aspect-square",
 }: {
   tile: TileDef;
   active: boolean;
   /** Set on the account's door tile: a "start here" ring and badge. */
   highlightLabel?: string;
+  /**
+   * The tile's sizing. Default: a square. The config grid passes
+   * TILE_ROW_SIZE instead: at least a square, and every tile in a row
+   * stretched to the tallest one (aspect-ratio would stop the stretch).
+   */
+  sizeClass?: string;
   onClick: () => void;
   delay?: number;
   dragging?: boolean;
@@ -118,7 +135,7 @@ export function Tile({
         onDrop?.();
       }}
       onDragEnd={() => onDragEnd?.()}
-      className={`anim-bounce-in group relative flex aspect-square cursor-grab flex-col items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
+      className={`anim-bounce-in group relative flex ${sizeClass} cursor-grab flex-col items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
         dragging
           ? "border-[#0e7490] opacity-50 ring-2 ring-[#0e7490]/30"
           : dropTarget
