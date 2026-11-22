@@ -329,3 +329,21 @@ export function clientAgentTestNeedsSave(tools: ScreenTools, storedUrl: string):
   const urlChanged = ca.url.trim() !== storedUrl.trim();
   return urlChanged && ca.secret === undefined && ca.secretSet;
 }
+
+/**
+ * The client-agent brick's save (F2): the SAME request the configuration
+ * page's save bar sent when only "Ask your agent" had changed — PUT
+ * /api/dashboard/tools (?asUserId for the admin view) with
+ * { tools: toolsSaveBody(base, next) } — limited to the clientAgent key (the
+ * brick edits nothing else). null = nothing to save.
+ */
+export function clientAgentSaveRequest(
+  base: ScreenTools,
+  next: ScreenTools,
+  asUserId?: string | null,
+): { url: string; body: string } | null {
+  const tchanges = toolsSaveBody(base, { ...base, clientAgent: next.clientAgent });
+  if (Object.keys(tchanges).length === 0) return null;
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+  return { url: `/api/dashboard/tools${qs}`, body: JSON.stringify({ tools: tchanges }) };
+}

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { useDataFetch } from "@/components/preview/preview-context";
+
 import { launchHeading, TONE_CHIP, type DispatchMode } from "@/lib/campaigns/live-view";
 import type { CampaignStats } from "@/lib/campaigns/types";
 
@@ -53,6 +55,8 @@ export function CampaignLaunch({
   onDispatchMode?: (mode: DispatchMode) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const [busy, setBusy] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [testBusy, setTestBusy] = useState(false);
@@ -68,7 +72,7 @@ export function CampaignLaunch({
   useEffect(() => {
     let cancelled = false;
     const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
-    fetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
+    dataFetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
       .then(
         (data: {
@@ -90,7 +94,7 @@ export function CampaignLaunch({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, asUserId, status]);
+  }, [campaignId, asUserId, status, dataFetch]);
 
   // Compteurs effectifs : frais si dispo, sinon la prop parente.
   const eff: Counts = counts ?? {
@@ -107,7 +111,7 @@ export function CampaignLaunch({
     setBusy(true);
     try {
       const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/status${qs}`,
         {
           method: "POST",
@@ -138,7 +142,7 @@ export function CampaignLaunch({
     setTestMsg(null);
     try {
       const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/test-call${qs}`,
         {
           method: "POST",

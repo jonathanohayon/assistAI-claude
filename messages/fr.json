@@ -672,6 +672,9 @@
     "pitchReception": "Votre agent répond au téléphone à votre place, de jour comme de nuit.",
     "pitchSales": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel.",
     "pitchConnect": "Branchez votre propre agent : il répond au téléphone avec une voix et un numéro Tamara.",
+    "previewTry": "Essayer gratuitement",
+    "previewBadge": "Aperçu",
+    "previewNote": "Données d'exemple : rien n'est enregistré ni envoyé.",
     "previewSoon": "Bientôt disponible."
   },
   "DashboardCrm": {
@@ -2881,5 +2884,9 @@
     "cancelledNoDate": "Votre rendez-vous est annulé.",
     "rescheduled": "Votre rendez-vous a été déplacé au {date} à {time}.",
     "place": "Lieu : {place}"
+  },
+  "ClientAgentBrick": {
+    "title": "Votre agent IA",
+    "intro": "L'adresse de votre propre agent : Tamara lui pose la question pendant les appels et utilise sa réponse."
   }
 }
