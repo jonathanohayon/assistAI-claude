@@ -18,10 +18,12 @@ import { readFileSync } from "node:fs";
 import { DEFAULT_ENGINE_LANGUAGES, type EngineLanguages } from "../../lib/engine-languages";
 import {
   engineForCall,
+  engineOptionCostPerMinUsd,
   engineOptionCoverage,
   engineOverrideProblems,
   noEngineOverrides,
   salesOverrideWrite,
+  withOptionCosts,
   parseEngineOverride,
   productForPath,
   type CallPath,
@@ -29,6 +31,7 @@ import {
   type EngineOverride,
   type EngineOverrides,
 } from "../../lib/engine-override";
+import { DEFAULT_COST_RATES, perMinuteUsdFor } from "../../lib/finance/rates";
 import { DEFAULT_PRODUCT_CATALOGUE } from "../../lib/product-catalogue";
 import { catalogueRowWrite, parseCatalogueRow, serializeCatalogueRow } from "../../lib/product-catalogue-row";
 import { PRODUCTS, type Product } from "../../lib/product-values";
@@ -276,6 +279,61 @@ console.log("ok: stored row (parse, bytes, write)");
   assert.deepEqual(engineOptionCoverage("reception", custom).find((o) => o.model === "gemini-x"), { engine: "gemini", model: "gemini-x", honoured: false, languages: ["fr", "he"] });
 }
 console.log("ok: option coverage");
+
+// ── 2b. Option cost per minute (same source as the tenant engine banner) ───
+{
+  const R = DEFAULT_COST_RATES;
+  for (const p of PRODUCTS) {
+    const plain = engineOptionCoverage(p, L);
+    const costed = withOptionCosts(plain, R);
+    // Additive: the response minus costPerMinUsd is the old output, byte for byte.
+    assert.equal(JSON.stringify(costed.map(({ costPerMinUsd: _c, ...rest }) => rest)), JSON.stringify(plain), `${p}: additive only`);
+    assert.ok(costed.every((o) => Object.keys(o).at(-1) === "costPerMinUsd"), `${p}: costPerMinUsd appended`);
+  }
+  const rec = withOptionCosts(engineOptionCoverage("reception", L), R);
+  const find = (engine: string, model: string | null) => rec.find((o) => o.engine === engine && o.model === model)!;
+  // A known rate: Grok 0.08 USD/min.
+  assert.equal(find("xai", null).costPerMinUsd, 0.08, "xai default: the known rate");
+  assert.equal(find("xai", REALTIME_PROVIDER_MODEL.xai).costPerMinUsd, 0.08, "xai env model: the known rate");
+  // OpenAI: no per-model entry → the flat openaiUsdPerMinute placeholder, as the banner.
+  for (const m of [null, "gpt-realtime-2", "gpt-realtime-2.1"]) {
+    assert.equal(find("openai", m).costPerMinUsd, R.openaiUsdPerMinute, `openai ${m}: flat placeholder fallback`);
+  }
+  // Gemini: no rate anywhere → null (unknown, never guessed).
+  assert.ok(rec.filter((o) => o.engine === "gemini").every((o) => o.costPerMinUsd === null), "gemini: null");
+  // A per-model entry is honoured for the option's running model.
+  const custom = { ...R, perMinuteUsd: { ...R.perMinuteUsd, openai: { "gpt-realtime-2.1": 0.5, "gpt-realtime-2": 0.3 } } };
+  assert.equal(engineOptionCostPerMinUsd(custom, "openai", "gpt-realtime-2.1"), 0.5);
+  assert.equal(engineOptionCostPerMinUsd(custom, "openai", null), 0.3, "openai default = gpt-realtime-2");
+}
+// The banner and the catalogue give the SAME number for the same engine/model:
+// the banner prices engineForCall's decision (engine, model) with perMinuteUsdFor.
+{
+  const rateSets = [
+    DEFAULT_COST_RATES,
+    { ...DEFAULT_COST_RATES, perMinuteUsd: { openai: { "gpt-realtime-2.1": 0.5 }, gemini: { "*": 0.02 }, xai: { [REALTIME_PROVIDER_MODEL.xai]: 0.09, "*": 0.07 } } },
+  ];
+  let compared = 0;
+  for (const rates of rateSets) {
+    for (const product of ["reception", "sales"] as const) {
+      const path: CallPath = product === "sales" ? "campaign" : "inbound";
+      const t = product === "sales" ? OUT_TODAY : IN_TODAY;
+      for (const o of withOptionCosts(engineOptionCoverage(product, L), rates)) {
+        if (!o.honoured) continue;
+        const d = engineForCall({ path, product, client: product === "sales" ? null : NOT_SET, overrides: ov(product, { engine: o.engine, model: o.model }), language: "fr", languages: L, today: t });
+        // A choice equal to today's values is today's path: the banner then
+        // prices today's (engine, model); the option is that same pair only
+        // when the option names it, so compare on applied decisions.
+        if (!d.apply) continue;
+        assert.equal(d.engine, o.engine);
+        assert.equal(o.costPerMinUsd, perMinuteUsdFor(rates, d.engine, d.model), `${product} ${o.engine}/${o.model}: catalogue = banner`);
+        compared++;
+      }
+    }
+  }
+  assert.ok(compared >= 6, `compared ${compared} options`);
+}
+console.log("ok: option cost per minute (additive, xai, openai fallback, gemini null, = banner)");
 
 // ── 3. voiceOnEngine ────────────────────────────────────────────────────────
 {
