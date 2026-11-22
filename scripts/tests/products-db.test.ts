@@ -102,7 +102,7 @@ async function main() {
   // P3 added `trials` ADDITIVELY: with no trial row, every entry is
   // "available" and the rest is exactly the P1 result.
   const NO_TRIALS = { reception: { state: "available" }, sales: { state: "available" }, connect: { state: "available" } };
-  const withTrials = (w: unknown) => ({ ...(w as object), trials: NO_TRIALS });
+  const withTrials = (w: unknown) => ({ ...(w as object), trials: NO_TRIALS, notifyRequested: [] });
   for (const [n, w] of want) assert.deepEqual(await accountProducts(id(n)), withTrials(w), `accountProducts u${n}`);
   assert.deepEqual(await accountProducts(id(0xfff)), withTrials({ base: null, addons: [], entries: [], source: "grandfathered" }), "unknown account");
   console.log(`ok: accountProducts over ${want.length} real rows`);

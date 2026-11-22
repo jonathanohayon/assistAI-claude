@@ -195,7 +195,7 @@ async function main() {
   {
     const avail = { state: "available" };
     const a = await accountProducts(TENANT);
-    assert.deepEqual(Object.keys(a), ["base", "addons", "entries", "source", "trials"]);
+    assert.deepEqual(Object.keys(a), ["base", "addons", "entries", "source", "trials", "notifyRequested"]);
     assert.equal(a.trials.sales.state, "active");
     assert.ok(a.trials.sales.endsAt);
     assert.deepEqual(a.trials.reception, avail);
@@ -208,7 +208,7 @@ async function main() {
     const none = await accountProducts(GF);
     assert.deepEqual(none.trials, { reception: avail, sales: avail, connect: avail });
     const unknown = await accountProducts(id(0xfff));
-    assert.deepEqual(unknown, { base: null, addons: [], entries: [], source: "grandfathered", trials: { reception: avail, sales: avail, connect: avail } });
+    assert.deepEqual(unknown, { base: null, addons: [], entries: [], source: "grandfathered", trials: { reception: avail, sales: avail, connect: avail }, notifyRequested: [] });
   }
   console.log("ok: accountProducts.trials (available / active / used), active entitles the entry, ended does not");
 

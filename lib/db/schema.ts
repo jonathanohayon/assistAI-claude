@@ -417,6 +417,30 @@ export const accountProductTrials = pgTable(
   ],
 );
 
+// "Prévenez-moi" (notify-me): an account asked to be told when a product
+// entry it does not own becomes available. A record only (no email is sent),
+// ONCE per account × entry: the unique (user_id, product) makes the POST
+// idempotent (INSERT … ON CONFLICT DO NOTHING). Never served to the worker.
+// lib/product-notify.ts.
+export const productNotifyRequests = pgTable(
+  "product_notify_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // A dashboard entry ('reception' | 'sales' | 'connect').
+    product: text("product").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [
+    unique("product_notify_requests_once").on(t.userId, t.product),
+    check("product_notify_requests_product_check", sql`${t.product} IN ('reception', 'sales', 'connect')`),
+  ],
+);
+
 // ─── Outbound call center (campagnes sortantes) ──────────────────────────
 // Un agent sortant réutilisable = une identité d'appel (voix + persona +
 // business/connaissance + notifs + canaux). Plusieurs campagnes peuvent
