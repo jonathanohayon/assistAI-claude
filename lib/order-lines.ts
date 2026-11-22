@@ -16,8 +16,8 @@
 //
 // A legacy order (payment_orders.products NULL) never goes through this file.
 
-import { addPeriod } from "./billing-activation";
 import { dispatchMode } from "./campaigns/dispatch-mode";
+import { monthlySubPeriods } from "./monthly-periods";
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import { PRODUCT_ENTRIES, PRODUCTS, entryOf, type Product, type ProductEntry } from "./product-values";
 import type { PlanKey } from "./plans";
@@ -174,19 +174,14 @@ export type PaidCoverage = { start: Date; end: Date; period: OrderPeriod; base: 
 /**
  * The monthly billing periods inside a paid coverage. The catalogue's
  * included minutes are per MONTH, so an annual coverage is twelve monthly
- * periods (addPeriod steps from its start); a monthly coverage is itself.
+ * periods (monthlySubPeriods, shared with the usage display and warnings);
+ * a monthly coverage is itself.
  */
 export function billingPeriodsOf(c: PaidCoverage): Array<{ start: Date; end: Date }> {
   if (c.period === "monthly") return [{ start: c.start, end: c.end }];
-  const out: Array<{ start: Date; end: Date }> = [];
-  let s = c.start;
-  for (let i = 0; i < 12 && s.getTime() < c.end.getTime(); i++) {
-    const next = addPeriod(s, "monthly");
-    const e = next.getTime() > c.end.getTime() ? c.end : next;
-    out.push({ start: s, end: e });
-    s = e;
-  }
-  return out;
+  // The shared split (lib/monthly-periods.ts): the billing-stats display and
+  // the usage warnings use the very same month boundaries.
+  return monthlySubPeriods(c.start, c.end);
 }
 
 /** The key that makes an overage billable once: entry + period start (ISO). */
