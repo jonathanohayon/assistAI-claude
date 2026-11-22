@@ -27,7 +27,7 @@ import {
   type PublicAvailability,
   type PublicGrid,
 } from "./public-plan-pricing";
-import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "./trial";
+import { TRIAL_COPY_VALUES } from "./trial-copy";
 
 export type Billing = "monthly" | "annual";
 
@@ -51,10 +51,8 @@ export const GRID_SIGNUP_HREF: Readonly<Record<Product, string>> = {
 // (lib/product-entitlement.ts rule 2: reception_multi, i.e. Réception).
 // Ventes and Connecter votre agent are not in it: their cards say so and
 // their CTA is a neutral "create my account" (still sign-up).
-export const SIGNUP_TRIAL = {
-  days: Math.round(TRIAL_DURATION_MS / 86_400_000),
-  minutes: TRIAL_MINUTES_INCLUDED,
-} as const;
+// The same ICU arguments as every other trial message (lib/trial-copy.ts).
+export const SIGNUP_TRIAL = TRIAL_COPY_VALUES;
 
 const SIGNUP_TRIAL_ENTRIES = entitledProducts({
   subscriptionPlan: TRIAL_PLAN_KEY,

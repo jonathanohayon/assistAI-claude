@@ -287,7 +287,7 @@
       "model": "Model"
     },
     "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
-    "trial": "Free 14-day or 100-minute trial, no credit card. The founder calls you to set Tamara up with you.",
+    "trial": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# minute} other {# minutes}}, no credit card. The founder calls you to set Tamara up with you.",
     "grid": {
       "title": "One base offer, add-ons if you need them.",
       "subtitle": "Choose what your agent does: answer the phone, call your contacts, or give your own agent a voice. No commitment.",
@@ -528,7 +528,7 @@
     "recommendBadge": "★ Recommended",
     "pricePerMonth": "VAT incl. / month",
     "annualDiscount": "2 months free yearly",
-    "freeTrialNoticeStart": "24h free trial. No commitment, switchable from the dashboard.",
+    "freeTrialNoticeStart": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# call minute} other {# call minutes}}, whichever comes first.",
     "comparePlans": "Compare plans",
     "freeBadge": "Free trial — all features",
     "title": "Create your voice agent",
@@ -593,7 +593,7 @@
     "errVerifyRateLimited": "Too many attempts. Please try again later."
   },
   "Onboarding": {
-    "trialLabel": "Free trial — 60 call minutes or 24h",
+    "trialLabel": "Free trial — {minutes, plural, one {# call minute} other {# call minutes}} or {days, plural, one {# day} other {# days}}",
     "activePlan": "Active plan",
     "popularBadge": "★ Popular",
     "changeButton": "Change",
