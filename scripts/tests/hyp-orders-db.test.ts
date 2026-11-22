@@ -22,7 +22,12 @@
 //      account's calls; a failed order does not count as billed; two
 //      checkouts both carry it, two concurrent callbacks record it ONCE (the
 //      other is refused + an admin alert); the next checkout no longer
-//      carries it; a grandfathered account never gets one.
+//      carries it; a grandfathered account never gets one;
+//   6. terms snapshot: `preview: true` writes nothing and never calls HYP;
+//      a paid order's lines carry their terms; a catalogue edit AFTER the
+//      payment changes nothing for that period (billing-stats usageByProduct,
+//      the usage warning thresholds) and shows in the next checkout's
+//      `changes`; a finished period's overage is billed at ITS pinned terms.
 // Plain `npm test` skips it. Run it with:  bash scripts/hyp-orders-db.sh
 // ORDERS_RECORD=<file> writes the legacy capture instead (used once to
 // record the fixture from the tree before P4, see the PR).
@@ -58,6 +63,8 @@ const RACE = id(0xd2); // record holder with a past paid coverage + usage
 const GF = id(0xd3); // grandfathered (products NULL) with a paid multi-line row + usage
 const LEG = id(0xd4); // record holder whose only paid order is legacy
 const ADM = id(0xd5); // an account with role admin, trialing
+const TRM = id(0xd6); // record holder: terms snapshot, current paid period
+const TRM2 = id(0xd7); // record holder: terms snapshot, finished paid period + usage
 
 async function main() {
   const mock = await import("./fixtures/hyp-orders/mock-hyp");
@@ -270,7 +277,13 @@ async function main() {
   });
   assert.equal(a.status, 200);
   const baseLine = { kind: "base", product: "reception", period: "monthly", amount: 89 };
-  assert.deepEqual({ ...a.body, url: undefined }, { url: undefined, amount: 89, currency: "EUR", lines: [baseLine] });
+  const baseTerms = { price: 89, includedMinutes: 200, overageRate: 0.39, currency: "EUR" };
+  // P4's fields unchanged (`lines` without terms), plus `terms` and `changes` (a first order: none).
+  assert.deepEqual(
+    { ...a.body, url: undefined },
+    { url: undefined, amount: 89, currency: "EUR", lines: [baseLine], terms: [{ kind: "base", product: "reception", ...baseTerms }], changes: [] },
+  );
+  assert.deepEqual(Object.keys(a.body), ["url", "amount", "currency", "lines", "terms", "changes"]);
   assert.ok(String(a.body.url).startsWith(mock.MOCK_HYP_URL));
   let sign = lastSign();
   const [o1] = await orders(R1);
@@ -280,7 +293,7 @@ async function main() {
   );
   assert.deepEqual(
     { plan_key: o1.plan_key, period: o1.period, expected_amount: o1.expected_amount, currency: o1.currency, coin: o1.coin, status: o1.status, products: o1.products },
-    { plan_key: "global", period: "monthly", expected_amount: 89, currency: "EUR", coin: "3", status: "pending", products: [baseLine] },
+    { plan_key: "global", period: "monthly", expected_amount: 89, currency: "EUR", coin: "3", status: "pending", products: [{ ...baseLine, terms: baseTerms }] },
   );
   // Add-ons once their flags are on; ILS from the he locale; annual = 10x.
   process.env.CAMPAIGN_DISPATCH = "on";
@@ -321,7 +334,7 @@ async function main() {
   const paidUntil1 = new Date(String(u1.paid_until));
   assert.equal(paidUntil1.getTime(), addPeriod(paidAt1, "monthly").getTime());
   const paidLines = p1.products as Array<Record<string, unknown>>;
-  assert.deepEqual(paidLines, [{ ...baseLine, periodStart: paidAt1.toISOString(), periodEnd: paidUntil1.toISOString() }]);
+  assert.deepEqual(paidLines, [{ ...baseLine, terms: baseTerms, periodStart: paidAt1.toISOString(), periodEnd: paidUntil1.toISOString() }]);
   const mail = sent().slice(mailsBefore);
   assert.equal(mail.length, 1);
   assert.deepEqual(mail[0].to, [`${R1.slice(-4)}@example.test`]);
@@ -337,8 +350,9 @@ async function main() {
   const st = await stats.GET(new NextRequest("http://localhost/api/dashboard/billing-stats"));
   const sb = (await st.json()) as { payments: Array<Record<string, unknown>> };
   assert.equal(sb.payments.length, 1);
-  assert.deepEqual(sb.payments[0].lines, paidLines);
-  console.log("  ✓ billing-stats: the multi-line invoice row carries `lines`");
+  // The invoice row's `lines` keep P4's shape (the terms snapshot is not shown).
+  assert.deepEqual(sb.payments[0].lines, [{ ...baseLine, periodStart: paidAt1.toISOString(), periodEnd: paidUntil1.toISOString() }]);
+  console.log("  ✓ billing-stats: the multi-line invoice row carries `lines` (P4 shape, no terms)");
 
   // ── 5. Overage ──────────────────────────────────────────────────────
   // A past paid coverage for RACE: [now - 31 days, now - 1 day), base
@@ -410,6 +424,129 @@ async function main() {
   assert.deepEqual(leg.body.lines, [{ kind: "base", product: "reception_multi", period: "monthly", amount: 169 }]);
   assert.equal(lastSign().Info, "Multi-site / Clinic (monthly)".replace("Multi-site / Clinic", (await import("../../messages/en.json")).default.Plans.premium.name));
   console.log("  ✓ overage: never for a grandfathered account, never over a legacy-paid period");
+
+  // ── 6. Terms snapshot ───────────────────────────────────────────────
+  {
+    const { setProductCatalogue } = await import("../../lib/products");
+    const { defaultProductCatalogue } = await import("../../lib/product-catalogue");
+    const { runUsageWarnings } = await import("../../lib/usage-warnings");
+    const { usageWarningDeps, listWarnableAccounts } = await import("../../lib/usage-warnings-deps");
+    for (const uid of [TRM, TRM2]) {
+      await db.execute(sql`INSERT INTO users (id, email, password_hash, display_name, locale, subscription_status, subscription_plan, trial_ends_at, products)
+        VALUES (${uid}, ${`${uid.slice(-4)}@example.test`}, 'x', 'Exemple Test', 'fr', 'trialing', 'essential', now() + interval '1 day', ${JSON.stringify({ base: "reception", addons: [] })}::jsonb)`);
+    }
+    // Preview: the same body, nothing created, HYP never called.
+    as(TRM);
+    const hypBefore = mock.hypRequests.length;
+    const xTrm = await xminOf(TRM);
+    const pv = await post({ ...body, preview: true });
+    assert.equal(pv.status, 200);
+    assert.deepEqual(pv.body, {
+      amount: 89,
+      currency: "EUR",
+      lines: [baseLine],
+      terms: [{ kind: "base", product: "reception", ...baseTerms }],
+      changes: [],
+      preview: true,
+    });
+    assert.deepEqual(await post({ ...body, preview: "yes" }), { status: 400, body: { error: "invalid_preview" } });
+    assert.equal(mock.hypRequests.length, hypBefore, "a preview reached HYP");
+    assert.equal((await orders(TRM)).length, 0, "a preview wrote an order");
+    assert.equal(await eventsOf(TRM), 0, "a preview wrote an event");
+    assert.equal(await xminOf(TRM), xTrm, "a preview touched the user row");
+    // Off: a preview is refused like any products body.
+    delete process.env.PRODUCT_ORDERS;
+    assert.deepEqual(await post({ ...body, preview: true }), disabled);
+    process.env.PRODUCT_ORDERS = "on";
+
+    // Paid at the default catalogue: the stored lines carry the terms.
+    const t1 = await post(body);
+    assert.equal(t1.status, 200);
+    const [tOrder] = await orders(TRM);
+    assert.ok((await pay(tOrder.id, "89.00", "3")).body.includes("paid=1"));
+    const tPaid = (await orders(TRM))[0].products as Array<Record<string, unknown>>;
+    assert.deepEqual(tPaid[0].terms, baseTerms);
+
+    // 170 min used in the paid period, then the catalogue is edited.
+    await usage(TRM, 170, new Date(Date.now() + 60 * 1000));
+    const edited = defaultProductCatalogue();
+    edited.reception.EUR.monthly = 99;
+    edited.reception.EUR.minutes = 100;
+    edited.reception.EUR.overagePerMin = 0.99;
+    await setProductCatalogue(edited);
+    const usageOf = async () => {
+      const r = await stats.GET(new NextRequest("http://localhost/api/dashboard/billing-stats"));
+      const j = (await r.json()) as { usageByProduct: { entries: Array<Record<string, unknown>> } };
+      return j.usageByProduct.entries.find((e) => e.entry === "reception")!;
+    };
+    const shown = await usageOf();
+    assert.deepEqual(
+      { used: shown.usedMinutes, included: shown.includedMinutes, rate: shown.overageRate, over: shown.overageMinutes },
+      { used: 170, included: 200, rate: 0.39, over: 0 },
+      "a catalogue edit after the payment changed that period's displayed numbers",
+    );
+    // The warnings: 170 of the pinned 200 = 85 % → the 80 % warning only.
+    const claims: Array<{ entry: string; threshold: number }> = [];
+    const warned: Array<{ included: number; threshold: number; rate: string }> = [];
+    const res = await runUsageWarnings(
+      usageWarningDeps({
+        env: { USAGE_WARNINGS_ENABLED: "1" },
+        listAccounts: async () => (await listWarnableAccounts()).filter((x) => x.id === TRM),
+        claim: async (c) => {
+          claims.push({ entry: c.entry, threshold: c.threshold });
+          return true;
+        },
+        send: async (_to, input) => {
+          warned.push({ included: input.includedMinutes, threshold: input.threshold, rate: input.overageRate });
+          return { ok: true };
+        },
+        logEvent: async () => undefined,
+      }),
+    );
+    assert.equal(res.accounts, 1);
+    assert.deepEqual(claims, [{ entry: "reception", threshold: 80 }]);
+    assert.deepEqual(warned, [{ included: 200, threshold: 80, rate: "0.39 €" }]);
+
+    // The next checkout: the edited catalogue applies, and `changes` says what moved.
+    const t2 = await post(body);
+    assert.equal(t2.status, 200);
+    assert.equal(t2.body.amount, 99);
+    assert.deepEqual(t2.body.terms, [{ kind: "base", product: "reception", price: 99, includedMinutes: 100, overageRate: 0.99, currency: "EUR" }]);
+    assert.deepEqual(t2.body.changes, [
+      { product: "reception", field: "price", from: 89, to: 99 },
+      { product: "reception", field: "includedMinutes", from: 200, to: 100 },
+      { product: "reception", field: "overageRate", from: 0.39, to: 0.99 },
+    ]);
+    // Adding an add-on: it shows as added.
+    process.env.CAMPAIGN_DISPATCH = "on";
+    const t3 = await post({ ...body, products: { base: "reception", addons: ["sales"] }, preview: true });
+    delete process.env.CAMPAIGN_DISPATCH;
+    assert.deepEqual((t3.body.changes as Array<{ field: string; product: string }>).map((c) => [c.field, c.product]), [
+      ["price", "reception"],
+      ["includedMinutes", "reception"],
+      ["overageRate", "reception"],
+      ["added", "sales"],
+    ]);
+
+    // A FINISHED period paid at the default terms, 250 min used, the
+    // catalogue edited since: billed at THAT period's terms (200 min at
+    // 0.39 → 50 × 0.39), never at the edited 100 min × 0.99.
+    await db.execute(sql`INSERT INTO payment_orders (user_id, plan_key, period, currency, coin, expected_amount, status, expires_at, paid_at, products)
+      VALUES (${TRM2}, 'global', 'monthly', 'EUR', '3', 89, 'paid', ${T0.toISOString()}, ${T0.toISOString()},
+      ${JSON.stringify([{ ...baseLine, terms: baseTerms, periodStart: T0.toISOString(), periodEnd: T1.toISOString() }])}::jsonb)`);
+    await usage(TRM2, 250, mid);
+    as(TRM2);
+    const t4 = await post(body);
+    assert.equal(t4.status, 200);
+    assert.deepEqual(t4.body.lines, [{ ...baseLine, amount: 99 }, overage]);
+    assert.equal(t4.body.amount, 99 + 19.5);
+    // The base line of the new order is pinned at the edited catalogue; overage lines carry no terms.
+    const stored = (await orders(TRM2)).find((o) => o.status === "pending")!.products as Array<Record<string, unknown>>;
+    assert.deepEqual(stored[0].terms, { price: 99, includedMinutes: 100, overageRate: 0.99, currency: "EUR" });
+    assert.ok(!("terms" in stored[1]));
+    await db.execute(sql`DELETE FROM app_settings WHERE key = 'product_catalogue_v1'`);
+    console.log("  ✓ terms: preview writes nothing (no order/event/HYP), paid lines carry terms, an edit after payment changes nothing for that period (billing-stats + 80% warning only), the next checkout lists the changes, a finished period's overage at its pinned terms");
+  }
 
   // Nothing ever left the process for HYP but the mock host.
   assert.ok(mock.hypRequests.every((r) => r.params.Masof === "0000000001"));

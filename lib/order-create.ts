@@ -13,6 +13,12 @@
 // on the user row and refuses to record the same (entry, periodStart) twice
 // (lib/order-activation.ts). An order created after a payment recomputes,
 // so it no longer carries what that payment billed.
+//
+// Terms snapshot (lib/order-terms.ts): each base / add-on line is stored
+// with the terms it is sold with; the response keeps `lines` in its P4 shape
+// and adds `terms` (per base / add-on line) and `changes` (against the
+// previous PAID multi-line order). `preview: true` returns the same body
+// without creating anything (no order, no event, no lock, no HYP call).
 
 import { and, eq, gte, isNotNull, lt } from "drizzle-orm";
 
@@ -30,32 +36,81 @@ import {
   parseOrderLines,
   parseOrderSelection,
   planKeyForBase,
+  withoutTerms,
   type OrderLine,
   type OrderPeriod,
   type PaidCoverage,
 } from "@/lib/order-lines";
 import { parseProductsRecord } from "@/lib/product-entitlement";
 import { productTitle } from "@/lib/product-titles";
+import type { CatalogueCurrency, ProductCatalogue } from "@/lib/product-catalogue";
 import { getProductCatalogue } from "@/lib/products";
+import { linesTerms, previousPaidOrder, termsChanges, type QuotedTerms, type TermsChange } from "@/lib/order-terms";
 
-export type ProductsOrderBody = { products?: unknown; period?: unknown; locale?: unknown };
+export type ProductsOrderBody = { products?: unknown; period?: unknown; locale?: unknown; preview?: unknown };
+
+/** What the payment page shows: P4's fields, plus the terms and the changes. */
+export type ProductsOrderQuote = {
+  amount: number;
+  currency: "EUR" | "ILS";
+  /** P4's shape (no terms inside). */
+  lines: OrderLine[];
+  /** The terms of each base / add-on line, in line order. */
+  terms: QuotedTerms[];
+  /** What differs from the previous PAID multi-line order ([] for a first order). */
+  changes: TermsChange[];
+};
 
 export type ProductsOrderResult =
-  | { status: 200; body: { url: string; amount: number; currency: "EUR" | "ILS"; lines: OrderLine[] } }
+  | { status: 200; body: ProductsOrderQuote & { url: string } }
+  | { status: 200; body: ProductsOrderQuote & { preview: true } }
   | { status: 400 | 404 | 409; body: { error: string } };
+
+/** A PAID multi-line order of an account: its lines, row currency and paid time. */
+export type PaidOrder = { lines: OrderLine[]; currency: string; paidAt: Date | null };
+
+/** Every PAID multi-line order of an account (legacy orders have no lines and are skipped). */
+export async function paidOrders(userId: string, exec: Pick<typeof db, "select"> = db): Promise<PaidOrder[]> {
+  const rows = await exec
+    .select({ products: paymentOrders.products, currency: paymentOrders.currency, paidAt: paymentOrders.paidAt })
+    .from(paymentOrders)
+    .where(and(eq(paymentOrders.userId, userId), eq(paymentOrders.status, "paid"), isNotNull(paymentOrders.products)));
+  const out: PaidOrder[] = [];
+  for (const r of rows) {
+    const lines = parseOrderLines(r.products);
+    if (lines) out.push({ lines, currency: r.currency, paidAt: r.paidAt });
+  }
+  return out;
+}
 
 /** The lines of every PAID multi-line order of an account (legacy orders have none). */
 export async function paidOrderLines(userId: string, exec: Pick<typeof db, "select"> = db): Promise<OrderLine[][]> {
-  const rows = await exec
-    .select({ products: paymentOrders.products })
-    .from(paymentOrders)
-    .where(and(eq(paymentOrders.userId, userId), eq(paymentOrders.status, "paid"), isNotNull(paymentOrders.products)));
-  const out: OrderLine[][] = [];
-  for (const r of rows) {
-    const lines = parseOrderLines(r.products);
-    if (lines) out.push(lines);
-  }
-  return out;
+  return (await paidOrders(userId, exec)).map((o) => o.lines);
+}
+
+/**
+ * PURE: the payment page's view of new lines. `terms` from the lines'
+ * snapshot; `changes` against the previous PAID multi-line order (latest
+ * paidAt), whose lines without a snapshot are read from the live catalogue
+ * in that order's own currency (their price = the amount paid).
+ */
+export function orderQuote(opts: {
+  lines: readonly OrderLine[];
+  amount: number;
+  currency: "EUR" | "ILS";
+  paid: readonly PaidOrder[];
+  catalogue: ProductCatalogue;
+}): ProductsOrderQuote {
+  const prev = previousPaidOrder(opts.paid);
+  const prevCurrency: CatalogueCurrency = prev?.currency === "ILS" ? "ILS" : "EUR";
+  const terms = linesTerms(opts.lines);
+  return {
+    amount: opts.amount,
+    currency: opts.currency,
+    lines: withoutTerms(opts.lines),
+    terms,
+    changes: termsChanges(prev ? linesTerms(prev.lines, { catalogue: opts.catalogue, currency: prevCurrency }) : null, terms),
+  };
 }
 
 /** The paid coverages (base line bounds) among paid orders' lines. */
@@ -81,10 +136,14 @@ export async function overageLinesFor(opts: {
   products: unknown;
   currency: "EUR" | "ILS";
   now: Date;
+  /** The account's paid orders, when the caller already read them. */
+  paid?: PaidOrder[];
+  catalogue?: ProductCatalogue;
 }): Promise<OrderLine[]> {
   // Grandfathered accounts (no valid record) are never billed overage.
   if (!parseProductsRecord(opts.products)) return [];
-  const paid = await paidOrderLines(opts.userId);
+  const orders = opts.paid ?? (await paidOrders(opts.userId));
+  const paid = orders.map((o) => o.lines);
   const coverages = coveragesOf(paid).filter((c) => c.start.getTime() < opts.now.getTime());
   if (coverages.length === 0) return [];
   const from = new Date(Math.min(...coverages.map((c) => c.start.getTime())));
@@ -103,8 +162,10 @@ export async function overageLinesFor(opts: {
     coverages,
     calls: callRows,
     campaignCalls: campaignRows,
-    catalogue: await getProductCatalogue(),
+    catalogue: opts.catalogue ?? (await getProductCatalogue()),
     currency: opts.currency,
+    // Each finished period at ITS pinned terms (lib/order-terms.ts).
+    paidOrders: orders,
     billed: billedOverageKeys(paid),
     now: opts.now,
   });
@@ -117,6 +178,8 @@ export async function createProductsOrder(
 ): Promise<ProductsOrderResult> {
   const period = body.period;
   if (period !== "monthly" && period !== "annual") return { status: 400, body: { error: "invalid period" } };
+  if (body.preview !== undefined && typeof body.preview !== "boolean") return { status: 400, body: { error: "invalid_preview" } };
+  const preview = body.preview === true;
   const sel = parseOrderSelection(body.products, env);
   if (!sel.ok) return { status: sel.status, body: { error: sel.error } };
 
@@ -145,15 +208,21 @@ export async function createProductsOrder(
   const coin = CURRENCY_COIN[currency];
   const now = new Date();
   const p: OrderPeriod = period;
+  // One catalogue read: the lines, their terms and the changes agree.
+  const catalogue = await getProductCatalogue();
+  const paid = await paidOrders(userId);
   const lines: OrderLine[] = [
-    ...catalogueLines(sel.selection, p, currency, await getProductCatalogue()),
-    ...(await overageLinesFor({ userId, products: user.products, currency, now })),
+    ...catalogueLines(sel.selection, p, currency, catalogue),
+    ...(await overageLinesFor({ userId, products: user.products, currency, now, paid, catalogue })),
   ];
   const amount = orderTotal(lines);
   if (!(amount > 0) || amount > MAX_ORDER_AMOUNT) return { status: 409, body: { error: "amount_out_of_range" } };
   // Never null here: parseOrderSelection refuses a base without a plan key.
   const planKey = planKeyForBase(sel.selection.base);
   if (!planKey) return { status: 409, body: { error: "product_unavailable" } };
+  const quote = orderQuote({ lines, amount, currency, paid, catalogue });
+  // Preview: the same computation, nothing created or sent.
+  if (preview) return { status: 200, body: { ...quote, preview: true } };
 
   const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
   const [order] = await db
@@ -200,5 +269,5 @@ export async function createProductsOrder(
     clientLName,
     issueToken: process.env.HYP_TOKENS_ENABLED === "1",
   });
-  return { status: 200, body: { url, amount, currency, lines } };
+  return { status: 200, body: { url, ...quote } };
 }
