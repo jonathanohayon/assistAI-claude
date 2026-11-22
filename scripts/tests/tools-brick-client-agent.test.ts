@@ -1,7 +1,8 @@
-// Tools brick, "Ask your agent" (T5b): the row exists only when the server
-// says visible; test results and refused saves in our words only; the
-// signing secret is write-only (shown once, then only "set"). Renders the
-// REAL ToolsBrick to static HTML. Mock data only — no network.
+// "Ask your agent" (T5b), its own brick since F2 (ClientAgentBrick on Votre
+// agent): the row exists only when the server says visible; the Tools brick
+// never has it any more; test results and refused saves in our words only;
+// the signing secret is write-only (shown once, then only "set"). Renders
+// the REAL ToolsBrick and ClientAgentRow to static HTML. Mock data only — no network.
 // Run with:  npx tsx scripts/tests/tools-brick-client-agent.test.ts
 
 import assert from "node:assert/strict";
@@ -16,6 +17,7 @@ import { DEFAULT_MATRIX } from "../../lib/plan-features";
 import { toolsFromTileToggles } from "../../lib/tools/adapters";
 import { effectiveCapabilities, publicTools, type Tools } from "../../lib/tools/contract";
 import { ToolsBrick } from "../../components/bricks/tools/ToolsBrick";
+import { ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import {
   activeCount,
   clientAgentRowVisible,
@@ -67,27 +69,43 @@ function served(visible: boolean | undefined, tools: Tools): ToolsResponse {
   };
 }
 
+const wrap = (locale: string, el: ReturnType<typeof createElement>) =>
+  renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, el));
+/** The Tools brick of Mon agent. */
+function renderTools(s: ToolsResponse, tools: ScreenTools, { locale = "en", kind = "inbound" as ToolsKind } = {}) {
+  return wrap(locale, createElement(ToolsBrick, { kind, served: s, tools, onChange: () => {}, returnTo: "/dashboard?tile=tools" }));
+}
+/** The client-agent brick's row, where the brick shows it (server says visible). */
 function render(
   s: ToolsResponse,
   tools: ScreenTools,
   { locale = "en", kind = "inbound" as ToolsKind, refused = null as ClientAgentRefusal | null } = {},
 ) {
-  const brick = createElement(ToolsBrick, { kind, served: s, tools, onChange: () => {}, returnTo: "/dashboard?tile=tools", clientAgentRefused: refused });
-  return renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, brick));
+  if (!clientAgentRowVisible(kind, s)) return "";
+  return wrap(locale, createElement(ClientAgentRow, { served: s, tools, onChange: () => {}, refused }));
 }
 
 const en = messages("en").ToolsBrick;
 
-// 1. visible=false (CLIENT_AGENT unset: the default) → no row at all
+// 1. visible=false (CLIENT_AGENT unset: the default) → no row at all; the
+//    Tools brick (Mon agent) never has the row, whatever the server says (F2)
 {
   for (const v of [false, undefined]) {
     const s = served(v, stored({ enabled: true, url: URL_OK, secret: SECRET_MOCK }));
     assert.equal(clientAgentRowVisible("inbound", s), false);
-    const html = render(s, s.tools);
-    assert.ok(!html.includes(en.cap.clientAgent.name), `visible=${v}: no row`);
-    assert.ok(!html.includes("tools-clientAgent-label") && !html.includes(en.agent.testButton), `visible=${v}: no switch, no test`);
-    assert.equal((html.match(/role="switch"/g) ?? []).length, 4, "the four capabilities only");
+    assert.equal(render(s, s.tools), "", `visible=${v}: the brick shows nothing`);
   }
+  for (const v of [false, undefined, true]) {
+    const s = served(v, stored({ enabled: true, url: URL_OK, secret: SECRET_MOCK }));
+    for (const l of LOCALES) {
+      const m = messages(l).ToolsBrick;
+      const html = renderTools(s, s.tools, { locale: l });
+      assert.ok(!html.includes(esc(m.cap.clientAgent.name)), `${l} visible=${v}: Tools has no client-agent row`);
+      assert.ok(!html.includes("tools-clientAgent-label") && !html.includes(esc(m.agent.testButton)) && !html.includes('type="url"'), `${l} visible=${v}: no switch, no address, no test`);
+      assert.equal((html.match(/role="switch"/g) ?? []).length, 4, "the four capabilities only");
+    }
+  }
+  assert.doesNotMatch(read("components/bricks/tools/ToolsBrick.tsx"), /clientAgent|ClientAgentSettings/, "the row's code left the Tools brick");
   assert.equal(clientAgentRowVisible("inbound", null), false, "loading: no row");
   // Never on an outbound agent, even if a server said visible.
   assert.equal(clientAgentRowVisible("outbound", { ...served(true, stored()), outboundTools: { visible: true } }), false);
@@ -101,7 +119,7 @@ const en = messages("en").ToolsBrick;
     const m = messages(l).ToolsBrick;
     const html = render(s, s.tools, { locale: l });
     assert.ok(html.includes(esc(m.cap.clientAgent.name)), `${l}: row name`);
-    assert.equal((html.match(/role="switch"/g) ?? []).length, 5, `${l}: one more switch`);
+    assert.equal((html.match(/role="switch"/g) ?? []).length, 1, `${l}: its own switch`);
     assert.match(html, /aria-labelledby="tools-clientAgent-label"/);
     assert.ok(html.includes(esc(m.agent.url)) && html.includes('type="url"') && html.includes('dir="ltr"'), `${l}: url field, LTR`);
     for (const mode of ["lead", "voice"]) assert.ok(html.includes(esc(m.agent.modes[mode])), `${l}: mode ${mode}`);
@@ -124,12 +142,12 @@ const en = messages("en").ToolsBrick;
   assert.ok(liveHtml.includes(esc(en.cap.clientAgent.on)));
   assert.ok(liveHtml.includes(`value="${URL_OK}"`));
   assert.ok(liveHtml.includes(esc(en.agent.modeHint.voice)));
-  // The tile count includes it only where its row is shown.
+  // The Tools tile (Mon agent) counts the plan capabilities only: the row is not on it (F2).
   const plain = activeCount(served(true, stored()).capabilities);
   assert.equal(activeCount(live.capabilities), plain, "default: plan capabilities only");
-  assert.equal(activeCount(live.capabilities, "inbound", true), plain + 1, "row shown and on: counted");
+  assert.equal(activeCount(live.capabilities, "inbound", true), plain + 1, "the helper still counts it when asked");
   assert.equal(activeCount(s.capabilities, "inbound", true), plain, "off: not counted");
-  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /activeCount\(toolsServed\.capabilities, "inbound", clientAgentRowVisible\("inbound", toolsServed\)\)/);
+  assert.match(read("app/[locale]/dashboard/config-form.tsx"), /activeCount\(toolsServed\.capabilities, "inbound"\)/);
   // "https://" stays left-to-right inside Hebrew sentences.
   assert.match(render(s, s.tools, { locale: "he" }), /<bdi dir="ltr">https:\/\/<\/bdi>/);
 }
@@ -217,7 +235,7 @@ const en = messages("en").ToolsBrick;
   assert.equal(secretState(served(true, stored()).tools), "unset");
   // Regenerating asks first (the confirmation copy exists in every language).
   for (const l of LOCALES) assert.ok(messages(l).ToolsBrick.agent.confirmRegenerate.length > 20, l);
-  const brick = read("components/bricks/tools/ToolsBrick.tsx");
+  const brick = read("components/bricks/client-agent/ClientAgentBrick.tsx");
   assert.match(brick, /secret === "set" \? setConfirming\(true\) : generate\(\)/, "regenerate → confirm");
   // Never logged.
   assert.doesNotMatch(brick, /console\./, "no logging in the brick");
@@ -247,8 +265,9 @@ const en = messages("en").ToolsBrick;
   });
   // Other capabilities: unchanged behaviour, no clientAgent key.
   assert.deepEqual(toolsSaveBody(base, { ...base, orders: { ...base.orders, enabled: true } }), { orders: { enabled: true } });
-  // The page's save uses it.
+  // The page's save (other capabilities) and the client-agent brick's save use it.
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /const tchanges = toolsSaveBody\(toolsBase, tools\)/);
+  assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /const req = clientAgentSaveRequest\(base, tools, asUserId\)/);
 
   // The test request: the unsaved address; the secret only when generated / removed.
   assert.deepEqual(clientAgentTestBody({ ...base, clientAgent: { ...base.clientAgent, url: "  https://x.example.test/a " } }), { url: "https://x.example.test/a" });
@@ -283,14 +302,14 @@ const en = messages("en").ToolsBrick;
     const copy = JSON.stringify([tb.cap.clientAgent, tb.agent, tb.missing.client_agent_disabled, tb.missing.no_agent_url]);
     assert.doesNotMatch(copy, /openai|grok|gemini|xai|realtime|webhook|hmac|ssrf/i, l);
   }
-  const brick = read("components/bricks/tools/ToolsBrick.tsx");
+  const brick = read("components/bricks/client-agent/ClientAgentBrick.tsx") + read("components/bricks/tools/ToolsBrick.tsx");
   assert.doesNotMatch(brick, /from-\[#(?:be185d|db2777|ec4899)\][^"]*to-\[#(?:0e7490|06b6d4|67e8f9|22d3ee)\]/, "no pink→cyan gradient");
 }
 
 // Design review (tamaraVP): the new-secret box is NOT tied to the save — it stays until
 // "C'est copié" (or leaving the page); "Annuler" only before the save.
 {
-  const src = read("components/bricks/tools/ToolsBrick.tsx");
+  const src = read("components/bricks/client-agent/ClientAgentBrick.tsx");
   assert.match(src, /const \[revealed, setRevealed\] = useState<string \| null>\(null\)/);
   assert.match(src, /setRevealed\(s\);\s*set\(\{ secret: s \}\)/, "generate keeps its own copy");
   assert.match(src, /const shown = revealed \?\? /);
@@ -310,7 +329,7 @@ const en = messages("en").ToolsBrick;
   assert.equal(clientAgentTestNeedsSave(st({ url: "https://agent.example.test/b", secret: "new" }), stored), false, "changed + new secret");
   assert.equal(clientAgentTestNeedsSave(st({ url: "https://agent.example.test/b", secretSet: false }), stored), false, "no secret anywhere");
   assert.equal(clientAgentTestNeedsSave(st({ url: " https://agent.example.test/a " }), stored), false, "whitespace is not a change");
-  const src = read("components/bricks/tools/ToolsBrick.tsx");
+  const src = read("components/bricks/client-agent/ClientAgentBrick.tsx");
   assert.match(src, /disabled=\{test === "running" \|\| testBlocked\}/);
   assert.match(src, /\{testBlocked && \([\s\S]*?t\("saveFirstToTest"\)/);
   assert.equal(messages("fr").ToolsBrick.agent.saveFirstToTest, "Enregistrez d'abord pour tester.");
