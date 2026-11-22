@@ -10,15 +10,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-DIR=".tmp/pg-agent-state-${PORT}"
-MAIN_DIR=".tmp/agent-state-main-${PORT}"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-mkdir -p "$MAIN_DIR"
-git show "${AGENT_STATE_MAIN_REF:-origin/main}:lib/dashboard-stats.ts" > "$MAIN_DIR/dashboard-stats.ts"
-rm -rf "$DIR" && mkdir -p "$DIR"
-initdb -D "$DIR" -A trust -U postgres >/dev/null
-pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
+pg_layout() {
+  DIR=".tmp/pg-agent-state-${PORT}"
+  MAIN_DIR=".tmp/agent-state-main-${PORT}"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  mkdir -p "$MAIN_DIR"
+  git show "${AGENT_STATE_MAIN_REF:-origin/main}:lib/dashboard-stats.ts" > "$MAIN_DIR/dashboard-stats.ts"
+  rm -rf "$DIR" && mkdir -p "$DIR"
+}
+pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$MAIN_DIR"'
+pg_start_throwaway agent-state
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 env -i PATH="$PATH" HOME="$HOME" AGENT_STATE_DB_URL="$URL" AGENT_STATE_MAIN_STATS="$PWD/$MAIN_DIR/dashboard-stats.ts" \

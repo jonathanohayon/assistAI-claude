@@ -7,12 +7,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-DIR=".tmp/pg-verify-email-${PORT}"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-rm -rf "$DIR" && mkdir -p "$DIR"
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 initdb -D "$DIR" -A trust -U postgres >/dev/null
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
+pg_layout() {
+  DIR=".tmp/pg-verify-email-${PORT}"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  rm -rf "$DIR" && mkdir -p "$DIR"
+}
+pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
+PG_START_ENV=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+pg_start_throwaway verify-email
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs
 env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 VERIFY_EMAIL_DB_URL="$URL" npx tsx scripts/tests/verify-email-db.test.ts

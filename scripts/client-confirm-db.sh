@@ -14,10 +14,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-DIR=".tmp/pg-client-confirm-${PORT}"
-MAIN_ROUTE=".tmp/client-confirm-main-${PORT}/route.ts"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-mkdir -p "$(dirname "$MAIN_ROUTE")"
+pg_layout() {
+  DIR=".tmp/pg-client-confirm-${PORT}"
+  MAIN_ROUTE=".tmp/client-confirm-main-${PORT}/route.ts"
+  PREV_END=".tmp/client-confirm-main-${PORT}/prev-end-route.ts"
+  PREV_CANCEL=".tmp/client-confirm-main-${PORT}/prev-cancel-route.ts"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  mkdir -p "$(dirname "$MAIN_ROUTE")"
+  rm -rf "$DIR" && mkdir -p "$DIR"
+}
+pg_layout
+pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$(dirname "$MAIN_ROUTE")"'
+pg_start_throwaway client-confirm
+[ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 # Parent of "Merge pull request #306" (07ffeca^1).
 BEFORE_REF="${CLIENT_CONFIRM_MAIN_REF:-e1968760af7bc00e179269a227954fbaa9a05212}"
 git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
@@ -28,15 +37,8 @@ git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
 # lib/demo-sandbox, which the a1dfec0 cancel route imported). Override with
 # CLIENT_CONFIRM_PREV_REF=<commit>.
 PREV_REF="${CLIENT_CONFIRM_PREV_REF:-e782b813e666221329fd539e41764694743986da}"
-PREV_END=".tmp/client-confirm-main-${PORT}/prev-end-route.ts"
-PREV_CANCEL=".tmp/client-confirm-main-${PORT}/prev-cancel-route.ts"
 git show "${PREV_REF}:app/api/calls/end/route.ts" > "$PREV_END"
 git show "${PREV_REF}:app/api/calendar/cancel/route.ts" > "$PREV_CANCEL"
-rm -rf "$DIR" && mkdir -p "$DIR"
-initdb -D "$DIR" -A trust -U postgres >/dev/null
-pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
-pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$(dirname "$MAIN_ROUTE")"'
-[ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # The route's owner recap wrapper calls next-intl's getTranslations, which
 # only runs inside Next: the shared test tsconfig maps "next-intl/server" to a

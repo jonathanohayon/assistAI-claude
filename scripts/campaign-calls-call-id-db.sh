@@ -14,19 +14,25 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-TMP=".tmp/campaign-calls-call-id-${PORT}"
-DIR="$TMP/pg"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-MAIN="$TMP/main-tree"
+# A failed start is retried on a new port: pg_start_throwaway then runs the
+# cleanup below (rm -rf "$TMP") and calls pg_layout again, so every start()
+# comes before what phase 2 puts under $TMP (the main tree).
+pg_layout() {
+  TMP=".tmp/campaign-calls-call-id-${PORT}"
+  DIR="$TMP/pg"
+  PGLOG="$TMP/pg.log"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  MAIN="$TMP/main-tree"
+  rm -rf "$TMP" && mkdir -p "$TMP"
+}
+pg_layout
 # Parent of "Merge pull request #277" (b31c115^1).
 BEFORE_REF="${CAMPAIGN_CALLS_BEFORE_REF:-333fd9e1b04ed213830731a4d8a5ff560e3da979}"
-rm -rf "$TMP" && mkdir -p "$TMP"
 stop() { pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; }
 pg_on_exit 'stop; rm -rf "$TMP"'
 start() {
   rm -rf "$DIR"
-  initdb -D "$DIR" -A trust -U postgres >/dev/null
-  pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
+  pg_start_throwaway campaign-calls-call-id
   [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 }
 run_test() {
@@ -43,12 +49,12 @@ run_test fresh
 stop
 
 echo "== 2. DB at the pre-#277 tree ($BEFORE_REF), then upgraded"
+start
 mkdir -p "$MAIN"
 # The whole tree, not a file list: migrate.mjs and schema.ts import siblings
 # (e.g. scripts/neutral-persona-fr.mjs) and a hand-picked list rots.
 git archive "$BEFORE_REF" | tar -x -C "$MAIN"
 ln -s "$PWD/node_modules" "$MAIN/node_modules"
-start
 (cd "$MAIN" && env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs)
 run_test main-snapshot
 migrate_branch
