@@ -81,8 +81,10 @@ const RECEPTION: Record<Locale, { title: string; subtitle: string; trial: string
   },
 };
 
+// The new FR lines put a non-breaking space ( ) before ":" so a narrow
+// screen never starts a line with the colon. Reception's lines are untouched.
 const RECEPTION_TRIAL: Record<Locale, string> = {
-  fr: `Essai gratuit de la Réception : ${days} jours ou ${minutes} minutes d'appels, au premier des deux atteint.`,
+  fr: `Essai gratuit de la Réception\u00a0: ${days} jours ou ${minutes} minutes d'appels, au premier des deux atteint.`,
   en: `Free Reception trial: ${days} days or ${minutes} call minutes, whichever comes first.`,
   he: `ניסיון חינם בקבלה: ${days} ימים או ${minutes} דקות שיחה, המוקדם מביניהם.`,
 };
@@ -93,8 +95,8 @@ const EXPECTED: Record<"connect" | "sales", Record<Locale, DoorCopy>> = {
     fr: {
       title: "Donnez une voix et un numéro à votre agent",
       usable:
-        "Branchez l'agent IA que vous avez déjà : il répond au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
-      soon: "Le branchement de votre agent ouvre bientôt. Créez votre compte : vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
+        "Branchez l'agent IA que vous avez déjà\u00a0: il répond au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
+      soon: "Le branchement de votre agent ouvre bientôt. Créez votre compte\u00a0: vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
     },
     en: {
       title: "Give your agent a voice and a number",
@@ -111,7 +113,7 @@ const EXPECTED: Record<"connect" | "sales", Record<Locale, DoorCopy>> = {
     fr: {
       title: "Créez votre centre d'appels",
       usable: "Votre agent appelle vos contacts et note le résultat de chaque appel. Sans carte bancaire.",
-      soon: "Le centre d'appels ouvre bientôt. Créez votre compte : vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
+      soon: "Le centre d'appels ouvre bientôt. Créez votre compte\u00a0: vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
     },
     en: {
       title: "Create your call center",
