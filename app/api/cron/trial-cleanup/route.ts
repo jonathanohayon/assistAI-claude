@@ -17,7 +17,6 @@ import {
 } from "@/lib/trial";
 import { trialCleanupDeps } from "@/lib/trial-cleanup-deps";
 import {
-  mayEmailTrialAccount,
   parseTrialEndEmailSwitch,
   sendErrorClass,
   trialWarningDays,
@@ -95,7 +94,7 @@ export async function GET(req: NextRequest) {
     // With the switch on, minutes used up = the trial ends now: Phase 2
     // pauses it and sends the paused e-mail instead.
     if (trialEndEmail === "on" && (await signupTrialSecondsUsed(u.id)) >= TRIAL_SECONDS_LIMIT) continue;
-    if (!mayEmailTrialAccount({ hasPaidOrder: await hasPaidOrder(u.id), role: u.role })) continue;
+    if (!trialCleanupDeps.mayEmail({ hasPaidOrder: await hasPaidOrder(u.id), role: u.role })) continue;
     // Récupère un numéro associé pour le mettre dans l'email (best-effort).
     const [pn] = await db
       .select({ phoneNumber: phoneNumbers.phoneNumber })
@@ -205,6 +204,9 @@ export async function GET(req: NextRequest) {
           or(isNull(users.role), ne(users.role, "admin")),
           or(isNull(users.trialEndsAt), gt(users.trialEndsAt, now)),
           or(isNull(users.deletionLockedUntil), lte(users.deletionLockedUntil, now)),
+          // A paid order on a still-trialing account is an activation in
+          // flight: never newly paused (nor e-mailed) for minutes.
+          sql`not ${hasPaidOrderSql}`,
           sql`(select coalesce(sum(${calls.durationSeconds}), 0) from ${calls} where ${calls.userId} = ${users.id}) >= ${TRIAL_SECONDS_LIMIT}`,
         ),
       );
@@ -340,13 +342,14 @@ async function claimTrialPause(userId: string, extra: { trialEndsAt?: Date }): P
 
 /**
  * The paused e-mail, once, after the flip (already committed). Skipped for a
- * paid account (the RETURNING read, then a fresh read). A failure is logged
+ * paid account: first by the flip's own RETURNING (the claim selects it),
+ * then by the guard on a fresh read right before the send. A failure is logged
  * with its error class only, never retried: the flip is the claim, so no
  * later run sends it, and the pause stays.
  */
 async function sendPausedEmailOnce(acc: FlippedAccount): Promise<boolean> {
-  if (!mayEmailTrialAccount({ hasPaidOrder: acc.hasPaidOrder, role: acc.role })) return false;
-  if (!mayEmailTrialAccount({ hasPaidOrder: await hasPaidOrder(acc.id), role: acc.role })) return false;
+  if (acc.hasPaidOrder) return false; // the selection: read by the claim itself
+  if (!trialCleanupDeps.mayEmail({ hasPaidOrder: await hasPaidOrder(acc.id), role: acc.role })) return false;
   let ok = false;
   let errorClass = "unknown";
   try {
