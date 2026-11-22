@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
-import { type CostRates } from "@/lib/finance/rates";
+import { costRatesWrite, type CostRates } from "@/lib/finance/rates";
 import { getCostRates, setCostRates } from "@/lib/finance/rates-storage";
 import { logEvent } from "@/lib/logger";
 
 // GET/PUT /api/admin/cost-rates
 // Admin-only. Lit/écrit la grille tarifaire Finance (rate card).
+// GET adds `perMinuteUsd` (per engine/model, additive); the historic keys are
+// unchanged. PUT: the historic keys behave exactly as before; perMinuteUsd
+// omitted = unchanged, present = a partial patch, invalid → 400 + paths.
 
 export async function GET() {
   const guard = await requireAdmin();
@@ -27,7 +30,9 @@ export async function PUT(req: NextRequest) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
-  await setCostRates(body.rates ?? body);
+  const w = costRatesWrite(await getCostRates(), body);
+  if (!w.ok) return NextResponse.json({ error: w.error, fields: w.fields }, { status: 400 });
+  await setCostRates(w.value);
 
   await logEvent({
     source: "web",

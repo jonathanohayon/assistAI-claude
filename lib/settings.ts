@@ -57,6 +57,10 @@ export const SETTING_KEYS = {
   // currency, base / add-on prices, included minutes, overage. Absent or
   // invalid → DEFAULT_PRODUCT_CATALOGUE (invalid also alerts the admins).
   PRODUCT_CATALOGUE: "product_catalogue_v1",
+  // JSON engine → model | "*" → supported languages (lib/engine-languages.ts).
+  // Absent or invalid → DEFAULT_ENGINE_LANGUAGES (invalid also alerts the
+  // admins). Unknown = not supported.
+  ENGINE_LANGUAGES: "engine_languages_v1",
   // JSON map plan → system prompt utilisé pour générer le résumé WhatsApp
   // post-appel (lib/summarize.ts). Permet d'avoir un ton/contenu/format
   // différents par plan (ex. basique = simple confirm message · global =
