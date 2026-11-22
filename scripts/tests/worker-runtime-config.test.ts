@@ -13,7 +13,7 @@ import { getTableColumns } from "drizzle-orm";
 
 import { accountFrom } from "../../lib/agent/adapters";
 import { WORKER_HIDDEN_CONFIG_COLUMNS, workerRuntimeConfig } from "../../lib/agent/worker-runtime-config";
-import { agentConfigs, calls, usageWarnings, users } from "../../lib/db/schema";
+import { accountProductTrials, agentConfigs, calls, usageWarnings, users } from "../../lib/db/schema";
 
 // Served today (main), in row order. Adding a column here is a decision:
 // the worker will receive it.
@@ -165,6 +165,7 @@ const USERS_NEVER_SERVED = ["door", "products"];
 {
   assert.ok("product" in getTableColumns(calls), "calls.product exists");
   assert.ok("entry" in getTableColumns(usageWarnings), "usage_warnings exists");
+  assert.ok("minutesIncluded" in getTableColumns(accountProductTrials), "account_product_trials exists");
   const code = (u: URL) => readFileSync(u, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   const files: URL[] = [];
   const walk = (dir: URL) => {
@@ -179,6 +180,8 @@ const USERS_NEVER_SERVED = ["door", "products"];
   for (const f of files) {
     const src = code(f);
     assert.doesNotMatch(src, /calls\.product|usageWarnings|usage_warnings|usage-by-product|products-usage|usage-warnings|call-product/, `${f.pathname} must not read billing usage`);
+    // P3 (migration 0057): per-product trials are billing only too.
+    assert.doesNotMatch(src, /accountProductTrials|account_product_trials|product-trials|product-trial-caps|sales-trial-/, `${f.pathname} must not read per-product trials`);
   }
 }
 

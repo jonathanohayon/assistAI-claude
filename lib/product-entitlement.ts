@@ -7,6 +7,10 @@
 //      reception_multi + sales.
 // Rules 2-4 are "grandfathered": they reproduce what each existing account
 // can use today, so a NULL record changes nothing.
+// P3: `activeTrials` (the products whose per-product trial is active now,
+// lib/product-trials.ts) are added as add-ons for the trial's duration, on
+// top of whichever rule applied; `source` is unchanged. Omitted / [] = the
+// exact P1 result.
 
 import { PRODUCT_ENTRIES, PRODUCTS, entryOf, type AccountProductsRecord, type Product, type ProductEntry } from "./product-values";
 
@@ -14,6 +18,8 @@ export type EntitlementInput = {
   subscriptionPlan: string | null;
   subscriptionStatus: string | null;
   products: unknown;
+  /** Products with an ACTIVE per-product trial (optional; omitted = none). */
+  activeTrials?: Product[];
 };
 
 export type Entitlement = {
@@ -72,6 +78,9 @@ export function entitledProducts(input: EntitlementInput): Entitlement {
   } else {
     base = "reception_multi";
     addons = ["sales"];
+  }
+  for (const t of input.activeTrials ?? []) {
+    if (isProduct(t) && t !== base && !addons.includes(t)) addons = [...addons, t];
   }
   return { base, addons, entries: entriesOf(base, addons), source };
 }

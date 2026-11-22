@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 
 import { alertAdmins } from "@/lib/alerts";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { accountProductTrials, users } from "@/lib/db/schema";
 import {
   catalogueMinutes,
   catalogueOverage,
@@ -23,6 +23,7 @@ import {
   type ProductCatalogue,
 } from "@/lib/product-catalogue";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
+import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialStates } from "@/lib/product-trials";
 import type { Product } from "@/lib/product-values";
 import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
 
@@ -95,13 +96,32 @@ export const ACCOUNT_PRODUCTS_PICK = {
   products: users.products,
 } as const;
 
+/** The account's per-product trial rows (any userId). */
+export async function loadProductTrials(userId: string): Promise<ProductTrialRow[]> {
+  return db
+    .select({
+      product: accountProductTrials.product,
+      startedAt: accountProductTrials.startedAt,
+      endsAt: accountProductTrials.endsAt,
+      minutesIncluded: accountProductTrials.minutesIncluded,
+    })
+    .from(accountProductTrials)
+    .where(eq(accountProductTrials.userId, userId));
+}
+
+/** The entitlement plus, ADDITIVELY (P3), each entry's per-product trial state. */
+export type AccountProducts = Entitlement & { trials: TrialStates };
+
 /**
  * The products an account is entitled to. Loads ONLY the explicit pick
- * above, for any userId (so the admin ?asUserId= target works). An unknown
- * account is entitled to nothing (base null).
+ * above (plus its trial rows), for any userId (so the admin ?asUserId=
+ * target works). An ACTIVE per-product trial makes its entry entitled for
+ * the trial's duration (entitledProducts activeTrials). An unknown account
+ * is entitled to nothing (base null), every trial "available".
  */
-export async function accountProducts(userId: string): Promise<Entitlement> {
+export async function accountProducts(userId: string, now: Date = new Date()): Promise<AccountProducts> {
   const [u] = await db.select(ACCOUNT_PRODUCTS_PICK).from(users).where(eq(users.id, userId)).limit(1);
-  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered" };
-  return entitledProducts(u);
+  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now) };
+  const rows = await loadProductTrials(userId);
+  return { ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }), trials: trialStates(rows, now) };
 }
