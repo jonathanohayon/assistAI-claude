@@ -55,6 +55,12 @@ export const users = pgTable("users", {
   // (lib/product-entitlement.ts). Billing only: never served to the worker,
   // read only through an explicit pick (lib/products.ts accountProducts).
   products: jsonb("products"),
+  // The account's SALES engine override (E2b, lib/engine-override.ts
+  // EngineOverride { engine, model }), set by an admin: ranked above the
+  // sales product override on campaign / outbound_test calls. NULL = none.
+  // Never served to the worker (only the resolved engine/model goes out);
+  // read only through an explicit pick (lib/engine-override-load.ts).
+  salesEngineOverride: jsonb("sales_engine_override"),
   // Knowledge contract (S4): the ACCOUNT's companySheet, shared by all its
   // agents (lib/knowledge/contract.ts). Written alongside agent_configs.business,
   // which stays the calls' read source. NULL = built lazily from business.
@@ -408,6 +414,30 @@ export const accountProductTrials = pgTable(
   (t) => [
     unique("account_product_trials_once").on(t.userId, t.product),
     check("account_product_trials_product_check", sql`${t.product} IN ('reception', 'reception_multi', 'sales', 'connect')`),
+  ],
+);
+
+// "Prévenez-moi" (notify-me): an account asked to be told when a product
+// entry it does not own becomes available. A record only (no email is sent),
+// ONCE per account × entry: the unique (user_id, product) makes the POST
+// idempotent (INSERT … ON CONFLICT DO NOTHING). Never served to the worker.
+// lib/product-notify.ts.
+export const productNotifyRequests = pgTable(
+  "product_notify_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // A dashboard entry ('reception' | 'sales' | 'connect').
+    product: text("product").notNull(),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [
+    unique("product_notify_requests_once").on(t.userId, t.product),
+    check("product_notify_requests_product_check", sql`${t.product} IN ('reception', 'sales', 'connect')`),
   ],
 );
 

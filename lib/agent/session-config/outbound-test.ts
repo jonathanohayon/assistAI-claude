@@ -24,13 +24,15 @@ import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
 import { campaignGoalFields, OUTBOUND_TEST_MISSION } from "@/lib/mission/adapters";
 import { toEngineSettings } from "@/lib/voice/engine";
+import { decideEngineSafely, decideSalesEngine, LIVE_ENGINE_ALERT, type EngineFx } from "@/lib/engine-override-load";
+import { voiceOnEngine } from "@/lib/voice/override-voice";
 
 // GET /api/agent/outbound-test-config?agentId=  (x-internal-secret)
 // Config runtime servie au worker pour un TEST LIVE d'agent sortant depuis le
 // dashboard. Même forme que /api/agent/campaign-config (le worker réutilise le
 // même parser), mais bâtie depuis l'agent réutilisable seul — sans campagne ni
 // contact : on teste sa voix / persona / connaissance « à blanc ».
-export async function handleOutboundTestConfig(req: NextRequest): Promise<Response> {
+export async function handleOutboundTestConfig(req: NextRequest, engineFx: EngineFx = {}): Promise<Response> {
   const auth = requireInternalSecret(req);
   if (!auth.ok) return auth.response;
 
@@ -97,11 +99,22 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
 
   // Voice contract (V2), served as `voiceConfig` (`voice` is the legacy voice
   // id the live worker reads). The legacy fields stay until worker V2 is live.
-  const voiceConfig = servedOutboundVoice({
+  const todayVoice = servedOutboundVoice({
     voice: persona.voice || "marin",
     personality: agent.personality as AgentPersonality | null | undefined,
     noiseReductionLevel: agent.noiseReductionLevel ?? null,
   });
+  // E2: the admin engine override of the sales product (OpenAI models only;
+  // the receptionist's engine columns are not a sales setting). No override
+  // (or an ignored one) → apply false → today's voice, untouched.
+  // Fail-open: a throw inside the decision → apply false (today's bytes) + one alert.
+  const salesToday = { engine: "openai" as const, model: outboundModel() };
+  const engineAlert = engineFx.alert ?? LIVE_ENGINE_ALERT;
+  const { decision: engineDecision } = await decideEngineSafely(
+    () => decideSalesEngine("outbound_test", agent.userId, persona.language || "fr", salesToday, engineAlert, engineFx.deps),
+    { path: "outbound_test", alert: engineAlert, today: salesToday },
+  );
+  const voiceConfig = engineDecision.apply ? voiceOnEngine(todayVoice, engineDecision) : todayVoice;
 
   const engine = toEngineSettings(voiceConfig, { defaultModel: outboundModel() });
 

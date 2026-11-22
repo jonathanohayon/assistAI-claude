@@ -63,8 +63,7 @@ export type WarningKey =
   | "cta"
   | "footer"
   | "entryReception"
-  | "entrySales"
-  | "entryConnect";
+  | "entrySales";
 export type WarningStrings = (key: WarningKey, vars?: Record<string, string>) => string;
 
 export function warningLocale(raw: string | null | undefined): WarningLocale {
@@ -82,10 +81,9 @@ export type WarningInput = {
   overageRate: string;
 };
 
-const ENTRY_KEY: Record<ProductEntry, WarningKey> = {
+const ENTRY_KEY: Record<Exclude<ProductEntry, "connect">, WarningKey> = {
   reception: "entryReception",
   sales: "entrySales",
-  connect: "entryConnect",
 };
 
 const escapeHtml = (s: string): string =>
@@ -93,8 +91,17 @@ const escapeHtml = (s: string): string =>
 
 export const BILLING_URL = "https://aitamara.com/dashboard/billing";
 
-export function renderUsageWarningEmail(input: WarningInput, t: WarningStrings): { subject: string; text: string; html: string } {
-  const product = t(ENTRY_KEY[input.entry]);
+/**
+ * `connectName`: the connect product's name, read from the ONE key that names
+ * it everywhere (DashboardNav.connect, "Connecter votre agent"). The email
+ * keeps no copy of its own.
+ */
+export function renderUsageWarningEmail(
+  input: WarningInput,
+  t: WarningStrings,
+  connectName: string,
+): { subject: string; text: string; html: string } {
+  const product = input.entry === "connect" ? connectName : t(ENTRY_KEY[input.entry]);
   const vars = { product, used: String(input.usedMinutes), included: String(input.includedMinutes), rate: input.overageRate };
   const subject = t(input.threshold === 100 ? "subject100" : "subject80", vars);
   const heading = t(input.threshold === 100 ? "heading100" : "heading80", vars);

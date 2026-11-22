@@ -21,6 +21,7 @@ import {
   phoneNumbers,
   users,
 } from "@/lib/db/schema";
+import { engineBreakdown, type EngineCost, type EngineUsageRow } from "@/lib/finance/by-engine";
 import { openaiCostUsd } from "@/lib/finance/openai-cost";
 import { type CostRates } from "@/lib/finance/rates";
 
@@ -84,7 +85,7 @@ export interface UsageTotals {
   tokensTracked: boolean;
 }
 
-export interface FinanceStats {
+export interface FinanceStatsBase {
   scope: "global" | "user";
   currency: "USD";
   range: { from: string; to: string };
@@ -99,6 +100,11 @@ export interface FinanceStats {
   byPlan: { plan: string; amount: number }[];
   tenants: TenantCost[];
   usage: UsageTotals;
+}
+
+/** The admin finance response: the historic keys + the per-engine breakdown (E3). */
+export interface FinanceStats extends FinanceStatsBase {
+  byEngine: EngineCost[];
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -143,7 +149,7 @@ function buildBucketKeys(from: Date, to: Date, g: Granularity): string[] {
   return keys;
 }
 
-interface RawUsage {
+export interface RawUsage {
   inboundSeconds: number;
   outboundSeconds: number;
   whatsappMessages: number;
@@ -224,13 +230,38 @@ function revenueToUsd(
 
 // ── Engine ──────────────────────────────────────────────────────────
 
-export async function computeFinanceStats(args: {
+interface FinanceArgs {
   rates: CostRates;
   from: Date;
   to: Date;
   granularity: Granularity;
   userId?: string | null;
-}): Promise<FinanceStats> {
+}
+
+/**
+ * The admin finance response: computeFinanceStatsBase (the historic
+ * computation, untouched) + `byEngine` appended last. Additive: the response
+ * minus byEngine is exactly the base (scripts/tests/finance-by-engine-db.test.ts).
+ */
+export async function computeFinanceStats(args: FinanceArgs): Promise<FinanceStats> {
+  let buckets: RawUsage[] = [];
+  const [base, groups] = await Promise.all([
+    computeFinanceStatsBase(args, (m) => {
+      buckets = [...m.values()];
+    }),
+    loadEngineUsage(args),
+  ]);
+  return { ...base, byEngine: engineBreakdown(groups, buckets, args.rates) };
+}
+
+/**
+ * The historic computation. `onBuckets` only reads the per-bucket usage it
+ * already built (for the byEngine estimate remainder); it changes nothing.
+ */
+export async function computeFinanceStatsBase(
+  args: FinanceArgs,
+  onBuckets?: (buckets: ReadonlyMap<string, RawUsage>) => void,
+): Promise<FinanceStatsBase> {
   const { rates, from, to, granularity } = args;
   const userId = args.userId ?? null;
   const scope: "global" | "user" = userId ? "user" : "global";
@@ -370,6 +401,7 @@ export async function computeFinanceStats(args: {
     u.openaiCoveredSeconds += Number(r.coveredSec);
     u.otherEngineCostUsd += Number(r.otherCost);
   }
+  onBuckets?.(map);
 
   const months = monthsForGranularity(granularity);
   const keys = buildBucketKeys(from, to, granularity);
@@ -677,4 +709,52 @@ async function computeTenantBreakdown(args: {
   }
   out.sort((a, b) => b.cost.total - a.cost.total);
   return out;
+}
+
+// ── Per engine / model usage (E3) ───────────────────────────────────
+
+// Fallback for a usage event without its own provider / model: the call it
+// reports (calls.call_id = metadata.callId, same tenant), its stored
+// realtime_provider / realtime_model. The model is taken from the call only
+// when the call's engine does not contradict the event's.
+const EVENT_CALL_ID = sql`nullif(${events.metadata}->>'callId', '')`;
+const CALL_MATCH = sql`c.call_id <> '' and c.call_id = ${EVENT_CALL_ID} and (${events.userId} is null or c.user_id = ${events.userId})`;
+const EVENT_PROVIDER = sql`nullif(${events.metadata}->>'provider', '')`;
+const EFFECTIVE_PROVIDER = sql<string>`coalesce(${EVENT_PROVIDER}, (select c.realtime_provider from calls c where ${CALL_MATCH} order by c.created_at desc limit 1), 'unknown')`;
+const EFFECTIVE_MODEL = sql<string | null>`coalesce(nullif(${events.metadata}->>'model', ''), (select c.realtime_model from calls c where ${CALL_MATCH} and (${EVENT_PROVIDER} is null or c.realtime_provider is null or c.realtime_provider = ${EVENT_PROVIDER}) order by c.created_at desc limit 1))`;
+
+/** Usage events of the window grouped by (cost rule, engine, model). */
+async function loadEngineUsage(args: FinanceArgs): Promise<EngineUsageRow[]> {
+  const conds = [
+    gte(events.createdAt, args.from),
+    lt(events.createdAt, args.to),
+    eq(events.event, OPENAI_USAGE_EVENT),
+  ];
+  if (args.userId) conds.push(eq(events.userId, args.userId));
+  const rows = await db
+    .select({
+      openaiRow: sql<boolean>`${OPENAI_ROW}`,
+      provider: EFFECTIVE_PROVIDER,
+      model: EFFECTIVE_MODEL,
+      calls: sql<number>`count(distinct coalesce(${EVENT_CALL_ID}, ${events.id}::text))::int`,
+      seconds: sql<number>`coalesce(sum((${events.metadata}->>'durationSeconds')::numeric),0)::bigint`,
+      inTok: sql<number>`coalesce(sum((${events.metadata}->>'inputTokens')::numeric),0)::bigint`,
+      outTok: sql<number>`coalesce(sum((${events.metadata}->>'outputTokens')::numeric),0)::bigint`,
+      cachedTok: sql<number>`coalesce(sum((${events.metadata}->>'cachedTokens')::numeric),0)::bigint`,
+      costUsd: sql<number>`coalesce(sum((${events.metadata}->>'costUsd')::numeric),0)::float8`,
+    })
+    .from(events)
+    .where(and(...conds))
+    .groupBy(sql`1, 2, 3`);
+  return rows.map((r) => ({
+    openaiRow: r.openaiRow === true || String(r.openaiRow) === "true",
+    provider: String(r.provider ?? "unknown"),
+    model: r.model == null ? null : String(r.model),
+    calls: Number(r.calls),
+    seconds: Number(r.seconds),
+    inputTokens: Number(r.inTok),
+    outputTokens: Number(r.outTok),
+    cachedTokens: Number(r.cachedTok),
+    costUsd: Number(r.costUsd),
+  }));
 }

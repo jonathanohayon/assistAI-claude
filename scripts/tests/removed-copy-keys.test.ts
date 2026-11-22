@@ -14,6 +14,8 @@
 // (components/marketing/feature-mock-settings.ts).
 // "Start here" badge (22/11, VP): DashboardConfig.tileStartHere. No tile is
 // highlighted on any door; the setup checklist is the guide.
+// Connect product name (22/11): Email.usageWarning.entryConnect. The email
+// names the product from DashboardNav.connect, its one key.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -34,6 +36,7 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.energy"],
   ["VoiceStudio", "sliders.speed"],
   ["DashboardConfig", "tileStartHere"],
+  ["Email", "usageWarning.entryConnect"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];

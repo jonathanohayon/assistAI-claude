@@ -15,6 +15,8 @@ import { servedInboundVoice } from "@/lib/voice/serve";
 import { workerRuntimeConfig } from "@/lib/agent/worker-runtime-config";
 import { inboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { toEngineSettings } from "@/lib/voice/engine";
+import { decideEngineSafely, decideInboundEngine, inboundToday, type DecideDeps } from "@/lib/engine-override-load";
+import { voiceOnEngine } from "@/lib/voice/override-voice";
 import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
@@ -73,6 +75,8 @@ export async function handleInboundConfig(req: NextRequest): Promise<Response> {
  */
 export interface InboundEffects {
   logEvent: typeof logEvent;
+  /** The engine decision's reads (tests inject failures); unset = the real ones. */
+  engineDeps?: DecideDeps;
   alertAdmins: (args: Parameters<typeof alertAdmins>[0]) => Promise<unknown>;
   onFallback: OnFallback;
   markForwardingTestCall: typeof markForwardingTestCall;
@@ -400,7 +404,16 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
     }
   }
 
-  const voiceConfig = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  // E2: the admin engine override of the account's reception product. No
+  // override (or a client setting, or an ignored one) → apply false → the
+  // voice below is today's, untouched. An ignored override alerts the admins.
+  const todayVoice = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  // Fail-open: a throw inside the decision → apply false (today's bytes) + one alert.
+  const { decision: engineDecision } = await decideEngineSafely(
+    () => decideInboundEngine(tenant.user.id, tenant.config, fx.alertAdmins, fx.engineDeps),
+    { path: "inbound", alert: fx.alertAdmins, today: inboundToday(tenant.config) },
+  );
+  const voiceConfig = engineDecision.apply ? voiceOnEngine(todayVoice, engineDecision) : todayVoice;
   const engine = toEngineSettings(voiceConfig, { defaultModel: tenant.config.model || "gpt-realtime-2" });
 
   return NextResponse.json({

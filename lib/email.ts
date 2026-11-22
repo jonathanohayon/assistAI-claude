@@ -772,7 +772,8 @@ export async function sendAdminAlertEmail(
 // ──────────────────────────────────────────────────────────────────────
 export async function sendUsageWarningEmail(to: string, input: WarningInput): Promise<SendResult> {
   const t = await getTranslations({ locale: input.locale, namespace: "Email.usageWarning" });
-  const { subject, text, html } = renderUsageWarningEmail(input, (key: WarningKey, vars) => t(key, vars));
+  const nav = await getTranslations({ locale: input.locale, namespace: "DashboardNav" });
+  const { subject, text, html } = renderUsageWarningEmail(input, (key: WarningKey, vars) => t(key, vars), nav("connect"));
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const client = getResend();
   if (!client) {

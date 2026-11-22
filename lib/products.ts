@@ -22,28 +22,42 @@ import {
   type CatalogueCurrency,
   type ProductCatalogue,
 } from "@/lib/product-catalogue";
+import { noEngineOverrides, type EngineOverrides } from "@/lib/engine-override";
+import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/lib/product-catalogue-row";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
 import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialStates } from "@/lib/product-trials";
-import type { Product } from "@/lib/product-values";
+import { loadNotifyRequested } from "@/lib/product-notify";
+import type { Product, ProductEntry } from "@/lib/product-values";
 import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
 
-export type StoredCatalogue = { catalogue: ProductCatalogue; source: "stored" | "default" | "invalid" };
+export type StoredCatalogue = {
+  catalogue: ProductCatalogue;
+  /** E2 (additive): the per-product engine overrides; none when absent / invalid. */
+  engineOverrides: EngineOverrides;
+  source: "stored" | "default" | "invalid";
+};
 
 /**
  * The catalogue from the raw app_settings value: absent → defaults; a row
  * that is not JSON or fails the strict parse → defaults, flagged "invalid"
- * (the caller alerts). Pure.
+ * (the caller alerts). The row may carry engine overrides (E2,
+ * lib/product-catalogue-row.ts); an invalid row has none. Pure.
  */
 export function catalogueFromStored(raw: string | null): StoredCatalogue {
-  if (raw == null) return { catalogue: defaultProductCatalogue(), source: "default" };
+  const fallback = (source: "default" | "invalid"): StoredCatalogue => ({
+    catalogue: defaultProductCatalogue(),
+    engineOverrides: noEngineOverrides(),
+    source,
+  });
+  if (raw == null) return fallback("default");
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { catalogue: defaultProductCatalogue(), source: "invalid" };
+    return fallback("invalid");
   }
-  const cat = parseProductCatalogue(parsed);
-  return cat ? { catalogue: cat, source: "stored" } : { catalogue: defaultProductCatalogue(), source: "invalid" };
+  const row = parseCatalogueRow(parsed);
+  return row ? { ...row, source: "stored" } : fallback("invalid");
 }
 
 export type CatalogueDeps = {
@@ -66,17 +80,34 @@ const defaultCatalogueDeps: CatalogueDeps = {
   },
 };
 
-/** The catalogue in force (stored, else the defaults). */
-export async function getProductCatalogue(deps: CatalogueDeps = defaultCatalogueDeps): Promise<ProductCatalogue> {
+/** The whole row in force: prices + engine overrides (stored, else the defaults / none). */
+export async function getCatalogueRow(deps: CatalogueDeps = defaultCatalogueDeps): Promise<CatalogueRow> {
   const r = catalogueFromStored(await deps.read(SETTING_KEYS.PRODUCT_CATALOGUE));
   if (r.source === "invalid") deps.onInvalid();
-  return r.catalogue;
+  return { catalogue: r.catalogue, engineOverrides: r.engineOverrides };
 }
 
-/** Writes a catalogue that already passed the strict parse. */
-export async function setProductCatalogue(cat: ProductCatalogue): Promise<void> {
+/** The catalogue in force (stored, else the defaults). Prices only. */
+export async function getProductCatalogue(deps: CatalogueDeps = defaultCatalogueDeps): Promise<ProductCatalogue> {
+  return (await getCatalogueRow(deps)).catalogue;
+}
+
+/** The engine overrides in force (E2). None when the row is absent or invalid. */
+export async function getEngineOverrides(deps: CatalogueDeps = defaultCatalogueDeps): Promise<EngineOverrides> {
+  return (await getCatalogueRow(deps)).engineOverrides;
+}
+
+/**
+ * Writes a catalogue that already passed the strict parse, with its engine
+ * overrides. `overrides` omitted = the STORED overrides are kept (a price-only
+ * caller never wipes them). No override → the pre-E2 bytes.
+ */
+export async function setProductCatalogue(cat: ProductCatalogue, overrides?: EngineOverrides): Promise<void> {
   if (!parseProductCatalogue(cat)) throw new Error("refusing to store an invalid product catalogue");
-  await setSetting(SETTING_KEYS.PRODUCT_CATALOGUE, JSON.stringify(cat));
+  const o = overrides ?? catalogueFromStored(await getSetting(SETTING_KEYS.PRODUCT_CATALOGUE)).engineOverrides;
+  const text = serializeCatalogueRow(cat, o);
+  if (!parseCatalogueRow(JSON.parse(text))) throw new Error("refusing to store an invalid product catalogue row");
+  await setSetting(SETTING_KEYS.PRODUCT_CATALOGUE, text);
 }
 
 /** Included monthly minutes of a product in a currency. */
@@ -109,19 +140,28 @@ export async function loadProductTrials(userId: string): Promise<ProductTrialRow
     .where(eq(accountProductTrials.userId, userId));
 }
 
-/** The entitlement plus, ADDITIVELY (P3), each entry's per-product trial state. */
-export type AccountProducts = Entitlement & { trials: TrialStates };
+/**
+ * The entitlement plus, ADDITIVELY, each entry's per-product trial state (P3)
+ * and the entries the account asked to be notified about ("Prévenez-moi",
+ * PRODUCT_ENTRIES order).
+ */
+export type AccountProducts = Entitlement & { trials: TrialStates; notifyRequested: ProductEntry[] };
 
 /**
  * The products an account is entitled to. Loads ONLY the explicit pick
  * above (plus its trial rows), for any userId (so the admin ?asUserId=
  * target works). An ACTIVE per-product trial makes its entry entitled for
  * the trial's duration (entitledProducts activeTrials). An unknown account
- * is entitled to nothing (base null), every trial "available".
+ * is entitled to nothing (base null), every trial "available", no notify
+ * request.
  */
 export async function accountProducts(userId: string, now: Date = new Date()): Promise<AccountProducts> {
   const [u] = await db.select(ACCOUNT_PRODUCTS_PICK).from(users).where(eq(users.id, userId)).limit(1);
-  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now) };
-  const rows = await loadProductTrials(userId);
-  return { ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }), trials: trialStates(rows, now) };
+  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now), notifyRequested: [] };
+  const [rows, notifyRequested] = await Promise.all([loadProductTrials(userId), loadNotifyRequested(userId)]);
+  return {
+    ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }),
+    trials: trialStates(rows, now),
+    notifyRequested,
+  };
 }

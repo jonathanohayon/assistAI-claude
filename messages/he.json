@@ -661,7 +661,7 @@
     "blockShared": "משותף",
     "reception": "קבלה",
     "sales": "מכירות",
-    "connect": "הסוכן שלכם",
+    "connect": "חיבור הסוכן שלכם",
     "myAgent": "הסוכן שלי",
     "calls": "שיחות",
     "clients": "לקוחות",
@@ -1997,8 +1997,7 @@
       "cta": "לצפייה בצריכה שלי",
       "footer": "המייל הזה נשלח פעם אחת בלבד לכל סף ולכל תקופת חיוב.",
       "entryReception": "פקידת קבלה",
-      "entrySales": "מכירות",
-      "entryConnect": "הסוכן שלכם"
+      "entrySales": "מכירות"
     }
   },
   "LiveTest": {
