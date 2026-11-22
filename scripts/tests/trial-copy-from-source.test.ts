@@ -135,6 +135,25 @@ for (const l of LOCALES) {
   }
 }
 
+// 5b. The warning goes out with the real whole days left: 2, 1 or 0 (ends
+// today). Each {warningDays} message reads naturally for all three.
+const TODAY: Record<string, RegExp> = { fr: /aujourd'hui/i, en: /today/i, he: /היום/ };
+const TOMORROW: Record<string, RegExp> = { fr: /demain/i, en: /tomorrow/i, he: /מחר/ };
+const AWKWARD = /(^|\D)0\s*(jours?|days?|ימים|יום)|(^|\D)1\s*(jours|days|ימים)/i;
+for (const l of LOCALES) {
+  const flat = flatten(load(l));
+  for (const [key, arg] of Object.entries(END_KEYS)) {
+    if (arg !== "warningDays") continue;
+    for (const n of [0, 1, 2]) {
+      const out = fmt(flat[key], l, fmtArgs({ warningDays: n }));
+      assert.doesNotMatch(out, AWKWARD, `${l} ${key} with ${n}: "${out}"`);
+      if (n === 0) assert.match(out, TODAY[l], `${l} ${key} with 0 says today: "${out}"`);
+      if (n === 1) assert.match(out, TOMORROW[l], `${l} ${key} with 1 says tomorrow: "${out}"`);
+      if (n === 2) assert.match(out, rendered(l, arg, 2), `${l} ${key} with 2: "${out}"`);
+    }
+  }
+}
+
 // 6. The callers pass the arguments.
 const email = src("lib/email.ts");
 for (const k of ["subjectHours", "introText", "textBullet", "phoneLineGeneric"])
