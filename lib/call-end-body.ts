@@ -2,6 +2,7 @@
 // unit-tested (scripts/tests/call-end-body.test.ts).
 
 import { parseCallId } from "./call-id";
+import { productForCall } from "./call-product";
 
 export type TranscriptEntry = { role: "user" | "assistant"; text: string };
 
@@ -57,5 +58,7 @@ export function callInsertValues(input: CallEndInput, userId: string, callId: st
     realtimeProvider: input.realtimeProvider,
     realtimeModel: input.realtimeModel,
     callId: callId ?? "",
+    // Only the channel today (lib/call-product.ts): NULL = reception.
+    product: productForCall({ channel: input.channel }),
   };
 }

@@ -1980,6 +1980,19 @@
       "recoWhatsappBody": "Renseignez votre numéro WhatsApp dans l'onglet Réceptionniste pour recevoir un récap immédiat à chaque appel.",
       "recoPersonaTitle": "{n} · Ajustez sa personnalité",
       "recoPersonaBody": "Allez dans l'onglet Réceptionniste pour ajuster le ton, les horaires, les établissements et les règles métier. La personnalité par défaut s'appelle \"Tamara\" — renommez-la et adaptez-la à votre activité."
+    },
+    "usageWarning": {
+      "subject80": "Vous avez utilisé 80 % des minutes de l'offre « {product} »",
+      "subject100": "Vous avez utilisé toutes les minutes de l'offre « {product} »",
+      "heading80": "80 % des minutes « {product} » utilisées",
+      "heading100": "Toutes les minutes « {product} » sont utilisées",
+      "body": "Sur la période en cours, vous avez utilisé {used} minutes sur les {included} incluses dans l'offre « {product} ».",
+      "overage": "Au-delà, chaque minute est facturée {rate}. Tamara continue de répondre normalement.",
+      "cta": "Voir ma consommation",
+      "footer": "Vous recevez cet e-mail une seule fois par seuil et par période de facturation.",
+      "entryReception": "Réceptionniste",
+      "entrySales": "Ventes",
+      "entryConnect": "Votre agent"
     }
   },
   "LiveTest": {

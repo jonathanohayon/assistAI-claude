@@ -1980,6 +1980,19 @@
       "recoWhatsappBody": "Set your WhatsApp number in the Receptionist tab to receive an instant recap after every call.",
       "recoPersonaTitle": "{n} · Adjust her personality",
       "recoPersonaBody": "Go to the Receptionist tab to tune the tone, hours, locations, and business rules. The default personality is called \"Tamara\" — rename it and adapt it to your activity."
+    },
+    "usageWarning": {
+      "subject80": "You have used 80% of your \"{product}\" minutes",
+      "subject100": "You have used all of your \"{product}\" minutes",
+      "heading80": "80% of your \"{product}\" minutes used",
+      "heading100": "All of your \"{product}\" minutes are used",
+      "body": "In the current period you have used {used} of the {included} minutes included in \"{product}\".",
+      "overage": "Beyond them, each minute is billed {rate}. Tamara keeps answering as usual.",
+      "cta": "See my usage",
+      "footer": "You receive this email once per threshold and billing period.",
+      "entryReception": "Receptionist",
+      "entrySales": "Sales",
+      "entryConnect": "Your agent"
     }
   },
   "LiveTest": {
