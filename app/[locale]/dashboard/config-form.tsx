@@ -45,6 +45,7 @@ import {
   sectionShowsHero,
   sectionShowsLiveTest,
   sectionShowsSaveDock,
+  sectionShowsTiles,
   tileInSection,
   type ConfigSection,
 } from "./config/sections";
@@ -779,6 +780,7 @@ export function ConfigForm({
         )}
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}
+        {sectionShowsTiles(section) && (
         <section ref={tilesRef} className="mb-6 scroll-mt-24 xl:col-start-1 xl:row-start-2">
           {gridHeading && (
           <div className="mb-4">
@@ -945,9 +947,9 @@ export function ConfigForm({
                           setDirty(true);
                         }}
                         onAddNumber={() => {
-                          // The notifications tile lives on the reception page.
+                          // The notifications tile lives on Mon agent, next to this one.
                           if (tileInSection("notifs", section)) setActiveTile("notifs");
-                          else router.push(asUserId ? `/admin/users/${asUserId}/reception?tile=notifs` : `/${locale}/dashboard/reception?tile=notifs`);
+                          else router.push(asUserId ? `/admin/users/${asUserId}/my-agent?tile=notifs` : `/${locale}/dashboard/my-agent?tile=notifs`);
                         }}
                         returnTo="/dashboard/my-agent?tile=tools"
                         asUserId={asUserId ?? null}
@@ -1025,6 +1027,7 @@ export function ConfigForm({
             </div>
           )}
         </section>
+        )}
       </div>
 
       {/* ── Floating save dock — aligné sur le visuel wow ───────────── */}

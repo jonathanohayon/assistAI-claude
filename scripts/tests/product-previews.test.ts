@@ -189,10 +189,10 @@ async function main() {
     assert.ok(reception.includes(">14<") && reception.includes(">27<"), `${l}: the sample figures`);
     assert.match(reception, /data-live-test-preview=""/, `${l}: the static live test`);
     assert.match(reception, /<button type="button" disabled=""[^>]*aria-label="[^"]+"/, `${l}: the mic button is disabled`);
-    assert.match(reception, /<fieldset disabled=""/, `${l}: the tiles are disabled`);
-    // Mon agent's grid (#374): two tiles per row at every width, rows as tall as their tallest tile.
-    assert.ok(reception.includes(`class="${GRID_TWO}"`), `${l}: two tiles per row`);
-    assert.equal((reception.match(new RegExp(TILE_ROW_SIZE_TWO.replace(/[[\]().*+?/\\]/g, "\\$&"), "g")) ?? []).length, 2, `${l}: both tiles sized like Mon agent's`);
+    // No sample channels / notifications tiles: an account sees its REAL ones on Mon agent.
+    for (const k of ["wowTileNotifs", "wowTagNotifs", "wowNotifsSummaryActive", "channelsTile", "channelsTileTagline", "channelsTileTaglinePhoneOnly"])
+      assert.ok(!reception.includes(esc(m.DashboardConfig[k])), `${l}: no sample tile (${k})`);
+    assert.ok(!reception.includes(GRID_TWO) && !reception.includes(TILE_ROW_SIZE_TWO) && !reception.includes("<fieldset"), `${l}: no tile grid`);
     for (const line of samples.previewLiveTranscript(l)) assert.ok(reception.includes(esc(line.text)), `${l}: sample line`);
 
     const connect = html(l, createElement(ConnectPreview));

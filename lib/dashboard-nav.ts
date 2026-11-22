@@ -142,8 +142,8 @@ export const TILE_ENTRY: Readonly<Record<string, NavEntryId>> = {
   business: "myAgent",
   tools: "myAgent",
   prompt: "myAgent",
-  notifs: "reception",
-  channels: "reception",
+  notifs: "myAgent",
+  channels: "myAgent",
   campaigns: "sales",
 };
 

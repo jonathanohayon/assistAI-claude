@@ -3,11 +3,11 @@
 // bricks, deep links (?tile=) and admin mode (asUserId); a section only picks
 // its tiles and whether the home overview (number, stats) and the live test show.
 //
-//   reception: the home overview + the live test + what is specific to
-//              reception (notifications, channels);
+//   reception: the home overview + the live test, no tile (the number and
+//              the notifications serve every product: they are on Mon agent);
 //   agent:     "Mon agent", the shared bricks (voice, persona, what the agent
-//              knows, what it can do) + the admin-only prompt tile + the live
-//              test;
+//              knows, what it can do, channels, notifications) + the
+//              admin-only prompt tile + the live test;
 //   sales:     the campaigns tile (today's locked state, i.e. the upsell).
 // "Votre agent" has no section any more (F2): "Ask your agent" is its own
 // brick there (components/bricks/client-agent/ClientAgentBrick.tsx).
@@ -18,8 +18,8 @@ import { TILE_ROW_SIZE } from "./tile-size";
 export type ConfigSection = "reception" | "agent" | "sales";
 
 export const SECTION_TILES: Readonly<Record<ConfigSection, readonly string[]>> = {
-  reception: ["notifs", "channels"],
-  agent: ["voice", "persona", "business", "tools", "prompt"],
+  reception: [],
+  agent: ["voice", "persona", "business", "tools", "channels", "notifs", "prompt"],
   sales: ["campaigns"],
 };
 
@@ -41,9 +41,17 @@ export function sectionShowsLiveTest(section: ConfigSection | undefined): boolea
   return section === undefined || section === "reception" || section === "agent";
 }
 
-/** The save dock: not on a page whose only tile is a locked one (sales). */
+/**
+ * The save dock: only on a page with a tile that saves, i.e. not on a page
+ * with no tile (reception) or whose only tile is a locked one (sales).
+ */
 export function sectionShowsSaveDock(section: ConfigSection | undefined): boolean {
-  return section !== "sales";
+  return section === undefined || SECTION_TILES[section].some((id) => id !== "campaigns");
+}
+
+/** The tile grid (heading, tiles, open panel): not on a page with no tile. */
+export function sectionShowsTiles(section: ConfigSection | undefined): boolean {
+  return section === undefined || SECTION_TILES[section].length > 0;
 }
 
 /** The configuration grid (#370): the default columns per breakpoint. */

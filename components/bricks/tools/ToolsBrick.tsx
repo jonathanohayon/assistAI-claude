@@ -185,7 +185,7 @@ function Action({ v, hasNumber, onAddNumber }: { v: CapabilityView; hasNumber: b
       {label}
     </button>
   ) : (
-    <Link href="/dashboard/reception?tile=notifs" className={LINK}>
+    <Link href="/dashboard/my-agent?tile=notifs" className={LINK}>
       {label}
     </Link>
   );
