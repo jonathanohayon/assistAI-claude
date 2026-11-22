@@ -345,11 +345,46 @@ export const calls = pgTable("calls", {
   whatsappClientSid: text("whatsapp_client_sid"),
   whatsappOwnerSid: text("whatsapp_owner_sid"),
   whatsappError: text("whatsapp_error"),
+  // The product this call is billed against (lib/call-product.ts,
+  // migration 0056). NULL = reception: every row before 0056, and every row
+  // after it until the worker reports what a call is (productForCall).
+  // Billing only: never served to the worker, never in the dashboard
+  // calls / logs responses.
+  product: text("product"),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
-});
+}, (t) => [
+  check("calls_product_check", sql`${t.product} IN ('reception', 'sales', 'connect')`),
+]);
+
+// Usage warnings (P2): one row per account × entry × threshold × period,
+// claimed (INSERT … ON CONFLICT DO NOTHING) BEFORE the email is sent, so
+// two cron runs at once send one email. lib/usage-warnings.ts.
+// No address here: the email goes to users.email, read at send time.
+export const usageWarnings = pgTable(
+  "usage_warnings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // A product entry ('reception' | 'sales' | 'connect').
+    entry: text("entry").notNull(),
+    // Percent of the included minutes: 80 or 100.
+    threshold: integer("threshold").notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [
+    unique("usage_warnings_claim").on(t.userId, t.entry, t.threshold, t.periodStart),
+    check("usage_warnings_entry_check", sql`${t.entry} IN ('reception', 'sales', 'connect')`),
+    check("usage_warnings_threshold_check", sql`${t.threshold} IN (80, 100)`),
+  ],
+);
 
 // ─── Outbound call center (campagnes sortantes) ──────────────────────────
 // Un agent sortant réutilisable = une identité d'appel (voix + persona +

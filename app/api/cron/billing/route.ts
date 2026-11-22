@@ -7,6 +7,8 @@ import { users } from "@/lib/db/schema";
 import { runHealthChecks } from "@/lib/health-checks";
 import { logEvent } from "@/lib/logger";
 import { isValidPlanKey } from "@/lib/plans";
+import { runUsageWarnings } from "@/lib/usage-warnings";
+import { usageWarningDeps } from "@/lib/usage-warnings-deps";
 
 // Cron billing : gère le cycle de vie des abonnements payants (hors trial,
 // qui reste dans /api/cron/trial-cleanup). Deux phases idempotentes par tick :
@@ -24,6 +26,11 @@ import { isValidPlanKey } from "@/lib/plans";
 //
 // Auth : INTERNAL_SECRET via header x-internal-secret. Fréquence : ~horaire.
 // Also runs lib/health-checks (OpenAI key + error rate → admin alerts).
+//
+//   3) Usage warnings (P2, lib/usage-warnings.ts): 80% / 100% of a product's
+//      included minutes, accounts WITH a products record only, once per
+//      account × entry × threshold × period. Behind USAGE_WARNINGS_ENABLED,
+//      OFF by default: off, nothing is read and the response is unchanged.
 
 export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
@@ -114,11 +121,14 @@ export async function GET(req: NextRequest) {
   // and error rate, each alerting the admins once per window.
   const health = await runHealthChecks();
 
+  const warnings = await runUsageWarnings(usageWarningDeps());
+
   return NextResponse.json({
     ok: true,
     downgraded,
     expired,
     health,
+    ...(warnings.enabled ? { usageWarnings: warnings } : {}),
     tookMs: Date.now() - now.getTime(),
   });
 }
