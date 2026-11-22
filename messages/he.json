@@ -675,7 +675,10 @@
     "previewTry": "לנסות בחינם",
     "previewBadge": "תצוגה מקדימה",
     "previewNote": "נתונים לדוגמה: שום דבר לא נשמר ולא נשלח.",
-    "previewSoon": "בקרוב."
+    "previewSoon": "בקרוב.",
+    "previewNotify": "עדכנו אותי",
+    "previewNotified": "רשמנו, נעדכן אתכם.",
+    "previewNotifyError": "לא הצלחנו לשמור את הבקשה. נסו שוב."
   },
   "DashboardCrm": {
     "header": "מרחב לקוחות",
