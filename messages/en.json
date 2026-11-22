@@ -1110,8 +1110,7 @@
     "ownerEmailConfirmErrInvalidCode": "This code doesn't match. Check the 6 digits you received.",
     "ownerEmailConfirmErrExpired": "This code has expired. Ask for a new code.",
     "ownerEmailConfirmErrTooManyAttempts": "Too many tries: this code is no longer valid. Ask for a new code.",
-    "ownerEmailConfirmErrConfirmFailed": "The confirmation didn't go through. Try again.",
-    "tileStartHere": "Start here"
+    "ownerEmailConfirmErrConfirmFailed": "The confirmation didn't go through. Try again."
   },
   "WebsiteScan": {
     "kicker": "AI assistant",
