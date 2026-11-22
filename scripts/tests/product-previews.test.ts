@@ -74,7 +74,10 @@ async function main() {
   const perLocale: Record<string, string[]> = {};
   let into = all;
   const walk = (v: unknown) => {
-    if (typeof v === "string") (into.push(v), into !== all && all.push(v));
+    if (typeof v === "string") {
+      into.push(v);
+      if (into !== all) all.push(v);
+    }
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
