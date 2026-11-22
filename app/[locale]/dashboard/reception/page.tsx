@@ -9,8 +9,9 @@ import { TenantConfigPage } from "../config/config-page";
 
 /**
  * Menu entry "Réception": today's home overview (setup checklist, number,
- * stats, live test) and what is specific to reception (notifications,
- * channels). The call forwarding wizard is its sub-page (./forwarding).
+ * stats, live test). The channels and notifications tiles are on Mon agent
+ * (they serve every product). The call forwarding wizard is its sub-page
+ * (./forwarding).
  * Not owned (menu preview): the product's header, then the same overview
  * read-only over sample data (ReceptionPreview: a sample number and figures,
  * a static live test that never opens a session, no request). The owned

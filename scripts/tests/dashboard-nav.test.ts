@@ -24,6 +24,7 @@ import {
   LEGACY_TENANT_PATHS,
   navBlocks,
   productOrder,
+  ENTRY_SUFFIX,
   TILE_ENTRY,
 } from "../../lib/dashboard-nav";
 import { entitledProducts } from "../../lib/product-entitlement";
@@ -31,6 +32,8 @@ import { productMenu, type ProductMenu } from "../../lib/product-menu";
 import {
   mergeSectionOrder,
   SECTION_TILES,
+  sectionLiveTestBesideTiles,
+  sectionShowsTiles,
   sectionGridClass,
   sectionTileSize,
   sectionShowsHero,
@@ -114,8 +117,10 @@ const TENANT_REDIRECTS: [string, Record<string, string | string[]>, string | nul
   ["", { tile: "persona" }, null, "/dashboard/my-agent?tile=persona"],
   ["", { tile: "business" }, null, "/dashboard/my-agent?tile=business"],
   ["", { tile: "tools" }, "connect", "/dashboard/my-agent?tile=tools"],
-  ["", { tile: "notifs" }, "sales", "/dashboard/reception?tile=notifs"],
-  ["", { tile: "channels" }, null, "/dashboard/reception?tile=channels"],
+  ["", { tile: "notifs" }, "sales", "/dashboard/my-agent?tile=notifs"],
+  ["", { tile: "channels" }, null, "/dashboard/my-agent?tile=channels"],
+  ["", { tile: "channels" }, "connect", "/dashboard/my-agent?tile=channels"],
+  ["", { tile: "notifs" }, "reception", "/dashboard/my-agent?tile=notifs"],
   ["", { tile: "campaigns" }, null, "/dashboard/sales?tile=campaigns"],
   ["", { tile: "junk" }, "connect", "/dashboard/agent?tile=junk"],
   ["/logs", {}, null, "/dashboard/calls"],
@@ -133,6 +138,8 @@ const ADMIN_REDIRECTS: [string, Record<string, string>, string | null, string | 
   ["", {}, null, "/admin/users/u-1/reception"],
   ["", {}, "connect", "/admin/users/u-1/agent"],
   ["", { tile: "prompt" }, "sales", "/admin/users/u-1/my-agent?tile=prompt"],
+  ["", { tile: "channels" }, null, "/admin/users/u-1/my-agent?tile=channels"],
+  ["", { tile: "notifs" }, "connect", "/admin/users/u-1/my-agent?tile=notifs"],
   ["/logs", {}, null, "/admin/users/u-1/calls"],
   ["/calendar", {}, null, "/admin/users/u-1/clients"],
   ["/contacts", {}, null, "/admin/users/u-1/clients"],
@@ -210,11 +217,50 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
 }
 
 // ── 5. Config sections: the same form, each page its tiles ──────────────────
+// The number and the notifications serve every product: their tiles are on
+// Mon agent (real for every account), Réception keeps no tile.
 assert.deepEqual(SECTION_TILES, {
-  reception: ["notifs", "channels"],
-  agent: ["voice", "persona", "business", "tools", "prompt"],
+  reception: [],
+  agent: ["voice", "persona", "business", "tools", "channels", "notifs", "prompt"],
   sales: ["campaigns"],
 });
+for (const id of ["channels", "notifs"]) {
+  assert.equal(tileInSection(id, "reception"), false, `${id}: not on Réception`);
+  assert.equal(tileInSection(id, "agent"), true, `${id}: on Mon agent`);
+}
+// Each tile's ?tile= home is the page that shows it.
+const SECTION_ENTRY = { reception: "reception", agent: "myAgent", sales: "sales" } as const;
+for (const [section, ids] of Object.entries(SECTION_TILES) as [keyof typeof SECTION_ENTRY, readonly string[]][])
+  for (const id of ids) assert.equal(TILE_ENTRY[id], SECTION_ENTRY[section], `?tile=${id} lands on the page that shows it`);
+// Every in-app ?tile= link points at the page that shows that tile.
+{
+  const files = ["components/dashboard/SetupChecklist.tsx", "components/bricks/tools/ToolsBrick.tsx", "app/[locale]/dashboard/config-form.tsx"];
+  let links = 0;
+  for (const f of files)
+    for (const m of read(f).matchAll(/\/([a-z-]+)\?tile=(\w+)\b/g)) {
+      links++;
+      assert.equal(m[1], ENTRY_SUFFIX[TILE_ENTRY[m[2]]], `${f}: ${m[0]} → /${ENTRY_SUFFIX[TILE_ENTRY[m[2]]]}?tile=${m[2]}`);
+    }
+  assert.ok(links >= 4, `the links were found (${links})`);
+}
+// The checklist's "agent address" step opens the Ask-your-agent brick on
+// Votre agent (since #380 the address lives there, not in a tools tile).
+{
+  const checklist = read("components/dashboard/SetupChecklist.tsx");
+  const step = checklist.slice(checklist.indexOf('id: "agentUrl"'), checklist.indexOf('id: "number"'));
+  assert.match(step, /href: "\/dashboard\/agent#client-agent",/, "agentUrl step → the brick's anchor");
+  assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /<section\s+id="client-agent"/, "the anchor exists on the brick");
+}
+// The live test sits beside the tiles (right column, xl+) only on a page that
+// has tiles: on Réception it goes full width under the hero. Mon agent unchanged.
+assert.deepEqual(
+  [sectionLiveTestBesideTiles("reception"), sectionLiveTestBesideTiles("agent"), sectionLiveTestBesideTiles("sales"), sectionLiveTestBesideTiles(undefined)],
+  [false, true, false, true],
+);
+// Réception has no tile: no tile grid and no save dock (nothing to save there).
+assert.deepEqual([sectionShowsTiles("reception"), sectionShowsTiles("agent"), sectionShowsTiles("sales"), sectionShowsTiles(undefined)], [false, true, true, true]);
+assert.equal(sectionShowsSaveDock("reception"), false);
+assert.equal(sectionShowsSaveDock(undefined), true);
 // Every tile of the form is somewhere, each on ONE page (F2: "Ask your agent"
 // left the tools tile, so Tools is on Mon agent only).
 {
@@ -238,6 +284,12 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.match(form, /OPENABLE\.includes\(tileParam\) && tileInSection\(tileParam, section\)/, "?tile= opens only this page's tiles");
   assert.match(form, /\{sectionShowsHero\(section\) && \(/);
   assert.match(form, /\{sectionShowsLiveTest\(section\) && \(/);
+  assert.match(form, /\{sectionShowsTiles\(section\) && \(\s*<section ref=\{tilesRef\}/);
+  // The two-column layout and the sticky right column follow the same rule (Mon agent: as before).
+  assert.match(form, /<div className=\{`relative \$\{sectionLiveTestBesideTiles\(section\) \? "xl:grid xl:grid-cols-\[minmax\(0,1fr\)_360px\] xl:gap-8" : ""\}`\}>/);
+  assert.match(form, /<aside className=\{`card-hover anim-fade-up mb-8 \$\{sectionLiveTestBesideTiles\(section\) \? "xl:col-start-2 xl:row-start-2 xl:mb-0" : ""\}`\}>/);
+  assert.match(form, /<div className=\{sectionLiveTestBesideTiles\(section\) \? "xl:sticky xl:top-24" : undefined\}>/);
+  assert.match(form, /\{sectionShowsSaveDock\(section\) && \(/);
 }
 
 // ── 5b. Preview product pages: their own header, then the real screen over sample data (F2) ──

@@ -267,7 +267,7 @@ export function SetupChecklist({
             title: t("agentUrlTitle"),
             desc: t("agentUrlDesc"),
             ctaLabel: t("agentUrlCta"),
-            href: "/dashboard/agent?tile=tools",
+            href: "/dashboard/agent#client-agent",
           },
         ]
       : []),
@@ -323,7 +323,7 @@ export function SetupChecklist({
       title: t("whatsappTitle"),
       desc: t("whatsappDesc"),
       ctaLabel: t("whatsappCta"),
-      href: "/dashboard/reception?tile=notifs",
+      href: "/dashboard/my-agent?tile=notifs",
     },
   ];
 
