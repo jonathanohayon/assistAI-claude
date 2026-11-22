@@ -24,6 +24,8 @@ import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
 import { campaignGoalFields, OUTBOUND_TEST_MISSION } from "@/lib/mission/adapters";
 import { toEngineSettings } from "@/lib/voice/engine";
+import { decideSalesEngine, LIVE_ENGINE_ALERT } from "@/lib/engine-override-load";
+import { voiceOnEngine } from "@/lib/voice/override-voice";
 
 // GET /api/agent/outbound-test-config?agentId=  (x-internal-secret)
 // Config runtime servie au worker pour un TEST LIVE d'agent sortant depuis le
@@ -97,11 +99,22 @@ export async function handleOutboundTestConfig(req: NextRequest): Promise<Respon
 
   // Voice contract (V2), served as `voiceConfig` (`voice` is the legacy voice
   // id the live worker reads). The legacy fields stay until worker V2 is live.
-  const voiceConfig = servedOutboundVoice({
+  const todayVoice = servedOutboundVoice({
     voice: persona.voice || "marin",
     personality: agent.personality as AgentPersonality | null | undefined,
     noiseReductionLevel: agent.noiseReductionLevel ?? null,
   });
+  // E2: the admin engine override of the sales product (OpenAI models only;
+  // the receptionist's engine columns are not a sales setting). No override
+  // (or an ignored one) → apply false → today's voice, untouched.
+  const { decision: engineDecision } = await decideSalesEngine(
+    "outbound_test",
+    agent.userId,
+    persona.language || "fr",
+    { engine: "openai", model: outboundModel() },
+    LIVE_ENGINE_ALERT,
+  );
+  const voiceConfig = engineDecision.apply ? voiceOnEngine(todayVoice, engineDecision) : todayVoice;
 
   const engine = toEngineSettings(voiceConfig, { defaultModel: outboundModel() });
 

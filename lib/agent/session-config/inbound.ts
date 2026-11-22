@@ -15,6 +15,8 @@ import { servedInboundVoice } from "@/lib/voice/serve";
 import { workerRuntimeConfig } from "@/lib/agent/worker-runtime-config";
 import { inboundSessionInstructions } from "@/lib/agent/session-instructions";
 import { toEngineSettings } from "@/lib/voice/engine";
+import { decideInboundEngine } from "@/lib/engine-override-load";
+import { voiceOnEngine } from "@/lib/voice/override-voice";
 import { getClientProfile } from "@/lib/loyalty-profile";
 import { effectiveGreeting } from "@/lib/ai-disclosure";
 import { markForwardingTestCall } from "@/lib/forwarding-test-db";
@@ -400,7 +402,12 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
     }
   }
 
-  const voiceConfig = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  // E2: the admin engine override of the account's reception product. No
+  // override (or a client setting, or an ignored one) → apply false → the
+  // voice below is today's, untouched. An ignored override alerts the admins.
+  const todayVoice = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  const { decision: engineDecision } = await decideInboundEngine(tenant.user.id, tenant.config, fx.alertAdmins);
+  const voiceConfig = engineDecision.apply ? voiceOnEngine(todayVoice, engineDecision) : todayVoice;
   const engine = toEngineSettings(voiceConfig, { defaultModel: tenant.config.model || "gpt-realtime-2" });
 
   return NextResponse.json({
