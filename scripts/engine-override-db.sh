@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Engine override per product (E2) against a THROWAWAY Postgres
 # (127.0.0.1:<free port>, data in the git-ignored .tmp/ folder), then stops it:
+#   0. migration 0058 (users.sales_engine_override, E2b) writes NO data: on a
+#      seeded database at 0057, the md5 of EVERY public table's rows is
+#      identical before and after; the only schema change is the new nullable
+#      column; users rows are not rewritten (xmin); a re-run is a no-op;
 #   1. scripts/tests/engine-override-db.test.ts: the admin catalogue route
 #      (gate cases, set / re-send / omitted / clear / not honoured), public
 #      pricing never carries it, the banner endpoint, the language guard on
@@ -11,7 +15,10 @@
 #          byte-identical (a permanent invariant, never a main-vs-branch diff);
 #      (c) an override set → ONLY the expected leaves change, on the expected
 #          cases (pinned below); a client-set account, another product's
-#          calls and the previews never change.
+#          calls and the previews never change;
+#      (d) E2b: users.sales_engine_override NULL vs set for ONE account →
+#          only that account's campaign / outbound_test cases change (model
+#          leaves only); inbound cases never change.
 # Never uses DATABASE_URL from your shell; clean env (no provider key).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -32,6 +39,53 @@ pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"
 pg_start_throwaway engine-override
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+
+# ── 0. Migration 0058 writes no data ───────────────────────────────────────
+MIG="$BASE/mig"
+psql -X -q -At "$URL" -c "CREATE DATABASE mig"
+mq() { psql -X -q -At -v ON_ERROR_STOP=1 "$MIG" "$@"; }
+source scripts/lib/migrate-upto.sh
+migration_sorts_after_all_before 0058_users_sales_engine_override
+migrate_upto 0057_product_trials "$MIG" "$TMP/work/m57"
+mq -f scripts/fixtures/mission-m2a-seed.sql
+mq -c "INSERT INTO users (id, email, password_hash, role, products) VALUES ('00000000-0000-4000-8000-0000000000f2', 'mig@engine.example.test', 'x', 'admin', '{\"base\":\"sales\",\"addons\":[]}');
+       INSERT INTO calls (user_id, duration_seconds, product) VALUES ('00000000-0000-0000-0000-00000000000a', 42, 'sales');"
+LEDGER_BEFORE="$(mq -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')"
+mschema() { mq -c "SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1"; }
+mschema > "$TMP/work/schema-before"
+TABLES="$(mq -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1")"
+# The column lists are taken BEFORE the migration: the new column is not in
+# the md5, so the md5 compares exactly the data that existed.
+for t in $TABLES; do
+  mq -c "SELECT string_agg(quote_ident(column_name), ',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '$t'" > "$TMP/work/cols-$t"
+done
+msnap() {
+  for t in $TABLES; do
+    mq -c "SELECT '$t', count(*), md5(coalesce(string_agg(x::text, E'\n' ORDER BY x::text), '')) FROM (SELECT $(cat "$TMP/work/cols-$t") FROM \"$t\") x"
+  done
+}
+msnap > "$TMP/work/md5-before"
+grep -q '^users|4|' "$TMP/work/md5-before"
+XMIN="$(mq -c "SELECT string_agg(xmin::text, ',' ORDER BY id) FROM users")"
+migrate_upto 0058_users_sales_engine_override "$MIG" "$TMP/work/m58"
+msnap > "$TMP/work/md5-after"
+mschema > "$TMP/work/schema-after"
+if ! diff -u "$TMP/work/md5-before" "$TMP/work/md5-after"; then
+  echo "migration 0058 changed table data" >&2
+  exit 1
+fi
+SCHEMA_DIFF="$(diff "$TMP/work/schema-before" "$TMP/work/schema-after" | grep '^[<>]' || true)"
+[ "$SCHEMA_DIFF" = "> users.sales_engine_override jsonb YES " ] || { echo "unexpected schema diff: $SCHEMA_DIFF" >&2; exit 1; }
+[ "$(mq -c 'SELECT count(*) FROM users WHERE sales_engine_override IS NOT NULL')" = "0" ]
+[ "$(mq -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
+[ "$(mq -c "SELECT string_agg(xmin::text, ',' ORDER BY id) FROM users")" = "$XMIN" ] || { echo "migration 0058 rewrote users rows" >&2; exit 1; }
+migrate_upto 0058_users_sales_engine_override "$MIG" "$TMP/work/m58b"
+mq -f drizzle/0058_users_sales_engine_override.sql 2>/dev/null
+[ "$(mq -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
+[ "$(mq -c "SELECT string_agg(xmin::text, ',' ORDER BY id) FROM users")" = "$XMIN" ]
+msnap > "$TMP/work/md5-rerun"
+cmp -s "$TMP/work/md5-before" "$TMP/work/md5-rerun"
+echo "migration 0058: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after (md5 of the per-table list $(md5 -q "$TMP/work/md5-after" 2>/dev/null || md5sum "$TMP/work/md5-after" | cut -d' ' -f1)); schema diff = users.sales_engine_override (nullable, all NULL); ledger +1; users xmin unchanged; re-run no-op"
 
 # ── 1. The DB test ─────────────────────────────────────────────────────────
 "${CLEAN[@]}" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
@@ -113,5 +167,27 @@ for c in "campaign d1" "campaign d2" "campaign d3" "campaign d4" "campaign d5" "
 done
 check sales-openai '{"sales":{"engine":"openai","model":"gpt-realtime-2.1"}}' "$(printf '%s' "$SALES" | LC_ALL=C sort)"
 reset
-grep -c engineOverride "$TMP"/c-*.json >/dev/null && { echo "a payload carries engineOverride" >&2; exit 1; } || true
-echo "never served: no snapshot carries engineOverride"
+
+# (d) E2b: the client sales override on ONE account (b: agent c2, campaigns
+# d2 + d9) → only b's campaign / outbound_test cases change, model leaves
+# only; a's and c's sales calls, every inbound call and the previews don't.
+[ "$(sq -c 'SELECT count(*) FROM users WHERE sales_engine_override IS NOT NULL')" = "0" ]
+snapshot d-null.json
+cmp -s "$TMP/absent.json" "$TMP/d-null.json" || { echo "(d) a NULL client sales override changed a payload" >&2; node "$DIFF" "$TMP/absent.json" "$TMP/d-null.json" >&2; exit 1; }
+sq -c "UPDATE users SET sales_engine_override = '{\"engine\":\"openai\",\"model\":\"gpt-realtime-2.1\"}'::jsonb WHERE id = '00000000-0000-0000-0000-00000000000b'"
+snapshot d-set.json
+node "$DIFF" "$TMP/d-null.json" "$TMP/d-set.json" > "$TMP/d.diff"
+DWANT=""
+for c in "campaign d2" "campaign d9" "otest c2" "session campaign d2" "session campaign d9" "session outbound_test c2"; do
+  DWANT+="${c}${T}model"$'\n'"${c}${T}voiceConfig.advanced.model"$'\n'
+done
+DWANT="$(printf '%s' "$DWANT" | LC_ALL=C sort)"
+if [ "$(cat "$TMP/d.diff")" != "$DWANT" ]; then
+  echo "(d) client sales override: unexpected payload diff (expected vs got):" >&2
+  diff -u <(printf '%s\n' "$DWANT") "$TMP/d.diff" >&2 || true
+  exit 1
+fi
+echo "(d) client sales override on one account: $(grep -c . "$TMP/d.diff") changed leaves, as pinned; inbound untouched (md5 null $(md5of "$TMP/d-null.json") / set $(md5of "$TMP/d-set.json"))"
+sq -c "UPDATE users SET sales_engine_override = NULL"
+grep -c -e engineOverride -e salesEngineOverride -e sales_engine_override "$TMP"/c-*.json "$TMP"/d-*.json >/dev/null && { echo "a payload carries an engine override" >&2; exit 1; } || true
+echo "never served: no snapshot carries engineOverride / the client sales override"

@@ -1,6 +1,7 @@
 // The engine override decision is FAIL-OPEN on every call path (E2 fix):
 //   1. each failure point inside decide* (the catalogue row read, the
-//      entitlement read, the engine-languages read) → decideEngineSafely
+//      entitlement read, the engine-languages read, the E2b client sales
+//      override read) → decideEngineSafely
 //      returns apply: false and attempts exactly ONE fail-open alert
 //      (key engine_override_decision_failed:<product>, 24 h dedup);
 //   2. the alert sink throwing on top → still apply: false, nothing propagates;
@@ -36,6 +37,7 @@ class CatalogueReadError extends Error {}
 class EntitlementReadError extends Error {}
 class LanguagesReadError extends Error {}
 class AlertSinkError extends Error {}
+class ClientSalesReadError extends Error {}
 
 const withOverrides = (o: Partial<EngineOverrides>): DecideDeps["overrides"] => async () => ({ ...noEngineOverrides(), ...o });
 const ALL_SET = withOverrides({ reception: { engine: "xai", model: null }, sales: { engine: "openai", model: "gpt-realtime-2.1" } });
@@ -43,6 +45,7 @@ const ok: Required<DecideDeps> = {
   overrides: ALL_SET!,
   entitled: async () => ["reception"],
   languages: async () => DEFAULT_ENGINE_LANGUAGES,
+  clientSalesOverride: async () => null,
 };
 
 type Call = Parameters<EngineAlert>[0];
@@ -81,6 +84,9 @@ async function main() {
     // accountProducts is read on the inbound path only (sales has one product).
     ["accountProducts", { ...ok, entitled: async () => { throw new EntitlementReadError("mock"); } }, ["inbound"]],
     ["engine-languages read", { ...ok, languages: async () => { throw new LanguagesReadError("mock"); } }, ["inbound", "campaign", "outbound_test"]],
+    // E2b: users.sales_engine_override is read inside the wrapped decision (sales paths only).
+    ["client sales override read", { ...ok, clientSalesOverride: async () => { throw new ClientSalesReadError("mock"); } }, ["campaign", "outbound_test"]],
+    ["client sales override read, no product override", { ...ok, overrides: withOverrides({}), clientSalesOverride: async () => { throw new ClientSalesReadError("mock"); } }, ["campaign", "outbound_test"]],
   ];
   for (const [point, deps, on] of failures) {
     for (const name of on) {

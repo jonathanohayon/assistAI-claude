@@ -1,7 +1,8 @@
 // The engine override per product (E2), pure parts:
 //   1. engineForCall as a full table: path × override set/unset × client
-//      set/unset × language supported/unsupported × honoured/not (+ the E2b
-//      clientSalesOverride hook, null-only in E2);
+//      set/unset × language supported/unsupported × honoured/not, and the
+//      E2b client sales override (honoured / not honoured / language
+//      unsupported, above the product override) + its admin write;
 //   2. the stored catalogue row: strict parse, byte-identical serialization
 //      with no override, the admin write (set / clear / omitted = kept /
 //      not honoured → refused, naming it);
@@ -20,6 +21,7 @@ import {
   engineOptionCoverage,
   engineOverrideProblems,
   noEngineOverrides,
+  salesOverrideWrite,
   parseEngineOverride,
   productForPath,
   type CallPath,
@@ -57,7 +59,7 @@ type Row = {
   override: EngineOverride | null;
   language: string;
   today: { engine: "openai" | "gemini" | "xai"; model: string };
-  clientSalesOverride?: null;
+  clientSalesOverride?: EngineOverride | null;
   want: Partial<EngineForCall> & { apply: boolean };
 };
 const today = (t: Row["today"], source: "client" | "default") => ({ apply: false, engine: t.engine, model: t.engine === "openai" ? t.model : REALTIME_PROVIDER_MODEL[t.engine], servedModel: t.model, source });
@@ -99,6 +101,26 @@ for (const path of ["campaign", "outbound_test"] as const) {
   // E2b hook: clientSalesOverride is null in E2 → exactly the row without it.
   table.push({ name: `${path} set 2.1, clientSalesOverride null (E2b hook)`, path, product: "sales", client: null, override: { engine: "openai", model: "gpt-realtime-2.1" }, language: "fr", today: OUT_TODAY, clientSalesOverride: null, want: { apply: true, engine: "openai", model: "gpt-realtime-2.1", servedModel: "gpt-realtime-2.1", source: "product" } });
   table.push({ name: `${path} unset, clientSalesOverride null (E2b hook)`, path, product: "sales", client: null, override: null, language: "fr", today: OUT_TODAY, clientSalesOverride: null, want: today(OUT_TODAY, "default") });
+  // E2b: the client sales override, ranked above the product override.
+  const C21: EngineOverride = { engine: "openai", model: "gpt-realtime-2.1" };
+  const CMINI: EngineOverride = { engine: "openai", model: "gpt-realtime-mini" };
+  const applied = (model: string, source: "client" | "product") => ({ apply: true, engine: "openai" as const, model, servedModel: model, source });
+  table.push({ name: `${path} client 2.1 honoured, product unset`, path, product: "sales", client: null, override: null, language: "fr", today: OUT_TODAY, clientSalesOverride: C21, want: applied("gpt-realtime-2.1", "client") });
+  table.push({ name: `${path} client 2.1 honoured, he`, path, product: "sales", client: null, override: null, language: "he", today: OUT_TODAY, clientSalesOverride: C21, want: applied("gpt-realtime-2.1", "client") });
+  table.push({ name: `${path} client 2.1 beats product mini`, path, product: "sales", client: null, override: CMINI, language: "fr", today: OUT_TODAY, clientSalesOverride: C21, want: applied("gpt-realtime-2.1", "client") });
+  table.push({ name: `${path} client 2.1 beats product, receptionist client set (xai)`, path, product: "sales", client: SET_XAI, override: CMINI, language: "fr", today: OUT_TODAY, clientSalesOverride: C21, want: applied("gpt-realtime-2.1", "client") });
+  table.push({ name: `${path} client = env model wins over product (no change)`, path, product: "sales", client: null, override: C21, language: "fr", today: OUT_TODAY, clientSalesOverride: { engine: "openai", model: null }, want: today(OUT_TODAY, "default") });
+  // Not honoured (sales = OpenAI only) → falls through to the product override, then the default.
+  table.push({ name: `${path} client gemini not honoured → product 2.1`, path, product: "sales", client: null, override: C21, language: "fr", today: OUT_TODAY, clientSalesOverride: { engine: "gemini", model: null }, want: { ...applied("gpt-realtime-2.1", "product"), ignored: { reason: "not_honoured", wanted: { source: "client", engine: "gemini", model: null } } } });
+  table.push({ name: `${path} client xai not honoured, product unset → default`, path, product: "sales", client: null, override: null, language: "fr", today: OUT_TODAY, clientSalesOverride: { engine: "xai", model: null }, want: { ...today(OUT_TODAY, "default"), ignored: { reason: "not_honoured", wanted: { source: "client", engine: "xai", model: null } } } });
+  // Language unsupported → falls through the same way; the first skipped one is reported.
+  table.push({ name: `${path} client 2.1 unknown language, product unset → default`, path, product: "sales", client: null, override: null, language: "de", today: OUT_TODAY, clientSalesOverride: C21, want: { ...today(OUT_TODAY, "default"), ignored: { reason: "language", wanted: { source: "client", engine: "openai", model: "gpt-realtime-2.1" } } } });
+  table.push({ name: `${path} client 2.1 + product mini, unknown language → default, client reported`, path, product: "sales", client: null, override: CMINI, language: "de", today: OUT_TODAY, clientSalesOverride: C21, want: { ...today(OUT_TODAY, "default"), ignored: { reason: "language", wanted: { source: "client", engine: "openai", model: "gpt-realtime-2.1" } } } });
+}
+// The client sales override never touches an inbound call.
+for (const product of ["reception", "reception_multi"] as const) {
+  table.push({ name: `${product} inbound ignores a client sales override`, path: "inbound", product, client: NOT_SET, override: null, language: "fr", today: IN_TODAY, clientSalesOverride: { engine: "openai", model: "gpt-realtime-2.1" }, want: today(IN_TODAY, "default") });
+  table.push({ name: `${product} inbound product override, client sales override ignored`, path: "inbound", product, client: NOT_SET, override: { engine: "xai", model: null }, language: "en", today: IN_TODAY, clientSalesOverride: { engine: "openai", model: "gpt-realtime-2.1" }, want: { apply: true, engine: "xai", model: X, servedModel: "gpt-realtime-2", source: "product" } });
 }
 for (const r of table) {
   const got = engineForCall({
@@ -109,7 +131,7 @@ for (const r of table) {
     language: r.language,
     languages: L,
     today: r.today,
-    ...(r.clientSalesOverride === null ? { clientSalesOverride: null } : {}),
+    ...("clientSalesOverride" in r ? { clientSalesOverride: r.clientSalesOverride } : {}),
   });
   assert.deepEqual(got, r.want, `engineForCall: ${r.name}`);
 }
@@ -123,6 +145,27 @@ for (const p of PRODUCTS) {
   assert.equal(engineForCall({ path, product: p, client: NOT_SET, overrides: others, language: "fr", languages: L, today: t }).apply, false, `other products' overrides don't touch ${p}`);
 }
 console.log(`ok: engineForCall table (${table.length} rows)`);
+
+// ── 1b. The client sales override write (E2b) ─────────────────────────────
+for (const [body, want] of [
+  [{}, { ok: true, value: undefined }],
+  [{ salesOverride: undefined }, { ok: true, value: undefined }],
+  [{ salesOverride: null }, { ok: true, value: null }],
+  [{ salesOverride: { engine: "openai", model: "gpt-realtime-2.1" } }, { ok: true, value: { engine: "openai", model: "gpt-realtime-2.1" } }],
+  [{ salesOverride: { engine: "openai", model: null } }, { ok: true, value: { engine: "openai", model: null } }],
+  [{ salesOverride: { engine: "gemini", model: null } }, { ok: false, fields: ["salesOverride.engine"] }],
+  [{ salesOverride: { engine: "xai", model: X } }, { ok: false, fields: ["salesOverride.engine"] }],
+  [{ salesOverride: { engine: "openai" } }, { ok: false, fields: ["salesOverride"] }],
+  [{ salesOverride: { engine: "openai", model: "bad model" } }, { ok: false, fields: ["salesOverride"] }],
+  [{ salesOverride: { engine: "openai", model: null, extra: 1 } }, { ok: false, fields: ["salesOverride"] }],
+  [{ salesOverride: "openai" }, { ok: false, fields: ["salesOverride"] }],
+  [{ salesOverride: null, product: "sales" }, { ok: false, fields: ["product"] }],
+  [null, { ok: false, fields: ["body"] }],
+  [[], { ok: false, fields: ["body"] }],
+] as const) {
+  assert.deepEqual(salesOverrideWrite(body), want, `salesOverrideWrite ${JSON.stringify(body)}`);
+}
+console.log("ok: client sales override write (set / clear / omitted / not honoured / malformed)");
 
 // productForPath
 assert.equal(productForPath("inbound", ["reception_multi", "sales"]), "reception_multi");

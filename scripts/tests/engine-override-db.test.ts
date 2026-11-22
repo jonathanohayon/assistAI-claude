@@ -14,9 +14,18 @@
 //      does not speak the account's language → the payload is today's, byte
 //      for byte, and ONE admin alert (deduplicated per account × product);
 //   5. fail-open: each failure point inside the decision (catalogue row read,
-//      accountProducts, the languages read, the alert sink) → the handler's
+//      accountProducts, the languages read, the client sales override read
+//      (E2b), the alert sink) → the handler's
 //      response is byte-identical to the no-override response, for inbound,
 //      campaign and outbound_test, and ONE deduplicated fail-open alert.
+//   6. the client sales override (E2b, users.sales_engine_override) through
+//      PUT /api/admin/users/[userId]/engine: the gate cases (signed out /
+//      tenant refused, nothing written), an admin set, an unchanged re-send
+//      (row not rewritten), omitted = unchanged, not honoured / malformed →
+//      400 naming the field with nothing written, null clears (SQL NULL);
+//      GET shows the sales entry's source "client"; the campaign payload
+//      follows it over the product override; an ignored one falls through to
+//      the product override with ONE deduplicated alert.
 // The session is a test double (scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs).
 // Plain `npm test` skips it. Run it with:  bash scripts/engine-override-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; mock data only (example.test).
@@ -228,6 +237,7 @@ async function main() {
     class EntitlementReadError extends Error {}
     class LanguagesReadError extends Error {}
     class AlertSinkError extends Error {}
+    class ClientSalesReadError extends Error {}
     const throwingSink: Alert = async () => {
       throw new AlertSinkError("mock sink down");
     };
@@ -255,6 +265,8 @@ async function main() {
       ["catalogue row read", { overrides: async () => { throw new CatalogueReadError("mock"); } }, ["inbound", "campaign", "outbound_test"]],
       ["accountProducts", { entitled: async () => { throw new EntitlementReadError("mock"); } }, ["inbound"]], // sales reads no entitlement
       ["engine-languages read", { languages: async () => { throw new LanguagesReadError("mock"); } }, ["inbound", "campaign", "outbound_test"]],
+      // E2b: the users.sales_engine_override read is inside the wrapped decision (inbound never reads it).
+      ["client sales override read", { clientSalesOverride: async () => { throw new ClientSalesReadError("mock"); } }, ["campaign", "outbound_test"]],
     ];
     for (const [point, deps, on] of failing) {
       for (const k of on) {
@@ -262,6 +274,17 @@ async function main() {
         assert.equal(await run[k](deps, throwingSink), base[k], `${point} on ${k} + the alert sink throwing: still identical, nothing propagates`);
       }
     }
+    // E2b: ONLY the client sales override set (no catalogue row) and its read throws → today's bytes.
+    await db.execute(sql`DELETE FROM app_settings WHERE key = ${KEY}`);
+    await db.execute(sql`UPDATE users SET sales_engine_override = '{"engine":"openai","model":"gpt-realtime-2.1"}'::jsonb WHERE id IN (${A}, ${B})`);
+    for (const k of ["campaign", "outbound_test"] as const) {
+      assert.notEqual(await run[k](), base[k], `${k}: the client sales override applies when nothing fails`);
+      const deps: Deps = { clientSalesOverride: async () => { throw new ClientSalesReadError("mock"); } };
+      assert.equal(await run[k](deps), base[k], `client sales override read throws on ${k} (no product override): byte-identical`);
+      assert.equal(await run[k](deps, throwingSink), base[k], `client sales override read throws on ${k} + the sink throwing: identical`);
+    }
+    assert.equal(await run.inbound({ clientSalesOverride: async () => { throw new ClientSalesReadError("mock"); } }), base.inbound, "inbound never reads it");
+    await db.execute(sql`UPDATE users SET sales_engine_override = NULL`);
     // ONE fail-open alert per product family despite every repeat (24 h dedup).
     await new Promise((r) => setTimeout(r, 200));
     const raw = await getSetting(LEDGER_SETTING);
@@ -285,8 +308,105 @@ async function main() {
       assert.equal(await run.outbound_test(noFr, throwingSink), base.outbound_test, "alert sink throwing on the ignored alert (outbound_test) → identical");
     }
     await clear();
-    console.log(`ok: fail-open (4 failure points × inbound / campaign / outbound_test → today's bytes; ${delivered ? "one deduplicated alert per product" : "no alert in quiet hours"})`);
+    console.log(`ok: fail-open (5 failure points × inbound / campaign / outbound_test → today's bytes; ${delivered ? "one deduplicated alert per product" : "no alert in quiet hours"})`);
   }
+
+  // ── 6. The client sales override (E2b) ─────────────────────────────────
+  const eng = async (as: string | null, userId: string, body: unknown) => {
+    g.__campgateSession = as ? { user: { id: as } } : null;
+    const req = new Request(`http://localhost/api/admin/users/${userId}/engine`, {
+      method: "PUT",
+      body: typeof body === "string" ? body : JSON.stringify(body),
+      headers: { "content-type": "application/json" },
+    });
+    const res = await engineRoute.PUT(req, { params: Promise.resolve({ userId }) });
+    return { status: res.status, body: await res.json() };
+  };
+  type Raw = { v: unknown; isnull: boolean; x: string };
+  const rawOf = async (userId: string): Promise<Raw> => {
+    const [r] = (await db.execute(sql`SELECT sales_engine_override AS v, sales_engine_override IS NULL AS isnull, xmin::text AS x FROM users WHERE id = ${userId}`)) as unknown as Raw[];
+    return r;
+  };
+  const SET21 = { salesOverride: { engine: "openai", model: "gpt-realtime-2.1" } };
+  await clear();
+  assert.equal((await rawOf(A)).isnull, true, "NULL by default");
+  const campaignA = async () => mask(await viaSession(`origin=campaign&campaignId=${sid("d1")}&contactId=${sid("e1")}`));
+  const todayCampaignA = await campaignA();
+  assert.deepEqual(await eng(null, A, SET21), { status: 401, body: { error: "unauthorized" } });
+  assert.deepEqual(await eng(TENANT, A, SET21), { status: 403, body: { error: "forbidden" } });
+  assert.deepEqual(await eng(TENANT, TENANT, SET21), { status: 403, body: { error: "forbidden" } }, "a tenant can't set its own");
+  assert.equal((await rawOf(A)).isnull, true, "a refused write writes nothing");
+  assert.equal((await rawOf(TENANT)).isnull, true);
+  assert.deepEqual(await eng(ADMIN, sid("ff"), SET21), { status: 404, body: { error: "user_not_found" } });
+  // Admin sets it.
+  assert.deepEqual(await eng(ADMIN, A, SET21), { status: 200, body: { ok: true, ...SET21 } });
+  {
+    const r = await rawOf(A);
+    assert.deepEqual(r.v, SET21.salesOverride, "stored as { engine, model }");
+    for (const u of [B, C, ADMIN, TENANT]) assert.equal((await rawOf(u)).isnull, true, "only that account written");
+  }
+  const xminSet = (await rawOf(A)).x;
+  // An unchanged re-send rewrites nothing; omitted keeps the value.
+  assert.deepEqual(await eng(ADMIN, A, SET21), { status: 200, body: { ok: true, ...SET21 } });
+  for (const body of [{}, { salesOverride: undefined }]) {
+    assert.deepEqual(await eng(ADMIN, A, body), { status: 200, body: { ok: true, ...SET21 } }, `omitted ${JSON.stringify(body)}`);
+  }
+  assert.equal((await rawOf(A)).x, xminSet, "re-send / omitted: the row is not rewritten");
+  // Invalid / not honoured → 400 naming the field, nothing written.
+  for (const [body, fields] of [
+    [{ salesOverride: { engine: "gemini", model: null } }, ["salesOverride.engine"]],
+    [{ salesOverride: { engine: "xai", model: REALTIME_PROVIDER_MODEL.xai } }, ["salesOverride.engine"]],
+    [{ salesOverride: { engine: "openai" } }, ["salesOverride"]],
+    [{ salesOverride: { engine: "openai", model: "gpt realtime" } }, ["salesOverride"]],
+    [{ salesOverride: null, reception: null }, ["reception"]],
+    ["not json", ["body"]],
+  ] as const) {
+    assert.deepEqual(await eng(ADMIN, A, body), { status: 400, body: { error: "invalid_engine_override", fields } }, `${JSON.stringify(body)} refused`);
+    assert.equal((await rawOf(A)).x, xminSet, `${JSON.stringify(body)}: nothing written`);
+  }
+  // GET: the sales entry's source is "client"; the stored value is shown.
+  {
+    const r = await banner(ADMIN, A);
+    assert.deepEqual(r.body.salesOverride, SET21.salesOverride);
+    const sales = r.body.products.find((p: { product: string }) => p.product === "sales");
+    assert.deepEqual(sales.resolved, { engine: "openai", model: "gpt-realtime-2.1", source: "client" });
+    assert.equal(sales.ignored, undefined);
+    assert.equal(r.body.products[0].resolved.source, "client", "reception_multi: its own (inbound) client setting, unchanged");
+    assert.equal((await banner(ADMIN, B)).body.salesOverride, null);
+  }
+  // The call path: the campaign payload follows it (model only), above a product override.
+  await cat(ADMIN, "PUT", { catalogue: { sales: { engineOverride: { engine: "openai", model: "gpt-realtime-mini" } } } });
+  {
+    const t = await campaignA();
+    assert.notEqual(t, todayCampaignA);
+    assert.match(t, /"model":"gpt-realtime-2\.1"/, "client beats product");
+    assert.doesNotMatch(t, /gpt-realtime-mini|salesOverride|sales_engine_override|engineOverride/, "never served: only the resolved model");
+    assert.equal(t.replaceAll("gpt-realtime-2.1", "gpt-realtime"), todayCampaignA, "only the model leaves move");
+  }
+  // An ignored client override (hand-written gemini, language unsupported) falls through to the product override, alerting once.
+  await db.execute(sql`UPDATE users SET sales_engine_override = '{"engine":"gemini","model":null}'::jsonb WHERE id = ${A}`);
+  await db.execute(sql`DELETE FROM app_settings WHERE key = ${LEDGER_SETTING}`);
+  for (let i = 0; i < 3; i++) assert.match(await campaignA(), /"model":"gpt-realtime-mini"/, "not honoured → the product override");
+  {
+    const sales = (await banner(ADMIN, A)).body.products.find((p: { product: string }) => p.product === "sales");
+    assert.deepEqual(sales.resolved, { engine: "openai", model: "gpt-realtime-mini", source: "product" });
+    assert.deepEqual(sales.ignored, { reason: "not_honoured", wanted: { source: "client", engine: "gemini", model: null } });
+  }
+  await new Promise((r) => setTimeout(r, 200));
+  const deliveredSales = shouldDeliver("warning", new Date());
+  assert.deepEqual(await ledger(), deliveredSales ? [engineIgnoredAlertKey(A, "sales")] : [], "ONE ledger entry (none in quiet hours)");
+  // A malformed stored value = no override (falls to the product override, no throw).
+  await db.execute(sql`UPDATE users SET sales_engine_override = '"openai"'::jsonb WHERE id = ${A}`);
+  assert.match(await campaignA(), /"model":"gpt-realtime-mini"/, "malformed → the product override");
+  assert.equal((await banner(ADMIN, A)).body.salesOverride, null);
+  // The admin route replaces a malformed value; null clears to SQL NULL.
+  assert.equal((await eng(ADMIN, A, SET21)).status, 200);
+  assert.deepEqual((await rawOf(A)).v, SET21.salesOverride);
+  assert.deepEqual(await eng(ADMIN, A, { salesOverride: null }), { status: 200, body: { ok: true, salesOverride: null } });
+  assert.equal((await rawOf(A)).isnull, true, "null clears to SQL NULL");
+  await clear();
+  assert.equal(await campaignA(), todayCampaignA, "cleared everywhere → today's payload, byte for byte");
+  console.log(`ok: client sales override (gates, set, re-send, omitted, refused, clear, GET source client, payload, fall-through + ${deliveredSales ? "one alert" : "no alert in quiet hours"})`);
 
   console.log("ALL ENGINE-OVERRIDE DB TESTS PASSED");
   process.exit(0);

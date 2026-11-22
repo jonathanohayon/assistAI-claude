@@ -123,7 +123,7 @@ assert.ok(!("agentState" in served), "agentState never served");
 // worker-facing code.
 //   door — dashboard presentation only (lib/door.ts, migration 0054).
 //   products — billing entitlement only (lib/products.ts, migration 0055).
-const USERS_NEVER_SERVED = ["door", "products"];
+const USERS_NEVER_SERVED = ["door", "products", "salesEngineOverride"];
 {
   const userColumns = Object.keys(getTableColumns(users));
   for (const c of USERS_NEVER_SERVED) assert.ok(userColumns.includes(c), `users.${c} exists`);
@@ -156,6 +156,8 @@ const USERS_NEVER_SERVED = ["door", "products"];
     assert.doesNotMatch(src, /\bdoor\b|lib\/door/, `${f.pathname} must not read the door`);
     assert.doesNotMatch(src, /\.products\b|lib\/products|lib\/product-/, `${f.pathname} must not read the account's products`);
     assert.doesNotMatch(src, /\.\.\.(user|tenant\.user|u)\b/, `${f.pathname} must not spread a users row`);
+    // E2b: read only by the sales decision (lib/engine-override-load.ts).
+    assert.doesNotMatch(src, /salesEngineOverride|sales_engine_override|getClientSalesOverride/, `${f.pathname} must not read the client sales override`);
   }
 }
 
