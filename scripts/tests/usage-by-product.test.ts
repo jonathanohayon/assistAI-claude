@@ -175,5 +175,9 @@ console.log(`ok: record-holders per entry (${rows.length + 1} rows)`);
 
 const src = readFileSync(new URL("../../lib/usage-by-product.ts", import.meta.url), "utf8");
 assert.doesNotMatch(src, /^import (?!type).*from "(@\/lib\/db|@\/lib\/products"|\.\/products")/m, "usage-by-product stays pure");
-for (const m of src.matchAll(/^import .* from "([^"]+)";$/gm)) assert.match(m[1], /^\.\/(product-catalogue|product-entitlement|product-values)$/, `pure import ${m[1]}`);
+for (const m of src.matchAll(/^import .* from "([^"]+)";$/gm)) {
+  // P3: ./product-trials is pure too (its own guard: scripts/tests/product-trials.test.ts), and imported for a type only.
+  if (m[1] === "./product-trials") assert.match(m[0], /^import type /, "./product-trials is a type-only import");
+  else assert.match(m[1], /^\.\/(product-catalogue|product-entitlement|product-values)$/, `pure import ${m[1]}`);
+}
 console.log("ALL USAGE BY PRODUCT TESTS PASSED");
