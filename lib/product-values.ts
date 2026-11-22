@@ -15,3 +15,6 @@ export function entryOf(p: Product): ProductEntry {
 
 /** The shape stored in users.products: one base product plus add-ons. */
 export type AccountProductsRecord = { base: Product; addons: Product[] };
+
+/** Each entry's display name, read from DashboardNav.<entry> (lib/product-names.ts on the server). */
+export type ProductNames = Readonly<Record<ProductEntry, string>>;

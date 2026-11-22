@@ -205,7 +205,7 @@ async function main() {
     assert.ok(connect.includes(esc(m.ClientAgentBrick.title)));
 
     const sales = html(l, createElement(SalesPreview));
-    assert.ok(sales.includes(badge), `${l}: Ventes says "preview"`);
+    assert.ok(sales.includes(badge), `${l}: the sales page says "preview"`);
     // The workspace's list, over the samples, in preview mode: no create, no delete.
     const list = html(
       l,

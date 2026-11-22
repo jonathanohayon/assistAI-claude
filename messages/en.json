@@ -660,7 +660,7 @@
     "blockProducts": "Products",
     "blockShared": "Shared",
     "reception": "Reception",
-    "sales": "Sales",
+    "sales": "Call center",
     "connect": "Connect your agent",
     "myAgent": "My agent",
     "calls": "Calls",
@@ -1165,7 +1165,6 @@
     "apply": "Apply to form"
   },
   "DashboardCampaigns": {
-    "kicker": "Call center",
     "title": "Outbound campaigns",
     "subtitle": "Dial your leads with AI agents, in parallel.",
     "close": "Close",
@@ -2002,8 +2001,7 @@
       "overage": "Beyond them, each minute is billed {rate}. Tamara keeps answering as usual.",
       "cta": "See my usage",
       "footer": "You receive this email once per threshold and billing period.",
-      "entryReception": "Receptionist",
-      "entrySales": "Sales"
+      "entryReception": "Receptionist"
     }
   },
   "LiveTest": {

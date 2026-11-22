@@ -1,4 +1,4 @@
-// The Ventes (sales) per-product trial cap, enforced in the campaign
+// The sales (Centre d'appels) per-product trial cap, enforced in the campaign
 // dispatcher (lib/campaigns/dispatch.ts). PURE (zero imports), table-tested
 // in scripts/tests/sales-trial-cap.test.ts.
 //

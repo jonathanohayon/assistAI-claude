@@ -311,7 +311,7 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
     const m = JSON.parse(read(`messages/${locale}.json`));
     for (const entry of ["reception", "sales", "connect"] as const) {
       const soon = render(locale, entry, "soon");
-      assert.ok(soon.includes(`<h1`) && soon.includes(m.DashboardNav[entry]), `${locale}/${entry}: the product name is the title`);
+      assert.ok(soon.includes(`<h1`) && soon.includes(m.DashboardNav[entry].replace(/'/g, "&#x27;")), `${locale}/${entry}: the product name is the title`);
       const pitch = m.DashboardNav[`pitch${entry[0].toUpperCase()}${entry.slice(1)}`];
       assert.ok(typeof pitch === "string" && soon.includes(pitch.replace(/'/g, "&#x27;")), `${locale}/${entry}: one sentence on what it does`);
       const q = (x: string) => x.replace(/'/g, "&#x27;");
@@ -404,7 +404,7 @@ assert.equal(sectionGridClass(undefined), sectionGridClass("reception"));
   assert.match(fr, /aria-expanded="false"/, "the drawer starts closed");
   assert.doesNotMatch(fr, /role="dialog"/, "closed drawer: not in the page");
   const he = html("he", navBlocks("reception", OWNED));
-  for (const w of ["הסוכן שלכם", "הסוכן שלי", "מכירות", "שיחות", "לקוחות", "מנוי", "הגדרות"]) assert.ok(he.includes(w), `he: ${w}`);
+  for (const w of ["הסוכן שלכם", "הסוכן שלי", "מוקד שיחות", "שיחות", "לקוחות", "מנוי", "הגדרות"]) assert.ok(he.includes(w), `he: ${w}`);
   for (const l of ["fr", "en", "he"]) {
     const nav = JSON.parse(read(`messages/${l}.json`)).DashboardNav;
     assert.deepEqual(Object.keys(nav).sort(), Object.keys(JSON.parse(read("messages/fr.json")).DashboardNav).sort(), `${l}: same keys`);

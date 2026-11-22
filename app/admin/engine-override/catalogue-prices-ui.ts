@@ -23,7 +23,7 @@ import {
   type ProductCatalogue,
   type ProductPriceRow,
 } from "@/lib/product-catalogue";
-import { PRODUCTS, type Product } from "@/lib/product-values";
+import { PRODUCTS, type Product, type ProductNames } from "@/lib/product-values";
 
 import { putJson } from "./engine-ui";
 
@@ -34,12 +34,18 @@ export const EDITABLE_FIELDS: readonly EditableField[] = ["monthly", "addonMonth
 export type FieldKey = `${Product}.${CatalogueCurrency}.${EditableField}`;
 export const fieldKey = (p: Product, c: CatalogueCurrency, f: EditableField): FieldKey => `${p}.${c}.${f}`;
 
-export const PRODUCT_LABEL: Record<Product, string> = {
-  reception: "Réception",
-  reception_multi: "Réception multi-sites",
-  sales: "Ventes",
-  connect: "Connecter votre agent",
-};
+/**
+ * Each catalogue product's label, from the entries' names (their one key each,
+ * DashboardNav.<entry>, read in French by the server: lib/product-names.ts).
+ */
+export function productLabels(names: ProductNames): Record<Product, string> {
+  return {
+    reception: names.reception,
+    reception_multi: `${names.reception} multi-sites`,
+    sales: names.sales,
+    connect: names.connect,
+  };
+}
 
 export const FIELD_LABEL: Record<keyof ProductPriceRow, string> = {
   monthly: "Prix mensuel",
@@ -165,14 +171,14 @@ export function applyPatch(cat: ProductCatalogue, patch: PricesPatch): ProductCa
 export type DiffLine = { path: string; label: string; from: number | null; to: number | null };
 
 /** One line per field the patch changes (derived annual included), in catalogue order. */
-export function diffSummary(loaded: ProductCatalogue, patch: PricesPatch): DiffLine[] {
+export function diffSummary(loaded: ProductCatalogue, patch: PricesPatch, labels: Record<Product, string>): DiffLine[] {
   const out: DiffLine[] = [];
   for (const p of PRODUCTS)
     for (const c of CATALOGUE_CURRENCIES)
       for (const f of PRODUCT_PRICE_FIELDS) {
         const to = patch[p]?.[c]?.[f];
         if (to === undefined || to === loaded[p][c][f]) continue;
-        out.push({ path: `${p}.${c}.${f}`, label: `${PRODUCT_LABEL[p]} · ${c} · ${FIELD_LABEL[f]}`, from: loaded[p][c][f], to });
+        out.push({ path: `${p}.${c}.${f}`, label: `${labels[p]} · ${c} · ${FIELD_LABEL[f]}`, from: loaded[p][c][f], to });
       }
   return out;
 }

@@ -7,7 +7,7 @@
 // 100 min, users.subscription_status "trialing"), which is unchanged.
 //
 // Startable = the product's feature flag is on AND its trial cap is
-// enforced (lib/product-trial-caps.ts). Today only Ventes (sales) has an
+// enforced (lib/product-trial-caps.ts). Today only sales (Centre d'appels) has an
 // enforced cap (the campaign dispatcher); Réception and Votre agent need the
 // cap at call answering, which is held, so they are never startable.
 

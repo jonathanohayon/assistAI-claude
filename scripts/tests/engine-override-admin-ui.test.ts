@@ -7,6 +7,7 @@
 // Run with:  npx tsx scripts/tests/engine-override-admin-ui.test.ts
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -30,7 +31,7 @@ import { EngineOverridePanel, salesLanguages, type EngineLineData } from "../../
 import { DEFAULT_ENGINE_LANGUAGES, type EngineLanguages } from "../../lib/engine-languages";
 import { engineOptionCoverage, noEngineOverrides } from "../../lib/engine-override";
 import { DEFAULT_COST_RATES } from "../../lib/finance/rates";
-import { PRODUCTS } from "../../lib/product-values";
+import { PRODUCTS, type ProductNames } from "../../lib/product-values";
 import { REPO_ROOT, assertScanRead, scanSources } from "./helpers/source-scan";
 
 // renderToStaticMarkup escapes apostrophes / quotes.
@@ -44,7 +45,7 @@ const catalogue = (over: Partial<CatalogueEngineData["engineOverrides"]> = {}, l
   engineOptions: optionsFor(languages),
 });
 const rates = { perMinuteUsd: DEFAULT_COST_RATES.perMinuteUsd, openaiUsdPerMinute: DEFAULT_COST_RATES.openaiUsdPerMinute };
-const renderCatalogue = (d: CatalogueEngineData, r: typeof rates | null = rates) => html(createElement(ProductCatalogueForm, { initial: d, rates: r }));
+const renderCatalogue = (d: CatalogueEngineData, r: typeof rates | null = rates) => html(createElement(ProductCatalogueForm, { initial: d, names: NAMES, rates: r }));
 
 /** The HTML of one data-engine-row (up to the next one). */
 function rowOf(h: string, label: string): string {
@@ -60,6 +61,11 @@ const isDisabled = (h: string, label: string) => {
   return /\bdisabled=""/.test(o.attrs);
 };
 
+// The products' names as the server passes them (lib/product-names.ts): DashboardNav, French.
+const NAMES = (JSON.parse(readFileSync(`${REPO_ROOT}/messages/fr.json`, "utf8")) as { DashboardNav: ProductNames }).DashboardNav;
+const SALES = "Centre d'appels";
+assert.equal(NAMES.sales, SALES);
+
 const pending: Promise<void>[] = [];
 
 // ── 1. Catalogue: disabled non-honoured options, with the ONE line ─────────
@@ -67,12 +73,12 @@ const pending: Promise<void>[] = [];
   const h = renderCatalogue(catalogue());
   assert.match(h, /Catalogue des produits/);
   const reception = rowOf(h, "Réception");
-  const sales = rowOf(h, "Ventes");
+  const sales = rowOf(h, SALES);
   const connect = rowOf(h, "Connecter votre agent");
   // Réception: every engine honoured (Gemini / Grok on the worker's env model).
   for (const e of ["OpenAI", "Gemini", "Grok (xAI)"]) assert.equal(isDisabled(reception, e), false, `reception ${e} enabled`);
   assert.doesNotMatch(reception, /data-not-honoured/);
-  // Ventes: OpenAI only.
+  // Sales: OpenAI only.
   assert.equal(isDisabled(sales, "OpenAI"), false);
   assert.equal(isDisabled(sales, "Gemini"), true);
   assert.equal(isDisabled(sales, "Grok (xAI)"), true);
@@ -114,7 +120,7 @@ const pending: Promise<void>[] = [];
   // Unknown = not supported: a model with its own EMPTY entry speaks nothing.
   const t: EngineLanguages = structuredClone(DEFAULT_ENGINE_LANGUAGES);
   t.openai["gpt-realtime-2.1"] = [];
-  const u = rowOf(renderCatalogue(catalogue({ sales: { engine: "openai", model: "gpt-realtime-2.1" } }, t)), "Ventes");
+  const u = rowOf(renderCatalogue(catalogue({ sales: { engine: "openai", model: "gpt-realtime-2.1" } }, t)), SALES);
   assert.match(u, /ne parle pas : français, hébreu, anglais/);
   // An option absent from the server data → speaks nothing.
   assert.deepEqual(missingLanguages([], { engine: "openai", model: "ghost" }, PRODUCT_LANGUAGES), ["fr", "he", "en"]);
@@ -132,12 +138,12 @@ const pending: Promise<void>[] = [];
   // Gemini: no per-minute figure anywhere → "—", never a number.
   assert.match(rowOf(h, "Réception"), /data-cost[^>]*>—</);
   // OpenAI: the rate card's per-minute fallback, an estimation.
-  assert.match(rowOf(h, "Ventes"), new RegExp(`data-cost[^>]*>0,${String(DEFAULT_COST_RATES.openaiUsdPerMinute).split(".")[1]}0? \\$/min · estimation<`));
+  assert.match(rowOf(h, SALES), new RegExp(`data-cost[^>]*>0,${String(DEFAULT_COST_RATES.openaiUsdPerMinute).split(".")[1]}0? \\$/min · estimation<`));
   // Grok: 0.08 from the rate card defaults.
   const x = rowOf(renderCatalogue(catalogue({ reception: { engine: "xai", model: null } })), "Réception");
   assert.match(x, /data-cost[^>]*>0,08 \$\/min · estimation</);
   // Rate card unavailable → "—".
-  assert.match(rowOf(renderCatalogue(catalogue({ sales: { engine: "openai", model: null } }), null), "Ventes"), /data-cost[^>]*>—</);
+  assert.match(rowOf(renderCatalogue(catalogue({ sales: { engine: "openai", model: null } }), null), SALES), /data-cost[^>]*>—</);
 }
 
 // ── 4. Catalogue PUT payloads (set / clear / omitted) ──────────────────────
@@ -170,7 +176,7 @@ const banner = (over: Partial<BannerEngineData> = {}, languages?: EngineLanguage
   rates,
 });
 const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
-  html(createElement(EngineOverridePanel, { userId: "u1", data: d, defaultOpen: true, ...extra }));
+  html(createElement(EngineOverridePanel, { userId: "u1", names: NAMES, data: d, defaultOpen: true, ...extra }));
 {
   const h = renderBanner(banner());
   assert.match(h, /Réception<\/span> : <span[^>]*><strong[^>]*>OpenAI · gpt-realtime-2<\/strong> · <span data-source="true">choix du compte<\/span> · <span data-cost="true">0,30 \$\/min · estimation/);
@@ -188,10 +194,10 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
   assert.match(ch, /Ce moteur ne parle pas hébreu .*le réglage du client s'applique quand même/);
 }
 
-// ── 6. Banner Ventes: only OpenAI selectable; warning; PUT payloads ────────
+// ── 6. Banner sales: only OpenAI selectable; warning; PUT payloads ────────
 {
   const h = renderBanner(banner());
-  const v = rowOf(h, "Ventes : imposé pour ce client");
+  const v = rowOf(h, `${SALES} : imposé pour ce client`);
   assert.equal(isDisabled(v, "OpenAI"), false);
   assert.equal(isDisabled(v, "Gemini"), true);
   assert.equal(isDisabled(v, "Grok (xAI)"), true);
@@ -217,10 +223,10 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
     t,
   );
   assert.deepEqual(salesLanguages(he.engine.products), ["fr", "he"]);
-  const w = rowOf(renderBanner(he, { initialSalesChoice: { engine: "openai", model: "gpt-realtime-2.1" } }), "Ventes : imposé pour ce client");
+  const w = rowOf(renderBanner(he, { initialSalesChoice: { engine: "openai", model: "gpt-realtime-2.1" } }), `${SALES} : imposé pour ce client`);
   assert.match(w, /data-language-warning[^>]*>Ce moteur ne parle pas : hébreu \(langue inconnue = non prise en charge\)\. Pour ce compte, le moteur imposé sera ignoré et une alerte admin sera levée\./);
   assert.match(w, /data-cost[^>]*>0,30 \$\/min · estimation</);
-  const ok = rowOf(renderBanner(he, { initialSalesChoice: { engine: "openai", model: "gpt-realtime-2" } }), "Ventes : imposé pour ce client");
+  const ok = rowOf(renderBanner(he, { initialSalesChoice: { engine: "openai", model: "gpt-realtime-2" } }), `${SALES} : imposé pour ce client`);
   assert.doesNotMatch(ok, /data-language-warning/);
   // No sales product → the call path's fallback "fr".
   assert.deepEqual(salesLanguages([]), ["fr"]);
@@ -246,7 +252,7 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
   assert.deepEqual(e.other, ["catalogue.x.EUR"]);
 
   // Rendered next to the field: the engine error sits right after the engine select.
-  const v = rowOf(renderBanner(banner(), { initialSalesChoice: { engine: "openai", model: null }, initialErrors: { engine: "Moteur refusé par le serveur.", model: "Modèle refusé par le serveur." } }), "Ventes : imposé pour ce client");
+  const v = rowOf(renderBanner(banner(), { initialSalesChoice: { engine: "openai", model: null }, initialErrors: { engine: "Moteur refusé par le serveur.", model: "Modèle refusé par le serveur." } }), `${SALES} : imposé pour ce client`);
   assert.match(v, /data-field="engine"[^>]*aria-invalid="true"[\s\S]*?<\/select><p role="alert"[^>]*>Moteur refusé par le serveur\.<\/p>/);
   assert.match(v, /data-field="model"[^>]*aria-invalid="true"[\s\S]*?<\/select><p role="alert"[^>]*>Modèle refusé par le serveur\.<\/p>/);
 

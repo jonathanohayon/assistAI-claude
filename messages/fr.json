@@ -660,7 +660,7 @@
     "blockProducts": "Produits",
     "blockShared": "Commun",
     "reception": "Réception",
-    "sales": "Ventes",
+    "sales": "Centre d'appels",
     "connect": "Connecter votre agent",
     "myAgent": "Mon agent",
     "calls": "Appels",
@@ -1165,7 +1165,6 @@
     "apply": "Appliquer au formulaire"
   },
   "DashboardCampaigns": {
-    "kicker": "Centre d'appels",
     "title": "Campagnes sortantes",
     "subtitle": "Composez vos leads avec des agents IA, en parallèle.",
     "close": "Fermer",
@@ -2002,8 +2001,7 @@
       "overage": "Au-delà, chaque minute est facturée {rate}. Tamara continue de répondre normalement.",
       "cta": "Voir ma consommation",
       "footer": "Vous recevez cet e-mail une seule fois par seuil et par période de facturation.",
-      "entryReception": "Réceptionniste",
-      "entrySales": "Ventes"
+      "entryReception": "Réceptionniste"
     }
   },
   "LiveTest": {

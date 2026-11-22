@@ -9,12 +9,11 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { perMinuteUsdFor, type CostRates } from "@/lib/finance/rates";
-import type { ProductEntry } from "@/lib/product-values";
+import type { ProductEntry, ProductNames } from "@/lib/product-values";
 
 import { EngineChoiceRow } from "./EngineChoiceRow";
 import {
   CATALOGUE_LINES,
-  ENTRY_LABEL,
   PRODUCT_LANGUAGES,
   cataloguePutBody,
   catalogueFieldErrors,
@@ -36,10 +35,13 @@ const initialChoices = (d: CatalogueEngineData): Record<ProductEntry, EngineOver
 
 export function ProductCatalogueForm({
   initial,
+  names,
   rates,
   fetchFn,
 }: {
   initial: CatalogueEngineData;
+  /** The products' names (DashboardNav.<entry>, French: lib/product-names.ts). */
+  names: ProductNames;
   /** null = the rate card didn't load: every cost shows "—". */
   rates: Rates | null;
   fetchFn?: typeof fetch;
@@ -96,7 +98,7 @@ export function ProductCatalogueForm({
             return (
               <EngineChoiceRow
                 key={line.entry}
-                label={ENTRY_LABEL[line.entry]}
+                label={names[line.entry]}
                 options={options}
                 choice={choice}
                 onChange={(c) => setChoices((s) => ({ ...s, [line.entry]: c }))}
@@ -140,7 +142,7 @@ export function ProductCatalogueForm({
 }
 
 /** The admin tile: loads the catalogue and the rate card, then the form. */
-export function ProductCatalogueAdmin() {
+export function ProductCatalogueAdmin({ names }: { names: ProductNames }) {
   const [state, setState] = useState<{ data: CatalogueEngineData; rates: Rates | null } | "error" | null>(null);
   useEffect(() => {
     let live = true;
@@ -160,5 +162,5 @@ export function ProductCatalogueAdmin() {
   }, []);
   if (state === null) return <p className="text-sm text-[var(--color-muted-foreground)]">Chargement…</p>;
   if (state === "error") return <p className="text-sm text-red-600">Le catalogue n&apos;a pas pu être chargé.</p>;
-  return <ProductCatalogueForm initial={state.data} rates={state.rates} />;
+  return <ProductCatalogueForm initial={state.data} names={names} rates={state.rates} />;
 }
