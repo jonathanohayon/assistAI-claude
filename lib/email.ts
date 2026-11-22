@@ -22,6 +22,7 @@ import { Resend } from "resend";
 import type { PlanFeatures } from "@/lib/plan-features";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
+import { renderUsageWarningEmail, type WarningInput, type WarningKey } from "@/lib/usage-warnings";
 import { renderContactCodeEmail } from "@/lib/contact-code-email";
 import { ltrIsolate } from "@/lib/phone-utils";
 import { configuredEmailSender } from "@/lib/email-sender";
@@ -692,6 +693,30 @@ export async function sendOwnerRecapEmail(
     if (res.error) {
       return { ok: false, error: `${res.error.name}: ${res.error.message}` };
     }
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "send error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Usage warning at 80% / 100% of a product's included minutes (P2,
+//   lib/usage-warnings.ts; behind USAGE_WARNINGS_ENABLED, off by default).
+//   The account's own address. Nothing about it is logged: no recipient,
+//   no body (the fallback prints the subject only).
+// ──────────────────────────────────────────────────────────────────────
+export async function sendUsageWarningEmail(to: string, input: WarningInput): Promise<SendResult> {
+  const t = await getTranslations({ locale: input.locale, namespace: "Email.usageWarning" });
+  const { subject, text, html } = renderUsageWarningEmail(input, (key: WarningKey, vars) => t(key, vars));
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const client = getResend();
+  if (!client) {
+    console.warn(`[email] usage warning not sent (no email key configured), subject: ${subject}`);
+    return { ok: true, fallback: "console_log" };
+  }
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) return { ok: false, error: `${res.error.name}: ${res.error.message}` };
     return { ok: true, id: res.data?.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "send error" };

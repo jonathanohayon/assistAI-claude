@@ -13,7 +13,7 @@ import { getTableColumns } from "drizzle-orm";
 
 import { accountFrom } from "../../lib/agent/adapters";
 import { WORKER_HIDDEN_CONFIG_COLUMNS, workerRuntimeConfig } from "../../lib/agent/worker-runtime-config";
-import { agentConfigs, users } from "../../lib/db/schema";
+import { agentConfigs, calls, usageWarnings, users } from "../../lib/db/schema";
 
 // Served today (main), in row order. Adding a column here is a decision:
 // the worker will receive it.
@@ -156,6 +156,29 @@ const USERS_NEVER_SERVED = ["door", "products"];
     assert.doesNotMatch(src, /\bdoor\b|lib\/door/, `${f.pathname} must not read the door`);
     assert.doesNotMatch(src, /\.products\b|lib\/products|lib\/product-/, `${f.pathname} must not read the account's products`);
     assert.doesNotMatch(src, /\.\.\.(user|tenant\.user|u)\b/, `${f.pathname} must not spread a users row`);
+  }
+}
+
+// calls.product and usage_warnings (P2, migration 0056) are billing only:
+// worker-facing code never reads them (the payload snapshot in
+// scripts/products-usage-db.sh proves it on real rows, NULL vs set).
+{
+  assert.ok("product" in getTableColumns(calls), "calls.product exists");
+  assert.ok("entry" in getTableColumns(usageWarnings), "usage_warnings exists");
+  const code = (u: URL) => readFileSync(u, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const files: URL[] = [];
+  const walk = (dir: URL) => {
+    for (const name of readdirSync(dir)) {
+      const u = new URL(name, dir);
+      if (statSync(u).isDirectory()) walk(new URL(`${name}/`, dir));
+      else if (/\.tsx?$/.test(name)) files.push(u);
+    }
+  };
+  walk(new URL("../../lib/agent/", import.meta.url));
+  walk(new URL("../../app/api/agent/", import.meta.url));
+  for (const f of files) {
+    const src = code(f);
+    assert.doesNotMatch(src, /calls\.product|usageWarnings|usage_warnings|usage-by-product|products-usage|usage-warnings|call-product/, `${f.pathname} must not read billing usage`);
   }
 }
 

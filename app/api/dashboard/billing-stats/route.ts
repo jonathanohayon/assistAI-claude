@@ -5,6 +5,8 @@ import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, campaignCalls, paymentOrders, users } from "@/lib/db/schema";
 import { currencyForLocale } from "@/lib/hyp";
+import { entitledProducts } from "@/lib/product-entitlement";
+import { accountUsageByProduct } from "@/lib/products-usage";
 import {
   DEFAULT_PLAN_KEY,
   OVERAGE_RATE_ILS_PER_MIN,
@@ -54,6 +56,7 @@ export async function GET(req: NextRequest) {
       cardLast4: users.cardLast4,
       cardBrand: users.cardBrand,
       locale: users.locale,
+      products: users.products,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -199,6 +202,26 @@ export async function GET(req: NextRequest) {
 
   const currency = currencyForLocale(me.locale ?? "fr");
 
+  // P2: per-product usage, ONLY for an account with a valid users.products
+  // record. A grandfathered account gets no extra read and no extra field:
+  // its response is byte-identical to before (scripts/products-usage-db.sh).
+  const entitlement = entitledProducts({
+    subscriptionPlan: me.subscriptionPlan,
+    subscriptionStatus: me.subscriptionStatus,
+    products: me.products,
+  });
+  const usageByProduct =
+    entitlement.source === "products"
+      ? await accountUsageByProduct({
+          userId,
+          window,
+          entitlement,
+          currency,
+          planMinutes: minutesIncluded,
+          planOverage: OVERAGE_RATE_ILS_PER_MIN,
+        })
+      : null;
+
   return NextResponse.json({
     plan: planKey,
     status: me.subscriptionStatus,
@@ -222,6 +245,7 @@ export async function GET(req: NextRequest) {
       minutesIncluded,
       overageRateIls: OVERAGE_RATE_ILS_PER_MIN,
     },
+    ...(usageByProduct ? { usageByProduct } : {}),
     callsPerDay,
     outcomes: {
       inboundTotal: inboundAgg?.count ?? 0,
