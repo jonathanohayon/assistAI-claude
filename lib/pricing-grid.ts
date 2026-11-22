@@ -18,7 +18,15 @@ import { entitledProducts } from "./product-entitlement";
 import { entryOf, type Product } from "./product-values";
 import { TRIAL_PLAN_KEY } from "./plans";
 import type { PlanPricingMap } from "./plan-pricing";
-import { PUBLIC_PLAN_PRICING_PATH, parsePublicPlanPricing, parsePublicProducts } from "./public-plan-pricing";
+import {
+  PUBLIC_PLAN_PRICING_PATH,
+  parsePublicAvailability,
+  parsePublicGrid,
+  parsePublicPlanPricing,
+  parsePublicProducts,
+  type PublicAvailability,
+  type PublicGrid,
+} from "./public-plan-pricing";
 import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "./trial";
 
 export type Billing = "monthly" | "annual";
@@ -121,8 +129,10 @@ export function formatGridPerMinute(amount: number, currency: CatalogueCurrency,
 // cards ("legacy"), so production never flashes the new grid.
 // Ventes / Connecter availability rides along; missing = not available.
 
-export type PricingMode = "legacy" | "products";
-export type ProductAvailability = { sales: boolean; connect: boolean };
+// The fields and their strict parsers are the route's own
+// (lib/public-plan-pricing.ts: parsePublicGrid, parsePublicAvailability).
+export type PricingMode = PublicGrid;
+export type ProductAvailability = PublicAvailability;
 export const NOT_AVAILABLE: ProductAvailability = { sales: false, connect: false };
 
 export interface PublicPricing {
@@ -134,17 +144,14 @@ export interface PublicPricing {
   available: ProductAvailability;
 }
 
-/** The route's mode field: only the exact string "products" opens the grid. */
+/** The route's `grid`: missing or invalid → "legacy". */
 export function parsePricingMode(raw: unknown): PricingMode {
-  return raw && typeof raw === "object" && (raw as Record<string, unknown>).grid === "products" ? "products" : "legacy";
+  return parsePublicGrid(raw) ?? "legacy";
 }
 
-/** Per-product availability: true only where the route says exactly true. */
+/** The route's `available`: missing or invalid → neither product available. */
 export function parseAvailability(raw: unknown): ProductAvailability {
-  const a = raw && typeof raw === "object" ? (raw as Record<string, unknown>).available : null;
-  if (!a || typeof a !== "object" || Array.isArray(a)) return { ...NOT_AVAILABLE };
-  const o = a as Record<string, unknown>;
-  return { sales: o.sales === true, connect: o.connect === true };
+  return parsePublicAvailability(raw) ?? { ...NOT_AVAILABLE };
 }
 
 /** The whole public payload, each part parsed strictly on its own. */

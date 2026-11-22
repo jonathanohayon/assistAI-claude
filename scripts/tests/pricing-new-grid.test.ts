@@ -267,7 +267,9 @@ async function main() {
   // 7b. Availability: true only where the route says exactly true; missing = not available.
   assert.deepEqual(parsePublicPricing({}).available, NOT_AVAILABLE);
   assert.deepEqual(parsePublicPricing({ available: { sales: "true", connect: 1 } }).available, NOT_AVAILABLE);
-  assert.deepEqual(parsePublicPricing({ available: { sales: true } }).available, { sales: true, connect: false });
+  assert.deepEqual(parsePublicPricing({ available: { sales: true } }).available, NOT_AVAILABLE, "invalid (connect missing) → both false");
+  assert.deepEqual(parsePublicPricing({ available: { sales: true, connect: false } }).available, { sales: true, connect: false });
+  assert.deepEqual(parsePublicPricing({ available: [true, true] }).available, NOT_AVAILABLE);
   for (const p of ["reception", "reception_multi"] as const) assert.equal(isAvailable(p, NOT_AVAILABLE), true, `${p} is always available`);
   // 7c. The prerendered section (nothing fetched) is TODAY's: the plan cards,
   //     the comparison table, no product card.
@@ -300,6 +302,16 @@ async function main() {
       }
     }
   }
+  // 7d'. Products mode before the catalogue arrives: placeholders, no amount.
+  const amounts = Object.values(DEFAULT_PRODUCT_CATALOGUE).flatMap((byCur) =>
+    Object.values(byCur).flatMap((r) => [r.monthly, r.annual, r.addonMonthly, r.addonAnnual, r.minutes].filter((n): n is number => n !== null)),
+  );
+  for (const l of LOCALES) {
+    const out = productsPage(l).replace(/<p data-trial-(?:line|banner)=""[\s\S]*?<\/p>/g, "").replace(/<[^>]+>/g, " ");
+    assert.equal((productsPage(l).match(/data-testid="grid-price-placeholder"/g) ?? []).length, GRID_PRODUCTS.length * 4, `${l}: one placeholder per number`);
+    for (const n of amounts) assert.doesNotMatch(out, new RegExp(`(?<![\\d.,])${n}(?![\\d])`), `${l}: no default ${n} before the fetch`);
+  }
+
   // 7e. Tax wording: exactly the live page's keys, none of its own.
   for (const l of LOCALES) {
     const m = messages(l);
