@@ -14,6 +14,8 @@ import { ApiKeyCard } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
 import { DeveloperModeSwitch } from "@/components/bricks/DeveloperModeSwitch";
+import { DoorSelect } from "@/components/dashboard/DoorSelect";
+import { resolveDoor } from "@/lib/door";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +121,10 @@ export default async function SettingsPage(props: {
           </h2>
           <div className="mt-4">
             <DeveloperModeSwitch />
+          </div>
+          {/* The account's door: only reorders the dashboard. */}
+          <div className="mt-5 border-t border-[var(--color-border)] pt-5">
+            <DoorSelect initialDoor={resolveDoor(me.door)} />
           </div>
         </div>
 

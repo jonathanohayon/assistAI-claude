@@ -29,6 +29,16 @@ export type TileDef = {
   locked?: boolean;
 };
 
+/**
+ * Config grid tiles: every tile in a row as tall as the tallest one, and
+ * never shorter than a square. The grid is a size container (`@container`),
+ * so 100cqw is its width; a column is (width − gaps) / columns, with the
+ * grid's own breakpoints (2 / sm 3 / md 4 / lg 5 / xl 4 columns, gap-3).
+ * Without aspect-ratio, the grid's default stretch evens out each row.
+ */
+export const TILE_ROW_SIZE =
+  "min-h-[calc((100cqw_-_0.75rem)/2)] sm:min-h-[calc((100cqw_-_1.5rem)/3)] md:min-h-[calc((100cqw_-_2.25rem)/4)] lg:min-h-[calc((100cqw_-_3rem)/5)] xl:min-h-[calc((100cqw_-_2.25rem)/4)]";
+
 /** Badge violet "ADMIN" — pour marquer les features/UI visibles
  *  uniquement par l'admin agissant sur un tenant. Petit shield + texte.
  *  Centralisé pour un look consistent partout (tuiles, sections, panels). */
@@ -81,9 +91,19 @@ export function Tile({
   onDragEnter,
   onDrop,
   onDragEnd,
+  highlightLabel,
+  sizeClass = "aspect-square",
 }: {
   tile: TileDef;
   active: boolean;
+  /** Set on the account's door tile: a "start here" ring and badge. */
+  highlightLabel?: string;
+  /**
+   * The tile's sizing. Default: a square. The config grid passes
+   * TILE_ROW_SIZE instead: at least a square, and every tile in a row
+   * stretched to the tallest one (aspect-ratio would stop the stretch).
+   */
+  sizeClass?: string;
   onClick: () => void;
   delay?: number;
   dragging?: boolean;
@@ -115,22 +135,27 @@ export function Tile({
         onDrop?.();
       }}
       onDragEnd={() => onDragEnd?.()}
-      className={`anim-bounce-in group relative flex aspect-square cursor-grab flex-col items-start justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
+      className={`anim-bounce-in group relative flex ${sizeClass} cursor-grab flex-col items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-300 active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2 ${
         dragging
           ? "border-[#0e7490] opacity-50 ring-2 ring-[#0e7490]/30"
           : dropTarget
             ? "border-[#0e7490] shadow-[0_0_0_3px_rgba(14,116,144,0.18)]"
             : active
               ? "border-[#0e7490] bg-white shadow-[0_8px_32px_-8px_rgba(14,116,144,0.4)] -translate-y-0.5"
-              : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
+              : highlightLabel
+                ? "border-[#be185d] bg-white shadow-[0_8px_28px_-10px_rgba(190,24,93,0.45)] ring-2 ring-[#0e7490]/25 ring-offset-2 hover:-translate-y-1 hover:shadow-lg"
+                : "border-white/40 bg-white/70 backdrop-blur-xl hover:-translate-y-1 hover:border-[#0e7490]/40 hover:bg-white hover:shadow-lg"
       }`}
       style={{ animationDelay: `${delay}ms` }}
     >
+      {/* The glow is clipped by its own layer, not by the tile: a tile with
+       *  overflow-hidden can't grow past its square, which cut its last line. */}
       {active && (
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br ${tile.accent} opacity-15 blur-2xl`}
-        />
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+          <span
+            className={`absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br ${tile.accent} opacity-15 blur-2xl`}
+          />
+        </span>
       )}
       <div className="relative flex w-full items-start justify-between">
         <span
@@ -141,7 +166,6 @@ export function Tile({
         {tile.adminOnly && <AdminBadge size="xs" />}
         {tile.locked && (
           <span
-            title="Disponible sur le plan Centre d'appels pro"
             className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-br ${tile.accent} px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5" aria-hidden>
@@ -153,13 +177,18 @@ export function Tile({
         )}
       </div>
       <div className="relative w-full min-w-0">
+        {highlightLabel && (
+          <span className="mb-1 inline-flex items-center rounded-full bg-[#be185d] px-2 py-0.5 text-[10px] font-bold text-white">
+            {highlightLabel}
+          </span>
+        )}
         <p className="text-base font-extrabold tracking-tight text-[#18181b]">
           {tile.label}
         </p>
-        <p className="mt-0.5 line-clamp-2 text-[11px] font-medium italic leading-snug text-[#0e7490]">
+        <p className="mt-0.5 break-words text-[11px] font-medium italic leading-snug text-[#0e7490]">
           {tile.tagline}
         </p>
-        <p className="mt-1 truncate text-[10px] text-[#475569]">{tile.summary}</p>
+        <p className="mt-1 break-words text-[10px] text-[#475569]">{tile.summary}</p>
       </div>
       {active && (
         <span

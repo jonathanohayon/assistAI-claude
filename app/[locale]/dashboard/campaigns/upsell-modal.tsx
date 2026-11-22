@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { OUTBOUND_UPSELL_PLAN_KEY, outboundPlanName } from "@/lib/outbound-plan";
 import { planByKey } from "@/lib/plans";
 
 function Bullet({ children }: { children: React.ReactNode }) {
@@ -35,7 +36,10 @@ export function UpsellModal({
 }) {
   const t = useTranslations("DashboardCampaigns");
   const locale = useLocale();
-  const premium = planByKey("premium");
+  const tPlans = useTranslations("Plans");
+  const premium = planByKey(OUTBOUND_UPSELL_PLAN_KEY);
+  // One plan name everywhere (tile, checklist step, this modal): lib/outbound-plan.ts.
+  const planName = outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null));
 
   return (
     <AnimatePresence>
@@ -74,7 +78,7 @@ export function UpsellModal({
                     {t("upsellTitle")}
                   </h3>
                   <p className="mt-1 text-[13px] text-white/85">
-                    {t("upsellSubtitle", { plan: premium.name })}
+                    {t("upsellSubtitle", { plan: planName })}
                   </p>
                 </div>
                 <button
@@ -101,7 +105,7 @@ export function UpsellModal({
               <div className="mt-5 flex items-end justify-between rounded-2xl border border-[#fed7aa] bg-gradient-to-br from-[#fff7ed] to-[#fdf2f8] px-4 py-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9a3412]">
-                    {premium.name}
+                    {planName}
                   </p>
                   <p className="mt-0.5 text-[12px] text-[#7c2d12]/80">
                     {premium.tagline}
@@ -130,7 +134,7 @@ export function UpsellModal({
                 href={`/${locale}/dashboard/billing`}
                 className="rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
               >
-                {t("upsellCta", { plan: premium.name })}
+                {t("upsellCta", { plan: planName })}
               </Link>
             </div>
           </motion.div>

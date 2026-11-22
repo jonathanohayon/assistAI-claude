@@ -34,6 +34,10 @@ import { UpsellModal } from "./campaigns/upsell-modal";
 // its tool-name descriptions into the tenant's dashboard chunks.
 import { canUseOutboundCampaigns } from "@/lib/outbound-access";
 import type { PlanFeatures } from "@/lib/plan-features";
+import type { Door } from "@/lib/door-values";
+import { TILE_ORDER_KEY } from "@/lib/doors-ui";
+import { outboundPlanName } from "@/lib/outbound-plan";
+import { gridTiles } from "./config/tile-grid";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
 import { ChannelsPanel } from "./config/channels-panel";
@@ -51,7 +55,7 @@ import {
 import { parseRecapEmailConfirmation, type RecapEmailConfirmation } from "./config/owner-email-confirm";
 import { PersonaPanel } from "./config/persona-panel";
 import { personaTileSummary } from "./config/persona-tile-summary";
-import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
+import { AdminBadge, Tile, TILE_ROW_SIZE, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
   DashboardStats,
@@ -88,22 +92,9 @@ import { PERSONA_LANGUAGES } from "@/lib/persona/contract";
 
 // ─── Ordre des tuiles (préférence de layout perso, par navigateur) ───────
 // L'ordre des tuiles est purement cosmétique → localStorage suffit (pas de
-// DB ni d'API). Chaque opérateur réorganise sa propre vue. Les tuiles dont
-// l'id n'est pas dans l'ordre mémorisé (ex. tuile admin "prompt" qui
-// apparaît conditionnellement) retombent à la fin dans l'ordre par défaut.
-const TILE_ORDER_KEY = "tamara.config.tileOrder";
-
-function applyTileOrder<T extends { id: string }>(
-  tiles: readonly T[],
-  order: string[] | null,
-): T[] {
-  if (!order) return [...tiles];
-  const rank = (id: string) => {
-    const i = order.indexOf(id);
-    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
-  };
-  return [...tiles].sort((a, b) => rank(a.id) - rank(b.id));
-}
+// DB ni d'API). Chaque opérateur réorganise sa propre vue ; sans ordre
+// mémorisé, l'ordre est celui de la porte du compte (config/tile-grid.ts).
+// Changing the door clears the saved order (components/dashboard/DoorSelect).
 
 // ─── Component ──────────────────────────────────────────────────────────
 
@@ -119,8 +110,11 @@ export function ConfigForm({
   asUserId,
   promptBlocks,
   fullPromptConcat,
+  door,
 }: {
   initial: FormState;
+  /** The account's door: the default tile order and the highlighted tile. */
+  door?: Door | null;
   isAdmin?: boolean;
   /** Features actives pour le plan du tenant (gating tuile campagnes).
    *  Absent en mode admin-sur-tenant : le gating retombe alors sur isAdmin. */
@@ -147,6 +141,7 @@ export function ConfigForm({
   const tTools = useTranslations("ToolsBrick");
   const voiceLabel = useVoiceLabel();
   const tVoices = useTranslations("Voices");
+  const tPlans = useTranslations("Plans");
   const locale = useLocale();
 
   const [form, setForm] = useState<FormState>(initial);
@@ -254,6 +249,20 @@ export function ConfigForm({
   // Sinon clic → modal d'upsell.
   const campaignsEnabled = canUseOutboundCampaigns(isAdmin, features);
   const [upsellOpen, setUpsellOpen] = useState(false);
+  // ?tile=campaigns (setup checklist, "import contacts"): same as a click on
+  // the locked tile, i.e. today's upsell. Usable accounts go to the menu tab.
+  useEffect(() => {
+    if (tileParam !== "campaigns") return;
+    if (campaignsEnabled) {
+      if (!asUserId) router.push(`/${locale}/dashboard/campaigns`);
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- ouverture pilotée par l'URL (deep-link), pattern voulu
+    setUpsellOpen(true);
+    requestAnimationFrame(() => {
+      tilesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [tileParam, campaignsEnabled, router, locale, asUserId]);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
   // un flash d'ordre par défaut → réordonné côté client au 1er paint).
@@ -261,19 +270,22 @@ export function ConfigForm({
   const [dragTileId, setDragTileId] = useState<string | null>(null);
   const [dragOverTileId, setDragOverTileId] = useState<string | null>(null);
 
+  // Re-read on a door change too: the selector clears the saved order, so
+  // the new door's order shows without a reload.
   useEffect(() => {
+    let saved: string[] | null = null;
     try {
       const raw = localStorage.getItem(TILE_ORDER_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string"))
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
-          setTileOrder(parsed);
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) saved = parsed;
       }
     } catch {
       /* localStorage indispo / JSON corrompu → ordre par défaut */
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation localStorage post-mount (SSR-safe), pattern voulu
+    setTileOrder(saved);
+  }, [door]);
 
   const persistTileOrder = (ids: string[]) => {
     setTileOrder(ids);
@@ -641,7 +653,7 @@ export function ConfigForm({
       tagline: t("campaignsTileTagline"),
       summary: campaignsEnabled
         ? t("campaignsTileSummary")
-        : t("campaignsTileLocked"),
+        : t("campaignsTileLocked", { plan: outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null)) }),
       accent: "from-[#f97316] to-[#db2777]",
       locked: !campaignsEnabled,
       icon: (
@@ -683,9 +695,7 @@ export function ConfigForm({
   // disparaît de la grille : la feature a son propre onglet de nav « Appels
   // sortants ». On ne garde la tuile que verrouillée (upsell) pour les plans
   // non éligibles, comme point de découverte.
-  const orderedTiles = applyTileOrder(TILES, tileOrder).filter(
-    (tile) => tile.id !== "campaigns" || !campaignsEnabled,
-  );
+  const { tiles: orderedTiles, highlightId } = gridTiles(TILES, tileOrder, door, campaignsEnabled, Boolean(primaryPhone));
 
   // Drag & drop natif HTML5 (même pattern que admin/block-order-form), mais
   // sur une grille → on raisonne par id de tuile, pas par index. Le drop
@@ -766,12 +776,14 @@ export function ConfigForm({
           {/* À partir de xl, la grille des tuiles n'a plus toute la largeur
            *  (la col droite contient le LiveTest sticky), donc on repasse
            *  à 4 colonnes pour que les tuiles ne deviennent pas trop petites. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
+          <div className="@container grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
             {orderedTiles.map((tile, i) => (
               <Tile
                 key={tile.id}
                 tile={tile}
                 active={activeTile === tile.id}
+                highlightLabel={tile.id === highlightId ? t("tileStartHere") : undefined}
+                sizeClass={TILE_ROW_SIZE}
                 onClick={() => {
                   // La tuile campagnes n'apparaît que verrouillée (plans non
                   // éligibles) → elle ouvre l'upsell. Les plans éligibles
