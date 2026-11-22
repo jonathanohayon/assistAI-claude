@@ -632,7 +632,7 @@
     "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit."
   },
   "Dashboard": {
-    "header": "Dashboard",
+    "header": "Tableau de bord",
     "admin": "Admin",
     "googleNotConnected": "Google Calendar non connecté. Sans ça, votre agent ne peut pas prendre de rendez-vous dans VOTRE calendrier.",
     "connectButton": "Connecter",
@@ -668,7 +668,11 @@
     "billing": "Abonnement",
     "settings": "Réglages",
     "stateSoon": "Bientôt",
-    "stateTry": "Essai gratuit"
+    "stateTry": "Essai gratuit",
+    "pitchReception": "Votre agent répond au téléphone à votre place, de jour comme de nuit.",
+    "pitchSales": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel.",
+    "pitchConnect": "Branchez votre propre agent : il répond au téléphone avec une voix et un numéro Tamara.",
+    "previewSoon": "Bientôt disponible."
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -2694,7 +2698,7 @@
   },
   "AgentBrain": {
     "title": "Qui répond au téléphone",
-    "desc": "Par défaut, votre agent répond avec la personnalité définie dans Mon agent. Vous pouvez à la place brancher votre propre agent.",
+    "desc": "Par défaut, votre agent répond avec la personnalité réglée dans <link>Mon agent</link>. Vous pouvez à la place brancher votre propre agent.",
     "loading": "Chargement…",
     "toggleLabel": "Utiliser mon propre agent",
     "toggleHint": "Tamara garde la voix, le numéro et la téléphonie ; c'est votre agent qui décide des réponses.",

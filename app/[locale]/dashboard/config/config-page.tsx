@@ -51,10 +51,13 @@ export async function TenantConfigPage({
   locale,
   section,
   before,
+  gridHeading = true,
 }: {
   locale: string;
   section: ConfigSection;
   before?: React.ReactNode;
+  /** Off on a product page shown as a preview (its header replaces it). */
+  gridHeading?: boolean;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
@@ -260,6 +263,7 @@ export async function TenantConfigPage({
       )}
       <ConfigForm
         section={section}
+        gridHeading={gridHeading}
         door={door}
         initial={{
           // Served as the API serves it (tenants: supplier fields removed);

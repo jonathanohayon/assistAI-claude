@@ -57,11 +57,18 @@ assert.match(read("app/[locale]/dashboard/crm/crm-client.tsx"), /import \{ SyncN
 assert.match(read("app/admin/users/[userId]/clients/calendar-section.tsx"), /\{!notConnected && <SyncNowButton asUserId=\{target\.id\} \/>\}/);
 assert.match(read("app/admin/users/[userId]/clients/page.tsx"), /<AdminTenantCalendarSection userId=\{userId\} \/>/);
 
-// AgentBrain's line now lives on "Votre agent": it points to Mon agent, not "above".
+// AgentBrain's line now lives on "Votre agent": it points to Mon agent (a
+// link to the menu's own URL, admin-aware), not "above".
 const desc = (l: string) => JSON.parse(read(`messages/${l}.json`)).AgentBrain.desc as string;
-assert.match(desc("fr"), /la personnalité définie dans Mon agent/);
-assert.match(desc("en"), /My agent/);
-assert.match(desc("he"), /הסוכן שלי/);
+assert.match(desc("fr"), /avec la personnalité réglée dans <link>Mon agent<\/link>\./);
+assert.match(desc("en"), /<link>My agent<\/link>/);
+assert.match(desc("he"), /<link>הסוכן שלי<\/link>/);
+{
+  const page = read("app/[locale]/dashboard/agent/page.tsx");
+  assert.match(page, /tBrain\.rich\("desc", \{ link: myAgentLink\(\) \}\)/);
+  assert.match(page, /const href = entryHref\("myAgent", asUserId\)!;/, "the menu's URL: /dashboard/my-agent, or /admin/users/<id>/my-agent");
+  assert.match(page, /asUserId \? \(\s*<NextLink href=\{href\}/);
+}
 for (const l of ["fr", "en", "he"]) assert.doesNotMatch(desc(l), /ci-dessus|above|למעלה/, `${l}: no "above"`);
 
 console.log("clients-sync-now: OK");

@@ -41,6 +41,8 @@ import { gridTiles } from "./config/tile-grid";
 import {
   mergeSectionOrder,
   sectionDefaultTile,
+  sectionGridClass,
+  sectionTileSize,
   sectionShowsHero,
   sectionShowsLiveTest,
   sectionShowsSaveDock,
@@ -64,7 +66,7 @@ import {
 import { parseRecapEmailConfirmation, type RecapEmailConfirmation } from "./config/owner-email-confirm";
 import { PersonaPanel } from "./config/persona-panel";
 import { personaTileSummary } from "./config/persona-tile-summary";
-import { AdminBadge, Tile, TILE_ROW_SIZE, type TileDef } from "./config/shared-ui";
+import { AdminBadge, Tile, type TileDef } from "./config/shared-ui";
 import type {
   ChannelNumber,
   DashboardStats,
@@ -122,8 +124,12 @@ export function ConfigForm({
   fullPromptConcat,
   door,
   section,
+  gridHeading = true,
 }: {
   initial: FormState;
+  /** The "Configuration / click a tile" heading above the tiles. Off on a
+   *  product page the account doesn't own: its preview header says it. */
+  gridHeading?: boolean;
   /** The menu page this form is on (config/sections.ts): its tiles and
    *  whether the home overview shows. Omitted = every tile (as before). */
   section?: ConfigSection;
@@ -788,6 +794,7 @@ export function ConfigForm({
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}
         <section ref={tilesRef} className="mb-6 scroll-mt-24 xl:col-start-1 xl:row-start-2">
+          {gridHeading && (
           <div className="mb-4">
             <h2 className="text-xl font-extrabold tracking-tight text-[#18181b] sm:text-2xl">
               {t("header")}
@@ -796,18 +803,19 @@ export function ConfigForm({
               {activeTile ? t("wowTileHintActive") : t("wowTileHintIdle")}
             </p>
           </div>
+          )}
 
           {/* À partir de xl, la grille des tuiles n'a plus toute la largeur
            *  (la col droite contient le LiveTest sticky), donc on repasse
            *  à 4 colonnes pour que les tuiles ne deviennent pas trop petites. */}
-          <div className="@container grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4">
+          <div className={sectionGridClass(section)}>
             {orderedTiles.map((tile, i) => (
               <Tile
                 key={tile.id}
                 tile={tile}
                 active={activeTile === tile.id}
                 highlightLabel={tile.id === highlightId ? t("tileStartHere") : undefined}
-                sizeClass={TILE_ROW_SIZE}
+                sizeClass={sectionTileSize(section)}
                 onClick={() => {
                   // La tuile campagnes n'apparaît que verrouillée (plans non
                   // éligibles) → elle ouvre l'upsell. Les plans éligibles

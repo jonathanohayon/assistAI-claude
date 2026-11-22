@@ -13,6 +13,8 @@
 //              holds the customer's agent address and its test.
 // No section (undefined) = every tile and the overview, as before the menu.
 
+import { TILE_ROW_SIZE } from "./tile-size";
+
 export type ConfigSection = "reception" | "agent" | "sales" | "connect";
 
 export const SECTION_TILES: Readonly<Record<ConfigSection, readonly string[]>> = {
@@ -48,6 +50,21 @@ export function sectionShowsSaveDock(section: ConfigSection | undefined): boolea
 /** The tile a section opens on arrival when no ?tile= is given (connect: tools). */
 export function sectionDefaultTile(section: ConfigSection | undefined): string | null {
   return section === "connect" ? "tools" : null;
+}
+
+/** The configuration grid (#370): the default columns per breakpoint. */
+export const GRID_DEFAULT = "@container grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4";
+/** "Mon agent" (next to the live test, beside the menu): two tiles per row at every width. */
+export const GRID_TWO = "@container grid grid-cols-2 gap-3";
+/** #370's row rule for two columns: at least a square, the row stretches to its tallest tile. */
+export const TILE_ROW_SIZE_TWO = "min-h-[calc((100cqw_-_0.75rem)/2)]";
+
+export function sectionGridClass(section: ConfigSection | undefined): string {
+  return section === "agent" ? GRID_TWO : GRID_DEFAULT;
+}
+
+export function sectionTileSize(section: ConfigSection | undefined): string {
+  return section === "agent" ? TILE_ROW_SIZE_TWO : TILE_ROW_SIZE;
 }
 
 /**

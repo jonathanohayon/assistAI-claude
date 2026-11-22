@@ -668,7 +668,11 @@
     "billing": "Subscription",
     "settings": "Settings",
     "stateSoon": "Soon",
-    "stateTry": "Free trial"
+    "stateTry": "Free trial",
+    "pitchReception": "Your agent answers the phone for you, day and night.",
+    "pitchSales": "Your agent calls your contacts for you and notes how each call went.",
+    "pitchConnect": "Connect your own agent: it answers the phone with a Tamara voice and number.",
+    "previewSoon": "Coming soon."
   },
   "DashboardCrm": {
     "header": "Customer space",
@@ -2694,7 +2698,7 @@
   },
   "AgentBrain": {
     "title": "Who answers the phone",
-    "desc": "By default, your agent answers with the personality set in My agent. You can connect your own agent instead.",
+    "desc": "By default, your agent answers with the personality set in <link>My agent</link>. You can connect your own agent instead.",
     "loading": "Loading…",
     "toggleLabel": "Use my own agent",
     "toggleHint": "Tamara keeps the voice, the number and the phone line; your agent decides what to say.",

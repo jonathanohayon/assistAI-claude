@@ -263,11 +263,15 @@ for (const locale of ["fr", "en", "he"]) {
 // ── Tiles in a row share one height (the row stretches to its tallest tile) ─
 {
   const form = code("app/[locale]/dashboard/config-form.tsx");
-  const grid = form.match(/<div className="(@container grid [^"]+)">\s*\{orderedTiles\.map/);
+  // The grid and its sizing are per section (config/sections.ts): the default
+  // grid below; Mon agent's two-column grid is pinned in dashboard-nav.test.ts.
+  assert.match(form, /<div className=\{sectionGridClass\(section\)\}>\s*\{orderedTiles\.map/);
+  assert.match(form, /sizeClass=\{sectionTileSize\(section\)\}/, "config tiles use the row sizing");
+  const sections = readFileSync("app/[locale]/dashboard/config/sections.ts", "utf8");
+  const grid = sections.match(/export const GRID_DEFAULT = "(@container grid [^"]+)"/);
   assert.ok(grid, "the tile grid is a size container");
-  assert.match(form, /sizeClass=\{TILE_ROW_SIZE\}/, "config tiles use the row sizing");
-  const shared = readFileSync("app/[locale]/dashboard/config/shared-ui.tsx", "utf8");
-  const size = shared.match(/export const TILE_ROW_SIZE =\s*"([^"]+)"/)![1];
+  const sizeSrc = readFileSync("app/[locale]/dashboard/config/tile-size.ts", "utf8");
+  const size = sizeSrc.match(/export const TILE_ROW_SIZE =\s*"([^"]+)"/)![1];
   assert.doesNotMatch(size, /aspect-|h-full/, "aspect-ratio (or a fixed height) would stop the row stretch");
   // One square minimum per breakpoint, matching the grid's columns and gap-3.
   const cols: Record<string, number> = {};

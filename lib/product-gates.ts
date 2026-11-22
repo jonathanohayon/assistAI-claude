@@ -10,9 +10,14 @@
 //   connect gate = "Ask your agent" is on for the account (CLIENT_AGENT,
 //                 lib/tools/client-agent-switch.ts).
 
+import { eq } from "drizzle-orm";
+
 import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 import { canUseOutboundCampaigns } from "@/lib/outbound-access";
-import type { PlanFeatures } from "@/lib/plan-features";
+import { featuresForPlan, type PlanFeatures } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import type { Entitlement } from "@/lib/product-entitlement";
 import { productMenu, type ProductGates, type ProductMenu } from "@/lib/product-menu";
 import { accountProducts } from "@/lib/products";
@@ -52,4 +57,18 @@ export async function accountProductMenu(
   features: Partial<PlanFeatures> | null | undefined,
 ): Promise<ProductMenu> {
   return menuFor(await accountProducts(userId), role, features);
+}
+
+/**
+ * The menu of an account from its id alone (role and plan features loaded
+ * here): what a product page uses to pick its preview header.
+ */
+export async function loadAccountProductMenu(userId: string): Promise<ProductMenu> {
+  const [u] = await db
+    .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const features = featuresForPlan(await getPlanFeatureMatrix(), u?.subscriptionPlan);
+  return accountProductMenu(userId, u?.role, features);
 }

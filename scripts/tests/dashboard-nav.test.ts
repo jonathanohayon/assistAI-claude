@@ -14,6 +14,8 @@ import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { DashboardSidebar } from "../../components/dashboard/DashboardSidebar";
+import { ProductPreviewHeader } from "../../components/dashboard/ProductPreviewHeader";
+import { TILE_ROW_SIZE } from "../../app/[locale]/dashboard/config/tile-size";
 import {
   activeEntry,
   homeHref,
@@ -30,6 +32,8 @@ import {
   mergeSectionOrder,
   SECTION_TILES,
   sectionDefaultTile,
+  sectionGridClass,
+  sectionTileSize,
   sectionShowsHero,
   sectionShowsLiveTest,
   sectionShowsSaveDock,
@@ -178,7 +182,8 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   const sales = code("app/[locale]/dashboard/sales/page.tsx");
   assert.match(sales, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(sales, /const \{ isAdmin, enabled \} = await loadOutboundCampaignsAccess\(session\.user\.id\);/, "sales: the API's own gate");
-  assert.match(sales, /if \(!enabled\) return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: locked = today's upsell tile");
+  assert.match(sales, /const state = \(await loadAccountProductMenu\(session\.user\.id\)\)\.sales;/, "sales: its menu state");
+  assert.match(sales, /if \(!enabled\) \{\s*if \(header\) return <main[^>]*>\{header\}<\/main>;\s*return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: preview = its header; locked otherwise = today's tile");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   assert.match(connect, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(connect, /if \(clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\) \{/, "connect: the Ask-your-agent row only where it is on");
@@ -233,6 +238,48 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.match(form, /\{sectionShowsHero\(section\) && \(/);
   assert.match(form, /\{sectionShowsLiveTest\(section\) && \(/);
 }
+
+// ── 5b. Preview product pages: their own header, no generic tile heading ──
+{
+  const reception = code("app/[locale]/dashboard/reception/page.tsx");
+  assert.match(reception, /gridHeading=\{false\}\s*before=\{<ProductPreviewHeader entry="reception" cta=\{state\.cta\} \/>\}/);
+  assert.match(reception, /return <TenantConfigPage locale=\{locale\} section="reception" \/>;/, "owned: today's layout");
+  const connect = code("app/[locale]/dashboard/agent/page.tsx");
+  assert.match(connect, /state\.state === "preview" \? \(\s*<ProductPreviewHeader entry="connect" cta=\{state\.cta\} \/>/);
+  assert.match(connect, /gridHeading=\{state\.state === "owned"\}/);
+  const form = code("app/[locale]/dashboard/config-form.tsx");
+  assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
+  assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);
+  const Intl = NextIntlClientProvider as unknown as ComponentType<{ locale: string; messages: unknown; timeZone?: string; children?: ReactNode }>;
+  const render = (locale: string, entry: "reception" | "sales" | "connect", cta: "soon" | "try") =>
+    renderToStaticMarkup(createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(ProductPreviewHeader, { entry, cta })));
+  for (const locale of ["fr", "en", "he"]) {
+    const m = JSON.parse(read(`messages/${locale}.json`));
+    for (const entry of ["reception", "sales", "connect"] as const) {
+      const soon = render(locale, entry, "soon");
+      assert.ok(soon.includes(`<h1`) && soon.includes(m.DashboardNav[entry]), `${locale}/${entry}: the product name is the title`);
+      const pitch = m.DashboardNav[`pitch${entry[0].toUpperCase()}${entry.slice(1)}`];
+      assert.ok(typeof pitch === "string" && soon.includes(pitch.replace(/'/g, "&#x27;")), `${locale}/${entry}: one sentence on what it does`);
+      assert.ok(soon.includes(m.DashboardNav.previewSoon), `${locale}/${entry}: "coming soon"`);
+      assert.ok(!soon.includes(m.DashboardSetup.contactsLockedCta.replace(/'/g, "&#x27;")), `${locale}/${entry}: no upsell while soon`);
+      const tryIt = render(locale, entry, "try");
+      assert.ok(tryIt.includes(m.DashboardSetup.contactsLockedCta.replace(/'/g, "&#x27;")), `${locale}/${entry}: the existing upsell button`);
+      assert.ok(!tryIt.includes(m.DashboardNav.previewSoon));
+      assert.ok(!soon.includes(m.DashboardConfig.wowTileHintIdle), "no generic tile heading in the header");
+    }
+  }
+  assert.equal(JSON.parse(read("messages/fr.json")).DashboardNav.previewSoon, "Bientôt disponible.");
+  const hdr = code("components/dashboard/ProductPreviewHeader.tsx");
+  assert.match(hdr, /entry === "sales" \? \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
+  assert.match(hdr, /<Link href="\/dashboard\/billing"/, "other products: the subscription page");
+}
+
+// ── 5c. Mon agent: two tiles per row (narrow column beside the live test) ──
+assert.equal(sectionGridClass("agent"), "@container grid grid-cols-2 gap-3");
+assert.equal(sectionTileSize("agent"), "min-h-[calc((100cqw_-_0.75rem)/2)]", "#370: at least a square at 2 columns");
+assert.equal(sectionGridClass("reception"), "@container grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-4", "Réception's grid unchanged");
+assert.equal(sectionTileSize("reception"), TILE_ROW_SIZE);
+assert.equal(sectionGridClass(undefined), sectionGridClass("reception"));
 
 // ── 6. The sidebar: keyboard, focus, RTL, brand ─────────────────────────────
 {
@@ -290,5 +337,9 @@ for (const f of ["scripts/check-tenant-words.mjs", "scripts/check-tenant-bundle.
   for (const r of ["/dashboard/reception", "/dashboard/reception/forwarding", "/dashboard/sales", "/dashboard/agent", "/dashboard/my-agent", "/dashboard/calls", "/dashboard/clients"])
     assert.ok(src.includes(`"${r}"`), `${f}: ${r}`);
 }
+
+// The top bar reads "Tableau de bord" in French (English keeps "Dashboard").
+assert.equal(JSON.parse(read("messages/fr.json")).Dashboard.header, "Tableau de bord");
+assert.equal(JSON.parse(read("messages/en.json")).Dashboard.header, "Dashboard");
 
 console.log("dashboard-nav: OK");
