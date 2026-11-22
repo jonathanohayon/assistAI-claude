@@ -182,7 +182,7 @@ async function DashboardShell({
   // preview from its entitlement and the product gates, all computed HERE
   // (lib/product-gates.ts reads the env): the browser only gets the result.
   // An admin's own dashboard: everything owned.
-  const menuBlocks = navBlocks(resolveDoor(me?.door ?? null), accountProductMenu(me, features));
+  const menuBlocks = navBlocks(resolveDoor(me?.door ?? null), await accountProductMenu(session.user.id, me?.role, features));
 
   const t = await getTranslations({ locale, namespace: "Dashboard" });
 

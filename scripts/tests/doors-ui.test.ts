@@ -30,6 +30,7 @@ import { OUTBOUND_UPSELL_PLAN_KEY, outboundPlanName } from "../../lib/outbound-p
 import { DEFAULT_MATRIX, featuresForPlan, type PlanFeatures } from "../../lib/plan-features";
 import { PLANS, planByKey } from "../../lib/plans";
 import { navBlocks } from "../../lib/dashboard-nav";
+import { entitledProducts } from "../../lib/product-entitlement";
 import { productMenu } from "../../lib/product-menu";
 
 const code = (p: string) => readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -80,7 +81,7 @@ assert.deepEqual(orderBy([], (s: string) => s, ["a"]), []);
 
 // ── 1. Menu: the same SET of entries for every door (the door only orders) ──
 {
-  const menu = productMenu({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null, gates: { sales: false, connect: false }, isAdmin: false });
+  const menu = productMenu({ entitlement: entitledProducts({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null }), gates: { sales: false, connect: false }, isAdmin: false });
   const sets = ALL_DOORS.map((d) => sorted(navBlocks(d, menu).flatMap((b) => b.items.map((i) => i.href))));
   for (const x of sets) assert.deepEqual(x, sets[0], "same menu entries for every door");
   for (const d of ALL_DOORS) assert.equal(navBlocks(d, menu)[0].items[0].id, doorOf(d), `${String(d)}: its own product first`);

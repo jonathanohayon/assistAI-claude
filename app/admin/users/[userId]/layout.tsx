@@ -82,7 +82,7 @@ export default async function AdminTenantLayout({
   const door = resolveDoor(target.door);
   const menuBlocks = navBlocks(
     door,
-    accountProductMenu(target, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan)),
+    await accountProductMenu(target.id, target.role, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan)),
     target.id,
   );
   // "Illimité gratuit" = actif avec paidUntil très lointain (>= 2090).

@@ -24,6 +24,7 @@ import {
   productOrder,
   TILE_ENTRY,
 } from "../../lib/dashboard-nav";
+import { entitledProducts } from "../../lib/product-entitlement";
 import { productMenu, type ProductMenu } from "../../lib/product-menu";
 import {
   mergeSectionOrder,
@@ -39,7 +40,7 @@ const read = (p: string) => readFileSync(p, "utf8");
 const code = (p: string) => read(p).replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 const OWNED: ProductMenu = { reception: { state: "owned" }, sales: { state: "owned" }, connect: { state: "owned" } };
-const premiumMenu = productMenu({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null, gates: { sales: false, connect: false }, isAdmin: false });
+const premiumMenu = productMenu({ entitlement: entitledProducts({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null }), gates: { sales: false, connect: false }, isAdmin: false });
 
 // ── 1. The entry list per door ──────────────────────────────────────────────
 const SHARED = ["/dashboard/my-agent", "/dashboard/calls", "/dashboard/clients", "/dashboard/billing", "/dashboard/settings"];
@@ -262,7 +263,7 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
     renderToStaticMarkup(
       createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(DashboardSidebar, { blocks })),
     );
-  const trial = productMenu({ subscriptionPlan: "global", subscriptionStatus: "trialing", products: null, gates: { sales: false, connect: true }, isAdmin: false });
+  const trial = productMenu({ entitlement: entitledProducts({ subscriptionPlan: "global", subscriptionStatus: "trialing", products: null }), gates: { sales: false, connect: true }, isAdmin: false });
   const fr = html("fr", navBlocks("connect", trial));
   const order = [...fr.matchAll(/data-entry="([a-zA-Z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(order, ["connect", "reception", "sales", "myAgent", "calls", "clients", "billing", "settings"], "own product first, then the shared block");

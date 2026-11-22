@@ -8,8 +8,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { entitledProducts, type EntitlementInput } from "../../lib/product-entitlement";
 import { productMenu, type ProductGates } from "../../lib/product-menu";
-import { accountProductMenu, productGates } from "../../lib/product-gates";
+import { menuFor, productGates } from "../../lib/product-gates";
+
+// The server does accountProducts(userId) = entitledProducts(the row): the
+// same pure call here, from mock rows.
+const menuOf = (row: EntitlementInput, gates: ProductGates, isAdmin: boolean) =>
+  productMenu({ entitlement: entitledProducts(row), gates, isAdmin });
 import { DEFAULT_MATRIX, featuresForPlan } from "../../lib/plan-features";
 
 // "plan | status | gates => R:<state> S:<state> C:<state>"
@@ -122,15 +128,14 @@ for (const row of TABLE) {
   statuses.add(status);
   const gates: ProductGates = { sales: g[0] === "S", connect: g[1] === "C" };
   const record = RECORDS[plan];
-  const input = {
+  const input: EntitlementInput = {
     subscriptionPlan: record ? "premium" : plan === "null" ? null : plan,
     subscriptionStatus: status,
     products: record ?? null,
-    gates,
   };
-  assert.equal(render(productMenu({ ...input, isAdmin: false })), expected, row);
+  assert.equal(render(menuOf(input, gates, false)), expected, row);
   // Admins (their own dashboard): everything owned, whatever the rest.
-  assert.equal(render(productMenu({ ...input, isAdmin: true })), "R:owned S:owned C:owned", `admin: ${row}`);
+  assert.equal(render(menuOf(input, gates, true)), "R:owned S:owned C:owned", `admin: ${row}`);
 }
 // The table covers every plan, status and gate combination asked for.
 assert.deepEqual([...plans].sort(), ["essential", "global", "null", "premium", "record:connect+sales", "record:reception_multi+connect", "whatsapp"]);
@@ -141,13 +146,13 @@ assert.equal(TABLE.length, plans.size * statuses.size * 4);
 // opens, then owned at no charge (no record needed).
 {
   const premium = (sales: boolean) =>
-    productMenu({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null, gates: { sales, connect: false }, isAdmin: false }).sales;
+    menuOf({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null }, { sales, connect: false }, false).sales;
   assert.deepEqual(premium(false), { state: "preview", cta: "soon" });
   assert.deepEqual(premium(true), { state: "owned" });
 }
 // An invalid record is ignored (grandfathered rules), never trusted.
 assert.equal(
-  render(productMenu({ subscriptionPlan: "global", subscriptionStatus: "active", products: { base: "connect" }, gates: { sales: true, connect: true }, isAdmin: false })),
+  render(menuOf({ subscriptionPlan: "global", subscriptionStatus: "active", products: { base: "connect" } }, { sales: true, connect: true }, false)),
   "R:owned S:try C:try",
 );
 
@@ -165,14 +170,16 @@ assert.equal(
   assert.equal(productGates(false, tenant, { CLIENT_AGENT: "admin" }).connect, false);
   assert.equal(productGates(true, tenant, { CLIENT_AGENT: "admin" }).connect, true);
   assert.equal(productGates(false, tenant, { CLIENT_AGENT: "all" }).connect, true);
-  // accountProductMenu: the account's own role/plan/status; users.products = null until P1.
-  const m = accountProductMenu({ role: "user", subscriptionPlan: "premium", subscriptionStatus: "active" }, tenant, { CLIENT_AGENT: "all" });
-  assert.equal(render(m), "R:owned S:soon C:try");
-  assert.equal(render(accountProductMenu({ role: "admin", subscriptionPlan: null, subscriptionStatus: "active" }, tenant, {})), "R:owned S:owned C:owned");
-  assert.equal(render(accountProductMenu(null, null, {})), "R:owned S:soon C:soon", "no row: grandfathered defaults, gates off");
-  // The admin tenant view passes the TARGET row: a tenant viewed by an admin is not an admin.
-  assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /accountProductMenu\(target,/);
-  assert.match(readFileSync("app/[locale]/dashboard/layout.tsx", "utf8"), /accountProductMenu\(me, features\)/);
+  // menuFor: the loaded entitlement + the account's OWN role and features.
+  const premium = entitledProducts({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null });
+  assert.equal(render(menuFor(premium, "user", tenant, { CLIENT_AGENT: "all" })), "R:owned S:soon C:try");
+  assert.equal(render(menuFor(premium, "admin", tenant, {})), "R:owned S:owned C:owned");
+  assert.equal(render(menuFor({ entries: [] }, null, null, {})), "R:try S:soon C:soon", "unknown account (accountProducts: nothing entitled)");
+  // The layouts load the entitlement with accountProducts(userId) (users.products
+  // included) for the signed-in user, and for the TARGET in the admin view.
+  assert.match(readFileSync("lib/product-gates.ts", "utf8"), /return menuFor\(await accountProducts\(userId\), role, features\);/);
+  assert.match(readFileSync("app/[locale]/dashboard/layout.tsx", "utf8"), /await accountProductMenu\(session\.user\.id, me\?\.role, features\)/);
+  assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /await accountProductMenu\(target\.id, target\.role, /);
 }
 
 // ── Client safety: the menu modules read no env and pull no server module ──
@@ -180,6 +187,7 @@ assert.equal(
   const code = (p: string) => readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const menu = code("lib/product-menu.ts");
   assert.deepEqual([...menu.matchAll(/from "([^"]+)"/g)].map((m) => m[1]), ["./product-entitlement", "./product-values"]);
+  assert.match(menu, /import type \{ Entitlement \} from "\.\/product-entitlement";/, "types only from the entitlement");
   for (const f of ["lib/product-menu.ts", "lib/dashboard-nav.ts", "components/dashboard/DashboardSidebar.tsx"]) {
     const src = code(f);
     assert.doesNotMatch(src, /process\.env|CAMPAIGN_DISPATCH|CLIENT_AGENT/, `${f}: no env`);

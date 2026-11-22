@@ -18,12 +18,12 @@ export default async function AdminTenantSalesPage(props: { params: Promise<{ us
   await requireAdminPage();
   const { userId } = await props.params;
   const [target] = await db
-    .select({ role: users.role, subscriptionPlan: users.subscriptionPlan, subscriptionStatus: users.subscriptionStatus })
+    .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   if (!target) redirect("/admin");
-  const menu = accountProductMenu(target, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan));
+  const menu = await accountProductMenu(userId, target.role, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan));
   const s = menu.sales;
   const state =
     s.state === "owned" ? "possédé (utilisable)" : s.cta === "soon" ? "aperçu « Bientôt »" : "aperçu « Essai gratuit »";
