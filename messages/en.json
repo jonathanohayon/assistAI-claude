@@ -2681,7 +2681,7 @@
   },
   "AgentBrain": {
     "title": "Who answers the phone",
-    "desc": "By default, your agent answers with the personality set up above. You can connect your own agent instead.",
+    "desc": "By default, your agent answers with the personality set in My agent. You can connect your own agent instead.",
     "loading": "Loading…",
     "toggleLabel": "Use my own agent",
     "toggleHint": "Tamara keeps the voice, the number and the phone line; your agent decides what to say.",

@@ -2681,7 +2681,7 @@
   },
   "AgentBrain": {
     "title": "Qui répond au téléphone",
-    "desc": "Par défaut, votre agent répond avec la personnalité configurée ci-dessus. Vous pouvez à la place brancher votre propre agent.",
+    "desc": "Par défaut, votre agent répond avec la personnalité définie dans Mon agent. Vous pouvez à la place brancher votre propre agent.",
     "loading": "Chargement…",
     "toggleLabel": "Utiliser mon propre agent",
     "toggleHint": "Tamara garde la voix, le numéro et la téléphonie ; c'est votre agent qui décide des réponses.",
