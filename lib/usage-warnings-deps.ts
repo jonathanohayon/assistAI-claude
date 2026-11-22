@@ -12,6 +12,8 @@ import { logEvent } from "@/lib/logger";
 import { entitledProducts } from "@/lib/product-entitlement";
 import { DEFAULT_PLAN_KEY, OVERAGE_RATE_ILS_PER_MIN, PLANS, isValidPlanKey } from "@/lib/plans";
 import { accountUsageByProduct } from "@/lib/products-usage";
+import { usageWindowFor } from "@/lib/monthly-periods";
+import { coveragesOf, paidOrderLines } from "@/lib/order-create";
 import { currentPeriodWindow } from "@/lib/subscription";
 import type { UsageWarningDeps, WarnAccount } from "@/lib/usage-warnings";
 
@@ -48,16 +50,27 @@ export const usageWarningDeps = (over: Partial<UsageWarningDeps> = {}): UsageWar
     const r = a as WarnRow;
     const planKey = isValidPlanKey(r.subscriptionPlan) ? r.subscriptionPlan : DEFAULT_PLAN_KEY;
     const plan = PLANS.find((p) => p.key === planKey) ?? PLANS[0];
-    const window = currentPeriodWindow(
+    const period = r.subscriptionPeriod === "annual" || r.subscriptionPeriod === "monthly" ? r.subscriptionPeriod : null;
+    const paidWindow = currentPeriodWindow(
       {
         subscriptionStatus: r.subscriptionStatus ?? "",
         subscriptionPlan: planKey,
-        subscriptionPeriod: r.subscriptionPeriod === "annual" || r.subscriptionPeriod === "monthly" ? r.subscriptionPeriod : null,
+        subscriptionPeriod: period,
         trialEndsAt: r.trialEndsAt ?? null,
         paidUntil: r.paidUntil,
       },
       now,
     );
+    // Annual: the current monthly sub-period (the same boundaries as
+    // overage billing and billing-stats), so the claim's period_start is that
+    // month's start: one warning per threshold per MONTH. Monthly: unchanged
+    // (and no extra read).
+    const window = usageWindowFor({
+      window: paidWindow,
+      period,
+      coverages: period === "annual" ? coveragesOf(await paidOrderLines(a.id)) : [],
+      now,
+    });
     const usage = await accountUsageByProduct({
       userId: a.id,
       window,

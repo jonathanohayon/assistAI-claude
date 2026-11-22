@@ -5,7 +5,9 @@ import { resolveTargetUserId } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { calls, campaignCalls, paymentOrders, users } from "@/lib/db/schema";
 import { currencyForLocale } from "@/lib/hyp";
-import { invoiceLines } from "@/lib/order-lines";
+import { coveragesOf } from "@/lib/order-create";
+import { invoiceLines, parseOrderLines, type OrderLine } from "@/lib/order-lines";
+import { usageWindowFor } from "@/lib/monthly-periods";
 import { entitledProducts } from "@/lib/product-entitlement";
 import { accountUsageByProduct } from "@/lib/products-usage";
 import {
@@ -217,7 +219,19 @@ export async function GET(req: NextRequest) {
     entitlement.source === "products"
       ? await accountUsageByProduct({
           userId,
-          window,
+          // An annual account's catalogue minutes are per MONTH: its usage
+          // is this monthly sub-period's, with the same boundaries overage
+          // billing uses (anchored on the paid annual coverage, read from
+          // the paid orders already loaded above). Monthly / trial: unchanged.
+          window: usageWindowFor({
+            window,
+            period: subUser.subscriptionPeriod,
+            coverages: coveragesOf(payments.flatMap((p) => {
+              const lines = p.products == null ? null : parseOrderLines(p.products);
+              return lines ? [lines] : ([] as OrderLine[][]);
+            })),
+            now,
+          }),
           entitlement,
           currency,
           planMinutes: minutesIncluded,
