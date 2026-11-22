@@ -12,6 +12,8 @@
 // Home voice mock (16/11): VoiceStudio.sliders.* (warmth, formality, energy,
 // speed). The voice card now shows the Voice tile's own settings
 // (components/marketing/feature-mock-settings.ts).
+// Connect product name (22/11): Email.usageWarning.entryConnect. The email
+// names the product from DashboardNav.connect, its one key.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -31,6 +33,7 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.formality"],
   ["VoiceStudio", "sliders.energy"],
   ["VoiceStudio", "sliders.speed"],
+  ["Email", "usageWarning.entryConnect"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];

@@ -114,20 +114,27 @@ function NavList({
                   >
                     {ICON_PATHS[item.id]}
                   </svg>
-                  <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
-                  {item.preview && (
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : item.preview === "try"
-                            ? "bg-[#be185d]/10 text-[#9d174d]"
-                            : "bg-[#f1f5f9] text-[#475569]"
-                      }`}
-                    >
-                      {t(item.preview === "try" ? "stateTry" : "stateSoon")}
+                  {/* The name is never truncated: when the name and its badge
+                      don't fit on one line, the badge wraps UNDER the name. */}
+                  <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                    <span data-nav-label="" className="min-w-0 break-words">
+                      {t(item.labelKey)}
                     </span>
-                  )}
+                    {item.preview && (
+                      <span
+                        data-nav-badge=""
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          isActive
+                            ? "bg-white/20 text-white"
+                            : item.preview === "try"
+                              ? "bg-[#be185d]/10 text-[#9d174d]"
+                              : "bg-[#f1f5f9] text-[#475569]"
+                        }`}
+                      >
+                        {t(item.preview === "try" ? "stateTry" : "stateSoon")}
+                      </span>
+                    )}
+                  </span>
                 </>
               );
               const common = {

@@ -210,7 +210,10 @@ assert.equal(warningLocale("he-IL"), "he");
 assert.equal(warningLocale("en"), "en");
 assert.equal(warningLocale("de"), "fr");
 assert.equal(warningLocale(null), "fr");
-const KEYS: WarningKey[] = ["subject80", "subject100", "heading80", "heading100", "body", "overage", "cta", "footer", "entryReception", "entrySales", "entryConnect"];
+const KEYS: WarningKey[] = ["subject80", "subject100", "heading80", "heading100", "body", "overage", "cta", "footer", "entryReception", "entrySales"];
+// The connect product's name is the menu's one key (DashboardNav.connect), not an email copy.
+const connectName = (locale: WarningLocale): string =>
+  (JSON.parse(read(`messages/${locale}.json`)) as { DashboardNav: { connect: string } }).DashboardNav.connect;
 const stringsFor = (locale: WarningLocale): WarningStrings => {
   const ns = (JSON.parse(read(`messages/${locale}.json`)) as { Email: { usageWarning: Record<string, string> } }).Email.usageWarning;
   assert.deepEqual(Object.keys(ns).sort(), [...KEYS].sort(), `${locale}: exactly the keys`);
@@ -219,7 +222,7 @@ const stringsFor = (locale: WarningLocale): WarningStrings => {
 const subjects = new Set<string>();
 for (const locale of ["fr", "he", "en"] as const) {
   for (const threshold of [80, 100] as const) {
-    const m = renderUsageWarningEmail({ locale, entry: "sales", threshold, usedMinutes: 321, includedMinutes: 400, overageRate: "1.9 ₪" }, stringsFor(locale));
+    const m = renderUsageWarningEmail({ locale, entry: "sales", threshold, usedMinutes: 321, includedMinutes: 400, overageRate: "1.9 ₪" }, stringsFor(locale), connectName(locale));
     for (const part of [m.subject, m.text, m.html]) assert.doesNotMatch(part, /\{\w+\}/, `${locale} ${threshold}: no placeholder left`);
     assert.match(m.text, /321/);
     assert.match(m.text, /400/);
@@ -232,11 +235,13 @@ for (const locale of ["fr", "he", "en"] as const) {
 }
 assert.equal(subjects.size, 6, "six distinct subjects (3 locales × 2 thresholds)");
 {
-  const en = renderUsageWarningEmail({ locale: "en", entry: "reception", threshold: 80, usedMinutes: 160, includedMinutes: 200, overageRate: "0.39 €" }, stringsFor("en"));
+  const en = renderUsageWarningEmail({ locale: "en", entry: "reception", threshold: 80, usedMinutes: 160, includedMinutes: 200, overageRate: "0.39 €" }, stringsFor("en"), connectName("en"));
   assert.equal(en.subject, "You have used 80% of your \"Receptionist\" minutes");
-  const he = renderUsageWarningEmail({ locale: "he", entry: "reception", threshold: 100, usedMinutes: 200, includedMinutes: 200, overageRate: "1.5 ₪" }, stringsFor("he"));
+  const he = renderUsageWarningEmail({ locale: "he", entry: "reception", threshold: 100, usedMinutes: 200, includedMinutes: 200, overageRate: "1.5 ₪" }, stringsFor("he"), connectName("he"));
   assert.match(he.subject, /פקידת קבלה/);
-  const html = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "<b>" }, stringsFor("fr")).html;
+  const connect = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "0.39 €" }, stringsFor("fr"), connectName("fr"));
+  assert.equal(connect.subject, "Vous avez utilisé 80 % des minutes de l'offre « Connecter votre agent »", "connect: named by DashboardNav.connect");
+  const html = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "<b>" }, stringsFor("fr"), connectName("fr")).html;
   assert.ok(!html.includes("<b>") && html.includes("&lt;b&gt;"), "values are HTML-escaped");
 }
 console.log("ok: FR / HE / EN copy");
@@ -254,6 +259,7 @@ console.log("ok: FR / HE / EN copy");
   const fn = email.slice(email.indexOf("export async function sendUsageWarningEmail"));
   const body = fn.slice(0, fn.indexOf("\n}\n"));
   assert.doesNotMatch(body, /console\.\w+\([^)]*\bto\b/, "the sender never logs the recipient");
+  assert.match(body, /namespace: "DashboardNav"[\s\S]*nav\("connect"\)/, "the sender names connect from DashboardNav.connect");
 }
 console.log("ALL USAGE WARNING TESTS PASSED");
 }
