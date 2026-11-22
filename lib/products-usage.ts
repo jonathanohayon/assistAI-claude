@@ -13,6 +13,7 @@ import { calls, campaignCalls } from "@/lib/db/schema";
 import type { CatalogueCurrency } from "@/lib/product-catalogue";
 import type { Entitlement } from "@/lib/product-entitlement";
 import { trialUsage } from "@/lib/product-trials";
+import { pinnedCatalogue, termsAt, type TermsOrder } from "@/lib/order-terms";
 import { getProductCatalogue, loadProductTrials } from "@/lib/products";
 import { usageByProduct, type UsageByProduct } from "@/lib/usage-by-product";
 
@@ -29,6 +30,14 @@ export async function accountUsageByProduct(opts: {
    */
   account?: { subscriptionStatus: string; role: string | null; trialEndsAt: Date | null };
   now?: Date;
+  /**
+   * The account's PAID multi-line orders: the window is measured against the
+   * terms pinned on the order covering it (lib/order-terms.ts, termsFor at
+   * `termsAt`, default termsAt(window, wall clock)). Absent or none
+   * covering = the live catalogue.
+   */
+  paidOrders?: readonly TermsOrder[];
+  termsAt?: Date;
 }): Promise<UsageByProduct> {
   const { userId, window } = opts;
   const callRows = await db
@@ -44,7 +53,7 @@ export async function accountUsageByProduct(opts: {
     campaignCalls: campaignRows,
     window,
     entitlement: opts.entitlement,
-    catalogue: await getProductCatalogue(),
+    catalogue: pinnedCatalogue(await getProductCatalogue(), opts.paidOrders ?? [], opts.termsAt ?? termsAt(window, new Date()), opts.currency),
     currency: opts.currency,
     planMinutes: opts.planMinutes,
     planOverage: opts.planOverage,

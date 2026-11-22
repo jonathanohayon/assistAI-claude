@@ -20,6 +20,7 @@ import { dispatchMode } from "./campaigns/dispatch-mode";
 import { monthlySubPeriods } from "./monthly-periods";
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import { PRODUCT_ENTRIES, PRODUCTS, entryOf, type Product, type ProductEntry } from "./product-values";
+import { catalogueTerms, parseLineTerms, pinnedCatalogue, type LineTerms, type TermsOrder } from "./order-terms";
 import type { PlanKey } from "./plans";
 import { clientAgentMode } from "./tools/client-agent-switch";
 import { usageByProduct, type UsageCall, type UsageCampaignCall } from "./usage-by-product";
@@ -32,6 +33,12 @@ export type BaseLine = {
   period: OrderPeriod;
   amount: number;
   /**
+   * The terms this line was sold with (lib/order-terms.ts), pinned at
+   * creation. Absent on an order created before the snapshot (read with the
+   * live catalogue as fallback).
+   */
+  terms?: LineTerms;
+  /**
    * The subscription period this line paid for, ISO. Set by the callback
    * when the order is PAID (the same bounds as users.paidUntil); absent on a
    * pending / failed order. Overage is computed only over these periods.
@@ -39,7 +46,7 @@ export type BaseLine = {
   periodStart?: string;
   periodEnd?: string;
 };
-export type AddonLine = { kind: "addon"; product: Product; period: OrderPeriod; amount: number };
+export type AddonLine = { kind: "addon"; product: Product; period: OrderPeriod; amount: number; terms?: LineTerms };
 export type OverageLine = {
   kind: "overage";
   entry: ProductEntry;
@@ -130,7 +137,11 @@ export function parseOrderSelection(
 
 // ── Lines and total ────────────────────────────────────────────────────
 
-/** The base + add-on lines, priced from the catalogue for the currency and period. */
+/**
+ * The base + add-on lines, priced from the catalogue for the currency and
+ * period, each carrying the terms it is sold with (price, included minutes,
+ * overage rate, currency: the snapshot, lib/order-terms.ts).
+ */
 export function catalogueLines(
   sel: OrderSelection,
   period: OrderPeriod,
@@ -138,8 +149,9 @@ export function catalogueLines(
   catalogue: ProductCatalogue,
 ): Array<BaseLine | AddonLine> {
   const baseRow = catalogue[sel.base][currency];
+  const baseAmount = period === "annual" ? baseRow.annual : baseRow.monthly;
   const lines: Array<BaseLine | AddonLine> = [
-    { kind: "base", product: sel.base, period, amount: period === "annual" ? baseRow.annual : baseRow.monthly },
+    { kind: "base", product: sel.base, period, amount: baseAmount, terms: catalogueTerms(catalogue, sel.base, currency, baseAmount) },
   ];
   for (const a of sel.addons) {
     const row = catalogue[a][currency];
@@ -147,7 +159,7 @@ export function catalogueLines(
     // parseOrderSelection refuses reception_multi as an add-on, the only
     // product without an add-on price; this is the belt.
     if (amount === null) throw new Error(`no add-on price for ${a}`);
-    lines.push({ kind: "addon", product: a, period, amount });
+    lines.push({ kind: "addon", product: a, period, amount, terms: catalogueTerms(catalogue, a, currency, amount) });
   }
   return lines;
 }
@@ -204,6 +216,12 @@ export type OverageInput = {
   catalogue: ProductCatalogue;
   /** The NEW order's currency: the overage is priced and charged in it. */
   currency: CatalogueCurrency;
+  /**
+   * The account's PAID multi-line orders: each period is measured against
+   * the terms pinned on the order covering it (termsFor). Absent = the live
+   * catalogue (the behaviour before the snapshot).
+   */
+  paidOrders?: readonly TermsOrder[];
   /** billedOverageKeys over the account's PAID orders (pending / failed never count). */
   billed: Set<string>;
   now: Date;
@@ -217,6 +235,9 @@ export type OverageInput = {
  * coverage did not own (e.g. a per-product trial) is never billed. A call
  * belongs to [start, end) here, so one call on a boundary is billed once.
  * Sorted by period start, then PRODUCT_ENTRIES order.
+ * Included minutes and rate: the period's pinned terms (paidOrders,
+ * termsFor); the rate only when pinned in the new order's currency, else
+ * that currency's live rate (lib/order-terms.ts header).
  */
 export function computeOverageLines(input: OverageInput): OverageLine[] {
   const out: OverageLine[] = [];
@@ -232,7 +253,9 @@ export function computeOverageLines(input: OverageInput): OverageLine[] {
       campaignCalls: input.campaignCalls.filter((x) => before(x.createdAt)),
       window: w,
       entitlement: { base: c.base, addons: c.addons, entries: [], source: "products" },
-      catalogue: input.catalogue,
+      // The period's own terms (lib/order-terms.ts): an edit made after the
+      // payment never reprices a finished period.
+      catalogue: pinnedCatalogue(input.catalogue, input.paidOrders ?? [], w.start, input.currency),
       currency: input.currency,
       planMinutes: 0,
       planOverage: 0,
@@ -269,6 +292,9 @@ export function parseOrderLines(x: unknown): OrderLine[] | null {
   for (const [i, l] of x.entries()) {
     if (typeof l !== "object" || l === null) return null;
     const v = l as Record<string, unknown>;
+    // `terms` is optional (orders before the snapshot); present, it must be valid.
+    const terms = v.terms === undefined ? undefined : parseLineTerms(v.terms);
+    if (terms === null) return null;
     if (v.kind === "base" && i === 0 && isProduct(v.product) && isPeriod(v.period) && isNum(v.amount)) {
       if ((v.periodStart !== undefined || v.periodEnd !== undefined) && !(isIso(v.periodStart) && isIso(v.periodEnd))) return null;
       out.push({
@@ -276,11 +302,12 @@ export function parseOrderLines(x: unknown): OrderLine[] | null {
         product: v.product,
         period: v.period,
         amount: v.amount,
+        ...(terms ? { terms } : {}),
         ...(v.periodStart !== undefined ? { periodStart: v.periodStart as string, periodEnd: v.periodEnd as string } : {}),
       });
     } else if (v.kind === "addon" && i > 0 && isProduct(v.product) && isPeriod(v.period) && isNum(v.amount)) {
-      out.push({ kind: "addon", product: v.product, period: v.period, amount: v.amount });
-    } else if (v.kind === "overage" && i > 0 && isEntry(v.entry) && isIso(v.periodStart) && isIso(v.periodEnd) && isNum(v.minutes) && isNum(v.amount)) {
+      out.push({ kind: "addon", product: v.product, period: v.period, amount: v.amount, ...(terms ? { terms } : {}) });
+    } else if (v.kind === "overage" && i > 0 && terms === undefined && isEntry(v.entry) && isIso(v.periodStart) && isIso(v.periodEnd) && isNum(v.minutes) && isNum(v.amount)) {
       out.push({ kind: "overage", entry: v.entry, periodStart: v.periodStart, periodEnd: v.periodEnd, minutes: v.minutes, amount: v.amount });
     } else {
       return null;
@@ -322,12 +349,27 @@ export function orderInfo(locale: string, baseTitle: string, lines: readonly Ord
 }
 
 /**
+ * The lines without their `terms` snapshot: the shape every response field
+ * named `lines` had before the snapshot (create-payment, billing-stats
+ * invoices). The terms are exposed separately where they are wanted.
+ */
+export function withoutTerms(lines: readonly OrderLine[]): OrderLine[] {
+  return lines.map((l) => {
+    if (l.kind === "overage" || l.terms === undefined) return l;
+    const { terms: _terms, ...rest } = l;
+    void _terms;
+    return rest;
+  });
+}
+
+/**
  * The additive `lines` of a billing-stats invoice row: present only for a
  * multi-line order (products NOT NULL and readable). A legacy row gets {}
- * (no key), so it stays byte-identical.
+ * (no key), so it stays byte-identical. The terms snapshot is not shown
+ * (same shape as before it).
  */
 export function invoiceLines(products: unknown): { lines?: OrderLine[] } {
   if (products == null) return {};
   const lines = parseOrderLines(products);
-  return lines ? { lines } : {};
+  return lines ? { lines: withoutTerms(lines) } : {};
 }
