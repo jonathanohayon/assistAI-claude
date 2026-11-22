@@ -86,6 +86,11 @@ const ALL_ON = { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" };
   no({ base: "reception", addons: ["sales", "sales"] }, 400, "duplicate_addon", ALL_ON);
   no({ base: "reception", addons: ["reception"] }, 400, "base_in_addons");
   no({ base: "reception", addons: ["reception_multi"] }, 400, "addon_not_sold");
+  // A base never takes its own family as an add-on (reception ≡ reception_multi).
+  no({ base: "reception_multi", addons: ["reception"] }, 400, "addon_same_family");
+  no({ base: "reception_multi", addons: ["reception"] }, 400, "addon_same_family", ALL_ON);
+  no({ base: "reception_multi", addons: ["sales", "reception"] }, 400, "addon_same_family", ALL_ON);
+  assert.deepEqual(ok({ base: "reception_multi", addons: ["sales", "connect"] }, ALL_ON), { base: "reception_multi", addons: ["sales", "connect"] });
   // Unpurchasable add-ons (flags off), allowed once on.
   no({ base: "reception", addons: ["sales"] }, 409, "product_unavailable");
   no({ base: "reception", addons: ["connect"] }, 409, "product_unavailable", { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "admin" });

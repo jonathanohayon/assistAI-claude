@@ -13,6 +13,7 @@ import {
 } from "@/lib/hyp";
 import { logEvent } from "@/lib/logger";
 import { createProductsOrder, type ProductsOrderBody } from "@/lib/order-create";
+import { productOrdersAllowed, productOrdersMode } from "@/lib/product-orders-switch";
 import { resolvePrice } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { canPurchasePlan, isValidPlanKey, planByKey } from "@/lib/plans";
@@ -36,6 +37,18 @@ export async function POST(req: NextRequest) {
     // legacy path below, unchanged.
     const raw: unknown = parsed.data;
     if (raw && typeof raw === "object" && Object.prototype.hasOwnProperty.call(raw, "products")) {
+      // PRODUCT_ORDERS gates creation FIRST: nothing computed, written,
+      // logged or sent to HYP when it refuses (same code for off and for a
+      // tenant under "admin", no hint).
+      const mode = productOrdersMode();
+      let isAdmin = false;
+      if (mode === "admin") {
+        const [me] = await db.select({ role: users.role }).from(users).where(eq(users.id, guard.userId)).limit(1);
+        isAdmin = me?.role === "admin";
+      }
+      if (!productOrdersAllowed(mode, isAdmin)) {
+        return NextResponse.json({ error: "product_orders_disabled" }, { status: 400 });
+      }
       if (Object.prototype.hasOwnProperty.call(raw, "plan")) {
         return NextResponse.json({ error: "ambiguous_body" }, { status: 400 });
       }

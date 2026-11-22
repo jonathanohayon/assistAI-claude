@@ -5,7 +5,12 @@
 //   1. LEGACY byte-identity: the `{ plan, period, locale }` body, end to end
 //      (SIGN request, order row, callback DB effects, events, email, replay,
 //      billing-stats) is identical to the recorded fixture
-//      fixtures/hyp-orders/legacy-capture.json;
+//      fixtures/hyp-orders/legacy-capture.json, under EVERY PRODUCT_ORDERS mode;
+//   1b. PRODUCT_ORDERS (off by default): off refuses every products body
+//      (400 product_orders_disabled) for tenant and admin with HYP
+//      unreachable (never invoked), nothing written, no event; admin lets
+//      only an admin account through; a products order paid after the switch
+//      went back to off is activated normally;
 //   2. the products body: refusals (4xx, nothing written; a sales / connect
 //      BASE refused even with every flag on), a client amount ignored, the
 //      lines + sum + SIGN params, add-ons behind their flags;
@@ -32,7 +37,7 @@ if (!url) {
 }
 const host = new URL(url).hostname;
 if (host !== "127.0.0.1" && host !== "localhost") throw new Error(`refusing non-local database host ${host}`);
-if (Object.keys(process.env).some((k) => /HYP|^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|ADMIN_ALERT|CAMPAIGN_DISPATCH|CLIENT_AGENT|APP_URL/i.test(k))) {
+if (Object.keys(process.env).some((k) => /HYP|^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|ADMIN_ALERT|CAMPAIGN_DISPATCH|CLIENT_AGENT|PRODUCT_ORDERS|APP_URL/i.test(k))) {
   throw new Error("refusing to run with provider env, HYP env or product flags set");
 }
 if (!(globalThis as { __hypOrdersHooks?: boolean }).__hypOrdersHooks) throw new Error("module hooks missing: run through scripts/hyp-orders-db.sh");
@@ -52,6 +57,7 @@ const R1 = id(0xd1); // record holder (sign-up record), trialing
 const RACE = id(0xd2); // record holder with a past paid coverage + usage
 const GF = id(0xd3); // grandfathered (products NULL) with a paid multi-line row + usage
 const LEG = id(0xd4); // record holder whose only paid order is legacy
+const ADM = id(0xd5); // an account with role admin, trialing
 
 async function main() {
   const mock = await import("./fixtures/hyp-orders/mock-hyp");
@@ -68,7 +74,26 @@ async function main() {
     process.exit(0);
   }
   const fixture = readFileSync(new URL("./fixtures/hyp-orders/legacy-capture.json", import.meta.url), "utf8");
-  assert.equal(text, fixture, "the legacy payment differs from the recorded fixture");
+  assert.equal(text, fixture, "the legacy payment differs from the recorded fixture (PRODUCT_ORDERS unset)");
+  const { sql } = await import("drizzle-orm");
+  const { db } = await import("../../lib/db");
+  // The same capture under every other mode: the switch never touches the
+  // legacy body. The capture's own rows are removed first (fixed ids).
+  const { LEGACY_CASES } = await import("./fixtures/hyp-orders/legacy-capture");
+  const dropLegacyRows = async () => {
+    for (const c of LEGACY_CASES) {
+      await db.execute(sql`DELETE FROM events WHERE user_id = ${c.user}`);
+      await db.execute(sql`DELETE FROM payment_orders WHERE user_id = ${c.user}`);
+      await db.execute(sql`DELETE FROM users WHERE id = ${c.user}`);
+    }
+  };
+  for (const mode of ["off", "admin", "on", "garbage"]) {
+    await dropLegacyRows();
+    process.env.PRODUCT_ORDERS = mode;
+    const again = JSON.stringify(await captureLegacy(), null, 2) + "\n";
+    delete process.env.PRODUCT_ORDERS;
+    assert.equal(again, fixture, `the legacy payment differs from the recorded fixture (PRODUCT_ORDERS=${mode})`);
+  }
   // Sanity on what the fixture pins: no lines anywhere on a legacy order.
   for (const [k, v] of Object.entries(capture)) {
     const c = v as { signRequests: Array<Record<string, string>>; billingStats: { body: { payments: Array<Record<string, unknown>> } }; emails: unknown[] };
@@ -77,15 +102,13 @@ async function main() {
     assert.equal(c.billingStats.body.payments.length, 1, k);
     assert.ok(!("lines" in c.billingStats.body.payments[0]), k);
   }
-  const { sql } = await import("drizzle-orm");
-  const { db } = await import("../../lib/db");
   const rows = async <T = Record<string, unknown>>(q: ReturnType<typeof sql>) => {
     const r = (await db.execute(q)) as unknown;
     return (Array.isArray(r) ? r : ((r as { rows?: unknown[] }).rows ?? [])) as T[];
   };
   const legacyProducts = await rows<{ n: number }>(sql`SELECT count(*)::int AS n FROM payment_orders WHERE products IS NOT NULL`);
   assert.equal(legacyProducts[0].n, 0, "a legacy order wrote payment_orders.products");
-  console.log(`  ✓ legacy: ${Object.keys(capture).length} cases identical to the recorded fixture (SIGN, order row, callback effects, events, email, replay, billing-stats)`);
+  console.log(`  ✓ legacy: ${Object.keys(capture).length} cases identical to the recorded fixture (SIGN, order row, callback effects, events, email, replay, billing-stats), PRODUCT_ORDERS unset/off/admin/on/garbage`);
 
   // ── Seeds ───────────────────────────────────────────────────────────
   const { NextRequest } = await import("next/server");
@@ -100,6 +123,7 @@ async function main() {
     [RACE, JSON.stringify({ base: "reception", addons: [] }), "active", "global"],
     [GF, null, "active", "global"],
     [LEG, REC, "active", "premium"],
+    [ADM, null, "trialing", "essential"],
   ] as const) {
     await db.execute(sql`INSERT INTO users (id, email, password_hash, display_name, locale, subscription_status, subscription_plan, trial_ends_at, products)
       VALUES (${uid}, ${`${uid.slice(-4)}@example.test`}, 'x', 'Exemple Test', 'fr', ${status}, ${plan}, now() + interval '1 day', ${products}::jsonb)`);
@@ -130,6 +154,79 @@ async function main() {
     return { status: res.status, body: await res.text() };
   };
   const sent = () => g.__sentEmails ?? [];
+  await db.execute(sql`UPDATE users SET role = 'admin' WHERE id = ${ADM}`);
+
+  // ── 1b. PRODUCT_ORDERS ──────────────────────────────────────────────
+  const productBody = { products: { base: "reception", addons: [] }, period: "monthly", locale: "fr" };
+  const disabled = { status: 400, body: { error: "product_orders_disabled" } };
+  const mockFetch = globalThis.fetch;
+  let unreachableCalls = 0;
+  const hypUnreachable = () => {
+    globalThis.fetch = (async () => {
+      unreachableCalls++;
+      throw new Error("HYP unreachable in this test");
+    }) as typeof fetch;
+  };
+  const eventsOf = async (uid: string) => (await rows<{ n: number }>(sql`SELECT count(*)::int AS n FROM events WHERE user_id = ${uid}`))[0].n;
+  const xminOf = async (uid: string) => (await userRow(uid)).xmin;
+  const gateBodies: unknown[] = [
+    productBody,
+    { ...productBody, products: { base: "reception_multi", addons: ["reception"] } },
+    { products: { base: "nope" }, plan: "global", period: "weekly" },
+    { products: null },
+  ];
+  const xminBefore = { R1: await xminOf(R1), ADM: await xminOf(ADM) };
+  // off (unset and any unknown value) and admin-for-a-tenant: refused first.
+  hypUnreachable();
+  let gateCases = 0;
+  for (const [mode, uids] of [
+    [undefined, [R1, ADM]],
+    ["off", [R1, ADM]],
+    ["yes", [R1, ADM]],
+    ["admin", [R1]],
+  ] as const) {
+    if (mode === undefined) delete process.env.PRODUCT_ORDERS;
+    else process.env.PRODUCT_ORDERS = mode;
+    for (const uid of uids) {
+      as(uid);
+      for (const b of gateBodies) {
+        assert.deepEqual(await post(b), disabled, `PRODUCT_ORDERS=${mode} ${uid === ADM ? "admin" : "tenant"} ${JSON.stringify(b)}`);
+        gateCases++;
+      }
+    }
+  }
+  delete process.env.PRODUCT_ORDERS;
+  globalThis.fetch = mockFetch;
+  assert.equal(unreachableCalls, 0, "a refused products body invoked fetch (HYP)");
+  assert.equal((await orders(R1)).length + (await orders(ADM)).length, 0, "a refused products body wrote an order");
+  assert.equal((await eventsOf(R1)) + (await eventsOf(ADM)), 0, "a refused products body wrote an event");
+  assert.deepEqual({ R1: await xminOf(R1), ADM: await xminOf(ADM) }, xminBefore, "a refused products body touched the user row");
+  // admin: the admin account goes through (and only it).
+  process.env.PRODUCT_ORDERS = "admin";
+  as(ADM);
+  const adm = await post(productBody);
+  assert.equal(adm.status, 200, JSON.stringify(adm.body));
+  assert.deepEqual(adm.body.lines, [{ kind: "base", product: "reception", period: "monthly", amount: 89 }]);
+  // Paid AFTER the switch went back to off: activated normally.
+  delete process.env.PRODUCT_ORDERS;
+  const [admOrder] = await orders(ADM);
+  assert.equal(admOrder.status, "pending");
+  const admMails = sent().length;
+  const admPaid = await pay(admOrder.id, "89.00", "3");
+  assert.ok(admPaid.body.includes("paid=1"), admPaid.body);
+  assert.equal((await orders(ADM))[0].status, "paid");
+  const admUser = await userRow(ADM);
+  assert.deepEqual(
+    { s: admUser.subscription_status, plan: admUser.subscription_plan, products: admUser.products, trial: admUser.trial_ends_at },
+    { s: "active", plan: "global", products: { base: "reception", addons: [] }, trial: null },
+  );
+  assert.equal(sent().length, admMails + 1, "the paying customer got no confirmation email");
+  // on: every account (the tenant below, and the admin).
+  process.env.PRODUCT_ORDERS = "on";
+  as(ADM);
+  assert.equal((await post(productBody)).status, 200);
+  assert.equal((await orders(ADM)).length, 2);
+  console.log(`  ✓ PRODUCT_ORDERS: ${gateCases} refusals (unset/off/unknown × tenant+admin, admin × tenant) with HYP unreachable: fetch never invoked, no order, no event, user untouched; admin → admin only; a products order paid after the switch went off is activated; on → everyone`);
 
   // ── 2. The products body: refusals ──────────────────────────────────
   as(null);
@@ -141,6 +238,7 @@ async function main() {
     [{ products: { base: "reception", addons: ["sales", "sales"] }, period: "monthly" }, 400, "duplicate_addon", { CAMPAIGN_DISPATCH: "on" }],
     [{ products: { base: "reception", addons: ["reception"] }, period: "monthly" }, 400, "base_in_addons"],
     [{ products: { base: "reception", addons: ["reception_multi"] }, period: "monthly" }, 400, "addon_not_sold"],
+    [{ products: { base: "reception_multi", addons: ["reception"] }, period: "monthly" }, 400, "addon_same_family"],
     [{ products: { base: "reception" }, period: "monthly" }, 400, "invalid_products"],
     [{ products: { base: "reception", addons: [] }, period: "weekly" }, 400, "invalid period"],
     [{ products: { base: "reception", addons: [] }, plan: "global", period: "monthly" }, 400, "ambiguous_body"],
@@ -316,6 +414,7 @@ async function main() {
   // Nothing ever left the process for HYP but the mock host.
   assert.ok(mock.hypRequests.every((r) => r.params.Masof === "0000000001"));
   as(null);
+  delete process.env.PRODUCT_ORDERS;
   console.log("hyp-orders DB: all passed");
   process.exit(0);
 }

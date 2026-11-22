@@ -19,7 +19,7 @@
 import { addPeriod } from "./billing-activation";
 import { dispatchMode } from "./campaigns/dispatch-mode";
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
-import { PRODUCT_ENTRIES, PRODUCTS, type Product, type ProductEntry } from "./product-values";
+import { PRODUCT_ENTRIES, PRODUCTS, entryOf, type Product, type ProductEntry } from "./product-values";
 import type { PlanKey } from "./plans";
 import { clientAgentMode } from "./tools/client-agent-switch";
 import { usageByProduct, type UsageCall, type UsageCampaignCall } from "./usage-by-product";
@@ -102,6 +102,8 @@ export type SelectionError = { ok: false; status: 400 | 409; error: string };
  *   400 duplicate_addon    the same add-on twice
  *   400 base_in_addons     the base repeated as an add-on
  *   400 addon_not_sold     reception_multi as an add-on (no add-on price, by design)
+ *   400 addon_same_family  an add-on of the base's own family (entryOf): a
+ *                          reception_multi base never takes reception
  *   409 product_unavailable a base without a plan key (sales / connect), or a
  *                          product productPurchasable refuses
  */
@@ -120,6 +122,7 @@ export function parseOrderSelection(
   if (new Set(list).size !== list.length) return bad(400, "duplicate_addon");
   if (list.includes(base)) return bad(400, "base_in_addons");
   if (list.includes("reception_multi")) return bad(400, "addon_not_sold");
+  if (list.some((a) => entryOf(a) === entryOf(base))) return bad(400, "addon_same_family");
   if (planKeyForBase(base) === null || !productPurchasable(base, env)) return bad(409, "product_unavailable");
   if (!list.every((a) => productPurchasable(a, env))) return bad(409, "product_unavailable");
   return { ok: true, selection: { base, addons: [...list] } };
