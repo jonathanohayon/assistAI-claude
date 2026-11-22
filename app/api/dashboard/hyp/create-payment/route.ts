@@ -12,6 +12,7 @@ import {
   pageLangFor,
 } from "@/lib/hyp";
 import { logEvent } from "@/lib/logger";
+import { createProductsOrder, type ProductsOrderBody } from "@/lib/order-create";
 import { resolvePrice } from "@/lib/plan-pricing";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
 import { canPurchasePlan, isValidPlanKey, planByKey } from "@/lib/plans";
@@ -30,6 +31,17 @@ export async function POST(req: NextRequest) {
       locale?: string;
     }>(req);
     if (!parsed.ok) return parsed.response;
+    // P4: the multi-line body `{ products: { base, addons }, period, locale }`
+    // has its own path (lib/order-create.ts). Every other body takes the
+    // legacy path below, unchanged.
+    const raw: unknown = parsed.data;
+    if (raw && typeof raw === "object" && Object.prototype.hasOwnProperty.call(raw, "products")) {
+      if (Object.prototype.hasOwnProperty.call(raw, "plan")) {
+        return NextResponse.json({ error: "ambiguous_body" }, { status: 400 });
+      }
+      const r = await createProductsOrder(guard.userId, raw as ProductsOrderBody);
+      return NextResponse.json(r.body, { status: r.status });
+    }
     const body = parsed.data;
     const { plan, period } = body;
 

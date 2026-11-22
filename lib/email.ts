@@ -27,6 +27,8 @@ import { renderContactCodeEmail } from "@/lib/contact-code-email";
 import { ltrIsolate } from "@/lib/phone-utils";
 import { configuredEmailSender } from "@/lib/email-sender";
 import { greetingName } from "@/lib/email-greeting";
+import type { OrderLine } from "@/lib/order-lines";
+import { renderOrderConfirmationEmail, type OrderEmailKey } from "@/lib/order-email";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 const SUPPORTED_LOCALES = ["fr", "he", "en"] as const;
@@ -786,5 +788,35 @@ export async function sendUsageWarningEmail(to: string, input: WarningInput): Pr
     return { ok: true, id: res.data?.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "send error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Multi-line order confirmation (P4, lib/order-email.ts). The legacy
+//   single-plan email above (sendSubscriptionConfirmationEmail) is unchanged
+//   and still sent for every legacy order. The fallback prints the subject only.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendOrderConfirmationEmail(
+  to: string,
+  opts: { lines: readonly OrderLine[]; period: "monthly" | "annual"; amount: number; currency: string; locale?: string | null },
+): Promise<SendResult> {
+  const locale = normalizeLocale(opts.locale);
+  const t = await getTranslations({ locale, namespace: "Email.subscriptionConfirmation" });
+  const { subject, text, html } = renderOrderConfirmationEmail(
+    { lines: opts.lines, period: opts.period, amount: opts.amount, currency: opts.currency, locale },
+    (key: OrderEmailKey, vars) => t(key, vars),
+  );
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const client = getResend();
+  if (!client) {
+    console.warn(`[email] order confirmation not sent (no email key configured), subject: ${subject}`);
+    return { ok: true, fallback: "console_log" };
+  }
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
   }
 }

@@ -1892,7 +1892,10 @@
       "includedHeading": "מה כלול",
       "ctaButton": "למעבר ללוח הבקרה",
       "footer": "אימייל זה הוא אישור תשלום. ניתן לנהל את המנוי בכל עת מלוח הבקרה.",
-      "signature": "— צוות Tamara"
+      "signature": "— צוות Tamara",
+      "linesHeading": "ההזמנה שלך",
+      "addonLine": "{product} (תוספת)",
+      "overageLine": "חריגה {product} — {minutes} דק׳"
     },
     "notificationTest": {
       "subject": "🔔 בדיקת התראות Tamara",

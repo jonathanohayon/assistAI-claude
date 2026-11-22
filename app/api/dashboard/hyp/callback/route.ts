@@ -8,6 +8,7 @@ import { paymentOrders, users } from "@/lib/db/schema";
 import { sendSubscriptionConfirmationEmail } from "@/lib/email";
 import { extractCardFromVerify, verifyPayment } from "@/lib/hyp";
 import { logEvent } from "@/lib/logger";
+import { activateProductsOrder } from "@/lib/order-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       expectedAmount: paymentOrders.expectedAmount,
       status: paymentOrders.status,
       expiresAt: paymentOrders.expiresAt,
+      products: paymentOrders.products,
     })
     .from(paymentOrders)
     .where(eq(paymentOrders.id, orderId))
@@ -139,6 +141,15 @@ export async function GET(req: NextRequest) {
       metadata: { orderId, reason: check.reason },
     });
     return billing("?payment=failed");
+  }
+
+  // P4: a multi-line order (products NOT NULL) is activated by its own code
+  // (lib/order-activation.ts), after the SAME checks above. A legacy order
+  // (products NULL) continues below, unchanged.
+  if (order.products != null) {
+    return billing(
+      await activateProductsOrder({ order, period, verifyRaw: verify.raw, now, locale }),
+    );
   }
 
   const txnId = verify.raw.Id ?? null;
