@@ -117,7 +117,12 @@ const HE_SINGULAR = [
 const HE_SINGULAR_RE = new RegExp(`(?<![\\u05D0-\\u05EA])(${HE_SINGULAR.join("|")})(?![\\u05D0-\\u05EA])`, "g");
 function emailHits(text: string, locale: string): string[] {
   const out: string[] = [];
-  const plain = stripIcuArguments(text).replace(/<[^>]*>/g, " ");
+  // ICU syntax is not copy: the plural/select keywords and their selectors
+  // ("{n, plural, one {…} other {…}}") are dropped before the word checks.
+  const plain = stripIcuArguments(text)
+    .replace(/,\s*(plural|selectordinal|select)\s*,/g, ",")
+    .replace(/\b(zero|one|two|few|many|other)\s*(?=\{)/g, "")
+    .replace(/<[^>]*>/g, " ");
   if (/\bowners?\b/i.test(plain)) out.push("owner");
   if (locale === "he") {
     if (/בעלים|בעלת העסק|בעל העסק/.test(plain)) out.push("owner");
@@ -145,6 +150,8 @@ assert.deepEqual(emailHits("התשלום שלכם · הלקוחות · ברכו�
 assert.deepEqual(emailHits("הפעילו תוכנית מהדאשבורד:", "he"), ['"דאשבורד" (say לוח הבקרה)']);
 assert.deepEqual(emailHits("הפעילו תוכנית מלוח הבקרה:", "he"), []);
 assert.deepEqual(emailHits("מה לעשות עכשיו :", "he"), ['space before ":"']);
+assert.deepEqual(emailHits("בעוד {n, plural, =1 {יום אחד} =2 {יומיים} other {# ימים}}", "he"), [], "ICU plural syntax is not English copy");
+assert.deepEqual(emailHits("{n, plural, other {# Days}}", "he"), ['English "Days"'], "but English inside a plural branch is");
 
 function* strings(node: unknown, path: string): Generator<[string, string]> {
   if (typeof node === "string") yield [path, node];

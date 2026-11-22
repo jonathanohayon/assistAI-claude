@@ -1,14 +1,20 @@
 // The trial figures in the copy come from lib/trial.ts, never from the
 // messages: no fr/en/he message that talks about the trial hard-codes a
 // figure, and the three trial messages render the lib/trial.ts values through
-// their {days}/{minutes} arguments. Run with: npx tsx scripts/tests/trial-copy-from-source.test.ts
+// their {days}/{minutes} arguments, and the end-of-trial messages render the
+// warning lead time and the number retention through {warningDays}/{retentionDays}. Run with: npx tsx scripts/tests/trial-copy-from-source.test.ts
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { IntlMessageFormat } from "intl-messageformat";
 
-import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "@/lib/trial";
-import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
+import {
+  TRIAL_DURATION_MS,
+  TRIAL_MINUTES_INCLUDED,
+  TRIAL_NUMBER_RELEASE_AFTER_MS,
+  TRIAL_WARNING_BEFORE_END_MS,
+} from "@/lib/trial";
+import { TRIAL_COPY_VALUES, TRIAL_END_COPY_VALUES } from "@/lib/trial-copy";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const LOCALES = ["fr", "en", "he"] as const;
@@ -39,19 +45,6 @@ const TRIAL_TEXT = /essai gratuit|free trial|ניסיון חינם|תקופת (�
 // Figures written as words (a day, two days, 24h…).
 const NUMBER_WORDS = /\b(un jour|une journée|one day|two days|deux jours)\b|יום אחד|יומיים|יממה/i;
 
-// Trial messages whose figure is not the trial duration nor its minutes:
-// the 30-day number retention after the pause and the 2-day warning lead
-// time (both also lib/trial.ts constants), left for a follow-up.
-const NOT_DURATION_OR_MINUTES = new Set([
-  "Dashboard.trialExpired",
-  "Email.trialWarning.subjectHours",
-  "Email.trialWarning.introHtml",
-  "Email.trialWarning.introText",
-  "Email.trialWarning.warningBoxHtml",
-  "Email.trialWarning.phoneLineWithPhone",
-  "Email.trialWarning.phoneLineGeneric",
-  "Email.trialWarning.textBullet",
-]);
 
 // 1. The arguments are the lib/trial.ts values: 14 days, 100 minutes.
 assert.equal(TRIAL_COPY_VALUES.days, TRIAL_DURATION_MS / (24 * 60 * 60 * 1000));
@@ -63,7 +56,6 @@ let scanned = 0;
 for (const l of LOCALES) {
   for (const [key, msg] of Object.entries(flatten(load(l)))) {
     if (!TRIAL_KEY.test(key) && !TRIAL_TEXT.test(msg)) continue;
-    if (NOT_DURATION_OR_MINUTES.has(key)) continue;
     scanned++;
     const literal = literalText(msg);
     assert.doesNotMatch(literal, /\d/, `${l} ${key}: hard-coded trial figure in "${msg}"`);
@@ -92,5 +84,65 @@ const src = (p: string) => readFileSync(join(ROOT, p), "utf8");
 assert.match(src("app/[locale]/signup/signup-content.tsx"), /t\("freeTrialNoticeStart", TRIAL_COPY_VALUES\)/);
 assert.match(src("app/[locale]/onboarding/page.tsx"), /t\("trialLabel", TRIAL_COPY_VALUES\)/);
 assert.match(src("components/marketing/Pricing.tsx"), /t\("trial", TRIAL_COPY_VALUES\)/);
+
+// 5. The end-of-trial figures: the 2-day warning lead time and the 30-day
+// number retention come from lib/trial.ts through {warningDays}/{retentionDays}.
+const DAY = 24 * 60 * 60 * 1000;
+assert.equal(TRIAL_END_COPY_VALUES.warningDays, TRIAL_WARNING_BEFORE_END_MS / DAY);
+assert.equal(TRIAL_END_COPY_VALUES.retentionDays, TRIAL_NUMBER_RELEASE_AFTER_MS / DAY);
+assert.deepEqual(TRIAL_END_COPY_VALUES, { warningDays: 2, retentionDays: 30 });
+
+const END_KEYS: Record<string, "warningDays" | "retentionDays"> = {
+  "Email.trialWarning.subjectHours": "warningDays",
+  "Email.trialWarning.introHtml": "warningDays",
+  "Email.trialWarning.introText": "warningDays",
+  "Email.trialWarning.textBullet": "warningDays",
+  "Email.trialWarning.warningBoxHtml": "retentionDays",
+  "Email.trialWarning.phoneLineWithPhone": "retentionDays",
+  "Email.trialWarning.phoneLineGeneric": "retentionDays",
+  "Email.trialDeleted.phoneLineWithPhone": "retentionDays",
+  "Email.trialDeleted.phoneLineGeneric": "retentionDays",
+  "Dashboard.trialExpired": "retentionDays",
+};
+// Hebrew says two days with the dual form, not the digit.
+const rendered = (l: string, arg: string, n: number) =>
+  l === "he" && arg === "warningDays" && n === 2 ? /יומיים/ : new RegExp(`(^|\\D)${n}(\\D|$)`);
+const fmtArgs = (extra: Record<string, number>) => ({
+  ...TRIAL_END_COPY_VALUES,
+  ...extra,
+  phone: "+972500000000",
+  phoneLine: "PHONE",
+  strong: (c: unknown) => c,
+  em: (c: unknown) => c,
+});
+const fmt = (msg: string, l: string, values: Record<string, unknown>) => {
+  const out = new IntlMessageFormat(msg, l).format(values as never);
+  return Array.isArray(out) ? out.join("") : String(out);
+};
+for (const l of LOCALES) {
+  const flat = flatten(load(l));
+  for (const [key, arg] of Object.entries(END_KEYS)) {
+    const msg = flat[key];
+    assert.ok(msg, `${l} ${key} exists`);
+    assert.match(msg, new RegExp(`\\{${arg}\\b`), `${l} ${key} takes {${arg}}`);
+    const n = TRIAL_END_COPY_VALUES[arg];
+    const out = fmt(msg, l, fmtArgs({}));
+    assert.match(out, rendered(l, arg, n), `${l} ${key} renders the source value ${n}: ${out}`);
+    // Another value renders another figure: the figure is the argument.
+    const out7 = fmt(msg, l, fmtArgs({ [arg]: 7 }));
+    assert.match(out7, rendered(l, arg, 7), `${l} ${key} follows {${arg}}: ${out7}`);
+    assert.doesNotMatch(out7, rendered(l, arg, n), `${l} ${key} keeps no literal ${n}: ${out7}`);
+  }
+}
+
+// 6. The callers pass the arguments.
+const email = src("lib/email.ts");
+for (const k of ["subjectHours", "introText", "textBullet", "phoneLineGeneric"])
+  assert.match(email, new RegExp(`t\\("${k}", TRIAL_END_COPY_VALUES\\)`), `lib/email.ts passes the values to ${k}`);
+assert.match(email, /t\.markup\("introHtml", \{ \.\.\.tags, \.\.\.TRIAL_END_COPY_VALUES \}\)/);
+assert.match(email, /t\.markup\("warningBoxHtml", \{ \.\.\.tags, \.\.\.TRIAL_END_COPY_VALUES, phoneLine: phoneSpecificHtml \}\)/);
+assert.equal((email.match(/t\("phoneLineWithPhone", \{ \.\.\.TRIAL_END_COPY_VALUES, phone: ltrIsolate\(opts\.phoneNumber\) \}\)/g) ?? []).length, 2, "both e-mails pass the values to phoneLineWithPhone");
+assert.equal((email.match(/t\("phoneLineGeneric", TRIAL_END_COPY_VALUES\)/g) ?? []).length, 2, "both e-mails pass the values to phoneLineGeneric");
+assert.match(src("app/[locale]/dashboard/layout.tsx"), /t\("trialExpired", TRIAL_END_COPY_VALUES\)/);
 
 console.log(`trial-copy-from-source: ok (${scanned} trial messages scanned)`);

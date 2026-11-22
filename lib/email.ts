@@ -25,6 +25,7 @@ import { renderOwnerRecapEmail } from "@/lib/owner-recap-email";
 import { renderUsageWarningEmail, type WarningInput, type WarningKey } from "@/lib/usage-warnings";
 import { renderContactCodeEmail } from "@/lib/contact-code-email";
 import { ltrIsolate } from "@/lib/phone-utils";
+import { TRIAL_END_COPY_VALUES } from "@/lib/trial-copy";
 import { configuredEmailSender } from "@/lib/email-sender";
 import { greetingName } from "@/lib/email-greeting";
 import type { OrderLine } from "@/lib/order-lines";
@@ -154,7 +155,7 @@ export async function sendTrialWarningEmail(
   const minutes = Math.max(1, opts.minutesLeft);
   // Sent 2 days before the trial ends (2026-11: the account is then PAUSED,
   // not deleted). The copy (Email.trialWarning) is updated in messages/*.
-  const subject = t("subjectHours");
+  const subject = t("subjectHours", TRIAL_END_COPY_VALUES);
   // Messages with <strong> are rich text: plain t() throws FORMATTING_ERROR
   // as soon as values are passed (seen in prod on warningBoxHtml), so every
   // HTML message goes through t.markup with explicit tag renderers.
@@ -164,8 +165,8 @@ export async function sendTrialWarningEmail(
   };
 
   const phoneLineText = opts.phoneNumber
-    ? t("phoneLineWithPhone", { phone: ltrIsolate(opts.phoneNumber) })
-    : t("phoneLineGeneric");
+    ? t("phoneLineWithPhone", { ...TRIAL_END_COPY_VALUES, phone: ltrIsolate(opts.phoneNumber) })
+    : t("phoneLineGeneric", TRIAL_END_COPY_VALUES);
   const phoneSpecificHtml = opts.phoneNumber
     ? t.markup("phoneSpecific", { ...tags, phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneGeneric");
@@ -182,8 +183,8 @@ export async function sendTrialWarningEmail(
   }
 
   const text =
-    `${t("introText")}\n\n` +
-    `${t("textBullet")}\n` +
+    `${t("introText", TRIAL_END_COPY_VALUES)}\n\n` +
+    `${t("textBullet", TRIAL_END_COPY_VALUES)}\n` +
     `  • ${t("actionLineText")}\n` +
     `  • ${phoneLineText}\n\n` +
     `https://aitamara.com/dashboard/billing\n\n` +
@@ -194,10 +195,10 @@ export async function sendTrialWarningEmail(
     <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1a1a1a;">
       <h1 style="font-size:22px;margin:0 0 12px;">${t("heading")}</h1>
       <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#555;">
-        ${t.markup("introHtml", tags)}
+        ${t.markup("introHtml", { ...tags, ...TRIAL_END_COPY_VALUES })}
       </p>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.6;color:#9a3412;margin:0 0 20px;">
-        ${t.markup("warningBoxHtml", { ...tags, phoneLine: phoneSpecificHtml })}
+        ${t.markup("warningBoxHtml", { ...tags, ...TRIAL_END_COPY_VALUES, phoneLine: phoneSpecificHtml })}
       </div>
       <p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#555;">
         ${t("actionLineHtml")}
@@ -225,7 +226,8 @@ export async function sendTrialWarningEmail(
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//   Trial deleted (post-cleanup)
+//   Trial ended: the account is PAUSED, not deleted (the template key and
+//   the function name are historical)
 // ──────────────────────────────────────────────────────────────────────
 export async function sendTrialDeletedEmail(
   to: string,
@@ -237,8 +239,8 @@ export async function sendTrialDeletedEmail(
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const subject = t("subject");
   const phoneLine = opts.phoneNumber
-    ? t("phoneLineWithPhone", { phone: ltrIsolate(opts.phoneNumber) })
-    : t("phoneLineGeneric");
+    ? t("phoneLineWithPhone", { ...TRIAL_END_COPY_VALUES, phone: ltrIsolate(opts.phoneNumber) })
+    : t("phoneLineGeneric", TRIAL_END_COPY_VALUES);
 
   if (!client) {
     console.warn(
@@ -254,7 +256,7 @@ export async function sendTrialDeletedEmail(
     `${t("introText")}\n\n` +
     `${phoneLine}\n\n` +
     `${t("actionLine")}\n` +
-    `https://aitamara.com/signup\n\n` +
+    `https://aitamara.com/dashboard/billing\n\n` +
     `${t("footer")}\n\n` +
     t("signature");
   const html = `
@@ -270,7 +272,7 @@ export async function sendTrialDeletedEmail(
         ${t("actionLine")}
       </p>
       <p style="margin:0 0 24px;">
-        <a href="https://aitamara.com/signup" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
+        <a href="https://aitamara.com/dashboard/billing" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
           ${t("ctaButton")}
         </a>
       </p>

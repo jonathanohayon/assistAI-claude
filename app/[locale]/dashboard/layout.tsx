@@ -23,6 +23,7 @@ import {
   TRIAL_SECONDS_LIMIT,
   TRIAL_WARNING_BEFORE_END_MS,
 } from "@/lib/trial";
+import { TRIAL_END_COPY_VALUES } from "@/lib/trial-copy";
 
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { navBlocks } from "@/lib/dashboard-nav";
@@ -297,7 +298,7 @@ async function DashboardShell({
           >
             <span>
               {trial.expired ? (
-                t("trialExpired")
+                t("trialExpired", TRIAL_END_COPY_VALUES)
               ) : (
                 <>
                   {t("trialRemainingMessage", {
