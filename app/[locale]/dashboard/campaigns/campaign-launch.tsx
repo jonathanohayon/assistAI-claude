@@ -94,7 +94,7 @@ export function CampaignLaunch({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, asUserId, status]);
+  }, [campaignId, asUserId, status, dataFetch]);
 
   // Compteurs effectifs : frais si dispo, sinon la prop parente.
   const eff: Counts = counts ?? {

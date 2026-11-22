@@ -57,7 +57,7 @@ export function CampaignContactsList({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, asUserId, refreshKey]);
+  }, [campaignId, asUserId, refreshKey, dataFetch]);
 
   const statusLabel = (s: string) => {
     if (s === "queued") return t("detailQueued");

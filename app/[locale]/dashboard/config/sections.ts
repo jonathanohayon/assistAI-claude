@@ -8,20 +8,19 @@
 //   agent:     "Mon agent", the shared bricks (voice, persona, what the agent
 //              knows, what it can do) + the admin-only prompt tile + the live
 //              test;
-//   sales:     the campaigns tile (today's locked state, i.e. the upsell);
-//   connect:   "Votre agent": the tools tile, whose "Ask your agent" row
-//              holds the customer's agent address and its test.
+//   sales:     the campaigns tile (today's locked state, i.e. the upsell).
+// "Votre agent" has no section any more (F2): "Ask your agent" is its own
+// brick there (components/bricks/client-agent/ClientAgentBrick.tsx).
 // No section (undefined) = every tile and the overview, as before the menu.
 
 import { TILE_ROW_SIZE } from "./tile-size";
 
-export type ConfigSection = "reception" | "agent" | "sales" | "connect";
+export type ConfigSection = "reception" | "agent" | "sales";
 
 export const SECTION_TILES: Readonly<Record<ConfigSection, readonly string[]>> = {
   reception: ["notifs", "channels"],
   agent: ["voice", "persona", "business", "tools", "prompt"],
   sales: ["campaigns"],
-  connect: ["tools"],
 };
 
 /** Whether a tile shows in a section (no section = every tile). */
@@ -45,11 +44,6 @@ export function sectionShowsLiveTest(section: ConfigSection | undefined): boolea
 /** The save dock: not on a page whose only tile is a locked one (sales). */
 export function sectionShowsSaveDock(section: ConfigSection | undefined): boolean {
   return section !== "sales";
-}
-
-/** The tile a section opens on arrival when no ?tile= is given (connect: tools). */
-export function sectionDefaultTile(section: ConfigSection | undefined): string | null {
-  return section === "connect" ? "tools" : null;
 }
 
 /** The configuration grid (#370): the default columns per breakpoint. */

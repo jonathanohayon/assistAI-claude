@@ -31,7 +31,6 @@ import { productMenu, type ProductMenu } from "../../lib/product-menu";
 import {
   mergeSectionOrder,
   SECTION_TILES,
-  sectionDefaultTile,
   sectionGridClass,
   sectionTileSize,
   sectionShowsHero,
@@ -183,10 +182,12 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   assert.match(sales, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(sales, /const \{ isAdmin, enabled \} = await loadOutboundCampaignsAccess\(session\.user\.id\);/, "sales: the API's own gate");
   assert.match(sales, /const state = \(await loadAccountProductMenu\(session\.user\.id\)\)\.sales;/, "sales: its menu state");
-  assert.match(sales, /if \(!enabled\) \{\s*if \(header\) return <main[^>]*>\{header\}<\/main>;\s*return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: preview = its header; locked otherwise = today's tile");
+  assert.match(sales, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="sales" cta=\{state\.cta\} \/>\s*<SalesPreview \/>/, "sales: preview = its header + the sample workspace");
+  assert.match(sales, /if \(!enabled\) return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: locked otherwise = today's tile");
+  assert.match(sales, /<CampaignsPageClient isAdmin=\{isAdmin\} captureOn=\{captureMode\(\) === "on"\} \/>/, "sales owned: today's workspace");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   assert.match(connect, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
-  assert.match(connect, /if \(clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\) \{/, "connect: the Ask-your-agent row only where it is on");
+  assert.match(connect, /\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\) && <ClientAgentBrick \/>\}/, "connect: the Ask-your-agent brick only where it is on");
   for (const f of ["app/[locale]/dashboard/clients/page.tsx", "app/[locale]/dashboard/reception/forwarding/page.tsx", "app/[locale]/dashboard/settings/page.tsx", "app/[locale]/dashboard/billing/page.tsx"])
     assert.match(code(f), /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/, `${f}: signed-in`);
   const clients = code("app/[locale]/dashboard/clients/page.tsx");
@@ -200,10 +201,12 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   for (const [file, section] of [
     ["app/admin/users/[userId]/reception/page.tsx", "reception"],
     ["app/admin/users/[userId]/my-agent/page.tsx", "agent"],
-    ["app/admin/users/[userId]/agent/page.tsx", "connect"],
   ]) assert.match(code(file), new RegExp(`<AdminTenantConfigPage userId=\\{userId\\} section="${section}" />`), file);
   for (const f of ["app/admin/users/[userId]/sales/page.tsx", "app/admin/users/[userId]/calls/page.tsx", "app/admin/users/[userId]/finance/page.tsx", "app/admin/users/[userId]/clients/calendar-section.tsx", "app/admin/users/[userId]/clients/contacts-section.tsx", "app/admin/users/[userId]/layout.tsx"])
     assert.match(code(f), /await requireAdminPage\(\);/, `${f}: admin gate`);
+  const adminConnect = code("app/admin/users/[userId]/agent/page.tsx");
+  assert.match(adminConnect, /await requireAdminPage\(\);/, "admin Votre agent: admin gate");
+  assert.match(adminConnect, /<ClientAgentBrick asUserId=\{userId\} \/>/, "admin Votre agent: the brick, scoped to the tenant");
 }
 
 // ── 5. Config sections: the same form, each page its tiles ──────────────────
@@ -211,22 +214,20 @@ assert.deepEqual(SECTION_TILES, {
   reception: ["notifs", "channels"],
   agent: ["voice", "persona", "business", "tools", "prompt"],
   sales: ["campaigns"],
-  connect: ["tools"],
 });
-// Every tile of the form is somewhere; only tools (its "Ask your agent" row) is on two pages.
+// Every tile of the form is somewhere, each on ONE page (F2: "Ask your agent"
+// left the tools tile, so Tools is on Mon agent only).
 {
   const all = Object.values(SECTION_TILES).flat();
   assert.deepEqual([...new Set(all)].sort(), ["business", "campaigns", "channels", "notifs", "persona", "prompt", "tools", "voice"]);
-  assert.deepEqual(all.filter((x, i) => all.indexOf(x) !== i), ["tools"]);
+  assert.deepEqual(all.filter((x, i) => all.indexOf(x) !== i), []);
 }
 assert.equal(tileInSection("voice", undefined), true, "no section = every tile");
 assert.equal(tileInSection("voice", "reception"), false);
-assert.deepEqual([sectionShowsHero("reception"), sectionShowsHero("agent"), sectionShowsHero("sales"), sectionShowsHero("connect")], [true, false, false, false]);
-assert.deepEqual([sectionShowsLiveTest("reception"), sectionShowsLiveTest("agent"), sectionShowsLiveTest("sales"), sectionShowsLiveTest("connect")], [true, true, false, false]);
+assert.deepEqual([sectionShowsHero("reception"), sectionShowsHero("agent"), sectionShowsHero("sales")], [true, false, false]);
+assert.deepEqual([sectionShowsLiveTest("reception"), sectionShowsLiveTest("agent"), sectionShowsLiveTest("sales")], [true, true, false]);
 assert.equal(sectionShowsSaveDock("sales"), false);
 assert.equal(sectionShowsSaveDock("agent"), true);
-assert.equal(sectionDefaultTile("connect"), "tools");
-assert.equal(sectionDefaultTile("agent"), null);
 // A drag on one page keeps the other pages' tiles where they were.
 assert.deepEqual(mergeSectionOrder(["voice", "notifs", "business", "channels", "tools"], ["channels", "notifs"]), ["voice", "channels", "business", "notifs", "tools"]);
 assert.deepEqual(mergeSectionOrder(["voice", "business"], ["business", "voice"]), ["business", "voice"]);
@@ -239,14 +240,13 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.match(form, /\{sectionShowsLiveTest\(section\) && \(/);
 }
 
-// ── 5b. Preview product pages: their own header, no generic tile heading ──
+// ── 5b. Preview product pages: their own header, then the real screen over sample data (F2) ──
 {
   const reception = code("app/[locale]/dashboard/reception/page.tsx");
-  assert.match(reception, /gridHeading=\{false\}\s*before=\{<ProductPreviewHeader entry="reception" cta=\{state\.cta\} \/>\}/);
+  assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} \/>\s*<ReceptionPreview \/>/);
   assert.match(reception, /return <TenantConfigPage locale=\{locale\} section="reception" \/>;/, "owned: today's layout");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(connect, /state\.state === "preview" \? \(\s*<ProductPreviewHeader entry="connect" cta=\{state\.cta\} \/>/);
-  assert.match(connect, /gridHeading=\{state\.state === "owned"\}/);
+  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} \/>\s*<ConnectPreview \/>/);
   const form = code("app/[locale]/dashboard/config-form.tsx");
   assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);
@@ -260,15 +260,27 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
       assert.ok(soon.includes(`<h1`) && soon.includes(m.DashboardNav[entry]), `${locale}/${entry}: the product name is the title`);
       const pitch = m.DashboardNav[`pitch${entry[0].toUpperCase()}${entry.slice(1)}`];
       assert.ok(typeof pitch === "string" && soon.includes(pitch.replace(/'/g, "&#x27;")), `${locale}/${entry}: one sentence on what it does`);
-      assert.ok(soon.includes(m.DashboardNav.previewSoon), `${locale}/${entry}: "coming soon"`);
-      assert.ok(!soon.includes(m.DashboardSetup.contactsLockedCta.replace(/'/g, "&#x27;")), `${locale}/${entry}: no upsell while soon`);
+      const q = (x: string) => x.replace(/'/g, "&#x27;");
+      // ONE button per state (F2): "soon" → notify me (local only); "try" → try it free.
+      assert.ok(soon.includes(q(m.DashboardNav.previewNotify)), `${locale}/${entry}: "notify me"`);
+      assert.ok(!soon.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: no "try" while soon`);
+      assert.ok(!soon.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: the confirmation only after the click`);
+      assert.match(soon, /role="status" aria-live="polite"/, `${locale}/${entry}: the confirmation is announced`);
+      assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (soon)`);
       const tryIt = render(locale, entry, "try");
-      assert.ok(tryIt.includes(m.DashboardSetup.contactsLockedCta.replace(/'/g, "&#x27;")), `${locale}/${entry}: the existing upsell button`);
-      assert.ok(!tryIt.includes(m.DashboardNav.previewSoon));
+      assert.ok(tryIt.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: "try it free"`);
+      assert.ok(!tryIt.includes(q(m.DashboardNav.previewNotify)));
+      assert.equal((tryIt.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (try)`);
+      if (entry !== "sales") assert.match(tryIt, /href="\/(fr|en|he)?\/?dashboard\/billing"|href="\/dashboard\/billing"/, `${locale}/${entry}: try → the subscription page`);
       assert.ok(!soon.includes(m.DashboardConfig.wowTileHintIdle), "no generic tile heading in the header");
     }
   }
-  assert.equal(JSON.parse(read("messages/fr.json")).DashboardNav.previewSoon, "Bientôt disponible.");
+  const fr = JSON.parse(read("messages/fr.json")).DashboardNav;
+  assert.deepEqual([fr.previewTry, fr.previewNotify, fr.previewNotified, fr.previewBadge], ["Essayer gratuitement", "Bientôt, prévenez-moi", "Nous vous préviendrons.", "Aperçu"]);
+  // No notify-me endpoint yet: the click stores nothing and sends nothing.
+  const hdrSrc = read("components/dashboard/ProductPreviewHeader.tsx");
+  assert.doesNotMatch(hdrSrc, /fetch\(|localStorage|sessionStorage|sendBeacon/, "notify me: local confirmation only");
+  assert.match(hdrSrc, /onClick=\{\(\) => setNotified\(true\)\}/);
   const hdr = code("components/dashboard/ProductPreviewHeader.tsx");
   assert.match(hdr, /entry === "sales" \? \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
   assert.match(hdr, /<Link href="\/dashboard\/billing"/, "other products: the subscription page");

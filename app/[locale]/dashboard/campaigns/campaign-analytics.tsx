@@ -135,7 +135,7 @@ export function CampaignAnalytics({
     } finally {
       setLoading(false);
     }
-  }, [campaignId, asUserId]);
+  }, [campaignId, asUserId, dataFetch]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";

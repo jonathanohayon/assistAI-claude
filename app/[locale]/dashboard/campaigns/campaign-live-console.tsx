@@ -151,7 +151,7 @@ export function CampaignLiveConsole({
       ctrl?.abort();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [campaignId]);
+  }, [campaignId, dataFetch]);
 
   // Local 1 s clock so call durations tick between polls.
   useEffect(() => {

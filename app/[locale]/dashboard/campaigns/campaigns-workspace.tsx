@@ -12,7 +12,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
-import { useDataFetch } from "@/components/preview/preview-context";
+import { useDataFetch, useIsPreview } from "@/components/preview/preview-context";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -103,6 +103,8 @@ export function CampaignsWorkspace({
   const t = useTranslations("DashboardCampaigns");
   // Preview (F2): the sample source instead of the network.
   const dataFetch = useDataFetch();
+  // Read-only: no write button, inputs disabled, no auto-save between steps.
+  const preview = useIsPreview();
   const tMission = useTranslations("MissionBrick");
   // Agents sortants du tenant (pour le sélecteur d'agent de l'étape Setup).
   const [agents, setAgents] = useState<OutboundAgentListItem[]>([]);
@@ -170,7 +172,7 @@ export function CampaignsWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [capsAgentId, asUserId]);
+  }, [capsAgentId, asUserId, dataFetch]);
   const capabilities = agentCaps && agentCaps.agentId === draft.agentId ? agentCaps.caps : null;
 
   // setState uniquement après await → pas de setState synchrone (lint
@@ -188,7 +190,7 @@ export function CampaignsWorkspace({
     } finally {
       setLoading(false);
     }
-  }, [qs, t]);
+  }, [qs, t, dataFetch]);
 
   // Charge la liste + les numéros caller-id à l'ouverture. Fetches inline en
   // .then (setState seulement dans les callbacks async, gardés par `cancelled`)
@@ -235,7 +237,7 @@ export function CampaignsWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [open, qs, t]);
+  }, [open, qs, t, dataFetch]);
 
   const openNew = () => {
     setDraft(emptyDraft(t("newCampaign")));
@@ -276,7 +278,7 @@ export function CampaignsWorkspace({
   // when the save succeeded (errors, incl. pause_to_edit, keep the user here).
   const goTo = async (next: EditorTab) => {
     if (next === tab) return;
-    if (tab === "setup" && draft.id) {
+    if (tab === "setup" && draft.id && !preview) {
       const ok = await save();
       if (!ok) return;
     }
@@ -499,7 +501,7 @@ export function CampaignsWorkspace({
                   </svg>
                 </button>
               )}
-              {view === "editor" && savedCampaign && draft.id && (
+              {view === "editor" && savedCampaign && draft.id && !preview && (
                 <button
                   onClick={() =>
                     deleteCampaign({ id: draft.id!, name: draft.name })
@@ -513,6 +515,7 @@ export function CampaignsWorkspace({
                   </svg>
                 </button>
               )}
+              {!preview && (
               <button
                 onClick={onClose}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white"
@@ -522,6 +525,7 @@ export function CampaignsWorkspace({
                   <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </button>
+              )}
             </div>
 
             {/* Stepper 1·2·3 — rend les 3 étapes explicites (numéro, libellé,
@@ -618,6 +622,8 @@ export function CampaignsWorkspace({
               />
             )}
 
+            {/* Preview: every field and button of the steps is disabled (one fieldset). */}
+            <fieldset disabled={preview} className="m-0 min-w-0 border-0 p-0">
             {view === "editor" && tab === "setup" && (
               <CampaignSetupStep
                 draft={draft}
@@ -666,8 +672,10 @@ export function CampaignsWorkspace({
               />
             )}
 
-            {/* Admin-only live console: renders nothing on 403 (tenants). */}
-            {view === "editor" && tab === "launch" && draft.id && activeStatus !== "draft" && (
+            </fieldset>
+
+            {/* Admin-only live console: renders nothing on 403 (tenants); never in a preview. */}
+            {view === "editor" && tab === "launch" && draft.id && activeStatus !== "draft" && !preview && (
               <div className="mt-4">
                 <CampaignLiveConsole
                   key={`${draft.id}:${savedRev}`}
@@ -701,7 +709,7 @@ export function CampaignsWorkspace({
               <div className="flex shrink-0 items-center gap-2">
                 <button
                   onClick={() => void save()}
-                  disabled={saving}
+                  disabled={saving || preview}
                   className={`rounded-xl px-5 py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-60 ${
                     justSaved
                       ? "border border-[#e2e8f0] bg-white text-[#64748b] hover:bg-[#f8fafc]"
