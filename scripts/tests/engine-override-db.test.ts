@@ -111,7 +111,20 @@ async function main() {
     assert.deepEqual(r.body.engineOptions.sales.honoured, { openai: { engine: true, models: "any" }, gemini: { engine: false, models: [] }, xai: { engine: false, models: [] } });
     assert.deepEqual(r.body.engineOptions.reception.honoured.xai, { engine: true, models: [REALTIME_PROVIDER_MODEL.xai] });
     const xaiDefault = r.body.engineOptions.reception.options.find((o: { engine: string; model: string | null }) => o.engine === "xai" && o.model === null);
-    assert.deepEqual(xaiDefault, { engine: "xai", model: null, honoured: true, languages: ["fr", "en"] }, "language coverage per option");
+    assert.deepEqual(xaiDefault, { engine: "xai", model: null, honoured: true, languages: ["fr", "en"], costPerMinUsd: 0.08 }, "language coverage + cost per option");
+    // Additive: the options minus costPerMinUsd are the pre-change output, byte for byte.
+    const { engineOptionCoverage } = await import("../../lib/engine-override");
+    const { honouredOptions } = await import("../../lib/engine-resolve");
+    const { getEngineLanguages } = await import("../../lib/engine-languages-storage");
+    const langs = await getEngineLanguages();
+    const strip = (x: Record<string, { honoured: unknown; options: Array<Record<string, unknown>> }>) =>
+      Object.fromEntries(Object.entries(x).map(([p, v]) => [p, { honoured: v.honoured, options: v.options.map(({ costPerMinUsd: _c, ...rest }) => rest) }]));
+    const old = Object.fromEntries(Object.keys(r.body.engineOptions).map((p) => [p, { honoured: honouredOptions(p as never), options: engineOptionCoverage(p as never, langs) }]));
+    assert.equal(JSON.stringify(strip(r.body.engineOptions)), JSON.stringify(old), "engineOptions minus costPerMinUsd = the old output");
+    const { DEFAULT_COST_RATES } = await import("../../lib/finance/rates");
+    const opts = r.body.engineOptions.reception.options as Array<{ engine: string; model: string | null; costPerMinUsd: number | null }>;
+    assert.ok(opts.filter((o) => o.engine === "openai").every((o) => o.costPerMinUsd === DEFAULT_COST_RATES.openaiUsdPerMinute), "openai: flat placeholder");
+    assert.ok(opts.filter((o) => o.engine === "gemini").every((o) => o.costPerMinUsd === null), "gemini: null");
     assert.ok(r.body.engineOptions.connect.options.every((o: { honoured: boolean }) => !o.honoured));
   }
   // Admin sets the reception override.
@@ -192,6 +205,13 @@ async function main() {
     const c = (await banner(ADMIN, C)).body.products[0];
     assert.deepEqual(c.resolved, { engine: "xai", model: REALTIME_PROVIDER_MODEL.xai, source: "product" });
     assert.equal(c.ignored, undefined);
+    // The banner and the catalogue give the SAME number for the same engine/model.
+    const catOpts = (await cat(ADMIN, "GET")).body.engineOptions;
+    const recXai = catOpts.reception.options.find((o: { engine: string; model: string | null }) => o.engine === "xai" && o.model === null);
+    assert.equal(c.costPerMinUsd, recXai.costPerMinUsd, "reception xai: banner = catalogue");
+    const salesOpt = catOpts.sales.options.find((o: { engine: string; model: string | null }) => o.engine === "openai" && o.model === "gpt-realtime-2.1");
+    const aSales = (await banner(ADMIN, A)).body.products[1];
+    assert.equal(aSales.costPerMinUsd, salesOpt.costPerMinUsd, "sales openai 2.1: banner = catalogue");
     const a = (await banner(ADMIN, A)).body.products;
     assert.deepEqual(a[0].resolved.source, "client", "reception_multi: client set, no override for it anyway");
     assert.deepEqual(a[1].resolved, { engine: "openai", model: "gpt-realtime-2.1", source: "product" });

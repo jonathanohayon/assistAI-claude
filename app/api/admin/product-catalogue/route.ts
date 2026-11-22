@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/api/auth-guards";
-import { engineOptionCoverage } from "@/lib/engine-override";
+import { engineOptionCoverage, withOptionCosts } from "@/lib/engine-override";
 import { honouredOptions } from "@/lib/engine-resolve";
 import { getEngineLanguages } from "@/lib/engine-languages-storage";
+import { getCostRates } from "@/lib/finance/rates-storage";
 import { logEvent } from "@/lib/logger";
 import { catalogueRowWrite } from "@/lib/product-catalogue-row";
 import { PRODUCTS } from "@/lib/product-values";
@@ -17,11 +18,16 @@ import { getCatalogueRow, setProductCatalogue } from "@/lib/products";
 // GET /api/public/plan-pricing under `products` (prices only, never the
 // override); the worker never receives this row.
 
-/** Per product: what the worker honours + every option with its languages (the form disables / warns). */
+/**
+ * Per product: what the worker honours + every option with its languages
+ * (the form disables / warns) and its costPerMinUsd, from the SAME stored
+ * rates and function as the tenant engine banner (lib/engine-override.ts
+ * withOptionCosts → perMinuteUsdFor).
+ */
 async function engineOptions() {
-  const languages = await getEngineLanguages();
+  const [languages, rates] = await Promise.all([getEngineLanguages(), getCostRates()]);
   return Object.fromEntries(
-    PRODUCTS.map((p) => [p, { honoured: honouredOptions(p), options: engineOptionCoverage(p, languages) }]),
+    PRODUCTS.map((p) => [p, { honoured: honouredOptions(p), options: withOptionCosts(engineOptionCoverage(p, languages), rates) }]),
   );
 }
 
