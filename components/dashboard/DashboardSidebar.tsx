@@ -89,7 +89,7 @@ function NavList({
     <div className="space-y-6">
       {blocks.map((block) => (
         <div key={block.id}>
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-widest text-[#64748b] rtl:tracking-normal">
             {t(block.id === "products" ? "blockProducts" : "blockShared")}
           </p>
           <ul className="mt-2 space-y-1">
