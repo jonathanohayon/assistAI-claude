@@ -64,6 +64,11 @@ export async function provisionTenant(input: ProvisionTenantInput) {
       emailVerified,
       locale,
       door: input.door ?? null,
+      // TODO(P3, per-product trials): set users.products from the door here
+      // (reception → {base:"reception"}, sales → {base:"sales"}, connect →
+      // {base:"connect"}, addons []). Not in P1 on purpose: a record would
+      // override the trial rule (trialing → reception_multi), so products
+      // stays NULL for every sign-up until per-product trials exist.
     })
     .returning();
 
