@@ -17,16 +17,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-TMP=".tmp/engine-override-${PORT}"
-DIR="$TMP/pg"
-BASE="postgres://postgres@127.0.0.1:${PORT}"
-URL="$BASE/postgres"
-HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
-DIFF="scripts/tests/fixtures/engine-override/payload-diff.mjs"
-rm -rf "$TMP" && mkdir -p "$TMP/work"
-initdb -D "$DIR" -A trust -U postgres >/dev/null
-pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
+pg_layout() {
+  TMP=".tmp/engine-override-${PORT}"
+  DIR="$TMP/pg"
+  PGLOG="$TMP/pg.log"
+  BASE="postgres://postgres@127.0.0.1:${PORT}"
+  URL="$BASE/postgres"
+  HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
+  DIFF="scripts/tests/fixtures/engine-override/payload-diff.mjs"
+  rm -rf "$TMP" && mkdir -p "$TMP/work"
+}
+pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
+pg_start_throwaway engine-override
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 
