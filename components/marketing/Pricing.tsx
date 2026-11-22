@@ -14,8 +14,9 @@ import {
 } from "@/components/plans/PlanCard";
 import { PricingComparison } from "@/components/marketing/PricingComparison";
 import { PUBLIC_PLANS } from "@/lib/plans";
+import { ProductPricing } from "@/components/marketing/ProductPricing";
 import { type PlanPricingMap } from "@/lib/plan-pricing";
-import { fetchPublicPlanPricing } from "@/lib/public-plan-pricing";
+import { fetchPublicPricing, pricingView, type PublicPricing } from "@/lib/pricing-grid";
 import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 
 function BillingToggle({
@@ -168,20 +169,24 @@ function CurrencyDropdown({
 // The landing is prerendered, so the grid is fetched on the client
 // (GET /api/public/plan-pricing). Until it arrives, or if it fails, the cards
 // show a placeholder: the page never displays the hard-coded defaults.
-function usePublicPlanPricing(): PlanPricingMap | null {
-  const [pricing, setPricing] = useState<PlanPricingMap | null>(null);
+// The same single fetch says which section to show (lib/pricing-grid.ts):
+// today's plan cards below ("legacy", also while loading or on failure), or
+// the product grid (ProductPricing) once new orders are sold.
+function usePublicPricing(): PublicPricing | null {
+  const [data, setData] = useState<PublicPricing | null>(null);
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchPublicPlanPricing(fetch, ctrl.signal).then((p) => {
-      if (!ctrl.signal.aborted && p) setPricing(p);
+    fetchPublicPricing(fetch, ctrl.signal).then((p) => {
+      if (!ctrl.signal.aborted && p) setData(p);
     });
     return () => ctrl.abort();
   }, []);
-  return pricing;
+  return data;
 }
 
 export function Pricing() {
-  const pricing = usePublicPlanPricing();
+  const data = usePublicPricing();
+  const pricing: PlanPricingMap | null = data?.plans ?? null;
   const t = useTranslations("Pricing");
   const tCard = useTranslations("Pricing.card");
   const locale = useLocale();
@@ -190,6 +195,10 @@ export function Pricing() {
   // L'utilisateur peut toujours changer via le dropdown.
   const [currency, setCurrency] = useState<Currency>(landingCurrencyFor(locale));
   const rates = useExchangeRates();
+
+  if (data && pricingView(data) === "products") {
+    return <ProductPricing catalogue={data.products} available={data.available} />;
+  }
 
   return (
     <section
