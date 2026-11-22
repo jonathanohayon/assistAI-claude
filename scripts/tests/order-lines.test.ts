@@ -228,7 +228,12 @@ const ALL_ON = { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" };
   assert.equal(Object.keys(invoiceLines(null)).length, 0);
   assert.deepEqual(selectionOf(lines), { base: "reception", addons: ["sales"] });
   assert.equal(orderInfo("fr", "Réceptionniste", lines), "Réceptionniste +1 option + dépassement (mensuel)");
-  assert.equal(orderInfo("en", "Receptionist", [{ ...lines[0], period: "annual" }, lines[1], { ...lines[1], product: "connect" }]), "Receptionist +2 add-ons (annual)");
+  const annualBasket: OrderLine[] = [
+    { kind: "base", product: "reception", period: "annual", amount: 890 },
+    { kind: "addon", product: "sales", period: "annual", amount: 990 },
+    { kind: "addon", product: "connect", period: "annual", amount: 390 },
+  ];
+  assert.equal(orderInfo("en", "Receptionist", annualBasket), "Receptionist +2 add-ons (annual)");
   assert.equal(orderInfo("he", "פקידת קבלה", [lines[0]]), "פקידת קבלה (חודשי)");
   assert.ok(orderInfo("fr", "x".repeat(300), lines).length <= 160);
 }

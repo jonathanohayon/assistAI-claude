@@ -9,5 +9,4 @@ export class Resend {
       return { data: { id: `mock-${g.__sentEmails.length}` }, error: null };
     },
   };
-  constructor(_key?: string) {}
 }

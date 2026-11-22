@@ -115,8 +115,10 @@ export async function captureLegacy(): Promise<Record<string, Json>> {
     const st = await stats.GET(new NextRequest("http://localhost/api/dashboard/billing-stats"));
     const stText = await st.text();
 
-    const { xmin: _ux, ...userAfterCols } = userAfter;
-    const { xmin: _ox, ...orderAfterCols } = orderAfter;
+    const userAfterCols = { ...userAfter };
+    delete userAfterCols.xmin;
+    const orderAfterCols = { ...orderAfter };
+    delete orderAfterCols.xmin;
     out[`${c.body.plan}/${c.body.period}/${c.body.locale}`] = normalize(
       {
         createStatus: res.status,

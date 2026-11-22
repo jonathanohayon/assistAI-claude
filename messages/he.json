@@ -1892,7 +1892,7 @@
       "ctaButton": "למעבר ללוח הבקרה",
       "footer": "אימייל זה הוא אישור תשלום. ניתן לנהל את המנוי בכל עת מלוח הבקרה.",
       "signature": "— צוות Tamara",
-      "linesHeading": "ההזמנה שלך",
+      "linesHeading": "פרטי ההזמנה",
       "addonLine": "{product} (תוספת)",
       "overageLine": "חריגה {product} — {minutes} דק׳"
     },
