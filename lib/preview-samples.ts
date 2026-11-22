@@ -114,7 +114,7 @@ const STATS: readonly CampaignStats[] = [
   { total: 40, queued: 40, inFlight: 0, done: 0, connected: 0, conversion: 0 },
 ];
 const STATUSES = ["running", "completed", "paused"] as const;
-const PRESETS = ["follow_up", "marketing", "book_for_seller"] as const;
+const PRESETS = ["cold", "marketing", "custom"] as const;
 
 export function previewCampaigns(lang: unknown): CampaignListItem[] {
   const l = previewLang(lang);

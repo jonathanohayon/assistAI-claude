@@ -197,9 +197,18 @@ async function main() {
 
 // ── 2c. Everything a preview reaches: no request path, no session ───────────
 {
-  const BARE_FETCH = /(?<![A-Za-z_.$])fetch\(/g;
-  // The only fetch calls a preview's code contains, each with the guard that keeps it off in preview.
+  // Any use of the GLOBAL fetch in code (a call, or passed / defaulted as a
+  // value), comments stripped; not `typeof fetch`, an object key or `.fetch`.
+  // (The first rendered run found one this missed as a call-only pattern: the
+  // developer-mode store's `f: Fetch = fetch` default, reached from the
+  // campaign editor; now fed with the sample source.)
+  const BARE_FETCH = /(?<![A-Za-z_.$/-])(?<!typeof )fetch\b(?![\s]*:|["'-])/g;
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\s\/\/ .*$/gm, "");
+  // The only fetch uses a preview's code contains, each with the guard that keeps it off in preview.
   const GUARDED: Record<string, RegExp[]> = {
+    // Defaults only: the one caller (the hook below) always passes the data source.
+    "components/bricks/developer-mode-store.ts": [/export function loadDeveloperMode\(asUserId\?: string \| null, f: Fetch = fetch\)/, /enabled: boolean,\s*f: Fetch = fetch,\s*\): Promise<boolean>/],
+    "components/bricks/use-developer-mode.ts": [/const dataFetch = useDataFetch\(\);[\s\S]*?void loadDeveloperMode\(asUserId, dataFetch\);[\s\S]*?setDeveloperMode\(asUserId, enabled, dataFetch\)/],
     "components/preview/preview-context.tsx": [/const browserFetch: typeof fetch = \(input, init\) => fetch\(input, init\);/],
     "components/bricks/client-agent/ClientAgentBrick.tsx": [
       /useEffect\(\(\) => \{\s*if \(preview\) return;[\s\S]{0,200}?fetch\(`\/api\/dashboard\/tools\$\{qs\}`/,
@@ -213,12 +222,13 @@ async function main() {
     for (const abs of clientFiles) {
       const f = abs.replace(ROOT, "");
       const src = readFileSync(abs, "utf8");
-      const n = (src.match(BARE_FETCH) ?? []).length;
+      const codeOnly = strip(src);
+      const n = (codeOnly.match(BARE_FETCH) ?? []).length;
       if (GUARDED[f]) {
-        assert.equal(n, GUARDED[f].length, `${f}: exactly the guarded fetch calls`);
+        // use-developer-mode has no global fetch at all: its guard is that it passes the sample source.
+        assert.equal(n, f.endsWith("use-developer-mode.ts") ? 0 : GUARDED[f].length, `${f}: exactly the guarded fetch uses`);
         for (const re of GUARDED[f]) assert.match(src, re, `${f}: guard`);
-      } else assert.equal(n, 0, `${entry} reaches ${f}, which calls fetch outside the sample source`);
-      const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\s\/\/ .*$/gm, "");
+      } else assert.equal(n, 0, `${entry} reaches ${f}, which uses fetch outside the sample source`);
       assert.doesNotMatch(codeOnly, /new (WebSocket|EventSource|XMLHttpRequest)\b|sendBeacon|getUserMedia|livekit|LiveTestPanelLK|live-test\//i, `${entry} reaches ${f}: no session or socket code`);
     }
   }
