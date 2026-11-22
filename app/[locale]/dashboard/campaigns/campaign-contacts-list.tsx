@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { useDataFetch } from "@/components/preview/preview-context";
+
 type Contact = {
   id: string;
   phoneNumber: string;
@@ -34,13 +36,15 @@ export function CampaignContactsList({
   refreshKey: number;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
-    fetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
+    dataFetch(`/api/dashboard/campaigns/${campaignId}${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
       .then((data: { contacts?: Contact[] }) => {
         if (cancelled) return;
@@ -53,7 +57,7 @@ export function CampaignContactsList({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, asUserId, refreshKey]);
+  }, [campaignId, asUserId, refreshKey, dataFetch]);
 
   const statusLabel = (s: string) => {
     if (s === "queued") return t("detailQueued");

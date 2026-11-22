@@ -3,9 +3,14 @@
 /**
  * The header of a product page the account does NOT own (lib/product-menu.ts
  * "preview"): the product's name as the page title, one plain sentence on
- * what it does, then either "Coming soon." (cta "soon") or the existing upsell
- * button (cta "try"): for Sales, the campaigns upsell modal; for the other
- * products, the subscription page. Owned pages never render it.
+ * what it does, then:
+ *   - cta "try":  ONE button, "Essayer gratuitement", to the existing upsell
+ *     path: for Sales, the campaigns upsell modal; for the other products,
+ *     the subscription page. (F4 wires it to per-product trials.)
+ *   - cta "soon": the plain line "Bientôt disponible." and NO button: there
+ *     is no notify-me endpoint yet, and we don't promise what we can't keep.
+ * The page shows the product's real screen over sample data below it.
+ * Owned pages never render it.
  */
 
 import { useState } from "react";
@@ -23,11 +28,10 @@ const PITCH_KEY: Record<ProductEntry, "pitchReception" | "pitchSales" | "pitchCo
 };
 
 const BUTTON =
-  "inline-flex items-center rounded-full bg-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#9d174d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2";
+  "inline-flex min-h-11 items-center rounded-full bg-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#9d174d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2";
 
 export function ProductPreviewHeader({ entry, cta }: { entry: ProductEntry; cta: ProductCta }) {
   const t = useTranslations("DashboardNav");
-  const tSetup = useTranslations("DashboardSetup");
   const [upsellOpen, setUpsellOpen] = useState(false);
   return (
     <header className="mb-8" data-preview={cta}>
@@ -36,16 +40,18 @@ export function ProductPreviewHeader({ entry, cta }: { entry: ProductEntry; cta:
       {cta === "soon" ? (
         <p className="mt-4 text-sm font-semibold text-[#9d174d]">{t("previewSoon")}</p>
       ) : entry === "sales" ? (
-        <>
-          <button type="button" className={`mt-5 ${BUTTON}`} onClick={() => setUpsellOpen(true)}>
-            {tSetup("contactsLockedCta")}
+        <div className="mt-5">
+          <button type="button" className={BUTTON} onClick={() => setUpsellOpen(true)}>
+            {t("previewTry")}
           </button>
           <UpsellModal open={upsellOpen} onClose={() => setUpsellOpen(false)} />
-        </>
+        </div>
       ) : (
-        <Link href="/dashboard/billing" className={`mt-5 ${BUTTON}`}>
-          {tSetup("contactsLockedCta")}
-        </Link>
+        <div className="mt-5">
+          <Link href="/dashboard/billing" className={BUTTON}>
+            {t("previewTry")}
+          </Link>
+        </div>
       )}
     </header>
   );

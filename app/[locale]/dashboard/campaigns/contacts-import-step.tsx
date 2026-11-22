@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { useDataFetch } from "@/components/preview/preview-context";
+
 import { validateContacts, type RawContact } from "@/lib/campaigns/validate";
 
 import { Chip, Field, inputCls } from "./_ui";
@@ -89,6 +91,8 @@ export function ContactsImportStep({
   onAdded: (inserted: number) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const [tab, setTab] = useState<Tab>("paste");
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -133,7 +137,7 @@ export function ContactsImportStep({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/import${qs}`,
         { method: "POST", body: fd },
       );
@@ -154,7 +158,7 @@ export function ContactsImportStep({
     setParseError(null);
     setParsed(null);
     try {
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/import${qs}`,
         {
           method: "POST",
@@ -186,7 +190,7 @@ export function ContactsImportStep({
     setBusy(true);
     setResult(null);
     try {
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/contacts${qs}`,
         {
           method: "POST",

@@ -40,7 +40,6 @@ import { outboundPlanName } from "@/lib/outbound-plan";
 import { gridTiles } from "./config/tile-grid";
 import {
   mergeSectionOrder,
-  sectionDefaultTile,
   sectionGridClass,
   sectionTileSize,
   sectionShowsHero,
@@ -89,10 +88,7 @@ import { KnowledgeBrick } from "@/components/bricks/knowledge/KnowledgeBrick";
 import { ToolsBrick } from "@/components/bricks/tools/ToolsBrick";
 import {
   activeCount,
-  clientAgentRowVisible,
-  clientAgentSaveRefusal,
   toolsSaveBody,
-  type ClientAgentRefusal,
   type ScreenTools as Tools,
   type ToolsResponse,
 } from "@/components/bricks/tools/tools-ui";
@@ -188,8 +184,6 @@ export function ConfigForm({
   const [toolsServed, setToolsServed] = useState<ToolsResponse | null>(null);
   const [tools, setTools] = useState<Tools | null>(null);
   const [toolsBase, setToolsBase] = useState<Tools | null>(null);
-  // "Ask your agent": the last save refused for it, shown next to its row.
-  const [clientAgentRefused, setClientAgentRefused] = useState<ClientAgentRefusal | null>(null);
   // The owner WhatsApp number as last loaded/saved: the WhatsApp test only
   // goes to the saved number, so its Test button compares against this.
   const [ownerWhatsappBase, setOwnerWhatsappBase] = useState(initial.ownerWhatsapp);
@@ -232,7 +226,7 @@ export function ConfigForm({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
   const [isPending, startTransition] = useTransition();
-  const [activeTile, setActiveTile] = useState<string | null>(() => sectionDefaultTile(section));
+  const [activeTile, setActiveTile] = useState<string | null>(null);
   // On phones the tile grid fills the screen, so the panel opens below the
   // fold and a tap looks like it did nothing. Bring the panel into view when
   // its top is off-screen; on desktop it opens in view, so nothing moves.
@@ -441,10 +435,9 @@ export function ConfigForm({
 
       // 2. The agent's switches (tools), when they changed.
       if (tools && toolsBase) {
-        // Carries clientAgent.enabled whenever clientAgent is touched; the
-        // secret only once generated or removed.
+        // "Ask your agent" is its own brick (Votre agent, F2): this screen
+        // never touches clientAgent, so it is never in this body.
         const tchanges = toolsSaveBody(toolsBase, tools);
-        setClientAgentRefused(null);
         if (Object.keys(tchanges).length > 0) {
           const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
           const tres = await fetch(`/api/dashboard/tools${qs}`, {
@@ -454,13 +447,6 @@ export function ConfigForm({
           });
           const tdata = (await tres.json().catch(() => null)) as ToolsResponse | null;
           if (!tres.ok || !tdata?.tools) {
-            // Refused for "Ask your agent": our words next to its row, the
-            // unsaved values (a generated secret included) kept on screen.
-            const caRefusal = clientAgentSaveRefusal(tres.status, tdata);
-            if (caRefusal) {
-              setClientAgentRefused(caRefusal);
-              setActiveTile("tools");
-            }
             setError(tTools("saveError"));
             return;
           }
@@ -609,7 +595,7 @@ export function ConfigForm({
       label: tTools("tileLabel"),
       tagline: tTools("tileTagline"),
       summary: toolsServed
-        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities, "inbound", clientAgentRowVisible("inbound", toolsServed)) })
+        ? tTools("tileSummary", { n: activeCount(toolsServed.capabilities, "inbound") })
         : "—",
       accent: "from-[#0e7490] to-[#155e75]",
       icon: (
@@ -963,9 +949,8 @@ export function ConfigForm({
                           if (tileInSection("notifs", section)) setActiveTile("notifs");
                           else router.push(asUserId ? `/admin/users/${asUserId}/reception?tile=notifs` : `/${locale}/dashboard/reception?tile=notifs`);
                         }}
-                        returnTo={section === "connect" ? "/dashboard/agent?tile=tools" : "/dashboard/my-agent?tile=tools"}
+                        returnTo="/dashboard/my-agent?tile=tools"
                         asUserId={asUserId ?? null}
-                        clientAgentRefused={clientAgentRefused}
                       />
                     ) : (
                       <p className="text-sm text-[#475569]" aria-busy="true">

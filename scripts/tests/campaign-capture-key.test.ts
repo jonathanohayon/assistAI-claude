@@ -352,7 +352,7 @@ for (const l of LOCALES) {
 {
   const ws = read("app/[locale]/dashboard/campaigns/campaigns-workspace.tsx");
   const save = ws.slice(ws.indexOf("const save = async"));
-  assert.ok(save.indexOf("unlabeledCaptureRows(") > 0 && save.indexOf("unlabeledCaptureRows(") < save.indexOf("fetch("), "checked before the fetch");
+  assert.ok(save.indexOf("unlabeledCaptureRows(") > 0 && save.indexOf("unlabeledCaptureRows(") < save.indexOf("dataFetch("), "checked before the fetch");
   const src = read("app/[locale]/dashboard/campaigns/capture-fields-editor.tsx");
   assert.match(src, /data-capture-label\]\[aria-invalid="true"\]'\)\?\.focus\(\)/, "focus moves to the marked label input");
 }

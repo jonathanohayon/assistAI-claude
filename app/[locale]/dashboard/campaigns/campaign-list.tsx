@@ -3,6 +3,8 @@
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 
+import { useIsPreview } from "@/components/preview/preview-context";
+
 import { GOAL_PRESETS, type GoalPreset } from "@/lib/campaigns/constants";
 import type { CampaignListItem } from "@/lib/campaigns/types";
 
@@ -37,6 +39,8 @@ export function CampaignList({
   onAnalytics: (c: CampaignListItem) => void;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): "new campaign" disabled, no delete; opening and results stay.
+  const preview = useIsPreview();
 
   return (
     <div>
@@ -47,7 +51,8 @@ export function CampaignList({
         <button
           type="button"
           onClick={onCreate}
-          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-md transition hover:scale-[1.03] hover:shadow-lg active:scale-95"
+          disabled={preview}
+          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#c2410c] to-[#db2777] px-4 py-2 text-[13px] font-bold text-white shadow-md transition hover:scale-[1.03] hover:shadow-lg active:scale-95 disabled:pointer-events-none disabled:opacity-60"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 transition-transform group-hover:rotate-90">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3 w-3">
@@ -96,7 +101,7 @@ export function CampaignList({
           </button>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {campaigns.map((c, i) => (
             <motion.div
               key={c.id}
@@ -146,6 +151,7 @@ export function CampaignList({
                       <path d="M3 3v18h18M7 14l3-3 3 3 5-6" />
                     </svg>
                   </button>
+                  {!preview && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -160,6 +166,7 @@ export function CampaignList({
                       <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6" />
                     </svg>
                   </button>
+                  )}
                 </div>
               </div>
 
