@@ -147,40 +147,53 @@ export type CostRatesWrite =
 
 /**
  * The PUT /api/admin/cost-rates write, from the RAW parsed body (`{ rates }`
- * or the rates object itself, as today).
- *   - The historic numeric keys go through normalizeCostRates EXACTLY as
- *     before (an absent or invalid key → its default; see the KNOWN BUG
- *     marker in scripts/tests/engine-rates.test.ts).
+ * or the rates object itself, as today). A PARTIAL update over `stored`:
+ *   - Historic numeric keys: OMITTED → the stored value, unchanged. Present →
+ *     must be what the historic coercion accepts (a finite number >= 0, or a
+ *     numeric string); anything else (negative, NaN, null, boolean, "",
+ *     object…) → refused naming every bad key, nothing written. Unknown keys
+ *     are ignored, as before.
  *   - perMinuteUsd: OMITTED → the stored value, unchanged. Present → a
  *     partial patch { engine: { model | "*": number ≥ 0 | null } } merged
  *     onto the stored value (null removes the entry). Any unknown engine,
  *     bad model id or bad amount → refused naming every path, nothing written.
+ *   - A body that is not an object (or whose `rates` is not one) → refused
+ *     (fields ["rates"]). `{}` / `{ rates: {} }` → accepted, nothing changes.
+ * The Finance form posts every key, so its result is identical to before.
  */
 export function costRatesWrite(stored: CostRates, body: unknown): CostRatesWrite {
-  const b = (body ?? {}) as Record<string, unknown>;
-  const raw = (isPlainObject(b) ? (b.rates ?? b) : b) as unknown;
-  const legacy = normalizeCostRates(raw);
-  const next: CostRates = { ...legacy, perMinuteUsd: structuredClone(stored.perMinuteUsd) };
-  const patch = isPlainObject(raw) ? raw.perMinuteUsd : undefined;
+  const raw = isPlainObject(body) ? (body.rates ?? body) : body;
+  if (!isPlainObject(raw)) return { ok: false, error: "invalid_cost_rates", fields: ["rates"] };
+  const bad: string[] = [];
+  const next: CostRates = { ...normalizeCostRates(stored), perMinuteUsd: structuredClone(stored.perMinuteUsd) };
+  for (const k of KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(raw, k) || raw[k] === undefined) continue;
+    const v = raw[k];
+    const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+    if (Number.isFinite(n) && n >= 0) next[k] = n;
+    else bad.push(k);
+  }
+  const patch = raw.perMinuteUsd;
   if (patch !== undefined) {
-    const bad: string[] = [];
-    if (!isPlainObject(patch)) return { ok: false, error: "invalid_cost_rates", fields: ["perMinuteUsd"] };
-    for (const [e, entry] of Object.entries(patch)) {
-      if (!isEngine(e) || !isPlainObject(entry)) {
-        bad.push(`perMinuteUsd.${e}`);
-        continue;
-      }
-      for (const [m, v] of Object.entries(entry)) {
-        if (!isModelKey(m) || !(v === null || isRate(v))) {
-          bad.push(`perMinuteUsd.${e}.${m}`);
+    if (!isPlainObject(patch)) bad.push("perMinuteUsd");
+    else {
+      for (const [e, entry] of Object.entries(patch)) {
+        if (!isEngine(e) || !isPlainObject(entry)) {
+          bad.push(`perMinuteUsd.${e}`);
           continue;
         }
-        if (v === null) delete next.perMinuteUsd[e][m];
-        else next.perMinuteUsd[e][m] = v;
+        for (const [m, v] of Object.entries(entry)) {
+          if (!isModelKey(m) || !(v === null || isRate(v))) {
+            bad.push(`perMinuteUsd.${e}.${m}`);
+            continue;
+          }
+          if (v === null) delete next.perMinuteUsd[e][m];
+          else next.perMinuteUsd[e][m] = v;
+        }
       }
     }
-    if (bad.length) return { ok: false, error: "invalid_cost_rates", fields: bad };
   }
+  if (bad.length) return { ok: false, error: "invalid_cost_rates", fields: bad };
   return { ok: true, value: next, changed: JSON.stringify(next) !== JSON.stringify(stored) };
 }
 

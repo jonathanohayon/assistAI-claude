@@ -9,8 +9,10 @@ import { logEvent } from "@/lib/logger";
 // GET/PUT /api/admin/cost-rates
 // Admin-only. Lit/écrit la grille tarifaire Finance (rate card).
 // GET adds `perMinuteUsd` (per engine/model, additive); the historic keys are
-// unchanged. PUT: the historic keys behave exactly as before; perMinuteUsd
-// omitted = unchanged, present = a partial patch, invalid → 400 + paths.
+// unchanged. PUT is a PARTIAL update over the stored rates: an omitted key
+// (historic or perMinuteUsd) keeps its stored value, an invalid one → 400
+// naming every bad key with nothing written; the response is the full stored
+// rate card after the write. See costRatesWrite in lib/finance/rates.ts.
 
 export async function GET() {
   const guard = await requireAdmin();
