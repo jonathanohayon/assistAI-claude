@@ -20,7 +20,7 @@ import { dispatchMode } from "./campaigns/dispatch-mode";
 import { monthlySubPeriods } from "./monthly-periods";
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import { PRODUCT_ENTRIES, PRODUCTS, entryOf, type Product, type ProductEntry } from "./product-values";
-import { catalogueTerms, parseLineTerms, pinnedCatalogue, type LineTerms, type TermsOrder } from "./order-terms";
+import { catalogueTerms, orderCovering, parseLineTerms, pinnedCatalogue, type LineTerms, type TermsOrder } from "./order-terms";
 import type { PlanKey } from "./plans";
 import { clientAgentMode } from "./tools/client-agent-switch";
 import { usageByProduct, type UsageCall, type UsageCampaignCall } from "./usage-by-product";
@@ -214,12 +214,18 @@ export type OverageInput = {
   calls: UsageCall[];
   campaignCalls: UsageCampaignCall[];
   catalogue: ProductCatalogue;
-  /** The NEW order's currency: the overage is priced and charged in it. */
+  /**
+   * The NEW order's currency. An overage line is never priced in it: each
+   * period is priced in ITS OWN currency (the paid order covering it). This
+   * is only the fallback when no paid order is given (paidOrders absent),
+   * and computeOverageLines refuses to return a line in another currency.
+   */
   currency: CatalogueCurrency;
   /**
    * The account's PAID multi-line orders: each period is measured against
-   * the terms pinned on the order covering it (termsFor). Absent = the live
-   * catalogue (the behaviour before the snapshot).
+   * the terms pinned on the order covering it (termsFor), in that order's
+   * currency. Absent = the live catalogue in `currency` (the behaviour
+   * before the snapshot).
    */
   paidOrders?: readonly TermsOrder[];
   /** billedOverageKeys over the account's PAID orders (pending / failed never count). */
@@ -227,27 +233,46 @@ export type OverageInput = {
   now: Date;
 };
 
+/** An unbilled overage line and the currency it is priced in (its period's). */
+export type PendingOverage = { line: OverageLine; currency: CatalogueCurrency };
+
+const asCurrency = (x: unknown): CatalogueCurrency | null => (x === "EUR" || x === "ILS" ? x : null);
+
 /**
- * The overage lines to add to the next manual payment. For each COMPLETED
- * monthly period (end <= now) of each paid coverage, and each entry the
- * coverage OWNED with overage > 0 (usageByProduct, P2), one line, unless
- * that (entry, periodStart) is already billed. Usage on an entry the
- * coverage did not own (e.g. a per-product trial) is never billed. A call
- * belongs to [start, end) here, so one call on a boundary is billed once.
- * Sorted by period start, then PRODUCT_ENTRIES order.
- * Included minutes and rate: the period's pinned terms (paidOrders,
- * termsFor); the rate only when pinned in the new order's currency, else
- * that currency's live rate (lib/order-terms.ts header).
+ * The currency of the period starting at `at`: the paid order covering it,
+ * read from its base line's pinned terms, else the order row's currency
+ * (an order before the snapshot); no covering order → `fallback`.
  */
-export function computeOverageLines(input: OverageInput): OverageLine[] {
-  const out: OverageLine[] = [];
+export function periodCurrency(orders: readonly TermsOrder[], at: Date, fallback: CatalogueCurrency): CatalogueCurrency {
+  const o = orderCovering(orders, at);
+  if (!o) return fallback;
+  const b = o.lines[0];
+  return (b && b.kind === "base" ? b.terms?.currency : undefined) ?? asCurrency(o.currency) ?? fallback;
+}
+
+/**
+ * Every unbilled overage line, each in its period's OWN currency and at its
+ * period's pinned terms. For each COMPLETED monthly period (end <= now) of
+ * each paid coverage, and each entry the coverage OWNED with overage > 0
+ * (usageByProduct, P2), one line, unless that (entry, periodStart) is
+ * already billed. Usage on an entry the coverage did not own (e.g. a
+ * per-product trial) is never billed. A call belongs to [start, end) here,
+ * so one call on a boundary is billed once. Sorted by period start, then
+ * PRODUCT_ENTRIES order.
+ */
+export function pendingOverage(input: OverageInput): PendingOverage[] {
+  const out: PendingOverage[] = [];
   const seen = new Set(input.billed);
+  const orders = input.paidOrders ?? [];
   const periods = input.coverages
     .flatMap((c) => billingPeriodsOf(c).map((w) => ({ w, c })))
     .sort((a, b) => a.w.start.getTime() - b.w.start.getTime());
   for (const { w, c } of periods) {
     if (w.end.getTime() > input.now.getTime()) continue;
     const before = (d: Date) => d.getTime() < w.end.getTime();
+    // The period's own currency: its pinned rate always applies (there is
+    // no cross-currency pricing of an overage line).
+    const currency = periodCurrency(orders, w.start, input.currency);
     const usage = usageByProduct({
       calls: input.calls.filter((x) => before(x.createdAt)),
       campaignCalls: input.campaignCalls.filter((x) => before(x.createdAt)),
@@ -255,8 +280,8 @@ export function computeOverageLines(input: OverageInput): OverageLine[] {
       entitlement: { base: c.base, addons: c.addons, entries: [], source: "products" },
       // The period's own terms (lib/order-terms.ts): an edit made after the
       // payment never reprices a finished period.
-      catalogue: pinnedCatalogue(input.catalogue, input.paidOrders ?? [], w.start, input.currency),
-      currency: input.currency,
+      catalogue: pinnedCatalogue(input.catalogue, orders, w.start, currency),
+      currency,
       planMinutes: 0,
       planOverage: 0,
     });
@@ -268,10 +293,47 @@ export function computeOverageLines(input: OverageInput): OverageLine[] {
       const key = overageKey(entry, periodStart);
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ kind: "overage", entry, periodStart, periodEnd: w.end.toISOString(), minutes: e.overageMinutes, amount: e.overageAmount });
+      out.push({
+        line: { kind: "overage", entry, periodStart, periodEnd: w.end.toISOString(), minutes: e.overageMinutes, amount: e.overageAmount },
+        currency,
+      });
     }
   }
   return out;
+}
+
+/**
+ * A currency switch is refused while overage is pending (VP decision iii).
+ * The FIRST pending line (by period start) decides: when its currency is not
+ * the requested order's → { currency: that one, amount: the total of the
+ * pending lines in that currency, in integer cents }. Otherwise null, and
+ * the order carries the pending lines in its currency.
+ * Several pending periods in DIFFERENT currencies (only after past
+ * switches): the first one's currency is asked for; once it is paid, the
+ * next order is asked for the next one's. Refusing whenever ANY pending line
+ * differs would refuse both currencies forever.
+ */
+export function overageCurrencyConflict(
+  pending: readonly PendingOverage[],
+  currency: CatalogueCurrency,
+): { currency: CatalogueCurrency; amount: number } | null {
+  const first = pending[0];
+  if (!first || first.currency === currency) return null;
+  const amount = pending.filter((p) => p.currency === first.currency).reduce((s, p) => s + toCents(p.line.amount), 0) / 100;
+  return { currency: first.currency, amount };
+}
+
+/**
+ * The overage lines to add to an order in `input.currency`: the pending
+ * lines in that currency. The caller refuses first (overageCurrencyConflict);
+ * a first pending line in another currency here is a bug → throws.
+ * Lines of a later period in another currency (mixed currencies) stay
+ * pending for a later order in that currency.
+ */
+export function computeOverageLines(input: OverageInput): OverageLine[] {
+  const pending = pendingOverage(input);
+  if (overageCurrencyConflict(pending, input.currency)) throw new Error("overage pending in another currency");
+  return pending.filter((p) => p.currency === input.currency).map((p) => p.line);
 }
 
 // ── Read-back ──────────────────────────────────────────────────────────

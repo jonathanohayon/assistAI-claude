@@ -19,6 +19,13 @@
 // and adds `terms` (per base / add-on line) and `changes` (against the
 // previous PAID multi-line order). `preview: true` returns the same body
 // without creating anything (no order, no event, no lock, no HYP call).
+//
+// Currency lock (VP decision iii): an overage line is always priced in its
+// period's own currency and rate. A currency switch is refused while one is
+// pending: 409 { error: "overage_currency_pending", currency, amount } (the
+// pending period's currency and the overage total in it; no message, the
+// copy is the payment page's). Preview included. Nothing written, HYP
+// never called.
 
 import { and, eq, gte, isNotNull, lt } from "drizzle-orm";
 
@@ -30,16 +37,18 @@ import {
   MAX_ORDER_AMOUNT,
   billedOverageKeys,
   catalogueLines,
-  computeOverageLines,
+  overageCurrencyConflict,
   orderInfo,
   orderTotal,
   parseOrderLines,
   parseOrderSelection,
+  pendingOverage,
   planKeyForBase,
   withoutTerms,
   type OrderLine,
   type OrderPeriod,
   type PaidCoverage,
+  type PendingOverage,
 } from "@/lib/order-lines";
 import { parseProductsRecord } from "@/lib/product-entitlement";
 import { productTitle } from "@/lib/product-titles";
@@ -64,6 +73,7 @@ export type ProductsOrderQuote = {
 export type ProductsOrderResult =
   | { status: 200; body: ProductsOrderQuote & { url: string } }
   | { status: 200; body: ProductsOrderQuote & { preview: true } }
+  | { status: 409; body: { error: "overage_currency_pending"; currency: CatalogueCurrency; amount: number } }
   | { status: 400 | 404 | 409; body: { error: string } };
 
 /** A PAID multi-line order of an account: its lines, row currency and paid time. */
@@ -130,8 +140,12 @@ export function coveragesOf(paid: OrderLine[][]): PaidCoverage[] {
   return out;
 }
 
-/** The overage lines for an account's next order (record holders only; [] otherwise). */
-export async function overageLinesFor(opts: {
+/**
+ * The unbilled overage of an account, each line in its period's currency
+ * (record holders only; [] otherwise). `currency` (the new order's) is only
+ * the fallback for a period no paid order covers.
+ */
+export async function pendingOverageFor(opts: {
   userId: string;
   products: unknown;
   currency: "EUR" | "ILS";
@@ -139,7 +153,7 @@ export async function overageLinesFor(opts: {
   /** The account's paid orders, when the caller already read them. */
   paid?: PaidOrder[];
   catalogue?: ProductCatalogue;
-}): Promise<OrderLine[]> {
+}): Promise<PendingOverage[]> {
   // Grandfathered accounts (no valid record) are never billed overage.
   if (!parseProductsRecord(opts.products)) return [];
   const orders = opts.paid ?? (await paidOrders(opts.userId));
@@ -158,13 +172,13 @@ export async function overageLinesFor(opts: {
       .from(campaignCalls)
       .where(and(eq(campaignCalls.userId, opts.userId), gte(campaignCalls.createdAt, from), lt(campaignCalls.createdAt, to))),
   ]);
-  return computeOverageLines({
+  return pendingOverage({
     coverages,
     calls: callRows,
     campaignCalls: campaignRows,
     catalogue: opts.catalogue ?? (await getProductCatalogue()),
     currency: opts.currency,
-    // Each finished period at ITS pinned terms (lib/order-terms.ts).
+    // Each finished period at ITS pinned terms and currency (lib/order-terms.ts).
     paidOrders: orders,
     billed: billedOverageKeys(paid),
     now: opts.now,
@@ -211,9 +225,16 @@ export async function createProductsOrder(
   // One catalogue read: the lines, their terms and the changes agree.
   const catalogue = await getProductCatalogue();
   const paid = await paidOrders(userId);
+  const pending = await pendingOverageFor({ userId, products: user.products, currency, now, paid, catalogue });
+  // A currency switch while overage is pending: refused, before anything is
+  // written (preview included). The overage is paid in its own currency first.
+  const conflict = overageCurrencyConflict(pending, currency);
+  if (conflict) return { status: 409, body: { error: "overage_currency_pending", currency: conflict.currency, amount: conflict.amount } };
   const lines: OrderLine[] = [
     ...catalogueLines(sel.selection, p, currency, catalogue),
-    ...(await overageLinesFor({ userId, products: user.products, currency, now, paid, catalogue })),
+    // Only lines in the order's currency (with mixed pending currencies, the
+    // later ones wait for an order in theirs: overageCurrencyConflict).
+    ...pending.filter((o) => o.currency === currency).map((o) => o.line),
   ];
   const amount = orderTotal(lines);
   if (!(amount > 0) || amount > MAX_ORDER_AMOUNT) return { status: 409, body: { error: "amount_out_of_range" } };

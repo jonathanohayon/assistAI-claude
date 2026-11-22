@@ -287,7 +287,47 @@
       "model": "Model"
     },
     "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
-    "trial": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# minute} other {# minutes}}, no credit card. The founder calls you to set Tamara up with you."
+    "trial": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# minute} other {# minutes}}, no credit card. The founder calls you to set Tamara up with you.",
+    "grid": {
+      "title": "One base offer, add-ons if you need them.",
+      "subtitle": "Choose what your agent does: answer the phone, call your contacts, or give your own agent a voice. No commitment.",
+      "howLabel": "How it works:",
+      "how": "you pick one base offer and add options if you need them. Each offer has its own included minutes.",
+      "currency": "Currency",
+      "billingLabel": "Billing period",
+      "trial": "Free Reception trial: {days} days or {minutes} call minutes, whichever comes first, no credit card.",
+      "soonTag": "Soon",
+      "soonLine": "Coming soon. Create your account to be notified.",
+      "minutes": "{minutes} minutes included per month",
+      "overage": "Beyond that: {price} per minute",
+      "addonMonth": "Or as an add-on to another offer: <b>+ {price} / month</b>",
+      "addonYear": "Or as an add-on to another offer: <b>+ {price} / year</b>",
+      "baseOnly": "Sold as a base offer only",
+      "cta": "Try it free",
+      "ctaAria": "Try {name} free",
+      "cardTrial": "Free trial: {days} days or {minutes} minutes, no card.",
+      "products": {
+        "reception": {
+          "name": "Reception",
+          "body": "Your agent answers the phone for you, day and night, and books the appointments."
+        },
+        "reception_multi": {
+          "name": "Reception multi-site",
+          "body": "The same reception for several locations or several calendars."
+        },
+        "sales": {
+          "name": "Sales",
+          "body": "Your agent calls your contacts for you and notes the result of each call."
+        },
+        "connect": {
+          "name": "Connect your agent",
+          "body": "Already have an AI agent? Tamara gives it a voice and a phone number."
+        }
+      },
+      "ctaAccount": "Create my account",
+      "ctaAccountAria": "Create my account for {name}",
+      "notInTrial": "Not included in the free trial."
+    }
   },
   "PricingComparison": {
     "title": "Compare in detail",

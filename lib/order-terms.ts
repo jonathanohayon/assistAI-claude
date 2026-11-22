@@ -17,12 +17,18 @@
 // when none covers it, or the line predates the snapshot (no `terms`), the
 // live catalogue in the requested currency (exactly the behaviour before).
 //
-// Currency: the terms are pinned in the order's currency. The included
-// minutes are what was bought, so they apply whatever the reading currency.
-// The overage RATE is a price: it applies only when the reading currency is
-// the pinned one; otherwise the live catalogue's rate in the reading currency
-// (P4's rule: overage is priced in the new order's currency, from that
-// currency's grid; there is no exchange rate anywhere).
+// Currency: the terms are pinned in the order's currency.
+//   - BILLING (computeOverageLines / pendingOverage): a period's overage is
+//     always read in ITS OWN currency, so its pinned minutes AND rate apply.
+//     A currency switch is refused while overage is pending (VP decision
+//     iii, lib/order-create.ts: 409 overage_currency_pending); an overage
+//     line is never priced in another currency.
+//   - DISPLAY (usageByProduct in billing-stats, the usage warnings): read in
+//     the page's currency. The included minutes are what was bought, so they
+//     apply whatever the reading currency; the overage RATE is a price, shown
+//     only when the reading currency is the pinned one, otherwise the live
+//     catalogue's rate in the reading currency (an indication, not a bill;
+//     there is no exchange rate anywhere).
 
 import type { CatalogueCurrency, ProductCatalogue } from "./product-catalogue";
 import type { Product } from "./product-values";
@@ -108,7 +114,9 @@ export function termsFor(
 /**
  * The catalogue the usage readers compute with at `at`, in `currency`: the
  * live one, with each product's included minutes (always) and overage rate
- * (only when pinned in `currency`) replaced by termsFor. No covering paid
+ * (only when pinned in `currency`) replaced by termsFor. Overage billing
+ * always passes the period's own currency (so the pinned rate applies);
+ * only the display may read in another one. No covering paid
  * order (or no snapshot) → the live catalogue, unchanged values.
  */
 export function pinnedCatalogue(
