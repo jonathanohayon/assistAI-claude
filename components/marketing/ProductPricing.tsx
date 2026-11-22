@@ -1,7 +1,7 @@
 "use client";
 
 // The public pricing section on the PRODUCT grid (F3a): one card per base
-// product (Réception, Réception multi-sites, Ventes, Connecter votre agent).
+// product (Réception, Réception multi-sites, Centre d'appels, Connecter votre agent).
 // Rendered by components/marketing/Pricing.tsx ONLY when the route says new
 // orders are sold (grid "products"); otherwise the page keeps today's plan
 // cards. Every number comes from the product catalogue the route serves
@@ -235,19 +235,22 @@ function ProductCard({
       data-product={product}
       className="relative flex h-full flex-col rounded-3xl border border-[var(--color-border)] bg-white/90 p-6 shadow-[0_18px_50px_-28px_rgba(190,24,93,0.35)] backdrop-blur"
     >
-      <span aria-hidden className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm ${ICON_TONE[product]}`}>
-        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-          {ICON_PATH[product]}
-        </svg>
-      </span>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-xl text-[var(--color-foreground)]">{name}</h3>
+      {/* The icon at the start, the "Bientôt" tag in the opposite top corner
+          (flex: mirrored in RTL), so the tag never pushes the name, the price
+          or anything below out of line with the other cards. */}
+      <div data-card-top="" className="flex items-start justify-between gap-2">
+        <span aria-hidden className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm ${ICON_TONE[product]}`}>
+          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+            {ICON_PATH[product]}
+          </svg>
+        </span>
         {soon && (
           <span data-soon="" className="rounded-full bg-[#fdf2f8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9d174d] ring-1 ring-inset ring-[#fbcfe8]">
             {t("soonTag")}
           </span>
         )}
       </div>
+      <h3 className="mt-4 font-display text-xl text-[var(--color-foreground)]">{name}</h3>
       <p className="mt-1.5 min-h-[3.75rem] text-sm leading-snug text-[var(--color-muted-foreground)]">{t(`products.${product}.body`)}</p>
 
       <div className="mt-5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">

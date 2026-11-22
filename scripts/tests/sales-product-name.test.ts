@@ -132,4 +132,19 @@ console.log("ok: no hard-coded old name");
   assert.doesNotMatch(ws, /t\("kicker"\)/, "the campaigns header no longer reads its eyebrow key");
   assert.match(ws, /\{view === "editor" && \(\s*<div data-campaigns-eyebrow=""/, "the eyebrow is the editor's step only");
 }
+// ── 5. Public pricing cards (#397): the name as in the menu, the tag in the corner ─
+{
+  // The public pages don't load DashboardNav (i18n/public-namespaces.ts), so the
+  // card keeps its own key, pinned equal to the menu's here and in
+  // pricing-new-grid.test.ts §6.
+  for (const l of ["fr", "en", "he"] as const) {
+    const m = JSON.parse(read(`messages/${l}.json`));
+    assert.equal(m.Pricing.grid.products.sales.name, m.DashboardNav.sales, `${l}: the pricing card names sales as the menu`);
+  }
+  const card = read("components/marketing/ProductPricing.tsx");
+  const top = card.slice(card.indexOf('<div data-card-top=""'), card.indexOf("<h3"));
+  assert.match(top, /className="flex items-start justify-between gap-2"/, "icon and tag share the top row, at opposite ends (flex: RTL-aware)");
+  assert.match(top, /ICON_PATH\[product\][\s\S]*data-soon=""/, "the tag sits after the icon: the opposite corner");
+  assert.doesNotMatch(card.slice(card.indexOf("<h3")), /data-soon=""/, "the tag is never next to or under the name");
+}
 console.log("ALL SALES PRODUCT NAME TESTS PASSED");

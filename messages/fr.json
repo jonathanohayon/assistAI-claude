@@ -316,7 +316,7 @@
           "body": "La même réception pour plusieurs établissements ou plusieurs agendas."
         },
         "sales": {
-          "name": "Ventes",
+          "name": "Centre d'appels",
           "body": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel."
         },
         "connect": {
