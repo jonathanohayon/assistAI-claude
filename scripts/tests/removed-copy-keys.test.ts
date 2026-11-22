@@ -16,6 +16,8 @@
 // highlighted on any door; the setup checklist is the guide.
 // Connect product name (22/11): Email.usageWarning.entryConnect. The email
 // names the product from DashboardNav.connect, its one key.
+// Pricing on the product grid (22/11, F3a): the whole PricingComparison
+// namespace (its table compared two reception plans; the grid has none).
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -39,7 +41,7 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["Email", "usageWarning.entryConnect"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
-const REMOVED_NAMESPACES = ["HowItWorks"];
+const REMOVED_NAMESPACES = ["HowItWorks", "PricingComparison"];
 const at = (m: Record<string, unknown>, path: string) =>
   path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], m);
 

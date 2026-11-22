@@ -265,13 +265,14 @@
   },
   "Pricing": {
     "kicker": "Pricing",
-    "title": "Two plans, no commitment.",
-    "subtitle": "Tamara answers, books the appointment and sends you the recap on WhatsApp. Cancel anytime.",
+    "title": "One base offer, add-ons if you need them.",
+    "subtitle": "Choose what your agent does: answer the phone, call your contacts, or give your own agent a voice. No commitment.",
     "billing": {
       "monthly": "Monthly",
       "annual": "Annual",
       "save": "2 months free with the annual plan.",
-      "discount": "2 months free"
+      "discount": "2 months free",
+      "label": "Billing period"
     },
     "card": {
       "popular": "Recommended",
@@ -287,28 +288,41 @@
       "model": "Model"
     },
     "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
-    "trial": "Free 14-day or 100-minute trial, no credit card. The founder calls you to set Tamara up with you."
-  },
-  "PricingComparison": {
-    "title": "Compare in detail",
-    "forWho": "Best for",
-    "forWhoGlobal": "Salons & practices",
-    "forWhoPremium": "Clinics & multi-site",
-    "yes": "Included",
-    "no": "Not included",
-    "rowMinutes": "Minutes included / month",
-    "rowInbound": "Inbound calls 24/7",
-    "rowMessages": "WhatsApp messages & recap",
-    "rowCalendar": "Connected calendar & booking",
-    "rowCrm": "Contacts in Google Sheets",
-    "rowMulticall": "Simultaneous parallel calls",
-    "rowAnalytics": "Real-time analytics",
-    "rowSupport": "Support",
-    "supportStandard": "Standard",
-    "supportPriority": "Priority",
-    "rowLocations": "Locations / calendars",
-    "locationsOne": "1",
-    "locationsUpTo3": "Up to 3"
+    "trial": "Free 7-day, 30-minute trial for each offer, no credit card. Once per offer.",
+    "howLabel": "How it works:",
+    "how": "you pick one base offer and add options if you need them. Each offer has its own included minutes.",
+    "currency": "Currency",
+    "grid": {
+      "perMonth": "incl. VAT / month",
+      "perYear": "incl. VAT / year",
+      "annualNote": "2 months free",
+      "minutes": "{minutes} minutes included per month",
+      "overage": "Beyond that: {price} per minute",
+      "addonMonth": "Or as an add-on to another offer: + {price} / month",
+      "addonYear": "Or as an add-on to another offer: + {price} / year",
+      "baseOnly": "Sold as a base offer only",
+      "cta": "Try it free",
+      "ctaAria": "Try {name} free",
+      "cardTrial": "7 days and 30 minutes free, no card.",
+      "products": {
+        "reception": {
+          "name": "Reception",
+          "body": "Your agent answers the phone for you, day and night, and books the appointments."
+        },
+        "reception_multi": {
+          "name": "Reception multi-site",
+          "body": "The same reception for several locations or several calendars."
+        },
+        "sales": {
+          "name": "Sales",
+          "body": "Your agent calls your contacts for you and notes the result of each call."
+        },
+        "connect": {
+          "name": "Connect your agent",
+          "body": "Already have an AI agent? Tamara gives it a voice and a phone number."
+        }
+      }
+    }
   },
   "DashboardSetup": {
     "title": "Set up your agent",

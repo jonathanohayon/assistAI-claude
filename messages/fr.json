@@ -265,13 +265,14 @@
   },
   "Pricing": {
     "kicker": "Tarifs",
-    "title": "Deux formules, sans engagement.",
-    "subtitle": "Tamara répond, prend les rendez-vous et vous envoie le récap sur WhatsApp. Annulable à tout moment.",
+    "title": "Une offre de base, des options si besoin.",
+    "subtitle": "Choisissez ce que fait votre agent : répondre au téléphone, appeler vos contacts, ou donner une voix à votre propre agent. Sans engagement.",
     "billing": {
       "monthly": "Mensuel",
       "annual": "Annuel",
       "save": "2 mois offerts avec l'abonnement annuel.",
-      "discount": "2 mois offerts"
+      "discount": "2 mois offerts",
+      "label": "Période de facturation"
     },
     "card": {
       "popular": "Recommandé",
@@ -287,28 +288,41 @@
       "model": "Modèle"
     },
     "footer": "Prix TTC. Plusieurs établissements ou gros volume ? Parlons-en.",
-    "trial": "Essai gratuit 14 jours ou 100 minutes, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous."
-  },
-  "PricingComparison": {
-    "title": "Comparer en détail",
-    "forWho": "Pour qui",
-    "forWhoGlobal": "Salons & cabinets",
-    "forWhoPremium": "Cliniques & multi-sites",
-    "yes": "Inclus",
-    "no": "Non inclus",
-    "rowMinutes": "Minutes incluses / mois",
-    "rowInbound": "Appels entrants 24/7",
-    "rowMessages": "Messages & recap WhatsApp",
-    "rowCalendar": "Agenda connecté & prise de RDV",
-    "rowCrm": "Contacts dans Google Sheets",
-    "rowMulticall": "Appels simultanés en parallèle",
-    "rowAnalytics": "Analytics temps réel",
-    "rowSupport": "Support",
-    "supportStandard": "Standard",
-    "supportPriority": "Prioritaire",
-    "rowLocations": "Établissements / calendriers",
-    "locationsOne": "1",
-    "locationsUpTo3": "Jusqu'à 3"
+    "trial": "Essai gratuit de 7 jours et 30 minutes pour chaque offre, sans carte bancaire. Une fois par offre.",
+    "howLabel": "Comment ça marche :",
+    "how": "vous choisissez une offre de base et vous ajoutez des options si besoin. Chaque offre a ses propres minutes incluses.",
+    "currency": "Devise",
+    "grid": {
+      "perMonth": "TTC / mois",
+      "perYear": "TTC / an",
+      "annualNote": "2 mois offerts",
+      "minutes": "{minutes} minutes incluses par mois",
+      "overage": "Au-delà : {price} la minute",
+      "addonMonth": "Ou en option sur une autre offre : + {price} / mois",
+      "addonYear": "Ou en option sur une autre offre : + {price} / an",
+      "baseOnly": "Uniquement en offre de base",
+      "cta": "Essayer gratuitement",
+      "ctaAria": "Essayer {name} gratuitement",
+      "cardTrial": "7 jours et 30 minutes offerts, sans carte.",
+      "products": {
+        "reception": {
+          "name": "Réception",
+          "body": "Votre agent répond au téléphone à votre place, jour et nuit, et prend les rendez-vous."
+        },
+        "reception_multi": {
+          "name": "Réception multi-sites",
+          "body": "La même réception pour plusieurs établissements ou plusieurs agendas."
+        },
+        "sales": {
+          "name": "Ventes",
+          "body": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel."
+        },
+        "connect": {
+          "name": "Connecter votre agent",
+          "body": "Vous avez déjà un agent IA ? Tamara lui donne une voix et un numéro de téléphone."
+        }
+      }
+    }
   },
   "DashboardSetup": {
     "title": "Configurez votre agent",

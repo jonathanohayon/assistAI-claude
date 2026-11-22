@@ -1,34 +1,43 @@
 "use client";
 
+// The public pricing section on the PRODUCT grid (F3a): one card per base
+// product (Réception, Réception multi-sites, Ventes, Connecter votre agent).
+// Every number comes from the product catalogue, served by
+// GET /api/public/plan-pricing → `products` (lib/pricing-grid.ts). The
+// landing is prerendered, so it is fetched on the client: until it arrives,
+// or if it fails, the cards show a placeholder and no amount.
+//
+// Nothing here can buy: until P4 (PRODUCT_ORDERS), every card opens SIGN-UP
+// (free trial) through the product's door, never a checkout or billing page.
+// The old plans (lib/plans.ts) are no longer read here: billing still uses
+// them for existing subscribers.
+
 import { motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { Link } from "@/i18n/navigation";
+import { CURRENCY_META, landingCurrencyFor } from "@/lib/landing-currency";
+import type { CatalogueCurrency, ProductCatalogue } from "@/lib/product-catalogue";
+import type { Product } from "@/lib/product-values";
 import {
   type Billing,
-  type Currency,
-  CURRENCY_META,
-  landingCurrencyFor,
-  PlanCard,
-  useExchangeRates,
-} from "@/components/plans/PlanCard";
-import { PricingComparison } from "@/components/marketing/PricingComparison";
-import { PUBLIC_PLANS } from "@/lib/plans";
-import { type PlanPricingMap } from "@/lib/plan-pricing";
-import { fetchPublicPlanPricing } from "@/lib/public-plan-pricing";
+  catalogueCurrencyOf,
+  fetchPublicProducts,
+  formatGridMoney,
+  formatGridPerMinute,
+  GRID_CURRENCIES,
+  GRID_PRODUCTS,
+  GRID_SIGNUP_HREF,
+  gridCard,
+} from "@/lib/pricing-grid";
 
-function BillingToggle({
-  value,
-  onChange,
-}: {
-  value: Billing;
-  onChange: (v: Billing) => void;
-}) {
+function BillingToggle({ value, onChange }: { value: Billing; onChange: (v: Billing) => void }) {
   const t = useTranslations("Pricing.billing");
   return (
     <div
       role="tablist"
-      aria-label={t("monthly")}
+      aria-label={t("label")}
       className="relative inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-white/80 p-1 shadow-sm backdrop-blur"
     >
       {(["monthly", "annual"] as const).map((opt) => {
@@ -39,27 +48,24 @@ function BillingToggle({
             type="button"
             role="tab"
             aria-selected={active}
+            data-billing={opt}
             onClick={() => onChange(opt)}
             className={`relative z-10 inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors ${
-              active
-                ? "text-white"
-                : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+              active ? "text-white" : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
             }`}
           >
             {active && (
               <motion.span
                 layoutId="billing-pill"
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[#be185d] to-[#f472b6] shadow-md"
+                className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] shadow-md"
               />
             )}
             {opt === "monthly" ? t("monthly") : t("annual")}
             {opt === "annual" && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
-                  active
-                    ? "bg-white/20 text-white"
-                    : "bg-[#fef3c7] text-[#b45309]"
+                  active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#92400e]"
                 }`}
               >
                 {t("discount")}
@@ -72,17 +78,11 @@ function BillingToggle({
   );
 }
 
-function CurrencyDropdown({
-  value,
-  onChange,
-}: {
-  value: Currency;
-  onChange: (c: Currency) => void;
-}) {
+function CurrencyDropdown({ value, onChange }: { value: CatalogueCurrency; onChange: (c: CatalogueCurrency) => void }) {
+  const t = useTranslations("Pricing");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Close on outside click / Escape.
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
@@ -106,96 +106,222 @@ function CurrencyDropdown({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-4 py-2 text-sm font-medium text-[var(--color-foreground)] shadow-sm backdrop-blur transition-colors hover:bg-white"
+        aria-label={t("currency")}
+        data-currency-button=""
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/80 px-4 py-2 text-sm font-medium text-[var(--color-foreground)] shadow-sm backdrop-blur transition-colors hover:bg-white"
       >
-        <span className="text-base leading-none">
-          {CURRENCY_META[value].symbol}
-        </span>
+        <span className="text-base leading-none">{CURRENCY_META[value].symbol}</span>
         <span className="tabular-nums">{value}</span>
-        <svg
-          viewBox="0 0 12 12"
-          fill="none"
-          className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
-        >
-          <path
-            d="m3 4.5 3 3 3-3"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+        <svg viewBox="0 0 12 12" fill="none" aria-hidden className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}>
+          <path d="m3 4.5 3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 top-[calc(100%+6px)] z-20 w-32 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-lg"
+          className="absolute end-0 top-[calc(100%+6px)] z-20 w-32 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-lg"
         >
-          {(Object.keys(CURRENCY_META) as Currency[]).map((c) => {
-            const selected = c === value;
-            return (
-              <li key={c}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => {
-                    onChange(c);
-                    setOpen(false);
-                  }}
-                  className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                    selected
-                      ? "bg-[var(--color-muted)] font-medium text-[var(--color-foreground)]"
-                      : "text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
-                  }`}
-                >
-                  <span className="text-base leading-none">
-                    {CURRENCY_META[c].symbol}
-                  </span>
-                  <span className="tabular-nums">{c}</span>
-                </button>
-              </li>
-            );
-          })}
+          {GRID_CURRENCIES.map((c) => (
+            <li key={c}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={c === value}
+                data-currency={c}
+                onClick={() => {
+                  onChange(c);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--color-foreground)] transition-colors ${
+                  c === value ? "bg-[var(--color-muted)] font-medium" : "hover:bg-[var(--color-muted)]"
+                }`}
+              >
+                <span className="text-base leading-none">{CURRENCY_META[c].symbol}</span>
+                <span className="tabular-nums">{c}</span>
+              </button>
+            </li>
+          ))}
         </ul>
       )}
     </div>
   );
 }
 
-// The landing is prerendered, so the grid is fetched on the client
-// (GET /api/public/plan-pricing). Until it arrives, or if it fails, the cards
-// show a placeholder: the page never displays the hard-coded defaults.
-function usePublicPlanPricing(): PlanPricingMap | null {
-  const [pricing, setPricing] = useState<PlanPricingMap | null>(null);
+/* One small mark per product, in the brand's magenta / cyan (no pink→cyan blend). */
+const ICON_PATH: Record<Product, ReactNode> = {
+  reception: (
+    <path
+      d="M5.5 3.5h3.2l1.8 4.5-2.2 1.1a12 12 0 0 0 6.6 6.6l1.1-2.2 4.5 1.8v3.2a2 2 0 0 1-2 2A15 15 0 0 1 3.5 5.5a2 2 0 0 1 2-2Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  ),
+  reception_multi: (
+    <path d="M3 21V8l9-5 9 5v13M3 21h18M9.5 21v-6h5v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  ),
+  sales: (
+    <path
+      d="M4 12h11m0 0-4-4m4 4-4 4M19 5v14"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  connect: (
+    <path
+      d="M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0V7Zm5 9v5"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+};
+const ICON_TONE: Record<Product, string> = {
+  reception: "bg-gradient-to-br from-[#be185d] to-[#db2777] text-white",
+  reception_multi: "bg-gradient-to-br from-[#9d174d] to-[#be185d] text-white",
+  sales: "bg-gradient-to-br from-[#be185d] to-[#e11d48] text-white",
+  connect: "bg-[#0e7490] text-white ring-2 ring-[#22d3ee]/50",
+};
+
+/** A grey bar the size of the number it stands for (nothing shifts on arrival). */
+function Placeholder({ className }: { className: string }) {
+  return (
+    <span data-testid="grid-price-placeholder" aria-hidden className={`inline-block animate-pulse rounded-lg bg-[var(--color-muted)] align-middle ${className}`} />
+  );
+}
+
+function ProductCard({
+  product,
+  catalogue,
+  currency,
+  billing,
+}: {
+  product: Product;
+  catalogue: ProductCatalogue | null;
+  currency: CatalogueCurrency;
+  billing: Billing;
+}) {
+  const t = useTranslations("Pricing.grid");
+  const locale = useLocale();
+  // The link is the same with or without prices: sign-up, never a checkout.
+  const card = catalogue ? gridCard(catalogue, product, currency, billing) : null;
+  const name = t(`products.${product}.name`);
+  const money = (n: number) => formatGridMoney(n, currency, locale);
+  const period = billing === "annual" ? t("perYear") : t("perMonth");
+
+  return (
+    <article
+      data-product={product}
+      className="relative flex h-full flex-col rounded-3xl border border-[var(--color-border)] bg-white/90 p-6 shadow-[0_18px_50px_-28px_rgba(190,24,93,0.35)] backdrop-blur"
+    >
+      <span aria-hidden className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm ${ICON_TONE[product]}`}>
+        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+          {ICON_PATH[product]}
+        </svg>
+      </span>
+      <h3 className="mt-4 font-display text-xl text-[var(--color-foreground)]">{name}</h3>
+      <p className="mt-1.5 min-h-[3.75rem] text-sm leading-snug text-[var(--color-muted-foreground)]">{t(`products.${product}.body`)}</p>
+
+      <div className="mt-5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+        {card ? (
+          <span data-price="" className="font-display text-4xl tracking-tight text-[var(--color-foreground)] tabular-nums">
+            {money(card.price)}
+          </span>
+        ) : (
+          <Placeholder className="h-9 w-24" />
+        )}
+        <span className="text-xs text-[var(--color-muted-foreground)]">{period}</span>
+      </div>
+      <p className="mt-1 h-4 text-xs font-medium text-[#92400e]">{billing === "annual" ? t("annualNote") : null}</p>
+
+      <ul className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-4 text-sm">
+        <li data-minutes="" className="font-medium text-[var(--color-foreground)]">
+          {card ? t("minutes", { minutes: card.minutes }) : <Placeholder className="h-4 w-40" />}
+        </li>
+        <li data-overage="" className="text-xs text-[var(--color-muted-foreground)]">
+          {card ? t("overage", { price: formatGridPerMinute(card.overagePerMin, currency, locale) }) : <Placeholder className="h-3 w-32" />}
+        </li>
+        <li data-addon="" className="text-xs text-[var(--color-muted-foreground)]">
+          {!card ? (
+            <Placeholder className="h-3 w-36" />
+          ) : card.addon === null ? (
+            t("baseOnly")
+          ) : billing === "annual" ? (
+            t("addonYear", { price: money(card.addon) })
+          ) : (
+            t("addonMonth", { price: money(card.addon) })
+          )}
+        </li>
+      </ul>
+
+      <div className="mt-auto pt-6">
+        <Link
+          href={GRID_SIGNUP_HREF[product]}
+          aria-label={t("ctaAria", { name })}
+          data-cta={product}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-gradient-to-br from-[#be185d] to-[#db2777] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2"
+        >
+          {t("cta")}
+        </Link>
+        <p className="mt-2.5 text-center text-[11px] leading-snug text-[var(--color-muted-foreground)]">{t("cardTrial")}</p>
+      </div>
+    </article>
+  );
+}
+
+/** The four cards for a catalogue (null = still loading or failed). Exported for the tests. */
+export function ProductPricingGrid({
+  catalogue,
+  currency,
+  billing,
+}: {
+  catalogue: ProductCatalogue | null;
+  currency: CatalogueCurrency;
+  billing: Billing;
+}) {
+  return (
+    <div className="mx-auto mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {GRID_PRODUCTS.map((p, i) => (
+        <motion.div
+          key={p}
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.55, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <ProductCard product={p} catalogue={catalogue} currency={currency} billing={billing} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function usePublicProducts(): ProductCatalogue | null {
+  const [catalogue, setCatalogue] = useState<ProductCatalogue | null>(null);
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchPublicPlanPricing(fetch, ctrl.signal).then((p) => {
-      if (!ctrl.signal.aborted && p) setPricing(p);
+    fetchPublicProducts(fetch, ctrl.signal).then((c) => {
+      if (!ctrl.signal.aborted && c) setCatalogue(c);
     });
     return () => ctrl.abort();
   }, []);
-  return pricing;
+  return catalogue;
 }
 
 export function Pricing() {
-  const pricing = usePublicPlanPricing();
+  const catalogue = usePublicProducts();
   const t = useTranslations("Pricing");
-  const tCard = useTranslations("Pricing.card");
   const locale = useLocale();
   const [billing, setBilling] = useState<Billing>("monthly");
-  // Default currency by locale (FR→ILS, HE→ILS, EN→USD), lib/landing-currency.ts.
-  // L'utilisateur peut toujours changer via le dropdown.
-  const [currency, setCurrency] = useState<Currency>(landingCurrencyFor(locale));
-  const rates = useExchangeRates();
+  // The landing's currency for the locale (lib/landing-currency.ts: FR and HE
+  // → ILS, EN → USD), on the catalogue's two currencies (USD → EUR).
+  const [currency, setCurrency] = useState<CatalogueCurrency>(catalogueCurrencyOf(landingCurrencyFor(locale)));
 
   return (
-    <section
-      id="pricing"
-      className="relative overflow-hidden py-24 sm:py-32"
-    >
-      {/* Soft champagne / blush backdrop to set the premium tone */}
+    <section id="pricing" className="relative overflow-hidden py-24 sm:py-32">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -205,7 +331,7 @@ export function Pricing() {
         }}
       />
 
-      <div className="mx-auto w-full max-w-6xl px-6">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -213,85 +339,29 @@ export function Pricing() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">
-            {t("kicker")}
-          </p>
-          <h2 className="mt-3 font-display text-4xl tracking-tight text-[var(--color-foreground)] sm:text-5xl">
-            {t("title")}
-          </h2>
-          <p className="mt-4 text-base text-[var(--color-muted-foreground)] sm:text-lg">
-            {t("subtitle")}
-          </p>
-          <p className="mx-auto mt-5 inline-flex max-w-xl items-center gap-2 rounded-full border border-[#22d3ee]/40 bg-white/80 px-4 py-2 text-sm font-medium text-[#0e7490] shadow-sm">
-            <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#22d3ee]" />
-            {t("trial")}
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-primary)]">{t("kicker")}</p>
+          <h2 className="mt-3 font-display text-4xl tracking-tight text-[var(--color-foreground)] sm:text-5xl">{t("title")}</h2>
+          <p className="mt-4 text-base text-[var(--color-muted-foreground)] sm:text-lg">{t("subtitle")}</p>
+          <p data-how="" className="mx-auto mt-5 max-w-xl text-sm text-[var(--color-foreground)]">
+            <span className="font-semibold">{t("howLabel")}</span> {t("how")}
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-10 flex flex-col items-center gap-3"
-        >
+        <div className="mt-8 flex flex-col items-center gap-3">
           <div className="flex flex-wrap items-center justify-center gap-3">
             <BillingToggle value={billing} onChange={setBilling} />
             <CurrencyDropdown value={currency} onChange={setCurrency} />
           </div>
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            {t("billing.save")}
-          </p>
-        </motion.div>
-
-        {/*
-          2 public plans (2026-11): 1 column on mobile, 2 from 640px; the
-          popular card is slightly scaled on desktop.
-        */}
-        <div className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-5">
-          {PUBLIC_PLANS.map((plan, i) => (
-            <motion.div
-              key={plan.key}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{
-                duration: 0.55,
-                delay: i * 0.08,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className={plan.popular ? "lg:z-10 lg:scale-[1.03]" : ""}
-            >
-              <PlanCard
-                plan={plan}
-                billing={billing}
-                currency={currency}
-                rates={rates}
-                pricing={pricing}
-                action={{
-                  kind: "link",
-                  href: `/signup?plan=${plan.key}&billing=${billing}`,
-                  label: tCard("cta"),
-                  ariaLabel: tCard("ctaAria", { name: plan.name }),
-                }}
-              />
-            </motion.div>
-          ))}
+          <p className="text-xs text-[var(--color-muted-foreground)]">{t("billing.save")}</p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-20"
-        >
-          <PricingComparison />
-        </motion.div>
+        <ProductPricingGrid catalogue={catalogue} currency={currency} billing={billing} />
 
-        <p className="mt-12 text-center text-xs text-[var(--color-muted-foreground)]">
-          {t("footer")}
+        <p className="mx-auto mt-10 flex max-w-xl items-start justify-center gap-2 rounded-2xl border border-[#22d3ee]/40 bg-white/80 px-4 py-3 text-center text-sm font-medium text-[#0e7490] shadow-sm">
+          <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#22d3ee]" />
+          {t("trial")}
         </p>
+        <p className="mt-6 text-center text-xs text-[var(--color-muted-foreground)]">{t("footer")}</p>
       </div>
     </section>
   );
