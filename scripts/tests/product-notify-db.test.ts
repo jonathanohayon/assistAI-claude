@@ -4,12 +4,17 @@
 //      401, the tenant 201, an admin via ?asUserId 201, a non-admin with a
 //      foreign ?asUserId 403 with nothing written), invalid 400, owned 409,
 //      a repeat 200 with the ORIGINAL requestedAt, no message string;
+//      409 only for what the MENU shows as owned (entitled AND gate on):
+//      a grandfathered premium entitled to sales with dispatch off → 201;
 //   2. concurrency: 10 parallel POSTs → exactly one row, every answer 201 or
 //      200 with the same requestedAt; the unique + CHECK in the database;
 //   3. accountProducts: the additive notifyRequested (PRODUCT_ENTRIES order);
 //   4. GET /api/admin/product-notify: counts only (no id, no email), gated;
 //   5. the FK cascade on user delete;
-//   6. a record only: the route and its module import no mail / message code.
+//   6. a record only: the route and its module import no mail / message code;
+//   7. the menu rule: entitled/not × gate off/on (CLIENT_AGENT set in-process
+//      AFTER the env guard), the admin ?asUserId uses the TARGET's role, and
+//      the route agrees with menuFor for every account × env × entry.
 // Plain `npm test` skips it. Run it with:  bash scripts/product-notify-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read from
 // the shell. Mock data only (example.test). Dynamic imports only after the
@@ -39,6 +44,8 @@ const OTHER = id(0x22); // another record account (admin target)
 const GF = id(0x23); // grandfathered premium (owns reception + sales)
 const RACE = id(0x24); // the concurrency account
 const GONE = id(0x25); // deleted at the end (cascade)
+// Section 7: one record account per entitlement subset (bit j = PRODUCT_ENTRIES[j]).
+const SUBSET = (m: number) => id(0x100 + m);
 
 async function main() {
   const { sql } = await import("drizzle-orm");
@@ -47,6 +54,10 @@ async function main() {
   const notifyRoute = await import("../../app/api/dashboard/products/notify/route");
   const adminRoute = await import("../../app/api/admin/product-notify/route");
   const { accountProducts } = await import("../../lib/products");
+  const { menuFor } = await import("../../lib/product-gates");
+  const { featuresForPlan } = await import("../../lib/plan-features");
+  const { getPlanFeatureMatrix } = await import("../../lib/plan-features-storage");
+  const { PRODUCT_ENTRIES } = await import("../../lib/product-values");
 
   const rows = async <T>(q: ReturnType<typeof sql>) => {
     const r = (await db.execute(q)) as unknown;
@@ -120,11 +131,16 @@ async function main() {
   assert.equal(a.body!.product, "connect");
   assert.equal(await notifyRows(OTHER), 1);
   assert.equal(await notifyRows(ADMIN), 0, "the admin's own account untouched");
-  const gfOwned = await post({ product: "sales" }, `?asUserId=${GF}`);
-  assert.deepEqual([gfOwned.status, gfOwned.body], [409, { error: "product_owned" }], "grandfathered premium owns sales");
+  // The regression: grandfathered premium is ENTITLED to sales, but dispatch is
+  // off, so the menu shows sales as a "soon" preview → accepted, not 409.
+  assert.ok((await accountProducts(GF)).entries.includes("sales"), "GF is entitled to sales");
+  const gfSoon = await post({ product: "sales" }, `?asUserId=${GF}`);
+  assert.equal(gfSoon.status, 201, "entitled + gate off (dispatch off) → 201");
+  const gfOwned = await post({ product: "reception" }, `?asUserId=${GF}`);
+  assert.deepEqual([gfOwned.status, gfOwned.body], [409, { error: "product_owned" }], "entitled + gate on (reception) → 409");
   assert.equal((await post({ product: "sales" }, `?asUserId=${id(0xfff)}`)).status, 404, "unknown account → 404");
-  assert.equal(await count(sql`SELECT count(*)::int AS n FROM product_notify_requests WHERE user_id NOT IN (${TENANT}, ${OTHER})`), 0);
-  console.log("ok: POST notify — 401 / tenant 201 / repeat 200 same requestedAt / admin asUserId 201 / foreign 403 / invalid 400 / owned 409");
+  assert.equal(await count(sql`SELECT count(*)::int AS n FROM product_notify_requests WHERE user_id NOT IN (${TENANT}, ${OTHER}, ${GF})`), 0);
+  console.log("ok: POST notify — 401 / tenant 201 / repeat 200 same requestedAt / admin asUserId 201 / foreign 403 / invalid 400 / owned 409 / entitled+gate off 201");
 
   // ── 2. Concurrency: exactly one row, one requestedAt ───────────────────
   as(RACE);
@@ -152,7 +168,7 @@ async function main() {
     assert.deepEqual(t.notifyRequested, ["sales", "connect"], "PRODUCT_ENTRIES order");
     assert.deepEqual([t.base, t.addons, t.entries, t.source], ["reception_multi", [], ["reception"], "products"], "entitlement unchanged");
     assert.deepEqual((await accountProducts(OTHER)).notifyRequested, ["connect"]);
-    assert.deepEqual((await accountProducts(GF)).notifyRequested, []);
+    assert.deepEqual((await accountProducts(GF)).notifyRequested, ["sales"], "the entitled-but-gated request was recorded");
     assert.deepEqual((await accountProducts(id(0xfff))).notifyRequested, [], "unknown account");
   }
   console.log("ok: accountProducts.notifyRequested");
@@ -165,7 +181,7 @@ async function main() {
   as(ADMIN);
   const c = await counts();
   assert.equal(c.status, 200);
-  assert.deepEqual(c.body, { counts: { reception: 0, sales: 1, connect: 3 } });
+  assert.deepEqual(c.body, { counts: { reception: 0, sales: 2, connect: 3 } });
   assert.ok(!/@|[0-9a-f]{8}-[0-9a-f]{4}-|example\.test/i.test(c.text), "no email, no id in the response");
   console.log("ok: GET /api/admin/product-notify — counts only, 401 / 403 / 200");
 
@@ -186,6 +202,87 @@ async function main() {
     assert.ok(!/sendEmail|sendMail|alertAdmins|fetch\(/.test(src), `${f} calls nothing that sends`);
   }
   console.log("ok: no email is sent (source guard)");
+
+  // ── 7. The menu rule: 409 only for what the menu shows as owned ────────
+  {
+    const setEnv = (v: { CAMPAIGN_DISPATCH?: string; CLIENT_AGENT?: string }) => {
+      delete process.env.CAMPAIGN_DISPATCH;
+      delete process.env.CLIENT_AGENT;
+      if (v.CAMPAIGN_DISPATCH) process.env.CAMPAIGN_DISPATCH = v.CAMPAIGN_DISPATCH;
+      if (v.CLIENT_AGENT) process.env.CLIENT_AGENT = v.CLIENT_AGENT;
+    };
+    // Non-empty subsets only: a users.products record always has a base (no
+    // record = the grandfathered rules, which entitle reception + sales).
+    const SUBSETS = Array.from({ length: (1 << PRODUCT_ENTRIES.length) - 1 }, (_, m) => m + 1);
+    const entriesOf = (m: number) => PRODUCT_ENTRIES.filter((_, j) => (m >> j) & 1);
+    for (const m of SUBSETS) {
+      const e = entriesOf(m);
+      const rec = JSON.stringify({ base: e[0], addons: e.slice(1) });
+      await db.execute(sql`INSERT INTO users (id, email, password_hash, role, subscription_plan, subscription_status, subscription_period, paid_until, email_verified, locale, products)
+        VALUES (${SUBSET(m)}, ${`s${m}@notify.example.test`}, 'x', 'user', 'premium', 'active', 'monthly', ${paidUntil}, true, 'fr', ${rec}::jsonb)`);
+    }
+    const CONNECT_ONLY = SUBSET(1 << PRODUCT_ENTRIES.indexOf("connect"));
+    const NONE = SUBSET(1 << PRODUCT_ENTRIES.indexOf("reception")); // not entitled to connect
+    const reset = () => db.execute(sql`DELETE FROM product_notify_requests WHERE user_id::text LIKE '00000000-0000-4000-8000-0000000001%'`);
+
+    // The four cases on connect (the gate CLIENT_AGENT drives for a tenant).
+    as(CONNECT_ONLY);
+    setEnv({});
+    assert.deepEqual((await accountProducts(CONNECT_ONLY)).entries, ["connect"]);
+    assert.deepEqual((await accountProducts(NONE)).entries, ["reception"]);
+    assert.equal((await post({ product: "connect" })).status, 201, "entitled + gate off → 201");
+    await reset();
+    setEnv({ CLIENT_AGENT: "all" });
+    assert.deepEqual((await post({ product: "connect" })).body, { error: "product_owned" }, "entitled + gate on → 409");
+    as(NONE);
+    setEnv({});
+    assert.equal((await post({ product: "connect" })).status, 201, "not entitled + gate off → 201");
+    await reset();
+    setEnv({ CLIENT_AGENT: "all" });
+    assert.equal((await post({ product: "connect" })).status, 201, "not entitled + gate on → 201 (a try preview)");
+    await reset();
+
+    // Admin via ?asUserId: the TARGET's role decides the gate, as in the admin
+    // layout (= what the tenant sees). CLIENT_AGENT=admin turns connect on for
+    // admin accounts only: the target is a tenant, so connect is "soon" → 201.
+    as(ADMIN);
+    setEnv({ CLIENT_AGENT: "admin" });
+    assert.equal((await post({ product: "connect" }, `?asUserId=${CONNECT_ONLY}`)).status, 201, "admin asUserId: the target's gate (off), not the admin's");
+    await reset();
+    setEnv({ CLIENT_AGENT: "all" });
+    assert.equal((await post({ product: "connect" }, `?asUserId=${CONNECT_ONLY}`)).status, 409, "admin asUserId: entitled + gate on → 409");
+    setEnv({});
+    assert.equal((await post({ product: "sales" })).status, 409, "an admin account's own menu owns everything");
+    assert.equal(await notifyRows(ADMIN), 0);
+
+    // Agreement: every account × env × entry, the route vs menuFor (the same
+    // inputs the layouts pass: own role, featuresForPlan of the stored matrix).
+    const ENVS = [{}, { CAMPAIGN_DISPATCH: "on" }, { CLIENT_AGENT: "admin" }, { CLIENT_AGENT: "all" }, { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" }];
+    const features = featuresForPlan(await getPlanFeatureMatrix(), "premium");
+    let checked = 0;
+    for (const env of ENVS) {
+      setEnv(env);
+      for (const m of SUBSETS) {
+        await reset();
+        const uid = SUBSET(m);
+        const menu = menuFor(await accountProducts(uid), "user", features, process.env);
+        for (const entry of PRODUCT_ENTRIES) {
+          for (const viaAdmin of [false, true]) {
+            await reset();
+            as(viaAdmin ? ADMIN : uid);
+            const r = await post({ product: entry }, viaAdmin ? `?asUserId=${uid}` : "");
+            const want = menu[entry].state === "owned" ? 409 : 201;
+            assert.equal(r.status, want, `${JSON.stringify(env)} ${entriesOf(m).join("+")} ${entry} admin=${viaAdmin}: route ${r.status}, menu ${menu[entry].state}`);
+            checked++;
+          }
+        }
+      }
+    }
+    setEnv({});
+    await reset();
+    await db.execute(sql`DELETE FROM users WHERE id::text LIKE '00000000-0000-4000-8000-0000000001%'`);
+    console.log(`ok: 409 only when the menu shows owned — 4 cases, admin target, ${checked} route × menuFor agreements`);
+  }
 
   console.log("ALL PRODUCT-NOTIFY DB TESTS PASSED");
   process.exit(0);
