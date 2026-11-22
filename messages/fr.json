@@ -1110,8 +1110,7 @@
     "ownerEmailConfirmErrInvalidCode": "Ce code ne correspond pas. Vérifiez les 6 chiffres reçus.",
     "ownerEmailConfirmErrExpired": "Ce code a expiré. Demandez un nouveau code.",
     "ownerEmailConfirmErrTooManyAttempts": "Trop d'essais : ce code n'est plus valable. Demandez un nouveau code.",
-    "ownerEmailConfirmErrConfirmFailed": "La confirmation n'a pas abouti. Réessayez.",
-    "tileStartHere": "Pour commencer"
+    "ownerEmailConfirmErrConfirmFailed": "La confirmation n'a pas abouti. Réessayez."
   },
   "WebsiteScan": {
     "kicker": "Assistant IA",
