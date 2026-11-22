@@ -40,6 +40,7 @@ import {
   type HonouredOptions,
   type IgnoredChoice,
 } from "./engine-resolve";
+import { perMinuteUsdFor, type CostRates } from "./finance/rates";
 import { PRODUCTS, type Product } from "./product-values";
 import { REALTIME_PROVIDER_MODEL, REALTIME_PROVIDERS, type RealtimeProvider } from "./realtime-provider";
 
@@ -259,4 +260,33 @@ export function engineOptionCoverage(product: Product, languages: EngineLanguage
     }
   }
   return out;
+}
+
+/** An option with its per-minute cost (the admin catalogue GET). */
+export type EngineOptionWithCost = EngineOptionCoverage & {
+  /** USD per minute from the stored cost rates; null = unknown. */
+  costPerMinUsd: number | null;
+};
+
+/**
+ * The per-minute cost of an option, computed exactly as the tenant engine
+ * banner does (GET /api/admin/users/[userId]/engine): perMinuteUsdFor over the
+ * stored rates, on the model the call would really run on (engineForCall's
+ * `model`): OpenAI = the forced model, else the engine default
+ * (REALTIME_PROVIDER_MODEL.openai); Gemini / Grok = the worker's env model.
+ */
+export function engineOptionCostPerMinUsd(
+  rates: Pick<CostRates, "perMinuteUsd" | "openaiUsdPerMinute">,
+  engine: RealtimeProvider,
+  model: string | null,
+): number | null {
+  return perMinuteUsdFor(rates, engine, runningModel(engine, model ?? REALTIME_PROVIDER_MODEL[engine]));
+}
+
+/** Additive: every option keeps its fields and values, plus costPerMinUsd. */
+export function withOptionCosts(
+  options: EngineOptionCoverage[],
+  rates: Pick<CostRates, "perMinuteUsd" | "openaiUsdPerMinute">,
+): EngineOptionWithCost[] {
+  return options.map((o) => ({ ...o, costPerMinUsd: engineOptionCostPerMinUsd(rates, o.engine, o.model) }));
 }
