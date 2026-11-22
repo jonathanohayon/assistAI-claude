@@ -14,6 +14,8 @@ import { readFileSync } from "node:fs";
 import { DEFAULT_PRODUCT_CATALOGUE } from "../../lib/product-catalogue";
 import { entitledProducts } from "../../lib/product-entitlement";
 import { OVERAGE_RATE_ILS_PER_MIN, PLANS } from "../../lib/plans";
+import { trialUsage } from "../../lib/product-trials";
+import { TRIAL_MINUTES_INCLUDED, signupTrialGateApplies } from "../../lib/trial";
 import { entryOfCall, usageByProduct, type UsageByProductInput } from "../../lib/usage-by-product";
 
 const W = { start: new Date("2026-11-01T00:00:00Z"), end: new Date("2026-12-01T00:00:00Z") };
@@ -173,11 +175,92 @@ for (const [name, inp, want] of rows) assert.deepEqual(usageByProduct(inp), want
 }
 console.log(`ok: record-holders per entry (${rows.length + 1} rows)`);
 
+
+// ── Sign-up trial cap: trialing / trial_paused / active × product trials ─
+// While the sign-up trial gate applies, the reception entry carries the
+// trial cap (TRIAL_MINUTES_INCLUDED, the gate's all-time count, no overage)
+// and a `signupTrial` field; no entry has overage. Per-product trials keep
+// their own caps. A paid account is exactly as before.
+{
+  const ENDS = new Date("2026-11-20T00:00:00Z");
+  const gateSeconds = min(130); // all-time count, above the 100-min cap
+  const periodCalls = [
+    { durationSeconds: min(40), product: null, createdAt: IN },
+    { durationSeconds: min(9999), product: null, createdAt: BEFORE }, // outside the period, inside the gate count
+    { durationSeconds: min(5), product: "connect", createdAt: IN },
+  ];
+  const campaignCalls = [{ durationSeconds: min(300), createdAt: IN }];
+  const ent = rec("reception_multi");
+  const productTrialRows = [{ product: "sales", startedAt: new Date("2026-11-05T00:00:00Z"), endsAt: new Date("2026-11-19T00:00:00Z"), minutesIncluded: 30 }];
+  const compose = (status: string, withTrials: boolean, role: string | null = "user") => {
+    const usage = usageByProduct(
+      input({
+        entitlement: ent,
+        calls: periodCalls,
+        campaignCalls,
+        ...(signupTrialGateApplies({ subscriptionStatus: status, role }) ? { signupTrial: { endsAt: ENDS, secondsUsed: gateSeconds } } : {}),
+      }),
+    );
+    return withTrials && usage.kind === "products" ? { ...usage, trials: trialUsage(productTrialRows, periodCalls, campaignCalls, IN) } : usage;
+  };
+  const rc = cat.reception_multi.EUR;
+  const trialReception = {
+    entry: "reception",
+    owned: true,
+    products: ["reception_multi"],
+    usedSeconds: gateSeconds,
+    usedMinutes: 130,
+    includedMinutes: TRIAL_MINUTES_INCLUDED,
+    overageMinutes: 0,
+    overageRate: rc.overagePerMin,
+    overageAmount: 0,
+    signupTrial: { endsAt: ENDS.toISOString(), minutesIncluded: TRIAL_MINUTES_INCLUDED, usedMinutes: 130 },
+  };
+  const noOverage = (x: ReturnType<typeof e>) => ({ ...x, overageMinutes: 0, overageAmount: 0 });
+  const trialEntries = [
+    trialReception,
+    noOverage(e("sales", false, [], min(300), 0, cat.sales.EUR.overagePerMin)),
+    noOverage(e("connect", false, [], min(5), 0, cat.connect.EUR.overagePerMin)),
+  ];
+  const paidEntries = [
+    e("reception", true, ["reception_multi"], min(40), rc.minutes, rc.overagePerMin),
+    e("sales", false, [], min(300), 0, cat.sales.EUR.overagePerMin),
+    e("connect", false, [], min(5), 0, cat.connect.EUR.overagePerMin),
+  ];
+  assert.equal(TRIAL_MINUTES_INCLUDED, 100);
+  for (const status of ["trialing", "trial_paused", "active"]) {
+    for (const withTrials of [false, true]) {
+      const got = compose(status, withTrials) as { kind: string; entries: unknown[]; trials?: Array<Record<string, unknown>> };
+      const label = `${status}, ${withTrials ? "with" : "without"} product trials`;
+      assert.equal(got.kind, "products", label);
+      assert.deepEqual(got.entries, status === "active" ? paidEntries : trialEntries, label);
+      if (withTrials) {
+        assert.equal(got.trials?.length, 1, label);
+        assert.deepEqual([got.trials![0].product, got.trials![0].minutesIncluded], ["sales", 30], `${label}: the product trial keeps its own cap`);
+      } else assert.ok(!("trials" in got), label);
+    }
+  }
+  // Active: byte-identical to an input without signupTrial at all.
+  assert.equal(JSON.stringify(compose("active", false)), JSON.stringify(usageByProduct(input({ entitlement: ent, calls: periodCalls, campaignCalls }))));
+  // Admins are never gated, so never shown the trial cap.
+  assert.deepEqual(compose("trialing", false, "admin").entries, paidEntries, "admin trialing: the catalogue, as the gate never applies");
+  // The reception entry shows even when the account owns no reception product.
+  const salesOnly = usageByProduct(input({ entitlement: rec("sales"), signupTrial: { endsAt: null, secondsUsed: 0 } }));
+  assert.deepEqual((salesOnly.entries as Array<Record<string, unknown>>).map((x) => [x.entry, x.owned, x.includedMinutes, (x.signupTrial as { endsAt: unknown } | undefined)?.endsAt]), [
+    ["reception", false, TRIAL_MINUTES_INCLUDED, null],
+    ["sales", true, cat.sales.EUR.minutes, undefined],
+  ]);
+  // Grandfathered: signupTrial is ignored, the pool is unchanged.
+  const gfIn = input({ calls: periodCalls, campaignCalls });
+  assert.deepEqual(usageByProduct({ ...gfIn, signupTrial: { endsAt: ENDS, secondsUsed: gateSeconds } }), usageByProduct(gfIn), "grandfathered ignores signupTrial");
+  console.log("ok: sign-up trial cap table (trialing / trial_paused / active × product trials, admin, no reception, grandfathered)");
+}
+
 const src = readFileSync(new URL("../../lib/usage-by-product.ts", import.meta.url), "utf8");
 assert.doesNotMatch(src, /^import (?!type).*from "(@\/lib\/db|@\/lib\/products"|\.\/products")/m, "usage-by-product stays pure");
 for (const m of src.matchAll(/^import .* from "([^"]+)";$/gm)) {
   // P3: ./product-trials is pure too (its own guard: scripts/tests/product-trials.test.ts), and imported for a type only.
   if (m[1] === "./product-trials") assert.match(m[0], /^import type /, "./product-trials is a type-only import");
-  else assert.match(m[1], /^\.\/(product-catalogue|product-entitlement|product-values)$/, `pure import ${m[1]}`);
+  else assert.match(m[1], /^\.\/(product-catalogue|product-entitlement|product-values|trial)$/, `pure import ${m[1]}`);
 }
 console.log("ALL USAGE BY PRODUCT TESTS PASSED");
