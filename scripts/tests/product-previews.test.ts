@@ -31,6 +31,7 @@ import { CampaignList } from "../../app/[locale]/dashboard/campaigns/campaign-li
 import { GRID_TWO, TILE_ROW_SIZE_TWO } from "../../app/[locale]/dashboard/config/sections";
 import { ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { clientAgentSaveRequest, toolsSaveBody, type ScreenTools } from "../../components/bricks/tools/tools-ui";
+import { NotifyMeView } from "../../components/dashboard/ProductPreviewHeader";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
 import { PreviewProvider } from "../../components/preview/preview-context";
 import { ReceptionPreview } from "../../components/preview/ReceptionPreview";
@@ -224,6 +225,36 @@ async function main() {
     assert.ok(owned.includes(`aria-label="${esc(m.DashboardCampaigns.deleteCampaign)}"`) && !/<button type="button" disabled=""/.test(owned), `${l}: owned list unchanged`);
   }
   assert.deepEqual(calls, [], "rendering the previews made no request");
+}
+
+// ── 3b. The "Aperçu" bar sits ON the preview card, well below the header ────
+// (F3 push) Right under "C'est noté, nous vous préviendrons." the sample-data
+// line read as a contradiction: the label and the line are now the card's top
+// bar, the screen right under them inside the card, with room above the card.
+{
+  for (const l of LOCALES) {
+    const m = messages(l);
+    const badge = esc(m.DashboardNav.previewBadge);
+    const note = esc(m.DashboardNav.previewNote);
+    for (const [name, C] of [
+      ["reception", ReceptionPreview],
+      ["connect", ConnectPreview],
+      ["sales", SalesPreview],
+    ] as const) {
+      const out = html(l, createElement(C));
+      const frame = out.match(/<section [^>]*data-preview-frame=""[^>]*class="([^"]*)"/);
+      assert.ok(frame, `${l} ${name}: the frame`);
+      assert.match(frame[1], /\bmt-12\b/, `${l} ${name}: room above the card`);
+      const card = new RegExp(
+        `data-preview-frame=""[^>]*><div data-preview-card=""[^>]*><div data-preview-bar=""[^>]*><span id="[^"]+-label"[^>]*>[\\s\\S]*?${badge}</span><p id="[^"]+-note"[^>]*>${note}</p></div><div class="p-4 sm:p-6">`,
+      );
+      assert.match(out, card, `${l} ${name}: label + sample line are the card's top bar, the screen under them inside the card`);
+      assert.equal(out.split(note).length - 1, 1, `${l} ${name}: the sample line once`);
+    }
+    // The header's "notified" line carries no sample-data line (they are apart).
+    const done = html(l, createElement(NotifyMeView, { phase: "done" }));
+    assert.ok(done.includes(esc(m.DashboardNav.previewNotified)) && !done.includes(note), `${l}: the notified line stands alone`);
+  }
 }
 
 // ── 2c. Everything a preview reaches: no request path, no session ───────────
