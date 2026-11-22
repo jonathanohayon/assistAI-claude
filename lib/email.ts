@@ -272,7 +272,7 @@ export async function sendTrialDeletedEmail(
         ${t("actionLine")}
       </p>
       <p style="margin:0 0 24px;">
-        <a href="https://aitamara.com/dashboard/billing" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
+        <a href="https://aitamara.com/dashboard/billing" style="display:inline-block;background:linear-gradient(135deg,#be185d,#db2777);color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 18px;border-radius:999px;">
           ${t("ctaButton")}
         </a>
       </p>
