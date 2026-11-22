@@ -193,6 +193,7 @@ async function main() {
     for (const k of ["wowTileNotifs", "wowTagNotifs", "wowNotifsSummaryActive", "channelsTile", "channelsTileTagline", "channelsTileTaglinePhoneOnly"])
       assert.ok(!reception.includes(esc(m.DashboardConfig[k])), `${l}: no sample tile (${k})`);
     assert.ok(!reception.includes(GRID_TWO) && !reception.includes(TILE_ROW_SIZE_TWO) && !reception.includes("<fieldset"), `${l}: no tile grid`);
+    assert.ok(!reception.includes("xl:grid-cols-[minmax(0,1fr)_360px]") && !reception.includes("xl:col-start-2"), `${l}: the live test is not alone in a right column`);
     for (const line of samples.previewLiveTranscript(l)) assert.ok(reception.includes(esc(line.text)), `${l}: sample line`);
 
     const connect = html(l, createElement(ConnectPreview));

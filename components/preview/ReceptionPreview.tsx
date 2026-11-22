@@ -27,8 +27,9 @@ export function ReceptionPreview() {
   return (
     <PreviewFrame>
       <style>{CONFIG_FORM_CSS}</style>
-      {/* The same two-column layout as the owned page (config-form.tsx). */}
-      <div className="relative xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
+      {/* The same layout as the owned page (config-form.tsx): no tile, so the
+       *  live test goes full width under the hero. */}
+      <div className="relative">
         <HeroSection
           primaryPhone={previewNumber(lang)}
           stats={PREVIEW_RECEPTION_STATS}
@@ -38,7 +39,7 @@ export function ReceptionPreview() {
           currentLangLabel={langLabel}
           adminView
         />
-        <aside className="mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
+        <aside className="mb-8">
           <LiveTestPreview />
         </aside>
       </div>

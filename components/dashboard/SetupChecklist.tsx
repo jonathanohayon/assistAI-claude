@@ -267,7 +267,7 @@ export function SetupChecklist({
             title: t("agentUrlTitle"),
             desc: t("agentUrlDesc"),
             ctaLabel: t("agentUrlCta"),
-            href: "/dashboard/agent?tile=tools",
+            href: "/dashboard/agent#client-agent",
           },
         ]
       : []),

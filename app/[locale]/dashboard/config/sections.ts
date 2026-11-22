@@ -49,6 +49,15 @@ export function sectionShowsSaveDock(section: ConfigSection | undefined): boolea
   return section === undefined || SECTION_TILES[section].some((id) => id !== "campaigns");
 }
 
+/**
+ * The live test sits in a right column beside the tile grid (xl+) only when
+ * the page has both; on a page with no tile (reception) it goes full width
+ * under the hero, as it does below xl, rather than alone in a right column.
+ */
+export function sectionLiveTestBesideTiles(section: ConfigSection | undefined): boolean {
+  return sectionShowsLiveTest(section) && sectionShowsTiles(section);
+}
+
 /** The tile grid (heading, tiles, open panel): not on a page with no tile. */
 export function sectionShowsTiles(section: ConfigSection | undefined): boolean {
   return section === undefined || SECTION_TILES[section].length > 0;

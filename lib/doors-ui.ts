@@ -29,10 +29,6 @@ export type DoorStepId =
 
 export interface DoorUi {
   tileOrder: readonly DoorTileId[];
-  /** The tile to highlight: the first of these the screen actually shows. */
-  highlightTiles: readonly DoorTileId[];
-  /** Highlight only while the account has no number yet (reception). */
-  highlightOnlyWithoutNumber: boolean;
   /** Steps moved to the top of the checklist, in this order (when shown). */
   firstSteps: readonly DoorStepId[];
 }
@@ -41,25 +37,20 @@ export interface DoorUi {
 export const TODAY_TILE_ORDER: readonly DoorTileId[] = ["voice", "business", "tools", "persona", "notifs", "channels", "campaigns"];
 
 export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
-  // Today's dashboard, unchanged. "Start here" on the number tile until there is one.
+  // Today's dashboard, unchanged. No tile is highlighted on any door: the
+  // setup checklist is the guide.
   reception: {
     tileOrder: TODAY_TILE_ORDER,
-    highlightTiles: ["channels"],
-    highlightOnlyWithoutNumber: true,
     firstSteps: [],
   },
   // Calls go out: the campaigns first; the free live test right after the import.
   sales: {
     tileOrder: ["campaigns", "channels", "voice", "persona", "business", "tools", "notifs"],
-    highlightTiles: ["campaigns"],
-    highlightOnlyWithoutNumber: false,
     firstSteps: ["contacts", "liveTest"],
   },
   // The customer's own agent answers: its address and the voice first.
   connect: {
     tileOrder: ["tools", "voice", "channels", "persona", "business", "notifs", "campaigns"],
-    highlightTiles: ["tools"],
-    highlightOnlyWithoutNumber: false,
     firstSteps: ["agentUrl"],
   },
 };
@@ -96,13 +87,6 @@ export function orderBy<T>(items: readonly T[], idOf: (item: T) => string, order
  */
 export function initialTileOrder(saved: readonly string[] | null, door: unknown): readonly string[] {
   return saved && saved.length > 0 ? saved : doorUi(door).tileOrder;
-}
-
-/** The tile to highlight among those shown, or null (none shown, or reception with a number). */
-export function highlightedTile(door: unknown, shownIds: readonly string[], hasNumber = false): string | null {
-  const u = doorUi(door);
-  if (u.highlightOnlyWithoutNumber && hasNumber) return null;
-  return u.highlightTiles.find((id) => shownIds.includes(id)) ?? null;
 }
 
 /**

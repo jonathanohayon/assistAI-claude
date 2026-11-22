@@ -1,5 +1,5 @@
 // The configuration tile grid (pure, unit-tested): which tiles show, in
-// which order, and which one is highlighted.
+// which order. No tile is highlighted (the setup checklist is the guide).
 //
 // Order: the customer's own drag order (saved in this browser) wins; without
 // one, the account's door order (lib/doors-ui.ts). Ids missing from the order
@@ -9,17 +9,16 @@
 // calls are usable (admin), the campaigns tile leaves the grid (the feature
 // has its own menu tab); otherwise it stays, locked, and opens the upsell.
 
-import { highlightedTile, initialTileOrder, orderBy } from "@/lib/doors-ui";
+import { initialTileOrder, orderBy } from "@/lib/doors-ui";
 
 export function gridTiles<T extends { id: string }>(
   tiles: readonly T[],
   savedOrder: readonly string[] | null,
   door: unknown,
   campaignsEnabled: boolean,
-  hasNumber = false,
-): { tiles: T[]; highlightId: string | null } {
+): { tiles: T[] } {
   const shown = orderBy(tiles, (t) => t.id, initialTileOrder(savedOrder, door)).filter(
     (t) => t.id !== "campaigns" || !campaignsEnabled,
   );
-  return { tiles: shown, highlightId: highlightedTile(door, shown.map((t) => t.id), hasNumber) };
+  return { tiles: shown };
 }

@@ -46,6 +46,7 @@ import {
   sectionShowsLiveTest,
   sectionShowsSaveDock,
   sectionShowsTiles,
+  sectionLiveTestBesideTiles,
   tileInSection,
   type ConfigSection,
 } from "./config/sections";
@@ -130,7 +131,7 @@ export function ConfigForm({
   /** The menu page this form is on (config/sections.ts): its tiles and
    *  whether the home overview shows. Omitted = every tile (as before). */
   section?: ConfigSection;
-  /** The account's door: the default tile order and the highlighted tile. */
+  /** The account's door: the default tile order. */
   door?: Door | null;
   isAdmin?: boolean;
   /** Features actives pour le plan du tenant (gating tuile campagnes).
@@ -708,7 +709,7 @@ export function ConfigForm({
   // disparaît de la grille : la feature a son propre onglet de nav « Appels
   // sortants ». On ne garde la tuile que verrouillée (upsell) pour les plans
   // non éligibles, comme point de découverte.
-  const { tiles: orderedTiles, highlightId } = gridTiles(TILES, tileOrder, door, campaignsEnabled, Boolean(primaryPhone));
+  const { tiles: orderedTiles } = gridTiles(TILES, tileOrder, door, campaignsEnabled);
 
   // Drag & drop natif HTML5 (même pattern que admin/block-order-form), mais
   // sur une grille → on raisonne par id de tuile, pas par index. Le drop
@@ -747,7 +748,7 @@ export function ConfigForm({
        *  - Tile section dans la colonne gauche row 2.
        *  En dessous de xl : ordre DOM (hero → LiveTest → tiles), comportement
        *  inline classique sans sticky. */}
-      <div className={`relative ${sectionShowsLiveTest(section) ? "xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8" : ""}`}>
+      <div className={`relative ${sectionLiveTestBesideTiles(section) ? "xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8" : ""}`}>
         {/* ── HERO + LIVE STATUS ──────────────────────────────────────── */}
         {sectionShowsHero(section) && (
         <HeroSection
@@ -766,12 +767,12 @@ export function ConfigForm({
          *  xl+  : positionné dans la col droite, row 2, sticky sous le
          *         header pendant le scroll. */}
         {sectionShowsLiveTest(section) && (
-        <aside className="card-hover anim-fade-up mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
+        <aside className={`card-hover anim-fade-up mb-8 ${sectionLiveTestBesideTiles(section) ? "xl:col-start-2 xl:row-start-2 xl:mb-0" : ""}`}>
           {/* Sticky just below the header. The previous centring trick
            *  (mt-[280px] + -translate-y-1/2) moved the panel up visually but
            *  its layout box still reserved the 280 px, leaving an empty band
            *  under the tiles at the bottom of the page. */}
-          <div className="xl:sticky xl:top-24">
+          <div className={sectionLiveTestBesideTiles(section) ? "xl:sticky xl:top-24" : undefined}>
             <div id="live-test" className="scroll-mt-24">
               <LiveTestPanelLK dirty={dirty} asUserId={asUserId} />
             </div>
@@ -802,7 +803,6 @@ export function ConfigForm({
                 key={tile.id}
                 tile={tile}
                 active={activeTile === tile.id}
-                highlightLabel={tile.id === highlightId ? t("tileStartHere") : undefined}
                 sizeClass={sectionTileSize(section)}
                 onClick={() => {
                   // La tuile campagnes n'apparaît que verrouillée (plans non

@@ -32,6 +32,7 @@ import { productMenu, type ProductMenu } from "../../lib/product-menu";
 import {
   mergeSectionOrder,
   SECTION_TILES,
+  sectionLiveTestBesideTiles,
   sectionShowsTiles,
   sectionGridClass,
   sectionTileSize,
@@ -231,17 +232,31 @@ for (const id of ["channels", "notifs"]) {
 const SECTION_ENTRY = { reception: "reception", agent: "myAgent", sales: "sales" } as const;
 for (const [section, ids] of Object.entries(SECTION_TILES) as [keyof typeof SECTION_ENTRY, readonly string[]][])
   for (const id of ids) assert.equal(TILE_ENTRY[id], SECTION_ENTRY[section], `?tile=${id} lands on the page that shows it`);
-// Every in-app link to the channels / notifications tiles points at that page.
+// Every in-app ?tile= link points at the page that shows that tile.
 {
   const files = ["components/dashboard/SetupChecklist.tsx", "components/bricks/tools/ToolsBrick.tsx", "app/[locale]/dashboard/config-form.tsx"];
   let links = 0;
   for (const f of files)
-    for (const m of read(f).matchAll(/\/([a-z-]+)\?tile=(channels|notifs)\b/g)) {
+    for (const m of read(f).matchAll(/\/([a-z-]+)\?tile=(\w+)\b/g)) {
       links++;
       assert.equal(m[1], ENTRY_SUFFIX[TILE_ENTRY[m[2]]], `${f}: ${m[0]} → /${ENTRY_SUFFIX[TILE_ENTRY[m[2]]]}?tile=${m[2]}`);
     }
   assert.ok(links >= 4, `the links were found (${links})`);
 }
+// The checklist's "agent address" step opens the Ask-your-agent brick on
+// Votre agent (since #380 the address lives there, not in a tools tile).
+{
+  const checklist = read("components/dashboard/SetupChecklist.tsx");
+  const step = checklist.slice(checklist.indexOf('id: "agentUrl"'), checklist.indexOf('id: "number"'));
+  assert.match(step, /href: "\/dashboard\/agent#client-agent",/, "agentUrl step → the brick's anchor");
+  assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /<section\s+id="client-agent"/, "the anchor exists on the brick");
+}
+// The live test sits beside the tiles (right column, xl+) only on a page that
+// has tiles: on Réception it goes full width under the hero. Mon agent unchanged.
+assert.deepEqual(
+  [sectionLiveTestBesideTiles("reception"), sectionLiveTestBesideTiles("agent"), sectionLiveTestBesideTiles("sales"), sectionLiveTestBesideTiles(undefined)],
+  [false, true, false, true],
+);
 // Réception has no tile: no tile grid and no save dock (nothing to save there).
 assert.deepEqual([sectionShowsTiles("reception"), sectionShowsTiles("agent"), sectionShowsTiles("sales"), sectionShowsTiles(undefined)], [false, true, true, true]);
 assert.equal(sectionShowsSaveDock("reception"), false);
@@ -270,6 +285,10 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.match(form, /\{sectionShowsHero\(section\) && \(/);
   assert.match(form, /\{sectionShowsLiveTest\(section\) && \(/);
   assert.match(form, /\{sectionShowsTiles\(section\) && \(\s*<section ref=\{tilesRef\}/);
+  // The two-column layout and the sticky right column follow the same rule (Mon agent: as before).
+  assert.match(form, /<div className=\{`relative \$\{sectionLiveTestBesideTiles\(section\) \? "xl:grid xl:grid-cols-\[minmax\(0,1fr\)_360px\] xl:gap-8" : ""\}`\}>/);
+  assert.match(form, /<aside className=\{`card-hover anim-fade-up mb-8 \$\{sectionLiveTestBesideTiles\(section\) \? "xl:col-start-2 xl:row-start-2 xl:mb-0" : ""\}`\}>/);
+  assert.match(form, /<div className=\{sectionLiveTestBesideTiles\(section\) \? "xl:sticky xl:top-24" : undefined\}>/);
   assert.match(form, /\{sectionShowsSaveDock\(section\) && \(/);
 }
 

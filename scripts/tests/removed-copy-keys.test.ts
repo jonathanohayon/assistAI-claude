@@ -12,6 +12,8 @@
 // Home voice mock (16/11): VoiceStudio.sliders.* (warmth, formality, energy,
 // speed). The voice card now shows the Voice tile's own settings
 // (components/marketing/feature-mock-settings.ts).
+// "Start here" badge (22/11, VP): DashboardConfig.tileStartHere. No tile is
+// highlighted on any door; the setup checklist is the guide.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -31,6 +33,7 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.formality"],
   ["VoiceStudio", "sliders.energy"],
   ["VoiceStudio", "sliders.speed"],
+  ["DashboardConfig", "tileStartHere"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];

@@ -1110,8 +1110,7 @@
     "ownerEmailConfirmErrInvalidCode": "הקוד לא תואם. בדקו את 6 הספרות שקיבלתם.",
     "ownerEmailConfirmErrExpired": "תוקף הקוד פג. בקשו קוד חדש.",
     "ownerEmailConfirmErrTooManyAttempts": "יותר מדי ניסיונות: הקוד כבר לא בתוקף. בקשו קוד חדש.",
-    "ownerEmailConfirmErrConfirmFailed": "האישור לא הושלם. נסו שוב.",
-    "tileStartHere": "להתחלה"
+    "ownerEmailConfirmErrConfirmFailed": "האישור לא הושלם. נסו שוב."
   },
   "WebsiteScan": {
     "kicker": "עוזר AI",

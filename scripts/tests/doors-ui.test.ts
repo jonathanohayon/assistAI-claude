@@ -17,7 +17,6 @@ import {
   DOOR_UI,
   doorOf,
   doorUi,
-  highlightedTile,
   initialTileOrder,
   orderBy,
   STEP_PREREQUISITES,
@@ -62,7 +61,8 @@ assert.deepEqual(Object.keys(DOOR_UI).sort(), [...DOORS].sort(), "one entry per 
 for (const d of DOORS) {
   const u = DOOR_UI[d];
   assert.deepEqual(sorted(u.tileOrder), sorted(PRE_PR_TILE_IDS), `${d}: tileOrder lists every tile once`);
-  for (const h of u.highlightTiles) assert.ok(u.tileOrder.includes(h), `${d}: highlight ${h} is a tile`);
+  // No "start here" badge on any door (VP): the setup checklist is the guide.
+  assert.deepEqual(Object.keys(u).sort(), ["firstSteps", "tileOrder"], `${d}: no highlight field`);
 }
 assert.ok(!("headerKey" in DOOR_UI.reception), "the door no longer names a home tab (the menu has no home tab)");
 
@@ -92,13 +92,11 @@ for (const v of viewers) {
   const enabled = canUseOutboundCampaigns(v.isAdmin, v.features);
   for (const withPrompt of [false, true]) {
     for (const saved of [null, [], ["notifs", "voice"], ["campaigns"]]) {
-      for (const hasNumber of [false, true]) {
-        const tileSets = ALL_DOORS.map((d) => sorted(ids(gridTiles(tiles(withPrompt), saved, d, enabled, hasNumber).tiles)));
-        for (const s of tileSets) assert.deepEqual(s, tileSets[0], `${v.name}: same tiles for every door`);
-        // The gate is today's: campaigns tile only when outbound is NOT usable (it is the upsell).
-        assert.equal(tileSets[0].includes("campaigns"), !enabled, `${v.name}: campaigns tile = upsell iff locked`);
-        assert.equal(tileSets[0].length, PRE_PR_TILE_IDS.length - (enabled ? 1 : 0) + (withPrompt ? 1 : 0));
-      }
+      const tileSets = ALL_DOORS.map((d) => sorted(ids(gridTiles(tiles(withPrompt), saved, d, enabled).tiles)));
+      for (const s of tileSets) assert.deepEqual(s, tileSets[0], `${v.name}: same tiles for every door`);
+      // The gate is today's: campaigns tile only when outbound is NOT usable (it is the upsell).
+      assert.equal(tileSets[0].includes("campaigns"), !enabled, `${v.name}: campaigns tile = upsell iff locked`);
+      assert.equal(tileSets[0].length, PRE_PR_TILE_IDS.length - (enabled ? 1 : 0) + (withPrompt ? 1 : 0));
     }
   }
 }
@@ -107,33 +105,26 @@ for (const v of viewers) {
 assert.deepEqual([...TODAY_TILE_ORDER], PRE_PR_TILE_IDS);
 for (const d of [DEFAULT_DOOR, null, undefined, "junk"]) {
   for (const enabled of [false, true]) {
-    for (const hasNumber of [false, true]) {
-      // Same as main's applyTileOrder(TILES, null).filter(campaigns gate).
-      const expected = PRE_PR_TILE_IDS.filter((id) => id !== "campaigns" || !enabled);
-      assert.deepEqual(ids(gridTiles(tiles(false), null, d, enabled, hasNumber).tiles), expected, `reception tiles (${String(d)})`);
-    }
+    // Same as main's applyTileOrder(TILES, null).filter(campaigns gate).
+    const expected = PRE_PR_TILE_IDS.filter((id) => id !== "campaigns" || !enabled);
+    assert.deepEqual(ids(gridTiles(tiles(false), null, d, enabled).tiles), expected, `reception tiles (${String(d)})`);
   }
 }
-// "Start here" on the number tile only while there is no number; the tile stays in place.
-const recNoNumber = gridTiles(tiles(false), null, "reception", false, false);
-assert.equal(recNoNumber.highlightId, "channels");
-assert.equal(ids(recNoNumber.tiles).indexOf("channels"), PRE_PR_TILE_IDS.indexOf("channels"));
-assert.equal(gridTiles(tiles(false), null, "reception", false, true).highlightId, null);
-assert.equal(highlightedTile(null, ["channels"], true), null);
 
 // Sales and connect keep their door orders.
-const firstTile = (d: Door, enabled: boolean, hasNumber = false) => gridTiles(tiles(false), null, d, enabled, hasNumber);
+const firstTile = (d: Door, enabled: boolean) => gridTiles(tiles(false), null, d, enabled);
 assert.deepEqual(ids(firstTile("sales", false).tiles), ["campaigns", "channels", "voice", "persona", "business", "tools", "notifs"]);
 assert.deepEqual(ids(firstTile("connect", false).tiles), ["tools", "voice", "channels", "persona", "business", "notifs", "campaigns"]);
-assert.equal(firstTile("connect", false).highlightId, "tools");
-assert.equal(firstTile("connect", false, true).highlightId, "tools", "connect highlight doesn't depend on the number");
-// Sales on a plan WITHOUT outbound: the locked campaigns tile is first and highlighted (the upsell never disappears).
+// Sales on a plan WITHOUT outbound: the locked campaigns tile is first (the upsell never disappears).
 assert.equal(firstTile("sales", false).tiles[0].id, "campaigns");
-assert.equal(firstTile("sales", false, true).highlightId, "campaigns");
-// Sales with outbound (admin): the tile leaves the grid (menu tab instead); no tile highlighted.
+// Sales with outbound (admin): the tile leaves the grid (menu tab instead).
 assert.equal(firstTile("sales", true).tiles.some((t) => t.id === "campaigns"), false);
-assert.equal(firstTile("sales", true).highlightId, null);
-assert.equal(highlightedTile("connect", ["voice"]), null);
+// No highlight on any door: the grid returns its tiles only, and no tile carries a badge.
+for (const d of ALL_DOORS) for (const enabled of [false, true]) assert.deepEqual(Object.keys(gridTiles(tiles(false), null, d, enabled)), ["tiles"]);
+{
+  const ui = code("app/[locale]/dashboard/config/shared-ui.tsx") + code("app/[locale]/dashboard/config-form.tsx");
+  assert.doesNotMatch(ui, /highlightLabel|highlightId|tileStartHere|border-\[#be185d\] bg-white shadow-\[0_8px_28px/, "no start-here badge or ring");
+}
 
 // The customer's own drag order beats the door's; an empty one does not count.
 assert.deepEqual(initialTileOrder(["notifs", "voice"], "sales"), ["notifs", "voice"]);
@@ -248,7 +239,7 @@ assert.match(code("app/[locale]/login/page.tsx"), /href=\{withDoorParam\("\/sign
   assert.doesNotMatch(login, /lib\/door"|parseDoor|users\.door/, "login never parses or writes a door");
 }
 assert.match(code("app/[locale]/signup/signup-content.tsx"), /href=\{withDoorParam\("\/login", door\)\}/, "signup → login keeps ?door");
-assert.match(code("app/[locale]/dashboard/config-form.tsx"), /gridTiles\(TILES, tileOrder, door, campaignsEnabled, Boolean\(primaryPhone\)\)/);
+assert.match(code("app/[locale]/dashboard/config-form.tsx"), /gridTiles\(TILES, tileOrder, door, campaignsEnabled\)/);
 assert.doesNotMatch(code("app/[locale]/dashboard/config-form.tsx"), /applyTileOrder/);
 
 // Every message key the door uses exists in the three locales.
@@ -257,7 +248,6 @@ for (const locale of ["fr", "en", "he"]) {
   for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "agentUrlTitle", "agentUrlDesc", "agentUrlCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
     assert.equal(typeof m.DashboardSetup[k], "string", `${locale}: DashboardSetup.${k}`);
   }
-  assert.equal(typeof m.DashboardConfig.tileStartHere, "string");
 }
 
 // ── Tiles in a row share one height (the row stretches to its tallest tile) ─
