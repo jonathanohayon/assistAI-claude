@@ -9,8 +9,10 @@
 //      (usageByProduct display numbers, warning thresholds), and applies to
 //      the next one;
 //   5. overage of a finished period at THAT period's pinned rate and minutes
-//      (computeOverageLines), never at the new catalogue's; cross-currency:
-//      pinned minutes, the new order's currency's live rate;
+//      (computeOverageLines), never at the new catalogue's; always in the
+//      period's OWN currency and rate (no cross-currency pricing): a new
+//      order in another currency is a conflict (overageCurrencyConflict),
+//      mixed pending currencies ask for the first one's;
 //   6. termsChanges: first order [], price / minutes / rate / currency
 //      changes, add-on added / removed; previousPaidOrder.
 // Mock data only. Run with:  npx tsx scripts/tests/order-terms.test.ts
@@ -19,7 +21,18 @@ import assert from "node:assert/strict";
 
 import { monthlySubPeriods } from "../../lib/monthly-periods";
 import { DEFAULT_PRODUCT_CATALOGUE, defaultProductCatalogue, type ProductCatalogue } from "../../lib/product-catalogue";
-import { catalogueLines, computeOverageLines, invoiceLines, parseOrderLines, withoutTerms, type OrderLine, type PaidCoverage } from "../../lib/order-lines";
+import {
+  catalogueLines,
+  computeOverageLines,
+  invoiceLines,
+  overageCurrencyConflict,
+  parseOrderLines,
+  pendingOverage,
+  periodCurrency,
+  withoutTerms,
+  type OrderLine,
+  type PaidCoverage,
+} from "../../lib/order-lines";
 import {
   linesTerms,
   orderCovering,
@@ -216,12 +229,56 @@ function paidOrder(cat: ProductCatalogue, start: string, end: string, opts: { pe
   // An old paid order without terms: the live catalogue, exactly as P4.
   const oldPaid = [{ lines: withoutTerms(paid[0].lines) }];
   assert.deepEqual(pick(computeOverageLines(input({ paidOrders: oldPaid }))), pick(computeOverageLines(input({ paidOrders: undefined }))));
-  // The new order in ILS (P4: overage priced in the new order's currency):
-  // the period's pinned minutes (200 / 400), ILS's live rate (2.5 / 1.9).
-  assert.deepEqual(pick(computeOverageLines(input({ currency: "ILS" }))), [
-    ["reception", 50, 125],
-    ["sales", 10, 19],
+  // The new order in ILS: the overage stays in its period's currency (EUR)
+  // and pinned rate; never ILS's live rate. A conflict, refused by the caller.
+  const pend = pendingOverage(input({ currency: "ILS" }));
+  assert.deepEqual(pend.map((p) => [p.line.entry, p.line.minutes, p.line.amount, p.currency]), [
+    ["reception", 50, 19.5, "EUR"],
+    ["sales", 10, 3.9, "EUR"],
   ]);
+  assert.deepEqual(overageCurrencyConflict(pend, "ILS"), { currency: "EUR", amount: 23.4 });
+  assert.equal(overageCurrencyConflict(pend, "EUR"), null);
+  assert.equal(overageCurrencyConflict([], "ILS"), null, "no pending overage: any currency");
+  assert.throws(() => computeOverageLines(input({ currency: "ILS" })), /another currency/);
+  // An old order without terms: its row currency decides.
+  const oldIls = [{ lines: withoutTerms(paid[0].lines), currency: "ILS" }];
+  assert.equal(periodCurrency(oldIls, OCT.start, "EUR"), "ILS");
+  assert.equal(periodCurrency([], OCT.start, "EUR"), "EUR", "no covering order → the fallback");
+  const oldIlsLines = pendingOverage(input({ paidOrders: oldIls, currency: "EUR" }));
+  assert.ok(oldIlsLines.every((p) => p.currency === "ILS"));
+  // Read at the live ILS row (edited rate 2.5 for reception; sales untouched).
+  const salesOver = 410 - live.sales.ILS.minutes;
+  assert.deepEqual(oldIlsLines.map((p) => [p.line.entry, p.line.minutes, p.line.amount]), [
+    ["reception", 250 - live.reception.ILS.minutes, (250 - live.reception.ILS.minutes) * 2.5],
+    ["sales", salesOver, Math.round(salesOver * live.sales.ILS.overagePerMin * 100) / 100],
+  ]);
+
+  // Mixed pending currencies (only after past switches): Sep paid in ILS,
+  // Oct paid in EUR. The FIRST pending period's currency is asked for; an
+  // order in it carries only its own lines, the other one waits.
+  const SEP: PaidCoverage = { start: d("2026-09-01T00:00:00Z"), end: d("2026-10-01T00:00:00Z"), period: "monthly", base: "reception", addons: [] };
+  const sepLines = catalogueLines({ base: "reception", addons: [] }, "monthly", "ILS", live);
+  sepLines[0] = { ...(sepLines[0] as Extract<OrderLine, { kind: "base" }>), periodStart: SEP.start.toISOString(), periodEnd: SEP.end.toISOString() };
+  const mixed = input({
+    coverages: [OCT, SEP],
+    paidOrders: [...paid, { lines: sepLines }],
+    calls: [
+      { durationSeconds: 250 * 60, product: null, createdAt: d("2026-09-10T00:00:00Z") },
+      { durationSeconds: 250 * 60, product: null, createdAt: d("2026-10-10T00:00:00Z") },
+    ],
+  });
+  const mp = pendingOverage(mixed);
+  assert.deepEqual(mp.map((p) => [p.line.periodStart.slice(0, 7), p.currency, p.line.amount]), [
+    ["2026-09", "ILS", 50 * live.reception.ILS.overagePerMin],
+    ["2026-10", "EUR", 19.5],
+  ]);
+  assert.deepEqual(overageCurrencyConflict(mp, "EUR"), { currency: "ILS", amount: 50 * live.reception.ILS.overagePerMin });
+  assert.equal(overageCurrencyConflict(mp, "ILS"), null);
+  assert.deepEqual(computeOverageLines({ ...mixed, currency: "ILS" }).map((l) => l.periodStart.slice(0, 7)), ["2026-09"]);
+  // Once September is billed, October's EUR is the first: asked for in EUR.
+  const afterSep = { ...mixed, billed: new Set(["reception|2026-09-01T00:00:00.000Z"]) };
+  assert.deepEqual(overageCurrencyConflict(pendingOverage(afterSep), "ILS"), { currency: "EUR", amount: 19.5 });
+  assert.deepEqual(computeOverageLines({ ...afterSep, currency: "EUR" }).map((l) => l.periodStart.slice(0, 7)), ["2026-10"]);
 }
 
 // ── 6. termsChanges ───────────────────────────────────────────────────
