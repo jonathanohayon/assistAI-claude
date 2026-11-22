@@ -12,17 +12,20 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-TMP=".tmp/campaign-analysis-${PORT}"
-DIR="$TMP/pg"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-MAIN="$TMP/main-tree"
-SNAP="$PWD/$TMP/main-snapshot.json"
-HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
-TEST="scripts/tests/campaign-analysis-db.test.ts"
-rm -rf "$TMP" && mkdir -p "$TMP"
-initdb -D "$DIR" -A trust -U postgres >/dev/null
-pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$TMP/pg.log" -w start >/dev/null
+pg_layout() {
+  TMP=".tmp/campaign-analysis-${PORT}"
+  DIR="$TMP/pg"
+  PGLOG="$TMP/pg.log"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  MAIN="$TMP/main-tree"
+  SNAP="$PWD/$TMP/main-snapshot.json"
+  HOOKS="scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs"
+  TEST="scripts/tests/campaign-analysis-db.test.ts"
+  rm -rf "$TMP" && mkdir -p "$TMP"
+}
+pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
+pg_start_throwaway campaign-analysis
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 mkdir -p "$MAIN"

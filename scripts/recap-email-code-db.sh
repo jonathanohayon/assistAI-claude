@@ -16,13 +16,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib/pg-free-port.sh
 pick_free_port
-DIR=".tmp/pg-recap-email-code-${PORT}"
-URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
-TAG="0052_contact_confirmation_codes"
-rm -rf "$DIR" "$DIR.work" && mkdir -p "$DIR" "$DIR.work"
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 initdb -D "$DIR" -A trust -U postgres >/dev/null
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 pg_ctl -D "$DIR" -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$DIR.log" -w start >/dev/null
+pg_layout() {
+  DIR=".tmp/pg-recap-email-code-${PORT}"
+  URL="postgres://postgres@127.0.0.1:${PORT}/postgres"
+  TAG="0052_contact_confirmation_codes"
+  rm -rf "$DIR" "$DIR.work" && mkdir -p "$DIR" "$DIR.work"
+}
+pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$DIR.work"'
+PG_START_ENV=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+pg_start_throwaway recap-email-code
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 migrate() { env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }

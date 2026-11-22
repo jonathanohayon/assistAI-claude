@@ -9,10 +9,17 @@
 //    not, a port with a listener and skip-list ports are never returned, and
 //    the lock is removed on exit, after the suite's cleanup, even when that
 //    cleanup fails.
+// 3. Every suite starts Postgres through pg_start_throwaway (no raw initdb /
+//    `pg_ctl ... start`), defines pg_layout and registers its cleanup first.
+// 4. pg_start_throwaway itself, with stub initdb/pg_ctl on PATH (and, when a
+//    real pg_ctl is installed, a stub that fails once then delegates to it):
+//    a failed start keeps its server log outside the cleaned dirs, prints its
+//    tail and retries once on a NEW port with a fresh DIR; a double failure
+//    exits non-zero with two logs; a failed initdb is never retried.
 
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -37,11 +44,21 @@ for (const { file } of suites) {
     code.includes(`[ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]`),
     `${file} lost the inet_server_port check`,
   );
+  assert.doesNotMatch(code, /\bpg_ctl\b[^\n]*\bstart\b/, `${file} starts Postgres itself: use pg_start_throwaway`);
+  assert.doesNotMatch(code, /\binitdb\b/, `${file} runs initdb itself: use pg_start_throwaway`);
+  const name = file.replace(/^scripts\//, "").replace(/-db\.sh$/, "");
+  assert.match(code, new RegExp(`^\\s*pg_start_throwaway ${name}$`, "m"), `${file} must call pg_start_throwaway ${name}`);
+  assert.match(code, /^pg_layout\(\) \{$/m, `${file} must define pg_layout() (re-run on a retry)`);
+  assert.match(code, /^pg_layout$/m, `${file} must call pg_layout after pick_free_port`);
+  assert.ok(
+    code.search(/^\s*pg_on_exit '/m) < code.search(/^\s*pg_start_throwaway /m),
+    `${file} must register pg_on_exit before pg_start_throwaway (it is the retry's teardown)`,
+  );
   const pick = code.indexOf("\npick_free_port\n");
   const firstUse = code.search(/\$\{?PORT\b/);
   assert.ok(firstUse === -1 || firstUse > pick, `${file} uses $PORT before pick_free_port`);
 }
-console.log(`ok: ${suites.length} DB suites source the helper, no fixed port, inet_server_port kept`);
+console.log(`ok: ${suites.length} DB suites source the helper, start via pg_start_throwaway, no fixed port, inet_server_port kept`);
 
 // ── 2. The helper ───────────────────────────────────────────────────────
 const lockRoot = mkdtempSync(path.join(os.tmpdir(), "pg-free-port-test-"));
@@ -219,8 +236,176 @@ async function main() {
       assert.ok(!existsSync(lockDir(base)), "lock left after SIGTERM");
       console.log("ok: lock released on exit (pass, fail, exit 3, SIGTERM), after the cleanup");
     }
+
+    // ── 4. pg_start_throwaway ───────────────────────────────────────────
+    await startHelperTests();
   } finally {
     rmSync(lockRoot, { recursive: true, force: true });
+  }
+}
+
+// Stub initdb/pg_ctl. pg_ctl `start` fails (writing a FATAL line to its -l
+// log) while $STUB_STATE/fails is below $STUB_FAIL_N; after that it delegates
+// to $STUB_REAL_PG_CTL when set, else "starts" without doing anything. Every
+// start's port goes to $STUB_STATE/starts.
+const STUB_PG_CTL = `#!/usr/bin/env bash
+orig=("$@")
+dir="" opts="" log="" action=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -D) dir="$2"; shift 2 ;;
+    -o) opts="$2"; shift 2 ;;
+    -l) log="$2"; shift 2 ;;
+    -m|-t) shift 2 ;;
+    -w) shift ;;
+    *) action="$1"; shift ;;
+  esac
+done
+if [ "$action" = start ]; then
+  port="$(sed -E 's/.*-p ([0-9]+).*/\\1/' <<<"$opts")"
+  echo "$port" >>"$STUB_STATE/starts"
+  n="$(cat "$STUB_STATE/fails" 2>/dev/null || echo 0)"
+  if [ "$n" -lt "\${STUB_FAIL_N:-0}" ]; then
+    echo $((n + 1)) >"$STUB_STATE/fails"
+    echo "FATAL:  simulated start failure $((n + 1)) on port $port" >>"$log"
+    exit 1
+  fi
+fi
+if [ -n "\${STUB_REAL_PG_CTL:-}" ]; then
+  exec "$STUB_REAL_PG_CTL" "\${orig[@]}"
+fi
+exit 0
+`;
+
+function realBin(name: string): string | null {
+  const r = spawnSync("bash", ["-c", `command -v ${name}`], { encoding: "utf8" });
+  return r.status === 0 && r.stdout.trim() ? r.stdout.trim() : null;
+}
+
+async function startHelperTests() {
+  const root = mkdtempSync(path.join(os.tmpdir(), "pg-start-test-"));
+  try {
+    const bin = path.join(root, "bin");
+    mkdirSync(bin);
+    writeFileSync(path.join(bin, "pg_ctl"), STUB_PG_CTL, { mode: 0o755 });
+    const fakeInitdb = path.join(root, "fake-initdb");
+    mkdirSync(fakeInitdb);
+    writeFileSync(
+      path.join(fakeInitdb, "initdb"),
+      `#!/usr/bin/env bash\n[ -n "\${STUB_INITDB_FAIL:-}" ] && { echo "initdb: simulated failure" >&2; exit 1; }\nwhile [ $# -gt 0 ]; do [ "$1" = -D ] && mkdir -p "$2"; shift; done\n`,
+      { mode: 0o755 },
+    );
+
+    let caseNo = 0;
+    async function runStart(opts: { failN: number; real?: string | null; initdbFail?: boolean }) {
+      const c = path.join(root, `case-${++caseNo}`);
+      const work = path.join(c, "work");
+      const keep = path.join(c, "keep");
+      const state = path.join(c, "state");
+      mkdirSync(work, { recursive: true });
+      mkdirSync(state);
+      const base = await freeRange(4);
+      const body = [
+        "set -euo pipefail",
+        `source "${HELPER}"`,
+        "pick_free_port",
+        "FIRST=$PORT",
+        'pg_layout() { DIR="$WORK/pg-${PORT}"; URL="postgres://postgres@127.0.0.1:${PORT}/postgres"; rm -rf "$DIR" && mkdir -p "$DIR"; }',
+        "pg_layout",
+        `pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$DIR" "$DIR.log"'`,
+        "pg_start_throwaway guard",
+        'echo "FIRST=$FIRST PORT=$PORT"',
+        opts.real ? `[ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ] && echo CHECKED` : "",
+      ].join("\n");
+      const PATH = [bin, ...(opts.real ? [] : [fakeInitdb]), process.env.PATH ?? ""].join(":");
+      const r = spawnSync("bash", ["-c", body], {
+        encoding: "utf8",
+        env: {
+          ...envFor({ min: base, max: base + 3 }),
+          PATH,
+          LANG: "en_US.UTF-8",
+          WORK: work,
+          PG_START_KEEP_DIR: keep,
+          PG_START_TIMEOUT: "20",
+          STUB_STATE: state,
+          STUB_FAIL_N: String(opts.failN),
+          STUB_REAL_PG_CTL: opts.real ?? "",
+          STUB_INITDB_FAIL: opts.initdbFail ? "1" : "",
+        },
+      });
+      const starts = existsSync(path.join(state, "starts"))
+        ? readFileSync(path.join(state, "starts"), "utf8").trim().split("\n").filter(Boolean).map(Number)
+        : [];
+      const kept = existsSync(keep) ? readdirSync(keep).sort() : [];
+      return { r, base, work, keep, starts, kept, left: readdirSync(work) };
+    }
+    const noLocks = (base: number) => {
+      for (let p = base; p < base + 4; p++) assert.ok(!existsSync(lockDir(p)), `lock for ${p} left behind`);
+    };
+
+    // One failed start: log kept, tail printed, retry on a new port + fresh DIR.
+    {
+      const t = await runStart({ failN: 1 });
+      assert.equal(t.r.status, 0, t.r.stderr);
+      assert.equal(t.starts.length, 2, `expected 2 starts, got ${t.starts.join(",")}`);
+      const [first, second] = t.starts;
+      assert.notEqual(first, second, "the retry reused the failed port");
+      assert.match(t.r.stdout, new RegExp(`FIRST=${first} PORT=${second}`));
+      assert.equal(t.kept.length, 1, `kept logs: ${t.kept.join(",")}`);
+      assert.match(t.kept[0], new RegExp(`^pg-start-failed-guard-${first}-\\d{8}T\\d{6}-\\d+\\.log$`));
+      assert.match(readFileSync(path.join(t.keep, t.kept[0]), "utf8"), /simulated start failure 1 on port/);
+      assert.match(t.r.stderr, /log kept at .*pg-start-failed-guard-/);
+      assert.match(t.r.stderr, /FATAL: {2}simulated start failure 1/, "the log tail was not printed");
+      assert.match(t.r.stderr, /retrying once on 127\.0\.0\.1:\d+ with a fresh DIR/);
+      assert.deepEqual(t.left, [], `run dirs left behind: ${t.left.join(",")}`);
+      noLocks(t.base);
+      console.log(`ok: a failed start keeps its log and retries once on a new port (${first} -> ${second})`);
+    }
+
+    // Two failed starts: non-zero, two logs (one per port), nothing else left.
+    {
+      const t = await runStart({ failN: 2 });
+      assert.notEqual(t.r.status, 0, "a double start failure passed");
+      assert.doesNotMatch(t.r.stdout, /FIRST=/);
+      assert.equal(t.starts.length, 2, `expected exactly 2 starts, got ${t.starts.join(",")}`);
+      assert.notEqual(t.starts[0], t.starts[1]);
+      assert.equal(t.kept.length, 2, `kept logs: ${t.kept.join(",")}`);
+      for (const p of t.starts) {
+        assert.ok(t.kept.some((k) => k.startsWith(`pg-start-failed-guard-${p}-`)), `no kept log for port ${p}`);
+      }
+      assert.match(t.r.stderr, /retry failed too/);
+      assert.deepEqual(t.left, []);
+      noLocks(t.base);
+      console.log("ok: a double start failure exits non-zero with two kept logs");
+    }
+
+    // A failed initdb is never retried and never reaches pg_ctl start.
+    {
+      const t = await runStart({ failN: 0, initdbFail: true });
+      assert.notEqual(t.r.status, 0);
+      assert.deepEqual(t.starts, [], "pg_ctl start ran after a failed initdb");
+      assert.deepEqual(t.kept, []);
+      noLocks(t.base);
+      console.log("ok: a failed initdb stops the suite, no start, no retry");
+    }
+
+    // With a real Postgres: the stub fails the first start, then delegates.
+    const real = realBin("pg_ctl");
+    if (real && realBin("initdb") && realBin("psql")) {
+      const t = await runStart({ failN: 1, real });
+      assert.equal(t.r.status, 0, t.r.stderr);
+      assert.match(t.r.stdout, /CHECKED/, "inet_server_port check did not run on the retry's port");
+      assert.equal(t.starts.length, 2);
+      assert.notEqual(t.starts[0], t.starts[1]);
+      assert.equal(t.kept.length, 1);
+      assert.deepEqual(t.left, [], "the real server's DIR was not removed");
+      noLocks(t.base);
+      console.log(`ok: real Postgres started on the retry port ${t.starts[1]} after a simulated failure`);
+    } else {
+      console.log("skip: no initdb/pg_ctl/psql on PATH, real-Postgres retry case not run");
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 }
 
