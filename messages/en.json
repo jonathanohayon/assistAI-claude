@@ -1937,10 +1937,10 @@
     },
     "trialWarning": {
       "subjectMinutes": "⏰ {minutes} minutes left in your Tamara trial",
-      "subjectHours": "⏰ Your Tamara trial ends in {warningDays, plural, one {# day} other {# days}}",
+      "subjectHours": "⏰ Your Tamara trial {warningDays, plural, =0 {ends today} =1 {ends tomorrow} other {ends in # days}}",
       "heading": "⏰ Your trial ends soon",
-      "introHtml": "Your free <strong>Tamara</strong> trial ends in <strong>{warningDays, plural, one {# day} other {# days}}</strong>. After that, Tamara is paused: she stops answering your calls.",
-      "introText": "Your free Tamara trial ends in {warningDays, plural, one {# day} other {# days}}. After that, Tamara is paused: she stops answering your calls.",
+      "introHtml": "Your free <strong>Tamara</strong> trial {warningDays, plural, =0 {ends <strong>today</strong>} =1 {ends <strong>tomorrow</strong>} other {ends in <strong># days</strong>}}. After that, Tamara is paused: she stops answering your calls.",
+      "introText": "Your free Tamara trial {warningDays, plural, =0 {ends today} =1 {ends tomorrow} other {ends in # days}}. After that, Tamara is paused: she stops answering your calls.",
       "warningBoxHtml": "Nothing is deleted: your settings stay, and {phoneLine} is <strong>kept for {retentionDays, plural, one {# day} other {# days}}</strong> after the pause.",
       "phoneSpecific": "the number <strong>{phone}</strong>",
       "phoneGeneric": "your number",
@@ -1952,7 +1952,7 @@
       "phoneLineWithPhone": "Nothing is deleted: your settings stay, and your number {phone} is kept for {retentionDays, plural, one {# day} other {# days}} after the pause.",
       "phoneLineGeneric": "Nothing is deleted: your settings stay, and your number is kept for {retentionDays, plural, one {# day} other {# days}} after the pause.",
       "signature": "— The Tamara team",
-      "textBullet": "In {warningDays, plural, one {# day} other {# days}}:"
+      "textBullet": "{warningDays, plural, =0 {Today:} =1 {Tomorrow:} other {In # days:}}"
     },
     "trialDeleted": {
       "subject": "Your Tamara trial has ended: Tamara is paused",

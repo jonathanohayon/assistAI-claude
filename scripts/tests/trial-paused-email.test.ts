@@ -3,6 +3,7 @@
 // deleted (lib/trial.ts, app/api/cron/trial-cleanup). So, in fr/en/he:
 //   - no word of the e-mail says deleted / supprimé / נמחק;
 //   - it says the account is paused and the data are kept;
+//   - Hebrew writes the name "Tamara" (Latin), never "תמרה";
 //   - its button leads to the billing page (pay to reactivate), not to a new
 //     sign-up.
 // Run with: npx tsx scripts/tests/trial-paused-email.test.ts
@@ -32,6 +33,13 @@ for (const l of LOCALES) {
   assert.match(mail.introText, PAUSED[l], `${l} introText says paused`);
   assert.match(mail.introHtml, PAUSED[l], `${l} introHtml says paused`);
 }
+
+// One spelling of the assistant's name in Hebrew: "Tamara" (Latin), never
+// "תמרה", in both trial e-mails (tamaraVP standing rule).
+const he = load("he").Email as Record<string, Record<string, string>>;
+for (const ns of ["trialDeleted", "trialWarning"])
+  for (const [k, v] of Object.entries(he[ns]))
+    assert.doesNotMatch(v, /תמרה/, `he Email.${ns}.${k} spells the name in Hebrew: "${v}"`);
 
 // The sender: the button and the text link lead to the billing page.
 const email = readFileSync(join(ROOT, "lib/email.ts"), "utf8");

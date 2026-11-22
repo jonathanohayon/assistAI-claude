@@ -1937,10 +1937,10 @@
     },
     "trialWarning": {
       "subjectMinutes": "⏰ Il vous reste {minutes} minutes d'essai Tamara",
-      "subjectHours": "⏰ Votre essai Tamara se termine dans {warningDays, plural, one {# jour} other {# jours}}",
+      "subjectHours": "⏰ Votre essai Tamara {warningDays, plural, =0 {se termine aujourd'hui} =1 {se termine demain} other {se termine dans # jours}}",
       "heading": "⏰ Votre essai se termine bientôt",
-      "introHtml": "Votre essai gratuit <strong>Tamara</strong> se termine dans <strong>{warningDays, plural, one {# jour} other {# jours}}</strong>. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
-      "introText": "Votre essai gratuit Tamara se termine dans {warningDays, plural, one {# jour} other {# jours}}. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
+      "introHtml": "Votre essai gratuit <strong>Tamara</strong> {warningDays, plural, =0 {se termine <strong>aujourd'hui</strong>} =1 {se termine <strong>demain</strong>} other {se termine dans <strong># jours</strong>}}. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
+      "introText": "Votre essai gratuit Tamara {warningDays, plural, =0 {se termine aujourd'hui} =1 {se termine demain} other {se termine dans # jours}}. Ensuite, Tamara est mise en pause : elle ne répond plus à vos appels.",
       "warningBoxHtml": "Rien n'est supprimé : vos réglages restent, et {phoneLine} est <strong>conservé pendant {retentionDays, plural, one {# jour} other {# jours}}</strong> après la pause.",
       "phoneSpecific": "le numéro <strong>{phone}</strong>",
       "phoneGeneric": "votre numéro",
@@ -1952,7 +1952,7 @@
       "phoneLineWithPhone": "Rien n'est supprimé : vos réglages restent, et votre numéro {phone} est conservé {retentionDays, plural, one {# jour} other {# jours}} après la pause.",
       "phoneLineGeneric": "Rien n'est supprimé : vos réglages restent, et votre numéro est conservé {retentionDays, plural, one {# jour} other {# jours}} après la pause.",
       "signature": "— L'équipe Tamara",
-      "textBullet": "Dans {warningDays, plural, one {# jour} other {# jours}} :"
+      "textBullet": "{warningDays, plural, =0 {Aujourd'hui :} =1 {Demain :} other {Dans # jours :}}"
     },
     "trialDeleted": {
       "subject": "Votre essai Tamara est terminé : Tamara est en pause",

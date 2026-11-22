@@ -177,7 +177,7 @@ async function main() {
   }
   assert.match(admin, /catalogueRowWrite\(stored, body\)/, "PUT goes through the raw-body helper (E2: the row helper, which runs catalogueWrite)");
   assert.match(code("lib/product-catalogue-row.ts"), /catalogueWrite\(stored\.catalogue, priceBody\)/, "prices keep the catalogueWrite rules");
-  assert.match(code("app/api/public/plan-pricing/route.ts"), /publicPlanPricingResponse\(getPlanPricingMap, \(\) => getProductCatalogue\(\)\)/);
+  assert.match(code("app/api/public/plan-pricing/route.ts"), /publicPlanPricingResponse\(getPlanPricingMap, \(\) => getProductCatalogue\(\), \(\) => publicOffer\(\)\)/);
   // P2: billing-stats reads products ONLY to add usageByProduct for a valid
   // record (the bytes are proven in scripts/products-usage-db.sh).
   const bs = code("app/api/dashboard/billing-stats/route.ts");
