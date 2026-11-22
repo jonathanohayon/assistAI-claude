@@ -210,6 +210,12 @@ export async function GET(req: NextRequest) {
   // P2: per-product usage, ONLY for an account with a valid users.products
   // record. A grandfathered account gets no extra read and no extra field:
   // its response is byte-identical to before (scripts/products-usage-db.sh).
+  // The paid multi-line orders among the rows above: the annual anchor and
+  // the pinned terms of the period shown (lib/order-terms.ts).
+  const paidLines = payments.flatMap((p) => {
+    const lines = p.products == null ? null : parseOrderLines(p.products);
+    return lines ? [lines] : ([] as OrderLine[][]);
+  });
   const entitlement = entitledProducts({
     subscriptionPlan: me.subscriptionPlan,
     subscriptionStatus: me.subscriptionStatus,
@@ -226,12 +232,12 @@ export async function GET(req: NextRequest) {
           window: usageWindowFor({
             window,
             period: subUser.subscriptionPeriod,
-            coverages: coveragesOf(payments.flatMap((p) => {
-              const lines = p.products == null ? null : parseOrderLines(p.products);
-              return lines ? [lines] : ([] as OrderLine[][]);
-            })),
+            coverages: coveragesOf(paidLines),
             now,
           }),
+          // The period's own terms: a catalogue edit after the payment
+          // applies at the NEXT payment, never to the period it paid.
+          paidOrders: paidLines.map((lines) => ({ lines })),
           entitlement,
           currency,
           planMinutes: minutesIncluded,
