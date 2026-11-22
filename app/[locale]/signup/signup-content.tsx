@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Logo } from "@/components/ui/Logo";
 import type { Door } from "@/lib/door-values";
 import { withDoorParam } from "@/lib/doors-ui";
+import { RECEPTION_SIGNUP_COPY, type SignupDoorCopy } from "@/lib/signup-door-copy";
 import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 import { Link } from "@/i18n/navigation";
 
@@ -12,6 +13,9 @@ interface SignupContentProps {
   error: string | undefined;
   /** The landing page's door, posted back in a hidden field (no visible UI). */
   door: Door;
+  /** Title / subtitle / trial-line keys for the door (lib/signup-door-copy.ts),
+   *  chosen server-side from the public offer. Absent = reception (today's). */
+  copy?: SignupDoorCopy;
   handleSignup: (formData: FormData) => Promise<void>;
   startGoogleSignup: (formData: FormData) => Promise<void>;
 }
@@ -49,6 +53,7 @@ function GoogleIcon() {
 export function SignupContent({
   error,
   door,
+  copy = RECEPTION_SIGNUP_COPY,
   handleSignup,
   startGoogleSignup,
 }: SignupContentProps) {
@@ -84,13 +89,15 @@ export function SignupContent({
           {t("freeBadge")}
         </span>
         <h1 className="mt-4 font-display text-3xl tracking-tight text-[var(--color-foreground)]">
-          {t("title")}
+          {t(copy.title)}
         </h1>
         <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
-          {t("subtitle")}
+          {t(copy.subtitle)}
         </p>
         <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">
-          {t("freeTrialNoticeStart", TRIAL_COPY_VALUES)}
+          {copy.receptionTrial
+            ? t("freeTrialNoticeReceptionStart", TRIAL_COPY_VALUES)
+            : t("freeTrialNoticeStart", TRIAL_COPY_VALUES)}
         </p>
       </div>
 
