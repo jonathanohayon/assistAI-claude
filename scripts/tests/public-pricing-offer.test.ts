@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { productPurchasable } from "../../lib/order-lines";
 import { DEFAULT_PLAN_PRICING, type PlanPricingMap } from "../../lib/plan-pricing";
 import { DEFAULT_PRODUCT_CATALOGUE } from "../../lib/product-catalogue";
-import { publicAvailability, publicGrid, publicOffer } from "../../lib/public-offer";
+import { publicAvailability, publicGrid, publicOffer, signupDoorNotify } from "../../lib/public-offer";
 import {
   PUBLIC_PLAN_PRICING_CACHE_CONTROL,
   parsePublicAvailability,
@@ -163,6 +163,22 @@ async function main() {
   }
   // The client-safe module does not pull in the server-side offer.
   assert.doesNotMatch(src("lib/public-plan-pricing.ts"), /from "\.\/public-offer"|from "@\/lib\/public-offer"|order-lines|product-orders-switch/);
+
+  // signupDoorNotify: a not-yet-open door's product only; reception never.
+  for (const sales of [false, true]) {
+    for (const connect of [false, true]) {
+      const a = { sales, connect };
+      assert.equal(signupDoorNotify("sales", a), sales ? null : "sales", `sales door ${JSON.stringify(a)}`);
+      assert.equal(signupDoorNotify("connect", a), connect ? null : "connect", `connect door ${JSON.stringify(a)}`);
+      for (const d of ["reception", null, "admin", ""]) assert.equal(signupDoorNotify(d, a), null, `door ${JSON.stringify(d)} records nothing`);
+    }
+  }
+  // Same gate as the public `available`: gate off → recorded; gate on → not.
+  assert.equal(signupDoorNotify("sales", publicAvailability({})), "sales");
+  assert.equal(signupDoorNotify("sales", publicAvailability({ CAMPAIGN_DISPATCH: "on" })), null);
+  assert.equal(signupDoorNotify("connect", publicAvailability({ CLIENT_AGENT: "admin" })), "connect");
+  assert.equal(signupDoorNotify("connect", publicAvailability({ CLIENT_AGENT: "all" })), null);
+  console.log("ok: signupDoorNotify follows the public availability");
 
   console.log("ALL PUBLIC-PRICING-OFFER TESTS PASSED");
 }
