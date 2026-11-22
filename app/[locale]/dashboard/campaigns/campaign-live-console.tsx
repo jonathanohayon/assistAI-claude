@@ -9,6 +9,8 @@
  */
 
 import { useLocale, useTranslations } from "next-intl";
+
+import { useDataFetch } from "@/components/preview/preview-context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -53,6 +55,8 @@ export function CampaignLiveConsole({
   onDispatchMode?: (mode: DispatchMode) => void;
 }) {
   const t = useTranslations("DashboardCampaigns.live");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const locale = useLocale();
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [events, setEvents] = useState<LiveEvent[]>([]);
@@ -102,7 +106,7 @@ export function CampaignLiveConsole({
       const since = nextSince(eventsRef.current);
       const qs = since ? `?since=${encodeURIComponent(since)}` : "";
       try {
-        const res = await fetch(`/api/dashboard/campaigns/${campaignId}/live${qs}`, {
+        const res = await dataFetch(`/api/dashboard/campaigns/${campaignId}/live${qs}`, {
           signal: ctrl.signal,
           cache: "no-store",
         });
@@ -193,7 +197,7 @@ export function CampaignLiveConsole({
     setBusy(true);
     try {
       const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
-      const res = await fetch(`/api/dashboard/campaigns/${campaignId}/status${qs}`, {
+      const res = await dataFetch(`/api/dashboard/campaigns/${campaignId}/status${qs}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),

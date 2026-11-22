@@ -8,6 +8,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
+
+import { useDataFetch } from "@/components/preview/preview-context";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -108,6 +110,8 @@ export function CampaignAnalytics({
   captureOn?: boolean;
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -120,7 +124,7 @@ export function CampaignAnalytics({
   const load = useCallback(async () => {
     const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
     try {
-      const res = await fetch(
+      const res = await dataFetch(
         `/api/dashboard/campaigns/${campaignId}/results${qs}`,
       );
       if (!res.ok) throw new Error("load");

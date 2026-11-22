@@ -11,6 +11,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
+
+import { useDataFetch } from "@/components/preview/preview-context";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -99,6 +101,8 @@ export function CampaignsWorkspace({
   variant?: "modal" | "page";
 }) {
   const t = useTranslations("DashboardCampaigns");
+  // Preview (F2): the sample source instead of the network.
+  const dataFetch = useDataFetch();
   const tMission = useTranslations("MissionBrick");
   // Agents sortants du tenant (pour le sélecteur d'agent de l'étape Setup).
   const [agents, setAgents] = useState<OutboundAgentListItem[]>([]);
@@ -157,7 +161,7 @@ export function CampaignsWorkspace({
     if (!capsAgentId) return;
     let cancelled = false;
     const params = new URLSearchParams({ ...(asUserId ? { asUserId } : {}), agentId: capsAgentId });
-    fetch(`/api/dashboard/tools?${params}`, { cache: "no-store" })
+    dataFetch(`/api/dashboard/tools?${params}`, { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : null))
       .then((d) => {
         if (!cancelled && d?.capabilities) setAgentCaps({ agentId: capsAgentId, caps: d.capabilities });
@@ -174,7 +178,7 @@ export function CampaignsWorkspace({
   // remonté à chaque ouverture via key) et retombe à false en fin de fetch.
   const loadList = useCallback(async () => {
     try {
-      const res = await fetch(`/api/dashboard/campaigns${qs}`);
+      const res = await dataFetch(`/api/dashboard/campaigns${qs}`);
       if (!res.ok) throw new Error("load");
       const data = (await res.json()) as { campaigns: CampaignListItem[] };
       setList(data.campaigns ?? []);
@@ -193,7 +197,7 @@ export function CampaignsWorkspace({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch(`/api/dashboard/campaigns${qs}`)
+    dataFetch(`/api/dashboard/campaigns${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
       .then((data: { campaigns?: CampaignListItem[] }) => {
         if (cancelled) return;
@@ -206,7 +210,7 @@ export function CampaignsWorkspace({
         setError(t("loadError"));
         setLoading(false);
       });
-    fetch(`/api/dashboard/channels${qs}`)
+    dataFetch(`/api/dashboard/channels${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch"))))
       .then((data: { numbers?: Array<{ phoneNumber: string; channel: string }> }) => {
         if (cancelled) return;
@@ -219,7 +223,7 @@ export function CampaignsWorkspace({
       .catch(() => {
         /* silencieux : pas de numéros caller-id proposés */
       });
-    fetch(`/api/dashboard/outbound-agents${qs}`)
+    dataFetch(`/api/dashboard/outbound-agents${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fetch"))))
       .then((data: { agents?: OutboundAgentListItem[] }) => {
         if (cancelled) return;
@@ -293,7 +297,7 @@ export function CampaignsWorkspace({
     if ("goalPreset" in patch) cardPicked.current = true;
     const agentId = patch.agentId;
     if (!agentId || draft.id || cardPicked.current) return;
-    void fetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, { cache: "no-store" })
+    void dataFetch(`/api/dashboard/outbound-agents/${agentId}${qs}`, { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<{ agent?: { mission?: unknown } }>) : null))
       .then((d) => {
         if (!d) return;
@@ -317,7 +321,7 @@ export function CampaignsWorkspace({
     )
       return;
     try {
-      await fetch(`/api/dashboard/campaigns/${c.id}${qs}`, { method: "DELETE" });
+      await dataFetch(`/api/dashboard/campaigns/${c.id}${qs}`, { method: "DELETE" });
     } catch {
       /* best-effort : on rafraîchit quand même la liste */
     }
@@ -354,7 +358,7 @@ export function CampaignsWorkspace({
     setSaveError(null);
     try {
       const isNew = !draft.id;
-      const res = await fetch(
+      const res = await dataFetch(
         isNew
           ? `/api/dashboard/campaigns${qs}`
           : `/api/dashboard/campaigns/${draft.id}${qs}`,
