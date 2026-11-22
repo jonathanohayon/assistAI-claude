@@ -86,7 +86,8 @@ export function SignupContent({
               strokeLinejoin="round"
             />
           </svg>
-          {t("freeBadge")}
+          {/* A trial grants reception only: the connect / sales doors say so. */}
+          {copy.receptionTrial ? t("freeBadgeReception") : t("freeBadge")}
         </span>
         <h1 className="mt-4 font-display text-3xl tracking-tight text-[var(--color-foreground)]">
           {t(copy.title)}

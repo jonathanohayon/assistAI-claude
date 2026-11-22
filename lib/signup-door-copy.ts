@@ -9,8 +9,8 @@
 //
 //   reception (or no / unknown door): today's title, subtitle, trial line;
 //   connect / sales: their own title, a subtitle for usable or "opens soon",
-//     and the trial line naming the Reception trial (a trial grants
-//     reception only).
+//     and the badge and trial line naming the Reception trial (a trial
+//     grants reception only).
 // scripts/tests/signup-per-door.test.ts pins all of it.
 
 import type { Door } from "./door-values";
@@ -27,8 +27,9 @@ export type SignupSubtitleKey =
 export interface SignupDoorCopy {
   title: SignupTitleKey;
   subtitle: SignupSubtitleKey;
-  /** true: the trial line says it is the Reception trial
-   *  (Signup.freeTrialNoticeReceptionStart); false: today's line. */
+  /** true: the badge and the trial line say it is the Reception trial
+   *  (Signup.freeBadgeReception, Signup.freeTrialNoticeReceptionStart);
+   *  false: today's badge and line. */
   receptionTrial: boolean;
 }
 

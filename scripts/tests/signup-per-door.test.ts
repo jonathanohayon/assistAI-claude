@@ -53,28 +53,35 @@ function render(locale: Locale, door: Door, copy?: SignupDoorCopy): string {
 const unescape = (s: string) =>
   s.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 
-/** The header block's three lines: h1, subtitle, trial line. */
-function header(html: string): { title: string; subtitle: string; trial: string } {
-  const h1 = html.match(/<h1[^>]*>([^<]*)<\/h1>\s*<p[^>]*>([^<]*)<\/p>\s*<p[^>]*>([^<]*)<\/p>/);
+type Header = { badge: string; title: string; subtitle: string; trial: string };
+
+/** The header block: the badge, then h1, subtitle, trial line. */
+function header(html: string): Header {
+  const h1 = html.match(
+    /<\/svg>([^<]*)<\/span>\s*<h1[^>]*>([^<]*)<\/h1>\s*<p[^>]*>([^<]*)<\/p>\s*<p[^>]*>([^<]*)<\/p>/,
+  );
   assert.ok(h1, "header block found");
-  return { title: unescape(h1[1]), subtitle: unescape(h1[2]), trial: unescape(h1[3]) };
+  return { badge: unescape(h1[1]), title: unescape(h1[2]), subtitle: unescape(h1[3]), trial: unescape(h1[4]) };
 }
 
 const { days, minutes } = TRIAL_COPY_VALUES;
 
 // Today's reception copy (main before this change), byte for byte.
-const RECEPTION: Record<Locale, { title: string; subtitle: string; trial: string }> = {
+const RECEPTION: Record<Locale, Header> = {
   fr: {
+    badge: "Essai gratuit — toutes les fonctionnalités",
     title: "Créez votre agent vocal",
     subtitle: "Opérationnel en 2 minutes. Sans engagement, sans carte bancaire.",
     trial: `${days} jours d'essai gratuit ou ${minutes} minutes d'appels, au premier des deux atteint.`,
   },
   en: {
+    badge: "Free trial — all features",
     title: "Create your voice agent",
     subtitle: "Up and running in 2 minutes. No commitment, no credit card.",
     trial: `Free trial: ${days} days or ${minutes} call minutes, whichever comes first.`,
   },
   he: {
+    badge: "ניסיון חינם — כל הפיצ'רים",
     title: "צרו את הסוכן הקולי שלכם",
     subtitle: "מוכן תוך 2 דקות. ללא התחייבות, ללא כרטיס אשראי.",
     trial: `ניסיון חינם: ${days} ימים או ${minutes} דקות שיחה, המוקדם מביניהם.`,
@@ -83,6 +90,14 @@ const RECEPTION: Record<Locale, { title: string; subtitle: string; trial: string
 
 // The new FR lines put a non-breaking space ( ) before ":" so a narrow
 // screen never starts a line with the colon. Reception's lines are untouched.
+// The connect / sales badge: a trial grants reception only, so it never says
+// "all features".
+const RECEPTION_BADGE: Record<Locale, string> = {
+  fr: "Essai gratuit de la Réception",
+  en: "Free Reception trial",
+  he: "ניסיון חינם בקבלה",
+};
+
 const RECEPTION_TRIAL: Record<Locale, string> = {
   fr: `Essai gratuit de la Réception\u00a0: ${days} jours ou ${minutes} minutes d'appels, au premier des deux atteint.`,
   en: `Free Reception trial: ${days} days or ${minutes} call minutes, whichever comes first.`,
@@ -143,6 +158,8 @@ for (const locale of LOCALES) {
       const usable = available[door];
       const got = header(render(locale, door, signupDoorCopy(door, available)));
       const want = EXPECTED[door][locale];
+      assert.equal(got.badge, RECEPTION_BADGE[locale], `${locale} ${door} badge names Reception`);
+      assert.notEqual(got.badge, RECEPTION[locale].badge, `${locale} ${door} badge is not "all features"`);
       assert.equal(got.title, want.title, `${locale} ${door} title`);
       assert.equal(got.subtitle, usable ? want.usable : want.soon, `${locale} ${door} usable=${usable} subtitle`);
       assert.equal(got.trial, RECEPTION_TRIAL[locale], `${locale} ${door} trial line names Reception`);
@@ -210,6 +227,7 @@ assert.deepEqual([...DOORS], ["reception", "sales", "connect"], "the doors this 
 
 // ── 5. no trial figure in the new messages ───────────────────────────────
 const NEW_KEYS = [
+  "freeBadgeReception",
   "connectTitle",
   "connectSubtitleUsable",
   "connectSubtitleSoon",
