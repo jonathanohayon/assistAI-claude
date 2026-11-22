@@ -71,9 +71,9 @@ function FieldCell({
   return (
     <td className="px-2 py-2 align-top">
       <label className="flex items-center gap-1">
-        <span className="sr-only">{`${PRODUCT_LABEL[product]} ${currency} ${FIELD_LABEL[field]}`}</span>
         <input
           type="text"
+          aria-label={`${PRODUCT_LABEL[product]} ${currency} ${FIELD_LABEL[field]}`}
           inputMode={field === "minutes" ? "numeric" : "decimal"}
           value={value}
           aria-invalid={error ? true : undefined}
