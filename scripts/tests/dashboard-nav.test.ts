@@ -188,8 +188,8 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   const sales = code("app/[locale]/dashboard/sales/page.tsx");
   assert.match(sales, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(sales, /const \{ isAdmin, enabled \} = await loadOutboundCampaignsAccess\(session\.user\.id\);/, "sales: the API's own gate");
-  assert.match(sales, /const state = \(await loadAccountProductMenu\(session\.user\.id\)\)\.sales;/, "sales: its menu state");
-  assert.match(sales, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="sales" cta=\{state\.cta\} \/>\s*<SalesPreview \/>/, "sales: preview = its header + the sample workspace");
+  assert.match(sales, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.sales;/, "sales: its menu state");
+  assert.match(sales, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="sales" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("sales"\)\} \/>\s*<SalesPreview \/>/, "sales: preview = its header + the sample workspace");
   assert.match(sales, /if \(!enabled\) return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: locked otherwise = today's tile");
   assert.match(sales, /<CampaignsPageClient isAdmin=\{isAdmin\} captureOn=\{captureMode\(\) === "on"\} \/>/, "sales owned: today's workspace");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
@@ -295,16 +295,18 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
 // ── 5b. Preview product pages: their own header, then the real screen over sample data (F2) ──
 {
   const reception = code("app/[locale]/dashboard/reception/page.tsx");
-  assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} \/>\s*<ReceptionPreview \/>/);
+  assert.match(reception, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.reception;/);
+  assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("reception"\)\} \/>\s*<ReceptionPreview \/>/);
   assert.match(reception, /return <TenantConfigPage locale=\{locale\} section="reception" \/>;/, "owned: today's layout");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} \/>\s*<ConnectPreview \/>/);
+  assert.match(connect, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.connect;/);
+  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("connect"\)\} \/>\s*<ConnectPreview \/>/);
   const form = code("app/[locale]/dashboard/config-form.tsx");
   assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);
   const Intl = NextIntlClientProvider as unknown as ComponentType<{ locale: string; messages: unknown; timeZone?: string; children?: ReactNode }>;
-  const render = (locale: string, entry: "reception" | "sales" | "connect", cta: "soon" | "try") =>
-    renderToStaticMarkup(createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(ProductPreviewHeader, { entry, cta })));
+  const render = (locale: string, entry: "reception" | "sales" | "connect", cta: "soon" | "try", notifyRequested?: boolean) =>
+    renderToStaticMarkup(createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(ProductPreviewHeader, { entry, cta, notifyRequested })));
   for (const locale of ["fr", "en", "he"]) {
     const m = JSON.parse(read(`messages/${locale}.json`));
     for (const entry of ["reception", "sales", "connect"] as const) {
@@ -313,12 +315,22 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
       const pitch = m.DashboardNav[`pitch${entry[0].toUpperCase()}${entry.slice(1)}`];
       assert.ok(typeof pitch === "string" && soon.includes(pitch.replace(/'/g, "&#x27;")), `${locale}/${entry}: one sentence on what it does`);
       const q = (x: string) => x.replace(/'/g, "&#x27;");
-      // "soon": the plain line and NO button (no notify-me endpoint: no promise we can't keep).
-      // "try": ONE button, "try it free".
+      // "soon": the plain line, then exactly ONE button, "notify me" (PR #387's
+      // endpoint stores it); already requested: the "noted" line, no button.
+      // "try": ONE button, "try it free", and no notify-me.
       assert.ok(soon.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: "coming soon" line`);
       assert.ok(!soon.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: no "try" while soon`);
-      assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 0, `${locale}/${entry}: no button (soon)`);
+      assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (soon, not requested)`);
+      assert.ok(soon.includes(`${q(m.DashboardNav.previewNotify)}</button>`), `${locale}/${entry}: the button is "notify me"`);
+      assert.ok(!soon.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: no "noted" line before the click`);
+      assert.doesNotMatch(soon, / disabled=""| aria-busy=|role="alert"/, `${locale}/${entry}: idle button`);
+      const asked = render(locale, entry, "soon", true);
+      assert.ok(asked.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: requested: still "coming soon"`);
+      assert.ok(asked.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: requested: the "noted" line`);
+      assert.equal((asked.match(/<(button|a)\b/g) ?? []).length, 0, `${locale}/${entry}: requested: no button`);
       const tryIt = render(locale, entry, "try");
+      assert.equal(render(locale, entry, "try", true), tryIt, `${locale}/${entry}: try ignores notifyRequested`);
+      assert.ok(!tryIt.includes(q(m.DashboardNav.previewNotify)) && !tryIt.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: no notify-me while try`);
       assert.ok(tryIt.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: "try it free"`);
       assert.ok(!tryIt.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: no "soon" line while try`);
       assert.equal((tryIt.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (try)`);
@@ -328,13 +340,16 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   }
   const fr = JSON.parse(read("messages/fr.json")).DashboardNav;
   assert.deepEqual([fr.previewTry, fr.previewSoon, fr.previewBadge], ["Essayer gratuitement", "Bientôt disponible.", "Aperçu"]);
+  assert.deepEqual([fr.previewNotify, fr.previewNotified], ["Prévenez-moi", "C'est noté, nous vous préviendrons."]);
+  // [HE] to confirm: the wording (plural address); the checks below hold whatever it becomes.
   for (const l of ["fr", "en", "he"]) {
     const nav = JSON.parse(read(`messages/${l}.json`)).DashboardNav;
-    assert.ok(!("previewNotify" in nav) && !("previewNotified" in nav), `${l}: no notify-me words`);
+    for (const k of ["previewNotify", "previewNotified", "previewNotifyError"]) assert.ok(typeof nav[k] === "string" && nav[k].trim() !== "", `${l}: ${k}`);
   }
-  // No notify-me endpoint yet: nothing that would record or send a request.
+  // The request is only stored server-side: no browser storage, no beacon, no email.
   const hdrSrc = read("components/dashboard/ProductPreviewHeader.tsx");
-  assert.doesNotMatch(hdrSrc, /fetch\(|localStorage|sessionStorage|sendBeacon|setNotified|previewNotif/, "no notify-me");
+  assert.doesNotMatch(hdrSrc, /localStorage|sessionStorage|sendBeacon/, "the request is the server's only");
+  assert.doesNotMatch(hdrSrc, /fetch\(/, "the POST lives in lib/notify-me.ts");
   const hdr = code("components/dashboard/ProductPreviewHeader.tsx");
   assert.match(hdr, /entry === "sales" \? \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
   assert.match(hdr, /<Link href="\/dashboard\/billing"/, "other products: the subscription page");

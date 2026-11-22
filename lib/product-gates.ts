@@ -21,6 +21,7 @@ import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import type { Entitlement } from "@/lib/product-entitlement";
 import { productMenu, type ProductGates, type ProductMenu } from "@/lib/product-menu";
 import { accountProducts } from "@/lib/products";
+import type { ProductEntry } from "@/lib/product-values";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
 type Env = Record<string, string | undefined>;
@@ -59,16 +60,25 @@ export async function accountProductMenu(
   return menuFor(await accountProducts(userId), role, features);
 }
 
+/** What a product page needs to pick its header: the menu and the notify-me requests. */
+export type ProductPageState = {
+  menu: ProductMenu;
+  /** The entries the account asked to be told about ("Prévenez-moi"), from accountProducts. */
+  notifyRequested: ProductEntry[];
+};
+
 /**
  * The menu of an account from its id alone (role and plan features loaded
- * here): what a product page uses to pick its preview header.
+ * here), plus its notify-me requests: what a product page uses to pick its
+ * preview header, with ONE accountProducts read and no client fetch.
  */
-export async function loadAccountProductMenu(userId: string): Promise<ProductMenu> {
+export async function loadProductPage(userId: string): Promise<ProductPageState> {
   const [u] = await db
     .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const features = featuresForPlan(await getPlanFeatureMatrix(), u?.subscriptionPlan);
-  return accountProductMenu(userId, u?.role, features);
+  const products = await accountProducts(userId);
+  return { menu: menuFor(products, u?.role, features), notifyRequested: products.notifyRequested };
 }
