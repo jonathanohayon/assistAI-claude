@@ -44,6 +44,18 @@ export function isTrialNumberReleaseDue(args: {
 export const TRIAL_MINUTES_INCLUDED = 100;
 export const TRIAL_SECONDS_LIMIT = TRIAL_MINUTES_INCLUDED * 60; // 6000
 
+/**
+ * Whether the sign-up trial gate applies to this account: a trialing or
+ * paused non-admin account. The billing display (lib/products-usage.ts) uses
+ * this same predicate to show the trial cap.
+ */
+export function signupTrialGateApplies(user: { subscriptionStatus: string; role: string | null }): boolean {
+  return (
+    (user.subscriptionStatus === "trialing" || user.subscriptionStatus === TRIAL_PAUSED_STATUS) &&
+    user.role !== "admin"
+  );
+}
+
 export function computeTrialEndsAt(from: Date = new Date()): Date {
   return new Date(from.getTime() + TRIAL_DURATION_MS);
 }
