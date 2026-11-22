@@ -186,7 +186,7 @@ async function main() {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("cache-control") ?? "", /s-maxage=60/);
     const body = (await res.json()) as Record<string, unknown>;
-    assert.deepEqual(Object.keys(body), [...PLANS.map((p) => p.key), "products"]);
+    assert.deepEqual(Object.keys(body), [...PLANS.map((p) => p.key), "products", "grid", "available"]);
     assert.deepEqual(body.products, JSON.parse(afterWrite!));
   }
   console.log("ok: public pricing carries products, plan keys first and unchanged");
