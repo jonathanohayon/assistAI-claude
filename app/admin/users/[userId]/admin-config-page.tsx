@@ -1,0 +1,205 @@
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+
+import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
+import { voiceChoiceFor } from "@/lib/voice/choice-load";
+import { currentInboundVoice, voiceForViewer } from "@/lib/voice/store";
+import { currentCompanySheet } from "@/lib/knowledge/store";
+import { currentInboundPersona } from "@/lib/persona/store";
+import { ConfigForm, DEFAULT_BUSINESS } from "@/app/[locale]/dashboard/config-form";
+import { sectionShowsHero, type ConfigSection } from "@/app/[locale]/dashboard/config/sections";
+import {
+  DEFAULT_CAPABILITIES_DIRECTIVE,
+  DEFAULT_PROMPT_BLOCK_ORDER,
+} from "@/lib/agent-prompt-defaults";
+import { buildAgentPromptPreview } from "@/lib/agent-prompt-preview";
+import { renderCapabilitiesDirective } from "@/lib/capabilities";
+import { computeHeroStats } from "@/lib/dashboard-hero";
+import { db } from "@/lib/db";
+import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { resolveDoor } from "@/lib/door";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { PLANS, type PlanKey } from "@/lib/plans";
+import { requireAdminPage } from "@/lib/auth/require-admin-page";
+import {
+  getCapabilitiesDirectiveByPlan,
+  getConfigBlocksDirectiveByPlan,
+  getGlobalInstructionsByPlan,
+  getHangupDirectiveByPlan,
+  getPerCallContextTemplateByPlan,
+  getPromptBlockOrderByPlan,
+  getSpokenPhoneDirectiveByPlan,
+  getSpokenTimeDirectiveByPlan,
+} from "@/lib/settings";
+import { getTileToggles } from "@/lib/tile-toggles";
+
+// Admin tenant view = même ConfigForm que le dashboard utilisateur, mais
+// scopé sur le tenant cible via asUserId. Header / menu / bandeau contexte
+// sont fournis par /admin/users/[userId]/layout.tsx. One component for every
+// menu page of the view (reception, Mon agent, sales, Votre agent): the page
+// picks its tiles with `section`, like the tenant's own pages.
+export async function AdminTenantConfigPage({
+  userId,
+  section,
+}: {
+  userId: string;
+  section: ConfigSection;
+}) {
+  await requireAdminPage();
+
+  const [target] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!target) redirect("/admin");
+
+  const [config] = await db
+    .select()
+    .from(agentConfigs)
+    .where(eq(agentConfigs.userId, userId))
+    .limit(1);
+
+  if (!config) {
+    return (
+      <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          Ce tenant n&apos;a pas encore de config agent.
+        </div>
+      </main>
+    );
+  }
+
+  const planKey: PlanKey =
+    target.subscriptionPlan && PLANS.some((p) => p.key === target.subscriptionPlan)
+      ? (target.subscriptionPlan as PlanKey)
+      : PLANS[0].key;
+  const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
+
+  const [primaryPhone] = await db
+    .select({ phoneNumber: phoneNumbers.phoneNumber })
+    .from(phoneNumbers)
+    .where(eq(phoneNumbers.userId, userId))
+    .limit(1);
+
+  const lastUpdated = new Date(config.updatedAt).toLocaleString("fr-FR", {
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+
+  // Stats du tenant cible — même calcul que /dashboard (lib/dashboard-stats).
+  const stats = sectionShowsHero(section) ? await computeHeroStats(userId) : undefined;
+
+  // Preview des blocs admin hérités + prompt complet (alimente la tuile
+  // admin-only "Prompt système").
+  const [
+    globalByPlan,
+    spokenTimeByPlan,
+    spokenPhoneByPlan,
+    hangupByPlan,
+    perCallContextByPlan,
+    configBlocksByPlan,
+    blockOrderByPlan,
+  ] = await Promise.all([
+    getGlobalInstructionsByPlan(),
+    getSpokenTimeDirectiveByPlan(),
+    getSpokenPhoneDirectiveByPlan(),
+    getHangupDirectiveByPlan(),
+    getPerCallContextTemplateByPlan(),
+    getConfigBlocksDirectiveByPlan(),
+    getPromptBlockOrderByPlan(),
+  ]);
+  // Bloc capacités rendu pour le tenant cible (features plan ∧ toggles tuiles).
+  const planMatrix = await getPlanFeatureMatrix();
+  const features = featuresForPlan(planMatrix, target.subscriptionPlan);
+  const tileToggles = await getTileToggles(userId);
+  const capabilitiesTemplate =
+    (await getCapabilitiesDirectiveByPlan())[planKey] ??
+    DEFAULT_CAPABILITIES_DIRECTIVE;
+  const capabilitiesRendered = renderCapabilitiesDirective(capabilitiesTemplate, {
+    calendar: Boolean(features.calendar) && tileToggles.calendar,
+    crm: Boolean(features.crm) && tileToggles.customers,
+    orders: Boolean(features.crm) && tileToggles.orders,
+  });
+  const promptBlocksPreview = buildAgentPromptPreview({
+    config,
+    globalForPlan: globalByPlan[planKey] ?? "",
+    planKey,
+    spokenTime: spokenTimeByPlan[planKey] ?? "",
+    spokenPhone: spokenPhoneByPlan[planKey] ?? "",
+    hangup: hangupByPlan[planKey] ?? "",
+    perCallContextTemplate: perCallContextByPlan[planKey] ?? "",
+    configBlocks: configBlocksByPlan[planKey] ?? "",
+    blockOrder: blockOrderByPlan[planKey] ?? [...DEFAULT_PROMPT_BLOCK_ORDER],
+    capabilities: capabilitiesRendered,
+  });
+  const ADMIN_INHERIT_BLOCKS = new Set([
+    "spoken_time",
+    "spoken_phone",
+    "hangup",
+    "per_call_context",
+    "config_blocks",
+    "admin_global",
+  ]);
+  const adminInheritablePreview = promptBlocksPreview
+    .filter((b) => ADMIN_INHERIT_BLOCKS.has(b.id))
+    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+    .join("\n\n");
+  const fullPromptConcat = promptBlocksPreview
+    .map((b) => `═══ ${b.label} ═══\n\n${b.content}`)
+    .join("\n\n");
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-4 sm:px-6">
+      <ConfigForm
+        section={section}
+        initial={{
+          // Served as the API serves it (tenants: supplier fields removed);
+          // the form fills in defaults in the browser.
+          // Persona as stored (P3), else derived from the legacy columns.
+          personaConfig: currentInboundPersona(config.personaConfig, config),
+          // The account's company sheet (S4), else built from the business JSON.
+          companySheet: currentCompanySheet(target.companySheet, config.business),
+          voiceConfig: voiceForViewer(currentInboundVoice(config.voiceConfig, config), true) as ServedVoice,
+          voiceChoice: await voiceChoiceFor(config, true),
+          instructions: config.instructions,
+          greetingInstructions: config.greetingInstructions,
+          maxResponseTokens: config.maxResponseTokens,
+          ownerWhatsapp: config.ownerWhatsapp,
+          transferNumber: config.transferNumber ?? "",
+          primaryLanguage: config.primaryLanguage ?? "fr",
+          reminderEnabled: config.reminderEnabled ?? false,
+          ownerDigestEnabled: config.ownerDigestEnabled ?? true,
+          inheritAdminGlobals: config.inheritAdminGlobals ?? true,
+          personality: config.personality ?? {},
+          agentName: config.agentName ?? "",
+          aiDisclosureEnabled: config.aiDisclosureEnabled ?? true,
+          aiDisclosureText: config.aiDisclosureText ?? "",
+          business: (() => {
+            const maybe = (config as unknown as { business?: unknown })
+              .business;
+            if (
+              maybe &&
+              typeof maybe === "object" &&
+              Array.isArray((maybe as { centres?: unknown }).centres)
+            ) {
+              return maybe as typeof DEFAULT_BUSINESS;
+            }
+            return DEFAULT_BUSINESS;
+          })(),
+        }}
+        isAdmin={true}
+        adminInheritablePreview={adminInheritablePreview}
+        planLabel={planLabel}
+        primaryPhone={primaryPhone?.phoneNumber ?? null}
+        lastUpdatedLabel={lastUpdated}
+        stats={stats}
+        asUserId={target.id}
+        door={resolveDoor(target.door)}
+        promptBlocks={promptBlocksPreview}
+        fullPromptConcat={fullPromptConcat}
+      />
+    </main>
+  );
+}

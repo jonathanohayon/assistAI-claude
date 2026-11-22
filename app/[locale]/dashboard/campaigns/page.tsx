@@ -1,33 +1,12 @@
-import { redirect } from "next/navigation";
+import type { SearchParams } from "@/lib/dashboard-nav";
+import { redirectTenantLegacy } from "@/lib/dashboard-redirect";
 
-import { auth } from "@/auth";
-import { captureMode } from "@/lib/campaigns/capture-mode";
-import { loadOutboundCampaignsAccess } from "@/lib/campaigns/plan-gate";
-
-import { CampaignsPageClient } from "./campaigns-page-client";
-
-/**
- * Onglet « Appels sortants » (centre d'appels IA). Visible dans la nav
- * uniquement quand la feature `outbound_campaigns` est active (plan premium)
- * ou pour un admin — même règle de gating que `DashboardTabs`. On reproduit
- * le contrôle ici pour qu'un accès direct à l'URL par un plan non éligible
- * retombe sur la config entrante.
- */
-export default async function CampaignsPage(props: {
+// Old URL /dashboard/campaigns: redirected to its new home in the left menu
+// (lib/dashboard-nav.ts, LEGACY_TENANT_PATHS). The query string is kept.
+export default async function LegacyPage(props: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { locale } = await props.params;
-  const session = await auth();
-  if (!session?.user?.id) redirect(`/${locale}/login`);
-
-  // Same helper as the API gate (lib/campaigns/plan-gate.ts).
-  const { isAdmin, enabled } = await loadOutboundCampaignsAccess(session.user.id);
-  if (!enabled) redirect(`/${locale}/dashboard`);
-
-  return (
-    <main className="pb-6">
-      {/* Capture switch: one boolean to the client; the env stays server-side. */}
-      <CampaignsPageClient isAdmin={isAdmin} captureOn={captureMode() === "on"} />
-    </main>
-  );
+  return redirectTenantLegacy(locale, "/campaigns", await props.searchParams);
 }

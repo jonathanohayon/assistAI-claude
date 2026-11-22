@@ -8,14 +8,10 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
-import { AgentBrainSection } from "./agent-brain-section";
-import { AgentUrlCard } from "./agent-url-section";
 import { ApiKeyCard } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
 import { DeveloperModeSwitch } from "@/components/bricks/DeveloperModeSwitch";
-import { DoorSelect } from "@/components/dashboard/DoorSelect";
-import { resolveDoor } from "@/lib/door";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +42,6 @@ export default async function SettingsPage(props: {
   const isAdmin = me.role === "admin";
 
   const t = await getTranslations({ locale, namespace: "DashboardSettings" });
-  const tBrain = await getTranslations({ locale, namespace: "AgentBrain" });
   const dateLocale = locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR";
 
   return (
@@ -122,10 +117,6 @@ export default async function SettingsPage(props: {
           <div className="mt-4">
             <DeveloperModeSwitch />
           </div>
-          {/* The account's door: only reorders the dashboard. */}
-          <div className="mt-5 border-t border-[var(--color-border)] pt-5">
-            <DoorSelect initialDoor={resolveDoor(me.door)} />
-          </div>
         </div>
 
         {/* Abonnement */}
@@ -180,20 +171,8 @@ export default async function SettingsPage(props: {
             developer mode (admins always). */}
         <ApiKeyCard isAdmin={isAdmin} />
 
-        {/* Cerveau de l'agent : persona Tamara ou agent externe du tenant. */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="font-display text-lg text-[var(--color-foreground)]">
-            {tBrain("title")}
-          </h2>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            {tBrain("desc")}
-          </p>
-          <AgentBrainSection />
-        </div>
-
-        {/* Public agent URL, to paste into a voice client. Level-3 content:
-            rendered only in developer mode (admins always). */}
-        <AgentUrlCard isAdmin={isAdmin} />
+        {/* Who answers (AgentBrainSection) and the agent's public URL
+            (AgentUrlCard) moved to the "Votre agent" page (/dashboard/agent). */}
 
         {/* Danger zone */}
         <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm sm:p-6">

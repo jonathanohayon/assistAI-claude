@@ -344,7 +344,7 @@ export function SheetPicker({ type }: { type: "customers" | "orders" }) {
               <p className="text-xs text-[var(--color-muted-foreground)]">
                 {t("sheetReconnectHint")}{" "}
                 <ConnectGoogleLink
-                  returnTo="/dashboard/crm"
+                  returnTo="/dashboard/clients"
                   className="font-medium text-[var(--color-primary)] underline underline-offset-2"
                 >
                   {t("sheetReconnect")}

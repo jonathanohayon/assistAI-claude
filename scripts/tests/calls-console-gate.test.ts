@@ -27,8 +27,8 @@ const esc = (s: string) => s.replace(/'/g, "&#x27;").replace(/"/g, "&quot;").rep
 const CONSOLE = "app/[locale]/dashboard/logs/developer-console.tsx";
 const LOGS_VIEW = "app/[locale]/dashboard/logs/logs-view.tsx";
 const LATENCY = "app/[locale]/dashboard/logs/latency-chart.tsx";
-const PAGE = "app/[locale]/dashboard/logs/page.tsx";
-const ADMIN_PAGE = "app/admin/users/[userId]/logs/page.tsx";
+const PAGE = "app/[locale]/dashboard/calls/page.tsx";
+const ADMIN_PAGE = "app/admin/users/[userId]/calls/page.tsx";
 
 // Any fetch during render would be a console leak: count them.
 let fetches = 0;
@@ -97,16 +97,17 @@ assert.equal(fetches, 0, "rendering never fetches");
   assert.match(read(ADMIN_PAGE), /<DeveloperConsole isAdmin asUserId=\{target\.id\} \/>/);
 }
 
-// 3. The tab is "Calls" in every language (route kept), and in the admin view.
+// 3. The menu entry is "Calls" in every language (/dashboard/calls; the old
+// /dashboard/logs redirects), and in the admin view (same menu).
 {
   const expected = { fr: "Appels", en: "Calls", he: "שיחות" } as const;
   for (const l of LOCALES) {
-    assert.equal(messages(l).Dashboard.tabLogs, expected[l], `${l}: nav label`);
+    assert.equal(messages(l).DashboardNav.calls, expected[l], `${l}: nav label`);
     assert.ok(messages(l).DashboardLogs.metaTitle.startsWith(expected[l]), `${l}: page title`);
   }
-  // The tab tables live in nav-tabs.ts since the door orders them (lib/doors-ui.ts).
-  assert.match(read("app/[locale]/dashboard/nav-tabs.ts"), /\{ id: "calls", href: "\/dashboard\/logs", labelKey: "tabLogs" \}/);
-  assert.match(read("app/admin/users/[userId]/nav-tabs.ts"), /\{ id: "calls", hrefSuffix: "\/logs", label: "Appels" \}/);
+  // The menu table lives in lib/dashboard-nav.ts (tenant and admin view).
+  assert.match(read("lib/dashboard-nav.ts"), /calls: "\/calls",[\s\S]*calls: "\/calls",/);
+  assert.match(read("lib/dashboard-nav.ts"), /"\/logs": "\/calls"/);
   assert.match(read(PAGE), /title: t\("metaTitle"\)/, "page metadata uses the Calls title");
 }
 
@@ -124,7 +125,7 @@ assert.equal(fetches, 0, "rendering never fetches");
   // Hebrew: the word is used elsewhere on the marketing pages, so check the
   // namespaces of this tab (nav + console + calls view).
   const he = messages("he");
-  const heHits = [["Dashboard", he.Dashboard], ["DashboardLogs", he.DashboardLogs], ["Calls", he.Calls]]
+  const heHits = [["DashboardNav", he.DashboardNav], ["DashboardLogs", he.DashboardLogs], ["Calls", he.Calls]]
     .flatMap(([ns, o]) => strings(o, ns as string))
     .filter(([, v]) => v.includes(monitoring.he) || v.includes("מעקב"))
     .map(([k]) => k);
@@ -132,15 +133,15 @@ assert.equal(fetches, 0, "rendering never fetches");
   for (const l of LOCALES) assert.equal(messages(l).DashboardLogs.title, monitoring[l], `${l}: console title`);
   // No hard-coded "Monitoring" in the tab's sources (code, not comments).
   const code = (p: string) => read(p).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
-  for (const p of [PAGE, ADMIN_PAGE, CONSOLE, LOGS_VIEW, LATENCY, "app/[locale]/dashboard/logs/calls-view.tsx", "app/[locale]/dashboard/_nav.tsx", "app/admin/users/[userId]/_nav.tsx"])
+  for (const p of [PAGE, ADMIN_PAGE, CONSOLE, LOGS_VIEW, LATENCY, "app/[locale]/dashboard/logs/calls-view.tsx", "components/dashboard/DashboardSidebar.tsx"])
     assert.doesNotMatch(code(p), /Monitoring/, `${p}: no hard-coded "Monitoring"`);
 }
 
-// 5. FR/EN/HE keys match (DashboardLogs, Calls, Dashboard), all non-empty.
+// 5. FR/EN/HE keys match (DashboardLogs, Calls, Dashboard, DashboardNav), all non-empty.
 {
   const keys = (o: unknown): string[] =>
     typeof o === "string" ? [""] : Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => keys(v).map((s) => (s ? `${k}.${s}` : k)));
-  for (const ns of ["DashboardLogs", "Calls", "Dashboard"]) {
+  for (const ns of ["DashboardLogs", "Calls", "Dashboard", "DashboardNav"]) {
     const fr = keys(messages("fr")[ns]).sort();
     for (const l of ["en", "he"]) assert.deepEqual(keys(messages(l)[ns]).sort(), fr, `${l}: same ${ns} keys as fr`);
   }
@@ -149,16 +150,17 @@ assert.equal(fetches, 0, "rendering never fetches");
     for (const k of ["metaTitle", "header", "title", "subtitle"]) assert.ok(typeof m[k] === "string" && m[k].trim() !== "", `${l}.${k}`);
   }
   for (const k of ["header", "title", "subtitle"]) assert.match(messages("he").DashboardLogs[k], /[֐-׿]/, `he.${k}: Hebrew`);
-  assert.match(messages("he").Dashboard.tabLogs, /[֐-׿]/);
+  assert.match(messages("he").DashboardNav.calls, /[֐-׿]/);
 }
 
-// Design review (tamaraVP): the receptionist's settings tab is named after the agent it configures,
-// so it no longer reads like the Calls tab ("Appels entrants" next to "Appels").
+// Design review (tamaraVP): the reception entry never reads like the Calls entry
+// ("Appels entrants" next to "Appels").
 {
-  const tab = (l: string) => JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).Dashboard.tabConfiguration as string;
-  assert.equal(tab("fr"), "Réceptionniste");
-  assert.equal(tab("en"), "Receptionist");
-  assert.equal(tab("he"), "פקידת קבלה");
+  const nav = (l: string) => JSON.parse(readFileSync(join(new URL("../../", import.meta.url).pathname, `messages/${l}.json`), "utf8")).DashboardNav as Record<string, string>;
+  for (const l of LOCALES) {
+    assert.notEqual(nav(l).reception, nav(l).calls, `${l}: reception ≠ calls`);
+    assert.doesNotMatch(nav(l).reception, new RegExp(nav(l).calls), `${l}: reception doesn't contain "calls"`);
+  }
 }
 
 console.log("calls-console-gate: ok");

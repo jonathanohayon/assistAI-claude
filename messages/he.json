@@ -642,13 +642,8 @@
     "trialExpired": "תקופת הניסיון הסתיימה: תמרה מושהית. הצטרפו לתוכנית כדי להפעיל אותה מחדש. ההגדרות שלכם נשארות, והמספר שלכם נשמר למשך 30 יום.",
     "trialRemainingMessage": "תקופת ניסיון: נותרו {label}",
     "trialSubscribeButton": "הצטרפות",
-    "tabConfiguration": "פקידת קבלה",
-    "tabOutbound": "שיחות יוצאות",
     "tabCalendar": "יומן",
     "tabContacts": "אנשי קשר",
-    "tabCalendarCrm": "יומן, לקוחות והזמנות",
-    "tabBilling": "מנוי",
-    "tabLogs": "שיחות",
     "userMenuAria": "תפריט משתמש",
     "loggedInAs": "מחובר בתור",
     "settingsLink": "הגדרות",
@@ -656,10 +651,24 @@
     "trialCallMinutesLeft": "{min} דקות שיחה נותרו",
     "trialDaysLabel": "{days, plural, one {יום אחד} two {יומיים} other {# ימים}}",
     "trialFounderCall": "המייסד יתקשר אליכם כדי להגדיר את תמרה",
-    "trialPauseNotice": "לאחר מכן תמרה תושהה, שום דבר לא נמחק",
-    "doorTitleReception": "פקידת קבלה",
-    "doorTitleSales": "מכירות",
-    "doorTitleConnect": "הסוכן שלכם"
+    "trialPauseNotice": "לאחר מכן תמרה תושהה, שום דבר לא נמחק"
+  },
+  "DashboardNav": {
+    "navLabel": "תפריט לוח הבקרה",
+    "menu": "תפריט",
+    "closeMenu": "סגירת התפריט",
+    "blockProducts": "מוצרים",
+    "blockShared": "משותף",
+    "reception": "קבלה",
+    "sales": "מכירות",
+    "connect": "הסוכן שלכם",
+    "myAgent": "הסוכן שלי",
+    "calls": "שיחות",
+    "clients": "לקוחות",
+    "billing": "מנוי",
+    "settings": "הגדרות",
+    "stateSoon": "בקרוב",
+    "stateTry": "ניסיון חינם"
   },
   "DashboardCrm": {
     "header": "מרחב לקוחות",
@@ -1642,14 +1651,7 @@
     "apiEndpointLabel": "נקודת קצה",
     "apiDocsParams": "פרמטרים: phone (חובה), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (YYYY-MM-DD), order (asc|desc), limit, offset.",
     "apiKeyPlaceholder": "<המפתח_שלך>",
-    "developerSection": "תצוגה",
-    "doorLabel": "השימוש העיקרי שלכם",
-    "doorHint": "משנה רק את הסדר בלוח הבקרה. כל ההגדרות שלכם נשמרות.",
-    "doorOptionReception": "קבלת שיחות",
-    "doorOptionSales": "מכירות (שיחות יוצאות)",
-    "doorOptionConnect": "חיבור הסוכן שלכם",
-    "doorSaveError": "הבחירה שלכם לא נשמרה. נסו שוב.",
-    "doorResetNote": "שינוי השימוש מחזיר את סדר האריחים שלכם לברירת המחדל."
+    "developerSection": "תצוגה"
   },
   "DashboardBilling": {
     "header": "מנוי",

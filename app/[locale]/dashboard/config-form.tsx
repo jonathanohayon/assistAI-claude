@@ -38,6 +38,15 @@ import type { Door } from "@/lib/door-values";
 import { TILE_ORDER_KEY } from "@/lib/doors-ui";
 import { outboundPlanName } from "@/lib/outbound-plan";
 import { gridTiles } from "./config/tile-grid";
+import {
+  mergeSectionOrder,
+  sectionDefaultTile,
+  sectionShowsHero,
+  sectionShowsLiveTest,
+  sectionShowsSaveDock,
+  tileInSection,
+  type ConfigSection,
+} from "./config/sections";
 
 import { InheritAdminField } from "./config/inherit-admin-field";
 import { ChannelsPanel } from "./config/channels-panel";
@@ -94,7 +103,8 @@ import { PERSONA_LANGUAGES } from "@/lib/persona/contract";
 // L'ordre des tuiles est purement cosmétique → localStorage suffit (pas de
 // DB ni d'API). Chaque opérateur réorganise sa propre vue ; sans ordre
 // mémorisé, l'ordre est celui de la porte du compte (config/tile-grid.ts).
-// Changing the door clears the saved order (components/dashboard/DoorSelect).
+// The saved order is per browser; a drag inside a menu page reorders that
+// page's tiles only (config/sections.ts, mergeSectionOrder).
 
 // ─── Component ──────────────────────────────────────────────────────────
 
@@ -111,8 +121,12 @@ export function ConfigForm({
   promptBlocks,
   fullPromptConcat,
   door,
+  section,
 }: {
   initial: FormState;
+  /** The menu page this form is on (config/sections.ts): its tiles and
+   *  whether the home overview shows. Omitted = every tile (as before). */
+  section?: ConfigSection;
   /** The account's door: the default tile order and the highlighted tile. */
   door?: Door | null;
   isAdmin?: boolean;
@@ -212,7 +226,7 @@ export function ConfigForm({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
   const [isPending, startTransition] = useTransition();
-  const [activeTile, setActiveTile] = useState<string | null>(null);
+  const [activeTile, setActiveTile] = useState<string | null>(() => sectionDefaultTile(section));
   // On phones the tile grid fills the screen, so the panel opens below the
   // fold and a tap looks like it did nothing. Bring the panel into view when
   // its top is off-screen; on desktop it opens in view, so nothing moves.
@@ -235,14 +249,14 @@ export function ConfigForm({
   const tileParam = searchParams.get("tile");
   useEffect(() => {
     const OPENABLE = ["voice", "business", "tools", "persona", "notifs", "channels"];
-    if (tileParam && OPENABLE.includes(tileParam)) {
+    if (tileParam && OPENABLE.includes(tileParam) && tileInSection(tileParam, section)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- ouverture pilotée par l'URL (deep-link), pattern voulu
       setActiveTile(tileParam);
       requestAnimationFrame(() => {
         tilesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
-  }, [tileParam]);
+  }, [tileParam, section]);
 
   // Centre d'appels sortant : visible sur tous les plans, mais workspace
   // ouvrable seulement si la feature est active (plan premium) OU admin.
@@ -252,9 +266,9 @@ export function ConfigForm({
   // ?tile=campaigns (setup checklist, "import contacts"): same as a click on
   // the locked tile, i.e. today's upsell. Usable accounts go to the menu tab.
   useEffect(() => {
-    if (tileParam !== "campaigns") return;
+    if (tileParam !== "campaigns" || !tileInSection("campaigns", section)) return;
     if (campaignsEnabled) {
-      if (!asUserId) router.push(`/${locale}/dashboard/campaigns`);
+      if (!asUserId) router.push(`/${locale}/dashboard/sales`);
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- ouverture pilotée par l'URL (deep-link), pattern voulu
@@ -262,7 +276,7 @@ export function ConfigForm({
     requestAnimationFrame(() => {
       tilesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  }, [tileParam, campaignsEnabled, router, locale, asUserId]);
+  }, [tileParam, campaignsEnabled, router, locale, asUserId, section]);
 
   // Ordre des tuiles : null tant que pas hydraté depuis localStorage (évite
   // un flash d'ordre par défaut → réordonné côté client au 1er paint).
@@ -287,7 +301,11 @@ export function ConfigForm({
     setTileOrder(saved);
   }, [door]);
 
-  const persistTileOrder = (ids: string[]) => {
+  const persistTileOrder = (sectionIds: string[]) => {
+    // A section shows part of the tiles: the drag reorders those, in their
+    // slots of the full order; the other pages' tiles keep their place.
+    const full = gridTiles(ALL_TILES, tileOrder, door, false).tiles.map((tile) => tile.id);
+    const ids = section ? mergeSectionOrder(full, sectionIds) : sectionIds;
     setTileOrder(ids);
     try {
       localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(ids));
@@ -551,7 +569,7 @@ export function ConfigForm({
   // V8c: the receptionist's voice as the picker shows it (the server's number).
   const chosenVoice = voiceChoice ? voiceChoice.options.find((o) => o.id === selectedChoice(voiceChoice, voice.voiceId)) : undefined;
   const voiceSummary = chosenVoice ? tVoices("display", { n: chosenVoice.number, gender: chosenVoice.gender }) : voiceLabel(voice.voiceId);
-  const TILES = [
+  const ALL_TILES = [
     {
       id: "voice",
       label: t("voiceTitle"),
@@ -689,6 +707,8 @@ export function ConfigForm({
         ]
       : []),
   ] as const;
+  // The tiles of this page (config/sections.ts).
+  const TILES = ALL_TILES.filter((tile) => tileInSection(tile.id, section));
 
   // Tuiles dans l'ordre choisi par l'opérateur (cf. applyTileOrder).
   // Quand les appels sortants sont activés (premium/admin), la tuile campagnes
@@ -734,8 +754,9 @@ export function ConfigForm({
        *  - Tile section dans la colonne gauche row 2.
        *  En dessous de xl : ordre DOM (hero → LiveTest → tiles), comportement
        *  inline classique sans sticky. */}
-      <div className="relative xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
+      <div className={`relative ${sectionShowsLiveTest(section) ? "xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8" : ""}`}>
         {/* ── HERO + LIVE STATUS ──────────────────────────────────────── */}
+        {sectionShowsHero(section) && (
         <HeroSection
           primaryPhone={primaryPhone}
           stats={stats}
@@ -745,11 +766,13 @@ export function ConfigForm({
           currentLangLabel={currentLangLabel}
           adminView={Boolean(asUserId)}
         />
+        )}
 
         {/* ── LIVE TEST ───────────────────────────────────────────────── */}
         {/* < xl : inline sous le hero (comportement historique).
          *  xl+  : positionné dans la col droite, row 2, sticky sous le
          *         header pendant le scroll. */}
+        {sectionShowsLiveTest(section) && (
         <aside className="card-hover anim-fade-up mb-8 xl:col-start-2 xl:row-start-2 xl:mb-0">
           {/* Sticky just below the header. The previous centring trick
            *  (mt-[280px] + -translate-y-1/2) moved the panel up visually but
@@ -761,6 +784,7 @@ export function ConfigForm({
             </div>
           </div>
         </aside>
+        )}
 
         {/* ── TILE GRID ───────────────────────────────────────────────── */}
         <section ref={tilesRef} className="mb-6 scroll-mt-24 xl:col-start-1 xl:row-start-2">
@@ -926,8 +950,12 @@ export function ConfigForm({
                           setTools(next);
                           setDirty(true);
                         }}
-                        onAddNumber={() => setActiveTile("notifs")}
-                        returnTo="/dashboard?tile=tools"
+                        onAddNumber={() => {
+                          // The notifications tile lives on the reception page.
+                          if (tileInSection("notifs", section)) setActiveTile("notifs");
+                          else router.push(asUserId ? `/admin/users/${asUserId}/reception?tile=notifs` : `/${locale}/dashboard/reception?tile=notifs`);
+                        }}
+                        returnTo={section === "connect" ? "/dashboard/agent?tile=tools" : "/dashboard/my-agent?tile=tools"}
                         asUserId={asUserId ?? null}
                         clientAgentRefused={clientAgentRefused}
                       />
@@ -1007,6 +1035,7 @@ export function ConfigForm({
       </div>
 
       {/* ── Floating save dock — aligné sur le visuel wow ───────────── */}
+      {sectionShowsSaveDock(section) && (
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pb-6">
         <div
           className="pointer-events-auto flex items-center gap-4 rounded-full border border-white/50 bg-white/85 px-2 py-2 pl-5 shadow-[0_12px_40px_-8px_rgba(190,24,93,0.25)] backdrop-blur-xl anim-fade-up"
@@ -1055,6 +1084,7 @@ export function ConfigForm({
           </span>
         </div>
       </div>
+      )}
 
       {/* Centre d'appels sortant — pour les plans éligibles (premium/admin),
        *  la feature vit dans l'onglet de nav « Appels sortants »

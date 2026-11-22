@@ -1,25 +1,21 @@
 // The account's door in the dashboard (lib/doors-ui.ts). For every plan (and
-// admin), every door yields the same SET of menu tabs and tiles in the same
-// tab order (home first, named after the door). Reception (every account
-// without a door) is EXACTLY the dashboard before doors: tab, tile and
-// checklist order pinned against fixtures copied from main before #370.
-// Sales and connect only reorder tiles and their first checklist steps.
-// Plus: one plan name, the selector's PUT, ?door forwarding, wiring guards.
+// admin), every door yields the same SET of menu entries (lib/dashboard-nav,
+// pinned in dashboard-nav.test.ts) and tiles. Reception (every account
+// without a door) keeps the tile and checklist order of the dashboard before
+// doors, pinned against fixtures copied from main before #370. Sales and
+// connect only reorder tiles and their first checklist steps.
+// Plus: one plan name, the selector is gone, ?door forwarding, wiring guards.
 // Run with:  npx tsx scripts/tests/doors-ui.test.ts
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-import { TABS, visibleTabs } from "../../app/[locale]/dashboard/nav-tabs";
 import { gridTiles } from "../../app/[locale]/dashboard/config/tile-grid";
-import { ADMIN_TABS } from "../../app/admin/users/[userId]/nav-tabs";
 import { checklistSteps, nextStep } from "../../components/dashboard/setup-checklist-ui";
 import { DEFAULT_DOOR, DOORS, type Door } from "../../lib/door-values";
 import {
   DOOR_UI,
-  doorChangeNeeded,
   doorOf,
-  doorPutRequest,
   doorUi,
   highlightedTile,
   initialTileOrder,
@@ -33,6 +29,8 @@ import { canUseOutboundCampaigns } from "../../lib/outbound-access";
 import { OUTBOUND_UPSELL_PLAN_KEY, outboundPlanName } from "../../lib/outbound-plan";
 import { DEFAULT_MATRIX, featuresForPlan, type PlanFeatures } from "../../lib/plan-features";
 import { PLANS, planByKey } from "../../lib/plans";
+import { navBlocks } from "../../lib/dashboard-nav";
+import { productMenu } from "../../lib/product-menu";
 
 const code = (p: string) => readFileSync(p, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 const sorted = (xs: readonly string[]) => [...xs].sort();
@@ -40,10 +38,6 @@ const ids = (xs: readonly { id: string }[]) => xs.map((x) => x.id);
 const ALL_DOORS: (Door | null | undefined | string)[] = [...DOORS, null, undefined, "junk"];
 
 // ── Fixtures: main BEFORE #370 (copied from origin/main 3bee1e5) ────────────
-// app/[locale]/dashboard/_nav.tsx TABS (hrefs, in order).
-const PRE_PR_TAB_HREFS = ["/dashboard", "/dashboard/campaigns", "/dashboard/crm", "/dashboard/billing", "/dashboard/logs"];
-// app/admin/users/[userId]/_nav.tsx TABS (suffixes, in order).
-const PRE_PR_ADMIN_SUFFIXES = ["", "/calendar", "/contacts", "/logs", "/finance"];
 // app/[locale]/dashboard/config-form.tsx TILES (ids, in order).
 const PRE_PR_TILE_IDS = ["voice", "business", "tools", "persona", "notifs", "channels", "campaigns"];
 // components/dashboard/SetupChecklist.tsx items (ids, in order).
@@ -69,9 +63,7 @@ for (const d of DOORS) {
   assert.deepEqual(sorted(u.tileOrder), sorted(PRE_PR_TILE_IDS), `${d}: tileOrder lists every tile once`);
   for (const h of u.highlightTiles) assert.ok(u.tileOrder.includes(h), `${d}: highlight ${h} is a tile`);
 }
-assert.equal(DOOR_UI.reception.headerKey, "doorTitleReception");
-assert.equal(DOOR_UI.sales.headerKey, "doorTitleSales");
-assert.equal(DOOR_UI.connect.headerKey, "doorTitleConnect");
+assert.ok(!("headerKey" in DOOR_UI.reception), "the door no longer names a home tab (the menu has no home tab)");
 
 // ── Default: null, unknown, junk → reception ───────────────────────────────
 assert.equal(DEFAULT_DOOR, "reception");
@@ -86,22 +78,13 @@ assert.equal(doorOf("connect"), "connect");
 assert.deepEqual(orderBy(["a", "x", "b", "y"], (s) => s, ["b", "a"]), ["b", "a", "x", "y"]);
 assert.deepEqual(orderBy([], (s: string) => s, ["a"]), []);
 
-// ── 1. Tabs: today's order for every door, home first ───────────────────────
-assert.deepEqual(TABS.map((t) => t.href), PRE_PR_TAB_HREFS, "tenant tabs = main before #370");
-assert.deepEqual(ADMIN_TABS.map((t) => t.hrefSuffix), PRE_PR_ADMIN_SUFFIXES, "admin tabs = main before #370");
-assert.equal(TABS[0].id, "home");
-assert.equal(ADMIN_TABS[0].id, "home");
-for (const v of viewers) {
-  // The tabs never depend on the door: visibleTabs doesn't even take it.
-  const shown = visibleTabs(v.features, v.isAdmin);
-  assert.equal(shown[0].id, "home", `${v.name}: home first`);
-  assert.deepEqual(
-    shown.map((t) => t.href),
-    PRE_PR_TAB_HREFS.filter((h) => shown.some((t) => t.href === h)),
-    `${v.name}: today's relative order`,
-  );
+// ── 1. Menu: the same SET of entries for every door (the door only orders) ──
+{
+  const menu = productMenu({ subscriptionPlan: "premium", subscriptionStatus: "active", products: null, gates: { sales: false, connect: false }, isAdmin: false });
+  const sets = ALL_DOORS.map((d) => sorted(navBlocks(d, menu).flatMap((b) => b.items.map((i) => i.href))));
+  for (const x of sets) assert.deepEqual(x, sets[0], "same menu entries for every door");
+  for (const d of ALL_DOORS) assert.equal(navBlocks(d, menu)[0].items[0].id, doorOf(d), `${String(d)}: its own product first`);
 }
-assert.equal(visibleTabs.length, 2, "visibleTabs(features, isAdmin): no door parameter");
 
 // ── "No right changes": the same SET of tiles for every door, every viewer ─
 for (const v of viewers) {
@@ -197,9 +180,9 @@ for (const d of ALL_DOORS) {
 // Wiring: the live test step opens the dashboard's live test panel, sales only.
 {
   const checklist = code("components/dashboard/SetupChecklist.tsx");
-  assert.match(checklist, /href: "\/dashboard#live-test"/);
+  assert.match(checklist, /href: "\/dashboard\/reception#live-test"/);
   assert.match(code("app/[locale]/dashboard/config-form.tsx"), /id="live-test"/, "the anchor exists");
-  assert.match(code("app/[locale]/dashboard/page.tsx"), /liveTest=\{door === "sales" \? \{ done: Boolean\(anyCall\) \} : undefined\}/);
+  assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /liveTest=\{door === "sales" \? \{ done: Boolean\(anyCall\) \} : undefined\}/);
 }
 
 // ── 5. One plan name (the upsell's plan) on the tile, the step and the upsell ─
@@ -220,35 +203,16 @@ assert.match(code("components/dashboard/SetupChecklist.tsx"), /t\("contactsLocke
 assert.match(code("app/[locale]/dashboard/campaigns/upsell-modal.tsx"), /outboundPlanName\(/);
 assert.doesNotMatch(code("app/[locale]/dashboard/campaigns/upsell-modal.tsx"), /planByKey\("premium"\)/);
 
-// ── The selector's PUT ───────────────────────────────────────────────────────
-for (const d of DOORS) {
-  const own = doorPutRequest(d);
-  assert.equal(own.url, "/api/dashboard/account");
-  assert.equal(own.init.method, "PUT");
-  assert.deepEqual(JSON.parse(String(own.init.body)), { door: d }, "only the door: developerMode untouched (partial PUT)");
-  assert.deepEqual(own.init.headers, { "Content-Type": "application/json" });
-}
-const forTenant = doorPutRequest("connect", "0000-tenant id&x=1");
-assert.equal(forTenant.url, "/api/dashboard/account?asUserId=0000-tenant%20id%26x%3D1");
-assert.deepEqual(JSON.parse(String(forTenant.init.body)), { door: "connect" });
-assert.equal(doorPutRequest("sales", null).url, "/api/dashboard/account");
-assert.equal(doorPutRequest("sales", "").url, "/api/dashboard/account");
-
-// The same door does nothing: no PUT and no reset of the saved tile order.
-for (const d of DOORS) {
-  assert.equal(doorChangeNeeded(d, d), false, `${d} → ${d}: no save`);
-  for (const other of DOORS.filter((x) => x !== d)) assert.equal(doorChangeNeeded(d, other), true);
-}
-for (const bad of ["", "junk", null, undefined, 1]) assert.equal(doorChangeNeeded("sales", bad), false);
+// ── The "main use" selector is gone (the door still orders the menu) ──────
 {
-  // The guard sits BEFORE the fetch and the localStorage reset in choose().
-  const selectSrc = code("components/dashboard/DoorSelect.tsx");
-  const body = selectSrc.slice(selectSrc.indexOf("const choose"));
-  const guard = body.indexOf("if (!doorChangeNeeded(door, next)) return;");
-  assert.ok(guard > 0, "choose() starts with the same-door guard");
-  assert.ok(guard < body.indexOf("fetch(url"), "no PUT for the same door");
-  assert.ok(guard < body.indexOf("localStorage.removeItem"), "no order reset for the same door");
-  assert.match(selectSrc, /t\("doorResetNote"\)/, "the selector says a change resets the tile order");
+  assert.equal(existsSync("components/dashboard/DoorSelect.tsx"), false, "DoorSelect deleted");
+  for (const f of ["app/[locale]/dashboard/settings/page.tsx", "app/admin/users/[userId]/layout.tsx", "app/[locale]/dashboard/layout.tsx", "lib/doors-ui.ts"]) {
+    assert.doesNotMatch(code(f), /DoorSelect|doorPutRequest|doorChangeNeeded/, `${f}: no door selector`);
+  }
+  for (const locale of ["fr", "en", "he"]) {
+    const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
+    assert.deepEqual(Object.keys(m.DashboardSettings).filter((k) => /^door/.test(k)), [], `${locale}: the selector's words are gone`);
+  }
 }
 
 // ── ?door forwarding (signup ↔ login) ───────────────────────────────────────
@@ -264,33 +228,12 @@ for (const bad of [undefined, null, "", "sale", "sales&admin=1", "<script>", 1, 
 // ── Wiring guards ────────────────────────────────────────────────────────────
 const doorsUi = code("lib/doors-ui.ts");
 assert.deepEqual([...doorsUi.matchAll(/from "([^"]+)"/g)].map((m) => m[1]), ["./door-values"], "doors-ui imports door-values only");
-for (const f of ["app/[locale]/dashboard/_nav.tsx", "app/admin/users/[userId]/_nav.tsx", "components/dashboard/DoorSelect.tsx", "app/[locale]/dashboard/config-form.tsx", "components/dashboard/SetupChecklist.tsx"]) {
+for (const f of ["components/dashboard/DashboardSidebar.tsx", "lib/dashboard-nav.ts", "lib/product-menu.ts", "app/[locale]/dashboard/config-form.tsx", "components/dashboard/SetupChecklist.tsx"]) {
   assert.doesNotMatch(code(f), /from "@\/lib\/door"/, `${f}: client code never imports the server lib/door`);
 }
-const select = code("components/dashboard/DoorSelect.tsx");
-assert.match(select, /doorPutRequest\(next, asUserId\)/);
-assert.match(select, /localStorage\.removeItem\(TILE_ORDER_KEY\)/, "a door change clears the saved tile order");
-assert.match(select, /router\.refresh\(\)/);
-assert.match(select, /role="alert"/, "errors inline");
-assert.match(select, /<label htmlFor=\{id\}/, "the admin banner keeps a labelled native select");
-// 3. Settings: the bricks' choice chips (radio group, arrows, focus ring, RTL), not a listbox.
-assert.match(select, /<ChipGroup\s/);
-assert.match(select, /from "@\/components\/bricks\/controls"/);
-assert.match(select, /if \(compact\) \{[\s\S]*<select[\s\S]*\}\s*\n\s*return \(/, "the native select is the compact (admin) branch only");
-{
-  const controls = readFileSync("components/bricks/controls.tsx", "utf8");
-  const chip = controls.slice(controls.indexOf("export function ChipGroup"), controls.indexOf("export function ToggleRow"));
-  assert.match(chip, /role="radiogroup"/);
-  assert.match(chip, /role="radio"/);
-  assert.match(chip, /onKeyDown=\{radioKeys\(/, "arrow keys");
-  assert.match(chip, /\$\{FOCUS\}/, "visible focus ring");
-  assert.match(chip, /active \? SELECTED/, "selected = brand magenta");
-  assert.match(controls, /direction === "rtl"/, "RTL-aware arrows");
-}
-assert.match(code("app/[locale]/dashboard/settings/page.tsx"), /<DoorSelect initialDoor=\{resolveDoor\(me\.door\)\} \/>/);
-assert.match(code("app/admin/users/[userId]/layout.tsx"), /<DoorSelect initialDoor=\{door\} asUserId=\{target\.id\} compact \/>/);
-assert.match(code("app/admin/users/[userId]/layout.tsx"), /<AdminTenantTabs userId=\{target\.id\} door=\{door\} \/>/);
-assert.match(code("app/[locale]/dashboard/layout.tsx"), /door=\{resolveDoor\(me\?\.door \?\? null\)\}/);
+assert.match(code("app/admin/users/[userId]/layout.tsx"), /<DashboardSidebar blocks=\{menuBlocks\} asUserId=\{target\.id\} \/>/);
+assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /navBlocks\(\s*door,/);
+assert.match(code("app/[locale]/dashboard/layout.tsx"), /navBlocks\(resolveDoor\(me\?\.door \?\? null\)/);
 assert.match(code("app/[locale]/login/page.tsx"), /href=\{withDoorParam\("\/signup", door\)\}/, "login → signup keeps ?door");
 {
   // The login page reads ?door ONLY to forward it to /signup: it never reaches
@@ -310,19 +253,11 @@ assert.doesNotMatch(code("app/[locale]/dashboard/config-form.tsx"), /applyTileOr
 // Every message key the door uses exists in the three locales.
 for (const locale of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
-  for (const d of DOORS) assert.equal(typeof m.Dashboard[DOOR_UI[d].headerKey], "string", `${locale}: ${DOOR_UI[d].headerKey}`);
-  assert.equal(typeof m.Dashboard.tabConfiguration, "string", "the existing key is kept");
-  for (const k of ["doorLabel", "doorHint", "doorOptionReception", "doorOptionSales", "doorOptionConnect", "doorResetNote", "doorSaveError"]) {
-    assert.equal(typeof m.DashboardSettings[k], "string", `${locale}: DashboardSettings.${k}`);
-  }
   for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "agentUrlTitle", "agentUrlDesc", "agentUrlCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
     assert.equal(typeof m.DashboardSetup[k], "string", `${locale}: DashboardSetup.${k}`);
   }
   assert.equal(typeof m.DashboardConfig.tileStartHere, "string");
 }
-const fr = JSON.parse(readFileSync("messages/fr.json", "utf8"));
-assert.deepEqual([fr.Dashboard.doorTitleReception, fr.Dashboard.doorTitleSales, fr.Dashboard.doorTitleConnect], ["Réceptionniste", "Ventes", "Votre agent"]);
-assert.equal(fr.DashboardSettings.doorLabel, "Mon usage principal");
 
 // ── Tiles in a row share one height (the row stretches to its tallest tile) ─
 {
