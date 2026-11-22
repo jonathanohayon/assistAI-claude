@@ -488,7 +488,7 @@
     "recommendBadge": "★ Recommandé",
     "pricePerMonth": "TTC / mois",
     "annualDiscount": "2 mois offerts en annuel",
-    "freeTrialNoticeStart": "{days, plural, one {# jour} other {# jours}} d'essai gratuit ou {minutes, plural, one {# minute} other {# minutes}} d'appels, au premier des deux atteint. Sans engagement, formule modifiable depuis le tableau de bord.",
+    "freeTrialNoticeStart": "{days, plural, one {# jour} other {# jours}} d'essai gratuit ou {minutes, plural, one {# minute} other {# minutes}} d'appels, au premier des deux atteint.",
     "comparePlans": "Comparer les formules",
     "freeBadge": "Essai gratuit — toutes les fonctionnalités",
     "title": "Créez votre agent vocal",

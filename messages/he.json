@@ -488,7 +488,7 @@
     "recommendBadge": "★ מומלץ",
     "pricePerMonth": "כולל מע״מ / חודש",
     "annualDiscount": "חודשיים מתנה בשנתי",
-    "freeTrialNoticeStart": "ניסיון חינם: {days, plural, one {יום אחד} two {יומיים} other {# ימים}} או {minutes, plural, one {דקת שיחה אחת} other {# דקות שיחה}}, המוקדם מביניהם. ללא התחייבות, אפשר לשנות את התוכנית מלוח הבקרה.",
+    "freeTrialNoticeStart": "ניסיון חינם: {days, plural, one {יום אחד} two {יומיים} other {# ימים}} או {minutes, plural, one {דקת שיחה אחת} other {# דקות שיחה}}, המוקדם מביניהם.",
     "comparePlans": "השוואת תוכניות",
     "freeBadge": "ניסיון חינם — כל הפיצ'רים",
     "title": "צרו את הסוכן הקולי שלכם",

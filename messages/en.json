@@ -488,7 +488,7 @@
     "recommendBadge": "★ Recommended",
     "pricePerMonth": "VAT incl. / month",
     "annualDiscount": "2 months free yearly",
-    "freeTrialNoticeStart": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# call minute} other {# call minutes}}, whichever comes first. No commitment, change your plan from the dashboard.",
+    "freeTrialNoticeStart": "Free trial: {days, plural, one {# day} other {# days}} or {minutes, plural, one {# call minute} other {# call minutes}}, whichever comes first.",
     "comparePlans": "Compare plans",
     "freeBadge": "Free trial — all features",
     "title": "Create your voice agent",
