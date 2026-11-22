@@ -414,6 +414,13 @@
       "when": 1795351819997,
       "tag": "0058_users_sales_engine_override",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795356434682,
+      "tag": "0059_product_notify_requests",
+      "breakpoints": true
     }
   ]
 }
