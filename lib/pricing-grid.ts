@@ -17,7 +17,8 @@ import type { Currency } from "./landing-currency";
 import { entitledProducts } from "./product-entitlement";
 import { entryOf, type Product } from "./product-values";
 import { TRIAL_PLAN_KEY } from "./plans";
-import { PUBLIC_PLAN_PRICING_PATH, parsePublicProducts } from "./public-plan-pricing";
+import type { PlanPricingMap } from "./plan-pricing";
+import { PUBLIC_PLAN_PRICING_PATH, parsePublicPlanPricing, parsePublicProducts } from "./public-plan-pricing";
 import { TRIAL_DURATION_MS, TRIAL_MINUTES_INCLUDED } from "./trial";
 
 export type Billing = "monthly" | "annual";
@@ -113,16 +114,66 @@ export function formatGridPerMinute(amount: number, currency: CatalogueCurrency,
   }).format(amount);
 }
 
-/** Client fetch of the catalogue. Null on any failure (network, non-2xx, a
- *  payload the strict parser refuses): the cards keep their placeholder. */
-export async function fetchPublicProducts(
-  fetchImpl: typeof fetch = fetch,
-  signal?: AbortSignal,
-): Promise<ProductCatalogue | null> {
+// ── Which section the page shows ──────────────────────────────────────────
+// The route says whether new orders are sold (server-side PRODUCT_ORDERS):
+// "products" shows the product grid; anything else, a missing field, a
+// failed fetch, or the time before the answer arrives, shows TODAY's plan
+// cards ("legacy"), so production never flashes the new grid.
+// Ventes / Connecter availability rides along; missing = not available.
+
+export type PricingMode = "legacy" | "products";
+export type ProductAvailability = { sales: boolean; connect: boolean };
+export const NOT_AVAILABLE: ProductAvailability = { sales: false, connect: false };
+
+export interface PublicPricing {
+  mode: PricingMode;
+  /** The old plan grid (legacy cards); null if absent or invalid. */
+  plans: PlanPricingMap | null;
+  /** The product catalogue (product cards); null if absent or invalid. */
+  products: ProductCatalogue | null;
+  available: ProductAvailability;
+}
+
+/** The route's mode field: only the exact string "products" opens the grid. */
+export function parsePricingMode(raw: unknown): PricingMode {
+  return raw && typeof raw === "object" && (raw as Record<string, unknown>).grid === "products" ? "products" : "legacy";
+}
+
+/** Per-product availability: true only where the route says exactly true. */
+export function parseAvailability(raw: unknown): ProductAvailability {
+  const a = raw && typeof raw === "object" ? (raw as Record<string, unknown>).available : null;
+  if (!a || typeof a !== "object" || Array.isArray(a)) return { ...NOT_AVAILABLE };
+  const o = a as Record<string, unknown>;
+  return { sales: o.sales === true, connect: o.connect === true };
+}
+
+/** The whole public payload, each part parsed strictly on its own. */
+export function parsePublicPricing(raw: unknown): PublicPricing {
+  return {
+    mode: parsePricingMode(raw),
+    plans: parsePublicPlanPricing(raw),
+    products: parsePublicProducts(raw),
+    available: parseAvailability(raw),
+  };
+}
+
+/** The section to render for what has been fetched (null = not yet, or failed). */
+export function pricingView(p: PublicPricing | null): PricingMode {
+  return p?.mode === "products" ? "products" : "legacy";
+}
+
+/** Whether a product's card can be signed up for now (Réception always). */
+export function isAvailable(product: Product, available: ProductAvailability): boolean {
+  return product === "sales" ? available.sales : product === "connect" ? available.connect : true;
+}
+
+/** ONE client fetch of the route. Null on any failure (network, non-2xx,
+ *  not JSON): the page then keeps today's cards and their placeholders. */
+export async function fetchPublicPricing(fetchImpl: typeof fetch = fetch, signal?: AbortSignal): Promise<PublicPricing | null> {
   try {
     const res = await fetchImpl(PUBLIC_PLAN_PRICING_PATH, { signal });
     if (!res.ok) return null;
-    return parsePublicProducts(await res.json());
+    return parsePublicPricing(await res.json());
   } catch {
     return null;
   }

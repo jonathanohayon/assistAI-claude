@@ -7,7 +7,11 @@
 //   4. every CTA is sign-up through the product's door, never a checkout,
 //      billing or plan path, with or without prices;
 //   5. the client fetch reads `products` strictly; the locale currency;
-//   6. the section no longer reads the old plans nor any default amount.
+//   6. the grid no longer reads the old plans nor any default amount;
+//   7. TWO MODES: the route's `grid` picks the section; anything but
+//      "products" (missing, junk, not loaded yet, failed) = today's cards;
+//      Ventes / Connecter not available = "Bientôt"; tax wording = the live
+//      page's keys only.
 // Mock data only — no network, no DB.
 // Run with:  npx tsx scripts/tests/pricing-new-grid.test.ts
 
@@ -19,13 +23,19 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Pricing, ProductPricingGrid } from "../../components/marketing/Pricing";
+import { Pricing } from "../../components/marketing/Pricing";
+import { ProductPricing, ProductPricingGrid } from "../../components/marketing/ProductPricing";
 import { landingCurrencyFor } from "../../lib/landing-currency";
 import { CONNECT_SIGNUP_HREF } from "../../lib/marketing/landings/connect";
 import { SALES_SIGNUP_HREF } from "../../lib/marketing/landings/sales";
 import {
   catalogueCurrencyOf,
-  fetchPublicProducts,
+  fetchPublicPricing,
+  isAvailable,
+  NOT_AVAILABLE,
+  parsePublicPricing,
+  pricingView,
+  type ProductAvailability,
   formatGridMoney,
   formatGridPerMinute,
   GRID_PRODUCTS,
@@ -48,8 +58,17 @@ const LOCALES = ["fr", "en", "he"] as const;
 const Intl = NextIntlClientProvider as unknown as ComponentType<{ locale: string; messages: unknown; timeZone?: string; children?: ReactNode }>;
 const html = (locale: string, el: ReturnType<typeof createElement>) =>
   renderToStaticMarkup(createElement(Intl, { locale, messages: messages(locale), timeZone: "UTC" }, el));
-const grid = (locale: string, catalogue: ProductCatalogue | null, currency: CatalogueCurrency, billing: Billing) =>
-  html(locale, createElement(ProductPricingGrid, { catalogue, currency, billing }));
+const ALL: ProductAvailability = { sales: true, connect: true };
+const grid = (locale: string, catalogue: ProductCatalogue | null, currency: CatalogueCurrency, billing: Billing, available: ProductAvailability = ALL) =>
+  html(locale, createElement(ProductPricingGrid, { catalogue, currency, billing, available }));
+const productsPage = (locale: string, available: ProductAvailability = ALL) =>
+  html(locale, createElement(ProductPricing, { catalogue: null, available }));
+/** The text of a card's <p data-*> line (tags stripped). */
+function pline(cardHtml: string, attr: string): string {
+  const m = cardHtml.match(new RegExp(`${attr}=""[^>]*>([\\s\\S]*?)</p>`));
+  assert.ok(m, `${attr} line`);
+  return m[1].replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'");
+}
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** The markup of one product's card. */
@@ -87,8 +106,10 @@ async function main() {
           for (const p of GRID_PRODUCTS) {
             const row = cat[p][currency];
             const c = card(out, p);
-            const price = billing === "annual" ? row.annual : row.monthly;
-            assert.equal(norm(line(c, "data-price")), norm(formatGridMoney(price, currency, l)), `${l} ${currency} ${billing} ${p} price`);
+            // As the live cards: per-month figure; annual = monthly equivalent + the year's total.
+            const shown = billing === "annual" ? Math.round(row.annual / 12) : row.monthly;
+            assert.equal(norm(line(c, "data-price")), norm(formatGridMoney(shown, currency, l)), `${l} ${currency} ${billing} ${p} price`);
+            if (billing === "annual") assert.ok(norm(pline(c, "data-period-hint")).includes(norm(formatGridMoney(row.annual, currency, l))), `${l} ${p} annual total`);
             assert.ok(norm(line(c, "data-minutes")).includes(String(row.minutes)), `${l} ${p} minutes`);
             assert.ok(norm(line(c, "data-overage")).includes(norm(formatGridPerMinute(row.overagePerMin, currency, l))), `${l} ${p} overage`);
             const addon = billing === "annual" ? row.addonAnnual : row.addonMonthly;
@@ -113,11 +134,11 @@ async function main() {
     for (const p of GRID_PRODUCTS) {
       const row = DEFAULT_PRODUCT_CATALOGUE[p][currency];
       assert.equal(row.annual, row.monthly * 10, `${p} ${currency}: catalogue annual = 10 × monthly`);
-      const shown = norm(line(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, currency, "annual"), p), "data-price"));
-      assert.equal(shown, norm(formatGridMoney(row.monthly * 10, currency, "fr")), `${p} ${currency}: annual shown = 10 × monthly`);
+      const hint = norm(pline(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, currency, "annual"), p), "data-period-hint"));
+      assert.ok(hint.includes(norm(formatGridMoney(row.monthly * 10, currency, "fr"))), `${p} ${currency}: the year's total shown = 10 × monthly`);
     }
   }
-  assert.match(norm(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, "EUR", "annual"), "reception")), /890 €[\s\S]*TTC \/ an[\s\S]*2 mois offerts/);
+  assert.match(norm(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, "EUR", "annual"), "reception")), /74 €[\s\S]*TTC \/ mois[\s\S]*890 € TTC \/ an/);
   assert.match(norm(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, "ILS", "monthly"), "sales")), /549 ₪[\s\S]*250 minutes[\s\S]*1,90 ₪/, "ILS sales: 250 min, 1.90 ₪ (differs from EUR on purpose)");
   assert.match(norm(card(grid("fr", DEFAULT_PRODUCT_CATALOGUE, "EUR", "monthly"), "sales")), /149 €[\s\S]*400 minutes[\s\S]*0,39 €/);
 
@@ -146,7 +167,7 @@ async function main() {
   for (const l of LOCALES) {
     for (const cat of [null, DEFAULT_PRODUCT_CATALOGUE]) {
       for (const billing of ["monthly", "annual"] as const) {
-        const out = cat === null ? html(l, createElement(Pricing)) : grid(l, cat, "EUR", billing);
+        const out = cat === null ? productsPage(l) : grid(l, cat, "EUR", billing);
         const hrefs = [...out.matchAll(/href="([^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
         assert.equal(hrefs.length, GRID_PRODUCTS.length, `${l}: exactly one link per card, nothing else`);
         for (const h of hrefs) {
@@ -177,13 +198,13 @@ async function main() {
     const fmt = (key: string) =>
       (createTranslator({ locale: l, messages: m, namespace: "Pricing" }) as unknown as (k: string, v: object) => string)(key, SIGNUP_TRIAL);
     // One source: the copy takes the numbers as arguments, never writes them.
-    for (const s of [m.Pricing.trial, m.Pricing.grid.cardTrial]) {
+    for (const s of [m.Pricing.grid.trial, m.Pricing.grid.cardTrial]) {
       assert.ok(s.includes("{days}") && s.includes("{minutes}"), `${l}: "${s}" reads the numbers from lib/trial.ts`);
       assert.doesNotMatch(s.replace(/\{\w+\}/g, ""), /\d/, `${l}: no number written in "${s}"`);
     }
-    const page = html(l, createElement(Pricing));
+    const page = productsPage(l);
     const banner = page.match(/data-trial-banner=""[^>]*>([\s\S]*?)<\/p>/)![1].replace(/<[^>]+>/g, "");
-    assert.equal(banner, esc(fmt("trial")), `${l}: the banner says today's trial`);
+    assert.equal(banner, esc(fmt("grid.trial")), `${l}: the banner says today's trial`);
     assert.ok(banner.includes(String(SIGNUP_TRIAL.days)) && banner.includes(String(SIGNUP_TRIAL.minutes)), `${l}: banner numbers`);
     for (const p of GRID_PRODUCTS) {
       const c = card(page, p);
@@ -199,41 +220,94 @@ async function main() {
       }
     }
     // F4's per-product trial (7 days + 30 minutes) is promised nowhere yet.
-    for (const s of Object.values(m.Pricing.grid).concat(m.Pricing.trial).filter((x): x is string => typeof x === "string"))
+    for (const s of Object.values(m.Pricing.grid).filter((x): x is string => typeof x === "string"))
       assert.ok(!s.includes(String(PRODUCT_TRIAL_DAYS)) || PRODUCT_TRIAL_DAYS === SIGNUP_TRIAL.days, `${l}: no ${PRODUCT_TRIAL_DAYS}-day promise in "${s}"`);
     assert.doesNotMatch(page.replace(/<[^>]+>/g, " "), new RegExp(`(?<!\\d)${PRODUCT_TRIAL_MINUTES}(?!\\d)`), `${l}: no ${PRODUCT_TRIAL_MINUTES}-minute promise`);
   }
   // No form, no button that posts: the only buttons are the toggle and the currency.
-  const full = html("fr", createElement(Pricing));
+  const full = productsPage("fr");
   assert.doesNotMatch(full, /<form|action=|formaction/i);
   const buttons = [...full.matchAll(/<button[^>]*>/g)].map((m) => m[0]);
   assert.ok(buttons.every((b) => /data-billing=|data-currency-button=/.test(b)), "only the period toggle and the currency button");
 
   // ── 5. Fetch (strict) and the locale currency ─────────────────────────────
-  const body = { global: {}, products: EDITED };
-  assert.deepEqual(await fetchPublicProducts((async () => Response.json(body)) as typeof fetch), EDITED);
-  assert.equal(await fetchPublicProducts((async () => Response.json({ global: {} })) as typeof fetch), null, "no products field");
+  const body = { global: {}, products: EDITED, grid: "products", available: { sales: true, connect: false } };
+  const got = await fetchPublicPricing((async () => Response.json(body)) as typeof fetch);
+  assert.deepEqual(got, { mode: "products", plans: null, products: EDITED, available: { sales: true, connect: false } });
+  assert.equal((await fetchPublicPricing((async () => Response.json({ global: {} })) as typeof fetch))!.products, null, "no products field");
   const bad = structuredClone(EDITED) as unknown as Record<string, Record<string, Record<string, unknown>>>;
   bad.reception_multi.EUR.addonMonthly = 50;
-  assert.equal(await fetchPublicProducts((async () => Response.json({ products: bad })) as typeof fetch), null, "multi-site add-on refused");
-  assert.equal(await fetchPublicProducts((async () => Response.json({ error: "x" }, { status: 503 })) as typeof fetch), null);
-  assert.equal(await fetchPublicProducts((async () => { throw new TypeError("offline"); }) as typeof fetch), null);
+  assert.equal((await fetchPublicPricing((async () => Response.json({ products: bad })) as typeof fetch))!.products, null, "multi-site add-on refused");
+  assert.equal(await fetchPublicPricing((async () => Response.json({ error: "x" }, { status: 503 })) as typeof fetch), null);
+  assert.equal(await fetchPublicPricing((async () => { throw new TypeError("offline"); }) as typeof fetch), null);
   assert.equal(catalogueCurrencyOf(landingCurrencyFor("fr")), "ILS");
   assert.equal(catalogueCurrencyOf(landingCurrencyFor("he")), "ILS");
   assert.equal(catalogueCurrencyOf(landingCurrencyFor("en")), "EUR", "USD is not in the catalogue → EUR");
   assert.equal(catalogueCurrencyOf("EUR"), "EUR");
   // The section opens in that currency (the dropdown shows it).
-  assert.match(html("he", createElement(Pricing)), /data-currency-button=""[\s\S]*?>ILS</);
-  assert.match(html("en", createElement(Pricing)), /data-currency-button=""[\s\S]*?>EUR</);
+  assert.match(productsPage("he"), /data-currency-button=""[\s\S]*?>ILS</);
+  assert.match(productsPage("en"), /data-currency-button=""[\s\S]*?>EUR</);
 
   // ── 6. Source: no old plans, no default amounts, product names match the menu ─
-  const src = read("components/marketing/Pricing.tsx").replace(/^\s*\/\/.*$/gm, ""); // code only, not comments
+  const src = read("components/marketing/ProductPricing.tsx").replace(/^\s*\/\/.*$/gm, ""); // code only, not comments
   assert.doesNotMatch(src, /lib\/plans|PUBLIC_PLANS|PlanCard|PricingComparison|DEFAULT_PRODUCT_CATALOGUE|DEFAULT_PLAN_PRICING|\/billing|checkout/);
   assert.doesNotMatch(read("lib/pricing-grid.ts").replace(/^\s*\/\/.*$/gm, ""), /DEFAULT_PRODUCT_CATALOGUE|lib\/db/);
   for (const l of LOCALES) {
     const m = messages(l);
     for (const p of ["reception", "sales", "connect"] as const) assert.equal(m.Pricing.grid.products[p].name, m.DashboardNav[p], `${l}: ${p} named as in the menu`);
-    assert.ok(m.Pricing.how && m.Pricing.howLabel, `${l}: the how-it-works line`);
+    assert.ok(m.Pricing.grid.how && m.Pricing.grid.howLabel, `${l}: the how-it-works line`);
+  }
+
+  // ── 7. Two modes ────────────────────────────────────────────────────────
+  // 7a. Only the exact "products" opens the grid; everything else is legacy.
+  assert.equal(pricingView(null), "legacy", "not loaded yet / failed → today's cards");
+  for (const raw of [{}, { grid: "legacy" }, { grid: "PRODUCTS" }, { grid: true }, { grid: ["products"] }, null, "products", { products: DEFAULT_PRODUCT_CATALOGUE }])
+    assert.equal(pricingView(parsePublicPricing(raw)), "legacy", `legacy for ${JSON.stringify(raw)}`);
+  assert.equal(pricingView(parsePublicPricing({ grid: "products" })), "products");
+  // 7b. Availability: true only where the route says exactly true; missing = not available.
+  assert.deepEqual(parsePublicPricing({}).available, NOT_AVAILABLE);
+  assert.deepEqual(parsePublicPricing({ available: { sales: "true", connect: 1 } }).available, NOT_AVAILABLE);
+  assert.deepEqual(parsePublicPricing({ available: { sales: true } }).available, { sales: true, connect: false });
+  for (const p of ["reception", "reception_multi"] as const) assert.equal(isAvailable(p, NOT_AVAILABLE), true, `${p} is always available`);
+  // 7c. The prerendered section (nothing fetched) is TODAY's: the plan cards,
+  //     the comparison table, no product card.
+  for (const l of LOCALES) {
+    const legacy = html(l, createElement(Pricing));
+    assert.ok((legacy.match(/data-testid="plan-price-placeholder"/g) ?? []).length > 0, `${l}: today's plan cards`);
+    assert.ok(legacy.includes(esc(messages(l).PricingComparison.title)), `${l}: today's comparison table`);
+    assert.doesNotMatch(legacy, /data-product=|grid-price-placeholder/, `${l}: no product card`);
+    assert.ok(legacy.includes(esc(messages(l).Pricing.title)), `${l}: today's title`);
+  }
+  // The legacy path is main's code: Pricing.tsx renders ProductPricing only behind pricingView.
+  const legacySrc = read("components/marketing/Pricing.tsx");
+  assert.match(legacySrc, /if \(data && pricingView\(data\) === "products"\) \{\s*return <ProductPricing /);
+  // 7d. "Bientôt" for a product that is not available; current wording when it is.
+  for (const l of LOCALES) {
+    const g = messages(l).Pricing.grid;
+    for (const av of [NOT_AVAILABLE, { sales: true, connect: false }, ALL]) {
+      const out = grid(l, DEFAULT_PRODUCT_CATALOGUE, "EUR", "monthly", av);
+      for (const p of GRID_PRODUCTS) {
+        const c = card(out, p);
+        const soon = !isAvailable(p, av);
+        assert.equal(c.includes('data-soon=""'), soon, `${l} ${p} ${JSON.stringify(av)}: tag`);
+        if (soon) assert.ok(c.includes(`>${esc(g.soonTag)}<`), `${l} ${p}: "${g.soonTag}"`);
+        const trialLine = c.match(/data-trial-line=""[^>]*>([\s\S]*?)<\/p>/)![1];
+        const cta = c.match(/data-cta="[^"]+"[^>]*>([\s\S]*?)<\/a>/)![1];
+        if (p === "sales" || p === "connect") {
+          assert.equal(cta, esc(g.ctaAccount), `${l} ${p}: neutral button`);
+          assert.equal(trialLine, esc(soon ? g.soonLine : g.notInTrial), `${l} ${p}: ${soon ? "soon" : "not in trial"} line`);
+        }
+      }
+    }
+  }
+  // 7e. Tax wording: exactly the live page's keys, none of its own.
+  for (const l of LOCALES) {
+    const m = messages(l);
+    const own = JSON.stringify(m.Pricing.grid);
+    assert.doesNotMatch(own, /TTC|VAT|HT\b|מע״מ|מע"מ/, `${l}: Pricing.grid carries no tax wording`);
+    const c = card(grid(l, DEFAULT_PRODUCT_CATALOGUE, "EUR", "monthly"), "reception");
+    assert.ok(c.includes(esc(m.Pricing.card.perMonth)), `${l}: the live "${m.Pricing.card.perMonth}"`);
+    assert.ok(productsPage(l).includes(esc(m.Pricing.footer)), `${l}: the live footer`);
   }
 
   console.log("ALL PRICING-NEW-GRID TESTS PASSED");

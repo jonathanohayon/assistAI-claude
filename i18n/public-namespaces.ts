@@ -23,6 +23,7 @@ export const PUBLIC_NAMESPACES = [
   "Performance",
   "Plans",
   "Pricing",
+  "PricingComparison",
   "Security",
   "Signup",
   "SocialProof",

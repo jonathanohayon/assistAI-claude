@@ -12,12 +12,10 @@ import { NextIntlClientProvider } from "next-intl";
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Pricing, ProductPricingGrid } from "../../components/marketing/Pricing";
+import { Pricing } from "../../components/marketing/Pricing";
 import { PlanCard, useExchangeRates } from "../../components/plans/PlanCard";
 import { DEFAULT_PLAN_PRICING, PRICE_FIELDS, type PlanPricingMap } from "../../lib/plan-pricing";
 import { PUBLIC_PLANS } from "../../lib/plans";
-import { DEFAULT_PRODUCT_CATALOGUE } from "../../lib/product-catalogue";
-import { GRID_PRODUCTS } from "../../lib/pricing-grid";
 import {
   PUBLIC_PLAN_PRICING_CACHE_CONTROL,
   PUBLIC_PLAN_PRICING_PATH,
@@ -55,11 +53,6 @@ const DEFAULT_AMOUNTS = PUBLIC_PLANS.flatMap((p) => {
   const row = DEFAULT_PLAN_PRICING[p.key];
   return [row.eurMonthly, row.eurAnnual, row.ilsMonthly, row.ilsAnnual, Math.round(row.eurAnnual / 12), Math.round(row.ilsAnnual / 12)];
 });
-// Every catalogue amount (prices, add-ons, minutes; overage has decimals and
-// is matched as written, e.g. 0.39 / 1.5).
-const CATALOGUE_AMOUNTS = Object.values(DEFAULT_PRODUCT_CATALOGUE).flatMap((byCur) =>
-  Object.values(byCur).flatMap((r) => [r.monthly, r.annual, r.addonMonthly, r.addonAnnual, r.minutes].filter((n): n is number => n !== null)),
-);
 // Matches the number as a whole, also with a thousands separator (3 490, 3,490).
 const amountRe = (n: number) => {
   const s = String(n);
@@ -125,26 +118,15 @@ async function main() {
     assert.equal(await fetchPublicPlanPricing(offline), null);
   });
 
-  // The section now shows the PRODUCT grid (lib/pricing-grid.ts, F3a): its
-  // prerendered HTML carries no catalogue amount either, one placeholder per
-  // number (price, minutes, overage, add-on) on each of the four cards.
   for (const locale of LOCALES) {
     await test(`${locale}: the prerendered pricing section shows placeholders and no default amount`, () => {
-      // The trial lines carry the sign-up trial's own numbers (lib/trial.ts,
-      // e.g. 100 minutes), not prices: they are left out of this check.
-      const html = renderWithIntl(locale, createElement(Pricing)).replace(/<p data-trial-(?:line|banner)=""[\s\S]*?<\/p>/g, "");
-      assert.equal(html.match(/data-testid="grid-price-placeholder"/g)?.length, GRID_PRODUCTS.length * 4);
-      for (const n of [...DEFAULT_AMOUNTS, ...CATALOGUE_AMOUNTS]) assert.doesNotMatch(html, amountRe(n), `default amount ${n} in the HTML`);
+      const html = renderWithIntl(locale, createElement(Pricing));
+      assert.equal(html.match(/data-testid="plan-price-placeholder"/g)?.length, PUBLIC_PLANS.length);
+      for (const n of DEFAULT_AMOUNTS) assert.doesNotMatch(html, amountRe(n), `default amount ${n} in the HTML`);
     });
   }
 
-  await test("control: the grid given the catalogue does render its amounts (the check above can fail)", () => {
-    const html = renderWithIntl("he", createElement(ProductPricingGrid, { catalogue: DEFAULT_PRODUCT_CATALOGUE, currency: "ILS", billing: "monthly" }));
-    assert.doesNotMatch(html, /grid-price-placeholder/);
-    assert.match(html, amountRe(DEFAULT_PRODUCT_CATALOGUE.reception.ILS.monthly));
-  });
-
-  await test("control: a plan card given the grid does render its amount", () => {
+  await test("control: a card given the grid does render its amount (the check above can fail)", () => {
     function Card() {
       const rates = useExchangeRates();
       return createElement(PlanCard, {

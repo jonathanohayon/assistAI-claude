@@ -95,6 +95,7 @@ const PUBLIC = [
   "Performance",
   "Plans",
   "Pricing",
+  "PricingComparison",
   "Security",
   "Signup",
   "SocialProof",
@@ -133,6 +134,7 @@ assert.deepEqual(problems, [], `internal words in public copy:\n${problems.join(
 // The decided wording itself (FR), so a revert shows up by name.
 const fr = messages("fr");
 assert.equal(at(fr, "Features.list.crm.title"), "Fiche client remplie automatiquement");
+assert.equal(at(fr, "PricingComparison.rowCrm"), "Contacts dans Google Sheets");
 assert.equal(at(fr, "Plans.global.features.2"), "Calendrier connecté & contacts");
 
 // The home's voice-studio mock says what the dashboard says: its voice label

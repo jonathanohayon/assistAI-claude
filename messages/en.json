@@ -265,14 +265,13 @@
   },
   "Pricing": {
     "kicker": "Pricing",
-    "title": "One base offer, add-ons if you need them.",
-    "subtitle": "Choose what your agent does: answer the phone, call your contacts, or give your own agent a voice. No commitment.",
+    "title": "Two plans, no commitment.",
+    "subtitle": "Tamara answers, books the appointment and sends you the recap on WhatsApp. Cancel anytime.",
     "billing": {
       "monthly": "Monthly",
       "annual": "Annual",
       "save": "2 months free with the annual plan.",
-      "discount": "2 months free",
-      "label": "Billing period"
+      "discount": "2 months free"
     },
     "card": {
       "popular": "Recommended",
@@ -288,14 +287,17 @@
       "model": "Model"
     },
     "footer": "Prices include VAT. Several locations or high volume? Let's talk.",
-    "trial": "Free Reception trial: {days} days or {minutes} call minutes, whichever comes first, no credit card.",
-    "howLabel": "How it works:",
-    "how": "you pick one base offer and add options if you need them. Each offer has its own included minutes.",
-    "currency": "Currency",
+    "trial": "Free 14-day or 100-minute trial, no credit card. The founder calls you to set Tamara up with you.",
     "grid": {
-      "perMonth": "incl. VAT / month",
-      "perYear": "incl. VAT / year",
-      "annualNote": "2 months free",
+      "title": "One base offer, add-ons if you need them.",
+      "subtitle": "Choose what your agent does: answer the phone, call your contacts, or give your own agent a voice. No commitment.",
+      "howLabel": "How it works:",
+      "how": "you pick one base offer and add options if you need them. Each offer has its own included minutes.",
+      "currency": "Currency",
+      "billingLabel": "Billing period",
+      "trial": "Free Reception trial: {days} days or {minutes} call minutes, whichever comes first, no credit card.",
+      "soonTag": "Soon",
+      "soonLine": "Coming soon. Create your account to be notified.",
       "minutes": "{minutes} minutes included per month",
       "overage": "Beyond that: {price} per minute",
       "addonMonth": "Or as an add-on to another offer: <b>+ {price} / month</b>",
@@ -326,6 +328,27 @@
       "ctaAccountAria": "Create my account for {name}",
       "notInTrial": "Not included in the free trial."
     }
+  },
+  "PricingComparison": {
+    "title": "Compare in detail",
+    "forWho": "Best for",
+    "forWhoGlobal": "Salons & practices",
+    "forWhoPremium": "Clinics & multi-site",
+    "yes": "Included",
+    "no": "Not included",
+    "rowMinutes": "Minutes included / month",
+    "rowInbound": "Inbound calls 24/7",
+    "rowMessages": "WhatsApp messages & recap",
+    "rowCalendar": "Connected calendar & booking",
+    "rowCrm": "Contacts in Google Sheets",
+    "rowMulticall": "Simultaneous parallel calls",
+    "rowAnalytics": "Real-time analytics",
+    "rowSupport": "Support",
+    "supportStandard": "Standard",
+    "supportPriority": "Priority",
+    "rowLocations": "Locations / calendars",
+    "locationsOne": "1",
+    "locationsUpTo3": "Up to 3"
   },
   "DashboardSetup": {
     "title": "Set up your agent",

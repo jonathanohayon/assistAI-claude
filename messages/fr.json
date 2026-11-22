@@ -265,14 +265,13 @@
   },
   "Pricing": {
     "kicker": "Tarifs",
-    "title": "Une offre de base, des options si besoin.",
-    "subtitle": "Choisissez ce que fait votre agent : répondre au téléphone, appeler vos contacts, ou donner une voix à votre propre agent. Sans engagement.",
+    "title": "Deux formules, sans engagement.",
+    "subtitle": "Tamara répond, prend les rendez-vous et vous envoie le récap sur WhatsApp. Annulable à tout moment.",
     "billing": {
       "monthly": "Mensuel",
       "annual": "Annuel",
       "save": "2 mois offerts avec l'abonnement annuel.",
-      "discount": "2 mois offerts",
-      "label": "Période de facturation"
+      "discount": "2 mois offerts"
     },
     "card": {
       "popular": "Recommandé",
@@ -288,14 +287,17 @@
       "model": "Modèle"
     },
     "footer": "Prix TTC. Plusieurs établissements ou gros volume ? Parlons-en.",
-    "trial": "Essai gratuit de la Réception : {days} jours ou {minutes} minutes d'appels, au premier des deux atteint, sans carte bancaire.",
-    "howLabel": "Comment ça marche :",
-    "how": "vous choisissez une offre de base et vous ajoutez des options si besoin. Chaque offre a ses propres minutes incluses.",
-    "currency": "Devise",
+    "trial": "Essai gratuit 14 jours ou 100 minutes, sans carte bancaire. Le fondateur vous appelle pour configurer Tamara avec vous.",
     "grid": {
-      "perMonth": "TTC / mois",
-      "perYear": "TTC / an",
-      "annualNote": "2 mois offerts",
+      "title": "Une offre de base, des options si besoin.",
+      "subtitle": "Choisissez ce que fait votre agent : répondre au téléphone, appeler vos contacts, ou donner une voix à votre propre agent. Sans engagement.",
+      "howLabel": "Comment ça marche :",
+      "how": "vous choisissez une offre de base et vous ajoutez des options si besoin. Chaque offre a ses propres minutes incluses.",
+      "currency": "Devise",
+      "billingLabel": "Période de facturation",
+      "trial": "Essai gratuit de la Réception : {days} jours ou {minutes} minutes d'appels, au premier des deux atteint, sans carte bancaire.",
+      "soonTag": "Bientôt",
+      "soonLine": "Bientôt disponible. Créez votre compte pour être prévenu.",
       "minutes": "{minutes} minutes incluses par mois",
       "overage": "Au-delà : {price} la minute",
       "addonMonth": "Ou en option sur une autre offre : <b>+ {price} / mois</b>",
@@ -326,6 +328,27 @@
       "ctaAccountAria": "Créer mon compte pour {name}",
       "notInTrial": "Non compris dans l'essai gratuit."
     }
+  },
+  "PricingComparison": {
+    "title": "Comparer en détail",
+    "forWho": "Pour qui",
+    "forWhoGlobal": "Salons & cabinets",
+    "forWhoPremium": "Cliniques & multi-sites",
+    "yes": "Inclus",
+    "no": "Non inclus",
+    "rowMinutes": "Minutes incluses / mois",
+    "rowInbound": "Appels entrants 24/7",
+    "rowMessages": "Messages & recap WhatsApp",
+    "rowCalendar": "Agenda connecté & prise de RDV",
+    "rowCrm": "Contacts dans Google Sheets",
+    "rowMulticall": "Appels simultanés en parallèle",
+    "rowAnalytics": "Analytics temps réel",
+    "rowSupport": "Support",
+    "supportStandard": "Standard",
+    "supportPriority": "Prioritaire",
+    "rowLocations": "Établissements / calendriers",
+    "locationsOne": "1",
+    "locationsUpTo3": "Jusqu'à 3"
   },
   "DashboardSetup": {
     "title": "Configurez votre agent",
