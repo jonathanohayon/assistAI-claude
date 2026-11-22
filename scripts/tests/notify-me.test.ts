@@ -72,11 +72,12 @@ async function main() {
     const first = submit();
     const second = submit();
     const third = submit();
+    assert.equal(calls.length, 1, "one POST for three clicks");
+    release();
     assert.equal(await second, null, "a click while pending sends nothing");
     assert.equal(await third, null);
-    release();
     assert.equal(await first, "done");
-    assert.equal(calls.length, 1, "one POST for three clicks");
+    assert.equal(calls.length, 1, "still one POST once settled");
     // After an error the button stays and a new click sends again.
     const errCalls: Call[] = [];
     const retry = notifySubmitter(() => postNotify("sales", null, mockFetch(400, errCalls)));
@@ -132,7 +133,18 @@ async function main() {
   }
 
   console.log("notify-me: OK");
+  finished = true;
 }
+
+// A promise left pending would end the process with code 0 without
+// reaching the end: fail instead.
+let finished = false;
+process.on("exit", (code) => {
+  if (code === 0 && !finished) {
+    console.error("notify-me: did not run to the end");
+    process.exitCode = 1;
+  }
+});
 
 main().catch((e) => {
   console.error(e);
