@@ -2,17 +2,15 @@
 // It imports lib/door-values.ts only (the tenant bundle check reads what a
 // client component pulls in).
 //
-// The door names the home tab and, for sales and connect, orders the tiles
-// and the first checklist steps. It never adds or removes a tab or a tile:
+// The door orders the left menu's products (lib/dashboard-nav.ts: its own
+// product first, opened by /dashboard) and, for sales and connect, the tiles
+// and the first checklist steps. It never adds or removes an entry or a tile:
 // gating (plan features, admin) is applied by the screens exactly as before.
-// Reception (every account without a door) is EXACTLY the dashboard as it
-// was before doors: same tab order, tile order and checklist order.
+// Reception (every account without a door) keeps the tile and checklist order
+// of the dashboard before doors.
 // scripts/tests/doors-ui.test.ts pins all of it.
 
 import { DEFAULT_DOOR, DOORS, type Door } from "./door-values";
-
-/** Logical ids of the dashboard menu entries (tenant nav and the admin mirror). */
-export type DoorTabId = "home" | "calls" | "campaigns" | "crm" | "calendar" | "billing";
 
 /** Ids of the configuration tiles (app/[locale]/dashboard/config-form.tsx). */
 export type DoorTileId = "voice" | "business" | "tools" | "persona" | "notifs" | "channels" | "campaigns";
@@ -29,12 +27,7 @@ export type DoorStepId =
   | "liveTest"
   | "agentUrl";
 
-/** Message keys (Dashboard namespace) of the dashboard title per door. */
-export type DoorHeaderKey = "doorTitleReception" | "doorTitleSales" | "doorTitleConnect";
-
 export interface DoorUi {
-  /** The home tab's label (the home tab is first for every door; tabs are never reordered). */
-  headerKey: DoorHeaderKey;
   tileOrder: readonly DoorTileId[];
   /** The tile to highlight: the first of these the screen actually shows. */
   highlightTiles: readonly DoorTileId[];
@@ -50,7 +43,6 @@ export const TODAY_TILE_ORDER: readonly DoorTileId[] = ["voice", "business", "to
 export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
   // Today's dashboard, unchanged. "Start here" on the number tile until there is one.
   reception: {
-    headerKey: "doorTitleReception",
     tileOrder: TODAY_TILE_ORDER,
     highlightTiles: ["channels"],
     highlightOnlyWithoutNumber: true,
@@ -58,7 +50,6 @@ export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
   },
   // Calls go out: the campaigns first; the free live test right after the import.
   sales: {
-    headerKey: "doorTitleSales",
     tileOrder: ["campaigns", "channels", "voice", "persona", "business", "tools", "notifs"],
     highlightTiles: ["campaigns"],
     highlightOnlyWithoutNumber: false,
@@ -66,7 +57,6 @@ export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
   },
   // The customer's own agent answers: its address and the voice first.
   connect: {
-    headerKey: "doorTitleConnect",
     tileOrder: ["tools", "voice", "channels", "persona", "business", "notifs", "campaigns"],
     highlightTiles: ["tools"],
     highlightOnlyWithoutNumber: false,
@@ -155,23 +145,3 @@ export function withDoorParam(path: string, raw: unknown): string {
 
 /** localStorage key of the customer's own tile order (config-form.tsx). */
 export const TILE_ORDER_KEY = "tamara.config.tileOrder";
-
-/**
- * Whether picking `next` must save: only a DIFFERENT door. The same door
- * sends no PUT and keeps the saved tile order.
- */
-export function doorChangeNeeded(current: Door, next: unknown): next is Door {
-  return typeof next === "string" && (DOORS as readonly string[]).includes(next) && next !== current;
-}
-
-/** The PUT the "main use" selector sends (?asUserId= in the admin tenant view). */
-export function doorPutRequest(door: Door, asUserId?: string | null): { url: string; init: RequestInit } {
-  return {
-    url: `/api/dashboard/account${asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : ""}`,
-    init: {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ door }),
-    },
-  };
-}

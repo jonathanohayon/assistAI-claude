@@ -24,7 +24,9 @@ import {
   TRIAL_WARNING_BEFORE_END_MS,
 } from "@/lib/trial";
 
-import { DashboardTabs } from "./_nav";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { navBlocks } from "@/lib/dashboard-nav";
+import { accountProductMenu } from "@/lib/product-gates";
 import { UserMenu } from "./user-menu";
 import { TrialExpiredGate } from "./billing/trial-expired-gate";
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
@@ -138,7 +140,7 @@ async function DashboardShell({
     redirect(`/${locale}/verify-email?email=${encodeURIComponent(me.email)}`);
   }
 
-  // Trial countdown — shown as a banner above the tabs. Pour un tenant en
+  // Trial countdown — shown as a banner above the page. Pour un tenant en
   // essai, on lit aussi les minutes d'appels consommées (quota 60 min) afin
   // d'afficher les minutes restantes en plus du temps.
   let trialSecondsUsed = 0;
@@ -176,6 +178,11 @@ async function DashboardShell({
   const googleConnected = Boolean(me?.googleRefreshToken);
   const planMatrix = await getPlanFeatureMatrix();
   const features = featuresForPlan(planMatrix, me?.subscriptionPlan);
+  // The left menu: the account's own product first (its door), owned or
+  // preview from its entitlement and the product gates, all computed HERE
+  // (lib/product-gates.ts reads the env): the browser only gets the result.
+  // An admin's own dashboard: everything owned.
+  const menuBlocks = navBlocks(resolveDoor(me?.door ?? null), await accountProductMenu(session.user.id, me?.role, features));
 
   const t = await getTranslations({ locale, namespace: "Dashboard" });
 
@@ -203,7 +210,7 @@ async function DashboardShell({
         />
       )}
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-4">
             <Link href="/">
               <Logo />
@@ -235,6 +242,10 @@ async function DashboardShell({
         </div>
       </header>
 
+      {/* Menu + content. The menu is on the start side (right in Hebrew). */}
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col lg:flex-row lg:gap-6 lg:px-6">
+        <DashboardSidebar blocks={menuBlocks} />
+        <div className="min-w-0 flex-1">
       {!googleConnected && me?.subscriptionPlan !== "whatsapp" && (
         <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-4">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 sm:text-sm">
@@ -314,11 +325,11 @@ async function DashboardShell({
         </div>
       )}
 
-      <DashboardTabs features={features} isAdmin={me?.role === "admin"} door={resolveDoor(me?.door ?? null)} />
-
       {/* Wrapper relative z-10 → le contenu passe au-dessus du mesh aurora
        *  (qui est en `fixed z-0`). Sans ça, le content static serait derrière. */}
       <div className="relative z-10">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }

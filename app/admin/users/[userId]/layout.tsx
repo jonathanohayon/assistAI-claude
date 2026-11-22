@@ -9,23 +9,27 @@ import { signOut } from "@/auth";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { IdleWatcher } from "@/components/IdleWatcher";
 import { Logo } from "@/components/ui/Logo";
-import { DoorSelect } from "@/components/dashboard/DoorSelect";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { navBlocks } from "@/lib/dashboard-nav";
 import { db } from "@/lib/db";
 import { resolveDoor } from "@/lib/door";
 import { users } from "@/lib/db/schema";
+import { featuresForPlan } from "@/lib/plan-features";
+import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
+import { accountProductMenu } from "@/lib/product-gates";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { getDemoUserId } from "@/lib/settings";
 
-import { AdminTenantTabs } from "./_nav";
 import { DemoAccountToggle } from "./DemoAccountToggle";
 import { PlanAccessControl } from "./PlanAccessControl";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 
-// Layout partagé pour /admin/users/[userId]/* — fournit header + nav 4
-// onglets (Config / Calendrier / CRM / Appels) pour que l'admin puisse
-// naviguer dans les vues du tenant comme le tenant le ferait sur son
-// /dashboard. Mirror minimal du dashboard layout sans i18n switcher
-// (admin fr-only) ni trial banner.
+// Layout partagé pour /admin/users/[userId]/* — fournit header + le MÊME menu
+// que le dashboard du tenant (components/dashboard/DashboardSidebar, avec
+// asUserId) pour que l'admin navigue dans les vues du tenant comme le tenant
+// le ferait. The menu is computed for the TARGET tenant (its door, plan,
+// status, features and the product gates), never for the admin. No i18n
+// switcher (admin fr-only) nor trial banner.
 export default async function AdminTenantLayout({
   children,
   params,
@@ -45,6 +49,7 @@ export default async function AdminTenantLayout({
       subscriptionStatus: users.subscriptionStatus,
       paidUntil: users.paidUntil,
       door: users.door,
+      role: users.role,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -75,6 +80,11 @@ export default async function AdminTenantLayout({
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
   const isDemo = (await getDemoUserId()) === target.id;
   const door = resolveDoor(target.door);
+  const menuBlocks = navBlocks(
+    door,
+    await accountProductMenu(target.id, target.role, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan)),
+    target.id,
+  );
   // "Illimité gratuit" = actif avec paidUntil très lointain (>= 2090).
   const isUnlimited =
     target.subscriptionStatus === "active" &&
@@ -93,7 +103,7 @@ export default async function AdminTenantLayout({
         <AuroraBackground />
         <IdleWatcher />
         <header className="sticky top-0 z-40 border-b border-[var(--color-border)]/60 bg-white/85 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-4">
             <div className="flex items-center gap-4">
               <Link href="/">
                 <Logo />
@@ -121,7 +131,7 @@ export default async function AdminTenantLayout({
 
         {/* Bandeau jaune : indique clairement à l'admin qu'il agit sur
          *  un tenant. Présent sur toutes les sous-pages /admin/users/[id]/*. */}
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6 sm:pt-6">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 sm:pt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#fde68a] bg-[#fef3c7]/60 px-4 py-2.5 text-xs text-[#92400e]">
             <span>
               👁 Vue admin du tenant{" "}
@@ -137,15 +147,15 @@ export default async function AdminTenantLayout({
                 initialUnlimited={isUnlimited}
               />
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
-              <DoorSelect initialDoor={door} asUserId={target.id} compact />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
           </div>
         </div>
 
-        <AdminTenantTabs userId={target.id} door={door} />
-
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col lg:flex-row lg:gap-6 lg:px-6">
+          <DashboardSidebar blocks={menuBlocks} asUserId={target.id} />
+          <div className="min-w-0 flex-1">{children}</div>
+        </div>
       </div>
     </NextIntlClientProvider>
   );

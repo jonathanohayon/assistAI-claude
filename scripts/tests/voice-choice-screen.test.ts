@@ -78,7 +78,7 @@ const choice: ServedVoiceChoice = {
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /summary: voiceSummary/);
   assert.match(read("app/[locale]/dashboard/config-form.tsx"), /n: chosenVoice\.number/);
   assert.doesNotMatch(read("app/[locale]/dashboard/campaigns/agents/agent-editor.tsx"), /choice=/, "outbound keeps today's list");
-  for (const p of ["app/[locale]/dashboard/page.tsx", "app/admin/users/[userId]/page.tsx"]) assert.match(read(p), /voiceChoice: await voiceChoiceFor\(config,/, p);
+  for (const p of ["app/[locale]/dashboard/config/config-page.tsx", "app/admin/users/[userId]/admin-config-page.tsx"]) assert.match(read(p), /voiceChoice: await voiceChoiceFor\(config,/, p);
 }
 
 // 6. Admin engine picker: one line saying the voice follows the engine (admin-only file, every language)

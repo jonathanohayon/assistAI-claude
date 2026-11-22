@@ -19,6 +19,7 @@ import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
 
 import { CalendarSettings } from "../calendar/calendar-settings";
 import { CalendarTable } from "../calendar/calendar-table";
+import { SyncNowButton } from "../calendar/sync-button";
 import { ContactsTable } from "../contacts/contacts-table";
 import { Tile, type TileDef } from "../config/shared-ui";
 
@@ -345,15 +346,21 @@ export function CrmClient({
             {!googleConnected ? (
               <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                 <p>{t("googleNotConnected")}</p>
-                <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                <ConnectGoogleLink returnTo="/dashboard/clients" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                   {t("connectButton")}
                 </ConnectGoogleLink>
               </div>
             ) : active.id === "calendar" ? (
-              tokenExpired ? (
+              <>
+              {/* Manual Calendar → Sheet sync, as on the old /dashboard/calendar
+                  page: shown whenever Google is connected (expired token included). */}
+              <div className="mb-4 flex justify-end">
+                <SyncNowButton />
+              </div>
+              {tokenExpired ? (
                 <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                   <p>{t("tokenExpired")}</p>
-                  <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                  <ConnectGoogleLink returnTo="/dashboard/clients" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                     {t("reconnectButton")}
                   </ConnectGoogleLink>
                 </div>
@@ -362,14 +369,15 @@ export function CrmClient({
                   <CalendarSettings initialSelectedId={selectedCalendarId} />
                   <CalendarTable initialEvents={events} />
                 </>
-              )
+              )}
+              </>
             ) : active.id === "customers" ? (
               <div className="space-y-5">
                 <SheetPicker type="customers" />
                 {tokenExpired ? (
                   <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
                     <p>{t("tokenExpired")}</p>
-                    <ConnectGoogleLink returnTo="/dashboard/crm" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
+                    <ConnectGoogleLink returnTo="/dashboard/clients" className="rounded-full bg-[var(--color-foreground)] px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-[var(--color-primary)]">
                       {t("reconnectButton")}
                     </ConnectGoogleLink>
                   </div>

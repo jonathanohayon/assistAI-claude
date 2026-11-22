@@ -36,7 +36,16 @@ const AUTH = "/api/admin/auth";
 // The public pages of the harness's public-pages-check.mjs ("" = the home).
 const PUBLIC_PATHS = ["", "/login", "/signup", "/verify-email", "/forgot-password", "/sales", "/connect"];
 // The tenant pages of check-tenant-bundle.mjs, plus onboarding.
+// The left menu's pages first; the old URLs after them (they redirect: a 307
+// is skipped, the page it lands on is checked under its own path).
 const TENANT_PATHS = [
+  "/dashboard/reception",
+  "/dashboard/reception/forwarding",
+  "/dashboard/sales",
+  "/dashboard/agent",
+  "/dashboard/my-agent",
+  "/dashboard/calls",
+  "/dashboard/clients",
   "/dashboard",
   "/dashboard/settings",
   "/dashboard/billing",

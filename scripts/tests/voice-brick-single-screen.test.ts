@@ -84,9 +84,9 @@ assert.deepEqual([...LEGACY_OUTBOUND_VOICE_FIELDS], [...store.LEGACY_OUTBOUND_VO
 
 // 6. Pages hand the client the voice as SERVED (tenants: supplier fields
 //    removed); the browser fills defaults, so a tenant page never carries them.
-for (const f of ["app/[locale]/dashboard/page.tsx", "app/admin/users/[userId]/page.tsx"]) {
+for (const f of ["app/[locale]/dashboard/config/config-page.tsx", "app/admin/users/[userId]/admin-config-page.tsx"]) {
   assert.match(read(f), /voiceConfig: voiceForViewer\(currentInboundVoice\(/, `${f} serves voiceForViewer(...)`);
 }
-assert.match(read("app/[locale]/dashboard/page.tsx"), /voiceForViewer\(currentInboundVoice\(config\.voiceConfig, config\), isAdmin\)/);
+assert.match(read("app/[locale]/dashboard/config/config-page.tsx"), /voiceForViewer\(currentInboundVoice\(config\.voiceConfig, config\), isAdmin\)/);
 
 console.log("ALL VOICE-BRICK SINGLE-SCREEN TESTS PASSED");

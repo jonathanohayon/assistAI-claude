@@ -632,7 +632,7 @@
     "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit."
   },
   "Dashboard": {
-    "header": "Dashboard",
+    "header": "Tableau de bord",
     "admin": "Admin",
     "googleNotConnected": "Google Calendar non connecté. Sans ça, votre agent ne peut pas prendre de rendez-vous dans VOTRE calendrier.",
     "connectButton": "Connecter",
@@ -642,13 +642,8 @@
     "trialExpired": "Votre essai est terminé : Tamara est en pause. Souscrivez pour la réactiver. Vos réglages restent, et votre numéro est conservé 30 jours.",
     "trialRemainingMessage": "Essai gratuit : {label} restants",
     "trialSubscribeButton": "Souscrire",
-    "tabConfiguration": "Réceptionniste",
-    "tabOutbound": "Appels sortants",
     "tabCalendar": "Calendrier",
     "tabContacts": "Contacts",
-    "tabCalendarCrm": "Calendrier & Clients & Commandes",
-    "tabBilling": "Abonnement",
-    "tabLogs": "Appels",
     "userMenuAria": "Menu utilisateur",
     "loggedInAs": "Connecté en tant que",
     "settingsLink": "Paramètres",
@@ -656,10 +651,28 @@
     "trialCallMinutesLeft": "{min} min d'appels restantes",
     "trialDaysLabel": "{days, plural, one {# jour} other {# jours}}",
     "trialFounderCall": "le fondateur vous appelle pour configurer Tamara",
-    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé",
-    "doorTitleReception": "Réceptionniste",
-    "doorTitleSales": "Ventes",
-    "doorTitleConnect": "Votre agent"
+    "trialPauseNotice": "ensuite Tamara est mise en pause, rien n'est supprimé"
+  },
+  "DashboardNav": {
+    "navLabel": "Menu du tableau de bord",
+    "menu": "Menu",
+    "closeMenu": "Fermer le menu",
+    "blockProducts": "Produits",
+    "blockShared": "Commun",
+    "reception": "Réception",
+    "sales": "Ventes",
+    "connect": "Votre agent",
+    "myAgent": "Mon agent",
+    "calls": "Appels",
+    "clients": "Clients",
+    "billing": "Abonnement",
+    "settings": "Réglages",
+    "stateSoon": "Bientôt",
+    "stateTry": "Essai gratuit",
+    "pitchReception": "Votre agent répond au téléphone à votre place, de jour comme de nuit.",
+    "pitchSales": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel.",
+    "pitchConnect": "Branchez votre propre agent : il répond au téléphone avec une voix et un numéro Tamara.",
+    "previewSoon": "Bientôt disponible."
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -1642,14 +1655,7 @@
     "apiEndpointLabel": "Point d’accès",
     "apiDocsParams": "Paramètres : phone (obligatoire), direction (inbound|outbound|all), subject (appointment|cancellation|reschedule|message|info|other), from, to (AAAA-MM-JJ), order (asc|desc), limit, offset.",
     "apiKeyPlaceholder": "<VOTRE_CLE>",
-    "developerSection": "Affichage",
-    "doorLabel": "Mon usage principal",
-    "doorHint": "Change seulement l'ordre de votre tableau de bord. Vous gardez tous vos réglages.",
-    "doorOptionReception": "Réception d'appels",
-    "doorOptionSales": "Ventes (appels sortants)",
-    "doorOptionConnect": "Connecter mon agent",
-    "doorSaveError": "Votre choix n'a pas été enregistré. Réessayez.",
-    "doorResetNote": "Changer d'usage remet l'ordre de vos tuiles par défaut."
+    "developerSection": "Affichage"
   },
   "DashboardBilling": {
     "header": "Abonnement",
@@ -2692,7 +2698,7 @@
   },
   "AgentBrain": {
     "title": "Qui répond au téléphone",
-    "desc": "Par défaut, votre agent répond avec la personnalité configurée ci-dessus. Vous pouvez à la place brancher votre propre agent.",
+    "desc": "Par défaut, votre agent répond avec la personnalité réglée dans <link>Mon agent</link>. Vous pouvez à la place brancher votre propre agent.",
     "loading": "Chargement…",
     "toggleLabel": "Utiliser mon propre agent",
     "toggleHint": "Tamara garde la voix, le numéro et la téléphonie ; c'est votre agent qui décide des réponses.",

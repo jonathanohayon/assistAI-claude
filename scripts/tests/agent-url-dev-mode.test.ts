@@ -62,7 +62,9 @@ for (const l of LOCALES) {
 // 3. No hard-coded French left in the component or on the page.
 {
   const src = read("app/[locale]/dashboard/settings/agent-url-section.tsx");
-  const page = read("app/[locale]/dashboard/settings/page.tsx");
+  // The card lives on the "Votre agent" page (/dashboard/agent) since the left menu.
+  const page = read("app/[locale]/dashboard/agent/page.tsx");
+  assert.doesNotMatch(read("app/[locale]/dashboard/settings/page.tsx"), /<AgentUrlCard/, "no longer in the settings");
   for (const fr of ["Agent joignable", "Copier", "Copié", "Régénérer", "Contrat attendu", "Collez-la", "Toute personne", "votre-url", "sous 2 s"]) {
     assert.ok(!src.includes(fr), `component: no hard-coded "${fr}"`);
     assert.ok(!page.includes(fr), `page: no hard-coded "${fr}"`);

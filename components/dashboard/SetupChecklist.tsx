@@ -240,7 +240,7 @@ export function SetupChecklist({
             desc: contacts.locked ? t("contactsLockedDesc", { plan: outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null)) }) : t("contactsDesc"),
             ctaLabel: contacts.locked ? t("contactsLockedCta") : t("contactsCta"),
             // Locked: the campaigns tile's upsell, exactly as a click on it.
-            href: contacts.locked ? "/dashboard?tile=campaigns" : "/dashboard/campaigns",
+            href: contacts.locked ? "/dashboard/sales?tile=campaigns" : "/dashboard/sales",
           },
         ]
       : []),
@@ -254,7 +254,7 @@ export function SetupChecklist({
             desc: t("liveTestDesc"),
             ctaLabel: t("liveTestCta"),
             // The live test panel's anchor on the dashboard (config-form.tsx).
-            href: "/dashboard#live-test",
+            href: "/dashboard/reception#live-test",
           },
         ]
       : []),
@@ -267,7 +267,7 @@ export function SetupChecklist({
             title: t("agentUrlTitle"),
             desc: t("agentUrlDesc"),
             ctaLabel: t("agentUrlCta"),
-            href: "/dashboard?tile=tools",
+            href: "/dashboard/agent?tile=tools",
           },
         ]
       : []),
@@ -296,7 +296,7 @@ export function SetupChecklist({
       title: t("forwardingTitle"),
       desc: t("forwardingDesc"),
       ctaLabel: t("forwardingCta"),
-      href: "/dashboard/forwarding",
+      href: "/dashboard/reception/forwarding",
     },
     {
       id: "scan",
@@ -305,7 +305,7 @@ export function SetupChecklist({
       title: t("scanTitle"),
       desc: t("scanDesc"),
       ctaLabel: t("scanCta"),
-      href: "/dashboard?tile=business",
+      href: "/dashboard/my-agent?tile=business",
     },
     {
       id: "calendar",
@@ -314,7 +314,7 @@ export function SetupChecklist({
       title: t("calendarTitle"),
       desc: t("calendarDesc"),
       ctaLabel: t("calendarCta"),
-      href: "/dashboard/calendar",
+      href: "/dashboard/clients",
     },
     {
       id: "whatsapp",
@@ -323,7 +323,7 @@ export function SetupChecklist({
       title: t("whatsappTitle"),
       desc: t("whatsappDesc"),
       ctaLabel: t("whatsappCta"),
-      href: "/dashboard?tile=notifs",
+      href: "/dashboard/reception?tile=notifs",
     },
   ];
 
@@ -371,7 +371,7 @@ export function SetupChecklist({
       title: t("tipVoiceTitle"),
       desc: t("tipVoiceDesc"),
       cta: t("tipVoiceCta"),
-      href: "/dashboard?tile=voice",
+      href: "/dashboard/my-agent?tile=voice",
     },
     {
       id: "persona",
@@ -379,7 +379,7 @@ export function SetupChecklist({
       title: t("tipPersonaTitle"),
       desc: t("tipPersonaDesc"),
       cta: t("tipPersonaCta"),
-      href: "/dashboard?tile=persona",
+      href: "/dashboard/my-agent?tile=persona",
     },
     {
       id: "business",
@@ -387,7 +387,7 @@ export function SetupChecklist({
       title: t("tipBusinessTitle"),
       desc: t("tipBusinessDesc"),
       cta: t("tipBusinessCta"),
-      href: "/dashboard?tile=business",
+      href: "/dashboard/my-agent?tile=business",
     },
   ];
 

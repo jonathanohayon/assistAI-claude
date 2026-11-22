@@ -259,7 +259,7 @@ export function AgentEditor({
                 served={toolsServed}
                 tools={tools}
                 onChange={onToolsChange}
-                returnTo="/dashboard/campaigns"
+                returnTo="/dashboard/sales"
                 asUserId={asUserId ?? null}
                 refused={toolsRefused}
               />
