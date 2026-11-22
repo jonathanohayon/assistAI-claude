@@ -265,12 +265,14 @@ console.log("ok: voice follows the engine through the equivalence table");
   const inbound = code("lib/agent/session-config/inbound.ts");
   assert.match(inbound, /const todayVoice = servedInboundVoice\(tenant\.config, tenant\.config\.model \|\| "gpt-realtime-2"\);/);
   assert.match(inbound, /const voiceConfig = engineDecision\.apply \? voiceOnEngine\(todayVoice, engineDecision\) : todayVoice;/);
-  assert.match(inbound, /decideInboundEngine\(tenant\.user\.id, tenant\.config, fx\.alertAdmins\)/, "inbound alerts through fx (dry run silent)");
+  assert.match(inbound, /decideInboundEngine\(tenant\.user\.id, tenant\.config, fx\.alertAdmins, fx\.engineDeps\)/, "inbound alerts through fx (dry run silent)");
+  assert.match(inbound, /\{ path: "inbound", alert: fx\.alertAdmins, today: inboundToday\(tenant\.config\) \}/, "the fail-open alert goes through fx too");
   assert.match(inbound, /const engine = toEngineSettings\(voiceConfig, \{ defaultModel: tenant\.config\.model \|\| "gpt-realtime-2" \}\);/, "today's toEngineSettings call, unchanged");
   for (const [f, path, uid] of [["lib/agent/session-config/campaign.ts", "campaign", "campaign.userId"], ["lib/agent/session-config/outbound-test.ts", "outbound_test", "agent.userId"]]) {
     const c = code(f);
     assert.match(c, /const voiceConfig = engineDecision\.apply \? voiceOnEngine\(todayVoice, engineDecision\) : todayVoice;/, f);
-    assert.match(c, new RegExp(`decideSalesEngine\\(\\s*"${path}",\\s*${uid.replace(".", "\\.")},\\s*persona\\.language \\|\\| "fr",\\s*\\{ engine: "openai", model: outboundModel\\(\\) \\}`), f);
+    assert.match(c, /const salesToday = \{ engine: "openai" as const, model: outboundModel\(\) \};/, f);
+    assert.match(c, new RegExp(`decideSalesEngine\\("${path}", ${uid.replace(".", "\\.")}, persona\\.language \\|\\| "fr", salesToday, engineAlert, engineFx\\.deps\\)`), f);
     assert.match(c, /const engine = toEngineSettings\(voiceConfig, \{ defaultModel: outboundModel\(\) \}\);/, f);
     assert.doesNotMatch(c, /realtimeProvider/, `${f}: no new served field (sales payloads carry no realtimeProvider)`);
   }

@@ -11,6 +11,7 @@
 import { alertAdmins } from "@/lib/alerts";
 import { engineForCall, productForPath, type CallPath, type EngineForCall, type EngineOverrides } from "@/lib/engine-override";
 import type { ClientEngineColumns, EngineChoice } from "@/lib/engine-resolve";
+import type { EngineLanguages } from "@/lib/engine-languages";
 import { getEngineLanguages } from "@/lib/engine-languages-storage";
 import type { Product } from "@/lib/product-values";
 import { accountProducts, getEngineOverrides } from "@/lib/products";
@@ -28,17 +29,33 @@ export function engineIgnoredAlertKey(userId: string, product: Product): string 
   return `engine_override_ignored:${userId}:${product}`;
 }
 
+/** The alert ledger key of a failed decision: one alert per product family per day. */
+export function engineDecisionFailedAlertKey(product: "reception" | "sales"): string {
+  return `engine_override_decision_failed:${product}`;
+}
+
+/** The class of a thrown value, never its message (it may carry data). */
+function errorClass(e: unknown): string {
+  if (e instanceof Error) return e.constructor?.name || "Error";
+  return typeof e;
+}
+
+// Non-fatal: if alerting throws, the decision stands and the response is unchanged.
 async function alertIgnored(alert: EngineAlert, userId: string, product: Product, language: string, d: EngineForCall) {
   if (!d.ignored) return;
   const w = d.ignored.wanted;
   const why = d.ignored.reason === "language" ? `does not speak the account language (${language})` : `is not honoured for ${product}`;
-  await alert({
-    key: engineIgnoredAlertKey(userId, product),
-    subject: "Engine override ignored for an account",
-    body: `The ${w.source} engine override ${w.engine}${w.model ? ` ${w.model}` : ""} for product ${product} ${why}. Account ${userId} keeps its current engine until this is fixed.`,
-    dedupMs: DAY_MS,
-    severity: "warning",
-  });
+  try {
+    await alert({
+      key: engineIgnoredAlertKey(userId, product),
+      subject: "Engine override ignored for an account",
+      body: `The ${w.source} engine override ${w.engine}${w.model ? ` ${w.model}` : ""} for product ${product} ${why}. Account ${userId} keeps its current engine until this is fixed.`,
+      dedupMs: DAY_MS,
+      severity: "warning",
+    });
+  } catch (e) {
+    console.warn(`[engine-override] ignored-override alert failed (${errorClass(e)}); decision unchanged`);
+  }
 }
 
 /** Inbound "today" values: the effective provider + the tenant's model (as the handler serves them). */
@@ -49,7 +66,11 @@ export function inboundToday(config: ClientEngineColumns): EngineChoice {
 export type DecideDeps = {
   overrides?: () => Promise<EngineOverrides>;
   entitled?: (userId: string) => Promise<Product[]>;
+  languages?: () => Promise<EngineLanguages>;
 };
+
+/** A handler's seam for the engine decision (tests inject failures here). */
+export type EngineFx = { deps?: DecideDeps; alert?: EngineAlert };
 
 const entitledOf = async (userId: string): Promise<Product[]> => {
   const p = await accountProducts(userId);
@@ -74,7 +95,7 @@ async function decide(
     return { product, decision: engineForCall({ ...none, product: null, languages: { openai: {}, gemini: {}, xai: {} } }) };
   }
   const product = productForPath(path, path === "inbound" ? await (deps.entitled ?? entitledOf)(userId) : []);
-  const languages = await getEngineLanguages();
+  const languages = await (deps.languages ?? (() => getEngineLanguages()))();
   // E2b hook: clientSalesOverride stays null until its storage lands.
   const decision = engineForCall({ ...none, product, languages });
   if (product) await alertIgnored(alert, userId, product, language, decision);
@@ -101,4 +122,42 @@ export async function decideSalesEngine(
   deps: DecideDeps = {},
 ) {
   return decide(path, userId, null, language, today, alert, deps);
+}
+
+/**
+ * The ONLY way a call path runs decide*: FAIL-OPEN. The override is an
+ * optional admin feature and must never fail a call, so any throw inside the
+ * decision (catalogue row, entitlement, languages, alert) → `apply: false`,
+ * i.e. the handler serves exactly today's bytes, plus ONE deduplicated admin
+ * alert (24 h per product family). The alert's own failure is swallowed.
+ * Logs the error class only. The admin banner endpoint is not a call and
+ * calls decide* directly (it may surface errors).
+ */
+export async function decideEngineSafely(
+  fn: () => Promise<{ product: Product | null; decision: EngineForCall }>,
+  ctx: { path: CallPath; alert: EngineAlert; today: EngineChoice },
+): Promise<{ product: Product | null; decision: EngineForCall }> {
+  try {
+    return await fn();
+  } catch (e) {
+    const family = ctx.path === "inbound" ? "reception" : "sales";
+    const cls = errorClass(e);
+    console.warn(`[engine-override] decision failed on ${ctx.path} (${cls}); serving today's engine`);
+    try {
+      await ctx.alert({
+        key: engineDecisionFailedAlertKey(family),
+        subject: "Engine override decision failed",
+        body: `The engine override decision threw (${cls}) on a ${ctx.path} call. Calls of product ${family} keep their current engine until this is fixed.`,
+        dedupMs: DAY_MS,
+        severity: "warning",
+      });
+    } catch (alertErr) {
+      console.warn(`[engine-override] decision-failed alert failed (${errorClass(alertErr)})`);
+    }
+    const t = ctx.today;
+    return {
+      product: null,
+      decision: { apply: false, engine: t.engine, model: t.model, servedModel: t.model, source: "default" },
+    };
+  }
 }

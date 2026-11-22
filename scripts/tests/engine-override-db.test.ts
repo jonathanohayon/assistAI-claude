@@ -12,7 +12,11 @@
 //      ignored, cost per minute);
 //   4. the language guard on the call path: an override to an engine that
 //      does not speak the account's language → the payload is today's, byte
-//      for byte, and ONE admin alert (deduplicated per account × product).
+//      for byte, and ONE admin alert (deduplicated per account × product);
+//   5. fail-open: each failure point inside the decision (catalogue row read,
+//      accountProducts, the languages read, the alert sink) → the handler's
+//      response is byte-identical to the no-override response, for inbound,
+//      campaign and outbound_test, and ONE deduplicated fail-open alert.
 // The session is a test double (scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs).
 // Plain `npm test` skips it. Run it with:  bash scripts/engine-override-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; mock data only (example.test).
@@ -56,6 +60,10 @@ async function main() {
   const publicRoute = await import("../../app/api/public/plan-pricing/route");
   const configRoute = await import("../../app/api/agent/config/route");
   const sessionRoute = await import("../../app/api/agent/session-config/route");
+  const { buildInboundConfig, LIVE_INBOUND_EFFECTS } = await import("../../lib/agent/session-config/inbound");
+  const { handleCampaignConfig } = await import("../../lib/agent/session-config/campaign");
+  const { handleOutboundTestConfig } = await import("../../lib/agent/session-config/outbound-test");
+  const { engineDecisionFailedAlertKey } = await import("../../lib/engine-override-load");
 
   const KEY = SETTING_KEYS.PRODUCT_CATALOGUE;
   const NONE = { reception: null, reception_multi: null, sales: null, connect: null };
@@ -211,6 +219,74 @@ async function main() {
   await clear();
   assert.doesNotMatch(await inbound(`userId=${C}`), /"realtimeProvider":"xai"/, "cleared → today's engine again");
   console.log(`ok: language guard (today's payload + ${delivered ? "one deduplicated alert" : "no alert in quiet hours"})`);
+
+  // ── 5. Fail-open on every call path ─────────────────────────────────────
+  {
+    type Deps = import("../../lib/engine-override-load").DecideDeps;
+    type Alert = import("../../lib/engine-override-load").EngineAlert;
+    class CatalogueReadError extends Error {}
+    class EntitlementReadError extends Error {}
+    class LanguagesReadError extends Error {}
+    class AlertSinkError extends Error {}
+    const throwingSink: Alert = async () => {
+      throw new AlertSinkError("mock sink down");
+    };
+    const qIn = `userId=${C}`; // en, not client set: the reception override would apply
+    const qCamp = `campaignId=${sid("d1")}&contactId=${sid("e1")}`;
+    const qTest = `agentId=${sid("c1")}`;
+    const req = (q: string) => new NextRequest(`http://localhost/x?${q}`, { headers: H });
+    const run = {
+      inbound: async (deps?: Deps, alert?: Alert) =>
+        mask(await (await buildInboundConfig(new URLSearchParams(qIn), { ...LIVE_INBOUND_EFFECTS, engineDeps: deps, ...(alert ? { alertAdmins: alert } : {}) })).text()),
+      campaign: async (deps?: Deps, alert?: Alert) => mask(await (await handleCampaignConfig(req(qCamp), { deps, alert })).text()),
+      outbound_test: async (deps?: Deps, alert?: Alert) => mask(await (await handleOutboundTestConfig(req(qTest), { deps, alert })).text()),
+    };
+    // The no-override responses (no catalogue row at all).
+    await clear();
+    const base = { inbound: await run.inbound(), campaign: await run.campaign(), outbound_test: await run.outbound_test() };
+    for (const k of Object.keys(base) as Array<keyof typeof base>) assert.match(base[k], /"voiceConfig"/, `${k}: a real payload`);
+    // Both products overridden: without a failure every path's payload changes.
+    await cat(ADMIN, "PUT", { catalogue: { reception: { engineOverride: { engine: "xai", model: null } }, sales: { engineOverride: { engine: "openai", model: "gpt-realtime-2.1" } } } });
+    for (const k of Object.keys(base) as Array<keyof typeof base>) assert.notEqual(await run[k](), base[k], `${k}: the override applies when nothing fails`);
+    await db.execute(sql`DELETE FROM app_settings WHERE key = ${LEDGER_SETTING}`);
+    await db.execute(sql`DELETE FROM events WHERE event = 'admin_alert_sent' AND metadata->>'key' LIKE 'engine_override_decision_failed:%'`);
+
+    const failing: Array<[string, Deps, Array<keyof typeof base>]> = [
+      ["catalogue row read", { overrides: async () => { throw new CatalogueReadError("mock"); } }, ["inbound", "campaign", "outbound_test"]],
+      ["accountProducts", { entitled: async () => { throw new EntitlementReadError("mock"); } }, ["inbound"]], // sales reads no entitlement
+      ["engine-languages read", { languages: async () => { throw new LanguagesReadError("mock"); } }, ["inbound", "campaign", "outbound_test"]],
+    ];
+    for (const [point, deps, on] of failing) {
+      for (const k of on) {
+        for (let i = 0; i < 2; i++) assert.equal(await run[k](deps), base[k], `${point} on ${k}: byte-identical to the no-override response`);
+        assert.equal(await run[k](deps, throwingSink), base[k], `${point} on ${k} + the alert sink throwing: still identical, nothing propagates`);
+      }
+    }
+    // ONE fail-open alert per product family despite every repeat (24 h dedup).
+    await new Promise((r) => setTimeout(r, 200));
+    const raw = await getSetting(LEDGER_SETTING);
+    const failedKeys = raw ? Object.keys(JSON.parse(raw)).filter((k) => k.startsWith("engine_override_decision_failed:")).sort() : [];
+    const delivered = shouldDeliver("warning", new Date());
+    assert.deepEqual(failedKeys, delivered ? [engineDecisionFailedAlertKey("reception"), engineDecisionFailedAlertKey("sales")] : [], "one ledger entry per product family (none in quiet hours)");
+    for (const fam of ["reception", "sales"] as const) {
+      const [{ n }] = (await db.execute(sql`SELECT count(*)::int AS n FROM events WHERE event = 'admin_alert_sent' AND metadata->>'key' = ${engineDecisionFailedAlertKey(fam)}`)) as unknown as Array<{ n: number }>;
+      assert.equal(n, delivered ? 1 : 0, `${fam}: the fail-open alert went out once, deduplicated`);
+    }
+    // The alert sink itself throwing (the ignored-override alert): b (he) with
+    // Grok on reception → ignored; sales with OpenAI speaking no French → ignored.
+    {
+      const sinkOnly = async (deps?: Deps) => mask(await (await buildInboundConfig(new URLSearchParams(`userId=${B}`), { ...LIVE_INBOUND_EFFECTS, engineDeps: deps, alertAdmins: throwingSink })).text());
+      await clear();
+      const baseB = await sinkOnly();
+      await cat(ADMIN, "PUT", { catalogue: { reception: { engineOverride: { engine: "xai", model: null } }, sales: { engineOverride: { engine: "openai", model: "gpt-realtime-2.1" } } } });
+      assert.equal(await sinkOnly(), baseB, "alert sink throwing on the ignored alert (inbound) → identical");
+      const noFr: Deps = { languages: async () => ({ openai: { "*": ["en"] }, gemini: { "*": ["fr", "en"] }, xai: { "*": ["fr", "en"] } }) };
+      assert.equal(await run.campaign(noFr, throwingSink), base.campaign, "alert sink throwing on the ignored alert (campaign) → identical");
+      assert.equal(await run.outbound_test(noFr, throwingSink), base.outbound_test, "alert sink throwing on the ignored alert (outbound_test) → identical");
+    }
+    await clear();
+    console.log(`ok: fail-open (4 failure points × inbound / campaign / outbound_test → today's bytes; ${delivered ? "one deduplicated alert per product" : "no alert in quiet hours"})`);
+  }
 
   console.log("ALL ENGINE-OVERRIDE DB TESTS PASSED");
   process.exit(0);
