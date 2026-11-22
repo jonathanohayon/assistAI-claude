@@ -7,6 +7,7 @@ import { Logo } from "@/components/ui/Logo";
 import { Link } from "@/i18n/navigation";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
+import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 
 import { OnboardingWizard } from "./wizard";
 
@@ -90,7 +91,7 @@ export default async function OnboardingPage(props: {
               className="h-1 w-1 shrink-0 rounded-full bg-[var(--color-border)]"
             />
             <span className="inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-              {t("trialLabel")}
+              {t("trialLabel", TRIAL_COPY_VALUES)}
             </span>
           </div>
         </div>

@@ -287,7 +287,7 @@
       "model": "מודל"
     },
     "footer": "המחירים כוללים מע״מ. כמה סניפים או נפח גבוה? בואו נדבר.",
-    "trial": "ניסיון חינם ל-14 יום או 100 דקות, ללא כרטיס אשראי. המייסד מתקשר אליכם כדי להגדיר את תמרה יחד אתכם."
+    "trial": "ניסיון חינם: {days, plural, one {יום אחד} two {יומיים} other {# יום}} או {minutes, plural, one {דקה אחת} other {# דקות}}, ללא כרטיס אשראי. המייסד מתקשר אליכם כדי להגדיר את תמרה יחד אתכם."
   },
   "PricingComparison": {
     "title": "השוואה מפורטת",
@@ -488,7 +488,7 @@
     "recommendBadge": "★ מומלץ",
     "pricePerMonth": "כולל מע״מ / חודש",
     "annualDiscount": "חודשיים מתנה בשנתי",
-    "freeTrialNoticeStart": "24 שעות ניסיון בחינם. ללא התחייבות, ניתן לשנות מהדאשבורד.",
+    "freeTrialNoticeStart": "ניסיון חינם: {days, plural, one {יום אחד} two {יומיים} other {# ימים}} או {minutes, plural, one {דקת שיחה אחת} other {# דקות שיחה}}, המוקדם מביניהם.",
     "comparePlans": "השוואת תוכניות",
     "freeBadge": "ניסיון חינם — כל הפיצ'רים",
     "title": "צרו את הסוכן הקולי שלכם",
@@ -553,7 +553,7 @@
     "errVerifyRateLimited": "יותר מדי ניסיונות. נסו שוב מאוחר יותר."
   },
   "Onboarding": {
-    "trialLabel": "ניסיון חינם — 60 דקות שיחה או 24 שעות",
+    "trialLabel": "ניסיון חינם — {minutes, plural, one {דקת שיחה אחת} other {# דקות שיחה}} או {days, plural, one {יום אחד} two {יומיים} other {# ימים}}",
     "activePlan": "תוכנית פעילה",
     "popularBadge": "★ פופולרי",
     "changeButton": "החלפה",

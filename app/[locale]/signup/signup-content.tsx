@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Logo } from "@/components/ui/Logo";
 import type { Door } from "@/lib/door-values";
 import { withDoorParam } from "@/lib/doors-ui";
+import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 import { Link } from "@/i18n/navigation";
 
 interface SignupContentProps {
@@ -87,6 +88,9 @@ export function SignupContent({
         </h1>
         <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
           {t("subtitle")}
+        </p>
+        <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">
+          {t("freeTrialNoticeStart", TRIAL_COPY_VALUES)}
         </p>
       </div>
 

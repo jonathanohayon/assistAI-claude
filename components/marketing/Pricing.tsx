@@ -16,6 +16,7 @@ import { PricingComparison } from "@/components/marketing/PricingComparison";
 import { PUBLIC_PLANS } from "@/lib/plans";
 import { type PlanPricingMap } from "@/lib/plan-pricing";
 import { fetchPublicPlanPricing } from "@/lib/public-plan-pricing";
+import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 
 function BillingToggle({
   value,
@@ -224,7 +225,7 @@ export function Pricing() {
           </p>
           <p className="mx-auto mt-5 inline-flex max-w-xl items-center gap-2 rounded-full border border-[#22d3ee]/40 bg-white/80 px-4 py-2 text-sm font-medium text-[#0e7490] shadow-sm">
             <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#22d3ee]" />
-            {t("trial")}
+            {t("trial", TRIAL_COPY_VALUES)}
           </p>
         </motion.div>
 
