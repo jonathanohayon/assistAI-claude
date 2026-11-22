@@ -9,9 +9,9 @@
 //      400 on an invalid write with nothing written;
 //   4. GET /api/public/plan-pricing: the new `products` field, the plan keys
 //      unchanged;
-//   5. billing-stats: the response is byte-identical whatever users.products
-//      and the catalogue row hold (P1 never touches it; per-product usage
-//      is P2).
+//   5. billing-stats: the response is byte-identical whatever the catalogue
+//      row holds and for no / an invalid users.products record; a valid
+//      record only ADDS usageByProduct (P2).
 // The session is a test double (module hooks,
 // scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs); nothing is sent.
 // Plain `npm test` skips it. Run it with:  bash scripts/products-db.sh
@@ -179,10 +179,10 @@ async function main() {
   }
   console.log("ok: public pricing carries products, plan keys first and unchanged");
 
-  // ── 5. billing-stats ignores users.products and the catalogue ─────────
-  // An invariant, not a diff: P1 never changes billing-stats, so its response
-  // for one account is byte-identical whatever users.products and the
-  // catalogue row hold (per-product usage is P2).
+  // ── 5. billing-stats: users.products only ADDS usageByProduct ─────────
+  // An invariant, not a diff: for one account the response is byte-identical
+  // whatever the catalogue row holds; a valid users.products record adds the
+  // usageByProduct field and changes nothing else (P2).
   const U = id(0x03);
   await db.execute(sql`UPDATE users SET paid_until = '2030-01-15T00:00:00Z', locale = 'he' WHERE id = ${U}`);
   const stats = async () => {
@@ -209,12 +209,23 @@ async function main() {
     else await setSetting(KEY, row);
     for (const rec of records) {
       await setProducts(U, rec);
-      assert.equal(await stats(), base, `byte-identical: catalogue ${row ? row.slice(0, 12) : "absent"}, products ${JSON.stringify(rec)}`);
+      const got = await stats();
+      const label = `catalogue ${row ? row.slice(0, 12) : "absent"}, products ${JSON.stringify(rec)}`;
+      // P2: a VALID record adds usageByProduct (and only that); no record or
+      // an invalid one stays byte-identical (scripts/products-usage-db.sh).
+      const valid = rec !== null && typeof rec === "object" && ["sales", "reception"].includes((rec as { base: string }).base);
+      if (valid) {
+        const { usageByProduct, ...rest } = JSON.parse(got) as Record<string, unknown>;
+        assert.ok(usageByProduct, `usageByProduct for a valid record: ${label}`);
+        assert.equal(JSON.stringify(rest), base, `byte-identical minus usageByProduct: ${label}`);
+      } else {
+        assert.equal(got, base, `byte-identical: ${label}`);
+      }
     }
   }
   await setProducts(U, null);
   await clearCatalogue();
-  console.log("ok: billing-stats byte-identical whatever users.products and the catalogue hold");
+  console.log("ok: billing-stats byte-identical whatever the catalogue holds; a valid record only adds usageByProduct");
 
   console.log("ALL PRODUCTS DB TESTS PASSED");
 }

@@ -233,9 +233,9 @@ for (const locale of ["fr", "he", "en"] as const) {
 assert.equal(subjects.size, 6, "six distinct subjects (3 locales × 2 thresholds)");
 {
   const en = renderUsageWarningEmail({ locale: "en", entry: "reception", threshold: 80, usedMinutes: 160, includedMinutes: 200, overageRate: "0.39 €" }, stringsFor("en"));
-  assert.equal(en.subject, "You have used 80% of your Reception minutes");
+  assert.equal(en.subject, "You have used 80% of your \"Receptionist\" minutes");
   const he = renderUsageWarningEmail({ locale: "he", entry: "reception", threshold: 100, usedMinutes: 200, includedMinutes: 200, overageRate: "1.5 ₪" }, stringsFor("he"));
-  assert.match(he.subject, /קבלה/);
+  assert.match(he.subject, /פקידת קבלה/);
   const html = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "<b>" }, stringsFor("fr")).html;
   assert.ok(!html.includes("<b>") && html.includes("&lt;b&gt;"), "values are HTML-escaped");
 }

@@ -96,6 +96,7 @@ const EMAIL_NAMESPACES = [
   "trialWarning",
   "trialDeleted",
   "welcome",
+  "usageWarning",
 ];
 const MAILS = EMAIL_NAMESPACES.map((ns) => `Email.${ns}`);
 
