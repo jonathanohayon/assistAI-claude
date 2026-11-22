@@ -104,13 +104,14 @@ const ALL_ON = { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" };
 
 // ── 3. lines + total ──────────────────────────────────────────────────
 {
+  // Each base / add-on line is pinned with the terms it is sold with.
   assert.deepEqual(catalogueLines({ base: "reception", addons: [] }, "monthly", "EUR", cat), [
-    { kind: "base", product: "reception", period: "monthly", amount: 89 },
+    { kind: "base", product: "reception", period: "monthly", amount: 89, terms: { price: 89, includedMinutes: 200, overageRate: 0.39, currency: "EUR" } },
   ]);
   assert.deepEqual(catalogueLines({ base: "reception_multi", addons: ["sales", "connect"] }, "annual", "ILS", cat), [
-    { kind: "base", product: "reception_multi", period: "annual", amount: 6490 },
-    { kind: "addon", product: "sales", period: "annual", amount: 3990 },
-    { kind: "addon", product: "connect", period: "annual", amount: 1490 },
+    { kind: "base", product: "reception_multi", period: "annual", amount: 6490, terms: { price: 6490, includedMinutes: 450, overageRate: 1.5, currency: "ILS" } },
+    { kind: "addon", product: "sales", period: "annual", amount: 3990, terms: { price: 3990, includedMinutes: 250, overageRate: 1.9, currency: "ILS" } },
+    { kind: "addon", product: "connect", period: "annual", amount: 1490, terms: { price: 1490, includedMinutes: 100, overageRate: 1.5, currency: "ILS" } },
   ]);
   assert.equal(orderTotal(catalogueLines({ base: "reception_multi", addons: ["sales", "connect"] }, "annual", "ILS", cat)), 11970);
   for (const p of PRODUCTS) for (const c of ["EUR", "ILS"] as const) assert.equal(cat[p][c].annual, cat[p][c].monthly * 10);

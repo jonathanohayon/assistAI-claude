@@ -13,7 +13,8 @@ import { entitledProducts } from "@/lib/product-entitlement";
 import { DEFAULT_PLAN_KEY, OVERAGE_RATE_ILS_PER_MIN, PLANS, isValidPlanKey } from "@/lib/plans";
 import { accountUsageByProduct } from "@/lib/products-usage";
 import { usageWindowFor } from "@/lib/monthly-periods";
-import { coveragesOf, paidOrderLines } from "@/lib/order-create";
+import { coveragesOf, paidOrders } from "@/lib/order-create";
+import { termsAt } from "@/lib/order-terms";
 import { currentPeriodWindow } from "@/lib/subscription";
 import type { UsageWarningDeps, WarnAccount } from "@/lib/usage-warnings";
 
@@ -65,10 +66,14 @@ export const usageWarningDeps = (over: Partial<UsageWarningDeps> = {}): UsageWar
     // overage billing and billing-stats), so the claim's period_start is that
     // month's start: one warning per threshold per MONTH. Monthly: unchanged
     // (and no extra read).
+    // The paid orders: the annual anchor and the pinned terms of the
+    // period (lib/order-terms.ts): the thresholds are the minutes that
+    // period was sold with, whatever the catalogue says since.
+    const orders = await paidOrders(a.id);
     const window = usageWindowFor({
       window: paidWindow,
       period,
-      coverages: period === "annual" ? coveragesOf(await paidOrderLines(a.id)) : [],
+      coverages: period === "annual" ? coveragesOf(orders.map((o) => o.lines)) : [],
       now,
     });
     const usage = await accountUsageByProduct({
@@ -78,6 +83,8 @@ export const usageWarningDeps = (over: Partial<UsageWarningDeps> = {}): UsageWar
       currency: currencyForLocale(a.locale ?? "fr"),
       planMinutes: plan.minutesIncluded,
       planOverage: OVERAGE_RATE_ILS_PER_MIN,
+      paidOrders: orders,
+      termsAt: termsAt(window, now),
     });
     return { periodStart: window.start, usage };
   },

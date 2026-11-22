@@ -73,12 +73,25 @@ export type ProductPageState = {
  * preview header, with ONE accountProducts read and no client fetch.
  */
 export async function loadProductPage(userId: string): Promise<ProductPageState> {
+  const products = await accountProducts(userId);
+  return { menu: await menuForAccount(userId, products), notifyRequested: products.notifyRequested };
+}
+
+/**
+ * The menu of an account whose entitlement is already loaded: its OWN role
+ * and plan features are read here (for an admin's ?asUserId, the target's,
+ * never the admin's), exactly as the dashboard and admin layouts pass them.
+ */
+export async function menuForAccount(
+  userId: string,
+  entitlement: Pick<Entitlement, "entries">,
+  env: Env = process.env,
+): Promise<ProductMenu> {
   const [u] = await db
     .select({ role: users.role, subscriptionPlan: users.subscriptionPlan })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   const features = featuresForPlan(await getPlanFeatureMatrix(), u?.subscriptionPlan);
-  const products = await accountProducts(userId);
-  return { menu: menuFor(products, u?.role, features), notifyRequested: products.notifyRequested };
+  return menuFor(entitlement, u?.role, features, env);
 }
