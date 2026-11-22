@@ -249,10 +249,12 @@ function ProductCard({
             <Placeholder className="h-3 w-36" />
           ) : card.addon === null ? (
             t("baseOnly")
-          ) : billing === "annual" ? (
-            t("addonYear", { price: money(card.addon) })
           ) : (
-            t("addonMonth", { price: money(card.addon) })
+            // The amount and its period never break apart.
+            t.rich(billing === "annual" ? "addonYear" : "addonMonth", {
+              price: money(card.addon),
+              b: (chunks) => <span className="whitespace-nowrap font-medium text-[var(--color-foreground)]">{chunks}</span>,
+            })
           )}
         </li>
       </ul>
