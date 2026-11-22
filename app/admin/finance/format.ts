@@ -42,6 +42,13 @@ export function fmtInt(value: number): string {
   return intFmt.format(Number.isFinite(value) ? Math.round(value) : 0);
 }
 
+const dec1Fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+
+/** "12.5" — minutes with one decimal (short engine usages stay visible). */
+export function fmtMinutes(value: number): string {
+  return dec1Fmt.format(Number.isFinite(value) ? value : 0);
+}
+
 const MONTHS_FR = [
   "janv.",
   "févr.",
