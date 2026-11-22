@@ -29,6 +29,16 @@ const STATUS_LINK =
 const INLINE_STATUS_LINK =
   "-my-3 inline-block py-3 font-semibold text-[#be185d] underline-offset-4 hover:underline focus-visible:underline";
 
+// The hero number's type size follows its card, never the viewport: a fixed
+// size (the old sm:text-6xl) clipped "+972 50-000-0001" at 1280 px and every
+// number at 1024 px, where the card is narrow. The widest real format
+// measures about 9 em in the display font, so 10cqi (1/10 of the card's
+// content width) leaves ~10 % of room. The caps are the old sizes: 2.25rem
+// on phones, 3.75rem (text-6xl) from sm up. Never truncate a phone number.
+export const HERO_NUMBER_CONTAINER = "@container";
+export const HERO_NUMBER_SIZE =
+  "text-[clamp(1rem,10cqi,2.25rem)] sm:text-[clamp(1rem,10cqi,3.75rem)]";
+
 export function HeroSection({
   primaryPhone,
   stats,
@@ -106,17 +116,21 @@ export function HeroSection({
         </p>
 
         {primaryPhone && (
-          <p
-            dir="ltr"
-            className="mt-4 whitespace-nowrap bg-gradient-to-r from-[#be185d] via-[#db2777] to-[#f472b6] bg-clip-text font-display text-[clamp(1.5rem,7.5vw,2.25rem)] font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] sm:text-6xl ltr:text-left rtl:text-right"
-            style={{
-              fontFeatureSettings: '"tnum"',
-              backgroundSize: "200% 100%",
-              animation: "shimmer 8s linear infinite",
-            }}
-          >
-            {formatPhone(primaryPhone)}
-          </p>
+          // The wrapper is a size container: the number's type scales with
+          // the card's own width (cqi), so it always fits on one line.
+          <div className={HERO_NUMBER_CONTAINER}>
+            <p
+              dir="ltr"
+              className={`mt-4 whitespace-nowrap bg-gradient-to-r from-[#be185d] via-[#db2777] to-[#f472b6] bg-clip-text font-display font-bold leading-[0.95] tracking-tight tabular-nums text-transparent drop-shadow-[0_2px_24px_rgba(190,24,93,0.18)] ${HERO_NUMBER_SIZE} ltr:text-left rtl:text-right`}
+              style={{
+                fontFeatureSettings: '"tnum"',
+                backgroundSize: "200% 100%",
+                animation: "shimmer 8s linear infinite",
+              }}
+            >
+              {formatPhone(primaryPhone)}
+            </p>
+          </div>
         )}
 
         {liveState.action === "get_number" && (

@@ -24,14 +24,14 @@ import { capabilityInputsFor } from "@/lib/tools/load";
 import { outboundCapabilities } from "@/lib/tools/store";
 import { campaignGoalFields, missionFromCampaign } from "@/lib/mission/adapters";
 import { toEngineSettings } from "@/lib/voice/engine";
-import { decideSalesEngine, LIVE_ENGINE_ALERT } from "@/lib/engine-override-load";
+import { decideEngineSafely, decideSalesEngine, LIVE_ENGINE_ALERT, type EngineFx } from "@/lib/engine-override-load";
 import { voiceOnEngine } from "@/lib/voice/override-voice";
 
 // GET /api/agent/campaign-config?campaignId=&contactId=  (x-internal-secret)
 // Config runtime servie au worker pour un appel sortant donné. Même forme
 // que /api/agent/config (le worker réutilise le même parser, tout en `?? default`).
 
-export async function handleCampaignConfig(req: NextRequest): Promise<Response> {
+export async function handleCampaignConfig(req: NextRequest, engineFx: EngineFx = {}): Promise<Response> {
   const auth = requireInternalSecret(req);
   if (!auth.ok) return auth.response;
 
@@ -144,12 +144,12 @@ export async function handleCampaignConfig(req: NextRequest): Promise<Response> 
   // E2: the admin engine override of the sales product (OpenAI models only;
   // the receptionist's engine columns are not a sales setting). No override
   // (or an ignored one) → apply false → today's voice, untouched.
-  const { decision: engineDecision } = await decideSalesEngine(
-    "campaign",
-    campaign.userId,
-    persona.language || "fr",
-    { engine: "openai", model: outboundModel() },
-    LIVE_ENGINE_ALERT,
+  // Fail-open: a throw inside the decision → apply false (today's bytes) + one alert.
+  const salesToday = { engine: "openai" as const, model: outboundModel() };
+  const engineAlert = engineFx.alert ?? LIVE_ENGINE_ALERT;
+  const { decision: engineDecision } = await decideEngineSafely(
+    () => decideSalesEngine("campaign", campaign.userId, persona.language || "fr", salesToday, engineAlert, engineFx.deps),
+    { path: "campaign", alert: engineAlert, today: salesToday },
   );
   const voiceConfig = engineDecision.apply ? voiceOnEngine(todayVoice, engineDecision) : todayVoice;
 
