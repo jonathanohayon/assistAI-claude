@@ -89,6 +89,12 @@ assert.deepEqual(offenders, [], "client code value-imports lib/realtime.ts or li
 
 // 2. lib/realtime-provider.ts: the admin voice UI only. A new entry here
 //    means a new client path to model ids: check it is admin-only first.
-assert.deepEqual(providerReach.sort(), ["components/bricks/voice/VoiceAdminFields.tsx"]);
+//    The admin engine override screens (app/admin only, through
+//    lib/finance/rates.ts perMinuteUsdFor) are admin-only too.
+assert.deepEqual(providerReach.sort(), [
+  "app/admin/engine-override/ProductCatalogueForm.tsx",
+  "app/admin/users/[userId]/EngineOverrideLine.tsx",
+  "components/bricks/voice/VoiceAdminFields.tsx",
+]);
 
 console.log(`realtime-client-safe: ok (${clientFiles.length} client files)`);

@@ -181,7 +181,7 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
   // The client setting is the existing one, linked.
   assert.match(h, /href="\/admin\/users\/u1\/my-agent\?tile=voice"/);
   const c = renderBanner(banner({ products: [{ entry: "reception", product: "reception", language: "fr", resolved: { engine: "xai", model: "grok-voice-3.0", source: "client" }, costPerMinUsd: 0.08 }] }));
-  assert.match(c, /imposé pour ce client/);
+  assert.match(c, /data-source="true">imposé pour ce client</);
   assert.doesNotMatch(c, /ne parle pas/);
   // Client setting that doesn't speak the account language: said (it still applies).
   const ch = renderBanner(banner({ products: [{ entry: "reception", product: "reception", language: "he", resolved: { engine: "xai", model: "grok-voice-3.0", source: "client" }, costPerMinUsd: 0.08 }] }));
