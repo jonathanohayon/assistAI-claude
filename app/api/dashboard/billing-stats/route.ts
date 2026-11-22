@@ -12,9 +12,6 @@ import {
   isValidPlanKey,
   type PlanKey,
 } from "@/lib/plans";
-import { catalogueMinutes, catalogueOverage } from "@/lib/product-catalogue";
-import { entitledProducts } from "@/lib/product-entitlement";
-import { getProductCatalogue } from "@/lib/products";
 import {
   currentPeriodWindow,
   type SubUser,
@@ -57,7 +54,6 @@ export async function GET(req: NextRequest) {
       cardLast4: users.cardLast4,
       cardBrand: users.cardBrand,
       locale: users.locale,
-      products: users.products,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -72,24 +68,7 @@ export async function GET(req: NextRequest) {
     ? me.subscriptionPlan
     : DEFAULT_PLAN_KEY;
   const plan = PLANS.find((p) => p.key === planKey) ?? PLANS[0];
-  const currency = currencyForLocale(me.locale ?? "fr");
-  // Existing accounts (users.products NULL or invalid) are grandfathered:
-  // PLANS minutes and OVERAGE_RATE_ILS_PER_MIN, exactly as before, and the
-  // catalogue is not even read. Only an account with a valid products record
-  // reads the catalogue: minutes = base + add-ons in its currency, overage =
-  // the base's ILS rate (the field is ILS).
-  let minutesIncluded = plan.minutesIncluded;
-  let overageRateIls = OVERAGE_RATE_ILS_PER_MIN;
-  const ent = entitledProducts({
-    subscriptionPlan: me.subscriptionPlan,
-    subscriptionStatus: me.subscriptionStatus,
-    products: me.products,
-  });
-  if (ent.source === "products" && ent.base) {
-    const cat = await getProductCatalogue();
-    minutesIncluded = [ent.base, ...ent.addons].reduce((sum, p) => sum + catalogueMinutes(cat, p, currency), 0);
-    overageRateIls = catalogueOverage(cat, ent.base, "ILS");
-  }
+  const minutesIncluded = plan.minutesIncluded;
 
   const subUser: SubUser = {
     subscriptionStatus: me.subscriptionStatus,
@@ -218,6 +197,8 @@ export async function GET(req: NextRequest) {
     .orderBy(desc(paymentOrders.paidAt))
     .limit(50);
 
+  const currency = currencyForLocale(me.locale ?? "fr");
+
   return NextResponse.json({
     plan: planKey,
     status: me.subscriptionStatus,
@@ -239,7 +220,7 @@ export async function GET(req: NextRequest) {
     usage: {
       minutesUsed,
       minutesIncluded,
-      overageRateIls,
+      overageRateIls: OVERAGE_RATE_ILS_PER_MIN,
     },
     callsPerDay,
     outcomes: {

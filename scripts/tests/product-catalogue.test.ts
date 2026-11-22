@@ -3,7 +3,7 @@
 // invalid → defaults + the invalid hook), the admin write helper fed the RAW
 // body (partial, omitted = unchanged, invalid → every path named), the
 // accountProducts explicit pick, and static guards on the admin route, the
-// public route and billing-stats. Mock data only.
+// public route and billing-stats (untouched in P1). Mock data only.
 // Run with:  npx tsx scripts/tests/product-catalogue.test.ts
 
 import assert from "node:assert/strict";
@@ -175,12 +175,9 @@ async function main() {
   }
   assert.match(admin, /catalogueWrite\(stored, body\)/, "PUT goes through the raw-body helper");
   assert.match(code("app/api/public/plan-pricing/route.ts"), /publicPlanPricingResponse\(getPlanPricingMap, \(\) => getProductCatalogue\(\)\)/);
-  // billing-stats reads the catalogue ONLY for an account with a valid record.
+  // P1 leaves billing-stats alone: per-product usage and overage are P2.
   const bs = code("app/api/dashboard/billing-stats/route.ts");
-  assert.equal(bs.match(/getProductCatalogue\(/g)?.length, 1);
-  assert.match(bs, /if \(ent\.source === "products" && ent\.base\) \{\s*const cat = await getProductCatalogue\(\);/);
-  assert.match(bs, /let minutesIncluded = plan\.minutesIncluded;/);
-  assert.match(bs, /let overageRateIls = OVERAGE_RATE_ILS_PER_MIN;/);
+  assert.doesNotMatch(bs, /products|product-catalogue|product-entitlement/, "billing-stats reads no product data in P1");
   // P1 assigns nothing at sign-up.
   assert.doesNotMatch(code("lib/auth/provision-tenant.ts"), /products/, "sign-up never writes users.products in P1");
 

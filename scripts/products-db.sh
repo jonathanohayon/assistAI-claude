@@ -10,7 +10,7 @@
 #      (and the raw SQL again) is a no-op;
 #   2. scripts/tests/products-db.test.ts: accountProducts over real rows, the
 #      catalogue row, the admin route gate cases, the public pricing field,
-#      billing-stats unchanged for NULL products;
+#      billing-stats byte-identical whatever users.products holds;
 #   3. worker payloads: scripts/config-bytes-snapshot.ts on ONE seeded
 #      database with every users.products NULL, then a record on every
 #      account: byte-identical (products are never served to the worker).

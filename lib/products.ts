@@ -6,8 +6,8 @@
 //
 // No behaviour change yet: no account has users.products set (sign-up does
 // not write it before P3), so every existing read (PLANS, minutesIncluded,
-// OVERAGE_RATE_ILS_PER_MIN) stays the source of truth; the catalogue numbers
-// are read only where users.products holds a valid record.
+// OVERAGE_RATE_ILS_PER_MIN, billing-stats) stays the source of truth.
+// Per-product usage and overage (minutesFor / overageFor) are read in P2.
 
 import { eq } from "drizzle-orm";
 

@@ -9,11 +9,9 @@
 //      400 on an invalid write with nothing written;
 //   4. GET /api/public/plan-pricing: the new `products` field, the plan keys
 //      unchanged;
-//   5. billing-stats: for a NULL-products account the response is
-//      byte-identical whatever the catalogue row holds and whether
-//      users.products is NULL or invalid (the catalogue is never read for
-//      it, PLANS minutes and OVERAGE_RATE_ILS_PER_MIN stay); only a valid
-//      record reads the catalogue.
+//   5. billing-stats: the response is byte-identical whatever users.products
+//      and the catalogue row hold (P1 never touches it; per-product usage
+//      is P2).
 // The session is a test double (module hooks,
 // scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs); nothing is sent.
 // Plain `npm test` skips it. Run it with:  bash scripts/products-db.sh
@@ -181,7 +179,10 @@ async function main() {
   }
   console.log("ok: public pricing carries products, plan keys first and unchanged");
 
-  // ── 5. billing-stats: NULL products = unchanged ────────────────────────
+  // ── 5. billing-stats ignores users.products and the catalogue ─────────
+  // An invariant, not a diff: P1 never changes billing-stats, so its response
+  // for one account is byte-identical whatever users.products and the
+  // catalogue row hold (per-product usage is P2).
   const U = id(0x03);
   await db.execute(sql`UPDATE users SET paid_until = '2030-01-15T00:00:00Z', locale = 'he' WHERE id = ${U}`);
   const stats = async () => {
@@ -191,40 +192,29 @@ async function main() {
     return res.text();
   };
   await clearCatalogue();
-  const base = await stats();
-  const usage = JSON.parse(base).usage;
-  const global = PLANS.find((p) => p.key === "global")!;
-  assert.deepEqual(usage, { minutesUsed: 0, minutesIncluded: global.minutesIncluded, overageRateIls: OVERAGE_RATE_ILS_PER_MIN });
-  assert.ok(!base.includes('"products"'), "billing-stats serves no products field");
-  // A catalogue row that differs everywhere changes nothing for this account.
-  const wild = structuredClone(DEFAULT_PRODUCT_CATALOGUE);
-  for (const p of Object.keys(wild) as (keyof typeof wild)[]) for (const c of ["EUR", "ILS"] as const) {
-    wild[p][c].minutes += 1000;
-    wild[p][c].overagePerMin += 7;
-  }
-  await setSetting(KEY, JSON.stringify(wild));
-  assert.equal(await stats(), base, "NULL products: byte-identical whatever the catalogue holds");
-  await setSetting(KEY, "{broken");
-  assert.equal(await stats(), base, "NULL products: byte-identical with an invalid catalogue row");
-  for (const junk of [{ base: "gold", addons: [] }, "reception", { base: "sales" }]) {
-    await setProducts(U, junk);
-    assert.equal(await stats(), base, `invalid record ${JSON.stringify(junk)}: byte-identical`);
-  }
-  // Only a valid record reads the catalogue (base + add-ons in the account's currency).
-  await setSetting(KEY, JSON.stringify(wild));
-  await setProducts(U, { base: "sales", addons: ["connect"] });
-  const set = JSON.parse(await stats());
-  assert.deepEqual(set.usage, {
-    minutesUsed: 0,
-    minutesIncluded: wild.sales.ILS.minutes + wild.connect.ILS.minutes,
-    overageRateIls: wild.sales.ILS.overagePerMin,
-  });
-  const withoutUsage = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([k]) => k !== "usage"));
-  assert.deepEqual(withoutUsage(set), withoutUsage(JSON.parse(base)), "only usage numbers differ");
   await setProducts(U, null);
-  assert.equal(await stats(), base);
+  const base = await stats();
+  const global = PLANS.find((p) => p.key === "global")!;
+  assert.deepEqual(JSON.parse(base).usage, { minutesUsed: 0, minutesIncluded: global.minutesIncluded, overageRateIls: OVERAGE_RATE_ILS_PER_MIN });
+  assert.ok(!base.includes('"products"'), "billing-stats serves no products field");
+  const wild = structuredClone(DEFAULT_PRODUCT_CATALOGUE);
+  for (const p of Object.keys(wild) as (keyof typeof wild)[])
+    for (const c of ["EUR", "ILS"] as const) {
+      wild[p][c].minutes += 1000;
+      wild[p][c].overagePerMin += 7;
+    }
+  const records: unknown[] = [null, { base: "sales", addons: ["connect"] }, { base: "reception", addons: [] }, { base: "gold", addons: [] }, "reception"];
+  for (const row of [null, JSON.stringify(wild), "{broken"]) {
+    if (row === null) await clearCatalogue();
+    else await setSetting(KEY, row);
+    for (const rec of records) {
+      await setProducts(U, rec);
+      assert.equal(await stats(), base, `byte-identical: catalogue ${row ? row.slice(0, 12) : "absent"}, products ${JSON.stringify(rec)}`);
+    }
+  }
+  await setProducts(U, null);
   await clearCatalogue();
-  console.log("ok: billing-stats byte-identical for NULL/invalid products; catalogue read only for a valid record");
+  console.log("ok: billing-stats byte-identical whatever users.products and the catalogue hold");
 
   console.log("ALL PRODUCTS DB TESTS PASSED");
 }
