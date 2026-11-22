@@ -81,7 +81,7 @@ async function main() {
 
   await test("the route serves getPlanPricingMap through that response", () => {
     const route = read("app/api/public/plan-pricing/route.ts");
-    assert.match(route, /publicPlanPricingResponse\(getPlanPricingMap\)/);
+    assert.match(route, /publicPlanPricingResponse\(getPlanPricingMap(,\s*\(\) => getProductCatalogue\(\))?\)/);
     assert.equal(PUBLIC_PLAN_PRICING_PATH, "/api/public/plan-pricing");
   });
 

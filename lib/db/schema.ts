@@ -50,6 +50,11 @@ export const users = pgTable("users", {
   // (lib/door.ts). Dashboard presentation ONLY, never a right, never served
   // to the worker. NULL = "reception" at read time (resolveDoor).
   door: text("door"),
+  // The account's products (lib/product-values.ts AccountProductsRecord:
+  // { base, addons }). NULL = grandfathered from the plan/status
+  // (lib/product-entitlement.ts). Billing only: never served to the worker,
+  // read only through an explicit pick (lib/products.ts accountProducts).
+  products: jsonb("products"),
   // Knowledge contract (S4): the ACCOUNT's companySheet, shared by all its
   // agents (lib/knowledge/contract.ts). Written alongside agent_configs.business,
   // which stays the calls' read source. NULL = built lazily from business.

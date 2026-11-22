@@ -122,7 +122,8 @@ assert.ok(!("agentState" in served), "agentState never served");
 // fields), never spread it; these columns must not be read at all by
 // worker-facing code.
 //   door — dashboard presentation only (lib/door.ts, migration 0054).
-const USERS_NEVER_SERVED = ["door"];
+//   products — billing entitlement only (lib/products.ts, migration 0055).
+const USERS_NEVER_SERVED = ["door", "products"];
 {
   const userColumns = Object.keys(getTableColumns(users));
   for (const c of USERS_NEVER_SERVED) assert.ok(userColumns.includes(c), `users.${c} exists`);
@@ -153,6 +154,7 @@ const USERS_NEVER_SERVED = ["door"];
   for (const f of files) {
     const src = code(f);
     assert.doesNotMatch(src, /\bdoor\b|lib\/door/, `${f.pathname} must not read the door`);
+    assert.doesNotMatch(src, /\.products\b|lib\/products|lib\/product-/, `${f.pathname} must not read the account's products`);
     assert.doesNotMatch(src, /\.\.\.(user|tenant\.user|u)\b/, `${f.pathname} must not spread a users row`);
   }
 }
