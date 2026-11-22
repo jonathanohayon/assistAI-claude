@@ -55,6 +55,12 @@ export const users = pgTable("users", {
   // (lib/product-entitlement.ts). Billing only: never served to the worker,
   // read only through an explicit pick (lib/products.ts accountProducts).
   products: jsonb("products"),
+  // The account's SALES engine override (E2b, lib/engine-override.ts
+  // EngineOverride { engine, model }), set by an admin: ranked above the
+  // sales product override on campaign / outbound_test calls. NULL = none.
+  // Never served to the worker (only the resolved engine/model goes out);
+  // read only through an explicit pick (lib/engine-override-load.ts).
+  salesEngineOverride: jsonb("sales_engine_override"),
   // Knowledge contract (S4): the ACCOUNT's companySheet, shared by all its
   // agents (lib/knowledge/contract.ts). Written alongside agent_configs.business,
   // which stays the calls' read source. NULL = built lazily from business.

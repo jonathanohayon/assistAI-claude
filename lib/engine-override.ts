@@ -17,11 +17,15 @@
 //     - else the override, if honoured and it speaks the account's language;
 //     - else today's path + `ignored` (the caller alerts the admins).
 //   sales (campaign / outbound_test)
-//     - the client setting is NOT considered: agent_configs.realtime_provider
-//       + model are the RECEPTIONIST's engine and were never applied to an
-//       outbound call (campaign / outbound_test run on the env model), so they
-//       cannot outrank a sales override;
-//     - else the override (OpenAI models only), if it speaks the language;
+//     - the account's client SALES override (users.sales_engine_override,
+//       E2b) first, if honoured and it speaks the language; an ignored one
+//       falls through to the product override below;
+//     - the receptionist's client setting is NOT considered:
+//       agent_configs.realtime_provider + model are the RECEPTIONIST's engine
+//       and were never applied to an outbound call (campaign / outbound_test
+//       run on the env model), so they cannot outrank a sales override;
+//     - else the product override (OpenAI models only), if it speaks the
+//       language;
 //     - else today's path + `ignored`.
 //   connect: never an override (honouredOptions = nothing).
 
@@ -104,9 +108,11 @@ export type EngineForCallInput = {
   /** The account's agent_configs engine columns (inbound only; ignored for sales). */
   client: ClientEngineColumns | null;
   /**
-   * E2b hook (VP 2026-11-22): a SALES-only client override, ranked above the
-   * product override on campaign / outbound_test. Always null in E2 (no
-   * storage yet); ignored on the inbound path.
+   * E2b (VP 2026-11-22): the account's SALES-only override
+   * (users.sales_engine_override), ranked above the product override on
+   * campaign / outbound_test; the same honoured + language guards apply (an
+   * ignored one falls through to the product override, then the default).
+   * Ignored on the inbound path.
    */
   clientSalesOverride?: EngineOverride | null;
   overrides: EngineOverrides;
@@ -162,8 +168,8 @@ export function engineForCall(input: EngineForCallInput): EngineForCall {
   if (!product || (!override && !salesClient)) return todayResult();
   // Inbound: a client setting wins over the product override, as today.
   if (todaySource === "client") return todayResult();
-  // Candidates in priority order. Sales: the E2b client sales override
-  // (always null in E2), then the product override. Inbound: the product
+  // Candidates in priority order. Sales: the account's client sales override
+  // (E2b), then the product override. Inbound: the product
   // override (the client setting was handled above).
   const candidates: Array<{ source: "client" | "product"; choice: EngineOverride }> = [];
   if (salesClient) candidates.push({ source: "client", choice: salesClient });
@@ -197,6 +203,28 @@ export function engineForCall(input: EngineForCallInput): EngineForCall {
     };
   }
   return todayResult(ignored);
+}
+
+// ── The client sales override write (E2b) ─────────────────────────────────
+
+/**
+ * The admin PUT body `{ salesOverride }` → the value to store: an object sets
+ * (strict parse + honoured for sales), null clears, omitted = undefined
+ * (unchanged); else the offending fields, nothing to write.
+ */
+export function salesOverrideWrite(body: unknown):
+  | { ok: true; value: EngineOverride | null | undefined }
+  | { ok: false; fields: string[] } {
+  if (!isPlainObject(body)) return { ok: false, fields: ["body"] };
+  const unknown = Object.keys(body).filter((k) => k !== "salesOverride");
+  if (unknown.length) return { ok: false, fields: unknown.sort() };
+  if (!Object.prototype.hasOwnProperty.call(body, "salesOverride") || body.salesOverride === undefined) return { ok: true, value: undefined };
+  if (body.salesOverride === null) return { ok: true, value: null };
+  const o = parseEngineOverride(body.salesOverride);
+  if (!o) return { ok: false, fields: ["salesOverride"] };
+  const problems = engineOverrideProblems("sales", o);
+  if (problems.length) return { ok: false, fields: problems.map((p) => `salesOverride.${p}`) };
+  return { ok: true, value: o };
 }
 
 // ── Admin screen helpers ───────────────────────────────────────────────────

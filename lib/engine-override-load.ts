@@ -5,11 +5,27 @@
 // disagree: both get the result of the SAME decide* function.
 //
 // I/O order keeps the no-override path cheap: the catalogue row is read
-// first; when the call's product(s) carry no override, nothing else is read
-// and engineForCall returns `apply: false` (the handler runs today's code).
+// first (and, on the sales paths, the account's own sales override, one
+// explicit column pick); when neither is set, nothing else is read and
+// engineForCall returns `apply: false` (the handler runs today's code).
+//
+// The client sales override (E2b, users.sales_engine_override) is read ONLY
+// here: never served, never spread; only the resolved engine/model goes out.
+
+import { eq } from "drizzle-orm";
 
 import { alertAdmins } from "@/lib/alerts";
-import { engineForCall, productForPath, type CallPath, type EngineForCall, type EngineOverrides } from "@/lib/engine-override";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import {
+  engineForCall,
+  parseEngineOverride,
+  productForPath,
+  type CallPath,
+  type EngineForCall,
+  type EngineOverride,
+  type EngineOverrides,
+} from "@/lib/engine-override";
 import type { ClientEngineColumns, EngineChoice } from "@/lib/engine-resolve";
 import { getEngineLanguages } from "@/lib/engine-languages-storage";
 import type { Product } from "@/lib/product-values";
@@ -49,7 +65,22 @@ export function inboundToday(config: ClientEngineColumns): EngineChoice {
 export type DecideDeps = {
   overrides?: () => Promise<EngineOverrides>;
   entitled?: (userId: string) => Promise<Product[]>;
+  clientSalesOverride?: (userId: string) => Promise<EngineOverride | null>;
 };
+
+/**
+ * The account's stored sales override (users.sales_engine_override), through
+ * the SAME strict parser as the product override. NULL or a malformed value
+ * (only a hand-edited row: the admin route refuses it) = no override.
+ */
+export async function getClientSalesOverride(userId: string): Promise<EngineOverride | null> {
+  const [row] = await db
+    .select({ salesEngineOverride: users.salesEngineOverride })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row?.salesEngineOverride == null ? null : parseEngineOverride(row.salesEngineOverride);
+}
 
 const entitledOf = async (userId: string): Promise<Product[]> => {
   const p = await accountProducts(userId);
@@ -67,15 +98,16 @@ async function decide(
 ): Promise<{ product: Product | null; decision: EngineForCall }> {
   const overrides = await (deps.overrides ?? (() => getEngineOverrides()))();
   const relevant: Product[] = path === "inbound" ? ["reception", "reception_multi"] : ["sales"];
-  const none = { path, client, overrides, language, today, clientSalesOverride: null } as const;
-  if (!relevant.some((p) => overrides[p])) {
+  // Sales only: the account's own sales override (ranked above the product's).
+  const clientSalesOverride = path === "inbound" ? null : await (deps.clientSalesOverride ?? getClientSalesOverride)(userId);
+  const none = { path, client, overrides, language, today, clientSalesOverride } as const;
+  if (!relevant.some((p) => overrides[p]) && !clientSalesOverride) {
     // No override for this path's products: today's values, nothing else read.
     const product = path === "inbound" ? null : "sales";
     return { product, decision: engineForCall({ ...none, product: null, languages: { openai: {}, gemini: {}, xai: {} } }) };
   }
   const product = productForPath(path, path === "inbound" ? await (deps.entitled ?? entitledOf)(userId) : []);
   const languages = await getEngineLanguages();
-  // E2b hook: clientSalesOverride stays null until its storage lands.
   const decision = engineForCall({ ...none, product, languages });
   if (product) await alertIgnored(alert, userId, product, language, decision);
   return { product, decision };
