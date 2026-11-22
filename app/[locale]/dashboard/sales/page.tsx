@@ -5,7 +5,7 @@ import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeade
 import { SalesPreview } from "@/components/preview/SalesPreview";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { loadOutboundCampaignsAccess } from "@/lib/campaigns/plan-gate";
-import { loadAccountProductMenu } from "@/lib/product-gates";
+import { loadProductPage } from "@/lib/product-gates";
 
 import { CampaignsPageClient } from "../campaigns/campaigns-page-client";
 import { TenantConfigPage } from "../config/config-page";
@@ -30,11 +30,12 @@ export default async function SalesPage(props: {
 
   // Same helper as the API gate (lib/campaigns/plan-gate.ts).
   const { isAdmin, enabled } = await loadOutboundCampaignsAccess(session.user.id);
-  const state = (await loadAccountProductMenu(session.user.id)).sales;
+  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const state = menu.sales;
   if (state.state === "preview") {
     return (
       <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-        <ProductPreviewHeader entry="sales" cta={state.cta} />
+        <ProductPreviewHeader entry="sales" cta={state.cta} notifyRequested={notifyRequested.includes("sales")} />
         <SalesPreview />
       </main>
     );

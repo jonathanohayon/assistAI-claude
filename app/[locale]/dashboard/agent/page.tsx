@@ -10,7 +10,7 @@ import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeade
 import { ConnectPreview } from "@/components/preview/ConnectPreview";
 import { Link } from "@/i18n/navigation";
 import { entryHref } from "@/lib/dashboard-nav";
-import { loadAccountProductMenu } from "@/lib/product-gates";
+import { loadProductPage } from "@/lib/product-gates";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
@@ -58,11 +58,12 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
 
-  const state = (await loadAccountProductMenu(session.user.id)).connect;
+  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const state = menu.connect;
   if (state.state === "preview") {
     return (
       <main className={MAIN}>
-        <ProductPreviewHeader entry="connect" cta={state.cta} />
+        <ProductPreviewHeader entry="connect" cta={state.cta} notifyRequested={notifyRequested.includes("connect")} />
         <ConnectPreview />
       </main>
     );

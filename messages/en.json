@@ -675,7 +675,10 @@
     "previewTry": "Try it free",
     "previewBadge": "Preview",
     "previewNote": "Sample data: nothing is saved or sent.",
-    "previewSoon": "Coming soon."
+    "previewSoon": "Coming soon.",
+    "previewNotify": "Notify me",
+    "previewNotified": "Noted, we'll let you know.",
+    "previewNotifyError": "We couldn't save your request. Please try again."
   },
   "DashboardCrm": {
     "header": "Customer space",
