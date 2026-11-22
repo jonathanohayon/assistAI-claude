@@ -181,8 +181,13 @@ async function main() {
   assert.doesNotMatch(bs, /product-catalogue|lib\/products"/, "billing-stats never reads the catalogue directly");
   assert.match(bs, /entitlement\.source === "products"\s*\?\s*await accountUsageByProduct\(/, "per-product usage only for a valid record");
   assert.match(bs, /\.\.\.\(usageByProduct \? \{ usageByProduct \} : \{\}\)/, "the field is additive");
-  // P1 assigns nothing at sign-up.
-  assert.doesNotMatch(code("lib/auth/provision-tenant.ts"), /products/, "sign-up never writes users.products in P1");
+  // P3: sign-up writes ONE fixed record (reception_multi, no add-on) for
+  // every door, at account creation only (the DB suite proves logins write
+  // nothing: scripts/product-trials-db.sh).
+  const prov = code("lib/auth/provision-tenant.ts");
+  assert.match(prov, /SIGNUP_PRODUCTS: AccountProductsRecord = \{ base: "reception_multi", addons: \[\] \}/, "the sign-up record is reception_multi");
+  assert.equal([...prov.matchAll(/products:/g)].length, 1, "users.products written in exactly one place (the insert)");
+  assert.doesNotMatch(prov, /\.update\(users\)/, "sign-up never updates an existing users row");
 
   console.log("ALL PRODUCT-CATALOGUE TESTS PASSED");
 }

@@ -91,6 +91,23 @@ for (const bad of invalid) {
   assert.equal(parseProductsRecord(bad), null, `parseProductsRecord(${JSON.stringify(bad)}) → null`);
 }
 
+// ── P3: active per-product trials add their product for the duration ─────
+const withTrials = (i: EntitlementInput, activeTrials: EntitlementInput["activeTrials"]): EntitlementInput => ({ ...i, activeTrials });
+const MULTI_REC = { base: "reception_multi", addons: [] };
+cases.push(
+  ["trials omitted = P1 result (record)", inp("premium", "trialing", MULTI_REC), ent("reception_multi", [], ["reception"], "products")],
+  ["trials [] = P1 result (record)", withTrials(inp("premium", "trialing", MULTI_REC), []), ent("reception_multi", [], ["reception"], "products")],
+  ["sign-up record + active sales trial", withTrials(inp("premium", "trialing", MULTI_REC), ["sales"]), ent("reception_multi", ["sales"], ["reception", "sales"], "products")],
+  ["sign-up record + active connect trial", withTrials(inp("premium", "trialing", MULTI_REC), ["connect"]), ent("reception_multi", ["connect"], ["reception", "connect"], "products")],
+  ["record + two active trials, entry order", withTrials(inp(null, null, { base: "reception", addons: [] }), ["connect", "sales"]), ent("reception", ["connect", "sales"], ["reception", "sales", "connect"], "products")],
+  ["trial on the base product adds nothing", withTrials(inp(null, null, MULTI_REC), ["reception_multi"]), ent("reception_multi", [], ["reception"], "products")],
+  ["trial on an owned add-on adds nothing", withTrials(inp(null, null, { base: "reception", addons: ["sales"] }), ["sales", "sales"]), ent("reception", ["sales"], ["reception", "sales"], "products")],
+  ["reception trial on a multi base: product added, same entry", withTrials(inp(null, null, MULTI_REC), ["reception"]), ent("reception_multi", ["reception"], ["reception"], "products")],
+  ["grandfathered global + active sales trial", withTrials(inp("global", "active"), ["sales"]), ent("reception", ["sales"], ["reception", "sales"], "grandfathered")],
+  ["grandfathered premium + active sales trial: unchanged", withTrials(inp("premium", "active"), ["sales"]), GF_PREMIUM],
+  ["unknown trial product ignored", withTrials(inp("global", "active"), ["gold" as never]), GF_RECEPTION],
+);
+
 for (const [name, input, want] of cases) {
   assert.deepEqual(entitledProducts(input), want, name);
 }

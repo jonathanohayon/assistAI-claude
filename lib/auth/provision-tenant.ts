@@ -4,6 +4,10 @@ import { agentConfigs, users } from "@/lib/db/schema";
 import type { Door } from "@/lib/door-values";
 import { seedForNewAccount } from "@/lib/neutral-seed";
 import { type PlanKey } from "@/lib/plans";
+import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
+import { signupDoorTrial } from "@/lib/product-trials";
+import { insertProductTrial } from "@/lib/product-trials-start";
+import type { AccountProductsRecord } from "@/lib/product-values";
 import {
   getOnboardingGreetingByPlan,
   getOnboardingTemplateByPlan,
@@ -36,7 +40,14 @@ interface ProvisionTenantInput {
  * server action signup classique ET le callback signIn Google pour garantir
  * un setup identique quel que soit le mode d'inscription.
  */
-export async function provisionTenant(input: ProvisionTenantInput) {
+/** users.products written for every new account (P3). */
+export const SIGNUP_PRODUCTS: AccountProductsRecord = { base: "reception_multi", addons: [] };
+
+export async function provisionTenant(
+  input: ProvisionTenantInput,
+  /** Test seam: the env productTrialStartable reads (default process.env). */
+  opts: { env?: Record<string, string | undefined> } = {},
+) {
   const { email, displayName, plan, locale, emailVerified } = input;
 
   // passwordHash est notNull en DB. Pour un compte OAuth (Google) sans mot de
@@ -64,13 +75,18 @@ export async function provisionTenant(input: ProvisionTenantInput) {
       emailVerified,
       locale,
       door: input.door ?? null,
-      // TODO(P3, per-product trials): set users.products from the door here
-      // (reception → {base:"reception"}, sales → {base:"sales"}, connect →
-      // {base:"connect"}, addons []). Not in P1 on purpose: a record would
-      // override the trial rule (trialing → reception_multi), so products
-      // stays NULL for every sign-up until per-product trials exist.
+      // P3: every NEW account, whatever its door, starts on reception_multi
+      // (what the trial rule granted before). Existing accounts are never
+      // written: this is the only place users.products is set at sign-up.
+      products: SIGNUP_PRODUCTS,
     })
     .returning();
+
+  // P3: the door's product, when it is not reception, gets its per-product
+  // trial (7 days / 30 min) — only if that trial is startable now (flag on
+  // AND cap enforced). Otherwise no row: it stays "available" for later.
+  const doorTrial = signupDoorTrial(input.door ?? null, opts.env ?? process.env, TRIAL_CAPS_ENFORCED);
+  if (doorTrial) await insertProductTrial(created.id, doorTrial, new Date());
 
   // Bootstrap agent_config. Cascade: the admin's per-plan template/greeting
   // (/admin → Persona template) → else a NEUTRAL persona in the account's
