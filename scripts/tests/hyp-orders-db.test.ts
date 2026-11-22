@@ -27,7 +27,12 @@
 //      a paid order's lines carry their terms; a catalogue edit AFTER the
 //      payment changes nothing for that period (billing-stats usageByProduct,
 //      the usage warning thresholds) and shows in the next checkout's
-//      `changes`; a finished period's overage is billed at ITS pinned terms.
+//      `changes`; a finished period's overage is billed at ITS pinned terms;
+//   7. currency lock: overage pending from a EUR-paid period → an ILS order
+//      (and its preview) is refused 409 overage_currency_pending { currency:
+//      EUR, amount }, nothing written, HYP never called; PRODUCT_ORDERS off
+//      still refuses first; the same currency carries the overage at the
+//      pinned rate; no pending overage → a currency switch is allowed.
 // Plain `npm test` skips it. Run it with:  bash scripts/hyp-orders-db.sh
 // ORDERS_RECORD=<file> writes the legacy capture instead (used once to
 // record the fixture from the tree before P4, see the PR).
@@ -65,6 +70,8 @@ const LEG = id(0xd4); // record holder whose only paid order is legacy
 const ADM = id(0xd5); // an account with role admin, trialing
 const TRM = id(0xd6); // record holder: terms snapshot, current paid period
 const TRM2 = id(0xd7); // record holder: terms snapshot, finished paid period + usage
+const FX = id(0xd8); // record holder: EUR-paid finished period + overage pending
+const FX2 = id(0xd9); // record holder: EUR-paid finished period, no overage
 
 async function main() {
   const mock = await import("./fixtures/hyp-orders/mock-hyp");
@@ -546,6 +553,62 @@ async function main() {
     assert.ok(!("terms" in stored[1]));
     await db.execute(sql`DELETE FROM app_settings WHERE key = 'product_catalogue_v1'`);
     console.log("  ✓ terms: preview writes nothing (no order/event/HYP), paid lines carry terms, an edit after payment changes nothing for that period (billing-stats + 80% warning only), the next checkout lists the changes, a finished period's overage at its pinned terms");
+  }
+
+  // ── 7. Currency lock (VP decision iii) ──────────────────────────────
+  {
+    const { setProductCatalogue } = await import("../../lib/products");
+    const { defaultProductCatalogue } = await import("../../lib/product-catalogue");
+    for (const uid of [FX, FX2]) {
+      await db.execute(sql`INSERT INTO users (id, email, password_hash, display_name, locale, subscription_status, subscription_plan, trial_ends_at, products)
+        VALUES (${uid}, ${`${uid.slice(-4)}@example.test`}, 'x', 'Exemple Test', 'fr', 'active', 'global', now() + interval '1 day', ${JSON.stringify({ base: "reception", addons: [] })}::jsonb)`);
+      // A FINISHED period paid in EUR at the default terms (200 min, 0.39).
+      await db.execute(sql`INSERT INTO payment_orders (user_id, plan_key, period, currency, coin, expected_amount, status, expires_at, paid_at, products)
+        VALUES (${uid}, 'global', 'monthly', 'EUR', '3', 89, 'paid', ${T0.toISOString()}, ${T0.toISOString()},
+        ${JSON.stringify([{ ...baseLine, terms: baseTerms, periodStart: T0.toISOString(), periodEnd: T1.toISOString() }])}::jsonb)`);
+    }
+    await usage(FX, 250, mid); // 50 min over the pinned 200
+    await usage(FX2, 150, mid); // within the included minutes
+    // The EUR rate edited since: the pending overage keeps the pinned 0.39.
+    const edited = defaultProductCatalogue();
+    edited.reception.EUR.overagePerMin = 0.99;
+    edited.reception.ILS.overagePerMin = 2.5;
+    await setProductCatalogue(edited);
+    const ilsBody = { products: { base: "reception", addons: [] }, period: "monthly", locale: "he" };
+    const refused = { status: 409, body: { error: "overage_currency_pending", currency: "EUR", amount: 19.5 } };
+    as(FX);
+    const ordersBefore = (await orders(FX)).length;
+    const evBefore = await eventsOf(FX);
+    const xFx = await xminOf(FX);
+    const fetchBefore = unreachableCalls;
+    hypUnreachable();
+    // PRODUCT_ORDERS still gates first.
+    delete process.env.PRODUCT_ORDERS;
+    assert.deepEqual(await post(ilsBody), disabled);
+    process.env.PRODUCT_ORDERS = "on";
+    const sw = await post(ilsBody);
+    assert.deepEqual(sw, refused);
+    assert.deepEqual(Object.keys(sw.body), ["error", "currency", "amount"], "no message string in the 409");
+    assert.deepEqual(await post({ ...ilsBody, preview: true }), refused, "the preview is refused the same way");
+    globalThis.fetch = mockFetch;
+    assert.equal(unreachableCalls, fetchBefore, "a refused currency switch invoked fetch (HYP)");
+    assert.equal((await orders(FX)).length, ordersBefore, "a refused currency switch wrote an order");
+    assert.equal(await eventsOf(FX), evBefore, "a refused currency switch wrote an event");
+    assert.equal(await xminOf(FX), xFx, "a refused currency switch touched the user row");
+    // The same currency: the order carries the overage at the PINNED rate.
+    const same = await post(body);
+    assert.equal(same.status, 200, JSON.stringify(same.body));
+    assert.deepEqual(same.body.lines, [baseLine, overage]);
+    assert.equal(same.body.amount, 89 + 19.5);
+    assert.equal(lastSign().Amount, "108.50");
+    // No pending overage: a currency switch is allowed.
+    as(FX2);
+    const sw2 = await post(ilsBody);
+    assert.equal(sw2.status, 200, JSON.stringify(sw2.body));
+    assert.equal(sw2.body.currency, "ILS");
+    assert.deepEqual(sw2.body.lines, [{ kind: "base", product: "reception", period: "monthly", amount: 349 }]);
+    await db.execute(sql`DELETE FROM app_settings WHERE key = 'product_catalogue_v1'`);
+    console.log("  ✓ currency lock: EUR overage pending → ILS order and preview 409 { overage_currency_pending, EUR, 19.5 } (no order/event/user write, HYP never called), PRODUCT_ORDERS refuses first, EUR order carries it at the pinned rate, no pending overage → switch allowed");
   }
 
   // Nothing ever left the process for HYP but the mock host.
