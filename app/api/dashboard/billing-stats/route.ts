@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
       cardBrand: users.cardBrand,
       locale: users.locale,
       products: users.products,
+      role: users.role,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -219,6 +220,7 @@ export async function GET(req: NextRequest) {
           currency,
           planMinutes: minutesIncluded,
           planOverage: OVERAGE_RATE_ILS_PER_MIN,
+          account: { subscriptionStatus: me.subscriptionStatus, role: me.role, trialEndsAt: me.trialEndsAt ?? null },
         })
       : null;
 
