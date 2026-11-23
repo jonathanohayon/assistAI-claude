@@ -20,10 +20,16 @@ const DESC = {
   he: "השירות הקולי שלכם פונה לסוכן של תמרה בכל תור דיבור, באמצעות הכתובת הזו.",
 };
 const URL_HINT = {
-  fr: "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité réglée dans Mon agent.",
-  en: "Paste it into a voice service so your agent answers the phone. It uses the personality set in My agent.",
+  fr: "Collez-la dans votre service vocal : il interrogera l'agent Tamara pour savoir quoi répondre. Elle utilise la personnalité réglée dans Mon agent.",
+  en: "Paste it into your voice service: it will ask the Tamara agent what to reply. It uses the personality set in My agent.",
   // [HE] to confirm: plural address ("הדביקו", "שלכם"), page named in quotes.
-  he: 'הדביקו אותה בשירות קולי כדי שהסוכן שלכם יענה לטלפון. היא משתמשת באישיות שהוגדרה בדף "הסוכן שלי".',
+  he: 'הדביקו אותה בשירות הקולי שלכם: הוא יפנה לסוכן של תמרה כדי לדעת מה לענות. היא משתמשת באישיות שהוגדרה בדף "הסוכן שלי".',
+};
+const EMPTY_TEXT = {
+  fr: "Aucune URL pour l'instant : créez-la pour que votre service vocal puisse interroger l'agent Tamara.",
+  en: "No URL yet: create one so your voice service can query the Tamara agent.",
+  // [HE] to confirm: plural address ("צרו", "שלכם").
+  he: "עדיין אין כתובת: צרו אחת כדי שהשירות הקולי שלכם יוכל לפנות לסוכן של תמרה.",
 };
 
 // 1. Exact strings, three languages.
@@ -31,6 +37,24 @@ for (const l of LOCALES) {
   const m = messages(l).AgentUrl;
   assert.equal(m.desc, DESC[l], `${l}.AgentUrl.desc`);
   assert.equal(m.urlHint, URL_HINT[l], `${l}.AgentUrl.urlHint`);
+  assert.equal(m.emptyText, EMPTY_TEXT[l], `${l}.AgentUrl.emptyText`);
+}
+
+// 1b. The rewritten lines name "the Tamara agent", never "your agent".
+const YOUR_AGENT = /votre agent|your agent|הסוכן שלכם/i;
+for (const l of LOCALES) {
+  for (const k of ["desc", "urlHint", "emptyText"])
+    assert.doesNotMatch(messages(l).AgentUrl[k], YOUR_AGENT, `${l}.AgentUrl.${k}: no "your agent"`);
+}
+
+// 1c. The contract samples on Réglages (agent URL card, API key card) scroll
+// inside their own box, with a visible scrollbar, instead of being cut at 390px.
+for (const f of ["app/[locale]/dashboard/settings/agent-url-section.tsx", "app/[locale]/dashboard/settings/api-key-section.tsx"]) {
+  const src = readFileSync(join(ROOT, f), "utf8");
+  const pres = [...src.matchAll(/<pre\b[^>]*className="([^"]*)"/g)].map((m) => m[1]);
+  assert.equal(pres.length, 1, `${f}: one <pre>`);
+  for (const c of ["overflow-x-auto", "max-w-full", "scroll-visible"])
+    assert.ok(pres[0].split(/\s+/).includes(c), `${f}: <pre> has ${c}`);
 }
 
 // 2. The hint names the page with the sidebar's exact label.
