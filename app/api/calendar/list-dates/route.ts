@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
+import { looksLikeIsoDate } from "@/lib/iso-date";
 import {
   CENTERS,
   type Center,
@@ -50,9 +51,10 @@ export async function POST(req: NextRequest) {
   }
 
   const n = Math.max(1, Math.min(10, Number(count) || 3));
-  const afterDate = typeof after === "string" && /^\d{4}-\d{2}-\d{2}$/.test(after)
-    ? after
-    : undefined;
+  // Not YYYY-MM-DD → ignored (from today), as before. YYYY-MM-DD but not a
+  // real date (2026-02-30) → nextDatesForCenter throws → 400 below, never
+  // rolled over to another day.
+  const afterDate = looksLikeIsoDate(after) ? after : undefined;
 
   try {
     const dates = nextDatesForCenter(center as Center, n, afterDate, {

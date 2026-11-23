@@ -284,3 +284,70 @@ export function launchHeading(mode: unknown): LaunchHeading {
 export function showDispatcherAlert(mode: unknown): boolean {
   return mode !== "off";
 }
+
+// ── Test ("dry") mode: one wording for the launch panel and the console ─
+
+/** A mode word from an API body; anything else is unknown (null), never "on". */
+export function parseDispatchMode(v: unknown): DispatchMode | null {
+  return v === "off" || v === "dry" || v === "on" ? v : null;
+}
+
+/**
+ * What a dry tick carries. The dispatcher writes `mode: "dry"` and, when it
+ * has them, the would-dial counts (under `wouldDial`, or flat on the tick).
+ * Read defensively: an older tick has neither. null = not a dry tick.
+ */
+export function dryTickCounts(tick: unknown): { contactsDue: number | null } | null {
+  if (!tick || typeof tick !== "object") return null;
+  const t = tick as { mode?: unknown; wouldDial?: unknown; contactsDue?: unknown };
+  if (t.mode !== "dry") return null;
+  const src = t.wouldDial && typeof t.wouldDial === "object" ? (t.wouldDial as { contactsDue?: unknown }) : t;
+  const n = src.contactsDue;
+  return { contactsDue: typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : null };
+}
+
+export type DispatcherHealth =
+  /** Calls switched off: no health block, the pause line explains. */
+  | { kind: "hidden" }
+  /** No tick at all: the red alarm. */
+  | { kind: "neverRan" }
+  /** Last tick older than the stale limit: the amber alarm. */
+  | { kind: "stale" }
+  /** The dispatcher ran in test mode: a neutral line, the count only when present. */
+  | { kind: "dryTick"; contactsDue: number | null }
+  /** The dispatcher ran for real: today's "last ran" line. */
+  | { kind: "lastTick" };
+
+export interface DispatchWording {
+  /** Launch panel heading (DashboardCampaigns key) and its tone. */
+  heading: LaunchHeading;
+  /** Plain line under the heading, before any click (DashboardCampaigns key); null = none. */
+  launchLine: "launchDryLine" | "launchOffLine" | null;
+  /** The console's dispatcher health block. */
+  health: DispatcherHealth;
+}
+
+/**
+ * The ONE wording for the platform call switch, from what is known: the mode
+ * (null = not known yet: today's wording, no claim either way) and the last
+ * dispatcher tick. `stale` = the tick is older than the console's limit (the
+ * caller owns the clock).
+ */
+export function dispatchWording(
+  mode: unknown,
+  tick: { at: string } | null | undefined,
+  stale = false,
+): DispatchWording {
+  const known = parseDispatchMode(mode);
+  const heading = launchHeading(known);
+  const launchLine = known === "dry" ? "launchDryLine" : known === "off" ? "launchOffLine" : null;
+  let health: DispatcherHealth;
+  if (!showDispatcherAlert(known)) health = { kind: "hidden" };
+  else if (!tick) health = { kind: "neverRan" };
+  else if (stale) health = { kind: "stale" };
+  else {
+    const dry = dryTickCounts(tick);
+    health = dry ? { kind: "dryTick", contactsDue: dry.contactsDue } : { kind: "lastTick" };
+  }
+  return { heading, launchLine, health };
+}

@@ -87,7 +87,8 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   const src = read("app/[locale]/dashboard/campaigns/campaign-live-console.tsx");
   assert.match(src, /const pill = readyPill\(mode, dispatcher\.blockers\);/);
   assert.match(src, /\{pill \? \(\s*<Chip tone=\{pill\.tone\}>\{t\(pill\.key\)\}<\/Chip>/);
-  assert.match(src, /\{!showDispatcherAlert\(mode\) \? null : tick === null \? \(/, "gates both never-ran and stale alerts");
+  // Both alerts go through dispatchWording, which gates them with showDispatcherAlert.
+  assert.match(src, /<DispatcherHealthBlock health=\{dispatchWording\(mode, tick, tickStale\)\.health\}/, "gates both never-ran and stale alerts");
   assert.doesNotMatch(src, /<Chip tone="good">\{t\("readyToDial"\)\}/, "no hard-coded green pill left");
 
   for (const l of ["fr", "en", "he"]) {
@@ -119,7 +120,7 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
   // wiring: the panel renders launchHeading with the shared amber chip, never a hard-coded title
   const launch = read("app/[locale]/dashboard/campaigns/campaign-launch.tsx");
-  assert.match(launch, /const heading = launchHeading\(dispatchMode\);/);
+  assert.match(launch, /const \{ heading, launchLine \} = dispatchWording\(dispatchMode, null\);/);
   assert.match(launch, /heading\.tone === "warn"[\s\S]*?TONE_CHIP\.warn[\s\S]*?\{t\(heading\.key\)\}/);
   assert.doesNotMatch(launch, /t\("launchTitle"\)/, "no hard-coded ready title left");
   assert.match(launch, /if \(data\.dispatchMode\) onDispatchMode\?\.\(data\.dispatchMode\)/, "a start's answer updates it");
@@ -142,7 +143,8 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
     assert.doesNotMatch(JSON.stringify([dc.launchPausedTitle, dc.launchDryTitle]), /CAMPAIGN_DISPATCH|twilio|livekit/i, l);
   }
   const fr = JSON.parse(read("messages/fr.json")).DashboardCampaigns;
-  assert.equal(fr.launchDryTitle, "Mode test");
+  // F1: test mode says it is a simulation (campaigns-dry-truth.test.ts covers the rest).
+  assert.equal(fr.launchDryTitle, "Mode test : simulation");
   // Design review: what is paused is the CALLS, not the campaign (the owner has their own Pause button).
   const paused = (l: string) => JSON.parse(read(`messages/${l}.json`)).DashboardCampaigns.launchPausedTitle as string;
   assert.match(paused("fr"), /^Appels en pause/);

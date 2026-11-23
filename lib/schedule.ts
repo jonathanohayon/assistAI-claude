@@ -7,6 +7,8 @@
 //   Wednesday → Natanya only
 //   All other days (Tue/Thu/Fri/Sat/Sun) → Jérusalem only
 
+import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
+
 export type Center = "jerusalem" | "ashdod" | "natanya";
 
 export const CENTERS: Center[] = ["jerusalem", "ashdod", "natanya"];
@@ -25,10 +27,10 @@ export const labelFor = (c: Center): string => CENTER_LABEL[c];
  * (no DST shenanigans for date-only resolution).
  */
 export function centerForDate(yyyyMmDd: string): Center {
+  // A date that does not exist (2026-02-30) throws too: Date.UTC would roll
+  // it over to another day and the answer would be about that day.
+  if (!isRealIsoDate(yyyyMmDd)) throw new Error(invalidDateError(yyyyMmDd));
   const [y, m, d] = yyyyMmDd.split("-").map((s) => Number(s));
-  if (!y || !m || !d) {
-    throw new Error(`date invalide : ${yyyyMmDd} (YYYY-MM-DD attendu)`);
-  }
   // Use UTC midnight + getUTCDay to avoid TZ drift.
   const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
@@ -134,10 +136,8 @@ export function nextDatesForCenter(
 ): DateForCenter[] {
   if (count <= 0) return [];
   const start = after ?? todayJerusalem();
+  if (!isRealIsoDate(start)) throw new Error(invalidDateError(start));
   const [y, m, d] = start.split("-").map((s) => Number(s));
-  if (!y || !m || !d) {
-    throw new Error(`date invalide : ${start} (YYYY-MM-DD attendu)`);
-  }
   const cursor = new Date(Date.UTC(y, m - 1, d));
   // Step back one day so the first increment lands on `after` itself.
   if (after !== undefined && opts.inclusive) {

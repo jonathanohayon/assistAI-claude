@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { useDataFetch } from "@/components/preview/preview-context";
 
-import { launchHeading, TONE_CHIP, type DispatchMode } from "@/lib/campaigns/live-view";
+import { dispatchWording, TONE_CHIP, type DispatchMode } from "@/lib/campaigns/live-view";
 import type { CampaignStats } from "@/lib/campaigns/types";
 
 function CountTile({
@@ -166,7 +166,8 @@ export function CampaignLaunch({
   // contacts non aboutis côté serveur via l'action "start").
   const stopped = status === "completed" || status === "archived";
   const showStart = status === "draft" || status === "paused" || stopped;
-  const heading = launchHeading(dispatchMode);
+  // Same table as the console: unknown mode = today's wording, never a claim either way.
+  const { heading, launchLine } = dispatchWording(dispatchMode, null);
 
   return (
     <div className="space-y-5">
@@ -207,6 +208,10 @@ export function CampaignLaunch({
             <p className="text-[14px] font-bold text-[#9a3412]">
               {t(heading.key)}
             </p>
+          )}
+          {/* Before any click: in test mode nothing is dialled, when off nothing goes out. */}
+          {launchLine && (
+            <p className="mt-1.5 text-[12px] font-semibold text-[#92400e]">{t(launchLine)}</p>
           )}
           {!canStart && (
             <p className="text-[12px] text-[#9a3412]/70">{t("noContactsYet")}</p>
@@ -263,6 +268,7 @@ export function CampaignLaunch({
           <button
             onClick={testCall}
             disabled={testBusy || !testPhone.trim()}
+            aria-describedby="campaign-test-call-real"
             className="inline-flex items-center gap-2 rounded-xl bg-[#0e7490] px-4 py-2 text-[13px] font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -271,6 +277,17 @@ export function CampaignLaunch({
             {testBusy ? t("testCallSending") : t("testCallCta")}
           </button>
         </div>
+        {/* Every mode, test mode included: this one call really rings. */}
+        <p
+          id="campaign-test-call-real"
+          className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-[#b45309]"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden>
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <path d="M12 9v4M12 17h.01" />
+          </svg>
+          {t("testCallReal")}
+        </p>
         {testMsg && (
           <p
             className={`mt-2 text-[12px] font-medium ${
