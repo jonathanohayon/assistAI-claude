@@ -8,6 +8,7 @@ import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { getAgentBrain, toWorkerWebhook } from "@/lib/agent-brain";
 import { servedAgentWebhook } from "@/lib/agent-brain-guard";
 import { alertAdmins } from "@/lib/alerts";
+import { alertLegacyBrainOverlapSafely } from "@/lib/agent/legacy-brain-overlap";
 import { logEvent } from "@/lib/logger";
 import { reportTenantFallback } from "@/lib/tenant-fallback";
 import { resolveInboundTenantWith } from "@/lib/tenant-resolution";
@@ -403,6 +404,17 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
       });
     }
   }
+
+  // Old own-agent mechanism ON + the new client agent set: the worker still
+  // applies the old webhook, so the new brick is silently ignored → one admin
+  // alert per account per day. Fire-and-forget and fail-open: never awaited,
+  // never throws, reads only values computed above (the payload is unchanged).
+  void alertLegacyBrainOverlapSafely({
+    userId: tenant.user.id,
+    brain,
+    clientAgent: tools.clientAgent,
+    alert: fx.alertAdmins,
+  });
 
   // E2: the admin engine override of the account's reception product. No
   // override (or a client setting, or an ignored one) → apply false → the
