@@ -2,10 +2,11 @@
 // and the Réception wizard it leaves unchanged.
 //   1. Reception: the wizard card renders exactly the markup the page had
 //      before doors (the old JSX, copied here verbatim).
-//   2. Welcome, server-rendered in fr/en/he for connect and sales: the title
-//      reads the ONE product-name key (DashboardNav.<door>); the "recorded"
+//   2. Welcome, server-rendered in fr/en/he for connect and sales: the "recorded"
 //      sentence only when the notify row exists; no use-case grid; both
 //      buttons disabled until both fields are filled; never "en ligne".
+//      The title is one key per door (welcomeTitleConnect / welcomeTitleSales),
+//      the sign-up "soon" subtitle's words, no product name interpolated.
 //   3. The actions, with a recording fetch: the notify row is recorded only
 //      on 200/201; the profile is saved before either button acts; "Voir
 //      l'aperçu" goes to the product's page; "Essayer la Réception" opens the
@@ -106,7 +107,6 @@ const welcome = (l: string, p: Partial<WProps> & Pick<WProps, "door">) =>
     render(
       l,
       createElement(DoorWelcome, {
-        productName: messages(l).DashboardNav[p.door],
         previewHref: previewHref(p.door),
         notifyRecorded: true,
         initialCompanyName: "Salon Mock",
@@ -118,6 +118,21 @@ const welcome = (l: string, p: Partial<WProps> & Pick<WProps, "door">) =>
       }),
     ),
   );
+// The welcome title, per door × locale: the sign-up "soon" subtitle's first
+// sentence (Signup.<door>SubtitleSoon, #405) after "Bienvenue." [HE] to confirm.
+const WELCOME_TITLES: Record<string, Record<"connect" | "sales", string>> = {
+  fr: { connect: "Bienvenue. Le branchement de votre agent ouvre bientôt.", sales: "Bienvenue. Le centre d'appels ouvre bientôt." },
+  en: { connect: "Welcome. Connecting your agent opens soon.", sales: "Welcome. The call center opens soon." },
+  he: { connect: "ברוכים הבאים. חיבור הסוכן שלכם ייפתח בקרוב.", sales: "ברוכים הבאים. מוקד השיחות ייפתח בקרוב." },
+};
+for (const l of LOCALES) {
+  const s = messages(l).Signup;
+  for (const door of ["connect", "sales"] as const) {
+    const title = WELCOME_TITLES[l][door];
+    const product = title.slice(title.indexOf(". ") + 2); // after "Bienvenue." / "Welcome." / "ברוכים הבאים."
+    assert.ok((s[`${door}SubtitleSoon`] as string).startsWith(product), `${l}/${door}: same words as Signup.${door}SubtitleSoon`);
+  }
+}
 const pressed = (html: string) => [...html.matchAll(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*data-welcome="(preview|reception)"[^>]*>/g)].map((m) => ({ which: m[1], disabled: /\sdisabled=""/.test(m[0]) }));
 
@@ -125,11 +140,14 @@ for (const l of LOCALES) {
   const m = messages(l);
   const o = m.Onboarding;
   for (const door of ["connect", "sales"] as const) {
-    const name = m.DashboardNav[door];
     const html = welcome(l, { door });
-    // Title: the product-name key, through {product}.
-    assert.ok(o.welcomeTitle.includes("{product}"), `${l}: the title takes the product name`);
-    assert.ok(html.includes(`>${o.welcomeTitle.replace("{product}", name)}</h1>`), `${l}/${door}: title reads DashboardNav.${door}`);
+    // Title: one key per door, the exact sentence, no interpolation.
+    const titleKey = door === "connect" ? "welcomeTitleConnect" : "welcomeTitleSales";
+    assert.equal(o[titleKey], WELCOME_TITLES[l][door], `${l}/${door}: exact title`);
+    assert.doesNotMatch(o[titleKey], /[{}]/, `${l}/${door}: the title interpolates nothing`);
+    assert.ok(html.includes(`>${WELCOME_TITLES[l][door]}</h1>`), `${l}/${door}: the welcome screen shows its door's title`);
+    // A product name passed in (or not) never changes the title.
+    assert.equal(welcome(l, { door, productName: "PRODUCT-NAME-MOCK" } as never), html, `${l}/${door}: no DashboardNav in the title`);
     // Notify row present → the sentence.
     assert.ok(html.includes(o.welcomeRecorded), `${l}/${door}: recorded sentence when the row exists`);
     assert.ok(!html.includes(o.welcomeRecording));
@@ -170,6 +188,14 @@ for (const l of LOCALES) {
   const welcomeJsx = page.slice(page.indexOf("<DoorWelcome"), page.indexOf("/>", page.indexOf("<DoorWelcome")));
   assert.match(welcomeJsx, /initialLanguage=\{isLang\(locale\) \? locale : "fr"\}/, "welcome: the chips default to the page locale");
   assert.doesNotMatch(welcomeJsx, /primaryLanguage/, "welcome: not the stored agent language");
+}
+{
+  // The title names no product key: no DashboardNav read for the welcome screen.
+  const dw = read("app/[locale]/onboarding/door-welcome.tsx");
+  const page = read("app/[locale]/onboarding/page.tsx");
+  assert.doesNotMatch(dw, /productName|DashboardNav|\{ product:/, "door-welcome: no product name in the title");
+  assert.match(dw, /t\(door === "connect" \? "welcomeTitleConnect" : "welcomeTitleSales"\)/, "door-welcome: one title key per door");
+  assert.doesNotMatch(page, /productName|namespace: "DashboardNav"/, "page: passes no product name to the welcome screen");
 }
 console.log("ok: no trial pill on the welcome screen; chips default to the page language");
 
