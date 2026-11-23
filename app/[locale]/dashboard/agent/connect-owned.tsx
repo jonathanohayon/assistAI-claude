@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 
 import { ClientAgentBrick } from "@/components/bricks/client-agent/ClientAgentBrick";
 
-import { AgentBrainSection } from "../settings/agent-brain-section";
 import { AgentUrlCard } from "../settings/agent-url-section";
+
+import { AdminBrainSectionLazy } from "./admin-brain-lazy";
 
 /** The older "who answers" card's copy: built by the page for an admin only. */
 export type AdminBrainCopy = { label: string; title: string; desc: ReactNode };
@@ -23,7 +24,8 @@ export type ConnectOwnedViewProps = {
  * (ClientAgentBrick). The older "who answers" card (AgentBrainSection) is an
  * admin setting: it renders only when the page passes its copy, which the
  * page does for an admin session only, so a tenant's HTML and flight payload
- * never reference it.
+ * never reference it, and its code is a dynamic chunk (admin-brain-lazy.tsx)
+ * that a tenant's browser never fetches.
  */
 export function ConnectOwnedView({ title, isAdmin, showClientAgent, adminBrain }: ConnectOwnedViewProps) {
   return (
@@ -44,7 +46,7 @@ export function AdminBrainCard({ label, title, desc }: AdminBrainCopy) {
       <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
         <h2 className="font-display text-lg text-[var(--color-foreground)]">{title}</h2>
         <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{desc}</p>
-        <AgentBrainSection />
+        <AdminBrainSectionLazy />
       </div>
     </div>
   );

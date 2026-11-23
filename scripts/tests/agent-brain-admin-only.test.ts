@@ -21,6 +21,7 @@ import { createElement, isValidElement, type ComponentProps, type ReactElement, 
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { AdminBrainCard, ConnectOwnedView, type ConnectOwnedViewProps } from "../../app/[locale]/dashboard/agent/connect-owned";
+import { AdminBrainSectionLazy } from "../../app/[locale]/dashboard/agent/admin-brain-lazy";
 import { AgentBrainSection, AgentBrainView, type AgentBrainViewProps } from "../../app/[locale]/dashboard/settings/agent-brain-section";
 import { toBrainState, type BrainResponse } from "../../app/[locale]/dashboard/settings/agent-brain-ui";
 import { ClientAgentBrick } from "../../components/bricks/client-agent/ClientAgentBrick";
@@ -66,7 +67,7 @@ for (const l of LOCALES) {
   const ts = types(tree);
   assert.ok(ts.has(ClientAgentBrick), `${l}: tenant has the "Votre agent IA" brick`);
   assert.ok(!ts.has(AdminBrainCard), `${l}: tenant has no older card`);
-  assert.ok(!ts.has(AgentBrainSection), `${l}: tenant tree never references AgentBrainSection`);
+  assert.ok(!ts.has(AgentBrainSection) && !ts.has(AdminBrainSectionLazy), `${l}: tenant tree never references the section`);
   const out = html(l, tree);
   for (const s of [m.title, m.connectViaTeam, m.adminLabel, m.toggleLabel])
     assert.ok(!out.includes(esc(s)), `${l}: tenant HTML has no "${s}"`);
@@ -83,7 +84,7 @@ for (const l of LOCALES) {
   const label = out.indexOf(esc(m.adminLabel));
   const title = out.indexOf(esc(m.title));
   assert.ok(label >= 0 && title > label, `${l}: the label sits above the card's title`);
-  assert.ok(types(AdminBrainCard(view(l, true).adminBrain!)).has(AgentBrainSection), `${l}: the card is the real section`);
+  assert.ok(types(AdminBrainCard(view(l, true).adminBrain!)).has(AdminBrainSectionLazy), `${l}: the card is the real section (lazy)`);
 }
 assert.equal(messages("fr").AgentBrain.adminLabel, "Réglage admin (ancien branchement)");
 assert.equal(messages("en").AgentBrain.adminLabel, "Admin setting (legacy connection)");
@@ -105,17 +106,26 @@ console.log("ok: admin gets the card under its label");
   // not mount it (it would show and edit the admin's own setting).
   assert.match(code("app/api/dashboard/agent-brain/route.ts"), /getAgentBrain\(session\.user\.id\)/);
   assert.doesNotMatch(read("app/admin/users/[userId]/agent/page.tsx"), /AgentBrain|connect-owned/);
-  // The only mount of the section in the app: the admin card.
+  // The section's code reaches the browser through ONE dynamic import (the
+  // admin stub), mounted by the admin card only: no static import anywhere.
+  const LAZY = "app/[locale]/dashboard/agent/admin-brain-lazy.tsx";
+  assert.match(code(LAZY), /dynamic\(\(\) =>\s*import\("\.\.\/settings\/agent-brain-section"\)\.then\(\(m\) => m\.AgentBrainSection\)/);
+  const importers: string[] = [];
   const mounts: string[] = [];
   const walk = (d: string) => {
     for (const n of readdirSync(d)) {
       const p = join(d, n);
       if (statSync(p).isDirectory()) walk(p);
-      else if (/\.tsx?$/.test(n) && /<AgentBrainSection\b/.test(read(relative(ROOT, p)))) mounts.push(relative(ROOT, p));
+      else if (/\.tsx?$/.test(n)) {
+        const src = code(relative(ROOT, p));
+        if (/from "[^"]*agent-brain-section"/.test(src)) importers.push(relative(ROOT, p));
+        if (/<(AgentBrainSection|AdminBrainSectionLazy)\b/.test(src)) mounts.push(relative(ROOT, p));
+      }
     }
   };
   for (const d of ["app", "components"]) walk(join(ROOT, d));
-  assert.deepEqual(mounts, [VIEW], "AgentBrainSection is mounted by the admin card only");
+  assert.deepEqual(importers, [], "no static import of the section in the app");
+  assert.deepEqual(mounts, [VIEW], "the section is mounted by the admin card only");
 }
 console.log("ok: the admin decision is server-side");
 
