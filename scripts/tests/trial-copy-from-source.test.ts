@@ -219,5 +219,6 @@ for (const l of LOCALES) {
 // The header renders the terms from what the server page passes (lib/product-gates.ts).
 assert.match(src("components/dashboard/ProductPreviewHeader.tsx"), /t\("previewTrialTerms", terms\)/);
 assert.match(src("lib/product-gates.ts"), /trialTerms: PRODUCT_TRIAL_TERMS,/);
+assert.match(src("lib/product-gates.ts"), /days: PRODUCT_TRIAL_DAYS,\s*minutes: PRODUCT_TRIAL_MINUTES,/, "the terms are the lib/product-trials.ts constants, not copies");
 
 console.log(`trial-copy-from-source: ok (${scanned} trial messages scanned)`);
