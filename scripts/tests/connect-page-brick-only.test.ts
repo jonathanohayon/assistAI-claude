@@ -177,7 +177,9 @@ console.log("ok: the public-URL card is in Réglages, no link points at it on th
   assert.match(step, /href: "\/dashboard\/agent#client-agent",/, "opens the brick's anchor");
   assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /<section\s+id="client-agent"/, "the anchor is on the brick");
   assert.equal(messages("fr").DashboardSetup.clientAgentTitle, "Coller l'adresse de votre agent");
-  assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /clientAgent=\{door === "connect" && clientAgentVisible \? \{ done: clientAgentSet \} : undefined\}/);
+  // The step follows the Connect page's own decision (connectStepView over
+  // connectPageView): scripts/tests/checklist-follows-menu.test.ts.
+  assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /view: connectStepView\(\{ menu: products\.menu\.connect, showClientAgent: clientAgentVisible, isAdmin, trial: products\.trials\.connect \}\)/);
 }
 console.log("ok: connect's first step opens the brick");
 

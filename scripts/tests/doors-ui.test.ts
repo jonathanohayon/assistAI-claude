@@ -177,21 +177,20 @@ for (const d of ALL_DOORS) {
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /liveTest=\{door === "sales" \? \{ done: Boolean\(anyCall\) \} : undefined\}/);
 }
 
-// ── 5. One plan name (the upsell's plan) on the tile, the step and the upsell ─
+// ── 5. One plan name (the upsell's plan) on the tile and the upsell ─────────
+// The "import contacts" step names no plan any more: it follows the menu
+// (scripts/tests/checklist-follows-menu.test.ts).
 assert.equal(OUTBOUND_UPSELL_PLAN_KEY, "premium");
 assert.equal(outboundPlanName(() => null), planByKey("premium").name, "falls back to the plan data");
 assert.equal(outboundPlanName((k) => (k === "premium.name" ? "Clinic / Multi-site" : null)), "Clinic / Multi-site");
 for (const locale of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
-  for (const s of [m.DashboardConfig.campaignsTileLocked, m.DashboardSetup.contactsLockedDesc]) {
-    assert.match(s, /\{plan\}/, `${locale}: the plan name comes from the plan data`);
-    assert.doesNotMatch(s, /\bPro\b/, `${locale}: no hard-coded "Pro" plan`);
-  }
-  assert.equal(m.DashboardConfig.campaignsTileLocked, m.DashboardSetup.contactsLockedDesc, `${locale}: same line on the tile and the step`);
+  const s = m.DashboardConfig.campaignsTileLocked;
+  assert.match(s, /\{plan\}/, `${locale}: the plan name comes from the plan data`);
+  assert.doesNotMatch(s, /\bPro\b/, `${locale}: no hard-coded "Pro" plan`);
   assert.equal(typeof m.Plans.premium.name, "string");
 }
 assert.match(code("app/[locale]/dashboard/config-form.tsx"), /t\("campaignsTileLocked", \{ plan: outboundPlanName\(/);
-assert.match(code("components/dashboard/SetupChecklist.tsx"), /t\("contactsLockedDesc", \{ plan: outboundPlanName\(/);
 assert.match(code("app/[locale]/dashboard/campaigns/upsell-modal.tsx"), /outboundPlanName\(/);
 assert.doesNotMatch(code("app/[locale]/dashboard/campaigns/upsell-modal.tsx"), /planByKey\("premium"\)/);
 
@@ -245,7 +244,7 @@ assert.doesNotMatch(code("app/[locale]/dashboard/config-form.tsx"), /applyTileOr
 // Every message key the door uses exists in the three locales.
 for (const locale of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
-  for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "clientAgentTitle", "clientAgentDesc", "clientAgentCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
+  for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "clientAgentTitle", "clientAgentDesc", "clientAgentCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
     assert.equal(typeof m.DashboardSetup[k], "string", `${locale}: DashboardSetup.${k}`);
   }
 }

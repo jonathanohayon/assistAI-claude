@@ -298,7 +298,7 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   const reception = code("app/[locale]/dashboard/reception/page.tsx");
   assert.match(reception, /const \{ menu, notifyRequested, trials, trialTerms \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.reception;/);
   assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("reception"\)\} trial=\{trials\.reception\} trialTerms=\{trialTerms\} \/>\s*<ReceptionPreview \/>/);
-  assert.match(reception, /<ProductTrialNote trial=\{trials\.reception\} \/>\s*<TenantConfigPage locale=\{locale\} section="reception" \/>/, "owned: today's layout (a running trial's line above it)");
+  assert.match(reception, /<ProductTrialNote trial=\{trials\.reception\} \/>\s*<TenantConfigPage locale=\{locale\} section="reception" products=\{\{ menu, trials \}\} \/>/, "owned: today's layout (a running trial's line above it); the checklist gets the same menu read");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   // Connect decides through lib/connect-page-view.ts (pinned by connect-page-view.test.ts).
   assert.match(connect, /\{ menu, notifyRequested, trials, trialTerms \}[\s\S]*?loadProductPage\(session\.user\.id\)[\s\S]*?connectPageView\(\{\s*menu: menu\.connect,/);

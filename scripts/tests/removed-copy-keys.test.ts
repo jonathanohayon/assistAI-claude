@@ -32,6 +32,9 @@
 // The connect checklist step renamed after what it opens (clientAgent, the
 // "Votre agent IA" brick, not the AgentUrl card): DashboardSetup.agentUrlTitle
 // / agentUrlDesc / agentUrlCta became clientAgentTitle / Desc / Cta.
+// The "import contacts" step's upsell (23/11, VP): DashboardSetup.contactsLockedDesc
+// ("Inclus dans le plan {plan}") and contactsLockedCta ("Voir l'offre"). The
+// step follows the menu now; a "try" preview uses DashboardNav.previewOffer.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -61,6 +64,8 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["DashboardSetup", "agentUrlTitle"],
   ["DashboardSetup", "agentUrlDesc"],
   ["DashboardSetup", "agentUrlCta"],
+  ["DashboardSetup", "contactsLockedDesc"],
+  ["DashboardSetup", "contactsLockedCta"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks", "AgentBrain"];
