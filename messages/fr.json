@@ -669,7 +669,16 @@
     "languageFr": "Français",
     "languageHe": "עברית",
     "languageEn": "English",
-    "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit."
+    "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit.",
+    "welcomeTitle": "Bienvenue. {product} ouvre bientôt.",
+    "welcomeRecorded": "Votre demande est enregistrée : vous serez prévenu en premier.",
+    "welcomeRecording": "Enregistrement de votre demande…",
+    "welcomeRecordFailed": "Votre demande n'a pas pu être enregistrée.",
+    "welcomeRecordRetry": "Réessayer",
+    "welcomePreview": "Voir l'aperçu",
+    "welcomeTryReception": "Essayer la Réception en attendant",
+    "welcomePreviewNote": "L'aperçu s'ouvre dans votre tableau de bord.",
+    "welcomeRequired": "Indiquez le nom de votre entreprise et la langue de l'agent pour continuer."
   },
   "Dashboard": {
     "header": "Tableau de bord",
