@@ -391,8 +391,6 @@
     "contactsTitle": "Import your contacts",
     "contactsDesc": "Add the list of people to call.",
     "contactsCta": "Import my contacts",
-    "contactsLockedDesc": "Included in the {plan} plan",
-    "contactsLockedCta": "See the offer",
     "clientAgentTitle": "Paste your agent's address",
     "clientAgentDesc": "Tamara asks your own agent during calls.",
     "clientAgentCta": "Add the address",

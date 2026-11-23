@@ -35,7 +35,7 @@ export default async function ReceptionPage(props: { params: Promise<{ locale: s
   return (
     <>
       <ProductTrialNote trial={trials.reception} />
-      <TenantConfigPage locale={locale} section="reception" />
+      <TenantConfigPage locale={locale} section="reception" products={{ menu, trials }} />
     </>
   );
 }

@@ -13,7 +13,10 @@ import { computeHeroStats } from "@/lib/dashboard-hero";
 import { db } from "@/lib/db";
 import { agentConfigs, calls, campaignContacts, phoneNumbers, users } from "@/lib/db/schema";
 import { resolveDoor } from "@/lib/door";
-import { canUseOutboundCampaigns, featuresForPlan } from "@/lib/plan-features";
+import { featuresForPlan } from "@/lib/plan-features";
+import type { ProductMenu } from "@/lib/product-menu";
+import type { ProductEntry } from "@/lib/product-values";
+import type { TrialCtaTrial } from "@/lib/trial-cta";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 import { parseTools } from "@/lib/tools/store";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
@@ -31,6 +34,7 @@ import {
 import { getTileToggles } from "@/lib/tile-toggles";
 
 import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
+import { connectStepView, productStepView } from "@/components/dashboard/setup-checklist-ui";
 
 import type { ServedVoice } from "@/components/bricks/voice/voice-ui";
 import { voiceChoiceFor } from "@/lib/voice/choice-load";
@@ -52,9 +56,17 @@ export async function TenantConfigPage({
   section,
   before,
   gridHeading = true,
+  products,
 }: {
   locale: string;
   section: ConfigSection;
+  /**
+   * The account's menu and per-product trials, from the page's own
+   * loadProductPage read (lib/product-gates.ts, the sidebar's rule): the
+   * checklist's product steps follow it. No second read here; without it
+   * the product steps are not listed (never an upsell by default).
+   */
+  products?: { menu: ProductMenu; trials: Record<ProductEntry, TrialCtaTrial> };
   before?: React.ReactNode;
   /** Off on a product page shown as a preview (its header replaces it). */
   gridHeading?: boolean;
@@ -218,12 +230,12 @@ export async function TenantConfigPage({
   );
   const whatsappSet = Boolean(config?.ownerWhatsapp?.trim().length);
 
-  // The door's own first steps, gated like the screens they open:
-  // - "import contacts" (sales): the campaigns import; locked = today's upsell;
-  // - "paste your agent URL" (connect): the "Ask your agent" row of the
-  //   Tools tile, shown only where the screen shows that row.
+  // The door's own first steps, decided by the MENU (owned / soon / try),
+  // the sidebar's rule, never a plan feature:
+  // - "import contacts" (sales): menu.sales;
+  // - "paste your agent's address" (connect): the Connect page's decision
+  //   (menu.connect and whether the "Votre agent IA" brick can show).
   const door = resolveDoor(me?.door ?? null);
-  const outboundUsable = canUseOutboundCampaigns(isAdmin, features);
   const [contactsRow] =
     withHome && door === "sales"
       ? await db
@@ -256,9 +268,16 @@ export async function TenantConfigPage({
         whatsappSet={whatsappSet}
         forwardingVerified={Boolean(config?.forwardingVerifiedAt)}
         door={door}
-        contacts={door === "sales" ? { done: Boolean(contactsRow), locked: !outboundUsable } : undefined}
+        contacts={door === "sales" && products ? { done: Boolean(contactsRow), view: productStepView(products.menu.sales, products.trials.sales) } : undefined}
         liveTest={door === "sales" ? { done: Boolean(anyCall) } : undefined}
-        clientAgent={door === "connect" && clientAgentVisible ? { done: clientAgentSet } : undefined}
+        clientAgent={
+          door === "connect" && products
+            ? {
+                done: clientAgentSet,
+                view: connectStepView({ menu: products.menu.connect, showClientAgent: clientAgentVisible, isAdmin, trial: products.trials.connect }),
+              }
+            : undefined
+        }
       />
       )}
       <ConfigForm
