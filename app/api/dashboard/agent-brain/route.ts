@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
-import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { resolveTargetUserId, sessionIsAdmin } from "@/lib/api/auth-guards";
 import { AgentBrainAddressRequiredError, getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
+import { brainActor, brainScope, brainTargetNeedsLookup } from "@/lib/agent-brain-scope";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
 import { sealedSecretRefusal } from "@/lib/crypto/secret-box";
 import { agentBrainSaveDecision, brainView, enabledToSave, urlToSave } from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
@@ -22,27 +25,39 @@ import { logEvent } from "@/lib/logger";
  * store never silently stores enabled:false for an enabled:true request.
  * `urlEditable` tells the
  * screen whether this viewer may change the url.
+ *
+ * Scope (lib/agent-brain-scope.ts): an admin with ?asUserId=<id> reads and
+ * writes that tenant's brain; a non-admin with a foreign asUserId → 403; an
+ * unknown target → 404 not_found. The CALLER's role decides the powers and
+ * the view: an admin acting as a tenant has the admin's powers; admin_only
+ * applies to a non-admin caller.
  */
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function scope(req: NextRequest) {
+  const r = await resolveTargetUserId(req);
+  let targetExists = true;
+  if (brainTargetNeedsLookup(r)) {
+    const [u] = await db.select({ id: users.id }).from(users).where(eq(users.id, r.userId)).limit(1);
+    targetExists = Boolean(u);
   }
-  const [brain, isAdmin] = await Promise.all([getAgentBrain(session.user.id), sessionIsAdmin()]);
+  return brainScope(r, targetExists);
+}
+
+export async function GET(req: NextRequest) {
+  const s = await scope(req);
+  if (!s.ok) return NextResponse.json(s.body, { status: s.status });
+  const [brain, isAdmin] = await Promise.all([getAgentBrain(s.userId), sessionIsAdmin()]);
   // Never the secret's value (nor the url) to a tenant: brainView.
   return NextResponse.json({ brain: brainView(brain, isAdmin), urlEditable: isAdmin });
 }
 
-export async function PUT(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function PUT(req: NextRequest) {
+  const s = await scope(req);
+  if (!s.ok) return NextResponse.json(s.body, { status: s.status });
 
   let body: { enabled?: unknown; url?: unknown; secret?: unknown };
   try {
-    body = await request.json();
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
   }
@@ -50,7 +65,7 @@ export async function PUT(request: Request) {
   const sealedLooking = sealedSecretRefusal(body.secret, "secret");
   if (sealedLooking) return NextResponse.json(sealedLooking, { status: 400 });
 
-  const [current, isAdmin] = await Promise.all([getAgentBrain(session.user.id), sessionIsAdmin()]);
+  const [current, isAdmin] = await Promise.all([getAgentBrain(s.userId), sessionIsAdmin()]);
   // An absent `enabled` keeps the stored value (a partial save never turns the agent off).
   const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   // A tenant's screen doesn't carry the url: absent / "" keeps the stored one.
@@ -72,8 +87,8 @@ export async function PUT(request: Request) {
       // The code only: never the url nor what it resolves to.
       message: `Agent externe refusé (${decision.body.error})`,
       level: "warn",
-      userId: session.user.id,
-      metadata: { error: decision.body.error },
+      userId: s.userId,
+      metadata: { error: decision.body.error, ...brainActor(s, isAdmin) },
     });
     return NextResponse.json(decision.body, { status: decision.status });
   }
@@ -82,7 +97,7 @@ export async function PUT(request: Request) {
 
   let brain;
   try {
-    brain = await setAgentBrain(session.user.id, {
+    brain = await setAgentBrain(s.userId, {
       enabled: wantsEnabled,
       url,
       // A tenant never writes a secret (an unchanged one isn't re-sealed).
@@ -103,8 +118,8 @@ export async function PUT(request: Request) {
     message: brain.enabled
       ? `Agent externe activé → ${brain.url}`
       : "Agent externe désactivé (retour à la persona Tamara)",
-    userId: session.user.id,
-    metadata: { enabled: brain.enabled, url: brain.url },
+    userId: s.userId,
+    metadata: { enabled: brain.enabled, url: brain.url, ...brainActor(s, isAdmin) },
   });
 
   return NextResponse.json({ brain: brainView(brain, isAdmin), urlEditable: isAdmin });

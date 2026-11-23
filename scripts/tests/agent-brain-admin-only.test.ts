@@ -88,9 +88,11 @@ async function main() {
   {
     const route = src("app/api/dashboard/agent-brain/route.ts");
     const put = route.slice(route.indexOf("export async function PUT"));
-    assert.ok(put.indexOf('{ error: "Unauthorized" }, { status: 401 }') < put.indexOf("getAgentBrain("), "anon: 401 before anything is read");
-    assert.ok(put.indexOf('{ error: "Unauthorized" }, { status: 401 }') < put.indexOf("setAgentBrain("), "anon: 401 before the write");
-    assert.match(put, /const \[current, isAdmin\] = await Promise\.all\(\[getAgentBrain\(session\.user\.id\), sessionIsAdmin\(\)\]\);/);
+    // anon / forbidden / unknown target (brainScope) answer before anything is read or written
+    const scoped = "if (!s.ok) return NextResponse.json(s.body, { status: s.status });";
+    assert.ok(put.indexOf(scoped) >= 0 && put.indexOf(scoped) < put.indexOf("getAgentBrain("), "scope refusal before anything is read");
+    assert.ok(put.indexOf(scoped) < put.indexOf("setAgentBrain("), "scope refusal before the write");
+    assert.match(put, /const \[current, isAdmin\] = await Promise\.all\(\[getAgentBrain\(s\.userId\), sessionIsAdmin\(\)\]\);/);
     assert.match(
       put,
       /agentBrainSaveDecision\(\{\s*currentUrl: current\.url,\s*currentEnabled: current\.enabled,\s*currentSecret: current\.secret,\s*currentSecretUnreadable: current\.secretUnreadable,\s*secret: body\.secret,\s*url,\s*wantsEnabled,\s*isAdmin,\s*\}\)/,

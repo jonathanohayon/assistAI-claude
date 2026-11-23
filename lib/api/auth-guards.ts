@@ -121,7 +121,8 @@ export async function resolveTargetUserId(req: NextRequest) {
     asUserId,
   });
   if ("forbidden" in scope) return { forbidden: true as const };
-  return { userId: scope.userId };
+  // sessionUserId: the CALLER (an admin acting via ?asUserId), for audit logs.
+  return { userId: scope.userId, sessionUserId: session.user.id };
 }
 
 /** True when the signed-in user is an admin (for admin-only fields on shared routes). */

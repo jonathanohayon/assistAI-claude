@@ -112,7 +112,8 @@ async function main() {
     const route = src("app/api/dashboard/agent-brain/route.ts");
     // anon → 401 before anything is read or written (both handlers)
     const put = route.slice(route.indexOf("export async function PUT"));
-    assert.ok(put.indexOf('{ error: "Unauthorized" }, { status: 401 }') < put.indexOf("setAgentBrain("), "PUT: 401 before the write");
+    const scoped = "if (!s.ok) return NextResponse.json(s.body, { status: s.status });";
+    assert.ok(put.indexOf(scoped) >= 0 && put.indexOf(scoped) < put.indexOf("setAgentBrain("), "PUT: 401/403/404 before the write");
     // the route composes exactly the helpers this file composes
     assert.match(put, /const wantsEnabled = enabledToSave\(body\.enabled, current\.enabled\);/);
     assert.match(put, /const url = urlToSave\(body\.url, current\.url, isAdmin\);/);
