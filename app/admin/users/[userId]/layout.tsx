@@ -16,7 +16,7 @@ import { resolveDoor } from "@/lib/door";
 import { users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
-import { accountProductMenu } from "@/lib/product-gates";
+import { accountProductNav } from "@/lib/product-gates";
 import { productNames } from "@/lib/product-names";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { getDemoUserId } from "@/lib/settings";
@@ -82,11 +82,8 @@ export default async function AdminTenantLayout({
   const planLabel = PLANS.find((p) => p.key === planKey)?.name ?? planKey;
   const isDemo = (await getDemoUserId()) === target.id;
   const door = resolveDoor(target.door);
-  const menuBlocks = navBlocks(
-    door,
-    await accountProductMenu(target.id, target.role, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan)),
-    target.id,
-  );
+  const nav = await accountProductNav(target.id, target.role, featuresForPlan(await getPlanFeatureMatrix(), target.subscriptionPlan));
+  const menuBlocks = navBlocks(door, nav.menu, target.id, nav.trials);
   // "Illimité gratuit" = actif avec paidUntil très lointain (>= 2090).
   const isUnlimited =
     target.subscriptionStatus === "active" &&

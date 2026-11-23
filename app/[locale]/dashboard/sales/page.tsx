@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeader";
+import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { SalesPreview } from "@/components/preview/SalesPreview";
 import { captureMode } from "@/lib/campaigns/capture-mode";
 import { loadOutboundCampaignsAccess } from "@/lib/campaigns/plan-gate";
@@ -30,12 +31,12 @@ export default async function SalesPage(props: {
 
   // Same helper as the API gate (lib/campaigns/plan-gate.ts).
   const { isAdmin, enabled } = await loadOutboundCampaignsAccess(session.user.id);
-  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const { menu, notifyRequested, trials, trialTerms } = await loadProductPage(session.user.id);
   const state = menu.sales;
   if (state.state === "preview") {
     return (
       <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-        <ProductPreviewHeader entry="sales" cta={state.cta} notifyRequested={notifyRequested.includes("sales")} />
+        <ProductPreviewHeader entry="sales" cta={state.cta} notifyRequested={notifyRequested.includes("sales")} trial={trials.sales} trialTerms={trialTerms} />
         <SalesPreview />
       </main>
     );
@@ -45,6 +46,7 @@ export default async function SalesPage(props: {
 
   return (
     <main className="pb-6">
+      <ProductTrialNote trial={trials.sales} />
       {/* Capture switch: one boolean to the client; the env stays server-side. */}
       <CampaignsPageClient isAdmin={isAdmin} captureOn={captureMode() === "on"} />
     </main>

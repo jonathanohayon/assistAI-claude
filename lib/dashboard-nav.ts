@@ -13,6 +13,7 @@
 import { doorOf } from "./doors-ui";
 import type { ProductMenu, ProductCta } from "./product-menu";
 import { PRODUCT_ENTRIES, type ProductEntry } from "./product-values";
+import { navBadge, type NavBadge, type TrialCtaTrial } from "./trial-cta";
 
 export type SharedEntry = "myAgent" | "calls" | "clients" | "billing" | "settings";
 export type NavEntryId = ProductEntry | SharedEntry;
@@ -75,6 +76,11 @@ export type NavItem = {
   labelKey: string;
   /** Products only: preview entries carry their call to action. */
   preview?: ProductCta;
+  /**
+   * Products only: the state label, from lib/trial-cta.ts navBadge (the
+   * header's own decision): "try" only where the trial is startable.
+   */
+  badge?: NavBadge;
 };
 
 export type NavBlock = { id: "products" | "shared"; items: NavItem[] };
@@ -89,8 +95,16 @@ export function entryHref(id: NavEntryId, asUserId?: string | null): string | nu
   return suffix === null ? null : `${navBase(asUserId)}/${suffix}`;
 }
 
-/** The two blocks of the menu for an account (its door and its product menu). */
-export function navBlocks(door: unknown, menu: ProductMenu, asUserId?: string | null): NavBlock[] {
+/**
+ * The two blocks of the menu for an account (its door, its product menu and
+ * its per-product trials: accountProducts().trials; absent = none startable).
+ */
+export function navBlocks(
+  door: unknown,
+  menu: ProductMenu,
+  asUserId?: string | null,
+  trials?: Partial<Record<ProductEntry, TrialCtaTrial>>,
+): NavBlock[] {
   const item = (id: NavEntryId): NavItem | null => {
     const href = entryHref(id, asUserId);
     return href === null ? null : { id, href, labelKey: ENTRY_LABEL_KEY[id] };
@@ -98,7 +112,9 @@ export function navBlocks(door: unknown, menu: ProductMenu, asUserId?: string | 
   const products = productOrder(door).map((e) => {
     const it = item(e)!;
     const s = menu[e];
-    return s.state === "preview" ? { ...it, preview: s.cta } : it;
+    if (s.state !== "preview") return it;
+    const badge = navBadge(s, trials?.[e]);
+    return badge ? { ...it, preview: s.cta, badge } : { ...it, preview: s.cta };
   });
   const shared = SHARED_ENTRIES.map(item).filter((x): x is NavItem => x !== null);
   return [

@@ -27,7 +27,7 @@ import { TRIAL_END_COPY_VALUES } from "@/lib/trial-copy";
 
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { navBlocks } from "@/lib/dashboard-nav";
-import { accountProductMenu } from "@/lib/product-gates";
+import { accountProductNav } from "@/lib/product-gates";
 import { UserMenu } from "./user-menu";
 import { TrialExpiredGate } from "./billing/trial-expired-gate";
 import { ConnectGoogleLink } from "@/components/ConnectGoogleLink";
@@ -183,7 +183,8 @@ async function DashboardShell({
   // preview from its entitlement and the product gates, all computed HERE
   // (lib/product-gates.ts reads the env): the browser only gets the result.
   // An admin's own dashboard: everything owned.
-  const menuBlocks = navBlocks(resolveDoor(me?.door ?? null), await accountProductMenu(session.user.id, me?.role, features));
+  const nav = await accountProductNav(session.user.id, me?.role, features);
+  const menuBlocks = navBlocks(resolveDoor(me?.door ?? null), nav.menu, null, nav.trials);
 
   const t = await getTranslations({ locale, namespace: "Dashboard" });
 
