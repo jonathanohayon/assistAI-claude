@@ -6,7 +6,9 @@ import { auth, signIn } from "@/auth";
 import { emailSignupAction } from "@/lib/auth/email-signup-action";
 import { parseDoor } from "@/lib/door";
 import { TRIAL_PLAN_KEY } from "@/lib/plans";
+import { publicOffer } from "@/lib/public-offer";
 import { clientIp } from "@/lib/rate-limit";
+import { signupDoorCopy } from "@/lib/signup-door-copy";
 import { signupDeps } from "@/lib/verification-limits/deps";
 import { signupWithEmail } from "@/lib/verification-limits/signup";
 
@@ -36,6 +38,10 @@ export default async function SignupPage(props: {
   // The account's door (lib/door.ts): which landing page sent the visitor.
   // Presentation only, stored at account creation. Unknown/absent = reception.
   const door = parseDoor(doorParam);
+  // Title, subtitle and trial line per door. "Usable" is the public offer's
+  // `available` (lib/public-offer.ts), the same function behind the pricing
+  // cards' GET /api/public/plan-pricing: never a second rule.
+  const copy = signupDoorCopy(door, publicOffer().available);
 
   async function handleSignup(formData: FormData) {
     "use server";
@@ -89,6 +95,7 @@ export default async function SignupPage(props: {
       <SignupContent
         error={error}
         door={door}
+        copy={copy}
         handleSignup={handleSignup}
         startGoogleSignup={startGoogleSignup}
       />

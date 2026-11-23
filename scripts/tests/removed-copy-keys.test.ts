@@ -20,6 +20,10 @@
 // (DashboardNav.sales, "Centre d'appels").
 // Its campaigns header eyebrow (DashboardCampaigns.kicker, "Centre d'appels"):
 // it repeated the page's own title above "Campagnes sortantes".
+// Sign-up badge per door (23/11, VP): Signup.freeBadge ("free trial, all
+// features": untrue, a trial grants reception only) and the short-lived
+// Signup.freeBadgeReception. Replaced by Signup.trialBadge (reception) and
+// Signup.accountBadge (connect / sales).
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -43,6 +47,8 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["Email", "usageWarning.entryConnect"],
   ["Email", "usageWarning.entrySales"],
   ["DashboardCampaigns", "kicker"],
+  ["Signup", "freeBadge"],
+  ["Signup", "freeBadgeReception"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];
