@@ -146,16 +146,23 @@ export async function sendVerificationEmail(
 // ──────────────────────────────────────────────────────────────────────
 export async function sendTrialWarningEmail(
   to: string,
-  opts: { phoneNumber?: string | null; minutesLeft: number; locale?: string | null },
+  opts: {
+    phoneNumber?: string | null;
+    minutesLeft: number;
+    locale?: string | null;
+    /** The real whole days left (0 = ends today), lib/trial-end-email.ts trialWarningDays. Default: the configured warning lead. */
+    warningDays?: number;
+  },
 ): Promise<SendResult> {
   const locale = normalizeLocale(opts.locale);
   const t = await getTranslations({ locale, namespace: "Email.trialWarning" });
   const client = getResend();
   const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
   const minutes = Math.max(1, opts.minutesLeft);
+  const copy = { ...TRIAL_END_COPY_VALUES, warningDays: opts.warningDays ?? TRIAL_END_COPY_VALUES.warningDays };
   // Sent 2 days before the trial ends (2026-11: the account is then PAUSED,
   // not deleted). The copy (Email.trialWarning) is updated in messages/*.
-  const subject = t("subjectHours", TRIAL_END_COPY_VALUES);
+  const subject = t("subjectHours", copy);
   // Messages with <strong> are rich text: plain t() throws FORMATTING_ERROR
   // as soon as values are passed (seen in prod on warningBoxHtml), so every
   // HTML message goes through t.markup with explicit tag renderers.
@@ -165,8 +172,8 @@ export async function sendTrialWarningEmail(
   };
 
   const phoneLineText = opts.phoneNumber
-    ? t("phoneLineWithPhone", { ...TRIAL_END_COPY_VALUES, phone: ltrIsolate(opts.phoneNumber) })
-    : t("phoneLineGeneric", TRIAL_END_COPY_VALUES);
+    ? t("phoneLineWithPhone", { ...copy, phone: ltrIsolate(opts.phoneNumber) })
+    : t("phoneLineGeneric", copy);
   const phoneSpecificHtml = opts.phoneNumber
     ? t.markup("phoneSpecific", { ...tags, phone: ltrIsolate(opts.phoneNumber) })
     : t("phoneGeneric");
@@ -183,8 +190,8 @@ export async function sendTrialWarningEmail(
   }
 
   const text =
-    `${t("introText", TRIAL_END_COPY_VALUES)}\n\n` +
-    `${t("textBullet", TRIAL_END_COPY_VALUES)}\n` +
+    `${t("introText", copy)}\n\n` +
+    `${t("textBullet", copy)}\n` +
     `  • ${t("actionLineText")}\n` +
     `  • ${phoneLineText}\n\n` +
     `https://aitamara.com/dashboard/billing\n\n` +
@@ -195,10 +202,10 @@ export async function sendTrialWarningEmail(
     <div dir="${dirFor(locale)}" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1a1a1a;">
       <h1 style="font-size:22px;margin:0 0 12px;">${t("heading")}</h1>
       <p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#555;">
-        ${t.markup("introHtml", { ...tags, ...TRIAL_END_COPY_VALUES })}
+        ${t.markup("introHtml", { ...tags, ...copy })}
       </p>
       <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.6;color:#9a3412;margin:0 0 20px;">
-        ${t.markup("warningBoxHtml", { ...tags, ...TRIAL_END_COPY_VALUES, phoneLine: phoneSpecificHtml })}
+        ${t.markup("warningBoxHtml", { ...tags, ...copy, phoneLine: phoneSpecificHtml })}
       </div>
       <p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#555;">
         ${t("actionLineHtml")}

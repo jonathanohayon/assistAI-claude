@@ -154,14 +154,31 @@ for (const l of LOCALES) {
   }
 }
 
-// 6. The callers pass the arguments.
+// 6. The callers pass the arguments. The warning e-mail passes `copy`: the
+// source values with the REAL days left (opts.warningDays, from the cron's
+// trialWarningDays), defaulting to the configured lead. The paused e-mail
+// passes the source values as they are.
 const email = src("lib/email.ts");
+const fnBody = (name: string) => {
+  const a = email.indexOf(`export async function ${name}(`);
+  const b = email.indexOf("export async function", a + 10);
+  assert.ok(a >= 0 && b > a, `${name} found`);
+  return email.slice(a, b);
+};
+const warning = fnBody("sendTrialWarningEmail");
+const paused = fnBody("sendTrialDeletedEmail");
+assert.match(
+  warning,
+  /const copy = \{ \.\.\.TRIAL_END_COPY_VALUES, warningDays: opts\.warningDays \?\? TRIAL_END_COPY_VALUES\.warningDays \};/,
+  "the warning e-mail builds its values from the source",
+);
 for (const k of ["subjectHours", "introText", "textBullet", "phoneLineGeneric"])
-  assert.match(email, new RegExp(`t\\("${k}", TRIAL_END_COPY_VALUES\\)`), `lib/email.ts passes the values to ${k}`);
-assert.match(email, /t\.markup\("introHtml", \{ \.\.\.tags, \.\.\.TRIAL_END_COPY_VALUES \}\)/);
-assert.match(email, /t\.markup\("warningBoxHtml", \{ \.\.\.tags, \.\.\.TRIAL_END_COPY_VALUES, phoneLine: phoneSpecificHtml \}\)/);
-assert.equal((email.match(/t\("phoneLineWithPhone", \{ \.\.\.TRIAL_END_COPY_VALUES, phone: ltrIsolate\(opts\.phoneNumber\) \}\)/g) ?? []).length, 2, "both e-mails pass the values to phoneLineWithPhone");
-assert.equal((email.match(/t\("phoneLineGeneric", TRIAL_END_COPY_VALUES\)/g) ?? []).length, 2, "both e-mails pass the values to phoneLineGeneric");
+  assert.match(warning, new RegExp(`t\\("${k}", copy\\)`), `the warning e-mail passes the values to ${k}`);
+assert.match(warning, /t\.markup\("introHtml", \{ \.\.\.tags, \.\.\.copy \}\)/);
+assert.match(warning, /t\.markup\("warningBoxHtml", \{ \.\.\.tags, \.\.\.copy, phoneLine: phoneSpecificHtml \}\)/);
+assert.match(warning, /t\("phoneLineWithPhone", \{ \.\.\.copy, phone: ltrIsolate\(opts\.phoneNumber\) \}\)/);
+assert.match(paused, /t\("phoneLineWithPhone", \{ \.\.\.TRIAL_END_COPY_VALUES, phone: ltrIsolate\(opts\.phoneNumber\) \}\)/);
+assert.match(paused, /t\("phoneLineGeneric", TRIAL_END_COPY_VALUES\)/);
 assert.match(src("app/[locale]/dashboard/layout.tsx"), /t\("trialExpired", TRIAL_END_COPY_VALUES\)/);
 
 console.log(`trial-copy-from-source: ok (${scanned} trial messages scanned)`);
