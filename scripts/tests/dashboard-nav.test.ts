@@ -248,8 +248,8 @@ for (const [section, ids] of Object.entries(SECTION_TILES) as [keyof typeof SECT
 // Votre agent (since #380 the address lives there, not in a tools tile).
 {
   const checklist = read("components/dashboard/SetupChecklist.tsx");
-  const step = checklist.slice(checklist.indexOf('id: "agentUrl"'), checklist.indexOf('id: "number"'));
-  assert.match(step, /href: "\/dashboard\/agent#client-agent",/, "agentUrl step → the brick's anchor");
+  const step = checklist.slice(checklist.indexOf('id: "clientAgent"'), checklist.indexOf('id: "number"'));
+  assert.match(step, /href: "\/dashboard\/agent#client-agent",/, "clientAgent step → the brick's anchor");
   assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /<section\s+id="client-agent"/, "the anchor exists on the brick");
 }
 // The live test sits beside the tiles (right column, xl+) only on a page that

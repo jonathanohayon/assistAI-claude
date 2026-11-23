@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 
+import { AgentUrlCard } from "./agent-url-section";
 import { ApiKeyCard } from "./api-key-section";
 import { DeleteAccountSection } from "./delete-account-section";
 import { PasswordSection } from "./password-section";
@@ -171,8 +172,11 @@ export default async function SettingsPage(props: {
             developer mode (admins always). */}
         <ApiKeyCard isAdmin={isAdmin} />
 
-        {/* Who answers (AgentBrainSection) and the agent's public URL
-            (AgentUrlCard) moved to the "Votre agent" page (/dashboard/agent). */}
+        {/* The agent's public URL (AgentUrl.title: using the Tamara agent
+            from the customer's own phone system), level-3 like the API key:
+            rendered only in developer mode (admins always). Anchor:
+            #agent-url. Moved here from "Connecter votre agent" (VP, 23/11). */}
+        <AgentUrlCard isAdmin={isAdmin} />
 
         {/* Danger zone */}
         <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 shadow-sm sm:p-6">

@@ -238,9 +238,9 @@ export async function TenantConfigPage({
     withHome && door === "sales"
       ? await db.select({ id: calls.id }).from(calls).where(eq(calls.userId, session.user.id)).limit(1)
       : [];
-  const agentUrlVisible = clientAgentEnabled(clientAgentMode(), isAdmin);
+  const clientAgentVisible = clientAgentEnabled(clientAgentMode(), isAdmin);
   const storedTools = parseTools(config.toolsConfig);
-  const agentUrlSet = storedTools.ok && storedTools.value.clientAgent.url.trim() !== "";
+  const clientAgentSet = storedTools.ok && storedTools.value.clientAgent.url.trim() !== "";
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
@@ -258,7 +258,7 @@ export async function TenantConfigPage({
         door={door}
         contacts={door === "sales" ? { done: Boolean(contactsRow), locked: !outboundUsable } : undefined}
         liveTest={door === "sales" ? { done: Boolean(anyCall) } : undefined}
-        agentUrl={door === "connect" && agentUrlVisible ? { done: agentUrlSet } : undefined}
+        clientAgent={door === "connect" && clientAgentVisible ? { done: clientAgentSet } : undefined}
       />
       )}
       <ConfigForm

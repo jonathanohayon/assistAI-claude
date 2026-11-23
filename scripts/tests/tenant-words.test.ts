@@ -71,7 +71,6 @@ const L1 = [
   "PersonaBrick",
   "KnowledgeBrick",
   "ToolsBrick",
-  "AgentBrain",
   "AgentUrl",
   "MissionBrick",
   "Calls",
