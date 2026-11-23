@@ -86,11 +86,9 @@ for (const l of LOCALES) {
   const fr = messages("fr").AgentUrl;
   assert.equal(fr.title, "API : utiliser l'agent Tamara depuis votre propre téléphonie");
   assert.equal(messages("en").AgentUrl.title, "API: use the Tamara agent from your own phone system");
-  // [HE] to confirm: plural address ("שלכם").
-  assert.equal(messages("he").AgentUrl.title, "API: שימוש בסוכן של תמרה ממערכת הטלפוניה שלכם");
-  // desc and urlHint are pinned in agent-url-copy.test.ts.
-  assert.equal(fr.urlLabel, "URL publique de votre agent");
-  assert.equal(fr.warning, "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.");
+  // [HE] to confirm: plural address ("שלכם"), the name in Latin.
+  assert.equal(messages("he").AgentUrl.title, "API: שימוש בסוכן של Tamara ממערכת הטלפוניה שלכם");
+  // desc, urlHint, emptyText, urlLabel and warning are pinned in agent-url-copy.test.ts.
   assert.equal(fr.contractTitle, "Contrat attendu par les clients vocaux");
   assert.deepEqual([fr.copy, fr.copied, fr.rotate, fr.urlPlaceholder, fr.replyWithin], ["Copier", "Copié", "Régénérer", "<votre-url>", "sous 2 s"]);
   const keys = Object.keys(fr).sort();

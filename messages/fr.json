@@ -2769,11 +2769,11 @@
   "AgentUrl": {
     "title": "API : utiliser l'agent Tamara depuis votre propre téléphonie",
     "desc": "Votre propre service vocal interroge l'agent Tamara à chaque tour de parole, grâce à cette URL.",
-    "urlLabel": "URL publique de votre agent",
+    "urlLabel": "URL publique de l'agent Tamara",
     "urlHint": "Collez-la dans votre service vocal : il interrogera l'agent Tamara pour savoir quoi répondre. Elle utilise la personnalité réglée dans Mon agent.",
     "copy": "Copier",
     "copied": "Copié",
-    "warning": "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.",
+    "warning": "Toute personne disposant de cette URL peut faire parler l'agent Tamara. Elle ne donne accès ni à vos transcripts ni à votre compte.",
     "rotate": "Régénérer",
     "contractTitle": "Contrat attendu par les clients vocaux",
     "urlPlaceholder": "<votre-url>",
