@@ -23,6 +23,18 @@ export function publicAvailability(env: Record<string, string | undefined>): Pub
   return { sales: productPurchasable("sales", env), connect: productPurchasable("connect", env) };
 }
 
+/**
+ * The "prévenez-moi" record a NEW account gets at creation from its sign-up
+ * door, or null: sales / connect only, and only while that product is not
+ * usable (the same `available` the public sign-up page reads, so its "you
+ * will be told first" promise and this record agree). reception → none.
+ */
+export function signupDoorNotify(door: string | null, available: PublicAvailability): "sales" | "connect" | null {
+  if (door === "sales") return available.sales ? null : "sales";
+  if (door === "connect") return available.connect ? null : "connect";
+  return null;
+}
+
 export function publicOffer(env: Record<string, string | undefined> = process.env): PublicOffer {
   return { grid: publicGrid(env), available: publicAvailability(env) };
 }
