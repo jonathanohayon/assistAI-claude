@@ -194,7 +194,8 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   assert.match(sales, /<CampaignsPageClient isAdmin=\{isAdmin\} captureOn=\{captureMode\(\) === "on"\} \/>/, "sales owned: today's workspace");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   assert.match(connect, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
-  assert.match(connect, /\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\) && <ClientAgentBrick \/>\}/, "connect: the Ask-your-agent brick only where it is on");
+  assert.match(connect, /showClientAgent=\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\}/, "connect: the Ask-your-agent brick only where it is on");
+  assert.match(code("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick \/>\}/, "connect: the view follows it");
   for (const f of ["app/[locale]/dashboard/clients/page.tsx", "app/[locale]/dashboard/reception/forwarding/page.tsx", "app/[locale]/dashboard/settings/page.tsx", "app/[locale]/dashboard/billing/page.tsx"])
     assert.match(code(f), /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/, `${f}: signed-in`);
   const clients = code("app/[locale]/dashboard/clients/page.tsx");

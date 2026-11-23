@@ -67,7 +67,7 @@ function render(d: BrainResponse, locale = "en", extra: Partial<AgentBrainViewPr
     urlDraft: view.url,
     secretDraft: "",
     busy: false,
-    saved: false,
+    saved: null,
     error: null,
     probe: null,
     onToggle: () => {},

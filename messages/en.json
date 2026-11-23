@@ -2761,11 +2761,12 @@
   },
   "AgentBrain": {
     "title": "Who answers the phone",
+    "adminLabel": "Admin setting (legacy connection)",
     "desc": "By default, your agent answers with the personality set in <link>My agent</link>. You can connect your own agent instead.",
     "loading": "Loading…",
     "toggleLabel": "Use my own agent",
     "toggleHint": "Tamara keeps the voice, the number and the phone line; your agent decides what to say.",
-    "personaUnused": "While this is on, the personality set up above is not used.",
+    "personaUnused": "While this is on, the personality set in My agent is not used.",
     "configuredByTeam": "Your agent is connected. Configured by the Tamara team.",
     "connectViaTeam": "To connect your agent, contact the Tamara team.",
     "urlLabel": "Your agent's address",

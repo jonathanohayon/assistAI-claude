@@ -55,7 +55,8 @@ assert.equal(ENTRY_LABEL_KEY.connect, "connect", "sidebar: the connect entry's l
 
   const page = read("app/[locale]/dashboard/agent/page.tsx");
   assert.match(page, /getTranslations\(\{ locale, namespace: "DashboardNav" \}\)/);
-  assert.match(page, /<h1[^>]*>\{t\("connect"\)\}<\/h1>/, "owned page: the title is DashboardNav.connect");
+  assert.match(page, /<ConnectOwnedView\s+title=\{t\("connect"\)\}/, "owned page: the title is DashboardNav.connect");
+  assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /<h1[^>]*>\{title\}<\/h1>/, "owned view: the page's title as the h1");
 
   const admin = read("app/admin/users/[userId]/agent/page.tsx");
   assert.match(admin, /getTranslations\(\{ locale: "fr", namespace: "DashboardNav" \}\)/);

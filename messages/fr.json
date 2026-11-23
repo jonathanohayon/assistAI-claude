@@ -2761,11 +2761,12 @@
   },
   "AgentBrain": {
     "title": "Qui répond au téléphone",
+    "adminLabel": "Réglage admin (ancien branchement)",
     "desc": "Par défaut, votre agent répond avec la personnalité réglée dans <link>Mon agent</link>. Vous pouvez à la place brancher votre propre agent.",
     "loading": "Chargement…",
     "toggleLabel": "Utiliser mon propre agent",
     "toggleHint": "Tamara garde la voix, le numéro et la téléphonie ; c'est votre agent qui décide des réponses.",
-    "personaUnused": "Tant que ce mode est actif, la personnalité configurée plus haut n'est pas utilisée.",
+    "personaUnused": "Tant que ce mode est actif, la personnalité réglée dans Mon agent n'est pas utilisée.",
     "configuredByTeam": "Votre agent est branché. Configuré par l'équipe Tamara.",
     "connectViaTeam": "Pour brancher votre agent, contactez l'équipe Tamara.",
     "urlLabel": "Adresse de votre agent",

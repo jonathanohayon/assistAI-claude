@@ -60,7 +60,7 @@ function render(d: ui.BrainResponse, locale = "en", extra: Partial<AgentBrainVie
     urlDraft: view.url,
     secretDraft: "",
     busy: false,
-    saved: false,
+    saved: null,
     error: null,
     probe: null,
     onToggle: () => {},
@@ -187,7 +187,7 @@ const checkbox = (html: string) => html.match(/<input type="checkbox"[^>]*>/)?.[
   // Unticking a pending (never stored) switch sends nothing.
   assert.match(src, /if \(!enabled && pendingOn && !state\.view\.enabled\) \{\s*setPendingOn\(false\);\s*setError\(null\);\s*return;/);
   // A successful save clears the pending state.
-  assert.match(src, /setPendingOn\(false\);\s*setSaved\(true\);/);
+  assert.match(src, /setPendingOn\(false\);\s*setSaved\(from\);/);
 }
 
 // 5. A test per state.

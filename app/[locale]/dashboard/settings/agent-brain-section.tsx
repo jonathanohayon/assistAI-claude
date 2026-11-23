@@ -19,7 +19,7 @@ import {
  * Who answers the phone: the Tamara persona, or the account's own agent.
  *
  * The setting is explicit because its consequences are: in external mode the
- * persona configured above is not used at all. Saying so here keeps a tenant
+ * persona set in "Mon agent" is not used at all. Saying so here keeps a tenant
  * from editing the persona for hours without understanding why their agent
  * ignores it.
  *
@@ -41,7 +41,8 @@ export function AgentBrainSection() {
   // was sent, or the server refused to switch it on). The box stays ticked
   // with the reason under it; Save sends the switch-on with the address.
   const [pendingOn, setPendingOn] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // Which control's save went through: "Enregistré." shows next to it.
+  const [saved, setSaved] = useState<BrainErrorAt | null>(null);
   const [probe, setProbe] = useState<Probe | null>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const urlRef = useRef<HTMLInputElement | null>(null);
@@ -78,7 +79,7 @@ export function AgentBrainSection() {
 
   const save = async (from: BrainErrorAt, next: { enabled: boolean; url?: string; secret?: string }) => {
     setError(null);
-    setSaved(false);
+    setSaved(null);
     const plan = brainSavePlan(state, next);
     if ("refuse" in plan) {
       // No usable address: nothing is sent, the reason shows under the switch.
@@ -102,9 +103,9 @@ export function AgentBrainSection() {
         return false;
       }
       setPendingOn(false);
-      setSaved(true);
+      setSaved(from);
       if (savedTimer.current) clearTimeout(savedTimer.current);
-      savedTimer.current = setTimeout(() => setSaved(false), 2500);
+      savedTimer.current = setTimeout(() => setSaved(null), 2500);
       return true;
     } catch {
       setError({ at: from, key: "generic" });
@@ -193,7 +194,8 @@ export type AgentBrainViewProps = {
   urlDraft: string;
   secretDraft: string;
   busy: boolean;
-  saved: boolean;
+  /** The control whose save just went through: "Saved." sits next to it. */
+  saved: BrainErrorAt | null;
   /** The message to show, under the control it belongs to. */
   error: BrainError | null;
   probe: Probe | null;
@@ -226,6 +228,13 @@ export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
         {t(`errors.${error.key}`)}
       </p>
     ) : null;
+  // The success line next to its control, same placement as the errors. Always
+  // in the DOM (empty when idle) so the polite live region is announced.
+  const savedLine = (at: BrainErrorAt) => (
+    <p role="status" aria-live="polite" data-saved-at={at} className="mt-2 text-xs text-emerald-700 empty:hidden">
+      {props.saved === at ? t("saved") : ""}
+    </p>
+  );
   const describedBy = (at: BrainErrorAt, ...more: string[]) =>
     [...more, ...(error?.at === at ? [errorId(at)] : [])].join(" ") || undefined;
 
@@ -263,6 +272,7 @@ export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
           </span>
         </label>
         {errorLine("toggle")}
+        {savedLine("toggle")}
 
         {view.enabled && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
@@ -304,6 +314,7 @@ export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
                 </button>
               </div>
             </div>
+            {savedLine("url")}
           </div>
         ) : view.urlConfigured ? (
           <p className="mt-4 rounded-lg bg-[var(--color-muted)] px-3 py-2 text-xs text-[var(--color-foreground)]">
@@ -345,6 +356,7 @@ export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
             </button>
           </div>
           {errorLine("secret")}
+          {savedLine("secret")}
           <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
             {t.rich("secretHelp", {
               code: (chunks) => (
@@ -356,9 +368,6 @@ export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
           </p>
         </div>
 
-        <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-700 empty:hidden">
-          {props.saved ? t("saved") : ""}
-        </p>
         {props.probe && (
           <p className="mt-2 rounded-lg bg-[var(--color-muted)] px-3 py-2 text-[11px] break-words text-[var(--color-foreground)]">
             {props.probe.kind === "pending"
