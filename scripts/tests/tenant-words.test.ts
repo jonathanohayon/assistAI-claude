@@ -93,6 +93,7 @@ const EMAIL_NAMESPACES = [
   "contactCode",
   "ownerRecap",
   "trialWarning",
+  "renewalReminder",
   "trialDeleted",
   "welcome",
   "usageWarning",

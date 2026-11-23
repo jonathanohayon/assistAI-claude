@@ -30,6 +30,7 @@ import { configuredEmailSender } from "@/lib/email-sender";
 import { greetingName } from "@/lib/email-greeting";
 import type { OrderLine } from "@/lib/order-lines";
 import { renderOrderConfirmationEmail, type OrderEmailKey } from "@/lib/order-email";
+import { renderRenewalReminderEmail, type ReminderInput, type ReminderKey } from "@/lib/renewal-reminder";
 
 const FROM_DEFAULT = "Tamara <onboarding@resend.dev>";
 const SUPPORTED_LOCALES = ["fr", "he", "en"] as const;
@@ -830,5 +831,28 @@ export async function sendOrderConfirmationEmail(
     return { ok: true, id: res.data?.id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Resend error" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   Renewal reminder (cron/billing, lib/renewal-reminder.ts; behind
+//   RENEWAL_REMINDER_EMAIL, off by default). The account's own address.
+//   Nothing about it is logged: the fallback prints the subject only.
+// ──────────────────────────────────────────────────────────────────────
+export async function sendRenewalReminderEmail(to: string, input: ReminderInput): Promise<SendResult> {
+  const t = await getTranslations({ locale: input.locale, namespace: "Email.renewalReminder" });
+  const { subject, text, html } = renderRenewalReminderEmail(input, (key: ReminderKey, vars) => t(key, vars));
+  const from = process.env.EMAIL_FROM ?? FROM_DEFAULT;
+  const client = getResend();
+  if (!client) {
+    console.warn(`[email] renewal reminder not sent (no email key configured), subject: ${subject}`);
+    return { ok: true, fallback: "console_log" };
+  }
+  try {
+    const res = await client.emails.send({ from, to: [to], subject, text, html });
+    if (res.error) return { ok: false, error: `${res.error.name}: ${res.error.message}` };
+    return { ok: true, id: res.data?.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "send error" };
   }
 }
