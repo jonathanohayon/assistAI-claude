@@ -38,7 +38,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway engine-override
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+CLEAN=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 
 # ── 0. Migration 0058 writes no data ───────────────────────────────────────
 MIG="$BASE/mig"

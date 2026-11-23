@@ -419,6 +419,13 @@ async function main() {
     const camp = (n: number) => id(0x300 + n);
     const contact = (n: number, k: number) => id(0x400 + n * 16 + k);
     const accounts = [GF, PAID, TRIALONLY];
+    // The seed (mission-m2a-seed.sql) has 'running' campaigns with the
+    // default call window (Asia/Jerusalem, Mon-Fri, 9-18; drizzle/0020). The dispatcher
+    // claims with SQL now(), so inside that window a tick would also dial
+    // the seed's queued contacts and every count below would depend on the
+    // wall clock. Park every other running campaign for this section (the
+    // dispatcher only reads status = 'running') and restore them after.
+    const parked = await rows<{ id: string }>(sql`UPDATE campaigns SET status = 'paused' WHERE status = 'running' RETURNING id`);
     for (const [n, uid] of accounts.entries()) {
       await db.execute(sql`INSERT INTO campaigns (id, user_id, name, status, from_number, concurrency, call_window)
         VALUES (${camp(n)}, ${uid}, 'Mock campaign', 'running', '+15550000300', 2, ${WINDOW}::jsonb)`);
@@ -516,6 +523,9 @@ async function main() {
     const off = await dispatchDueJobs(50, "cron", { env: {} });
     assert.equal((off as { mode?: string }).mode, "off");
     assert.equal((g.__campgateDials ?? []).length, 0);
+
+    // Restore the seed campaigns parked above.
+    for (const { id: cid } of parked) await db.execute(sql`UPDATE campaigns SET status = 'running' WHERE id = ${cid}`);
   }
   console.log("ok: dispatcher — paid / grandfathered byte-identical with an exhausted trial row; trial-only dials under the cap, refused at 30 min or at ends_at");
 

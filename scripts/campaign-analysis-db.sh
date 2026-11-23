@@ -27,7 +27,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway campaign-analysis
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+CLEAN=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 mkdir -p "$MAIN"
 git archive origin/main | tar -x -C "$MAIN"
 ln -s "$PWD/node_modules" "$MAIN/node_modules"

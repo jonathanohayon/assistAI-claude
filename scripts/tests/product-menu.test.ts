@@ -178,9 +178,14 @@ assert.equal(
   assert.equal(render(menuFor({ entries: [] }, null, null, {})), "R:try S:soon C:soon", "unknown account (accountProducts: nothing entitled)");
   // The layouts load the entitlement with accountProducts(userId) (users.products
   // included) for the signed-in user, and for the TARGET in the admin view.
-  assert.match(readFileSync("lib/product-gates.ts", "utf8"), /return menuFor\(await accountProducts\(userId\), role, features\);/);
-  assert.match(readFileSync("app/[locale]/dashboard/layout.tsx", "utf8"), /await accountProductMenu\(session\.user\.id, me\?\.role, features\)/);
-  assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /await accountProductMenu\(target\.id, target\.role, /);
+  // ONE accountProducts read gives the menu and the trials (the sidebar badge).
+  assert.match(
+    readFileSync("lib/product-gates.ts", "utf8"),
+    /const products = await accountProducts\(userId\);\s*return \{ menu: menuFor\(products, role, features\), trials: products\.trials \};/,
+  );
+  assert.match(readFileSync("lib/product-gates.ts", "utf8"), /return \(await accountProductNav\(userId, role, features\)\)\.menu;/);
+  assert.match(readFileSync("app/[locale]/dashboard/layout.tsx", "utf8"), /const nav = await accountProductNav\(session\.user\.id, me\?\.role, features\);\s*const menuBlocks = navBlocks\(resolveDoor\(me\?\.door \?\? null\), nav\.menu, null, nav\.trials\);/);
+  assert.match(readFileSync("app/admin/users/[userId]/layout.tsx", "utf8"), /const nav = await accountProductNav\(target\.id, target\.role, [^\n]*\);\s*const menuBlocks = navBlocks\(door, nav\.menu, target\.id, nav\.trials\);/);
 }
 
 // ── "Prévenez-moi" refuses only what the menu shows as owned ──────────────

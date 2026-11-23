@@ -22,6 +22,6 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$MAIN_DIR"'
 pg_start_throwaway agent-state
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
-env -i PATH="$PATH" HOME="$HOME" AGENT_STATE_DB_URL="$URL" AGENT_STATE_MAIN_STATS="$PWD/$MAIN_DIR/dashboard-stats.ts" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" AGENT_STATE_DB_URL="$URL" AGENT_STATE_MAIN_STATS="$PWD/$MAIN_DIR/dashboard-stats.ts" \
   npx tsx scripts/tests/agent-state-db.test.ts

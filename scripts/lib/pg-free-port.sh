@@ -42,6 +42,10 @@
 # Overrides (tests): PG_FREE_PORT_MIN, PG_FREE_PORT_MAX, PG_FREE_PORT_LOCK_ROOT,
 # PG_FREE_PORT_SKIP (extra space-separated ports, added to the built-in list).
 
+# The injected clock (DB_TEST_AT): one source of time for the suite's Node
+# processes and its Postgres. See scripts/lib/test-clock.sh.
+source "$(dirname "${BASH_SOURCE[0]}")/test-clock.sh"
+
 PG_FREE_PORT_BUILTIN_SKIP="55477 56817 56931 3981"
 PG_FREE_PORT_CLEANUP=""
 PG_FREE_PORT_LOCK=""
@@ -206,6 +210,8 @@ pg_start_throwaway() {
       -o "-p ${PORT} -k '' -c listen_addresses=127.0.0.1" -l "$log" \
       -w -t "${PG_START_TIMEOUT:-60}" start >/dev/null; then
       [ "$attempt" = 1 ] || echo "pg_start_throwaway: retry on 127.0.0.1:${PORT} started (suite ${suite})" >&2
+      # With DB_TEST_AT, the server's now() follows the suite's clock.
+      pg_test_clock_install || return 1
       return 0
     fi
     _pg_start_keep_log "$suite" "$log"

@@ -736,7 +736,14 @@
     "previewSoon": "Bientôt disponible.",
     "previewNotify": "Prévenez-moi",
     "previewNotified": "C'est noté, nous vous préviendrons.",
-    "previewNotifyError": "Votre demande n'a pas pu être enregistrée. Réessayez."
+    "previewNotifyError": "Votre demande n'a pas pu être enregistrée. Réessayez.",
+    "previewTrialTerms": "{days, plural, one {# jour} other {# jours}} et {minutes, plural, one {# minute} other {# minutes}} d'appels offerts, sans carte bancaire, une seule fois par produit.",
+    "previewTrialActive": "Essai en cours jusqu'au {date}.",
+    "previewTrialUsed": "Votre essai est terminé.",
+    "previewOffer": "Voir l'offre",
+    "previewTrialErrorUsed": "Vous avez déjà utilisé votre essai de « {product} ». Voir l'offre pour continuer.",
+    "previewTrialErrorUnavailable": "L'essai de « {product} » n'est pas disponible pour le moment. Réessayez plus tard.",
+    "previewTrialError": "L'essai de « {product} » n'a pas pu démarrer. Réessayez."
   },
   "DashboardCrm": {
     "header": "Espace clients",
@@ -2779,6 +2786,7 @@
     "secretSave": "Enregistrer le secret",
     "secretHelp": "Votre agent vérifie <code>X-Tamara-Signature = HMAC-SHA256(corps brut de la requête, ce secret)</code> avant de traiter la requête.",
     "errors": {
+      "addressRequired": "Indiquez d'abord l'adresse de votre agent.",
       "adminOnly": "Seule l'équipe Tamara peut modifier cette adresse.",
       "unsafeUrl": "Cette adresse ne peut pas être utilisée.",
       "unsafeUrlTenant": "Cette adresse ne peut pas être utilisée. Contactez l'équipe Tamara pour la mettre à jour, ou désactivez l'agent.",

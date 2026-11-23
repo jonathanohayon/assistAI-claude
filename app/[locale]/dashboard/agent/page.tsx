@@ -7,6 +7,7 @@ import NextLink from "next/link";
 import { auth } from "@/auth";
 import { ClientAgentBrick } from "@/components/bricks/client-agent/ClientAgentBrick";
 import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeader";
+import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { ConnectPreview } from "@/components/preview/ConnectPreview";
 import { Link } from "@/i18n/navigation";
 import { entryHref } from "@/lib/dashboard-nav";
@@ -58,12 +59,12 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
 
-  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const { menu, notifyRequested, trials, trialTerms } = await loadProductPage(session.user.id);
   const state = menu.connect;
   if (state.state === "preview") {
     return (
       <main className={MAIN}>
-        <ProductPreviewHeader entry="connect" cta={state.cta} notifyRequested={notifyRequested.includes("connect")} />
+        <ProductPreviewHeader entry="connect" cta={state.cta} notifyRequested={notifyRequested.includes("connect")} trial={trials.connect} trialTerms={trialTerms} />
         <ConnectPreview />
       </main>
     );
@@ -78,6 +79,7 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
     <main className={MAIN}>
       <section className="mb-8 space-y-5">
         <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("connect")}</h1>
+        <ProductTrialNote trial={trials.connect} inline />
         <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
           <h2 className="font-display text-lg text-[var(--color-foreground)]">{tBrain("title")}</h2>
           <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{tBrain.rich("desc", { link: myAgentLink() })}</p>

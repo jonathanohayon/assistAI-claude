@@ -736,7 +736,14 @@
     "previewSoon": "Coming soon.",
     "previewNotify": "Notify me",
     "previewNotified": "Noted, we'll let you know.",
-    "previewNotifyError": "We couldn't save your request. Please try again."
+    "previewNotifyError": "We couldn't save your request. Please try again.",
+    "previewTrialTerms": "{days, plural, one {# day} other {# days}} and {minutes, plural, one {# minute} other {# minutes}} of calls on us, no card needed, once per product.",
+    "previewTrialActive": "Trial running until {date}.",
+    "previewTrialUsed": "Your trial has ended.",
+    "previewOffer": "See the offer",
+    "previewTrialErrorUsed": "You've already used your {product} trial. See the offer to continue.",
+    "previewTrialErrorUnavailable": "The {product} trial isn't available right now. Please try again later.",
+    "previewTrialError": "The {product} trial couldn't start. Please try again."
   },
   "DashboardCrm": {
     "header": "Customer space",
@@ -2779,6 +2786,7 @@
     "secretSave": "Save secret",
     "secretHelp": "Your agent checks <code>X-Tamara-Signature = HMAC-SHA256(raw request body, this secret)</code> before handling the request.",
     "errors": {
+      "addressRequired": "Enter your agent's address first.",
       "adminOnly": "Only the Tamara team can change this address.",
       "unsafeUrl": "This address can't be used.",
       "unsafeUrlTenant": "This address can't be used. Contact the Tamara team to update it, or turn the agent off.",

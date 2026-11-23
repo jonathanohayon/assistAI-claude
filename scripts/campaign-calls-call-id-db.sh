@@ -36,11 +36,11 @@ start() {
   [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 }
 run_test() {
-  env -i PATH="$PATH" HOME="$HOME" CAMPAIGN_CALLS_TEST_DATABASE_URL="$URL" CAMPAIGN_CALLS_TEST_PHASE="$1" \
+  env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAMPAIGN_CALLS_TEST_DATABASE_URL="$URL" CAMPAIGN_CALLS_TEST_PHASE="$1" \
     CAMPAIGN_CALLS_MAIN_SNAPSHOT="$PWD/$TMP/main-calls.json" CAMPAIGN_CALLS_MAIN_SCHEMA="$PWD/$MAIN/lib/db/schema.ts" \
     npx tsx scripts/tests/campaign-calls-call-id.test.ts
 }
-migrate_branch() { env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs; }
+migrate_branch() { env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs; }
 
 echo "== 1. fresh DB"
 start
@@ -55,7 +55,7 @@ mkdir -p "$MAIN"
 # (e.g. scripts/neutral-persona-fr.mjs) and a hand-picked list rots.
 git archive "$BEFORE_REF" | tar -x -C "$MAIN"
 ln -s "$PWD/node_modules" "$MAIN/node_modules"
-(cd "$MAIN" && env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs)
+(cd "$MAIN" && env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs)
 run_test main-snapshot
 migrate_branch
 run_test upgrade

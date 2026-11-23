@@ -188,8 +188,8 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   const sales = code("app/[locale]/dashboard/sales/page.tsx");
   assert.match(sales, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(sales, /const \{ isAdmin, enabled \} = await loadOutboundCampaignsAccess\(session\.user\.id\);/, "sales: the API's own gate");
-  assert.match(sales, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.sales;/, "sales: its menu state");
-  assert.match(sales, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="sales" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("sales"\)\} \/>\s*<SalesPreview \/>/, "sales: preview = its header + the sample workspace");
+  assert.match(sales, /const \{ menu, notifyRequested, trials, trialTerms \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.sales;/, "sales: its menu state");
+  assert.match(sales, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="sales" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("sales"\)\} trial=\{trials\.sales\} trialTerms=\{trialTerms\} \/>\s*<SalesPreview \/>/, "sales: preview = its header + the sample workspace");
   assert.match(sales, /if \(!enabled\) return <TenantConfigPage locale=\{locale\} section="sales" \/>;/, "sales: locked otherwise = today's tile");
   assert.match(sales, /<CampaignsPageClient isAdmin=\{isAdmin\} captureOn=\{captureMode\(\) === "on"\} \/>/, "sales owned: today's workspace");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
@@ -295,12 +295,12 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
 // ── 5b. Preview product pages: their own header, then the real screen over sample data (F2) ──
 {
   const reception = code("app/[locale]/dashboard/reception/page.tsx");
-  assert.match(reception, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.reception;/);
-  assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("reception"\)\} \/>\s*<ReceptionPreview \/>/);
-  assert.match(reception, /return <TenantConfigPage locale=\{locale\} section="reception" \/>;/, "owned: today's layout");
+  assert.match(reception, /const \{ menu, notifyRequested, trials, trialTerms \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.reception;/);
+  assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("reception"\)\} trial=\{trials\.reception\} trialTerms=\{trialTerms\} \/>\s*<ReceptionPreview \/>/);
+  assert.match(reception, /<ProductTrialNote trial=\{trials\.reception\} \/>\s*<TenantConfigPage locale=\{locale\} section="reception" \/>/, "owned: today's layout (a running trial's line above it)");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(connect, /const \{ menu, notifyRequested \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.connect;/);
-  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("connect"\)\} \/>\s*<ConnectPreview \/>/);
+  assert.match(connect, /const \{ menu, notifyRequested, trials, trialTerms \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.connect;/);
+  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("connect"\)\} trial=\{trials\.connect\} trialTerms=\{trialTerms\} \/>\s*<ConnectPreview \/>/);
   const form = code("app/[locale]/dashboard/config-form.tsx");
   assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);
@@ -317,7 +317,9 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
       const q = (x: string) => x.replace(/'/g, "&#x27;");
       // "soon": the plain line, then exactly ONE button, "notify me" (PR #387's
       // endpoint stores it); already requested: the "noted" line, no button.
-      // "try": ONE button, "try it free", and no notify-me.
+      // "try" with no startable trial (today everywhere, F4): ONE link, "see
+      // the offer", never "try it free" (scripts/tests/trial-cta.test.ts has
+      // the startable cases), and no notify-me.
       assert.ok(soon.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: "coming soon" line`);
       assert.ok(!soon.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: no "try" while soon`);
       assert.equal((soon.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (soon, not requested)`);
@@ -331,10 +333,11 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
       const tryIt = render(locale, entry, "try");
       assert.equal(render(locale, entry, "try", true), tryIt, `${locale}/${entry}: try ignores notifyRequested`);
       assert.ok(!tryIt.includes(q(m.DashboardNav.previewNotify)) && !tryIt.includes(q(m.DashboardNav.previewNotified)), `${locale}/${entry}: no notify-me while try`);
-      assert.ok(tryIt.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: "try it free"`);
+      assert.ok(!tryIt.includes(q(m.DashboardNav.previewTry)), `${locale}/${entry}: no "try it free" while not startable`);
+      assert.ok(tryIt.includes(q(m.DashboardNav.previewOffer)), `${locale}/${entry}: "see the offer"`);
       assert.ok(!tryIt.includes(q(m.DashboardNav.previewSoon)), `${locale}/${entry}: no "soon" line while try`);
       assert.equal((tryIt.match(/<(button|a)\b/g) ?? []).length, 1, `${locale}/${entry}: one button (try)`);
-      if (entry !== "sales") assert.match(tryIt, /href="\/(fr|en|he)?\/?dashboard\/billing"|href="\/dashboard\/billing"/, `${locale}/${entry}: try → the subscription page`);
+      if (entry !== "sales") assert.match(tryIt, /href="\/(fr|en|he)?\/?dashboard\/billing"|href="\/dashboard\/billing"/, `${locale}/${entry}: offer → the subscription page`);
       assert.ok(!soon.includes(m.DashboardConfig.wowTileHintIdle), "no generic tile heading in the header");
     }
   }
@@ -351,7 +354,7 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.doesNotMatch(hdrSrc, /localStorage|sessionStorage|sendBeacon/, "the request is the server's only");
   assert.doesNotMatch(hdrSrc, /fetch\(/, "the POST lives in lib/notify-me.ts");
   const hdr = code("components/dashboard/ProductPreviewHeader.tsx");
-  assert.match(hdr, /entry === "sales" \? \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
+  assert.match(hdr, /if \(entry === "sales"\)\s*return \([\s\S]*<UpsellModal open=\{upsellOpen\}/, "sales: the campaigns upsell");
   assert.match(hdr, /<Link href="\/dashboard\/billing"/, "other products: the subscription page");
 }
 
@@ -392,7 +395,8 @@ assert.equal(sectionGridClass(undefined), sectionGridClass("reception"));
       createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(DashboardSidebar, { blocks })),
     );
   const trial = productMenu({ entitlement: entitledProducts({ subscriptionPlan: "global", subscriptionStatus: "trialing", products: null }), gates: { sales: false, connect: true }, isAdmin: false });
-  const fr = html("fr", navBlocks("connect", trial));
+  // Connect's trial startable (the BE says so): the "Essai gratuit" badge.
+  const fr = html("fr", navBlocks("connect", trial, null, { connect: { state: "available", startable: true } }));
   const order = [...fr.matchAll(/data-entry="([a-zA-Z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(order, ["connect", "reception", "sales", "myAgent", "calls", "clients", "billing", "settings"], "own product first, then the shared block");
   assert.match(fr, /data-entry="connect" data-state="preview-try"/);
