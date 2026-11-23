@@ -18,20 +18,22 @@ import {
   contactView,
   counterBuckets,
   dispatchNoticeKey,
+  dispatchWording,
   eventLine,
   formatElapsed,
   mergeEvents,
   readyPill,
-  showDispatcherAlert,
   nextSince,
   tickSkips,
   TONE_CHIP,
   type ActionErrorKey,
+  type DispatcherHealth,
   type DispatchMode,
   type LiveContact,
   type LiveEvent,
   type LiveFeed,
 } from "@/lib/campaigns/live-view";
+import type { DispatchTick } from "@/lib/campaigns/live";
 
 const POLL_MS = 2500;
 const MAX_BACKOFF_MS = 20000;
@@ -294,33 +296,11 @@ export function CampaignLiveConsole({
         ) : null;
       })()}
 
-      {/* Dispatcher health — LOUD when it never ran or stopped running.
-          Not while calls are off: the pause line above already says why nothing dials. */}
-      {!showDispatcherAlert(mode) ? null : tick === null ? (
-        <div role="alert" className="flex gap-3 rounded-xl border-2 border-[#dc2626] bg-[#fef2f2] p-3">
-          <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#dc2626]" />
-          <div>
-            <p className="text-[13px] font-bold text-[#991b1b]">{t("neverRanTitle")}</p>
-            <p className="mt-0.5 text-[12px] text-[#7f1d1d]">{t("neverRanBody")}</p>
-          </div>
-        </div>
-      ) : tickStale ? (
-        <div role="alert" className="flex gap-3 rounded-xl border border-[#f59e0b] bg-[#fffbeb] p-3">
-          <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#b45309]" />
-          <div>
-            <p className="text-[13px] font-bold text-[#92400e]">{t("staleTitle", { ago: ago(tick.at) })}</p>
-            <p className="mt-0.5 text-[12px] text-[#78350f]">{t("staleBody")}</p>
-          </div>
-        </div>
-      ) : (
-        <p className="text-[12px] text-[#475569]">
-          {t("lastTick", {
-            ago: ago(tick.at),
-            source: t(tick.source === "start" ? "sourceStart" : "sourceCron"),
-            dialed: tick.dialed,
-          })}
-        </p>
-      )}
+      {/* Dispatcher health — LOUD when it never ran or stopped running; a
+          neutral line when it ran in test mode. Not while calls are off: the
+          pause line above already says why nothing dials. */}
+      <DispatcherHealthBlock health={dispatchWording(mode, tick, tickStale).health} tick={tick} ago={ago} t={t} />
+
 
       {/* Blockers as plain-language chips */}
       <div className="flex flex-wrap gap-2">
@@ -463,6 +443,61 @@ function ConsoleTitle({ t, live }: { t: T; live: boolean }) {
       </span>
       {t("title")}
     </h4>
+  );
+}
+
+/**
+ * The dispatcher health block, from `dispatchWording(mode, tick, stale).health`.
+ * Red alarm ONLY when no tick exists at all; a dry tick reads as a neutral line.
+ */
+export function DispatcherHealthBlock({
+  health,
+  tick,
+  ago,
+  t,
+}: {
+  health: DispatcherHealth;
+  tick: DispatchTick | null;
+  ago: (iso: string) => string;
+  t: T;
+}) {
+  if (health.kind === "hidden") return null;
+  if (health.kind === "neverRan" || !tick)
+    return (
+      <div role="alert" className="flex gap-3 rounded-xl border-2 border-[#dc2626] bg-[#fef2f2] p-3">
+        <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#dc2626]" />
+        <div>
+          <p className="text-[13px] font-bold text-[#991b1b]">{t("neverRanTitle")}</p>
+          <p className="mt-0.5 text-[12px] text-[#7f1d1d]">{t("neverRanBody")}</p>
+        </div>
+      </div>
+    );
+  if (health.kind === "stale")
+    return (
+      <div role="alert" className="flex gap-3 rounded-xl border border-[#f59e0b] bg-[#fffbeb] p-3">
+        <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#b45309]" />
+        <div>
+          <p className="text-[13px] font-bold text-[#92400e]">{t("staleTitle", { ago: ago(tick.at) })}</p>
+          <p className="mt-0.5 text-[12px] text-[#78350f]">{t("staleBody")}</p>
+        </div>
+      </div>
+    );
+  if (health.kind === "dryTick")
+    return (
+      <p role="status" className="text-[12px] text-[#475569]">
+        {health.contactsDue === null
+          ? t("dryTick", { ago: ago(tick.at) })
+          : t("dryTickCount", { ago: ago(tick.at), n: health.contactsDue })}
+      </p>
+    );
+  return (
+    <p className="text-[12px] text-[#475569]">
+      {t("lastTick", {
+        ago: ago(tick.at),
+        source: t(tick.source === "start" ? "sourceStart" : "sourceCron"),
+        dialed: tick.dialed,
+      })}
+    </p>
   );
 }
 
