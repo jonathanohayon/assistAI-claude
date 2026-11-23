@@ -184,6 +184,17 @@ async function main() {
   // "not_configured" (fix/web-token-limit): a deliberate change, not a gate
   // regression. A no-op once main carries it.
   const main = JSON.parse(readFileSync(SNAP, "utf8").replaceAll('"LiveKit not configured"', '"not_configured"')) as typeof run;
+  // The campaigns list gained a top-level `dispatchMode` (fix/dispatch-dry-tick):
+  // a deliberate addition. Checked here ("off": the suite's env has no
+  // CAMPAIGN_DISPATCH), then dropped so the rest stays byte-identical. A no-op
+  // once main carries it.
+  for (const k of Object.keys(run) as Array<keyof typeof run>) {
+    for (const side of [run[k], main[k]]) {
+      const body = (side as { responses: Record<string, Res> }).responses.listGet.body as Record<string, unknown> | null;
+      if (side === run[k]) assert.equal(body?.dispatchMode, "off", `${k}.listGet: dispatchMode off`);
+      if (body) delete body.dispatchMode;
+    }
+  }
 
   // 1. Admin (own account and ?asUserId on a plan without the feature) and an
   //    entitled plan: byte-identical to main, dials included.
