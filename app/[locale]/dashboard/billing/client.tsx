@@ -109,16 +109,9 @@ function BillingToggle({
                 className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] shadow-sm"
               />
             )}
+            {/* No discount badge: the annual saving is said once, below the
+                toggle (annualSavings, "2 mois offerts"). */}
             {opt === "monthly" ? t("monthly") : t("annual")}
-            {opt === "annual" && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${
-                  active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#b45309]"
-                }`}
-              >
-                −20%
-              </span>
-            )}
           </button>
         );
       })}
@@ -292,6 +285,7 @@ export function BillingClient({
     void post("/api/dashboard/subscription/schedule-change", { plan: null });
 
   const payPlanObj = plans.find((p) => p.key === payPlan) ?? null;
+  const threeUp = plans.length > 2;
   const statusLabel = stats ? t(STATUS_LABEL_KEY[stats.status] ?? "statusExpired") : "";
 
   return (
@@ -318,10 +312,9 @@ export function BillingClient({
           statusLabel={statusLabel}
           planName={planName(stats.plan)}
           scheduledPlanName={
-            stats.scheduledPlan
-              ? (plans.find((p) => p.key === stats.scheduledPlan)?.name ??
-                stats.scheduledPlan)
-              : null
+            // planName, not `plans`: a downgrade scheduled before the grid
+            // changed may name a plan that is no longer a card.
+            stats.scheduledPlan ? planName(stats.scheduledPlan) : null
           }
           fmtDate={fmtDate}
           busy={busy}
@@ -429,7 +422,15 @@ export function BillingClient({
           </p>
         </div>
 
-        <div className="mx-auto mt-4 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+        {/* 2 cards (the public grid) like the landing; 3 only for a legacy
+            subscriber, whose own plan is shown next to the public ones. */}
+        <div
+          className={
+            threeUp
+              ? "mx-auto mt-4 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5"
+              : "mx-auto mt-4 grid w-full max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2 lg:gap-5"
+          }
+        >
           {plans.map((plan) => {
             const isCurrent = plan.key === currentPlanKey;
             const change = classifyChange(currentPlanKey, plan.key);
@@ -444,7 +445,11 @@ export function BillingClient({
               <div
                 key={plan.key}
                 className={
-                  plan.popular ? "sm:col-span-2 lg:col-span-1 lg:scale-[1.03] lg:z-10" : ""
+                  !plan.popular
+                    ? ""
+                    : threeUp
+                      ? "sm:col-span-2 lg:col-span-1 lg:scale-[1.03] lg:z-10"
+                      : "lg:z-10 lg:scale-[1.03]"
                 }
               >
                 <PlanCard
