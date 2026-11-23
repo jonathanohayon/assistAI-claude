@@ -235,6 +235,18 @@ test("the client decides from the prop, and renewsOn only through renewalView", 
   assert.match(clientSrc, /openPayment\(target\.plan, target\.period\)/);
 });
 
+test("the page passes the lib/billing boolean, and only the boolean", () => {
+  const page = strip(read("app/[locale]/dashboard/billing/page.tsx"));
+  assert.match(page, /import \{ renewsAutomatically \} from "@\/lib\/billing\/auto-renew";/);
+  assert.match(page, /const autoRenew = renewsAutomatically\(me\);/);
+  assert.match(page, /autoRenew=\{autoRenew\}/);
+  assert.doesNotMatch(page, /process\.env/, "page reads env");
+  assert.doesNotMatch(page, /autoRenew=\{(true|false)\}/, "no local constant");
+  // the row (with its token) never goes to the client
+  assert.doesNotMatch(page, /<BillingClient[^>]*\bme\b/);
+  assert.doesNotMatch(page, /hypToken=|hypToken\}/);
+});
+
 test("'Renews on' is not used anywhere else in the app", () => {
   const hits = execSync(
     `grep -rln --include=*.ts --include=*.tsx -e '"renewsOn"' -e "'renewsOn'" app components lib || true`,
