@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { ENTRY_LABEL_KEY } from "@/lib/dashboard-nav";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
 import { getAccountDoor } from "@/lib/door";
@@ -85,12 +84,10 @@ export default async function OnboardingPage(props: {
   const door = await getAccountDoor(session.user.id);
   let welcome: ReactNode = null;
   if (door !== "reception" && onboardingScreen(door, publicOffer().available) === "welcome") {
-    const nav = await getTranslations({ locale, namespace: "DashboardNav" });
     const { notifyRequested } = await accountProducts(session.user.id);
     welcome = (
       <DoorWelcome
         door={door}
-        productName={nav(ENTRY_LABEL_KEY[door])}
         previewHref={previewHref(door)}
         notifyRecorded={notifyRequested.includes(door)}
         initialCompanyName={initialCompanyName}
