@@ -1,6 +1,8 @@
 // Live campaign console — pure helpers (no DB), shared by the dispatcher
 // (dispatch_tick reasons), the worker progress webhook and the admin live API.
 
+import type { DryRunCounts } from "./dispatch-mode";
+
 export const CALL_STATES = ["dialing", "ringing", "in_call", "ended"] as const;
 export type CallState = (typeof CALL_STATES)[number];
 
@@ -69,10 +71,14 @@ export const DISPATCH_TICK_KEY = "campaign_dispatch_last_tick";
 export interface DispatchTick {
   at: string; // ISO
   source: "cron" | "start";
+  /** The switch the tick ran under (absent on ticks written before it existed). Off writes no tick. */
+  mode?: "dry" | "on";
   claimed: number;
   dialed: number;
   failed: number;
   runningCampaigns: number;
+  /** Dry only: what it WOULD have dialled — counts only, never a number, name, title or id. */
+  wouldDial?: DryRunCounts;
 }
 
 /** Contact row sort for the console: live calls first, then queue, then done. */

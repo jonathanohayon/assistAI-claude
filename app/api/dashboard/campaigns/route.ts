@@ -11,6 +11,7 @@ import {
 import { logEvent } from "@/lib/logger";
 import { parseJsonBody } from "@/lib/api/request-parsing";
 import { resolveTargetUserId } from "@/lib/campaigns/scope";
+import { dispatchMode } from "@/lib/campaigns/dispatch-mode";
 import { outboundCampaignsGate } from "@/lib/campaigns/plan-gate";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { createGoalPreset, presetGateRefusal } from "@/lib/campaigns/preset-gate";
@@ -87,7 +88,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ campaigns: result });
+  // CAMPAIGN_DISPATCH as a viewer-safe word (never the env name/value), so the
+  // launch screen knows before the click whether a start will dial.
+  return NextResponse.json({ campaigns: result, dispatchMode: dispatchMode() });
 }
 
 // POST — création d'une campagne (status draft).

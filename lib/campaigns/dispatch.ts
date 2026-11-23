@@ -71,8 +71,9 @@ export async function dispatchDueJobs(
   scope: { campaignId?: string } = {},
 ): Promise<DispatchResult | GatedDispatchResult> {
   const d = { ...DEFAULT_DEPS, ...deps };
-  // CAMPAIGN_DISPATCH (lib/campaigns/dispatch-mode.ts): off and dry write
-  // NOTHING — no claim, no reap, no status, no event, no tick — and dial no one.
+  // CAMPAIGN_DISPATCH (lib/campaigns/dispatch-mode.ts): off and dry claim,
+  // reap, change and dial NOTHING. Off writes nothing at all; dry writes only
+  // the global last tick (mode "dry" + counts), so the console sees it ran.
   const mode = dispatchMode(d.env);
   if (mode === "off") {
     return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is off" };
@@ -80,6 +81,12 @@ export async function dispatchDueJobs(
   if (mode === "dry") {
     const wouldDial = await dryRunCounts(limit, scope.campaignId);
     console.log(`[dispatch] dry run (${source}): ${JSON.stringify(wouldDial)}`);
+    // Observability must never break the dry run.
+    try {
+      await recordDryTick(source, wouldDial);
+    } catch (e) {
+      console.error("[dispatch] dry tick logging failed", e);
+    }
     return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is dry: nothing claimed or dialled", wouldDial };
   }
   const jobs = await d.claim(limit, scope);
@@ -282,7 +289,33 @@ async function recordTick(
     });
   }
 
-  const tick: DispatchTick = { at: now.toISOString(), ...totals, runningCampaigns: list.length };
+  const tick: DispatchTick = { at: now.toISOString(), ...totals, mode: "on", runningCampaigns: list.length };
+  await setSetting(DISPATCH_TICK_KEY, JSON.stringify(tick));
+}
+
+/**
+ * Dry run's tick: the same global key, mode "dry", nothing claimed or dialled,
+ * and the would-dial COUNTS (no number, name, campaign title or id). No
+ * per-campaign event: dry writes nothing but this one setting.
+ */
+async function recordDryTick(source: DispatchTick["source"], wouldDial: DryRunCounts): Promise<void> {
+  const rows = await db.execute(sql`SELECT count(*)::int AS n FROM campaigns WHERE status = 'running'`);
+  const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
+  const tick: DispatchTick = {
+    at: new Date().toISOString(),
+    source,
+    mode: "dry",
+    claimed: 0,
+    dialed: 0,
+    failed: 0,
+    runningCampaigns: Number(list[0]?.n ?? 0),
+    wouldDial: {
+      campaignsDue: wouldDial.campaignsDue,
+      contactsDue: wouldDial.contactsDue,
+      skippedCallHours: wouldDial.skippedCallHours,
+      skippedConcurrency: wouldDial.skippedConcurrency,
+    },
+  };
   await setSetting(DISPATCH_TICK_KEY, JSON.stringify(tick));
 }
 
