@@ -488,12 +488,23 @@ type Stored = { enabled: boolean; url: string; secret?: string };
 async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin: boolean) {
   const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   const url = urlToSave(body.url, current.url, isAdmin);
-  const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin, check });
+  const decision = await agentBrainSaveDecision({
+    currentUrl: current.url,
+    currentEnabled: current.enabled,
+    currentSecret: current.secret,
+    secret: body.secret,
+    url,
+    wantsEnabled,
+    isAdmin,
+    check,
+  });
   if (!decision.ok) return decision;
+  // A tenant save that changes nothing: the route writes nothing.
+  if (decision.noop) return { ok: true as const, stored: current };
   // setAgentBrain(userId, { enabled: wantsEnabled, url, ...(typeof body.secret === "string" ? { secret } : {}) })
   const plan = planAgentBrainEntry(
     current,
-    { enabled: wantsEnabled, url, ...(typeof body.secret === "string" ? { secret: body.secret } : {}) },
+    { enabled: wantsEnabled, url, ...(isAdmin && typeof body.secret === "string" ? { secret: body.secret } : {}) },
     { env: {}, generate: () => "generated-mock" },
   );
   // setAgentBrain throws on a refused plan; the route answers 400 address_required.
@@ -505,8 +516,8 @@ async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin:
   assert.match(route, /const wantsEnabled = enabledToSave\(body\.enabled, current\.enabled\);/);
   assert.doesNotMatch(route, /body\.enabled === true/);
   assert.match(route, /const url = urlToSave\(body\.url, current\.url, isAdmin\);/);
-  assert.match(route, /agentBrainSaveDecision\(\{ currentUrl: current\.url, url, wantsEnabled, isAdmin \}\)/);
-  assert.match(route, /enabled: wantsEnabled,\s*url,\s*\.\.\.\(typeof body\.secret === "string" \? \{ secret: body\.secret \} : \{\}\),/);
+  assert.match(route, /agentBrainSaveDecision\(\{\s*currentUrl: current\.url,\s*currentEnabled: current\.enabled,\s*currentSecret: current\.secret,\s*currentSecretUnreadable: current\.secretUnreadable,\s*secret: body\.secret,\s*url,\s*wantsEnabled,\s*isAdmin,\s*\}\)/);
+  assert.match(route, /enabled: wantsEnabled,\s*url,\s*\/\/[^\n]*\n\s*\.\.\.\(isAdmin && typeof body\.secret === "string" \? \{ secret: body\.secret \} : \{\}\),/);
   const lib = src("lib/agent-brain.ts");
   assert.match(lib, /const plan = planAgentBrainEntry\(map\[userId\], next\);\s*if \(!plan\.ok\) throw new AgentBrainAddressRequiredError\(\);\s*map\[userId\] = plan\.entry;/);
   assert.match(lib, /if \(next\.enabled && !brainAddressUsable\(url\)\) return \{ ok: false, error: "address_required" \};/);
@@ -516,6 +527,8 @@ async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin:
 pending.push(
   (async () => {
     const current: Stored = { enabled: true, url: SAFE, secret: "mock-secret" };
+    const offRow: Stored = { ...current, enabled: false };
+    const adminOnly = (fields: string[]) => ({ ok: false, status: 403, body: { error: "admin_only", fields } });
     for (const isAdmin of TENANT_AND_ADMIN) {
       // omitting `url` keeps the stored url (the #253 bug), and omitting `secret` keeps the secret
       const r = await brainPut({ enabled: true }, current, isAdmin);
@@ -526,47 +539,46 @@ pending.push(
       if (!isAdmin) assert.deepEqual(await brainPut({ enabled: true, url: "" }, current, false), { ok: true, stored: current });
       // an empty secret is NOT a clear: the stored one is kept
       assert.deepEqual(await brainPut({ enabled: true, secret: "  " }, current, isAdmin), { ok: true, stored: current });
+      // an unchanged re-send passes (url, secret, enabled all as stored)
+      assert.deepEqual(await brainPut({ enabled: true, url: SAFE, secret: "mock-secret" }, current, isAdmin), { ok: true, stored: current });
+      assert.deepEqual(await brainPut({ enabled: false, url: SAFE, secret: "mock-secret" }, current, isAdmin), { ok: true, stored: offRow });
+      // an explicit enabled:false still turns it off
+      assert.deepEqual(await brainPut({ enabled: false }, current, isAdmin), { ok: true, stored: offRow });
+      // a non-boolean enabled is not a change
+      assert.deepEqual(await brainPut({ enabled: "false" }, current, isAdmin), { ok: true, stored: current }, `${who(isAdmin)}: non-boolean enabled keeps it`);
+      // BRAIN-ENABLED-OMITTED (fixed): absent `enabled` keeps the stored value, on or off
+      assert.deepEqual(await brainPut({ secret: "mock-secret" }, current, isAdmin), { ok: true, stored: current }, `${who(isAdmin)}: absent keeps enabled:true`);
+      assert.deepEqual(await brainPut({ secret: "mock-secret" }, offRow, isAdmin), { ok: true, stored: offRow }, `${who(isAdmin)}: absent keeps enabled:false`);
     }
+    // ADMIN: a changed secret is stored, enabled omitted or not
+    assert.deepEqual(await brainPut({ secret: "x" }, current, true), { ok: true, stored: { ...current, secret: "x" } }, "admin: { secret } keeps enabled:true");
+    assert.deepEqual(await brainPut({ secret: "x" }, offRow, true), { ok: true, stored: { ...offRow, secret: "x" } }, "admin: { secret } keeps enabled:false");
+    assert.deepEqual(await brainPut({ enabled: false, secret: "x" }, current, true), { ok: true, stored: { ...offRow, secret: "x" } });
+    // TENANT: a changed secret, a changed url, or switching on → 403, enabled omitted or not
+    assert.deepEqual(await brainPut({ secret: "x" }, current, false), adminOnly(["secret"]));
+    assert.deepEqual(await brainPut({ enabled: false, secret: "x" }, current, false), adminOnly(["secret"]));
+    assert.deepEqual(await brainPut({ url: "https://other.example.com/hook" }, current, false), adminOnly(["url"]));
+    assert.deepEqual(await brainPut({ enabled: true }, offRow, false), adminOnly(["enabled"]));
+
     // INTENDED clear: an admin's explicit url "" clears the url (and so disables the webhook)
     assert.deepEqual(await brainPut({ enabled: true, url: "" }, current, true), {
       ok: false, status: 400, body: { error: "address_required" },
     }, "admin: enabling with url \"\" is refused (address_required)");
     assert.deepEqual(await brainPut({ enabled: false, url: "" }, current, true), { ok: true, stored: { enabled: false, url: "", secret: "mock-secret" } });
-
-    // BRAIN-ENABLED-OMITTED (fixed): a PUT without `enabled` (an API caller's
-    // `{ secret }`, an admin's url-only save) keeps the stored enabled value.
-    for (const isAdmin of TENANT_AND_ADMIN) {
-      const r = await brainPut({ secret: "x" }, current, isAdmin);
-      assert.deepEqual(r, { ok: true, stored: { ...current, secret: "x" } }, `${who(isAdmin)}: { secret } keeps enabled:true`);
-      // other fields pass with enabled kept OFF too (absent never turns it on)
-      const offRow: Stored = { ...current, enabled: false };
-      assert.deepEqual(await brainPut({ secret: "x" }, offRow, isAdmin), { ok: true, stored: { ...offRow, secret: "x" } }, `${who(isAdmin)}: absent keeps enabled:false`);
-      // an unchanged re-send passes
-      assert.deepEqual(await brainPut({ enabled: true, secret: "mock-secret" }, current, isAdmin), { ok: true, stored: current });
-      // an explicit enabled:false still turns it off
-      assert.deepEqual(await brainPut({ enabled: false, secret: "x" }, current, isAdmin), { ok: true, stored: { ...current, enabled: false, secret: "x" } });
-      // a non-boolean enabled is not a change
-      assert.deepEqual(await brainPut({ enabled: "false" }, current, isAdmin), { ok: true, stored: current }, `${who(isAdmin)}: non-boolean enabled keeps it`);
-      // tenant: a changed url → 403 (gated), enabled omitted or not
-      if (!isAdmin) {
-        assert.deepEqual(await brainPut({ url: "https://other.example.com/hook" }, current, false), {
-          ok: false, status: 403, body: { error: "admin_only", fields: ["url"] },
-        });
-      }
-    }
     // an admin's url-only save keeps enabled:true
     const NEW = "https://agent2.example.com/hook";
     assert.deepEqual(await brainPut({ url: NEW }, current, true), { ok: true, stored: { ...current, url: NEW } }, "admin url-only save keeps enabled:true");
     // the save decision uses the RESULTING enabled: a partial save on an
     // enabled webhook still needs a safe url, and turning ON via enabled:true
-    // with an unsafe stored url is still refused
+    // with an unsafe stored url is still refused (admin: 400; tenant: 403 first)
     const unsafe: Stored = { enabled: false, url: "http://127.0.0.1/hook", secret: "mock-secret" };
+    const on = await brainPut({ enabled: true }, unsafe, true);
+    assert.ok(!on.ok && on.status === 400 && on.body.error === "unsafe_url", "admin: turning ON with an unsafe stored url → 400");
+    assert.deepEqual(await brainPut({ enabled: true }, unsafe, false), adminOnly(["enabled"]), "tenant: turning ON → 403");
     for (const isAdmin of TENANT_AND_ADMIN) {
-      const on = await brainPut({ enabled: true }, unsafe, isAdmin);
-      assert.ok(!on.ok && on.status === 400 && on.body.error === "unsafe_url", `${who(isAdmin)}: turning ON with an unsafe stored url → 400`);
       // absent enabled on a disabled unsafe row stays off and passes
-      assert.deepEqual(await brainPut({ secret: "x" }, unsafe, isAdmin), { ok: true, stored: { ...unsafe, secret: "x" } });
-      const stillOn = await brainPut({ secret: "x" }, { ...unsafe, enabled: true }, isAdmin);
+      assert.deepEqual(await brainPut({ secret: "mock-secret" }, unsafe, isAdmin), { ok: true, stored: unsafe });
+      const stillOn = await brainPut({ secret: "mock-secret" }, { ...unsafe, enabled: true }, isAdmin);
       assert.ok(!stillOn.ok && stillOn.status === 400, `${who(isAdmin)}: a partial save keeping an unsafe webhook ON → 400`);
     }
     assert.equal(enabledToSave(undefined, true), true);
