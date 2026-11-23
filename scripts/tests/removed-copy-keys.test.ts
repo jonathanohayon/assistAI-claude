@@ -24,6 +24,9 @@
 // features": untrue, a trial grants reception only) and the short-lived
 // Signup.freeBadgeReception. Replaced by Signup.trialBadge (reception) and
 // Signup.accountBadge (connect / sales).
+// Onboarding welcome title (23/11, VP): Onboarding.welcomeTitle ("Bienvenue.
+// {product} ouvre bientôt.", with DashboardNav.<door>). Replaced by one key per
+// door, no interpolation: Onboarding.welcomeTitleConnect / welcomeTitleSales.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -49,6 +52,7 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["DashboardCampaigns", "kicker"],
   ["Signup", "freeBadge"],
   ["Signup", "freeBadgeReception"],
+  ["Onboarding", "welcomeTitle"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];
