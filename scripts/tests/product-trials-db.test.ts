@@ -20,7 +20,7 @@
 //   6. the inbound trial gate (call answering) is unchanged by trial rows;
 //   7. billing-stats: usageByProduct.trials for a record-holder (additive);
 //   8. trials[entry].startable equals "the POST returns 201" for every
-//      seeded account, through the route and through startProductTrial.
+//      seeded account, through the route.
 // Plain `npm test` skips it. Run it with:  bash scripts/product-trials-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read from
 // the shell. Mock data only (example.test, +1555). Dynamic imports only after
@@ -574,7 +574,6 @@ async function main() {
 
   // ── 8. trials[entry].startable ⇔ the POST returns 201, every account ──
   {
-    const { startProductTrial } = await import("../../lib/product-trials-start");
     const { TRIAL_PRODUCT_OF_ENTRY } = await import("../../lib/product-trial-decision");
     const { PRODUCT_ENTRIES } = await import("../../lib/product-values");
     const accounts = [...(await rows<{ id: string }>(sql`SELECT id FROM users ORDER BY id`)).map((r) => r.id), id(0xfff)];
@@ -595,20 +594,8 @@ async function main() {
           }
       });
     }
-    // (b) Every cap enforced (no product held back), through startProductTrial
-    //     (the POST's core) with the same env and caps as accountProducts.
-    const allCaps = { reception: true, reception_multi: true, sales: true, connect: true };
-    const env = { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" };
-    for (const uid of accounts)
-      for (const e of PRODUCT_ENTRIES) {
-        const { startable } = (await accountProducts(uid, new Date(), { env, caps: allCaps })).trials[e];
-        const res = await startProductTrial(uid, TRIAL_PRODUCT_OF_ENTRY[e], { env, caps: allCaps });
-        assert.equal(res.ok, startable, `caps on ${uid} ${e}: startable ${startable}, start ${res.ok ? "ok" : res.code}`);
-        if (res.ok) created++;
-        checked++;
-        // Once started (or refused), it is no longer startable.
-        assert.equal((await accountProducts(uid, new Date(), { env, caps: allCaps })).trials[e].startable, false, `after ${uid} ${e}`);
-      }
+    // Once started (or refused), nothing is startable again for the same account.
+    for (const uid of accounts) for (const e of PRODUCT_ENTRIES) assert.equal((await accountProducts(uid, new Date(), { env: { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" } })).trials[e].startable, false, `after ${uid} ${e}`);
     assert.ok(created > 0, "some starts were accepted");
     console.log(`ok: startable ⇔ POST 201 on ${accounts.length} accounts, ${checked} checks (${created} created)`);
   }

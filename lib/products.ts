@@ -27,7 +27,7 @@ import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/l
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
 import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
 import { TRIAL_PRODUCT_OF_ENTRY, trialStartDecision, type TrialStartAccount } from "@/lib/product-trial-decision";
-import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialCaps, type TrialState } from "@/lib/product-trials";
+import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialState } from "@/lib/product-trials";
 import { loadNotifyRequested } from "@/lib/product-notify";
 import { PRODUCT_ENTRIES, type Product, type ProductEntry } from "@/lib/product-values";
 import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
@@ -159,17 +159,11 @@ export type AccountProducts = Entitlement & { trials: AccountTrialStates; notify
 
 type Env = Record<string, string | undefined>;
 
-function withStartable(
-  rows: ProductTrialRow[],
-  account: TrialStartAccount | null,
-  now: Date,
-  env: Env,
-  caps: TrialCaps,
-): AccountTrialStates {
+function withStartable(rows: ProductTrialRow[], account: TrialStartAccount | null, now: Date, env: Env): AccountTrialStates {
   const states = trialStates(rows, now);
   const out = {} as AccountTrialStates;
   for (const e of PRODUCT_ENTRIES) {
-    out[e] = { ...states[e], startable: trialStartDecision(TRIAL_PRODUCT_OF_ENTRY[e], account, env, caps).ok };
+    out[e] = { ...states[e], startable: trialStartDecision(TRIAL_PRODUCT_OF_ENTRY[e], account, env, TRIAL_CAPS_ENFORCED).ok };
   }
   return out;
 }
@@ -180,22 +174,21 @@ function withStartable(
  * target works). An ACTIVE per-product trial makes its entry entitled for
  * the trial's duration (entitledProducts activeTrials). An unknown account
  * is entitled to nothing (base null), every trial "available" and not
- * startable, no notify request. `opts` (env, caps) defaults to what the
- * trial POST reads (process.env, TRIAL_CAPS_ENFORCED).
+ * startable, no notify request. `opts.env` defaults to process.env, as the
+ * trial POST reads it; the caps are always TRIAL_CAPS_ENFORCED, as in the POST.
  */
 export async function accountProducts(
   userId: string,
   now: Date = new Date(),
-  opts: { env?: Env; caps?: TrialCaps } = {},
+  opts: { env?: Env } = {},
 ): Promise<AccountProducts> {
   const env = opts.env ?? process.env;
-  const caps = opts.caps ?? TRIAL_CAPS_ENFORCED;
   const [u] = await db.select(ACCOUNT_PRODUCTS_PICK).from(users).where(eq(users.id, userId)).limit(1);
-  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: withStartable([], null, now, env, caps), notifyRequested: [] };
+  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: withStartable([], null, now, env), notifyRequested: [] };
   const [rows, notifyRequested] = await Promise.all([loadProductTrials(userId), loadNotifyRequested(userId)]);
   return {
     ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }),
-    trials: withStartable(rows, { ...u, trialledProducts: rows.map((r) => r.product) }, now, env, caps),
+    trials: withStartable(rows, { ...u, trialledProducts: rows.map((r) => r.product) }, now, env),
     notifyRequested,
   };
 }

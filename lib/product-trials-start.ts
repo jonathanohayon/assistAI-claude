@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import { accountProductTrials, users } from "@/lib/db/schema";
 import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
 import { trialStartDecision, type TrialStartRefusal } from "@/lib/product-trial-decision";
-import { productTrialWindow, type ProductTrialRow, type TrialCaps } from "@/lib/product-trials";
+import { productTrialWindow, type ProductTrialRow } from "@/lib/product-trials";
 import type { Product } from "@/lib/product-values";
 
 type Env = Record<string, string | undefined>;
@@ -52,11 +52,10 @@ export async function insertProductTrial(userId: string, product: Product, now: 
 export async function startProductTrial(
   userId: string,
   product: Product,
-  opts: { env?: Env; now?: Date; caps?: TrialCaps } = {},
+  opts: { env?: Env; now?: Date } = {},
 ): Promise<StartTrialResult> {
   const env = opts.env ?? process.env;
   const now = opts.now ?? new Date();
-  const caps = opts.caps ?? TRIAL_CAPS_ENFORCED;
   const [u] = await db
     .select({ subscriptionPlan: users.subscriptionPlan, subscriptionStatus: users.subscriptionStatus, products: users.products })
     .from(users)
@@ -65,7 +64,7 @@ export async function startProductTrial(
   const trialled = u
     ? (await db.select({ product: accountProductTrials.product }).from(accountProductTrials).where(eq(accountProductTrials.userId, userId))).map((r) => r.product)
     : [];
-  const decision = trialStartDecision(product, u ? { ...u, trialledProducts: trialled } : null, env, caps);
+  const decision = trialStartDecision(product, u ? { ...u, trialledProducts: trialled } : null, env, TRIAL_CAPS_ENFORCED);
   if (!decision.ok) return decision;
   const row = await insertProductTrial(userId, product, now);
   return row ? { ok: true, trial: row } : { ok: false, code: "trial_used" };
