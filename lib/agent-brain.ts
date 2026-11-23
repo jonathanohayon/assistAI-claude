@@ -16,7 +16,7 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { brainAddressUsable } from "@/lib/agent-brain-guard";
+import { brainAddressUsable, normaliseAgentUrl } from "@/lib/agent-brain-guard";
 import { openSecret, sealForStorage } from "@/lib/crypto/secret-box";
 import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
 import { getSetting, setSetting } from "@/lib/settings";
@@ -136,7 +136,8 @@ export function planAgentBrainEntry(
   next: AgentBrain,
   opts: { env?: Record<string, string | undefined>; generate?: () => string } = {},
 ): BrainEntryPlan {
-  const url = next.url.trim();
+  // Same normalisation as the route (scheme + host lower case, trimmed).
+  const url = normaliseAgentUrl(next.url);
   if (next.enabled && !brainAddressUsable(url)) return { ok: false, error: "address_required" };
   const enabled = next.enabled;
   // The STORED value (plain or sealed) is what "keep the existing" keeps:
