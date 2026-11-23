@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { renewsAutomatically } from "@/lib/billing/auto-renew";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
@@ -25,7 +26,12 @@ export default async function BillingPage(props: {
   const { plan: hintedPlan, billing: hintedBilling } = await props.searchParams;
 
   const [me] = await db
-    .select({ subscriptionPlan: users.subscriptionPlan })
+    .select({
+      subscriptionPlan: users.subscriptionPlan,
+      subscriptionStatus: users.subscriptionStatus,
+      autoRenew: users.autoRenew,
+      hypToken: users.hypToken,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
@@ -40,6 +46,9 @@ export default async function BillingPage(props: {
   const hintedPlanKey =
     isValidPlanKey(hintedPlan) && canPurchasePlan(hintedPlan, currentPlanKey) ? hintedPlan : null;
   const pricing = await getPlanPricingMap();
+  // One owner for "can this account be charged again by itself?" (lib/billing).
+  // Only the boolean reaches the client, never the row.
+  const autoRenew = renewsAutomatically(me);
 
   const t = await getTranslations({ locale, namespace: "DashboardBilling" });
 
@@ -71,6 +80,7 @@ export default async function BillingPage(props: {
         hintedPlanKey={hintedPlanKey}
         initialBilling={hintedBilling === "annual" ? "annual" : "monthly"}
         email={session.user.email ?? ""}
+        autoRenew={autoRenew}
       />
     </div>
   );
