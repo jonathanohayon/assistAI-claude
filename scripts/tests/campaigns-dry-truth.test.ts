@@ -77,8 +77,8 @@ test("dispatchWording: the table (mode × tick)", () => {
     ["off", realTick, true, "launchPausedTitle", "launchOffLine", { kind: "hidden" }],
     // dry: simulation said up front; neutral line for a dry tick, alarm only with no tick
     ["dry", null, false, "launchDryTitle", "launchDryLine", { kind: "neverRan" }],
-    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", contactsDue: 3 }],
-    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", contactsDue: null }],
+    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "count", contactsDue: 3, waitingCallHours: 0 }],
+    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "plain" }],
     ["dry", dryTick, true, "launchDryTitle", "launchDryLine", { kind: "stale" }],
     ["dry", realTick, false, "launchDryTitle", "launchDryLine", { kind: "lastTick" }],
   ];
@@ -95,11 +95,11 @@ test("dispatchWording: the table (mode × tick)", () => {
 test("dry tick reader: mode word required, counts nested or flat, never invented", () => {
   assert.equal(dryTickCounts(realTick), null, "a real tick is not a dry one");
   assert.equal(dryTickCounts(null), null);
-  assert.deepEqual(dryTickCounts(dryTick), { contactsDue: 3 });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", contactsDue: 2 }), { contactsDue: 2 });
-  assert.deepEqual(dryTickCounts(dryTickNoCounts), { contactsDue: null });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: "3" } }), { contactsDue: null });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: -1 } }), { contactsDue: null });
+  assert.deepEqual(dryTickCounts(dryTick), { contactsDue: 3, skippedCallHours: 0 });
+  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", contactsDue: 2 }), { contactsDue: 2, skippedCallHours: 0 });
+  assert.deepEqual(dryTickCounts(dryTickNoCounts), { contactsDue: null, skippedCallHours: 0 });
+  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: "3" } }), { contactsDue: null, skippedCallHours: 0 });
+  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: -1 } }), { contactsDue: null, skippedCallHours: 0 });
 });
 
 test("parseDispatchMode: unknown is null, never 'on'", () => {

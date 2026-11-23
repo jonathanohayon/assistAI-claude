@@ -299,7 +299,12 @@ export function CampaignLiveConsole({
       {/* Dispatcher health — LOUD when it never ran or stopped running; a
           neutral line when it ran in test mode. Not while calls are off: the
           pause line above already says why nothing dials. */}
-      <DispatcherHealthBlock health={dispatchWording(mode, tick, tickStale).health} tick={tick} ago={ago} t={t} />
+      <DispatcherHealthBlock
+        health={dispatchWording(mode, tick, tickStale, dispatcher.blockers.includes("outside_call_window")).health}
+        tick={tick}
+        ago={ago}
+        t={t}
+      />
 
 
       {/* Blockers as plain-language chips */}
@@ -485,9 +490,20 @@ export function DispatcherHealthBlock({
   if (health.kind === "dryTick")
     return (
       <p role="status" className="text-[12px] text-[#475569]">
-        {health.contactsDue === null
-          ? t("dryTick", { ago: ago(tick.at) })
-          : t("dryTickCount", { ago: ago(tick.at), n: health.contactsDue })}
+        {health.line === "plain" ? (
+          t("dryTick", { ago: ago(tick.at) })
+        ) : health.line === "outsideCallHours" ? (
+          t("dryTickOutsideCallHours", { ago: ago(tick.at) })
+        ) : (
+          <>
+            {t("dryTickCount", { ago: ago(tick.at), n: health.contactsDue })}
+            {health.waitingCallHours > 0 && (
+              <span className="ms-2 inline-block rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-medium text-[#334155]">
+                {t("dryTickWaitingCallHours", { m: health.waitingCallHours })}
+              </span>
+            )}
+          </>
+        )}
       </p>
     );
   return (

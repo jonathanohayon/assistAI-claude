@@ -296,14 +296,21 @@ export function parseDispatchMode(v: unknown): DispatchMode | null {
  * What a dry tick carries. The dispatcher writes `mode: "dry"` and, when it
  * has them, the would-dial counts (under `wouldDial`, or flat on the tick).
  * Read defensively: an older tick has neither. null = not a dry tick.
+ * `contactsDue` is counted AFTER the call-hours filter; contacts held back by
+ * call hours are in `skippedCallHours` (0 when absent), never in `contactsDue`.
  */
-export function dryTickCounts(tick: unknown): { contactsDue: number | null } | null {
+export function dryTickCounts(
+  tick: unknown,
+): { contactsDue: number | null; skippedCallHours: number } | null {
   if (!tick || typeof tick !== "object") return null;
   const t = tick as { mode?: unknown; wouldDial?: unknown; contactsDue?: unknown };
   if (t.mode !== "dry") return null;
-  const src = t.wouldDial && typeof t.wouldDial === "object" ? (t.wouldDial as { contactsDue?: unknown }) : t;
-  const n = src.contactsDue;
-  return { contactsDue: typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : null };
+  const src = (t.wouldDial && typeof t.wouldDial === "object" ? t.wouldDial : t) as {
+    contactsDue?: unknown;
+    skippedCallHours?: unknown;
+  };
+  const count = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : null);
+  return { contactsDue: count(src.contactsDue), skippedCallHours: count(src.skippedCallHours) ?? 0 };
 }
 
 export type DispatcherHealth =
@@ -313,8 +320,19 @@ export type DispatcherHealth =
   | { kind: "neverRan" }
   /** Last tick older than the stale limit: the amber alarm. */
   | { kind: "stale" }
-  /** The dispatcher ran in test mode: a neutral line, the count only when present. */
-  | { kind: "dryTick"; contactsDue: number | null }
+  /**
+   * The dispatcher ran in test mode: a neutral line. ONE source wins, so the
+   * line never shows a count next to the "outside call hours" chip:
+   *   - "plain": an older tick without counts, no number invented;
+   *   - "count": what would have been dialled, plus, as a SEPARATE figure,
+   *     the contacts waiting for call hours (0 = not shown);
+   *   - "outsideCallHours": nothing would be dialled because of call hours,
+   *     or the live snapshot says the campaign is outside its window NOW
+   *     (the chip wins over an older tick's count).
+   */
+  | { kind: "dryTick"; line: "plain" }
+  | { kind: "dryTick"; line: "count"; contactsDue: number; waitingCallHours: number }
+  | { kind: "dryTick"; line: "outsideCallHours" }
   /** The dispatcher ran for real: today's "last ran" line. */
   | { kind: "lastTick" };
 
@@ -331,12 +349,14 @@ export interface DispatchWording {
  * The ONE wording for the platform call switch, from what is known: the mode
  * (null = not known yet: today's wording, no claim either way) and the last
  * dispatcher tick. `stale` = the tick is older than the console's limit (the
- * caller owns the clock).
+ * caller owns the clock). `outsideWindowNow` = the live snapshot's own blocker
+ * says the campaign is outside its call window now (the chip on screen).
  */
 export function dispatchWording(
   mode: unknown,
   tick: { at: string } | null | undefined,
   stale = false,
+  outsideWindowNow = false,
 ): DispatchWording {
   const known = parseDispatchMode(mode);
   const heading = launchHeading(known);
@@ -347,7 +367,18 @@ export function dispatchWording(
   else if (stale) health = { kind: "stale" };
   else {
     const dry = dryTickCounts(tick);
-    health = dry ? { kind: "dryTick", contactsDue: dry.contactsDue } : { kind: "lastTick" };
+    health = dry ? dryTickHealth(dry, outsideWindowNow) : { kind: "lastTick" };
   }
   return { heading, launchLine, health };
+}
+
+/** The dry line, one source winning: the chip (now) over the tick, then the tick's own split. */
+function dryTickHealth(
+  dry: { contactsDue: number | null; skippedCallHours: number },
+  outsideWindowNow: boolean,
+): DispatcherHealth {
+  if (outsideWindowNow) return { kind: "dryTick", line: "outsideCallHours" };
+  if (dry.contactsDue === null) return { kind: "dryTick", line: "plain" };
+  if (dry.contactsDue === 0 && dry.skippedCallHours > 0) return { kind: "dryTick", line: "outsideCallHours" };
+  return { kind: "dryTick", line: "count", contactsDue: dry.contactsDue, waitingCallHours: dry.skippedCallHours };
 }
