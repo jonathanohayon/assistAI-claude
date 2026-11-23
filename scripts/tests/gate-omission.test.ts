@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { inheritAdminGlobalsWrite } from "../../lib/admin-gates";
 import { planCampaignPatch } from "../../lib/campaigns/patch-plan";
 import { createGoalPreset, patchPresetGateInput, presetGateRefusal } from "../../lib/campaigns/preset-gate";
-import { nextBrainSecret } from "../../lib/agent-brain";
+import { planAgentBrainEntry } from "../../lib/agent-brain";
 import { agentBrainSaveDecision, enabledToSave, urlToSave } from "../../lib/agent-brain-guard";
 import type { Resolver } from "../../lib/net/safe-url";
 import type { Persona } from "../../lib/persona/contract";
@@ -478,7 +478,7 @@ pending.push(
 
 // ════════════════════════════════════════════════════════════════════════
 // Agent brain: lib/agent-brain-guard.ts urlToSave + enabledToSave + agentBrainSaveDecision
-// (#253/#254) and lib/agent-brain.ts nextBrainSecret, composed EXACTLY as
+// (#253/#254) and lib/agent-brain.ts planAgentBrainEntry, composed EXACTLY as
 // PUT /api/dashboard/agent-brain does (source asserted below).
 // Cases 1–3: safe-url.test.ts, agent-brain-secret.test.ts.
 // ════════════════════════════════════════════════════════════════════════
@@ -491,10 +491,14 @@ async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin:
   const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin, check });
   if (!decision.ok) return decision;
   // setAgentBrain(userId, { enabled: wantsEnabled, url, ...(typeof body.secret === "string" ? { secret } : {}) })
-  const u = url.trim();
-  const enabled = wantsEnabled && u.startsWith("http");
-  const secret = nextBrainSecret({ existing: current.secret, provided: typeof body.secret === "string" ? body.secret : undefined, enabled });
-  return { ok: true as const, stored: { enabled, url: u, ...(secret ? { secret } : {}) } };
+  const plan = planAgentBrainEntry(
+    current,
+    { enabled: wantsEnabled, url, ...(typeof body.secret === "string" ? { secret: body.secret } : {}) },
+    { env: {}, generate: () => "generated-mock" },
+  );
+  // setAgentBrain throws on a refused plan; the route answers 400 address_required.
+  if (!plan.ok) return { ok: false as const, status: 400 as const, body: { error: plan.error } };
+  return { ok: true as const, stored: plan.entry };
 }
 {
   const route = src("app/api/dashboard/agent-brain/route.ts");
@@ -504,8 +508,10 @@ async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin:
   assert.match(route, /agentBrainSaveDecision\(\{ currentUrl: current\.url, url, wantsEnabled, isAdmin \}\)/);
   assert.match(route, /enabled: wantsEnabled,\s*url,\s*\.\.\.\(typeof body\.secret === "string" \? \{ secret: body\.secret \} : \{\}\),/);
   const lib = src("lib/agent-brain.ts");
-  assert.match(lib, /const enabled = next\.enabled && url\.startsWith\("http"\);/);
-  assert.match(lib, /provided: next\.secret,/);
+  assert.match(lib, /const plan = planAgentBrainEntry\(map\[userId\], next\);\s*if \(!plan\.ok\) throw new AgentBrainAddressRequiredError\(\);\s*map\[userId\] = plan\.entry;/);
+  assert.match(lib, /if \(next\.enabled && !brainAddressUsable\(url\)\) return \{ ok: false, error: "address_required" \};/);
+  // the silent downgrade is gone
+  assert.doesNotMatch(lib, /next\.enabled && url\.startsWith/);
 }
 pending.push(
   (async () => {
@@ -523,8 +529,8 @@ pending.push(
     }
     // INTENDED clear: an admin's explicit url "" clears the url (and so disables the webhook)
     assert.deepEqual(await brainPut({ enabled: true, url: "" }, current, true), {
-      ok: false, status: 400, body: { error: "unsafe_url", message: (await agentBrainSaveDecision({ currentUrl: "", url: "", wantsEnabled: true, isAdmin: true, check }) as { body: { message: string } }).body.message },
-    }, "admin: enabling with url \"\" is refused");
+      ok: false, status: 400, body: { error: "address_required" },
+    }, "admin: enabling with url \"\" is refused (address_required)");
     assert.deepEqual(await brainPut({ enabled: false, url: "" }, current, true), { ok: true, stored: { enabled: false, url: "", secret: "mock-secret" } });
 
     // BRAIN-ENABLED-OMITTED (fixed): a PUT without `enabled` (an API caller's

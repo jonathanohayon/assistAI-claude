@@ -25,7 +25,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway campaigns-plan-gate
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 
 echo "== 1. origin/main handlers"
 mkdir -p "$MAIN"
@@ -34,8 +34,8 @@ ln -s "$PWD/node_modules" "$MAIN/node_modules"
 mkdir -p "$MAIN/scripts/tests/fixtures"
 cp -R scripts/tests/fixtures/campaigns-plan-gate "$MAIN/scripts/tests/fixtures/"
 cp "$TEST" "$MAIN/scripts/tests/"
-(cd "$MAIN" && env -i PATH="$PATH" HOME="$HOME" CAMPGATE_DB_URL="$URL" CAMPGATE_PHASE=main \
+(cd "$MAIN" && env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAMPGATE_DB_URL="$URL" CAMPGATE_PHASE=main \
   CAMPGATE_SNAPSHOT="$SNAP" npx tsx --import "./$HOOKS" "$TEST")
 echo "== 2. this branch"
-env -i PATH="$PATH" HOME="$HOME" CAMPGATE_DB_URL="$URL" CAMPGATE_PHASE=branch \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAMPGATE_DB_URL="$URL" CAMPGATE_PHASE=branch \
   CAMPGATE_SNAPSHOT="$SNAP" npx tsx --import "./$HOOKS" "$TEST"

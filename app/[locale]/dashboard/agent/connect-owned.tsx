@@ -11,6 +11,8 @@ export type AdminBrainCopy = { label: string; title: string; desc: ReactNode };
 
 export type ConnectOwnedViewProps = {
   title: string;
+  /** The active-trial line (F4), rendered under the title; null when no trial is running. */
+  trialNote?: ReactNode;
   isAdmin: boolean;
   /** CLIENT_AGENT is on for this viewer (decided by the page on the server). */
   showClientAgent: boolean;
@@ -27,10 +29,11 @@ export type ConnectOwnedViewProps = {
  * never reference it, and its code is a dynamic chunk (admin-brain-lazy.tsx)
  * that a tenant's browser never fetches.
  */
-export function ConnectOwnedView({ title, isAdmin, showClientAgent, adminBrain }: ConnectOwnedViewProps) {
+export function ConnectOwnedView({ title, trialNote, isAdmin, showClientAgent, adminBrain }: ConnectOwnedViewProps) {
   return (
     <section className="mb-8 space-y-5">
       <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{title}</h1>
+      {trialNote}
       {showClientAgent && <ClientAgentBrick />}
       <AgentUrlCard isAdmin={isAdmin} />
       {adminBrain && <AdminBrainCard {...adminBrain} />}

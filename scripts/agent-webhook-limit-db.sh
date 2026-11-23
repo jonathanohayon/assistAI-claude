@@ -25,6 +25,6 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$MAIN_DIR"'
 pg_start_throwaway agent-webhook-limit
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 AGENT_WEBHOOK_LIMIT_DB_URL="$URL" AGENT_WEBHOOK_LIMIT_MAIN_DIR="$PWD/$MAIN_DIR" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 AGENT_WEBHOOK_LIMIT_DB_URL="$URL" AGENT_WEBHOOK_LIMIT_MAIN_DIR="$PWD/$MAIN_DIR" \
   npx tsx scripts/tests/agent-webhook-limit-db.test.ts

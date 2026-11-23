@@ -39,12 +39,12 @@ git show "${BEFORE_REF}:app/api/calls/end/route.ts" > "$MAIN_ROUTE"
 PREV_REF="${CLIENT_CONFIRM_PREV_REF:-e782b813e666221329fd539e41764694743986da}"
 git show "${PREV_REF}:app/api/calls/end/route.ts" > "$PREV_END"
 git show "${PREV_REF}:app/api/calendar/cancel/route.ts" > "$PREV_CANCEL"
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # The route's owner recap wrapper calls next-intl's getTranslations, which
 # only runs inside Next: the shared test tsconfig maps "next-intl/server" to a
 # stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
 source scripts/lib/next-intl-stub-tsconfig.sh
 write_next_intl_stub_tsconfig
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" CLIENT_CONFIRM_DB_URL="$URL" CLIENT_CONFIRM_MAIN_ROUTE="$PWD/$MAIN_ROUTE" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" CLIENT_CONFIRM_DB_URL="$URL" CLIENT_CONFIRM_MAIN_ROUTE="$PWD/$MAIN_ROUTE" \
   CLIENT_CONFIRM_PREV_END_ROUTE="$PWD/$PREV_END" CLIENT_CONFIRM_PREV_CANCEL_ROUTE="$PWD/$PREV_CANCEL" \
   npx tsx scripts/tests/client-confirm-db.test.ts

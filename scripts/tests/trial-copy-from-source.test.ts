@@ -15,6 +15,8 @@ import {
   TRIAL_WARNING_BEFORE_END_MS,
 } from "@/lib/trial";
 import { TRIAL_COPY_VALUES, TRIAL_END_COPY_VALUES } from "@/lib/trial-copy";
+import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "@/lib/product-trials";
+import { PRODUCT_TRIAL_TERMS } from "@/lib/product-gates";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const LOCALES = ["fr", "en", "he"] as const;
@@ -180,5 +182,43 @@ assert.match(warning, /t\("phoneLineWithPhone", \{ \.\.\.copy, phone: ltrIsolate
 assert.match(paused, /t\("phoneLineWithPhone", \{ \.\.\.TRIAL_END_COPY_VALUES, phone: ltrIsolate\(opts\.phoneNumber\) \}\)/);
 assert.match(paused, /t\("phoneLineGeneric", TRIAL_END_COPY_VALUES\)/);
 assert.match(src("app/[locale]/dashboard/layout.tsx"), /t\("trialExpired", TRIAL_END_COPY_VALUES\)/);
+
+// 7. The per-product trial copy (F4, "Essayer gratuitement"): its figures
+// come from lib/product-trials.ts through {days}/{minutes}; the other trial
+// lines carry no figure at all.
+assert.deepEqual(PRODUCT_TRIAL_TERMS, { days: PRODUCT_TRIAL_DAYS, minutes: PRODUCT_TRIAL_MINUTES });
+const PRODUCT_TRIAL_KEYS = [
+  "DashboardNav.previewTrialTerms",
+  "DashboardNav.previewTrialActive",
+  "DashboardNav.previewTrialUsed",
+  "DashboardNav.previewTrialErrorUsed",
+  "DashboardNav.previewTrialErrorUnavailable",
+  "DashboardNav.previewTrialError",
+];
+for (const l of LOCALES) {
+  const flat = flatten(load(l));
+  for (const key of [...PRODUCT_TRIAL_KEYS, "DashboardNav.previewOffer", "DashboardNav.previewTry"]) {
+    const msg = flat[key];
+    assert.ok(typeof msg === "string" && msg.trim() !== "", `${l} ${key} exists`);
+    assert.doesNotMatch(literalText(msg), /\d/, `${l} ${key}: hard-coded figure in "${msg}"`);
+    assert.doesNotMatch(literalText(msg), NUMBER_WORDS, `${l} ${key}: figure written as a word in "${msg}"`);
+  }
+  const terms = flat["DashboardNav.previewTrialTerms"];
+  assert.match(terms, /\{days\b/, `${l} previewTrialTerms takes {days}`);
+  assert.match(terms, /\{minutes\b/, `${l} previewTrialTerms takes {minutes}`);
+  const out = String(new IntlMessageFormat(terms, l).format(PRODUCT_TRIAL_TERMS));
+  assert.match(out, new RegExp(`(^|\\D)${PRODUCT_TRIAL_DAYS}(\\D|$)`), `${l} renders the source days: ${out}`);
+  assert.match(out, new RegExp(`(^|\\D)${PRODUCT_TRIAL_MINUTES}(\\D|$)`), `${l} renders the source minutes: ${out}`);
+  // Another value renders another figure: the figure is the argument.
+  const other = String(new IntlMessageFormat(terms, l).format({ days: 9, minutes: 45 }));
+  assert.match(other, /(^|\D)9(\D|$)/, `${l} follows {days}: ${other}`);
+  assert.match(other, /(^|\D)45(\D|$)/, `${l} follows {minutes}: ${other}`);
+  assert.doesNotMatch(other, new RegExp(`(^|\\D)(${PRODUCT_TRIAL_DAYS}|${PRODUCT_TRIAL_MINUTES})(\\D|$)`), `${l} keeps no literal figure: ${other}`);
+  assert.match(flat["DashboardNav.previewTrialActive"], /\{date\}/, `${l} previewTrialActive takes {date}`);
+}
+// The header renders the terms from what the server page passes (lib/product-gates.ts).
+assert.match(src("components/dashboard/ProductPreviewHeader.tsx"), /t\("previewTrialTerms", terms\)/);
+assert.match(src("lib/product-gates.ts"), /trialTerms: PRODUCT_TRIAL_TERMS,/);
+assert.match(src("lib/product-gates.ts"), /days: PRODUCT_TRIAL_DAYS,\s*minutes: PRODUCT_TRIAL_MINUTES,/, "the terms are the lib/product-trials.ts constants, not copies");
 
 console.log(`trial-copy-from-source: ok (${scanned} trial messages scanned)`);

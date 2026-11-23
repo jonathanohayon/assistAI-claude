@@ -22,15 +22,15 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway campaign-capture
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 
 echo "== 1. origin/main handler"
 mkdir -p "$MAIN"
 git archive origin/main | tar -x -C "$MAIN"
 ln -s "$PWD/node_modules" "$MAIN/node_modules"
 cp scripts/tests/campaign-capture-db.test.ts "$MAIN/scripts/tests/"
-(cd "$MAIN" && env -i PATH="$PATH" HOME="$HOME" CAPTURE_DB_TEST_URL="$URL" CAPTURE_DB_PHASE=main \
+(cd "$MAIN" && env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAPTURE_DB_TEST_URL="$URL" CAPTURE_DB_PHASE=main \
   CAPTURE_DB_SNAPSHOT="$SNAP" npx tsx scripts/tests/campaign-capture-db.test.ts)
 echo "== 2. this branch"
-env -i PATH="$PATH" HOME="$HOME" CAPTURE_DB_TEST_URL="$URL" CAPTURE_DB_PHASE=branch \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAPTURE_DB_TEST_URL="$URL" CAPTURE_DB_PHASE=branch \
   CAPTURE_DB_SNAPSHOT="$SNAP" npx tsx scripts/tests/campaign-capture-db.test.ts

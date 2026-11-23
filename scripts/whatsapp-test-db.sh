@@ -16,5 +16,5 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
 pg_start_throwaway whatsapp-test
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
-env -i PATH="$PATH" HOME="$HOME" WHATSAPP_TEST_DB_URL="$URL" npx tsx scripts/tests/whatsapp-test-db.test.ts
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" WHATSAPP_TEST_DB_URL="$URL" npx tsx scripts/tests/whatsapp-test-db.test.ts

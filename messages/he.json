@@ -736,7 +736,14 @@
     "previewSoon": "בקרוב.",
     "previewNotify": "עדכנו אותי",
     "previewNotified": "רשמנו, נעדכן אתכם.",
-    "previewNotifyError": "לא הצלחנו לשמור את הבקשה. נסו שוב."
+    "previewNotifyError": "לא הצלחנו לשמור את הבקשה. נסו שוב.",
+    "previewTrialTerms": "{days, plural, one {יום} two {יומיים} other {# ימים}} ו-{minutes, plural, one {דקה} other {# דקות}} שיחה עלינו, בלי כרטיס אשראי, פעם אחת לכל מוצר.",
+    "previewTrialActive": "תקופת הניסיון פעילה עד {date}.",
+    "previewTrialUsed": "תקופת הניסיון שלכם הסתיימה.",
+    "previewOffer": "לצפייה בהצעה",
+    "previewTrialErrorUsed": "כבר השתמשתם בתקופת הניסיון של {product}. צפו בהצעה כדי להמשיך.",
+    "previewTrialErrorUnavailable": "תקופת הניסיון של {product} אינה זמינה כרגע. נסו שוב מאוחר יותר.",
+    "previewTrialError": "לא הצלחנו להתחיל את תקופת הניסיון של {product}. נסו שוב."
   },
   "DashboardCrm": {
     "header": "מרחב לקוחות",

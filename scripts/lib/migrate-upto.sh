@@ -24,7 +24,7 @@ migrate_upto() {
     for (const e of entries) fs.copyFileSync(`drizzle/${e.tag}.sql`, `${process.env.OUT}/${e.tag}.sql`);
     fs.writeFileSync(`${process.env.OUT}/meta/_journal.json`, JSON.stringify({ ...j, entries }, null, 2));
   '
-  (cd "$work" && env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$url" node "$root/scripts/migrate.mjs" >/dev/null)
+  (cd "$work" && env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$url" node "$root/scripts/migrate.mjs" >/dev/null)
 }
 
 migration_sorts_after_all_before() {

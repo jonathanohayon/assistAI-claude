@@ -5,6 +5,7 @@ import NextLink from "next/link";
 
 import { auth } from "@/auth";
 import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeader";
+import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { ConnectPreview } from "@/components/preview/ConnectPreview";
 import { Link } from "@/i18n/navigation";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
@@ -57,12 +58,12 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
 
-  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const { menu, notifyRequested, trials, trialTerms } = await loadProductPage(session.user.id);
   const state = menu.connect;
   if (state.state === "preview") {
     return (
       <main className={MAIN}>
-        <ProductPreviewHeader entry="connect" cta={state.cta} notifyRequested={notifyRequested.includes("connect")} />
+        <ProductPreviewHeader entry="connect" cta={state.cta} notifyRequested={notifyRequested.includes("connect")} trial={trials.connect} trialTerms={trialTerms} />
         <ConnectPreview />
       </main>
     );
@@ -76,6 +77,7 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
     <main className={MAIN}>
       <ConnectOwnedView
         title={t("connect")}
+        trialNote={<ProductTrialNote trial={trials.connect} inline />}
         isAdmin={isAdmin}
         showClientAgent={clientAgentEnabled(clientAgentMode(), isAdmin)}
         adminBrain={

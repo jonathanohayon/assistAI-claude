@@ -19,5 +19,5 @@ stop() { pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; }
 pg_on_exit 'stop; rm -rf "$TMP"'
 pg_start_throwaway campaign-detail-extracted
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
-env -i PATH="$PATH" HOME="$HOME" CAMPAIGN_DETAIL_TEST_DATABASE_URL="$URL" npx tsx scripts/tests/campaign-detail-extracted.test.ts
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" CAMPAIGN_DETAIL_TEST_DATABASE_URL="$URL" npx tsx scripts/tests/campaign-detail-extracted.test.ts

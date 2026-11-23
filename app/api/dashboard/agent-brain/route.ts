@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
-import { getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
+import { AgentBrainAddressRequiredError, getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
 import { sealedSecretRefusal } from "@/lib/crypto/secret-box";
 import { agentBrainSaveDecision, brainView, enabledToSave, urlToSave } from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
@@ -15,7 +15,10 @@ import { logEvent } from "@/lib/logger";
  *
  * SSRF guard (lib/agent-brain-guard.ts): a new or changed `url` is admin-only
  * (403 admin_only { fields: ["url"] }); a url saved or enabled must pass
- * checkAgentUrl (400 unsafe_url + one plain message). `urlEditable` tells the
+ * checkAgentUrl (400 unsafe_url + one plain message). Enabling with no address
+ * at all → 400 address_required (no message), before the url check; the
+ * store never silently stores enabled:false for an enabled:true request.
+ * `urlEditable` tells the
  * screen whether this viewer may change the url.
  */
 
@@ -64,11 +67,21 @@ export async function PUT(request: Request) {
     return NextResponse.json(decision.body, { status: decision.status });
   }
 
-  const brain = await setAgentBrain(session.user.id, {
-    enabled: wantsEnabled,
-    url,
-    ...(typeof body.secret === "string" ? { secret: body.secret } : {}),
-  });
+  let brain;
+  try {
+    brain = await setAgentBrain(session.user.id, {
+      enabled: wantsEnabled,
+      url,
+      ...(typeof body.secret === "string" ? { secret: body.secret } : {}),
+    });
+  } catch (e) {
+    // Unreachable after agentBrainSaveDecision; kept so the store's refusal
+    // can never surface as a 500 (nothing was written).
+    if (e instanceof AgentBrainAddressRequiredError) {
+      return NextResponse.json({ error: "address_required" }, { status: 400 });
+    }
+    throw e;
+  }
 
   await logEvent({
     source: "tenant",

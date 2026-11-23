@@ -30,7 +30,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway account-door
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+CLEAN=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 
 # ── 1. Migration 0054 writes no data ────────────────────────────────────

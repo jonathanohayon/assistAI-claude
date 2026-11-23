@@ -7,8 +7,10 @@
  *
  * Two blocks (products, shared), computed on the SERVER (lib/dashboard-nav.ts
  * + lib/product-menu.ts): this component only renders them and marks the
- * active entry. A preview product carries a small state label ("Bientôt" /
- * "Essai gratuit"); it still links to its page, whose own server gate decides.
+ * active entry. A preview product may carry a small state label
+ * (item.badge, lib/trial-cta.ts navBadge, the header's own decision):
+ * "Bientôt", or "Essai gratuit" only where the trial is startable; it still
+ * links to its page, whose own server gate decides.
  *
  * From lg: a sticky column. Below lg: a "Menu" button opening a drawer
  * (dialog, focus trapped, Esc closes, focus back on the button).
@@ -120,18 +122,18 @@ function NavList({
                     <span data-nav-label="" className="min-w-0 break-words">
                       {t(item.labelKey)}
                     </span>
-                    {item.preview && (
+                    {item.badge && (
                       <span
                         data-nav-badge=""
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           isActive
                             ? "bg-white/20 text-white"
-                            : item.preview === "try"
+                            : item.badge === "try"
                               ? "bg-[#be185d]/10 text-[#9d174d]"
                               : "bg-[#f1f5f9] text-[#475569]"
                         }`}
                       >
-                        {t(item.preview === "try" ? "stateTry" : "stateSoon")}
+                        {t(item.badge === "try" ? "stateTry" : "stateSoon")}
                       </span>
                     )}
                   </span>

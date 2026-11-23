@@ -16,4 +16,4 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
 pg_start_throwaway migrate-startup
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" MIGRATE_STARTUP_TEST_DATABASE_URL="$URL" npx tsx scripts/tests/migrate-startup.test.ts
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" MIGRATE_STARTUP_TEST_DATABASE_URL="$URL" npx tsx scripts/tests/migrate-startup.test.ts
