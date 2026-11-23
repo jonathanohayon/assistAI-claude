@@ -21,4 +21,25 @@ export interface DryRunCounts {
   skippedCallHours: number;
   /** Due contacts of campaigns already at their concurrency. */
   skippedConcurrency: number;
+  /**
+   * Per running campaign with at least one raw due contact: the same rule,
+   * that campaign only. An absent id means 0 / 0 / 0. The tick is GLOBAL
+   * (every tenant): never serve this map as stored to a tenant, only its own
+   * entry (lib/campaigns/live.ts tickForViewer).
+   */
+  byCampaign?: Record<string, DryRunCampaignCounts>;
+}
+
+export interface DryRunCampaignCounts {
+  /** What it would dial now: in hours, its free slots, the global limit. */
+  due: number;
+  /** Its due contacts held back because it is outside its call hours (0 in hours). */
+  heldByHours: number;
+  /** Its due contacts beyond its free slots (in hours only). */
+  heldByConcurrency: number;
+  /**
+   * Set only on an entry a campaign START merged into the cron's tick (its
+   * own instant; the tick's `at` stays the cron's). Absent = from the tick.
+   */
+  at?: string;
 }
