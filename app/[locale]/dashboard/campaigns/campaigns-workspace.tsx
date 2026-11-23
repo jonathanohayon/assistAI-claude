@@ -25,7 +25,7 @@ import type {
   CampaignDraft,
   CampaignListItem,
 } from "@/lib/campaigns/types";
-import type { DispatchMode } from "@/lib/campaigns/live-view";
+import { parseDispatchMode, type DispatchMode } from "@/lib/campaigns/live-view";
 import type { OutboundAgentListItem } from "@/lib/outbound-agents/types";
 
 import { CampaignAnalytics } from "./campaign-analytics";
@@ -125,9 +125,15 @@ export function CampaignsWorkspace({
     emptyDraft(t("newCampaign")),
   );
   const [activeStatus, setActiveStatus] = useState<string>("draft");
-  // Platform call switch (platform-wide, not per campaign), as the live
-  // console or a start last reported it; null until one of them says.
+  // Platform call switch (platform-wide, not per campaign): seeded by the
+  // list GET, then as the live console or a start last reported it; null
+  // (unknown, today's wording) until one of them says.
   const [dispatchMode, setDispatchMode] = useState<DispatchMode | null>(null);
+  // The list GET's word, read optionally: missing or unknown keeps what we have.
+  const seedDispatchMode = useCallback((raw: unknown) => {
+    const m = parseDispatchMode(raw);
+    if (m) setDispatchMode(m);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   // Bumped by each save refused for an unlabeled capture row: the editor marks
@@ -182,15 +188,16 @@ export function CampaignsWorkspace({
     try {
       const res = await dataFetch(`/api/dashboard/campaigns${qs}`);
       if (!res.ok) throw new Error("load");
-      const data = (await res.json()) as { campaigns: CampaignListItem[] };
+      const data = (await res.json()) as { campaigns: CampaignListItem[]; dispatchMode?: unknown };
       setList(data.campaigns ?? []);
+      seedDispatchMode(data.dispatchMode);
       setError(null);
     } catch {
       setError(t("loadError"));
     } finally {
       setLoading(false);
     }
-  }, [qs, t, dataFetch]);
+  }, [qs, t, dataFetch, seedDispatchMode]);
 
   // Charge la liste + les numéros caller-id à l'ouverture. Fetches inline en
   // .then (setState seulement dans les callbacks async, gardés par `cancelled`)
@@ -201,9 +208,10 @@ export function CampaignsWorkspace({
     let cancelled = false;
     dataFetch(`/api/dashboard/campaigns${qs}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("load"))))
-      .then((data: { campaigns?: CampaignListItem[] }) => {
+      .then((data: { campaigns?: CampaignListItem[]; dispatchMode?: unknown }) => {
         if (cancelled) return;
         setList(data.campaigns ?? []);
+        seedDispatchMode(data.dispatchMode);
         setError(null);
         setLoading(false);
       })
@@ -237,7 +245,7 @@ export function CampaignsWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [open, qs, t, dataFetch]);
+  }, [open, qs, t, dataFetch, seedDispatchMode]);
 
   const openNew = () => {
     setDraft(emptyDraft(t("newCampaign")));
