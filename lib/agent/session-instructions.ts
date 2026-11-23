@@ -8,7 +8,8 @@ import { renderCapabilitiesDirective } from "@/lib/capabilities";
 import { buildCampaignInstructions } from "@/lib/campaigns/prompt";
 import { knowledgeFromInbound } from "@/lib/knowledge/adapters";
 import { inboundInstructionsBlock, inboundKnowledgeBlock } from "@/lib/knowledge/render";
-import { effectiveSpokenLanguages, inboundLanguageDirective, withOutboundLanguages } from "@/lib/persona/languages";
+import { effectiveSpokenLanguages, inboundLanguageDirective, lockedLanguage, withOutboundLanguages } from "@/lib/persona/languages";
+import { effectiveVoiceProfile } from "@/lib/voice-profile";
 import { withOutboundDisclosureDirective, type OutboundDisclosure } from "@/lib/persona/outbound-disclosure";
 
 export const BLOCK_SEPARATOR = "\n\n──────────────────────────────────────────\n\n";
@@ -33,6 +34,12 @@ export interface InboundInstructionsInput {
     business: unknown;
     instructions: string | null;
     knowledge: unknown;
+    /**
+     * agent_configs.voice_profile: the column the served voiceProfile is
+     * built from (servedInboundVoice → toEngineSettings), so the lock read
+     * here is the one the worker receives.
+     */
+    voiceProfile: unknown;
   };
   planKey: string;
   directives: InboundDirectives;
@@ -69,7 +76,13 @@ export function inboundSessionSections(input: InboundInstructionsInput): Inbound
       persona: inboundInstructionsBlock(knowledge.agent),
       knowledge: inboundKnowledgeBlock(knowledge),
       // Spoken languages (Persona P4): empty list = today's text.
-      language: inboundLanguageDirective(primary, effectiveSpokenLanguages(config.personaConfig)),
+      // Voice lock on (brick V): ONE rule, the locked language, the same one
+      // the worker's "Always answer in X" line names. Lock off = unchanged.
+      language: inboundLanguageDirective(
+        primary,
+        effectiveSpokenLanguages(config.personaConfig),
+        lockedLanguage(effectiveVoiceProfile(config.voiceProfile), config.primaryLanguage),
+      ),
       admin_global: globalInstructions
         ? `RÈGLES TRANSVERSES ADDITIONNELLES (à appliquer EN COMPLÉMENT du persona, jamais à sa place) :\n\n${globalInstructions}`
         : "",

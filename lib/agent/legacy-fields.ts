@@ -8,7 +8,7 @@ import { inboundInstructionsBlock, inboundKnowledgeBlock } from "@/lib/knowledge
 import { outboundKnowledgeText } from "@/lib/knowledge/outbound-sheet";
 import type { CompanySheet } from "@/lib/knowledge/contract";
 import { personaToInbound, personaToOutbound } from "@/lib/persona/engine";
-import { inboundLanguageDirective } from "@/lib/persona/languages";
+import { inboundLanguageDirective, lockedLanguage } from "@/lib/persona/languages";
 import { outboundGreetingWithDisclosure } from "@/lib/persona/outbound-disclosure";
 import { toEngineSettings } from "@/lib/voice/engine";
 
@@ -41,7 +41,14 @@ export function receptionistBlocks(r: ResolvedCall) {
   return {
     knowledge: inboundKnowledgeBlock(sheetAsBusiness),
     persona: inboundInstructionsBlock(agent.knowledge),
-    language: inboundLanguageDirective(agent.persona.primaryLanguage, agent.persona.languages),
+    language: inboundLanguageDirective(
+      agent.persona.primaryLanguage,
+      agent.persona.languages,
+      lockedLanguage(
+        { languageLock: agent.voice.languageLock, languageHint: agent.voice.advanced.languageHint },
+        agent.persona.primaryLanguage,
+      ),
+    ),
   };
 }
 
