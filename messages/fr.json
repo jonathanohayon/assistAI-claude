@@ -734,6 +734,7 @@
     "previewBadge": "Aperçu",
     "previewNote": "Données d'exemple : rien n'est enregistré ni envoyé.",
     "previewSoon": "Bientôt disponible.",
+    "connectAdminClosed": "Admin : la carte « Votre agent IA » s'affiche quand le produit est ouvert pour ce compte.",
     "previewNotify": "Prévenez-moi",
     "previewNotified": "C'est noté, nous vous préviendrons.",
     "previewNotifyError": "Votre demande n'a pas pu être enregistrée. Réessayez.",

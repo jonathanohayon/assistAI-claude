@@ -87,13 +87,13 @@ for (const l of LOCALES) {
 {
   const view = code("app/[locale]/dashboard/agent/connect-owned.tsx");
   assert.doesNotMatch(view, /isAdmin|adminBrain|AdminBrain|AgentUrl|agent-url/);
-  assert.match(view, /\{trialNote\}\s*\{showClientAgent && <ClientAgentBrick \/>\}\s*<\/section>/, "title, trial note, brick: in this order, last");
+  assert.match(view, /\{trialNote\}\s*\{showClientAgent && <ClientAgentBrick asUserId=\{asUserId\} \/>\}\s*<\/section>/, "title, trial note, brick: in this order, last");
   const page = code("app/[locale]/dashboard/agent/page.tsx");
   assert.doesNotMatch(page, /AgentBrain|tBrain|adminBrain|AgentUrl|myAgentLink/);
   assert.match(page, /trialNote=\{<ProductTrialNote trial=\{trials\.connect\} inline \/>\}/, "the trial note (F4) is kept");
-  // isAdmin stays only for the brick's CLIENT_AGENT decision.
-  assert.equal((page.match(/\bisAdmin\b/g) ?? []).length, 2, "isAdmin: declared once, read once");
-  assert.match(page, /showClientAgent=\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\}/);
+  // isAdmin feeds only the ONE decision (lib/connect-page-view.ts, pinned by connect-page-view.test.ts).
+  assert.equal((page.match(/\bisAdmin\b/g) ?? []).length, 3, "isAdmin: declared once, read by the switch and the decision");
+  assert.match(page, /showClientAgent: clientAgentEnabled\(clientAgentMode\(\), isAdmin\)/);
 }
 console.log("ok: tenant and admin get the title, the trial note and the brick only");
 

@@ -194,8 +194,8 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   assert.match(sales, /<CampaignsPageClient isAdmin=\{isAdmin\} captureOn=\{captureMode\(\) === "on"\} \/>/, "sales owned: today's workspace");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   assert.match(connect, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
-  assert.match(connect, /showClientAgent=\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\}/, "connect: the Ask-your-agent brick only where it is on");
-  assert.match(code("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick \/>\}/, "connect: the view follows it");
+  assert.match(connect, /showClientAgent: clientAgentEnabled\(clientAgentMode\(\), isAdmin\)/, "connect: the Ask-your-agent brick only where it is on");
+  assert.match(code("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick asUserId=\{asUserId\} \/>\}/, "connect: the view follows it");
   for (const f of ["app/[locale]/dashboard/clients/page.tsx", "app/[locale]/dashboard/reception/forwarding/page.tsx", "app/[locale]/dashboard/settings/page.tsx", "app/[locale]/dashboard/billing/page.tsx"])
     assert.match(code(f), /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/, `${f}: signed-in`);
   const clients = code("app/[locale]/dashboard/clients/page.tsx");
@@ -214,7 +214,7 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
     assert.match(code(f), /await requireAdminPage\(\);/, `${f}: admin gate`);
   const adminConnect = code("app/admin/users/[userId]/agent/page.tsx");
   assert.match(adminConnect, /await requireAdminPage\(\);/, "admin Votre agent: admin gate");
-  assert.match(adminConnect, /<ClientAgentBrick asUserId=\{userId\} \/>/, "admin Votre agent: the brick, scoped to the tenant");
+  assert.match(adminConnect, /<ConnectPageContent [^>]*asUserId=\{userId\}/, "admin Votre agent: the brick (or the closed preview), scoped to the tenant");
 }
 
 // ── 5. Config sections: the same form, each page its tiles ──────────────────
@@ -300,8 +300,9 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   assert.match(reception, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="reception" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("reception"\)\} trial=\{trials\.reception\} trialTerms=\{trialTerms\} \/>\s*<ReceptionPreview \/>/);
   assert.match(reception, /<ProductTrialNote trial=\{trials\.reception\} \/>\s*<TenantConfigPage locale=\{locale\} section="reception" \/>/, "owned: today's layout (a running trial's line above it)");
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(connect, /const \{ menu, notifyRequested, trials, trialTerms \} = await loadProductPage\(session\.user\.id\);\s*const state = menu\.connect;/);
-  assert.match(connect, /if \(state\.state === "preview"\) \{[\s\S]*?<ProductPreviewHeader entry="connect" cta=\{state\.cta\} notifyRequested=\{notifyRequested\.includes\("connect"\)\} trial=\{trials\.connect\} trialTerms=\{trialTerms\} \/>\s*<ConnectPreview \/>/);
+  // Connect decides through lib/connect-page-view.ts (pinned by connect-page-view.test.ts).
+  assert.match(connect, /\{ menu, notifyRequested, trials, trialTerms \}[\s\S]*?loadProductPage\(session\.user\.id\)[\s\S]*?connectPageView\(\{\s*menu: menu\.connect,/);
+  assert.match(code("app/[locale]/dashboard/agent/connect-view.tsx"), /<ProductPreviewHeader\s+entry="connect"\s+cta=\{view\.cta\}\s+notifyRequested=\{notifyRequested\}\s+notify=\{view\.notify\}\s+trial=\{trial\}\s+trialTerms=\{trialTerms\}[\s\S]*?<ConnectPreview \/>/);
   const form = code("app/[locale]/dashboard/config-form.tsx");
   assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);

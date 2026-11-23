@@ -51,16 +51,19 @@ assert.equal(ENTRY_LABEL_KEY.connect, "connect", "sidebar: the connect entry's l
   const header = read("components/dashboard/ProductPreviewHeader.tsx");
   assert.match(header, /useTranslations\("DashboardNav"\)/);
   assert.match(header, /<h1[^>]*>\{t\(entry\)\}<\/h1>/, "preview header: the title is DashboardNav.<entry>");
-  assert.match(read("app/[locale]/dashboard/agent/page.tsx"), /<ProductPreviewHeader entry="connect"/);
+  // Both Connect pages render through ConnectPageContent (lib/connect-page-view.ts).
+  const view = read("app/[locale]/dashboard/agent/connect-view.tsx");
+  assert.match(view, /<ProductPreviewHeader\s+entry="connect"/);
+  assert.match(view, /<ConnectOwnedView title=\{title\}/, "owned view: the page's title");
 
   const page = read("app/[locale]/dashboard/agent/page.tsx");
   assert.match(page, /getTranslations\(\{ locale, namespace: "DashboardNav" \}\)/);
-  assert.match(page, /<ConnectOwnedView\s+title=\{t\("connect"\)\}/, "owned page: the title is DashboardNav.connect");
+  assert.match(page, /<ConnectPageContent[\s\S]*?title=\{t\("connect"\)\}/, "owned page: the title is DashboardNav.connect");
   assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /<h1[^>]*>\{title\}<\/h1>/, "owned view: the page's title as the h1");
 
   const admin = read("app/admin/users/[userId]/agent/page.tsx");
   assert.match(admin, /getTranslations\(\{ locale: "fr", namespace: "DashboardNav" \}\)/);
-  assert.match(admin, /<h1[^>]*>\{t\("connect"\)\}<\/h1>/, "admin tenant view: the title is DashboardNav.connect");
+  assert.match(admin, /<ConnectPageContent [^>]*title=\{t\("connect"\)\}/, "admin tenant view: the title is DashboardNav.connect");
 
   const email = read("lib/email.ts");
   const fn = email.slice(email.indexOf("export async function sendUsageWarningEmail"));
