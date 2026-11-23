@@ -446,15 +446,27 @@ async function main() {
     const [{ tc: toolsBefore }] = (await db.execute(sql`SELECT tools_config::text AS tc FROM agent_configs WHERE user_id = ${B}`)) as unknown as Array<{ tc: string | null }>;
     await db.execute(sql`INSERT INTO app_settings (key, value) VALUES (${BRAIN}, ${JSON.stringify({ [B]: { enabled: true, url: "https://legacy.example.test/hook" } })})
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
-    await db.execute(sql`UPDATE agent_configs SET tools_config = jsonb_set(coalesce(tools_config, '{}'::jsonb), '{clientAgent}',
-      ${JSON.stringify({ enabled: true, url: "https://new.example.test/agent", mode: "lead", secret: null })}::jsonb) WHERE user_id = ${B}`);
+    // A full, valid stored Tools value (parseTools is strict), the client agent set.
+    const { toolsFromTileToggles } = await import("../../lib/tools/adapters");
+    const { getTileToggles } = await import("../../lib/tile-toggles");
+    const storedTools = {
+      ...toolsFromTileToggles(await getTileToggles(B)),
+      clientAgent: { enabled: true, url: "https://new.example.test/agent", mode: "lead", secret: null },
+    };
+    await db.execute(sql`UPDATE agent_configs SET tools_config = ${JSON.stringify(storedTools)}::jsonb WHERE user_id = ${B}`);
+    const isOverlapKey = (a: unknown) => String((a as { key?: unknown }).key).startsWith("agent_brain_overlap:");
     const seen: Array<{ key: string; body: string; subject: string }> = [];
-    const collect = async (a: unknown) => (seen.push(a as { key: string; body: string; subject: string }), true);
-    const syncThrow = ((() => {
-      throw new Error("mock sink down (sync)");
-    }) as unknown) as (a: unknown) => Promise<unknown>;
-    const rejects = async () => {
-      throw new Error("mock sink down (async)");
+    const collect = async (a: unknown) => (isOverlapKey(a) && seen.push(a as { key: string; body: string; subject: string }), true);
+    // The throws target the overlap alert only (the other call-path alerts
+    // keep a silent sink, so the test isolates the new path).
+    const isOverlap = (a: unknown) => String((a as { key?: unknown }).key).startsWith("agent_brain_overlap:");
+    const syncThrow = ((a: unknown) => {
+      if (isOverlap(a)) throw new Error("mock sink down (sync)");
+      return Promise.resolve(false);
+    }) as (a: unknown) => Promise<unknown>;
+    const rejects = async (a: unknown) => {
+      if (isOverlap(a)) throw new Error("mock sink down (async)");
+      return false;
     };
     const baseline = await runB(silent);
     assert.match(baseline, /"voiceConfig"/, "a real payload");
