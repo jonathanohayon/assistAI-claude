@@ -103,8 +103,19 @@ async function main() {
   // "available" and the rest is exactly the P1 result.
   const NO_TRIALS = { reception: { state: "available" }, sales: { state: "available" }, connect: { state: "available" } };
   const withTrials = (w: unknown) => ({ ...(w as object), trials: NO_TRIALS, notifyRequested: [] });
-  for (const [n, w] of want) assert.deepEqual(await accountProducts(id(n)), withTrials(w), `accountProducts u${n}`);
-  assert.deepEqual(await accountProducts(id(0xfff)), withTrials({ base: null, addons: [], entries: [], source: "grandfathered" }), "unknown account");
+  // `startable` was added ADDITIVELY inside each trials[entry]: stripped, the
+  // result is byte-identical to before; with every flag off it is false.
+  const stripStartable = (a: Awaited<ReturnType<typeof accountProducts>>, label: string) => {
+    const trials: Record<string, unknown> = {};
+    for (const [e, t] of Object.entries(a.trials)) {
+      const { startable, ...rest } = t;
+      assert.equal(startable, false, `${label}: ${e} not startable with every flag off`);
+      trials[e] = rest;
+    }
+    return { ...a, trials };
+  };
+  for (const [n, w] of want) assert.deepEqual(stripStartable(await accountProducts(id(n)), `u${n}`), withTrials(w), `accountProducts u${n}`);
+  assert.deepEqual(stripStartable(await accountProducts(id(0xfff)), "unknown"), withTrials({ base: null, addons: [], entries: [], source: "grandfathered" }), "unknown account");
   console.log(`ok: accountProducts over ${want.length} real rows`);
 
   // ── 2. The catalogue over the real row ─────────────────────────────────
