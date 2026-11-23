@@ -88,9 +88,8 @@ for (const l of LOCALES) {
   assert.equal(messages("en").AgentUrl.title, "API: use the Tamara agent from your own phone system");
   // [HE] to confirm: plural address ("שלכם").
   assert.equal(messages("he").AgentUrl.title, "API: שימוש בסוכן של תמרה ממערכת הטלפוניה שלכם");
-  assert.equal(fr.desc, "Donnez à votre agent une voix et un numéro depuis un service vocal externe, en lui fournissant cette URL.");
+  // desc and urlHint are pinned in agent-url-copy.test.ts.
   assert.equal(fr.urlLabel, "URL publique de votre agent");
-  assert.equal(fr.urlHint, "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité configurée ci-dessus.");
   assert.equal(fr.warning, "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.");
   assert.equal(fr.contractTitle, "Contrat attendu par les clients vocaux");
   assert.deepEqual([fr.copy, fr.copied, fr.rotate, fr.urlPlaceholder, fr.replyWithin], ["Copier", "Copié", "Régénérer", "<votre-url>", "sous 2 s"]);

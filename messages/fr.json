@@ -2768,9 +2768,9 @@
   },
   "AgentUrl": {
     "title": "API : utiliser l'agent Tamara depuis votre propre téléphonie",
-    "desc": "Donnez à votre agent une voix et un numéro depuis un service vocal externe, en lui fournissant cette URL.",
+    "desc": "Votre propre service vocal interroge l'agent Tamara à chaque tour de parole, grâce à cette URL.",
     "urlLabel": "URL publique de votre agent",
-    "urlHint": "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité configurée ci-dessus.",
+    "urlHint": "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité réglée dans Mon agent.",
     "copy": "Copier",
     "copied": "Copié",
     "warning": "Toute personne disposant de cette URL peut faire parler votre agent. Elle ne donne accès ni à vos transcripts ni à votre compte.",
