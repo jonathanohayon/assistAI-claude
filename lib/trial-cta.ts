@@ -52,3 +52,17 @@ export function trialCta(entry: ProductEntryState, trial: TrialCtaTrial): TrialC
   if (trial?.state === "available" && trial.startable === true) return { kind: "start" };
   return { kind: "offer" };
 }
+
+/** The sidebar's state label of a product entry. */
+export type NavBadge = "try" | "soon";
+
+/**
+ * The sidebar badge, from the SAME decision as the header (trialCta), so the
+ * two can't disagree: "Essai gratuit" only where the header shows the
+ * "Essayer gratuitement" button (start), "Bientôt" where it shows soon, and
+ * nothing otherwise (owned, active, used, not startable).
+ */
+export function navBadge(entry: ProductEntryState, trial: TrialCtaTrial): NavBadge | null {
+  const kind = trialCta(entry, trial).kind;
+  return kind === "start" ? "try" : kind === "soon" ? "soon" : null;
+}

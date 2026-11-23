@@ -395,7 +395,8 @@ assert.equal(sectionGridClass(undefined), sectionGridClass("reception"));
       createElement(Intl, { locale, messages: JSON.parse(read(`messages/${locale}.json`)), timeZone: "UTC" }, createElement(DashboardSidebar, { blocks })),
     );
   const trial = productMenu({ entitlement: entitledProducts({ subscriptionPlan: "global", subscriptionStatus: "trialing", products: null }), gates: { sales: false, connect: true }, isAdmin: false });
-  const fr = html("fr", navBlocks("connect", trial));
+  // Connect's trial startable (the BE says so): the "Essai gratuit" badge.
+  const fr = html("fr", navBlocks("connect", trial, null, { connect: { state: "available", startable: true } }));
   const order = [...fr.matchAll(/data-entry="([a-zA-Z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(order, ["connect", "reception", "sales", "myAgent", "calls", "clients", "billing", "settings"], "own product first, then the shared block");
   assert.match(fr, /data-entry="connect" data-state="preview-try"/);

@@ -4,6 +4,9 @@
  * On an OWNED product page: "Essai en cours jusqu'au {date}" while the
  * account's per-product trial on that entry is active (lib/trial-cta.ts
  * "active"), nothing otherwise. No button: the trial runs by itself.
+ * Date only: the minutes left (lib/product-trials.ts trialUsage, carried by
+ * usageByProduct) reach only the billing-stats API, not the data this page
+ * receives (accountProducts().trials), and it adds no fetch for them.
  */
 
 import { TrialActiveLine } from "@/components/dashboard/ProductPreviewHeader";

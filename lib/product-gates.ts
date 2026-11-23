@@ -59,7 +59,21 @@ export async function accountProductMenu(
   role: string | null | undefined,
   features: Partial<PlanFeatures> | null | undefined,
 ): Promise<ProductMenu> {
-  return menuFor(await accountProducts(userId), role, features);
+  return (await accountProductNav(userId, role, features)).menu;
+}
+
+/**
+ * The menu AND the per-product trials of one account, from ONE
+ * accountProducts read: what the layouts pass to navBlocks, so the sidebar
+ * badge follows the header's decision (lib/trial-cta.ts).
+ */
+export async function accountProductNav(
+  userId: string,
+  role: string | null | undefined,
+  features: Partial<PlanFeatures> | null | undefined,
+): Promise<{ menu: ProductMenu; trials: Record<ProductEntry, TrialCtaTrial> }> {
+  const products = await accountProducts(userId);
+  return { menu: menuFor(products, role, features), trials: products.trials };
 }
 
 /** The per-product trial terms stated under "Essayer gratuitement" (lib/product-trials.ts). */

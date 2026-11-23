@@ -21,7 +21,9 @@ import {
 import { ProductTrialNote } from "../../components/dashboard/ProductTrialNote";
 import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "../../lib/product-trials";
 import type { ProductEntryState } from "../../lib/product-menu";
-import { trialCta, type TrialCtaTrial, type TrialCtaView } from "../../lib/trial-cta";
+import { DashboardSidebar } from "../../components/dashboard/DashboardSidebar";
+import { navBlocks } from "../../lib/dashboard-nav";
+import { navBadge, trialCta, type TrialCtaTrial, type TrialCtaView } from "../../lib/trial-cta";
 import {
   postTrialStart,
   trialStartOutcome,
@@ -79,11 +81,71 @@ async function main() {
         n++;
       }
     assert.equal(n, 3 * 14);
+    // "Bientôt" wins: a soon entry never shows the trial, even startable.
+    assert.deepEqual(trialCta({ state: "preview", cta: "soon" }, { state: "available", startable: true }), { kind: "soon" });
+    assert.equal(navBadge({ state: "preview", cta: "soon" }, { state: "available", startable: true }), "soon");
+
+    // The sidebar badge and the header can't disagree: navBadge is "try"
+    // exactly where the header shows the trial button, "soon" exactly where
+    // it shows soon, nothing anywhere else.
+    for (const [en, e] of entries)
+      for (const [tn, t] of trials) {
+        const kind = trialCta(e, t).kind;
+        const badge = navBadge(e, t);
+        assert.equal(badge === "try", kind === "start", `${en} × ${tn}: "Essai gratuit" iff the header's button`);
+        assert.equal(badge === "soon", kind === "soon", `${en} × ${tn}: "Bientôt" iff the header's soon`);
+        if (kind !== "start" && kind !== "soon") assert.equal(badge, null, `${en} × ${tn}: no badge`);
+      }
     // "start" needs startable === true exactly (not truthy).
     assert.deepEqual(
       trialCta({ state: "preview", cta: "try" }, { state: "available", startable: "yes" as unknown as boolean }),
       { kind: "offer" },
     );
+  }
+
+  // ── 1b. The sidebar badge per state (navBlocks + the rendered menu) ─────
+  {
+    const Intl = NextIntlClientProvider as unknown as ComponentType<{ locale: string; messages: unknown; timeZone?: string; children?: ReactNode }>;
+    const menu = {
+      reception: { state: "owned" },
+      sales: { state: "preview", cta: "soon" },
+      connect: { state: "preview", cta: "try" },
+    } as const;
+    const cases: Array<[string, TrialCtaTrial, "try" | null]> = [
+      ["startable", { state: "available", startable: true }, "try"],
+      ["not startable", { state: "available", startable: false }, null],
+      ["startable absent (main today)", { state: "available" }, null],
+      ["no trials passed", undefined, null],
+      ["active", { state: "active", endsAt: END, startable: false }, null],
+      ["used", { state: "used", endsAt: END, startable: true }, null],
+    ];
+    for (const [name, trial, badge] of cases) {
+      for (const asUserId of [null, "u-1"]) {
+        const blocks = navBlocks("reception", menu, asUserId, { connect: trial, sales: { state: "available", startable: true } });
+        const items = Object.fromEntries(blocks[0].items.map((i) => [i.id, i]));
+        assert.equal(items.connect.badge, badge ?? undefined, `${name}: connect badge`);
+        assert.equal(items.connect.preview, "try", `${name}: still a preview`);
+        assert.equal(items.sales.badge, "soon", `${name}: soon wins over a startable trial`);
+        assert.equal(items.reception.badge, undefined, `${name}: owned = no badge`);
+      }
+      for (const locale of ["fr", "en", "he"]) {
+        const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
+        const m = messages.DashboardNav;
+        const html = renderToStaticMarkup(
+          createElement(Intl, { locale, messages, timeZone: "UTC" },
+            createElement(DashboardSidebar, { blocks: navBlocks("reception", menu, null, { connect: trial }) })),
+        );
+        const tryShown = html.includes(`>${m.stateTry.replace(/'/g, "&#x27;")}</span>`);
+        assert.equal(tryShown, badge === "try", `${locale} ${name}: "${m.stateTry}" shown = ${badge === "try"}`);
+        assert.ok(html.includes(`>${m.stateSoon}</span>`), `${locale} ${name}: "${m.stateSoon}" on the soon entry`);
+      }
+    }
+    // The sidebar renders the badge, never the raw call to action.
+    const sidebar = readFileSync("components/dashboard/DashboardSidebar.tsx", "utf8");
+    assert.match(sidebar, /\{item\.badge && \(/);
+    assert.match(sidebar, /t\(item\.badge === "try" \? "stateTry" : "stateSoon"\)/);
+    assert.doesNotMatch(sidebar, /item\.preview === "try"|\{item\.preview && \(/, "no badge from the cta alone");
+    assert.match(readFileSync("lib/dashboard-nav.ts", "utf8"), /const badge = navBadge\(s, trials\?\.\[e\]\);/, "navBlocks uses the header's decision");
   }
 
   // ── 2. POST: URL and body (tenant, admin ?asUserId) ─────────────────────
