@@ -86,8 +86,9 @@ export function SignupContent({
               strokeLinejoin="round"
             />
           </svg>
-          {/* A trial grants reception only: the connect / sales doors say so. */}
-          {copy.receptionTrial ? t("freeBadgeReception") : t("freeBadge")}
+          {/* A trial grants reception only: the connect / sales doors promise
+              a free account, not a trial of their product. */}
+          {copy.receptionTrial ? t("accountBadge") : t("trialBadge")}
         </span>
         <h1 className="mt-4 font-display text-3xl tracking-tight text-[var(--color-foreground)]">
           {t(copy.title)}

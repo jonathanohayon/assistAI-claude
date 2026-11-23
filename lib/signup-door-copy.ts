@@ -27,9 +27,10 @@ export type SignupSubtitleKey =
 export interface SignupDoorCopy {
   title: SignupTitleKey;
   subtitle: SignupSubtitleKey;
-  /** true: the badge and the trial line say it is the Reception trial
-   *  (Signup.freeBadgeReception, Signup.freeTrialNoticeReceptionStart);
-   *  false: today's badge and line. */
+  /** true: the badge promises a free account (Signup.accountBadge) and the
+   *  trial line says it is the Reception trial
+   *  (Signup.freeTrialNoticeReceptionStart); false: Signup.trialBadge and
+   *  today's trial line. */
   receptionTrial: boolean;
 }
 

@@ -16,6 +16,10 @@
 // highlighted on any door; the setup checklist is the guide.
 // Connect product name (22/11): Email.usageWarning.entryConnect. The email
 // names the product from DashboardNav.connect, its one key.
+// Sign-up badge per door (23/11, VP): Signup.freeBadge ("free trial, all
+// features": untrue, a trial grants reception only) and the short-lived
+// Signup.freeBadgeReception. Replaced by Signup.trialBadge (reception) and
+// Signup.accountBadge (connect / sales).
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -37,6 +41,8 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.speed"],
   ["DashboardConfig", "tileStartHere"],
   ["Email", "usageWarning.entryConnect"],
+  ["Signup", "freeBadge"],
+  ["Signup", "freeBadgeReception"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];

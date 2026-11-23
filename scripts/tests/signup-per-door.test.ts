@@ -1,8 +1,10 @@
-// The sign-up page's title, subtitle and trial line per door
+// The sign-up page's badge, title, subtitle and trial line per door
 // (lib/signup-door-copy.ts, app/[locale]/signup/{page,signup-content}.tsx):
-//   1. door × usable × locale renders the exact title, subtitle, trial line;
-//   2. reception (and no door) renders today's copy, byte for byte, and the
-//      usable flags never change it;
+//   1. door × usable × locale renders the exact badge, title, subtitle, trial
+//      line; no door says "all features" (a trial grants reception only);
+//   2. reception (and no door) renders today's title, subtitle and trial line
+//      byte for byte (only its badge changed), and the usable flags never
+//      change it;
 //   3. "usable" comes only from publicOffer().available (lib/public-offer.ts,
 //      the pricing cards' rule): flipping its switches moves the copy, and the
 //      page reads nothing else;
@@ -66,38 +68,43 @@ function header(html: string): Header {
 
 const { days, minutes } = TRIAL_COPY_VALUES;
 
-// Today's reception copy (main before this change), byte for byte.
+// Reception: today's title, subtitle and trial line (main before this
+// change), byte for byte. Only the badge changes (VP 23/11): "all features"
+// was untrue, it now says "free trial, no credit card".
 const RECEPTION: Record<Locale, Header> = {
   fr: {
-    badge: "Essai gratuit — toutes les fonctionnalités",
+    badge: "Essai gratuit, sans carte bancaire",
     title: "Créez votre agent vocal",
     subtitle: "Opérationnel en 2 minutes. Sans engagement, sans carte bancaire.",
     trial: `${days} jours d'essai gratuit ou ${minutes} minutes d'appels, au premier des deux atteint.`,
   },
   en: {
-    badge: "Free trial — all features",
+    badge: "Free trial, no credit card",
     title: "Create your voice agent",
     subtitle: "Up and running in 2 minutes. No commitment, no credit card.",
     trial: `Free trial: ${days} days or ${minutes} call minutes, whichever comes first.`,
   },
   he: {
-    badge: "ניסיון חינם — כל הפיצ'רים",
+    badge: "ניסיון חינם, ללא כרטיס אשראי",
     title: "צרו את הסוכן הקולי שלכם",
     subtitle: "מוכן תוך 2 דקות. ללא התחייבות, ללא כרטיס אשראי.",
     trial: `ניסיון חינם: ${days} ימים או ${minutes} דקות שיחה, המוקדם מביניהם.`,
   },
 };
 
-// The new FR lines put a non-breaking space ( ) before ":" so a narrow
-// screen never starts a line with the colon. Reception's lines are untouched.
-// The connect / sales badge: a trial grants reception only, so it never says
-// "all features".
-const RECEPTION_BADGE: Record<Locale, string> = {
-  fr: "Essai gratuit de la Réception",
-  en: "Free Reception trial",
-  he: "ניסיון חינם בקבלה",
+// The connect / sales badge: a trial grants reception only, so these doors
+// promise a free account, not a trial (and don't repeat the trial line).
+const ACCOUNT_BADGE: Record<Locale, string> = {
+  fr: "Compte gratuit, sans carte bancaire",
+  en: "Free account, no credit card",
+  he: "חשבון חינם, ללא כרטיס אשראי",
 };
 
+// The old badge's promise, which no door may render any more.
+const ALL_FEATURES = /toutes les fonctionnalités|all features|כל הפיצ'רים/;
+
+// The new FR lines put a non-breaking space (U+00A0) before ":" so a narrow
+// screen never starts a line with the colon. Reception's lines are untouched.
 const RECEPTION_TRIAL: Record<Locale, string> = {
   fr: `Essai gratuit de la Réception\u00a0: ${days} jours ou ${minutes} minutes d'appels, au premier des deux atteint.`,
   en: `Free Reception trial: ${days} days or ${minutes} call minutes, whichever comes first.`,
@@ -156,18 +163,20 @@ for (const locale of LOCALES) {
   for (const available of AVAIL) {
     for (const door of ["connect", "sales"] as const) {
       const usable = available[door];
-      const got = header(render(locale, door, signupDoorCopy(door, available)));
+      const html = render(locale, door, signupDoorCopy(door, available));
+      const got = header(html);
       const want = EXPECTED[door][locale];
-      assert.equal(got.badge, RECEPTION_BADGE[locale], `${locale} ${door} badge names Reception`);
-      assert.notEqual(got.badge, RECEPTION[locale].badge, `${locale} ${door} badge is not "all features"`);
+      assert.equal(got.badge, ACCOUNT_BADGE[locale], `${locale} ${door} badge: free account`);
+      assert.doesNotMatch(unescape(html), ALL_FEATURES, `${locale} ${door} never says "all features"`);
       assert.equal(got.title, want.title, `${locale} ${door} title`);
       assert.equal(got.subtitle, usable ? want.usable : want.soon, `${locale} ${door} usable=${usable} subtitle`);
       assert.equal(got.trial, RECEPTION_TRIAL[locale], `${locale} ${door} trial line names Reception`);
       rendered++;
     }
     // ── 2. reception: today's copy whatever the flags ──────────────────────
-    const r = header(render(locale, "reception", signupDoorCopy("reception", available)));
-    assert.deepEqual(r, RECEPTION[locale], `${locale} reception unchanged (${JSON.stringify(available)})`);
+    const rHtml = render(locale, "reception", signupDoorCopy("reception", available));
+    assert.deepEqual(header(rHtml), RECEPTION[locale], `${locale} reception unchanged (${JSON.stringify(available)})`);
+    assert.doesNotMatch(unescape(rHtml), ALL_FEATURES, `${locale} reception never says "all features"`);
     rendered++;
   }
   // Without the prop (any older caller) = reception, the same HTML.
@@ -227,7 +236,8 @@ assert.deepEqual([...DOORS], ["reception", "sales", "connect"], "the doors this 
 
 // ── 5. no trial figure in the new messages ───────────────────────────────
 const NEW_KEYS = [
-  "freeBadgeReception",
+  "trialBadge",
+  "accountBadge",
   "connectTitle",
   "connectSubtitleUsable",
   "connectSubtitleSoon",
