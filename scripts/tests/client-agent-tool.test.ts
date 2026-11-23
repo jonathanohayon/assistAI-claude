@@ -16,6 +16,7 @@ import {
   CLIENT_AGENT_TEST_BUDGET_MS,
   CLIENT_AGENT_TEST_QUESTION,
   runClientAgentTest,
+  testCallId,
   type TestFetch,
 } from "../../lib/tools/client-agent-test";
 import { CLIENT_AGENT_OFF, effectiveCapabilities, publicTools, type Tools } from "../../lib/tools/contract";
@@ -209,7 +210,7 @@ async function main() {
     const s = seen as unknown as { url: string; headers: Record<string, string>; body: string; timeoutMs: number };
     const parsed = JSON.parse(s.body);
     assert.deepEqual(Object.keys(parsed), ["call_id", "turn_id", "language", "question", "caller_said", "history"]);
-    assert.match(parsed.call_id, /^[0-9a-f]{32}$/);
+    assert.match(parsed.call_id, /^[0-9a-f]{16}$/);
     assert.equal(parsed.turn_id, 0);
     assert.equal(parsed.language, "he");
     assert.equal(parsed.question, CLIENT_AGENT_TEST_QUESTION);
@@ -218,6 +219,9 @@ async function main() {
     assert.equal(s.headers["X-Tamara-Signature"], createHmac("sha256", "mock-secret").update(s.body).digest("hex"));
     assert.equal(s.timeoutMs, CLIENT_AGENT_TEST_BUDGET_MS);
     assert.equal(CLIENT_AGENT_TEST_BUDGET_MS, 2500);
+  });
+  await run("test: testCallId() is 16 hex chars, like the worker's real call ids", async () => {
+    for (let i = 0; i < 20; i++) assert.match(testCallId(), /^[0-9a-f]{16}$/);
   });
   await run("test: no secret = no signature header", async () => {
     let headers: Record<string, string> = {};
