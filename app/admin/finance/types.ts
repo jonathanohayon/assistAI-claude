@@ -1,6 +1,11 @@
 // Types Finance re-déclarés localement pour rester côté client (les modules
 // lib/finance/* sont server-friendly mais on évite de bundler leur runtime).
 // Source de vérité : lib/finance/cost.ts et lib/finance/rates.ts.
+// The per-engine row is the server's own type (type-only import: erased at
+// build, nothing from lib/finance is bundled).
+import type { EngineCost, EngineRateBasis } from "@/lib/finance/by-engine";
+
+export type { EngineCost, EngineRateBasis };
 
 export type Granularity = "day" | "month" | "year";
 
@@ -53,6 +58,8 @@ export interface FinanceStats {
   byPlan: { plan: string; amount: number }[];
   tenants: TenantCost[];
   usage: UsageTotals;
+  /** Cost per engine / model, most expensive first; Σ costUsd == totals.openai. */
+  byEngine: EngineCost[];
 }
 
 export interface CostRates {

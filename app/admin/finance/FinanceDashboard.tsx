@@ -8,6 +8,7 @@ import {
   ChartCard,
   CostOverTimeChart,
 } from "./charts";
+import EngineCostTable from "./EngineCostTable";
 import KpiCards from "./KpiCards";
 import RateCardForm from "./RateCardForm";
 import TenantsTable from "./TenantsTable";
@@ -279,6 +280,17 @@ export default function FinanceDashboard({ userId }: { userId?: string }) {
                   Usage sur la période
                 </h3>
                 <UsageStrip usage={stats.usage} />
+              </div>
+
+              {/* Coût par moteur (global, ou le tenant de ?userId) */}
+              <div>
+                <h3 className="mb-2 font-display text-sm font-semibold text-[var(--color-foreground)]">
+                  Coût par moteur
+                </h3>
+                <EngineCostTable
+                  rows={stats.byEngine ?? []}
+                  openaiTotal={stats.totals.openai}
+                />
               </div>
 
               {/* Tenants (global uniquement) */}
