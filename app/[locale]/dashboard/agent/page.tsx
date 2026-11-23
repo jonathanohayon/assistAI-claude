@@ -1,23 +1,19 @@
-import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import NextLink from "next/link";
 
 import { auth } from "@/auth";
-import { ClientAgentBrick } from "@/components/bricks/client-agent/ClientAgentBrick";
 import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeader";
 import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { ConnectPreview } from "@/components/preview/ConnectPreview";
 import { Link } from "@/i18n/navigation";
+import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { entryHref } from "@/lib/dashboard-nav";
 import { loadProductPage } from "@/lib/product-gates";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
-import { AgentBrainSection } from "../settings/agent-brain-section";
-import { AgentUrlCard } from "../settings/agent-url-section";
+import { ConnectOwnedView } from "./connect-owned";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +39,16 @@ function myAgentLink(asUserId?: string | null) {
 
 /**
  * Menu entry "Connecter votre agent" (connect): the customer's own agent.
- *   - Owned: who answers (Tamara or the account's own agent) and its probe
- *     (AgentBrainSection); "Ask your agent" (ClientAgentBrick: the agent's
+ *   - Owned: "Ask your agent" (ClientAgentBrick: the agent's
  *     address, its mode, secret and test, with its own save), shown only
  *     where CLIENT_AGENT is on for the account (read here on the server: one
  *     boolean decides; the brick also follows the server's
  *     clientAgentTool.visible); the agent's public URL for a voice client
- *     (AgentUrlCard, level-3).
+ *     (AgentUrlCard, level-3). For an ADMIN only (decided here, on the
+ *     server, with the same check as the agent-brain route: sessionIsAdmin),
+ *     the older "who answers" card (AgentBrainSection) under the label
+ *     "Réglage admin (ancien branchement)". A tenant's tree never holds it
+ *     (VP, 23/11: one agent-address setting for a tenant).
  *   - Not owned (menu preview): the product's header, then the client-agent
  *     brick read-only over sample data (ConnectPreview): no request at all.
  * Gate: a signed-in tenant (the cards' own APIs scope to the session).
@@ -70,24 +69,23 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
     );
   }
 
-  const [me] = await db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id)).limit(1);
-  const isAdmin = me?.role === "admin";
+  const isAdmin = await sessionIsAdmin();
   const t = await getTranslations({ locale, namespace: "DashboardNav" });
   const tBrain = await getTranslations({ locale, namespace: "AgentBrain" });
 
   return (
     <main className={MAIN}>
-      <section className="mb-8 space-y-5">
-        <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("connect")}</h1>
-        <ProductTrialNote trial={trials.connect} inline />
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="font-display text-lg text-[var(--color-foreground)]">{tBrain("title")}</h2>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{tBrain.rich("desc", { link: myAgentLink() })}</p>
-          <AgentBrainSection />
-        </div>
-        {clientAgentEnabled(clientAgentMode(), isAdmin) && <ClientAgentBrick />}
-        <AgentUrlCard isAdmin={isAdmin} />
-      </section>
+      <ConnectOwnedView
+        title={t("connect")}
+        trialNote={<ProductTrialNote trial={trials.connect} inline />}
+        isAdmin={isAdmin}
+        showClientAgent={clientAgentEnabled(clientAgentMode(), isAdmin)}
+        adminBrain={
+          isAdmin
+            ? { label: tBrain("adminLabel"), title: tBrain("title"), desc: tBrain.rich("desc", { link: myAgentLink() }) }
+            : null
+        }
+      />
     </main>
   );
 }

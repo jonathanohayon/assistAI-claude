@@ -70,7 +70,8 @@ for (const l of LOCALES) {
     assert.ok(!page.includes(fr), `page: no hard-coded "${fr}"`);
   }
   // The page renders the gated card, never the bare section.
-  assert.match(page, /<AgentUrlCard isAdmin=\{isAdmin\} \/>/);
+  assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /<AgentUrlCard isAdmin=\{isAdmin\} \/>/);
+  assert.match(page, /<ConnectOwnedView[\s\S]*?isAdmin=\{isAdmin\}/);
   assert.doesNotMatch(page, /<AgentUrlSection/);
 }
 
