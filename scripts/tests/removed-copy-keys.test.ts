@@ -27,6 +27,11 @@
 // Onboarding welcome title (23/11, VP): Onboarding.welcomeTitle ("Bienvenue.
 // {product} ouvre bientôt.", with DashboardNav.<door>). Replaced by one key per
 // door, no interpolation: Onboarding.welcomeTitleConnect / welcomeTitleSales.
+// The older "Qui répond au téléphone" card (23/11, founder): the whole
+// AgentBrain namespace, card removed for everyone ("Votre agent IA" covers it).
+// The connect checklist step renamed after what it opens (clientAgent, the
+// "Votre agent IA" brick, not the AgentUrl card): DashboardSetup.agentUrlTitle
+// / agentUrlDesc / agentUrlCta became clientAgentTitle / Desc / Cta.
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -53,9 +58,12 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["Signup", "freeBadge"],
   ["Signup", "freeBadgeReception"],
   ["Onboarding", "welcomeTitle"],
+  ["DashboardSetup", "agentUrlTitle"],
+  ["DashboardSetup", "agentUrlDesc"],
+  ["DashboardSetup", "agentUrlCta"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
-const REMOVED_NAMESPACES = ["HowItWorks"];
+const REMOVED_NAMESPACES = ["HowItWorks", "AgentBrain"];
 const at = (m: Record<string, unknown>, path: string) =>
   path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], m);
 

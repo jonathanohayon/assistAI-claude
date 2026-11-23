@@ -25,7 +25,7 @@ export type DoorStepId =
   | "whatsapp"
   | "contacts"
   | "liveTest"
-  | "agentUrl";
+  | "clientAgent";
 
 export interface DoorUi {
   tileOrder: readonly DoorTileId[];
@@ -51,7 +51,7 @@ export const DOOR_UI: Readonly<Record<Door, DoorUi>> = {
   // The customer's own agent answers: its address and the voice first.
   connect: {
     tileOrder: ["tools", "voice", "channels", "persona", "business", "notifs", "campaigns"],
-    firstSteps: ["agentUrl"],
+    firstSteps: ["clientAgent"],
   },
 };
 

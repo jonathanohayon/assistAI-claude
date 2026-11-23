@@ -31,6 +31,7 @@ export function AgentUrlCardGate({ isAdmin, developerMode }: { isAdmin: boolean;
   if (!showLevel3({ isAdmin, developerMode })) return null;
   return (
     <section
+      id="agent-url"
       aria-labelledby="agent-url-title"
       className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6"
     >
