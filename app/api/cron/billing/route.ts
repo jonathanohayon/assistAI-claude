@@ -7,6 +7,8 @@ import { users } from "@/lib/db/schema";
 import { runHealthChecks } from "@/lib/health-checks";
 import { logEvent } from "@/lib/logger";
 import { isValidPlanKey } from "@/lib/plans";
+import { runRenewalReminders } from "@/lib/renewal-reminder";
+import { renewalReminderDeps } from "@/lib/renewal-reminder-deps";
 import { runUsageWarnings } from "@/lib/usage-warnings";
 import { usageWarningDeps } from "@/lib/usage-warnings-deps";
 
@@ -31,6 +33,13 @@ import { usageWarningDeps } from "@/lib/usage-warnings-deps";
 //      included minutes, accounts WITH a products record only, once per
 //      account × entry × threshold × period. Behind USAGE_WARNINGS_ENABLED,
 //      OFF by default: off, nothing is read and the response is unchanged.
+//
+//   4) Renewal reminder (lib/renewal-reminder.ts): ONE email per account per
+//      paid period, REMINDER_DAYS_BEFORE (3) days before paid_until, since
+//      nothing renews by itself and Phase 2 expires the account. Behind
+//      RENEWAL_REMINDER_EMAIL = on, OFF by default: off, nothing is read and
+//      the response is unchanged. FAIL-OPEN: it runs after 1-3 and never
+//      throws, so it never changes their work or the cron's status.
 
 export async function GET(req: NextRequest) {
   const auth = requireInternalSecret(req);
@@ -123,12 +132,16 @@ export async function GET(req: NextRequest) {
 
   const warnings = await runUsageWarnings(usageWarningDeps());
 
+  // ─── Phase 4 : renewal reminder (fail-open, never throws) ───────────────
+  const renewal = await runRenewalReminders(renewalReminderDeps);
+
   return NextResponse.json({
     ok: true,
     downgraded,
     expired,
     health,
     ...(warnings.enabled ? { usageWarnings: warnings } : {}),
+    ...(renewal.enabled ? { renewalReminders: renewal } : {}),
     tookMs: Date.now() - now.getTime(),
   });
 }

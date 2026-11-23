@@ -2068,6 +2068,10 @@
       "cta": "Voir ma consommation",
       "footer": "Vous recevez cet e-mail une seule fois par seuil et par période de facturation.",
       "entryReception": "Réceptionniste"
+    },
+    "renewalReminder": {
+      "subject": "Votre service s'arrête le {date}",
+      "body": "Votre service Tamara s'arrête le {date}. Renouvelez ici : {link}"
     }
   },
   "LiveTest": {

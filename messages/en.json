@@ -2068,6 +2068,10 @@
       "cta": "See my usage",
       "footer": "You receive this email once per threshold and billing period.",
       "entryReception": "Receptionist"
+    },
+    "renewalReminder": {
+      "subject": "Your service stops on {date}",
+      "body": "Your Tamara service stops on {date}. Renew here: {link}"
     }
   },
   "LiveTest": {
