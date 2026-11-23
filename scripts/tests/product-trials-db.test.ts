@@ -10,6 +10,8 @@
 //      its entry for the duration only;
 //   4. sign-up: every door × usable / unusable through provisionTenant and
 //      the Google path; an existing-account login writes nothing;
+//   4b. sign-up (email + Google) through a not-yet-open sales / connect door
+//      records its notify-me row at creation; fail-open; races → one row;
 //   5. the sales trial cap in the dispatcher: paid and grandfathered accounts
 //      byte-identical with no trial row vs an exhausted trial row; a
 //      trial-only account dials under the cap, is refused (no dial, contact
@@ -270,6 +272,146 @@ async function main() {
     assert.equal(await trialRows(id(0x20)), 0, "an existing account gets no trial row");
   }
   console.log("ok: sign-up — every door base reception_multi; sales trial only when startable; connect never; login writes nothing");
+
+  // ── 4b. Sign-up through a not-yet-open door records its notify-me row ──
+  {
+    const { emailSignupAction } = await import("../../lib/auth/email-signup-action");
+    const { signupDeps } = await import("../../lib/verification-limits/deps");
+    const { signupWithEmail } = await import("../../lib/verification-limits/signup");
+    const { recordNotifyRequest } = await import("../../lib/product-notify");
+    const notifyOf = async (email: string) =>
+      (await rows<{ product: string }>(sql`SELECT n.product FROM product_notify_requests n JOIN users u ON u.id = n.user_id WHERE u.email = ${email} ORDER BY n.product`)).map((r) => r.product);
+    const userCount = (email: string) => count(sql`SELECT count(*)::int AS n FROM users WHERE email = ${email}`);
+
+    // Email sign-up through the real action; the mailer is injected (nothing sent).
+    class Redirected extends Error {
+      constructor(readonly url: string) {
+        super(`redirect ${url}`);
+      }
+    }
+    const sent: string[] = [];
+    const signupD = { ...signupDeps, send: async (to: string) => (sent.push(to), { ok: true }), log: async () => {} };
+    let ipN = 40;
+    const emailSignup = (email: string, door: string) => {
+      const f = new FormData();
+      f.set("email", email);
+      f.set("password", "longenough");
+      f.set("door", door);
+      return emailSignupAction(f, { locale: "en", ip: `203.0.113.${ipN++}` }, {
+        signup: (input) => signupWithEmail(input, signupD),
+        signIn: async () => {
+          throw new Redirected("/verify-email");
+        },
+        authErrorType: () => null,
+        redirect: (u) => {
+          throw new Redirected(u);
+        },
+      }).then(
+        () => "<no redirect>",
+        (e) => {
+          if (e instanceof Redirected) return e.url;
+          throw e;
+        },
+      );
+    };
+    const jar = (m: Record<string, string>) => ({
+      get: (n: string) => (n in m ? { value: m[n] } : undefined),
+      delete: (n: string) => {
+        delete m[n];
+      },
+    });
+    const googleSignup = (email: string, door: string) =>
+      googleSignIn({ account: { provider: "google" }, profile: { email, name: "Mock" } }, jar({ signup_plan: "premium", signup_locale: "fr", signup_door: door }));
+
+    // Gate off (no product flag in the env): sales / connect → one row each; reception → none.
+    for (const [door, want] of [["sales", ["sales"]], ["connect", ["connect"]], ["reception", []]] as const) {
+      const e = `n-email-${door}@trials.example.test`;
+      assert.equal(await emailSignup(e, door), "/verify-email", `email sign-up via ${door}`);
+      assert.deepEqual(await notifyOf(e), want, `email sign-up via ${door}, gate off`);
+      const gm = `n-google-${door}@trials.example.test`;
+      assert.equal(await googleSignup(gm, door), true, `Google sign-up via ${door}`);
+      assert.deepEqual(await notifyOf(gm), want, `Google sign-up via ${door}, gate off`);
+    }
+    // Gate on (the public `available` is true): nothing recorded.
+    await withEnv({ CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" }, async () => {
+      for (const door of ["sales", "connect"]) {
+        const e = `n-on-email-${door}@trials.example.test`;
+        assert.equal(await emailSignup(e, door), "/verify-email");
+        assert.deepEqual(await notifyOf(e), [], `email sign-up via ${door}, gate on`);
+        const gm = `n-on-google-${door}@trials.example.test`;
+        assert.equal(await googleSignup(gm, door), true);
+        assert.deepEqual(await notifyOf(gm), [], `Google sign-up via ${door}, gate on`);
+      }
+    });
+    // Sales open but connect not: only the closed door records.
+    await withEnv({ CAMPAIGN_DISPATCH: "on" }, async () => {
+      assert.equal(await googleSignup("n-mixed-sales@trials.example.test", "sales"), true);
+      assert.deepEqual(await notifyOf("n-mixed-sales@trials.example.test"), []);
+      assert.equal(await googleSignup("n-mixed-conn@trials.example.test", "connect"), true);
+      assert.deepEqual(await notifyOf("n-mixed-conn@trials.example.test"), ["connect"]);
+    });
+    assert.equal(sent.length, 5, "one (injected) verification email per created email account");
+
+    // An EXISTING account through the Google door cookie: nothing written.
+    await db.execute(sql`INSERT INTO users (id, email, password_hash, role, subscription_plan, subscription_status, email_verified)
+      VALUES (${id(0x21)}, 'old-n@trials.example.test', '', 'user', 'premium', 'active', true)`);
+    const snap = () => rows<Record<string, unknown>>(sql`SELECT xmin::text AS x, products, door FROM users WHERE email = 'old-n@trials.example.test'`);
+    const before = JSON.stringify(await snap());
+    for (const door of ["sales", "connect"]) {
+      assert.equal(await googleSignIn({ account: { provider: "google" }, profile: { email: "old-n@trials.example.test" } }, jar({ signup_door: door })), true, "login");
+      assert.match(String(await googleSignup("old-n@trials.example.test", door)), /notice=exists/);
+      assert.match(await emailSignup("old-n@trials.example.test", door), /error=exists/);
+    }
+    assert.equal(JSON.stringify(await snap()), before, "the existing account's row is untouched");
+    assert.deepEqual(await notifyOf("old-n@trials.example.test"), [], "the existing account gets no notify row");
+
+    // The record failing never fails the sign-up: the real write breaks (table renamed) …
+    await db.execute(sql`ALTER TABLE product_notify_requests RENAME TO product_notify_requests_off`);
+    const errs: string[] = [];
+    const origErr = console.error;
+    console.error = (...a: unknown[]) => void errs.push(a.map(String).join(" "));
+    try {
+      assert.equal(await googleSignup("n-fail-google@trials.example.test", "sales"), true, "Google sign-up succeeds");
+      assert.equal(await emailSignup("n-fail-email@trials.example.test", "connect"), "/verify-email", "email sign-up succeeds");
+    } finally {
+      console.error = origErr;
+      await db.execute(sql`ALTER TABLE product_notify_requests_off RENAME TO product_notify_requests`);
+    }
+    for (const e of ["n-fail-google@trials.example.test", "n-fail-email@trials.example.test"]) {
+      assert.equal(await userCount(e), 1, `${e}: account created`);
+      assert.deepEqual(await notifyOf(e), [], `${e}: no row`);
+    }
+    const failLogs = errs.filter((l) => l.includes("signup notify record failed"));
+    assert.equal(failLogs.length, 2, "one log line per failed record");
+    for (const l of failLogs) assert.doesNotMatch(l, /@|trials\.example|product_notify/, "error class only, no PII or query text");
+    // … and through the seam (a writer that throws).
+    const viaSeam = await provisionTenant(
+      { email: "n-seam@trials.example.test", displayName: "Mock", plan: "premium", locale: "fr", emailVerified: false, passwordHash: "x", door: "sales" },
+      {
+        env: {},
+        recordNotify: async () => {
+          throw new TypeError("mock failure");
+        },
+      },
+    ).catch(() => null);
+    assert.ok(viaSeam, "provisionTenant returns the account when the writer throws");
+    assert.equal(await userCount("n-seam@trials.example.test"), 1);
+
+    // Races: a double creation of the same email → one account, one row;
+    // a concurrent re-record for that account stays one row.
+    const race = await Promise.allSettled(
+      [0, 1, 2].map(() =>
+        provisionTenant({ email: "n-race@trials.example.test", displayName: "Mock", plan: "premium", locale: "fr", emailVerified: false, passwordHash: "x", door: "sales" }, { env: {} }),
+      ),
+    );
+    assert.equal(race.filter((r) => r.status === "fulfilled").length, 1, "one creation wins (unique email)");
+    assert.equal(await userCount("n-race@trials.example.test"), 1);
+    const [winner] = await rows<{ id: string }>(sql`SELECT id FROM users WHERE email = 'n-race@trials.example.test'`);
+    const again = await Promise.all([0, 1, 2, 3].map(() => recordNotifyRequest(winner.id, "sales")));
+    assert.equal(again.filter((r) => r.created).length, 0, "the row already existed from the creation");
+    assert.equal(await count(sql`SELECT count(*)::int AS n FROM product_notify_requests WHERE user_id = ${winner.id}`), 1, "exactly one row");
+  }
+  console.log("ok: sign-up via a closed sales / connect door records one notify row (email + Google); reception, gate on, existing accounts: none; fail-open; races: one row");
 
   // ── 5. The sales trial cap in the dispatcher ───────────────────────────
   {
