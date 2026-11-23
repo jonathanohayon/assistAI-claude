@@ -160,14 +160,16 @@
       "label": "Ashdod",
       "dates": [
         {
-          "date": "2030-01-14",
+          "date": "2030-01-07",
           "weekday": "lundi"
         },
         {
-          "date": "2030-01-21",
+          "date": "2030-01-14",
           "weekday": "lundi"
         }
-      ]
+      ],
+      "requested_date": "2030-01-07",
+      "requested_date_open": true
     },
     "google": []
   },
