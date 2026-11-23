@@ -4,6 +4,7 @@ import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerG
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
 import { eventTitle, nameFromTitle, resolvePlace } from "@/lib/booking-place";
+import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
 import { type Center, nextDatesForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
@@ -33,6 +34,11 @@ export async function POST(req: NextRequest) {
   // malformed date.
   // With a `location` (the tenant's own place, new worker) there is no
   // weekday rule (lib/booking-place.ts).
+  // A date that does not exist (2026-02-30) is refused on both shapes; the
+  // legacy one already was (resolvePlace → centerForDate), with this text.
+  if (!isRealIsoDate(newDate)) {
+    return NextResponse.json({ error: invalidDateError(newDate) }, { status: 400 });
+  }
   const placed = resolvePlace(body, newDate);
   if (!placed.ok && placed.kind === "invalid_date") {
     return NextResponse.json({ error: placed.error }, { status: 400 });
