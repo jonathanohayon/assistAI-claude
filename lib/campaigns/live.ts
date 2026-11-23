@@ -127,11 +127,57 @@ export function tickForViewer(
           due: Number(mine?.due ?? 0),
           heldByHours: Number(mine?.heldByHours ?? 0),
           heldByConcurrency: Number(mine?.heldByConcurrency ?? 0),
+          // Its own entry's timestamp (a start-fresh entry), never another's.
+          ...(typeof mine?.at === "string" ? { at: mine.at } : {}),
         },
       },
     };
   }
   return out;
+}
+
+/**
+ * A dry campaign START (scoped to one campaign) folded into the stored tick.
+ * The stored tick is the cron's view of EVERY campaign; a start only knows its
+ * own campaign, so it must not overwrite the others' entries with nothing.
+ *
+ * Merge rule, when the stored tick is a parsable dry tick:
+ *   - only wouldDial.byCampaign[campaignId] changes: set to `entry` (stamped
+ *     with its own `at`), or deleted when the start found no raw due contact
+ *     (`entry` undefined, i.e. what an absent id already means: 0/0/0);
+ *   - everything else is kept as stored: the other entries, at, source,
+ *     runningCampaigns and the global counts (campaignsDue, contactsDue,
+ *     skippedCallHours, skippedConcurrency). The globals stay the cron's view
+ *     of its own tick: recomputing them from byCampaign would mix two instants
+ *     and the global `limit` (which only the cron applies across campaigns)
+ *     could not be reproduced. The next cron tick replaces the whole tick.
+ * Otherwise (no stored tick, an "on" or legacy tick without mode, unparsable
+ * JSON): `fresh`, the start's own dry tick, as before.
+ * Pure; the caller does the read-modify-write under a row lock.
+ */
+export function mergeDryStartTick(
+  storedRaw: string | null | undefined,
+  campaignId: string,
+  fresh: DispatchTick,
+): DispatchTick {
+  const entry = fresh.wouldDial?.byCampaign?.[campaignId];
+  const stamped = entry ? { ...entry, at: fresh.at } : undefined;
+  const freshOut: DispatchTick = {
+    ...fresh,
+    wouldDial: { ...(fresh.wouldDial as DryRunCounts), byCampaign: stamped ? { [campaignId]: stamped } : {} },
+  };
+  let stored: DispatchTick | null = null;
+  try {
+    stored = storedRaw ? (JSON.parse(storedRaw) as DispatchTick) : null;
+  } catch {
+    stored = null;
+  }
+  if (!stored || typeof stored !== "object" || stored.mode !== "dry" || !stored.wouldDial || typeof stored.wouldDial !== "object")
+    return freshOut;
+  const byCampaign: Record<string, DryRunCampaignCounts> = { ...(stored.wouldDial.byCampaign ?? {}) };
+  if (stamped) byCampaign[campaignId] = stamped;
+  else delete byCampaign[campaignId];
+  return { ...stored, wouldDial: { ...stored.wouldDial, byCampaign } };
 }
 
 /** Contact row sort for the console: live calls first, then queue, then done. */

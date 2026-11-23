@@ -5,7 +5,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { campaignContacts } from "@/lib/db/schema";
+import { appSettings, campaignContacts } from "@/lib/db/schema";
 import { claimCampaignJobs } from "@/lib/campaigns/claim";
 import { dialContact } from "@/lib/campaigns/dial";
 import { dispatchMode, type DryRunCounts } from "@/lib/campaigns/dispatch-mode";
@@ -14,6 +14,7 @@ import { salesTrialGate } from "@/lib/campaigns/sales-trial-gate";
 import {
   campaignBlockers,
   DISPATCH_TICK_KEY,
+  mergeDryStartTick,
   type CallWindow,
   type DispatchTick,
 } from "@/lib/campaigns/live";
@@ -86,7 +87,7 @@ export async function dispatchDueJobs(
     console.log(`[dispatch] dry run (${source}): ${JSON.stringify(wouldDial)}`);
     // Observability must never break the dry run.
     try {
-      await recordDryTick(source, { ...wouldDial, byCampaign });
+      await recordDryTick(source, { ...wouldDial, byCampaign }, scope.campaignId);
     } catch (e) {
       console.error("[dispatch] dry tick logging failed", e);
     }
@@ -308,8 +309,14 @@ async function recordTick(
  * and the would-dial COUNTS (no number, name or campaign title; campaign ids
  * only as byCampaign keys). No per-campaign event: dry writes nothing but this
  * one setting. The row covers EVERY tenant: readers scope it (tickForViewer).
+ * A start scoped to one campaign MERGES its entry into the stored tick
+ * (mergeDryStartTick) instead of overwriting the other campaigns' entries.
  */
-async function recordDryTick(source: DispatchTick["source"], wouldDial: DryRunCounts): Promise<void> {
+async function recordDryTick(
+  source: DispatchTick["source"],
+  wouldDial: DryRunCounts,
+  campaignId?: string,
+): Promise<void> {
   const rows = await db.execute(sql`SELECT count(*)::int AS n FROM campaigns WHERE status = 'running'`);
   const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
   const tick: DispatchTick = {
@@ -328,7 +335,44 @@ async function recordDryTick(source: DispatchTick["source"], wouldDial: DryRunCo
       byCampaign: wouldDial.byCampaign ?? {},
     },
   };
-  await setSetting(DISPATCH_TICK_KEY, JSON.stringify(tick));
+  if (source === "start" && campaignId) await mergeStartTick(campaignId, tick);
+  else await setSetting(DISPATCH_TICK_KEY, JSON.stringify(tick));
+}
+
+/**
+ * The start's read-modify-write, atomic against a concurrent cron tick: ONE
+ * transaction that locks the tick row (SELECT ... FOR UPDATE), merges and
+ * writes. A cron tick's upsert (setSetting, ON CONFLICT DO UPDATE) takes the
+ * same row lock, so the two serialize:
+ *   - cron first: the start's FOR UPDATE waits, then reads the cron's tick
+ *     (READ COMMITTED re-reads the latest row) and merges only its entry;
+ *   - start first: the cron waits, then replaces the whole tick (fresher).
+ * No row yet: INSERT ... ON CONFLICT DO NOTHING; if a cron inserted it in
+ * between, nothing is inserted and the loop locks and merges into that row.
+ */
+async function mergeStartTick(campaignId: string, fresh: DispatchTick): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const [row] = await tx
+        .select({ value: appSettings.value })
+        .from(appSettings)
+        .where(eq(appSettings.key, DISPATCH_TICK_KEY))
+        .for("update");
+      const merged = JSON.stringify(mergeDryStartTick(row?.value ?? null, campaignId, fresh));
+      if (row) {
+        await tx.update(appSettings).set({ value: merged, updatedAt: new Date() }).where(eq(appSettings.key, DISPATCH_TICK_KEY));
+        return;
+      }
+      const inserted = await tx
+        .insert(appSettings)
+        .values({ key: DISPATCH_TICK_KEY, value: merged, updatedAt: new Date() })
+        .onConflictDoNothing()
+        .returning({ key: appSettings.key });
+      if (inserted.length) return;
+      // A concurrent writer created the row: lock it and merge (next pass).
+    }
+    throw new Error("dry start tick: the tick row vanished during the merge");
+  });
 }
 
 // Compose UN appel hors file (bouton "Appel test immédiat") : bypasse la
