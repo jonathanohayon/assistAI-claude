@@ -166,7 +166,8 @@ const checkbox = (html: string) => html.match(/<input type="checkbox"[^>]*>/)?.[
   const src = read(SECTION);
   const body = src.slice(src.indexOf("const save = async"), src.indexOf("/** Checks the endpoint"));
   assert.ok(body.indexOf("brainSavePlan(") > 0 && body.indexOf("brainSavePlan(") < body.indexOf("fetch(API"), "plan before fetch");
-  assert.match(body, /if \("refuse" in plan\) \{[\s\S]*?return false;\s*\}/, "a refused plan returns before fetch");
+  const refused = body.match(/if \("refuse" in plan\) \{([^{}]*)\}/)?.[1] ?? "";
+  assert.match(refused, /showError\(plan\.refuse\);\s*return false;\s*$/, "a refused plan says why and returns before fetch");
   assert.match(body, /body: JSON\.stringify\(plan\.put\)/, "the PUT body is the plan's");
   assert.equal((src.match(/fetch\(API,/g) ?? []).length, 1, "one PUT path");
 }
@@ -179,7 +180,8 @@ const checkbox = (html: string) => html.match(/<input type="checkbox"[^>]*>/)?.[
   assert.deepEqual(ui.brainSavePlan(pending, { enabled: true, url: ` ${MOCK_URL} ` }), { put: { enabled: true, url: MOCK_URL } });
   // "Address first" ticks the box (pending) and moves focus to the address field.
   assert.match(src, /e\.key === "addressRequired"\) \{\s*setPendingOn\(true\);[\s\S]*?urlRef\.current\?\.focus\(\)/);
-  assert.match(src, /ref=\{props\.urlRef\}/, "the address field takes the ref");
+  assert.match(src, /AgentBrainView\(\{ urlRef, \.\.\.props \}/, "the view takes the ref");
+  assert.match(src, /<input\s+ref=\{urlRef\}\s+id=\{`\$\{ids\}-url`\}/, "on the address field");
   // Unticking a pending (never stored) switch sends nothing.
   assert.match(src, /if \(!enabled && pendingOn && !state\.view\.enabled\) \{\s*setPendingOn\(false\);\s*setError\(null\);\s*return;/);
   // A successful save clears the pending state.

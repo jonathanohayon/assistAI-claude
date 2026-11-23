@@ -213,7 +213,7 @@ export type AgentBrainViewProps = {
  * It receives a BrainView: there is no secret value to render, and no url
  * unless the viewer may edit it.
  */
-export function AgentBrainView(props: AgentBrainViewProps) {
+export function AgentBrainView({ urlRef, ...props }: AgentBrainViewProps) {
   const { view, busy, error } = props;
   const t = useTranslations("AgentBrain");
   const ids = useId();
@@ -277,7 +277,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
             </label>
             <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
               <input
-                ref={props.urlRef}
+                ref={urlRef}
                 id={`${ids}-url`}
                 type="url"
                 aria-invalid={error?.at === "url" || undefined}
