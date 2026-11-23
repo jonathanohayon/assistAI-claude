@@ -12,6 +12,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { clockEnv } from "../lib/test-clock-env.mjs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -58,7 +59,7 @@ const dbUrl = (name: string) => {
 function runMigrate(name: string, extra: Record<string, string> = {}): string {
   return execFileSync("node", ["scripts/migrate.mjs"], {
     cwd: ROOT,
-    env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DATABASE_URL: dbUrl(name), ...extra } as unknown as NodeJS.ProcessEnv,
+    env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DATABASE_URL: dbUrl(name), ...clockEnv(), ...extra } as unknown as NodeJS.ProcessEnv,
     encoding: "utf8",
   });
 }

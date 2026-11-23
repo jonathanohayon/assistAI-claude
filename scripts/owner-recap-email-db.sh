@@ -22,7 +22,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
 pg_start_throwaway owner-recap-email
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # Parent of "Merge pull request #297" (92bff0e^1).
 MAIN_REF="${OWNER_RECAP_EMAIL_MAIN_REF:-2c4e2e96462fe539daabcb29968d5e838dbadad1}"
 # /api/calls/end calls next-intl's getTranslations (since #299), which only
@@ -30,5 +30,5 @@ MAIN_REF="${OWNER_RECAP_EMAIL_MAIN_REF:-2c4e2e96462fe539daabcb29968d5e838dbadad1
 # stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
 source scripts/lib/next-intl-stub-tsconfig.sh
 write_next_intl_stub_tsconfig
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" OWNER_RECAP_EMAIL_TEST_DB_URL="$URL" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" OWNER_RECAP_EMAIL_TEST_DB_URL="$URL" \
   OWNER_RECAP_EMAIL_MAIN_REF="$MAIN_REF" npx tsx scripts/tests/owner-recap-email-db.test.ts

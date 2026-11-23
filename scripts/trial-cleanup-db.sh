@@ -18,10 +18,10 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
 pg_start_throwaway trial-cleanup
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 # The route imports lib/email.ts (next-intl's getTranslations): the shared
 # test tsconfig maps "next-intl/server" to a stand-in.
 source scripts/lib/next-intl-stub-tsconfig.sh
 write_next_intl_stub_tsconfig
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" TRIAL_CLEANUP_TEST_DB_URL="$URL" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" TRIAL_CLEANUP_TEST_DB_URL="$URL" \
   npx tsx scripts/tests/trial-cleanup-db.test.ts

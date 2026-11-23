@@ -19,7 +19,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$TSCONFIG"'
 pg_start_throwaway events-route-mask
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
 cat > "$TSCONFIG" <<'JSON'
 {
   "extends": "../tsconfig.json",
@@ -28,5 +28,5 @@ cat > "$TSCONFIG" <<'JSON'
   }
 }
 JSON
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$TSCONFIG" EVENTS_MASK_DB_URL="$URL" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$TSCONFIG" EVENTS_MASK_DB_URL="$URL" \
   npx tsx scripts/tests/events-route-mask-db.test.ts

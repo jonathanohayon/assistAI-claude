@@ -24,11 +24,11 @@ pg_layout() {
 }
 pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "$DIR.work"'
-PG_START_ENV=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+PG_START_ENV=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 pg_start_throwaway recap-email-code
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
-migrate() { env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
+migrate() { env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
 
 # ── 1. Migration 0052 is add-only and writes no data ────────────────────
 # Up to 0052 only (a later migration, e.g. 0053, would hide it from a re-run).
@@ -93,10 +93,10 @@ echo "migration $TAG: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 iden
 
 # ── 2. Send / confirm / limits / scans ─────────────────────────────────
 # Every migration from here on.
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 # The real sender renders through next-intl's getTranslations: the shared
 # test tsconfig maps "next-intl/server" to a stand-in.
 source scripts/lib/next-intl-stub-tsconfig.sh
 write_next_intl_stub_tsconfig
-env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" RECAP_EMAIL_CODE_TEST_DB_URL="$URL" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" RECAP_EMAIL_CODE_TEST_DB_URL="$URL" \
   npx tsx scripts/tests/recap-email-code-db.test.ts
