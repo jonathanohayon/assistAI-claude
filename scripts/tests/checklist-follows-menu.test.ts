@@ -139,7 +139,7 @@ assert.deepEqual([...seen].sort(), ["connect:offer", "connect:open", "connect:so
 console.log(`ok: ${rows} door × account × switch × trial rows`);
 
 // ── 3. The finding: a premium sales-door tenant, switches as in prod ───────
-for (const env of [{}, { CAMPAIGN_DISPATCH: "dry" }]) {
+for (const env of [{}, { CAMPAIGN_DISPATCH: "dry" }] as Record<string, string>[]) {
   const { props } = checklistProps("sales", "premium", "user", env, undefined);
   assert.equal(props.contacts?.view, "soon", "premium sales door: Sales is 'Bientôt' in the menu, so is the step");
   for (const locale of ["fr", "en", "he"]) {

@@ -184,7 +184,7 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   for (const [file, section] of [
     ["app/[locale]/dashboard/reception/page.tsx", "reception"],
     ["app/[locale]/dashboard/my-agent/page.tsx", "agent"],
-  ]) assert.match(code(file), new RegExp(`<TenantConfigPage locale=\\{locale\\} section="${section}" />`), file);
+  ]) assert.match(code(file), new RegExp(`<TenantConfigPage locale=\\{locale\\} section="${section}"( products=\\{\\{ menu, trials \\}\\})? />`), file);
   const sales = code("app/[locale]/dashboard/sales/page.tsx");
   assert.match(sales, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(sales, /const \{ isAdmin, enabled \} = await loadOutboundCampaignsAccess\(session\.user\.id\);/, "sales: the API's own gate");
