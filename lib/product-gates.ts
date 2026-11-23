@@ -20,7 +20,9 @@ import { featuresForPlan, type PlanFeatures } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import type { Entitlement } from "@/lib/product-entitlement";
 import { productMenu, type ProductGates, type ProductMenu } from "@/lib/product-menu";
+import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "@/lib/product-trials";
 import { accountProducts } from "@/lib/products";
+import type { TrialCtaTrial } from "@/lib/trial-cta";
 import type { ProductEntry } from "@/lib/product-values";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
@@ -60,21 +62,38 @@ export async function accountProductMenu(
   return menuFor(await accountProducts(userId), role, features);
 }
 
-/** What a product page needs to pick its header: the menu and the notify-me requests. */
+/** The per-product trial terms stated under "Essayer gratuitement" (lib/product-trials.ts). */
+export const PRODUCT_TRIAL_TERMS: { days: number; minutes: number } = {
+  days: PRODUCT_TRIAL_DAYS,
+  minutes: PRODUCT_TRIAL_MINUTES,
+};
+
+/** What a product page needs to pick its header: the menu, the notify-me requests, the trials. */
 export type ProductPageState = {
   menu: ProductMenu;
   /** The entries the account asked to be told about ("Prévenez-moi"), from accountProducts. */
   notifyRequested: ProductEntry[];
+  /**
+   * accountProducts.trials, read through the narrow lib/trial-cta.ts type
+   * (its `startable` is the BE's start decision; absent = not startable).
+   */
+  trials: Record<ProductEntry, TrialCtaTrial>;
+  trialTerms: { days: number; minutes: number };
 };
 
 /**
  * The menu of an account from its id alone (role and plan features loaded
- * here), plus its notify-me requests: what a product page uses to pick its
+ * here), plus its notify-me requests and per-product trials: what a product page uses to pick its
  * preview header, with ONE accountProducts read and no client fetch.
  */
 export async function loadProductPage(userId: string): Promise<ProductPageState> {
   const products = await accountProducts(userId);
-  return { menu: await menuForAccount(userId, products), notifyRequested: products.notifyRequested };
+  return {
+    menu: await menuForAccount(userId, products),
+    notifyRequested: products.notifyRequested,
+    trials: products.trials,
+    trialTerms: PRODUCT_TRIAL_TERMS,
+  };
 }
 
 /**

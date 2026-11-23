@@ -735,7 +735,14 @@
     "previewSoon": "Coming soon.",
     "previewNotify": "Notify me",
     "previewNotified": "Noted, we'll let you know.",
-    "previewNotifyError": "We couldn't save your request. Please try again."
+    "previewNotifyError": "We couldn't save your request. Please try again.",
+    "previewTrialTerms": "{days, plural, one {# day} other {# days}} and {minutes, plural, one {# minute} other {# minutes}} of calls on us, no card needed, once per product.",
+    "previewTrialActive": "Trial running until {date}.",
+    "previewTrialUsed": "Your trial has ended.",
+    "previewOffer": "See the offer",
+    "previewTrialErrorUsed": "You've already used your {product} trial. See the offer to continue.",
+    "previewTrialErrorUnavailable": "The {product} trial isn't available right now. Please try again later.",
+    "previewTrialError": "The {product} trial couldn't start. Please try again."
   },
   "DashboardCrm": {
     "header": "Customer space",

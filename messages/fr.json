@@ -735,7 +735,14 @@
     "previewSoon": "Bientôt disponible.",
     "previewNotify": "Prévenez-moi",
     "previewNotified": "C'est noté, nous vous préviendrons.",
-    "previewNotifyError": "Votre demande n'a pas pu être enregistrée. Réessayez."
+    "previewNotifyError": "Votre demande n'a pas pu être enregistrée. Réessayez.",
+    "previewTrialTerms": "{days, plural, one {# jour} other {# jours}} et {minutes, plural, one {# minute} other {# minutes}} d'appels offerts, sans carte bancaire, une seule fois par produit.",
+    "previewTrialActive": "Essai en cours jusqu'au {date}.",
+    "previewTrialUsed": "Votre essai est terminé.",
+    "previewOffer": "Voir l'offre",
+    "previewTrialErrorUsed": "Vous avez déjà utilisé votre essai de {product}. Voir l'offre pour continuer.",
+    "previewTrialErrorUnavailable": "L'essai de {product} n'est pas disponible pour le moment. Réessayez plus tard.",
+    "previewTrialError": "L'essai de {product} n'a pas pu démarrer. Réessayez."
   },
   "DashboardCrm": {
     "header": "Espace clients",

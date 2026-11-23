@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { ProductPreviewHeader } from "@/components/dashboard/ProductPreviewHeader";
+import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { ReceptionPreview } from "@/components/preview/ReceptionPreview";
 import { loadProductPage } from "@/lib/product-gates";
 
@@ -21,15 +22,20 @@ export default async function ReceptionPage(props: { params: Promise<{ locale: s
   const { locale } = await props.params;
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
-  const { menu, notifyRequested } = await loadProductPage(session.user.id);
+  const { menu, notifyRequested, trials, trialTerms } = await loadProductPage(session.user.id);
   const state = menu.reception;
   if (state.state === "preview") {
     return (
       <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-        <ProductPreviewHeader entry="reception" cta={state.cta} notifyRequested={notifyRequested.includes("reception")} />
+        <ProductPreviewHeader entry="reception" cta={state.cta} notifyRequested={notifyRequested.includes("reception")} trial={trials.reception} trialTerms={trialTerms} />
         <ReceptionPreview />
       </main>
     );
   }
-  return <TenantConfigPage locale={locale} section="reception" />;
+  return (
+    <>
+      <ProductTrialNote trial={trials.reception} />
+      <TenantConfigPage locale={locale} section="reception" />
+    </>
+  );
 }
