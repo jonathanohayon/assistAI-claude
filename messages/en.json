@@ -316,7 +316,7 @@
           "body": "The same reception for several locations or several calendars."
         },
         "sales": {
-          "name": "Sales",
+          "name": "Call center",
           "body": "Your agent calls your contacts for you and notes the result of each call."
         },
         "connect": {
@@ -687,7 +687,7 @@
     "whatsappPlanLabel": "WhatsApp plan.",
     "whatsappPlanDesc": "Connecting your own Google Calendar and Google Sheets is locked.",
     "upgradeLink": "Upgrade to Global or Premium →",
-    "trialExpired": "Your trial has ended: Tamara is paused. Subscribe to reactivate her. Your settings stay, and your number is kept for 30 days.",
+    "trialExpired": "Your trial has ended: Tamara is paused. Subscribe to reactivate her. Your settings stay, and your number is kept for {retentionDays, plural, one {# day} other {# days}}.",
     "trialRemainingMessage": "Free trial: {label} left",
     "trialSubscribeButton": "Subscribe",
     "tabCalendar": "Calendar",
@@ -708,7 +708,7 @@
     "blockProducts": "Products",
     "blockShared": "Shared",
     "reception": "Reception",
-    "sales": "Sales",
+    "sales": "Call center",
     "connect": "Connect your agent",
     "myAgent": "My agent",
     "calls": "Calls",
@@ -1213,7 +1213,6 @@
     "apply": "Apply to form"
   },
   "DashboardCampaigns": {
-    "kicker": "Call center",
     "title": "Outbound campaigns",
     "subtitle": "Dial your leads with AI agents, in parallel.",
     "close": "Close",
@@ -1985,11 +1984,11 @@
     },
     "trialWarning": {
       "subjectMinutes": "⏰ {minutes} minutes left in your Tamara trial",
-      "subjectHours": "⏰ Your Tamara trial ends in 2 days",
+      "subjectHours": "⏰ Your Tamara trial {warningDays, plural, =0 {ends today} =1 {ends tomorrow} other {ends in # days}}",
       "heading": "⏰ Your trial ends soon",
-      "introHtml": "Your free <strong>Tamara</strong> trial ends in <strong>2 days</strong>. After that, Tamara is paused: she stops answering your calls.",
-      "introText": "Your free Tamara trial ends in 2 days. After that, Tamara is paused: she stops answering your calls.",
-      "warningBoxHtml": "Nothing is deleted: your settings stay, and {phoneLine} is <strong>kept for 30 days</strong> after the pause.",
+      "introHtml": "Your free <strong>Tamara</strong> trial {warningDays, plural, =0 {ends <strong>today</strong>} =1 {ends <strong>tomorrow</strong>} other {ends in <strong># days</strong>}}. After that, Tamara is paused: she stops answering your calls.",
+      "introText": "Your free Tamara trial {warningDays, plural, =0 {ends today} =1 {ends tomorrow} other {ends in # days}}. After that, Tamara is paused: she stops answering your calls.",
+      "warningBoxHtml": "Nothing is deleted: your settings stay, and {phoneLine} is <strong>kept for {retentionDays, plural, one {# day} other {# days}}</strong> after the pause.",
       "phoneSpecific": "the number <strong>{phone}</strong>",
       "phoneGeneric": "your number",
       "actionLineText": "To keep Tamara answering without interruption, activate a plan from your dashboard:",
@@ -1997,21 +1996,21 @@
       "ctaButton": "Activate my plan →",
       "footerText": "You can also reactivate Tamara anytime after the pause, from your dashboard.",
       "footerHtml": "You can also reactivate Tamara anytime after the pause, from your dashboard.",
-      "phoneLineWithPhone": "Nothing is deleted: your settings stay, and your number {phone} is kept for 30 days after the pause.",
-      "phoneLineGeneric": "Nothing is deleted: your settings stay, and your number is kept for 30 days after the pause.",
+      "phoneLineWithPhone": "Nothing is deleted: your settings stay, and your number {phone} is kept for {retentionDays, plural, one {# day} other {# days}} after the pause.",
+      "phoneLineGeneric": "Nothing is deleted: your settings stay, and your number is kept for {retentionDays, plural, one {# day} other {# days}} after the pause.",
       "signature": "— The Tamara team",
-      "textBullet": "In 2 days:"
+      "textBullet": "{warningDays, plural, =0 {Today:} =1 {Tomorrow:} other {In # days:}}"
     },
     "trialDeleted": {
-      "subject": "Your Tamara account has been deleted",
-      "heading": "Your account has been deleted",
-      "introHtml": "Your free <strong>Tamara</strong> trial has ended. Since no plan was activated, your account was deleted automatically.",
-      "introText": "Your free Tamara trial has ended. Since no plan was activated, your account was deleted automatically.",
-      "actionLine": "You can create a new account anytime:",
-      "ctaButton": "Create a new account →",
-      "footer": "Thanks for trying Tamara.",
-      "phoneLineWithPhone": "Your number {phone} has been released.",
-      "phoneLineGeneric": "Your phone number has been released.",
+      "subject": "Your Tamara trial has ended: Tamara is paused",
+      "heading": "Tamara is paused",
+      "introHtml": "Your free <strong>Tamara</strong> trial has ended. No plan was activated, so Tamara is paused: she no longer answers your calls.",
+      "introText": "Your free Tamara trial has ended. No plan was activated, so Tamara is paused: she no longer answers your calls.",
+      "actionLine": "Activate a plan from your dashboard, and Tamara answers your calls again:",
+      "ctaButton": "Activate my plan →",
+      "footer": "Thanks for trying Tamara. You can reactivate her anytime.",
+      "phoneLineWithPhone": "Your settings and data stay. Your number {phone} is kept for {retentionDays, plural, one {# day} other {# days}}: after that, it is released, but your account stays.",
+      "phoneLineGeneric": "Your settings and data stay. Your number is kept for {retentionDays, plural, one {# day} other {# days}}: after that, it is released, but your account stays.",
       "signature": "— The Tamara team"
     },
     "welcome": {
@@ -2050,8 +2049,7 @@
       "overage": "Beyond them, each minute is billed {rate}. Tamara keeps answering as usual.",
       "cta": "See my usage",
       "footer": "You receive this email once per threshold and billing period.",
-      "entryReception": "Receptionist",
-      "entrySales": "Sales"
+      "entryReception": "Receptionist"
     }
   },
   "LiveTest": {

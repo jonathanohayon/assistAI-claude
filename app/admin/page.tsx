@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { phoneNumbers, users } from "@/lib/db/schema";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
+import { productNames } from "@/lib/product-names";
 import {
   getConfigBlocksDirectiveByPlan,
   getGlobalInstructionsByPlan,
@@ -157,6 +158,7 @@ export default async function AdminPage() {
           planPricing={planPricing}
           rows={rows}
           currentUserId={me.id}
+          productNames={await productNames("fr")}
         />
       </section>
     </main>

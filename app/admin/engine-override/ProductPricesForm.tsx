@@ -9,17 +9,17 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { CATALOGUE_CURRENCIES, type CatalogueCurrency, type ProductCatalogue } from "@/lib/product-catalogue";
-import { PRODUCTS, type Product } from "@/lib/product-values";
+import { PRODUCTS, type Product, type ProductNames } from "@/lib/product-values";
 
 import {
   CONFIRM_LINE,
   CONFLICT_LINE,
   FIELD_LABEL,
   NOT_SOLD_AS_ADDON,
-  PRODUCT_LABEL,
   annualOf,
   deriveAnnual,
   diffSummary,
+  productLabels,
   draftErrors,
   fetchCatalogue,
   fieldKey,
@@ -38,6 +38,7 @@ const CURRENCY_SIGN: Record<CatalogueCurrency, string> = { EUR: "€", ILS: "₪
 
 function FieldCell({
   product,
+  productLabel,
   currency,
   field,
   loaded,
@@ -46,6 +47,7 @@ function FieldCell({
   onChange,
 }: {
   product: Product;
+  productLabel: string;
   currency: CatalogueCurrency;
   field: EditableField;
   loaded: ProductCatalogue;
@@ -73,7 +75,7 @@ function FieldCell({
       <label className="flex items-center gap-1">
         <input
           type="text"
-          aria-label={`${PRODUCT_LABEL[product]} ${currency} ${FIELD_LABEL[field]}`}
+          aria-label={`${productLabel} ${currency} ${FIELD_LABEL[field]}`}
           inputMode={field === "minutes" ? "numeric" : "decimal"}
           value={value}
           aria-invalid={error ? true : undefined}
@@ -94,7 +96,17 @@ function FieldCell({
   );
 }
 
-export function ProductPricesForm({ initial, fetchFn }: { initial: ProductCatalogue; fetchFn?: typeof fetch }) {
+export function ProductPricesForm({
+  initial,
+  names,
+  fetchFn,
+}: {
+  initial: ProductCatalogue;
+  /** The products' names (DashboardNav.<entry>, French: lib/product-names.ts). */
+  names: ProductNames;
+  fetchFn?: typeof fetch;
+}) {
+  const labels = productLabels(names);
   const [loaded, setLoaded] = useState(initial);
   const [drafts, setDrafts] = useState<Drafts>({});
   const [serverErrors, setServerErrors] = useState<Partial<Record<FieldKey, string>>>({});
@@ -108,7 +120,7 @@ export function ProductPricesForm({ initial, fetchFn }: { initial: ProductCatalo
   const inlineErrors = { ...serverErrors, ...draftErrors(drafts) };
   const hasErrors = Object.keys(draftErrors(drafts)).length > 0;
   const patch = pricesPatch(loaded, drafts);
-  const diff = diffSummary(loaded, patch);
+  const diff = diffSummary(loaded, patch, labels);
   const dirty = !patchIsEmpty(patch);
 
   const onChange = (k: FieldKey, v: string) => {
@@ -182,12 +194,13 @@ export function ProductPricesForm({ initial, fetchFn }: { initial: ProductCatalo
             {PRODUCTS.map((p) =>
               CATALOGUE_CURRENCIES.map((c, i) => (
                 <tr key={`${p}.${c}`} className={i === CATALOGUE_CURRENCIES.length - 1 ? "border-b border-[var(--color-border)]" : ""}>
-                  <td className="px-2 py-2 align-top font-medium text-[var(--color-foreground)]">{i === 0 ? PRODUCT_LABEL[p] : ""}</td>
+                  <td className="px-2 py-2 align-top font-medium text-[var(--color-foreground)]">{i === 0 ? labels[p] : ""}</td>
                   <td className="px-2 py-2 align-top text-xs text-[var(--color-muted-foreground)]">{c}</td>
                   {(["monthly", "addonMonthly", "minutes", "overagePerMin"] as const).map((f) => (
                     <FieldCell
                       key={f}
                       product={p}
+                      productLabel={labels[p]}
                       currency={c}
                       field={f}
                       loaded={loaded}
@@ -270,7 +283,7 @@ export function ProductPricesForm({ initial, fetchFn }: { initial: ProductCatalo
 }
 
 /** Loads the catalogue, then the form. */
-export function ProductPricesAdmin() {
+export function ProductPricesAdmin({ names }: { names: ProductNames }) {
   const [state, setState] = useState<ProductCatalogue | "error" | null>(null);
   useEffect(() => {
     let live = true;
@@ -281,5 +294,5 @@ export function ProductPricesAdmin() {
   }, []);
   if (state === null) return <p className="text-sm text-[var(--color-muted-foreground)]">Chargement…</p>;
   if (state === "error") return <p className="text-sm text-red-600">Les prix du catalogue n&apos;ont pas pu être chargés.</p>;
-  return <ProductPricesForm initial={state} />;
+  return <ProductPricesForm initial={state} names={names} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Ventes, not owned (F2): the REAL campaigns workspace, read-only, fed by the
+ * Centre d'appels (sales), not owned (F2): the REAL campaigns workspace, read-only, fed by the
  * sample source (three fictional campaigns, their contacts and results).
  * Opening a campaign, its steps and its results work; nothing is created,
  * saved, imported, launched or deleted, and no request leaves the page.

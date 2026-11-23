@@ -459,14 +459,18 @@ export function CampaignsWorkspace({
                 </button>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/75">
-                  <span>📣</span>
-                  <span className="truncate">
-                    {view === "editor"
-                      ? `${t("stepProgress", { current: stepIdx + 1, total: STEPS.length })} · ${stepLabel}`
-                      : t("kicker")}
-                  </span>
-                </div>
+                {/* The eyebrow is the editor's step only. The list header shows
+                    just "Campagnes sortantes": the product's name ("Centre
+                    d'appels", DashboardNav.sales) is already the page's own
+                    (menu entry, preview title), so it isn't repeated here. */}
+                {view === "editor" && (
+                  <div data-campaigns-eyebrow="" className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/75">
+                    <span>📣</span>
+                    <span className="truncate">
+                      {`${t("stepProgress", { current: stepIdx + 1, total: STEPS.length })} · ${stepLabel}`}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <h3 className="truncate text-lg font-extrabold tracking-tight">
                     {view === "editor"

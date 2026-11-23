@@ -99,7 +99,7 @@ export function previewLiveTranscript(lang: unknown): Array<{ role: "user" | "as
   return lines[l].map(([role, text]) => ({ role, text }));
 }
 
-// ── Ventes (the campaigns screen) ─────────────────────────────────────────
+// ── Centre d'appels (sales: the campaigns screen) ─────────────────────────────────────────
 
 const AGENT_ID = "preview-agent-1";
 const CAMPAIGN_IDS = ["preview-campaign-1", "preview-campaign-2", "preview-campaign-3"] as const;

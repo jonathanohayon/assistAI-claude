@@ -18,6 +18,7 @@ import type {
 } from "@/lib/settings";
 import type { PlanFeatureMatrix } from "@/lib/plan-features";
 import type { PlanPricingMap } from "@/lib/plan-pricing";
+import type { ProductNames } from "@/lib/product-values";
 
 import { AdminTable } from "./admin-table";
 import { ApiTranscriptsExplorer } from "./api-transcripts-explorer";
@@ -86,6 +87,8 @@ export interface AdminShellProps {
   planPricing: PlanPricingMap;
   rows: AdminTableRow[];
   currentUserId: string;
+  /** The products' names: their one key each (DashboardNav.<entry>), in French (lib/product-names.ts). */
+  productNames: ProductNames;
 }
 
 /**
@@ -264,7 +267,7 @@ export function AdminShell(props: AdminShellProps) {
     {
       id: "product-catalogue",
       label: "Catalogue des produits",
-      tagline: "Prix, minutes et moteur imposé par produit (Réception, Ventes, Connecter votre agent).",
+      tagline: `Prix, minutes et moteur imposé par produit (${props.productNames.reception}, ${props.productNames.sales}, ${props.productNames.connect}).`,
       summary: "Prix · minutes · moteur imposé",
       accent: "from-[#be185d] to-[#db2777]",
       icon: (
@@ -489,8 +492,8 @@ export function AdminShell(props: AdminShellProps) {
             )}
             {active === "product-catalogue" && (
               <div className="space-y-6">
-                <ProductPricesAdmin />
-                <ProductCatalogueAdmin />
+                <ProductPricesAdmin names={props.productNames} />
+                <ProductCatalogueAdmin names={props.productNames} />
               </div>
             )}
             {active === "users" && (

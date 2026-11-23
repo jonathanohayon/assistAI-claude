@@ -62,8 +62,7 @@ export type WarningKey =
   | "overage"
   | "cta"
   | "footer"
-  | "entryReception"
-  | "entrySales";
+  | "entryReception";
 export type WarningStrings = (key: WarningKey, vars?: Record<string, string>) => string;
 
 export function warningLocale(raw: string | null | undefined): WarningLocale {
@@ -81,10 +80,9 @@ export type WarningInput = {
   overageRate: string;
 };
 
-const ENTRY_KEY: Record<Exclude<ProductEntry, "connect">, WarningKey> = {
-  reception: "entryReception",
-  sales: "entrySales",
-};
+/** The products the email names by their ONE name key (DashboardNav.<entry>). */
+export type NavNamedEntry = "sales" | "connect";
+export type NavProductNames = Record<NavNamedEntry, string>;
 
 const escapeHtml = (s: string): string =>
   s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -92,16 +90,17 @@ const escapeHtml = (s: string): string =>
 export const BILLING_URL = "https://aitamara.com/dashboard/billing";
 
 /**
- * `connectName`: the connect product's name, read from the ONE key that names
- * it everywhere (DashboardNav.connect, "Connecter votre agent"). The email
- * keeps no copy of its own.
+ * `navNames`: the sales and connect products' names, read from the ONE key
+ * that names each of them everywhere (DashboardNav.sales, "Centre d'appels";
+ * DashboardNav.connect, "Connecter votre agent"). The email keeps no copy of
+ * its own. Reception keeps its own wording ("Réceptionniste").
  */
 export function renderUsageWarningEmail(
   input: WarningInput,
   t: WarningStrings,
-  connectName: string,
+  navNames: NavProductNames,
 ): { subject: string; text: string; html: string } {
-  const product = input.entry === "connect" ? connectName : t(ENTRY_KEY[input.entry]);
+  const product = input.entry === "reception" ? t("entryReception") : navNames[input.entry];
   const vars = { product, used: String(input.usedMinutes), included: String(input.includedMinutes), rate: input.overageRate };
   const subject = t(input.threshold === 100 ? "subject100" : "subject80", vars);
   const heading = t(input.threshold === 100 ? "heading100" : "heading80", vars);

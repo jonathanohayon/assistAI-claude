@@ -23,11 +23,9 @@ export const ENGINE_LABEL: Record<RealtimeProvider, string> = {
   xai: "Grok (xAI)",
 };
 
-export const ENTRY_LABEL: Record<ProductEntry, string> = {
-  reception: "Réception",
-  sales: "Ventes",
-  connect: "Connecter votre agent",
-};
+// The products' names are NOT here: each is its one key DashboardNav.<entry>,
+// read in French by the server page (lib/product-names.ts) and passed down as
+// `names` (ProductNames).
 
 /** The three catalogue lines; Réception writes reception AND reception_multi. */
 export const CATALOGUE_LINES: ReadonlyArray<{ entry: ProductEntry; products: readonly Product[] }> = [

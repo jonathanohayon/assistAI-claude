@@ -16,6 +16,10 @@
 // highlighted on any door; the setup checklist is the guide.
 // Connect product name (22/11): Email.usageWarning.entryConnect. The email
 // names the product from DashboardNav.connect, its one key.
+// Sales product name (22/11): Email.usageWarning.entrySales, same reason
+// (DashboardNav.sales, "Centre d'appels").
+// Its campaigns header eyebrow (DashboardCampaigns.kicker, "Centre d'appels"):
+// it repeated the page's own title above "Campagnes sortantes".
 // Sign-up badge per door (23/11, VP): Signup.freeBadge ("free trial, all
 // features": untrue, a trial grants reception only) and the short-lived
 // Signup.freeBadgeReception. Replaced by Signup.trialBadge (reception) and
@@ -41,6 +45,8 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.speed"],
   ["DashboardConfig", "tileStartHere"],
   ["Email", "usageWarning.entryConnect"],
+  ["Email", "usageWarning.entrySales"],
+  ["DashboardCampaigns", "kicker"],
   ["Signup", "freeBadge"],
   ["Signup", "freeBadgeReception"],
 ];

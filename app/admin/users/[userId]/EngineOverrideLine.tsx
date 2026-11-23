@@ -2,10 +2,12 @@
 
 // ADMIN-ONLY line of the tenant banner: the engine each of the account's
 // products RESOLVES to (GET /api/admin/users/[userId]/engine — the same
-// decision as the call path), and the account's Ventes override (PUT, OpenAI
-// only today). The Réception client setting is the existing one
-// (agent_configs realtime_provider + model, edited in Voix → paramètres
-// développeur, VoiceAdminFields): linked, not duplicated.
+// decision as the call path), and the account's sales override (PUT, OpenAI
+// only today). Product names come from the server (`names`, read from
+// DashboardNav.<entry> in French: lib/product-names.ts). The Réception
+// client setting is the existing one (agent_configs realtime_provider +
+// model, edited in Voix → paramètres développeur, VoiceAdminFields): linked,
+// not duplicated.
 // Never imported by a tenant page.
 
 import Link from "next/link";
@@ -13,7 +15,6 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { EngineChoiceRow } from "@/app/admin/engine-override/EngineChoiceRow";
 import {
-  ENTRY_LABEL,
   NOT_FOUND_LINE,
   SOURCE_LABEL,
   costLabel,
@@ -34,6 +35,7 @@ import {
   type ResolvedRow,
 } from "@/app/admin/engine-override/engine-ui";
 import { perMinuteUsdFor, type CostRates } from "@/lib/finance/rates";
+import type { ProductNames } from "@/lib/product-values";
 
 type Rates = Pick<CostRates, "perMinuteUsd" | "openaiUsdPerMinute">;
 export type EngineLineData = {
@@ -43,7 +45,7 @@ export type EngineLineData = {
   rates: Rates | null;
 };
 
-/** The languages a Ventes override must speak: the sales agents' (call path), else "fr" (its fallback). */
+/** The languages a sales override must speak: the sales agents' (call path), else "fr" (its fallback). */
 export function salesLanguages(products: readonly BannerProduct[]): string[] {
   const s = products.find((p) => p.product === "sales");
   if (!s || s.resolved === null) return ["fr"];
@@ -61,18 +63,18 @@ function ResolvedText({ row }: { row: ResolvedRow }) {
   );
 }
 
-function ProductLine({ p, receptionOptions }: { p: BannerProduct; receptionOptions: EngineOption[] }) {
+function ProductLine({ p, receptionOptions, names }: { p: BannerProduct; receptionOptions: EngineOption[]; names: ProductNames }) {
   if (p.resolved === null) {
     return (
       <li data-product={p.product}>
-        <span className="font-medium">{ENTRY_LABEL[p.entry]}</span> : l&apos;agent du client répond, aucun moteur imposé.
+        <span className="font-medium">{names[p.entry]}</span> : l&apos;agent du client répond, aucun moteur imposé.
       </li>
     );
   }
   const rows: ResolvedRow[] = p.byLanguage?.length ? p.byLanguage : [p];
   return (
     <li data-product={p.product}>
-      <span className="font-medium">{ENTRY_LABEL[p.entry]}</span>
+      <span className="font-medium">{names[p.entry]}</span>
       {p.product === "reception_multi" ? " (multi-sites)" : ""} :{" "}
       {rows.map((row, i) => {
         const ig = ignoredLine(row.ignored, row.language);
@@ -107,6 +109,7 @@ function ProductLine({ p, receptionOptions }: { p: BannerProduct; receptionOptio
 export function EngineOverridePanel({
   userId,
   data,
+  names,
   onSaved,
   defaultOpen = false,
   initialSalesChoice,
@@ -115,9 +118,11 @@ export function EngineOverridePanel({
 }: {
   userId: string;
   data: EngineLineData;
+  /** The products' names (DashboardNav.<entry>, French). */
+  names: ProductNames;
   onSaved?: () => void;
   defaultOpen?: boolean;
-  /** Tests / captures: start the Ventes select on this choice instead of the stored one. */
+  /** Tests / captures: start the sales select on this choice instead of the stored one. */
   initialSalesChoice?: EngineOverride | null;
   initialErrors?: Partial<Record<FieldSlot, string>>;
   fetchFn?: typeof fetch;
@@ -161,7 +166,7 @@ export function EngineOverridePanel({
       <ul className="mt-2 space-y-1">
         {products.length === 0 && <li>Aucun produit souscrit.</li>}
         {products.map((p) => (
-          <ProductLine key={p.product} p={p} receptionOptions={data.options.reception} />
+          <ProductLine key={p.product} p={p} receptionOptions={data.options.reception} names={names} />
         ))}
       </ul>
       <p className="mt-1">
@@ -173,7 +178,7 @@ export function EngineOverridePanel({
       </p>
       <div className="mt-2 rounded-xl bg-white/70 px-3">
         <EngineChoiceRow
-          label="Ventes : imposé pour ce client"
+          label={`${names.sales} : imposé pour ce client`}
           options={options}
           choice={choice}
           onChange={(c) => {
@@ -184,7 +189,7 @@ export function EngineOverridePanel({
           warning={languageWarning(missingLanguages(options, choice, salesLanguages(products)), "account")}
           errors={errors}
           noneLabel="Aucun (pas de moteur imposé pour ce client)"
-          note={hasSales ? null : "Ce compte n'a pas le produit Ventes : le réglage s'appliquera s'il le souscrit."}
+          note={hasSales ? null : `Ce compte n'a pas le produit ${names.sales} : le réglage s'appliquera s'il le souscrit.`}
         />
         <div className="flex flex-wrap items-center gap-3 pb-3">
           <button
@@ -193,7 +198,7 @@ export function EngineOverridePanel({
             disabled={isPending || !dirty || (choice !== null && !findOption(options, choice)?.honoured)}
             className="rounded-full bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
           >
-            {isPending ? "Enregistrement…" : "Enregistrer Ventes"}
+            {isPending ? "Enregistrement…" : `Enregistrer ${names.sales}`}
           </button>
           {message && (
             <span role="status" className={message === "Enregistré." ? "text-emerald-700" : "text-red-600"}>
@@ -207,7 +212,7 @@ export function EngineOverridePanel({
 }
 
 /** Loads the three admin reads, then the panel; reloads after a save. */
-export function EngineOverrideLine({ userId }: { userId: string }) {
+export function EngineOverrideLine({ userId, names }: { userId: string; names: ProductNames }) {
   const [state, setState] = useState<EngineLineData | "not_found" | "error" | null>(null);
   const load = useCallback(async () => {
     try {
@@ -237,5 +242,5 @@ export function EngineOverrideLine({ userId }: { userId: string }) {
   if (state === null) return <p className="w-full border-t border-[#fde68a] pt-2">Moteur vocal : chargement…</p>;
   if (state === "not_found") return <p className="w-full border-t border-[#fde68a] pt-2">{NOT_FOUND_LINE}</p>;
   if (state === "error") return <p className="w-full border-t border-[#fde68a] pt-2">Moteur vocal : lecture impossible.</p>;
-  return <EngineOverridePanel userId={userId} data={state} onSaved={() => void load()} />;
+  return <EngineOverridePanel userId={userId} names={names} data={state} onSaved={() => void load()} />;
 }
