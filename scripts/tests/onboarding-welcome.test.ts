@@ -27,6 +27,9 @@ import { DoorWelcome } from "../../app/[locale]/onboarding/door-welcome";
 import { NOTIFY_PATH, PROFILE_PATH, continueFromWelcome, recordNotify, saveWelcomeProfile } from "../../app/[locale]/onboarding/welcome-actions";
 import { OnboardingWizard } from "../../app/[locale]/onboarding/wizard";
 import { WizardCard } from "../../app/[locale]/onboarding/wizard-card";
+import { OnboardingHeader } from "../../app/[locale]/onboarding/onboarding-header";
+import { Logo } from "../../components/ui/Logo";
+import { Link } from "../../i18n/navigation";
 import { previewHref } from "../../lib/onboarding-route";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
@@ -71,7 +74,30 @@ for (const l of LOCALES) {
   assert.equal(now, render(l, createElement(MainCard, props)), `${l}: the reception card is byte-identical to main`);
   assert.ok(text(now).includes(o.useCaseTitle), `${l}: the wizard's first step (use-case grid) is there`);
 }
-console.log("ok: reception card identical to main (fr/en/he)");
+// The header with the trial pill, also the pre-door markup (verbatim).
+function MainHeader(p: { email: string; trialLabel: string }) {
+  return createElement(
+    "div",
+    { className: "mb-8 flex items-center justify-between gap-4" },
+    createElement(Link, { href: "/" }, createElement(Logo)),
+    createElement(
+      "div",
+      { className: "flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]" },
+      createElement("span", { className: "truncate" }, p.email),
+      createElement("span", { "aria-hidden": true, className: "h-1 w-1 shrink-0 rounded-full bg-[var(--color-border)]" }),
+      createElement(
+        "span",
+        { className: "inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-2.5 py-0.5 text-[11px] font-semibold text-white" },
+        p.trialLabel,
+      ),
+    ),
+  );
+}
+for (const l of LOCALES) {
+  const hp = { email: "reception@example.test", trialLabel: "Essai gratuit — mock" };
+  assert.equal(render(l, createElement(OnboardingHeader, hp)), render(l, createElement(MainHeader, hp)), `${l}: the reception header (with its trial pill) is byte-identical to main`);
+}
+console.log("ok: reception header + card identical to main (fr/en/he)");
 
 // ── 2. The welcome screen, server-rendered ────────────────────────────────
 type WProps = Parameters<typeof DoorWelcome>[0];
@@ -86,10 +112,13 @@ const welcome = (l: string, p: Partial<WProps> & Pick<WProps, "door">) =>
         initialCompanyName: "Salon Mock",
         initialLanguage: l as "fr",
         defaultCountry: "FR",
+        email: `${p.door}@example.test`,
+        trialLabel: "TRIAL-PILL-MOCK",
         ...p,
       }),
     ),
   );
+const pressed = (html: string) => [...html.matchAll(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*data-welcome="(preview|reception)"[^>]*>/g)].map((m) => ({ which: m[1], disabled: /\sdisabled=""/.test(m[0]) }));
 
 for (const l of LOCALES) {
@@ -122,10 +151,28 @@ for (const l of LOCALES) {
     }
     // Never the "en ligne" ending, never a number step.
     for (const k of ["doneTitle", "doneDesc", "callButton", "stepNumberHeader", "confirmButton"]) assert.ok(!html.includes(o[k]), `${l}/${door}: no ${k}`);
+    // No Réception trial pill (nor its separator dot) on the welcome screen; the email stays.
+    assert.ok(!html.includes("TRIAL-PILL-MOCK"), `${l}/${door}: no trial pill on the welcome screen`);
+    assert.ok(!html.includes("h-1 w-1 shrink-0 rounded-full"), `${l}/${door}: no pill separator`);
+    assert.ok(html.includes(`>${door}@example.test</span>`), `${l}/${door}: the email is shown`);
   }
   // The secondary button names the Réception product as the menu does.
   assert.ok(o.welcomeTryReception.toLowerCase().includes(m.DashboardNav.reception.toLowerCase()), `${l}: "Essayer la Réception" names DashboardNav.reception`);
 }
+// The language chips default to the PAGE's language (fr → Français, he → עברית, en → English).
+for (const l of LOCALES) {
+  const o = messages(l).Onboarding;
+  const label = { fr: o.languageFr, he: o.languageHe, en: o.languageEn }[l];
+  assert.deepEqual(pressed(welcome(l, { door: "connect", initialLanguage: l })), [label], `${l}: ${label} selected by default`);
+}
+{
+  const page = read("app/[locale]/onboarding/page.tsx");
+  const welcomeJsx = page.slice(page.indexOf("<DoorWelcome"), page.indexOf("/>", page.indexOf("<DoorWelcome")));
+  assert.match(welcomeJsx, /initialLanguage=\{isLang\(locale\) \? locale : "fr"\}/, "welcome: the chips default to the page locale");
+  assert.doesNotMatch(welcomeJsx, /primaryLanguage/, "welcome: not the stored agent language");
+}
+console.log("ok: no trial pill on the welcome screen; chips default to the page language");
+
 // FR: "tableau de bord", never "dashboard", in the new copy.
 for (const k of Object.keys(messages("fr").Onboarding).filter((k) => k.startsWith("welcome"))) {
   assert.doesNotMatch(messages("fr").Onboarding[k], /dashboard/i, `fr: ${k} says "tableau de bord"`);
@@ -212,8 +259,11 @@ const FORBIDDEN = /\/api\/onboarding\/(search|provision)/;
   assert.equal([...dw.matchAll(/\bfetch\(/g)].length, 0, "door-welcome calls fetch only through welcome-actions");
   assert.ok(fetches > 0);
   // "Essayer la Réception": the same wizard card, with what was typed.
-  assert.match(dw, /if \(mode === "wizard"\) \{\s*return \(\s*<WizardCard\s+sectionHeader=\{t\("sectionHeader"\)\}\s+title=\{t\("title"\)\}\s+subtitle=\{t\("subtitle"\)\}\s+initialLanguage=\{language \?\? "fr"\}\s+initialCompanyName=\{companyName\}/);
+  assert.match(dw, /if \(mode === "wizard"\) \{\s*return \(\s*<>\s*<OnboardingHeader email=\{email\} trialLabel=\{trialLabel\} \/>\s*<WizardCard\s+sectionHeader=\{t\("sectionHeader"\)\}\s+title=\{t\("title"\)\}\s+subtitle=\{t\("subtitle"\)\}\s+initialLanguage=\{language \?\? "fr"\}\s+initialCompanyName=\{companyName\}/);
   assert.match(dw, /openWizard: \(\) => setMode\("wizard"\)/);
+  // The welcome view itself renders the header WITHOUT the pill.
+  assert.match(dw, /<OnboardingHeader email=\{email\} trialLabel=\{null\} \/>\s*<div className=\{ONBOARDING_CARD_CLASS\} data-onboarding-welcome/);
+  assert.equal([...dw.matchAll(/<OnboardingHeader /g)].length, 2, "two header sites: welcome (no pill), wizard (pill)");
   console.log("ok: no search / provision from the welcome screen; the reception choice opens the wizard card");
 
   // ── 4. "En ligne" only after a successful purchase ──────────────────────

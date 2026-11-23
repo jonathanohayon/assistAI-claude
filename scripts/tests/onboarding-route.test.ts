@@ -77,7 +77,11 @@ console.log("ok: usable = publicOffer().available, no second rule");
 
 // ── 3. The page's fork ─────────────────────────────────────────────────────
 assert.match(page, /const door = await getAccountDoor\(session\.user\.id\);/);
-assert.match(page, /\{welcome \?\? \(\s*<WizardCard/, "every wizard row renders the wizard card");
+assert.match(
+  page,
+  /\{welcome \?\? \(\s*<>\s*<OnboardingHeader\s+email=\{session\.user\.email\}\s+trialLabel=\{t\("trialLabel", TRIAL_COPY_VALUES\)\}\s*\/>\s*<WizardCard/,
+  "every wizard row renders the header WITH its trial pill, then the wizard card",
+);
 assert.match(page, /productName=\{nav\(ENTRY_LABEL_KEY\[door\]\)\}/, "the product name is the DashboardNav key");
 assert.match(page, /notifyRecorded=\{notifyRequested\.includes\(door\)\}/, "the notify row is read from accountProducts");
 console.log("ok: the page forks on the account's door");

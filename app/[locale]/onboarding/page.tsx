@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { Logo } from "@/components/ui/Logo";
-import { Link } from "@/i18n/navigation";
 import { ENTRY_LABEL_KEY } from "@/lib/dashboard-nav";
 import { db } from "@/lib/db";
 import { agentConfigs, phoneNumbers, users } from "@/lib/db/schema";
@@ -16,6 +14,7 @@ import { publicOffer } from "@/lib/public-offer";
 import { TRIAL_COPY_VALUES } from "@/lib/trial-copy";
 
 import { DoorWelcome } from "./door-welcome";
+import { OnboardingHeader } from "./onboarding-header";
 import { WizardCard } from "./wizard-card";
 
 export const dynamic = "force-dynamic";
@@ -95,8 +94,10 @@ export default async function OnboardingPage(props: {
         previewHref={previewHref(door)}
         notifyRecorded={notifyRequested.includes(door)}
         initialCompanyName={initialCompanyName}
-        initialLanguage={isLang(config?.primaryLanguage) ? config!.primaryLanguage : null}
+        initialLanguage={isLang(locale) ? locale : "fr"}
         defaultCountry={defaultCountry}
+        email={session.user.email}
+        trialLabel={t("trialLabel", TRIAL_COPY_VALUES)}
       />
     );
   }
@@ -109,31 +110,21 @@ export default async function OnboardingPage(props: {
       />
 
       <div className="w-full max-w-2xl">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <Link href="/">
-            <Logo />
-          </Link>
-          <div className="flex items-center gap-2 text-xs text-[var(--color-muted-foreground)]">
-            <span className="truncate">{session.user.email}</span>
-            <span
-              aria-hidden
-              className="h-1 w-1 shrink-0 rounded-full bg-[var(--color-border)]"
-            />
-            <span className="inline-flex shrink-0 items-center rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-              {t("trialLabel", TRIAL_COPY_VALUES)}
-            </span>
-          </div>
-        </div>
-
         {welcome ?? (
-          <WizardCard
-            sectionHeader={t("sectionHeader")}
-            title={t("title")}
-            subtitle={t("subtitle")}
-            initialLanguage={initialLanguage}
-            initialCompanyName={initialCompanyName}
-            defaultCountry={defaultCountry}
-          />
+          <>
+            <OnboardingHeader
+              email={session.user.email}
+              trialLabel={t("trialLabel", TRIAL_COPY_VALUES)}
+            />
+            <WizardCard
+              sectionHeader={t("sectionHeader")}
+              title={t("title")}
+              subtitle={t("subtitle")}
+              initialLanguage={initialLanguage}
+              initialCompanyName={initialCompanyName}
+              defaultCountry={defaultCountry}
+            />
+          </>
         )}
       </div>
     </main>
