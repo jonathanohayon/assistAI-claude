@@ -202,31 +202,37 @@ async function main() {
   // ── Legacy agent webhook: save decision (3 cases + admin) ───────────
   const check = { resolver: publicResolver };
   const SAFE = "https://agent.example.com/hook";
-  await run("save: other fields pass for a tenant (enabled toggle, secret) with the SAME url", async () => {
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: SAFE, wantsEnabled: false, isAdmin: false, check }), { ok: true });
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: SAFE, wantsEnabled: true, isAdmin: false, check }), { ok: true });
+  await run("save: a tenant may switch off, or re-send unchanged, with the SAME url", async () => {
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: SAFE, currentEnabled: true, wantsEnabled: false, isAdmin: false, check }), { ok: true });
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: SAFE, currentEnabled: true, wantsEnabled: true, isAdmin: false, check }), { ok: true, noop: true });
   });
   await run("save: an unchanged re-send passes for a tenant (no url either)", async () => {
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: "", wantsEnabled: false, isAdmin: false, check }), { ok: true });
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: ` ${SAFE}`, url: SAFE, wantsEnabled: false, isAdmin: false, check }), { ok: true });
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: "", currentEnabled: false, wantsEnabled: false, isAdmin: false, check }), { ok: true, noop: true });
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: ` ${SAFE}`, url: SAFE, currentEnabled: true, wantsEnabled: false, isAdmin: false, check }), { ok: true });
   });
   await run("save: a changed url from a tenant = 403 admin_only", async () => {
     const want = { ok: false, status: 403, body: { error: "admin_only", fields: ["url"] } };
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: SAFE, wantsEnabled: false, isAdmin: false, check }), want);
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: "https://agent.example.com/other", wantsEnabled: true, isAdmin: false, check }), want);
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: SAFE, currentEnabled: false, wantsEnabled: false, isAdmin: false, check }), want);
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, url: "https://agent.example.com/other", currentEnabled: true, wantsEnabled: true, isAdmin: false, check }), want);
+  });
+  await run("save: a tenant switching the brain ON = 403 admin_only (an admin may)", async () => {
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, currentEnabled: false, url: SAFE, wantsEnabled: true, isAdmin: false, check }), {
+      ok: false, status: 403, body: { error: "admin_only", fields: ["enabled"] },
+    });
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: SAFE, currentEnabled: false, url: SAFE, wantsEnabled: true, isAdmin: true, check }), { ok: true });
   });
   await run("save: an admin can change the url, to a safe one only", async () => {
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: SAFE, wantsEnabled: true, isAdmin: true, check }), { ok: true });
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: SAFE, currentEnabled: false, wantsEnabled: true, isAdmin: true, check }), { ok: true });
     const unsafe = { ok: false, status: 400, body: { error: "unsafe_url", message: SAFE_URL_MESSAGE } };
     for (const u of ["http://agent.example.com/hook", "https://10.0.0.1/hook", "https://169.254.169.254/latest", "https://localhost/hook"]) {
-      assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: u, wantsEnabled: false, isAdmin: true, check }), unsafe, u);
+      assert.deepEqual(await agentBrainSaveDecision({ currentUrl: "", url: u, currentEnabled: false, wantsEnabled: false, isAdmin: true, check }), unsafe, u);
     }
   });
   await run("save: turning on an unsafe stored url is refused, turning it off passes", async () => {
     const legacy = "http://10.0.0.1/hook";
-    assert.equal((await agentBrainSaveDecision({ currentUrl: legacy, url: legacy, wantsEnabled: true, isAdmin: false, check })).ok, false);
-    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: legacy, url: legacy, wantsEnabled: false, isAdmin: false, check }), { ok: true });
-    assert.equal((await agentBrainSaveDecision({ currentUrl: "", url: "", wantsEnabled: true, isAdmin: true, check })).ok, false, "enable without url");
+    assert.equal((await agentBrainSaveDecision({ currentUrl: legacy, url: legacy, currentEnabled: true, wantsEnabled: true, isAdmin: false, check })).ok, false);
+    assert.deepEqual(await agentBrainSaveDecision({ currentUrl: legacy, url: legacy, currentEnabled: true, wantsEnabled: false, isAdmin: false, check }), { ok: true });
+    assert.equal((await agentBrainSaveDecision({ currentUrl: "", url: "", currentEnabled: false, wantsEnabled: true, isAdmin: true, check })).ok, false, "enable without url");
   });
 
   // ── Legacy agent webhook: serve decision ────────────────────────────

@@ -41,11 +41,22 @@ type Stored = { enabled: boolean; url: string; secret?: string };
 async function brainPut(body: Record<string, unknown>, current: Stored, isAdmin: boolean, generate = () => "generated-mock") {
   const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   const url = urlToSave(body.url, current.url, isAdmin);
-  const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin, check });
+  const decision = await agentBrainSaveDecision({
+    currentUrl: current.url,
+    currentEnabled: current.enabled,
+    currentSecret: current.secret,
+    secret: body.secret,
+    url,
+    wantsEnabled,
+    isAdmin,
+    check,
+  });
   if (!decision.ok) return { status: decision.status, body: decision.body, stored: current };
+  // A tenant save that changes nothing: the route writes nothing.
+  if (decision.noop) return { status: 200, body: null, stored: current };
   const plan = planAgentBrainEntry(
     current,
-    { enabled: wantsEnabled, url, ...(typeof body.secret === "string" ? { secret: body.secret } : {}) },
+    { enabled: wantsEnabled, url, ...(isAdmin && typeof body.secret === "string" ? { secret: body.secret } : {}) },
     { env: {}, generate },
   );
   if (!plan.ok) return { status: 400, body: { error: plan.error }, stored: current };
@@ -57,14 +68,14 @@ async function main() {
   // main: 400 unsafe_url (the SSRF check ran first). Branch: address_required.
   for (const url of ["", "   "]) {
     assert.deepEqual(
-      await agentBrainSaveDecision({ currentUrl: "", url, wantsEnabled: true, isAdmin: true, check }),
+      await agentBrainSaveDecision({ currentUrl: "", currentEnabled: false, url, wantsEnabled: true, isAdmin: true, check }),
       { ok: false, status: 400, body: { error: "address_required" } },
       `enabled:true with url ${JSON.stringify(url)} → address_required`,
     );
   }
   // An upper-case scheme used to be downgraded (main) then refused (#411): now accepted.
   assert.deepEqual(
-    await agentBrainSaveDecision({ currentUrl: "", url: UPPER, wantsEnabled: true, isAdmin: true, check }),
+    await agentBrainSaveDecision({ currentUrl: "", currentEnabled: false, url: UPPER, wantsEnabled: true, isAdmin: true, check }),
     { ok: true },
     "an upper-case HTTPS:// scheme is accepted",
   );
@@ -105,21 +116,22 @@ async function main() {
     // the route composes exactly the helpers this file composes
     assert.match(put, /const wantsEnabled = enabledToSave\(body\.enabled, current\.enabled\);/);
     assert.match(put, /const url = urlToSave\(body\.url, current\.url, isAdmin\);/);
-    assert.match(put, /agentBrainSaveDecision\(\{ currentUrl: current\.url, url, wantsEnabled, isAdmin \}\)/);
+    assert.match(put, /agentBrainSaveDecision\(\{\s*currentUrl: current\.url,\s*currentEnabled: current\.enabled,\s*currentSecret: current\.secret,\s*currentSecretUnreadable: current\.secretUnreadable,\s*secret: body\.secret,\s*url,\s*wantsEnabled,\s*isAdmin,\s*\}\)/);
     assert.match(put, /if \(e instanceof AgentBrainAddressRequiredError\) \{\s*return NextResponse\.json\(\{ error: "address_required" \}, \{ status: 400 \}\);/);
     const lib = src("lib/agent-brain.ts");
     assert.match(lib, /const plan = planAgentBrainEntry\(map\[userId\], next\);\s*if \(!plan\.ok\) throw new AgentBrainAddressRequiredError\(\);/);
     // a tenant can't change the url (even to a missing one is not possible: "" keeps it)
     const cur: Stored = { enabled: false, url: SAFE, secret: "mock-secret" };
     const r = await brainPut({ enabled: true, url: "https://other.example.com/hook" }, cur, false);
-    assert.deepEqual(r, { status: 403, body: { error: "admin_only", fields: ["url"] }, stored: cur });
+    assert.deepEqual(r, { status: 403, body: { error: "admin_only", fields: ["enabled", "url"] }, stored: cur });
   }
 
   // ── Gate case 2: a valid write is stored ──────────────────────────────
-  for (const isAdmin of TENANT_AND_ADMIN) {
+  // (admin only: a tenant switching on is admin_only, agent-brain-admin-only.test.ts)
+  {
     const cur: Stored = { enabled: false, url: SAFE };
-    const r = await brainPut({ enabled: true }, cur, isAdmin);
-    assert.deepEqual(r, { status: 200, body: null, stored: { enabled: true, url: SAFE, secret: "generated-mock" } }, `${who(isAdmin)}: enabling with a stored url`);
+    const r = await brainPut({ enabled: true }, cur, true);
+    assert.deepEqual(r, { status: 200, body: null, stored: { enabled: true, url: SAFE, secret: "generated-mock" } }, "admin: enabling with a stored url");
   }
   assert.deepEqual(await brainPut({ enabled: true, url: ` ${SAFE} ` }, { enabled: false, url: "" }, true), {
     status: 200, body: null, stored: { enabled: true, url: SAFE, secret: "generated-mock" },
@@ -135,7 +147,11 @@ async function main() {
       const gen = () => (generated++, "generated-mock");
       for (const body of [{ enabled: true }, { enabled: true, url: "" }, { enabled: true, url: "   " }, { enabled: true, secret: "new-mock" }]) {
         const r = await brainPut(body, cur, isAdmin, gen);
-        assert.deepEqual(r, { status: 400, body: { error: "address_required" }, stored: cur }, `${who(isAdmin)} ${JSON.stringify(body)} on ${JSON.stringify(cur)}`);
+        // a tenant switching on is refused first, as admin_only (403)
+        const want = isAdmin
+          ? { status: 400, body: { error: "address_required" }, stored: cur }
+          : { status: 403, body: { error: "admin_only", fields: "secret" in body ? ["enabled", "secret"] : ["enabled"] }, stored: cur };
+        assert.deepEqual(r, want, `${who(isAdmin)} ${JSON.stringify(body)} on ${JSON.stringify(cur)}`);
       }
       assert.equal(generated, 0, "no secret generated on a refusal");
     }
@@ -161,11 +177,13 @@ async function main() {
     const on: Stored = { enabled: true, url: SAFE, secret: "mock-secret" };
     // omitted url → the stored one; omitted secret → kept
     assert.deepEqual((await brainPut({ enabled: true }, on, isAdmin)).stored, on);
-    // omitted enabled → the stored value (true here, so a url-less row is still refused)
-    assert.deepEqual((await brainPut({ secret: "x" }, on, isAdmin)).stored, { ...on, secret: "x" });
+    // omitted enabled → the stored value (true here, so a url-less row is still refused).
+    // A secret change is admin-only, so the tenant re-sends the stored one.
+    const sent = isAdmin ? "x" : "mock-secret";
+    assert.deepEqual((await brainPut({ secret: sent }, on, isAdmin)).stored, { ...on, secret: sent });
     // omitted enabled on an OFF row with no url: stays off, passes
-    const off: Stored = { enabled: false, url: "" };
-    assert.deepEqual(await brainPut({ secret: "x" }, off, isAdmin), { status: 200, body: null, stored: { ...off, secret: "x" } });
+    const off: Stored = { enabled: false, url: "", ...(isAdmin ? {} : { secret: "mock-secret" }) };
+    assert.deepEqual(await brainPut({ secret: sent }, off, isAdmin), { status: 200, body: null, stored: { ...off, secret: sent } });
   }
   // admin clears the url without sending enabled on an ON row → refused, nothing written
   {
@@ -194,14 +212,15 @@ async function main() {
     assert.deepEqual(r, { status: 200, body: null, stored: { enabled: true, url: want, secret: "generated-mock" } }, raw);
   }
   // a url stored BEFORE this change (upper case, necessarily off) is read as
-  // is; a tenant enabling it passes and the store writes it normalised.
+  // is; an admin enabling it passes and the store writes it normalised.
   {
     const legacy: Stored = { enabled: false, url: "HTTPS://Agent.Example.com/Hook", secret: "mock-secret" };
     assert.equal(urlToSave(undefined, legacy.url, false), legacy.url, "kept url passed on as stored");
     for (const isAdmin of TENANT_AND_ADMIN) {
-      assert.deepEqual(await brainPut({ enabled: true }, legacy, isAdmin), {
+      // an admin enabling it: stored normalised; a tenant: switching on is admin_only
+      assert.deepEqual(await brainPut({ enabled: true }, legacy, isAdmin), isAdmin ? {
         status: 200, body: null, stored: { enabled: true, url: "https://agent.example.com/Hook", secret: "mock-secret" },
-      }, `${who(isAdmin)}: enabling a legacy upper-case url`);
+      } : { status: 403, body: { error: "admin_only", fields: ["enabled"] }, stored: legacy }, `${who(isAdmin)}: enabling a legacy upper-case url`);
       // turning it off (or a secret-only save) leaves it as stored except the store's normalisation
       assert.equal((await brainPut({ enabled: false }, legacy, isAdmin)).status, 200);
     }
