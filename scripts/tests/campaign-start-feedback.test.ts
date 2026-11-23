@@ -88,7 +88,7 @@ const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   assert.match(src, /const pill = readyPill\(mode, dispatcher\.blockers\);/);
   assert.match(src, /\{pill \? \(\s*<Chip tone=\{pill\.tone\}>\{t\(pill\.key\)\}<\/Chip>/);
   // Both alerts go through dispatchWording, which gates them with showDispatcherAlert.
-  assert.match(src, /<DispatcherHealthBlock\s+health=\{dispatchWording\(mode, tick, tickStale, dispatcher\.blockers\.includes\("outside_call_window"\)\)\.health\}/, "gates both never-ran and stale alerts");
+  assert.match(src, /<DispatcherHealthBlock\s+health=\{\s*dispatchWording\(mode, tick, tickStale, dispatcher\.blockers\.includes\("outside_call_window"\), campaign\.id\)\.health\s*\}/, "gates both never-ran and stale alerts");
   assert.doesNotMatch(src, /<Chip tone="good">\{t\("readyToDial"\)\}/, "no hard-coded green pill left");
 
   for (const l of ["fr", "en", "he"]) {

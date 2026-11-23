@@ -1,9 +1,12 @@
-// The dry ("test mode") dispatcher line: ONE source wins. The line never
-// shows a would-dial count next to the "outside call hours" chip.
-//   - contactsDue > 0, skippedCallHours = 0   → the count line;
-//   - contactsDue = 0, skippedCallHours > 0   → "0 calls (outside call hours)";
-//   - both > 0                                → the count + a separate "waiting for call hours" figure;
-//   - the snapshot says outside the window NOW → "0 calls (outside call hours)", whatever the tick says.
+// The dry ("test mode") dispatcher line: ONE source wins, and each console
+// shows ONLY its own campaign's numbers (wouldDial.byCampaign[id], never the
+// global totals). The line never shows a count next to the "outside call hours" chip.
+//   - due > 0, heldByHours = 0                 → the count line;
+//   - due = 0, heldByHours > 0                 → "0 calls (outside call hours)";
+//   - both > 0                                 → the count + a separate "waiting for call hours" figure;
+//   - the snapshot says outside the window NOW → "0 calls (outside call hours)", whatever the tick says;
+//   - absent from a cron tick with byCampaign  → 0 (count line, n = 0);
+//   - absent from a START tick, or an old tick without byCampaign → the plain line, no figure.
 // Renders the REAL health block to static HTML. Mock data only.
 // Run with:  npx tsx scripts/tests/campaigns-dry-line-one-source.test.ts
 
@@ -39,63 +42,96 @@ function test(name: string, fn: () => void) {
 }
 
 const AT = "2026-11-23T10:00:00.000Z";
-function tick(contactsDue: number, skippedCallHours: number): DispatchTick {
+const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+type Entry = { due: number; heldByHours: number; heldByConcurrency?: number };
+/** A cron (or start) dry tick: global totals deliberately DIFFERENT from any one campaign's entry. */
+function tickOf(by: Record<string, Entry>, source: DispatchTick["source"] = "cron"): DispatchTick {
   return {
-    at: AT, source: "cron", mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 2,
-    wouldDial: { campaignsDue: contactsDue > 0 ? 1 : 0, contactsDue, skippedCallHours, skippedConcurrency: 0 },
+    at: AT, source, mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 5,
+    wouldDial: {
+      campaignsDue: 4, contactsDue: 40, skippedCallHours: 20, skippedConcurrency: 7,
+      byCampaign: Object.fromEntries(Object.entries(by).map(([k, e]) => [k, { heldByConcurrency: 0, ...e }])),
+    },
   };
 }
-const oldDryTick = { at: AT, source: "cron", mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 1 } as DispatchTick;
+/** Only A in the tick: `tick(3, 0)` = A due 3, held by hours 0. */
+const tick = (due: number, heldByHours: number, source: DispatchTick["source"] = "cron") =>
+  tickOf({ [A]: { due, heldByHours } }, source);
+const oldDryTick = {
+  at: AT, source: "cron", mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 1,
+  wouldDial: { campaignsDue: 1, contactsDue: 3, skippedCallHours: 2, skippedConcurrency: 0 },
+} as DispatchTick;
 
 const COUNT = (contactsDue: number, waitingCallHours: number): DispatcherHealth =>
   ({ kind: "dryTick", line: "count", contactsDue, waitingCallHours });
 const OUT: DispatcherHealth = { kind: "dryTick", line: "outsideCallHours" };
+const PLAIN: DispatcherHealth = { kind: "dryTick", line: "plain" };
 
-// ── 1. The table: (mode, tick, stale, outsideWindowNow) → health ─────
-test("dispatchWording: one source wins (tick × outside-window-now)", () => {
-  type Row = [label: string, tick: DispatchTick | null, stale: boolean, outsideNow: boolean, want: DispatcherHealth];
+// ── 1. The table: (mode, tick, stale, outsideWindowNow, campaignId) → health ─
+test("dispatchWording: one source wins, this campaign's entry only", () => {
+  type Row = [label: string, tick: DispatchTick | null, stale: boolean, outsideNow: boolean, id: string | null, want: DispatcherHealth];
+  const both = tickOf({ [A]: { due: 3, heldByHours: 0 }, [B]: { due: 0, heldByHours: 2 } });
   const TABLE: Row[] = [
-    ["due, none held by hours", tick(3, 0), false, false, COUNT(3, 0)],
-    ["nothing due, held by hours", tick(0, 4), false, false, OUT],
-    ["both", tick(3, 2), false, false, COUNT(3, 2)],
-    ["nothing at all", tick(0, 0), false, false, COUNT(0, 0)],
+    ["due, none held by hours", tick(3, 0), false, false, A, COUNT(3, 0)],
+    ["nothing due, held by hours", tick(0, 4), false, false, A, OUT],
+    ["both on the same campaign", tick(3, 2), false, false, A, COUNT(3, 2)],
+    ["entry 0/0", tick(0, 0), false, false, A, COUNT(0, 0)],
+    // two campaigns: each sees only its own numbers (VP capture (c))
+    ["two campaigns, A's view", both, false, false, A, COUNT(3, 0)],
+    ["two campaigns, B's view", both, false, true, B, OUT],
+    ["two campaigns, B's view, tick only", both, false, false, B, OUT],
+    // absent id: a cron tick counted every running campaign with raw due > 0 → 0
+    ["absent from a cron tick", tick(3, 2), false, false, B, COUNT(0, 0)],
+    // absent from a START tick: only the started campaign was counted → no figure
+    ["absent from a start tick", tick(3, 0, "start"), false, false, B, PLAIN],
+    ["present in a start tick", tick(3, 0, "start"), false, false, A, COUNT(3, 0)],
     // the edge: the tick counted before the window closed, the snapshot says outside NOW
-    ["VP capture: due 3, chip outside now", tick(3, 0), false, true, OUT],
-    ["both, chip outside now", tick(3, 2), false, true, OUT],
-    ["held by hours, chip outside now", tick(0, 4), false, true, OUT],
-    ["old tick without counts", oldDryTick, false, false, { kind: "dryTick", line: "plain" }],
-    ["old tick, chip outside now", oldDryTick, false, true, OUT],
+    ["VP capture: due 3, chip outside now", tick(3, 0), false, true, A, OUT],
+    ["held by hours, chip outside now", tick(0, 4), false, true, A, OUT],
+    ["absent from a start tick, chip outside now", tick(3, 0, "start"), false, true, B, OUT],
+    // never the global totals
+    ["old tick without byCampaign", oldDryTick, false, false, A, PLAIN],
+    ["old tick, chip outside now", oldDryTick, false, true, A, OUT],
+    ["no campaign id", tick(3, 2), false, false, null, PLAIN],
     // alarms are not overridden by the chip
-    ["stale, chip outside now", tick(3, 0), true, true, { kind: "stale" }],
-    ["no tick, chip outside now", null, false, true, { kind: "neverRan" }],
+    ["stale, chip outside now", tick(3, 0), true, true, A, { kind: "stale" }],
+    ["no tick, chip outside now", null, false, true, A, { kind: "neverRan" }],
   ];
-  for (const [label, t, stale, outsideNow, want] of TABLE)
-    assert.deepEqual(dispatchWording("dry", t, stale, outsideNow).health, want, label);
-  // off stays hidden, a real tick stays today's line, the 4th argument defaults to false
-  assert.deepEqual(dispatchWording("off", tick(3, 0), false, true).health, { kind: "hidden" });
+  for (const [label, t, stale, outsideNow, id, want] of TABLE)
+    assert.deepEqual(dispatchWording("dry", t, stale, outsideNow, id).health, want, label);
+  // off stays hidden, a real tick stays today's line, optional arguments default to "no figure"
+  assert.deepEqual(dispatchWording("off", tick(3, 0), false, true, A).health, { kind: "hidden" });
   const real = { ...tick(3, 0), mode: "on" } as DispatchTick;
-  assert.deepEqual(dispatchWording("on", real, false, true).health, { kind: "lastTick" });
-  assert.deepEqual(dispatchWording("dry", tick(3, 0)).health, COUNT(3, 0));
+  assert.deepEqual(dispatchWording("on", real, false, true, A).health, { kind: "lastTick" });
+  assert.deepEqual(dispatchWording("dry", tick(3, 0)).health, PLAIN);
 });
 
-test("dry tick reader: skippedCallHours read defensively, never folded into contactsDue", () => {
-  assert.deepEqual(dryTickCounts(tick(0, 4)), { contactsDue: 0, skippedCallHours: 4 });
-  assert.deepEqual(dryTickCounts(tick(3, 2)), { contactsDue: 3, skippedCallHours: 2 });
-  assert.deepEqual(dryTickCounts({ ...oldDryTick, contactsDue: 1, skippedCallHours: 5 }), { contactsDue: 1, skippedCallHours: 5 });
+test("dry tick reader: this campaign's entry, read defensively, never the globals", () => {
+  assert.deepEqual(dryTickCounts(tick(0, 4), A), { mine: { due: 0, heldByHours: 4 } });
+  assert.deepEqual(dryTickCounts(tick(3, 2), A), { mine: { due: 3, heldByHours: 2 } });
+  assert.deepEqual(dryTickCounts(tick(3, 2), B), { mine: { due: 0, heldByHours: 0 } });
+  assert.deepEqual(dryTickCounts(tick(3, 2, "start"), B), { mine: null });
+  assert.deepEqual(dryTickCounts(oldDryTick, A), { mine: null });
+  assert.deepEqual(dryTickCounts({ ...oldDryTick, wouldDial: { byCampaign: [] } }, A), { mine: null }, "array");
+  assert.deepEqual(dryTickCounts({ ...oldDryTick, wouldDial: { byCampaign: { [A]: null } } }, A), { mine: { due: 0, heldByHours: 0 } });
+  // prototype keys are not entries
+  assert.deepEqual(dryTickCounts(tick(3, 0), "constructor"), { mine: { due: 0, heldByHours: 0 } });
+  assert.deepEqual(dryTickCounts(tick(3, 0, "start"), "__proto__"), { mine: null }, "__proto__ is not an entry");
   for (const bad of ["2", -1, Number.NaN, null])
     assert.deepEqual(
-      dryTickCounts({ ...oldDryTick, wouldDial: { contactsDue: 1, skippedCallHours: bad } }),
-      { contactsDue: 1, skippedCallHours: 0 },
+      dryTickCounts(tickOf({ [A]: { due: 1, heldByHours: bad as number } }), A),
+      { mine: { due: 1, heldByHours: 0 } },
       String(bad),
     );
 });
 
 // ── 2. Rendered, every locale ────────────────────────────────────────
-function render(locale: string, t: DispatchTick, outsideNow: boolean) {
+function render(locale: string, t: DispatchTick, outsideNow: boolean, id: string = A) {
   function Harness() {
     const tr = useTranslations("DashboardCampaigns.live");
     return createElement(DispatcherHealthBlock, {
-      health: dispatchWording("dry", t, false, outsideNow).health,
+      health: dispatchWording("dry", t, false, outsideNow, id).health,
       tick: t,
       ago: () => "AGO",
       t: tr,
@@ -113,7 +149,7 @@ test("VP capture: due 3 with the chip outside now → '0 (outside call hours)', 
   for (const l of LOCALES) {
     const out = render(l, tick(3, 0), true);
     assert.equal(out, fmt(l, "dryTickOutsideCallHours", { ago: "AGO" }), l);
-    assert.ok(!out.includes("3"), `${l}: no 3 in ${out}`);
+    assert.ok(!/[1-9]/.test(out), `${l}: no count in ${out}`);
     assert.ok(!out.includes(fmt(l, "dryTickCount", { ago: "AGO", n: 3 })), `${l} no count line`);
   }
   assert.equal(render("fr", tick(3, 0), true), "Mode test : composeur passé AGO, 0 appel (hors heures d'appel).");
@@ -138,6 +174,18 @@ test("each row renders its own copy, the waiting figure separate from the count"
   );
 });
 
+test("two campaigns: A shows only its own numbers, B '0 (outside call hours)'", () => {
+  const both = tickOf({ [A]: { due: 3, heldByHours: 0 }, [B]: { due: 0, heldByHours: 2 } });
+  for (const l of LOCALES) {
+    const a = render(l, both, false, A);
+    assert.equal(a, fmt(l, "dryTickCount", { ago: "AGO", n: 3 }), `${l} A`);
+    assert.ok(!a.includes(fmt(l, "dryTickWaitingCallHours", { m: 2 })), `${l} A never shows B's held contacts`);
+    assert.ok(!a.includes("40") && !a.includes("20"), `${l} A never shows the global totals`);
+    assert.equal(render(l, both, true, B), fmt(l, "dryTickOutsideCallHours", { ago: "AGO" }), `${l} B`);
+  }
+  assert.equal(render("fr", both, false, A), "Mode test : composeur passé AGO, 3 appels auraient été passés.");
+});
+
 test("copy: fr/en/he, ICU plurals, no env or supplier name", () => {
   const want: Record<string, Record<number, string>> = {
     fr: { 1: "1 en attente des heures d'appel", 2: "2 en attente des heures d'appel" },
@@ -158,7 +206,10 @@ test("copy: fr/en/he, ICU plurals, no env or supplier name", () => {
 
 test("the console feeds the chip's own source into the wording", () => {
   const src = read("app/[locale]/dashboard/campaigns/campaign-live-console.tsx");
-  assert.match(src, /dispatchWording\(mode, tick, tickStale, dispatcher\.blockers\.includes\("outside_call_window"\)\)/);
+  assert.match(
+    src,
+    /dispatchWording\(mode, tick, tickStale, dispatcher\.blockers\.includes\("outside_call_window"\), campaign\.id\)/,
+  );
   // the chips are drawn from the same array
   assert.match(src, /dispatcher\.blockers\.map\(\(b\) =>/);
 });

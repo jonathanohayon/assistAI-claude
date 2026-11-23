@@ -300,7 +300,9 @@ export function CampaignLiveConsole({
           neutral line when it ran in test mode. Not while calls are off: the
           pause line above already says why nothing dials. */}
       <DispatcherHealthBlock
-        health={dispatchWording(mode, tick, tickStale, dispatcher.blockers.includes("outside_call_window")).health}
+        health={
+          dispatchWording(mode, tick, tickStale, dispatcher.blockers.includes("outside_call_window"), campaign.id).health
+        }
         tick={tick}
         ago={ago}
         t={t}
