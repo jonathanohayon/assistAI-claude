@@ -42,6 +42,7 @@ import {
   demoLang,
   type DemoLang,
 } from "@/lib/demo-place";
+import { isRealIsoDate } from "@/lib/iso-date";
 import type { DateForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, jerusalemToUTCISO } from "@/lib/tz";
 
@@ -210,14 +211,6 @@ const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const asRecord = (raw: unknown): Record<string, unknown> =>
   raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 
-function isRealDate(date: string): boolean {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) return false;
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const t = new Date(Date.UTC(y, mo - 1, d));
-  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
-}
-
 /** The civil date in Asia/Jerusalem at `nowMs`, YYYY-MM-DD. */
 export function jerusalemDateAt(nowMs: number): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -266,7 +259,7 @@ function checkAvailability(args: Record<string, unknown>, nowMs: number, lang: D
   const text = DEMO_TEXT[lang];
   const date = str(args.date);
   if (!date) return { status: 400, body: { error: text.dateRequired } };
-  if (!isRealDate(date)) return { status: 400, body: { error: text.dateInvalid(date) } };
+  if (!isRealIsoDate(date)) return { status: 400, body: { error: text.dateInvalid(date) } };
   const duration = args.duration;
   const durationMin =
     typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? Math.round(duration) : 30;

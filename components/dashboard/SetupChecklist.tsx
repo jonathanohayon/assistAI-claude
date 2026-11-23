@@ -7,9 +7,15 @@ import { MoreSettings } from "@/components/bricks/MoreSettings";
 import { Link } from "@/i18n/navigation";
 
 import type { Door } from "@/lib/door-values";
-import { outboundPlanName } from "@/lib/outbound-plan";
 
-import { SETUP_OPEN_KEY, checklistSteps, defaultOpen, nextStep, resolveOpen } from "./setup-checklist-ui";
+import {
+  SETUP_OPEN_KEY,
+  checklistSteps,
+  defaultOpen,
+  nextStep,
+  resolveOpen,
+  type ProductStepView,
+} from "./setup-checklist-ui";
 
 const DISMISS_KEY = "tamara.setupCongratsDismissed";
 
@@ -22,10 +28,17 @@ type SetupChecklistProps = {
   forwardingVerified?: boolean;
   /** The account's door: its step is moved to the top (none added or dropped). */
   door?: Door | null;
-  /** "Import contacts" (sales door). `locked` = the plan has no outbound calls: today's upsell. */
-  contacts?: { done: boolean; locked: boolean };
-  /** "Paste your agent's address" (connect door): opens "Votre agent IA" (ClientAgentBrick); passed only where CLIENT_AGENT is on for the viewer. */
-  clientAgent?: { done: boolean };
+  /**
+   * "Import contacts" (sales door). `view` = the MENU's decision for Sales
+   * (setup-checklist-ui.ts productStepView), never a plan feature.
+   */
+  contacts?: { done: boolean; view: ProductStepView };
+  /**
+   * "Paste your agent's address" (connect door): opens "Votre agent IA"
+   * (ClientAgentBrick). `view` = the Connect page's decision
+   * (setup-checklist-ui.ts connectStepView).
+   */
+  clientAgent?: { done: boolean; view: ProductStepView };
   /**
    * "Test it live" (sales door): the dashboard's live test panel, free and
    * ungated like the panel itself. `done` = the account has had a call.
@@ -205,8 +218,10 @@ function LinkIcon({ className }: SvgProps) {
 type ChecklistItem = {
   id: string;
   done: boolean;
-  /** Not in the plan: listed with today's upsell, not counted. */
+  /** A product step the account doesn't own (menu preview): listed, not counted, never "next". */
   locked?: boolean;
+  /** Menu preview "soon": the "Bientôt" label instead of an action. */
+  soon?: boolean;
   icon: (props: SvgProps) => React.JSX.Element;
   title: string;
   desc: string;
@@ -226,22 +241,35 @@ export function SetupChecklist({
   liveTest,
 }: SetupChecklistProps) {
   const t = useTranslations("DashboardSetup");
-  const tPlans = useTranslations("Plans");
+  const tNav = useTranslations("DashboardNav");
+
+  // A product step follows the menu (owned / soon / try), exactly as the
+  // sidebar and the product page's header do: never an offer for a product
+  // the account has, never a plan name.
+  const productStep = (step: { done: boolean; view: ProductStepView }, productHref: string, item: Omit<ChecklistItem, "done">): ChecklistItem => {
+    if (step.view === "open") return { ...item, done: step.done };
+    if (step.view === "soon") return { ...item, done: step.done, locked: true, soon: true };
+    return {
+      ...item,
+      done: step.done,
+      locked: true,
+      ctaLabel: tNav(step.view === "try" ? "previewTry" : "previewOffer"),
+      // The product page: its header holds the trial button or the offer.
+      href: productHref,
+    };
+  };
 
   const baseItems: ChecklistItem[] = [
     ...(contacts
       ? [
-          {
+          productStep(contacts, "/dashboard/sales", {
             id: "contacts",
-            done: contacts.done,
-            locked: contacts.locked,
             icon: UsersIcon,
             title: t("contactsTitle"),
-            desc: contacts.locked ? t("contactsLockedDesc", { plan: outboundPlanName((k) => (tPlans.has(k) ? tPlans(k) : null)) }) : t("contactsDesc"),
-            ctaLabel: contacts.locked ? t("contactsLockedCta") : t("contactsCta"),
-            // Locked: the campaigns tile's upsell, exactly as a click on it.
-            href: contacts.locked ? "/dashboard/sales?tile=campaigns" : "/dashboard/sales",
-          },
+            desc: t("contactsDesc"),
+            ctaLabel: t("contactsCta"),
+            href: "/dashboard/sales",
+          }),
         ]
       : []),
     ...(liveTest
@@ -260,15 +288,14 @@ export function SetupChecklist({
       : []),
     ...(clientAgent
       ? [
-          {
+          productStep(clientAgent, "/dashboard/agent", {
             id: "clientAgent",
-            done: clientAgent.done,
             icon: LinkIcon,
             title: t("clientAgentTitle"),
             desc: t("clientAgentDesc"),
             ctaLabel: t("clientAgentCta"),
             href: "/dashboard/agent#client-agent",
-          },
+          }),
         ]
       : []),
     {
@@ -518,6 +545,13 @@ export function SetupChecklist({
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                       <CheckIcon className="h-3.5 w-3.5" />
                       {t("done")}
+                    </span>
+                  ) : item.soon ? (
+                    <span
+                      data-step-soon=""
+                      className="inline-flex items-center rounded-full bg-[#f1f5f9] px-3 py-1.5 text-xs font-semibold text-[#475569]"
+                    >
+                      {tNav("stateSoon")}
                     </span>
                   ) : (
                     <StepCta item={item} />
