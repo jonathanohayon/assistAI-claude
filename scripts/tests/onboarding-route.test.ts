@@ -82,6 +82,7 @@ assert.match(
   /\{welcome \?\? \(\s*<>\s*<OnboardingHeader\s+email=\{session\.user\.email\}\s+trialLabel=\{t\("trialLabel", TRIAL_COPY_VALUES\)\}\s*\/>\s*<WizardCard/,
   "every wizard row renders the header WITH its trial pill, then the wizard card",
 );
-assert.match(page, /productName=\{nav\(ENTRY_LABEL_KEY\[door\]\)\}/, "the product name is the DashboardNav key");
+// The welcome title is one key per door (onboarding-welcome.test.ts): no product name is passed.
+assert.doesNotMatch(page, /productName=|ENTRY_LABEL_KEY/, "no DashboardNav product name passed to the welcome screen");
 assert.match(page, /notifyRecorded=\{notifyRequested\.includes\(door\)\}/, "the notify row is read from accountProducts");
 console.log("ok: the page forks on the account's door");

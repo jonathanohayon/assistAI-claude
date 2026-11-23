@@ -22,7 +22,6 @@ type NotifyState = "recorded" | "recording" | "failed";
 
 export function DoorWelcome({
   door,
-  productName,
   previewHref,
   notifyRecorded,
   initialCompanyName,
@@ -32,8 +31,6 @@ export function DoorWelcome({
   trialLabel,
 }: {
   door: WelcomeDoor;
-  /** DashboardNav.<door>, read on the server: the ONE product-name key. */
-  productName: string;
   previewHref: string;
   /** accountProducts(userId).notifyRequested includes the door's product. */
   notifyRecorded: boolean;
@@ -118,7 +115,7 @@ export function DoorWelcome({
         </span>
 
         <h1 className="mt-5 font-display text-3xl tracking-tight text-[var(--color-foreground)] sm:text-4xl">
-          {t("welcomeTitle", { product: productName })}
+          {t(door === "connect" ? "welcomeTitleConnect" : "welcomeTitleSales")}
         </h1>
 
         <div className="mt-3 min-h-[1.5rem] text-sm" aria-live="polite">
