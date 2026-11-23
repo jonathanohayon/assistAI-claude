@@ -54,6 +54,25 @@ async function readMap(): Promise<BrainMap> {
 }
 
 /**
+ * How many accounts still have the RETIRED own-agent mechanism switched on
+ * (stored enabled === true). A count only: no id, email nor url leaves
+ * this function. Pure.
+ */
+export function enabledLegacyBrainCount(map: unknown): number {
+  if (!map || typeof map !== "object" || Array.isArray(map)) return 0;
+  let n = 0;
+  for (const entry of Object.values(map as Record<string, unknown>)) {
+    if (entry && typeof entry === "object" && (entry as { enabled?: unknown }).enabled === true) n++;
+  }
+  return n;
+}
+
+/** enabledLegacyBrainCount over the stored map (for the admins' daily digest). */
+export async function countEnabledLegacyBrains(): Promise<number> {
+  return enabledLegacyBrainCount(await readMap());
+}
+
+/**
  * The brain as stored, the secret OPENED (E1: plain or sealed both read).
  * A sealed secret that can't be opened is never returned: `secretUnreadable`.
  */

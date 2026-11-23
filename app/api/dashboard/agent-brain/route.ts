@@ -4,16 +4,31 @@ import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { AgentBrainAddressRequiredError, getAgentBrain, setAgentBrain } from "@/lib/agent-brain";
 import { sealedSecretRefusal } from "@/lib/crypto/secret-box";
-import { agentBrainSaveDecision, brainView, enabledToSave, urlToSave } from "@/lib/agent-brain-guard";
+import {
+  agentBrainRetiredDecision,
+  agentBrainSaveDecision,
+  brainView,
+  enabledToSave,
+  urlToSave,
+} from "@/lib/agent-brain-guard";
 import { logEvent } from "@/lib/logger";
 
 /**
  * Réglage par tenant : la persona Tamara répond, ou l'agent externe du tenant.
  *
+ * RETIRED (replaced by the "Tamara only lends her voice" brick): for
+ * EVERYONE, admin included, the only write left is switching it OFF.
+ * Switching it on, or changing the url or the secret (row on or off) →
+ * 409 { error: "agent_brain_retired" } (the code only), nothing written
+ * (agentBrainRetiredDecision, run before the rules below; the tenant's 403
+ * admin_only below is now a subset of it, kept as a second line). An unchanged
+ * re-send → 200, nothing written. GET is unchanged; a row still on keeps
+ * being served to the worker until it is switched off.
+ *
  * Le changement prend effet au prochain appel — le worker relit
  * `/api/agent/config` à chaque session, il n'y a rien à redéployer.
  *
- * A tenant may only switch the own agent OFF: switching it on, a new or
+ * Before the retirement: a tenant may only switch the own agent OFF: switching it on, a new or
  * changed `url`, a new or changed `secret` are admin-only (403 admin_only
  * { fields }, nothing written); an unchanged re-send passes and writes nothing.
  * SSRF guard (lib/agent-brain-guard.ts): a url saved or enabled must pass
@@ -55,6 +70,30 @@ export async function PUT(request: Request) {
   const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   // A tenant's screen doesn't carry the url: absent / "" keeps the stored one.
   const url = urlToSave(body.url, current.url, isAdmin);
+  const retired = agentBrainRetiredDecision({
+    currentUrl: current.url,
+    currentEnabled: current.enabled,
+    currentSecret: current.secret,
+    currentSecretUnreadable: current.secretUnreadable,
+    secret: body.secret,
+    url,
+    wantsEnabled,
+  });
+  if (!retired.ok) {
+    await logEvent({
+      source: "tenant",
+      event: "agent_brain_refused",
+      // The code only: never the url nor the secret.
+      message: `Agent externe refusé (${retired.body.error})`,
+      level: "warn",
+      userId: session.user.id,
+      metadata: { error: retired.body.error },
+    });
+    return NextResponse.json(retired.body, { status: retired.status });
+  }
+  // Only ON → OFF writes; an unchanged re-send writes nothing (no secret generated).
+  if (!retired.write) return NextResponse.json({ brain: brainView(current, isAdmin), urlEditable: isAdmin });
+
   const decision = await agentBrainSaveDecision({
     currentUrl: current.url,
     currentEnabled: current.enabled,

@@ -140,6 +140,51 @@ export async function agentBrainSaveDecision(args: {
   return { ok: true };
 }
 
+export type BrainRetiredDecision =
+  /** `write`: the save is ON → OFF, the only write left. Otherwise nothing is written (noop). */
+  | { ok: true; write: boolean }
+  | { ok: false; status: 409; body: { error: "agent_brain_retired" } };
+
+/**
+ * The old own-agent mechanism (this route, served to the worker as
+ * `agentWebhook`) is RETIRED: it is replaced by the "Tamara only lends her
+ * voice" brick. Runs in PUT /api/dashboard/agent-brain BEFORE
+ * agentBrainSaveDecision, for EVERYONE, admin included. Pure.
+ *   - switching it ON (wantsEnabled on a row that isn't on) → 409;
+ *   - a changed url or a changed secret, on any row (on or off) → 409;
+ *   - switching it OFF passes and is the only write (`write: true`);
+ *   - an unchanged re-send passes and writes nothing (`write: false`), so no
+ *     secret is ever generated or re-sealed again.
+ * So on a legacy row still ON, an admin (or its tenant) may only switch it
+ * off. 409 { error: "agent_brain_retired" }, no message, nothing written.
+ * Nothing stored is rewritten: an enabled legacy row keeps being served
+ * (toWorkerWebhook) until it is switched off.
+ */
+export function agentBrainRetiredDecision(args: {
+  currentUrl: string;
+  currentEnabled: boolean;
+  /** The stored secret, OPENED; never logged nor returned. */
+  currentSecret?: string;
+  currentSecretUnreadable?: true | boolean;
+  /** The raw `secret` of the PUT body. */
+  secret?: unknown;
+  /** The url the save would store (urlToSave). */
+  url: string;
+  /** The enabled value the save would store (enabledToSave). */
+  wantsEnabled: boolean;
+}): BrainRetiredDecision {
+  const switchOn = args.wantsEnabled && !args.currentEnabled;
+  const urlChanged = normaliseAgentUrl(args.url) !== normaliseAgentUrl(args.currentUrl);
+  const secretChanged = brainSecretChanged(args.secret, {
+    secret: args.currentSecret,
+    secretUnreadable: args.currentSecretUnreadable,
+  });
+  if (switchOn || urlChanged || secretChanged) {
+    return { ok: false, status: 409, body: { error: "agent_brain_retired" } };
+  }
+  return { ok: true, write: args.currentEnabled && !args.wantsEnabled };
+}
+
 export type ServedWebhook<W extends { url: string }> = { webhook: W | undefined; refused: UnsafeUrlCode | null };
 
 /** The webhook to serve: unchanged when its url is safe, omitted otherwise. */
