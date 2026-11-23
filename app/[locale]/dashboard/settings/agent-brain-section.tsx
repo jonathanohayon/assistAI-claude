@@ -1,14 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type Ref } from "react";
 
 import {
-  brainPutBody,
   brainSaveError,
+  brainSavePlan,
   EMPTY_BRAIN_VIEW,
   toBrainState,
-  type BrainErrorKey,
+  type BrainError,
+  type BrainErrorAt,
   type BrainResponse,
   type BrainState,
   type BrainView,
@@ -35,10 +36,25 @@ export function AgentBrainSection() {
   const [secretDraft, setSecretDraft] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<BrainErrorKey | null>(null);
+  const [error, setError] = useState<BrainError | null>(null);
+  // Ticked but not stored yet: the agent waits for an address (no request
+  // was sent, or the server refused to switch it on). The box stays ticked
+  // with the reason under it; Save sends the switch-on with the address.
+  const [pendingOn, setPendingOn] = useState(false);
   const [saved, setSaved] = useState(false);
   const [probe, setProbe] = useState<Probe | null>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlRef = useRef<HTMLInputElement | null>(null);
+
+  /** A message under its control; "address first" also puts the cursor in the address field. */
+  const showError = (e: BrainError) => {
+    setError(e);
+    if (e.key === "addressRequired") {
+      setPendingOn(true);
+      // After the render that shows the line (the field exists for an admin only).
+      setTimeout(() => urlRef.current?.focus(), 0);
+    }
+  };
 
   const apply = (d: BrainResponse | null) => {
     // The raw answer (which may carry the secret) is dropped right here.
@@ -60,29 +76,38 @@ export function AgentBrainSection() {
     };
   }, []);
 
-  const save = async (next: { enabled: boolean; url?: string; secret?: string }) => {
-    setBusy(true);
+  const save = async (from: BrainErrorAt, next: { enabled: boolean; url?: string; secret?: string }) => {
     setError(null);
     setSaved(false);
+    const plan = brainSavePlan(state, next);
+    if ("refuse" in plan) {
+      // No usable address: nothing is sent, the reason shows under the switch.
+      showError(plan.refuse);
+      return false;
+    }
+    setBusy(true);
     try {
       const res = await fetch(API, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(brainPutBody(state, next)),
+        body: JSON.stringify(plan.put),
       });
       const d = (await res.json().catch(() => null)) as BrainResponse | null;
-      const err = brainSaveError(res.status, d, { urlEditable: state.view.urlEditable });
+      const err = brainSaveError(res.status, d, { urlEditable: state.view.urlEditable, from, sent: plan.put });
+      // A 200 that stored the agent off when we asked on still updates the
+      // rest of the view; the box stays ticked with the reason under it.
+      if (res.ok && d && typeof d.error !== "string") apply(d);
       if (err) {
-        setError(err);
+        showError(err);
         return false;
       }
-      apply(d);
+      setPendingOn(false);
       setSaved(true);
       if (savedTimer.current) clearTimeout(savedTimer.current);
       savedTimer.current = setTimeout(() => setSaved(false), 2500);
       return true;
     } catch {
-      setError("generic");
+      setError({ at: from, key: "generic" });
       return false;
     } finally {
       setBusy(false);
@@ -128,14 +153,24 @@ export function AgentBrainSection() {
       saved={saved}
       error={error}
       probe={probe}
-      onToggle={(enabled) => void save({ enabled, url: urlDraft })}
+      pendingOn={pendingOn}
+      urlRef={urlRef}
+      onToggle={(enabled) => {
+        // Unticking a switch that was never stored on: nothing to send.
+        if (!enabled && pendingOn && !state.view.enabled) {
+          setPendingOn(false);
+          setError(null);
+          return;
+        }
+        void save("toggle", { enabled, url: urlDraft });
+      }}
       onUrlChange={setUrlDraft}
-      onSaveUrl={() => void save({ enabled: state.view.enabled, url: urlDraft })}
+      onSaveUrl={() => void save("url", { enabled: state.view.enabled || pendingOn, url: urlDraft })}
       onTest={() => void test()}
       onSecretChange={setSecretDraft}
       onSaveSecret={async () => {
         if (!secretDraft.trim()) return;
-        const ok = await save({ enabled: state.view.enabled, url: urlDraft, secret: secretDraft });
+        const ok = await save("secret", { enabled: state.view.enabled, url: urlDraft, secret: secretDraft });
         if (ok) setSecretDraft("");
       }}
     />
@@ -159,8 +194,12 @@ export type AgentBrainViewProps = {
   secretDraft: string;
   busy: boolean;
   saved: boolean;
-  error: BrainErrorKey | null;
+  /** The message to show, under the control it belongs to. */
+  error: BrainError | null;
   probe: Probe | null;
+  /** Ticked but not stored yet (waiting for an address): the box shows ticked. */
+  pendingOn?: boolean;
+  urlRef?: Ref<HTMLInputElement>;
   onToggle: (enabled: boolean) => void;
   onUrlChange: (url: string) => void;
   onSaveUrl: () => void;
@@ -179,9 +218,16 @@ export function AgentBrainView(props: AgentBrainViewProps) {
   const t = useTranslations("AgentBrain");
   const ids = useId();
   const secretStatusId = `${ids}-secret-status`;
-  // A tenant without a webhook has nothing to switch on: the server would
-  // refuse it. Say who can connect one instead of offering a dead switch.
-  const canToggle = view.urlEditable || view.urlConfigured || view.enabled;
+  // Each message sits under the control that caused it (never at the bottom of the card).
+  const errorId = (at: BrainErrorAt) => `${ids}-error-${at}`;
+  const errorLine = (at: BrainErrorAt) =>
+    error?.at === at ? (
+      <p id={errorId(at)} role="alert" data-error-at={at} className="mt-2 text-xs text-red-700">
+        {t(`errors.${error.key}`)}
+      </p>
+    ) : null;
+  const describedBy = (at: BrainErrorAt, ...more: string[]) =>
+    [...more, ...(error?.at === at ? [errorId(at)] : [])].join(" ") || undefined;
 
   const btn =
     "min-h-10 rounded-lg px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50";
@@ -192,6 +238,9 @@ export function AgentBrainView(props: AgentBrainViewProps) {
   // secret, signature sentence or contract), just who can connect one. The
   // section's title and lead sentence come from the page. Kept as a full
   // view if the agent is somehow on, so it can still be switched off.
+  // This is the only case where the switch couldn't be used: it is then not
+  // rendered at all, so a rendered switch is always usable (except while a
+  // save is in flight).
   if (!view.urlEditable && !view.urlConfigured && !view.enabled) {
     return <p className="mt-4 text-sm text-[var(--color-foreground)]">{t("connectViaTeam")}</p>;
   }
@@ -199,11 +248,12 @@ export function AgentBrainView(props: AgentBrainViewProps) {
   return (
     <div className="mt-4 space-y-4">
       <div className="rounded-xl border border-[var(--color-border)] bg-white px-4 py-3">
-        <label className={`flex items-start gap-3 ${canToggle ? "cursor-pointer" : ""}`}>
+        <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
-            checked={view.enabled}
-            disabled={busy || !canToggle}
+            checked={view.enabled || props.pendingOn === true}
+            disabled={busy}
+            aria-describedby={describedBy("toggle")}
             onChange={(e) => props.onToggle(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
           />
@@ -212,6 +262,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
             <span className="mt-0.5 block text-xs text-[var(--color-muted-foreground)]">{t("toggleHint")}</span>
           </span>
         </label>
+        {errorLine("toggle")}
 
         {view.enabled && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
@@ -226,8 +277,11 @@ export function AgentBrainView(props: AgentBrainViewProps) {
             </label>
             <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
               <input
+                ref={props.urlRef}
                 id={`${ids}-url`}
                 type="url"
+                aria-invalid={error?.at === "url" || undefined}
+                aria-describedby={describedBy("url")}
                 dir="ltr"
                 spellCheck={false}
                 autoComplete="off"
@@ -258,6 +312,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
         ) : (
           <p className="mt-4 text-xs text-[var(--color-muted-foreground)]">{t("connectViaTeam")}</p>
         )}
+        {errorLine("url")}
 
         {/* Write-only signing secret: its state, never its value. */}
         <div className="mt-4">
@@ -275,7 +330,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
               autoComplete="new-password"
               spellCheck={false}
               placeholder={t("secretPlaceholder")}
-              aria-describedby={secretStatusId}
+              aria-describedby={describedBy("secret", secretStatusId)}
               value={props.secretDraft}
               onChange={(e) => props.onSecretChange(e.target.value)}
               className="min-h-10 min-w-0 flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 font-mono text-xs"
@@ -289,6 +344,7 @@ export function AgentBrainView(props: AgentBrainViewProps) {
               {t("secretSave")}
             </button>
           </div>
+          {errorLine("secret")}
           <p className="mt-1.5 text-[11px] text-[var(--color-muted-foreground)]">
             {t.rich("secretHelp", {
               code: (chunks) => (
@@ -300,11 +356,6 @@ export function AgentBrainView(props: AgentBrainViewProps) {
           </p>
         </div>
 
-        {error && (
-          <p role="alert" className="mt-3 text-xs text-red-700">
-            {t(`errors.${error}`)}
-          </p>
-        )}
         <p role="status" aria-live="polite" className="mt-2 text-xs text-emerald-700 empty:hidden">
           {props.saved ? t("saved") : ""}
         </p>

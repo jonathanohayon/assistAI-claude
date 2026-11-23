@@ -79,24 +79,68 @@ export function brainPutBody(
   };
 }
 
-export type BrainErrorKey = "adminOnly" | "unsafeUrl" | "unsafeUrlTenant" | "generic";
+export type BrainErrorKey = "addressRequired" | "adminOnly" | "unsafeUrl" | "unsafeUrlTenant" | "generic";
+
+/** The control a message belongs to: it is shown right next to it, never at the bottom of the card. */
+export type BrainErrorAt = "toggle" | "url" | "secret";
+
+export type BrainError = { at: BrainErrorAt; key: BrainErrorKey };
+
+const ADDRESS_FIRST: BrainError = { at: "toggle", key: "addressRequired" };
 
 /**
- * A refused save -> the message key to show. null when the save went through.
- * The server's `message` is deliberately ignored.
+ * Whether an address can carry the agent: trimmed, starts with "http".
+ * Same rule as the server's setAgentBrain (lib/agent-brain.ts), which is
+ * server-only (node:crypto, settings), so it can't be imported here: a test
+ * pins the two rules together.
+ */
+export function brainUrlUsable(url: string | undefined): boolean {
+  return typeof url === "string" && url.trim().startsWith("http");
+}
+
+/**
+ * What a save would do, decided before any request. An admin saving the
+ * agent ON with no usable address in the field gets the "address first" line
+ * under the switch and NO request. A tenant never carries a url (the server
+ * keeps the stored one), so their save always goes out.
+ */
+export function brainSavePlan(
+  state: BrainState,
+  next: { enabled: boolean; url?: string; secret?: string },
+): { put: ReturnType<typeof brainPutBody> } | { refuse: BrainError } {
+  if (next.enabled && state.view.urlEditable && !brainUrlUsable(next.url)) return { refuse: ADDRESS_FIRST };
+  return { put: brainPutBody(state, next) };
+}
+
+/**
+ * A save's answer -> the message to show and next to which control. null
+ * when the save went through. The server's `message` is deliberately ignored.
  *
- * An unsafe url reads differently by role: an admin (`urlEditable`) can fix
- * the address themselves, so one short line; a tenant can't see or edit it,
- * so they are told who can (the Tamara team) or to turn the agent off.
+ *   - 400 address_required, or 400 unsafe_url on an EMPTY address (what the
+ *     server answered before address_required): "address first", under the
+ *     switch;
+ *   - 400 unsafe_url on a real address: an admin can fix it, so the short
+ *     line under the address field; a tenant can't see or edit it, so the
+ *     long line (who can, or turn the agent off) under the control they used;
+ *   - 200 that stored the agent OFF when we asked ON (the server dropped
+ *     it): "address first" under the switch, never a silent snap-back;
+ *   - anything else: the generic line under the control used.
  */
 export function brainSaveError(
   status: number,
   body: BrainResponse | null | undefined,
-  opts: { urlEditable: boolean },
-): BrainErrorKey | null {
+  opts: { urlEditable: boolean; from: BrainErrorAt; sent: { enabled: boolean; url?: string } },
+): BrainError | null {
   const code = typeof body?.error === "string" ? body.error : null;
-  if (status >= 200 && status < 300 && !code) return null;
-  if (status === 403 && code === "admin_only") return "adminOnly";
-  if (status === 400 && code === "unsafe_url") return opts.urlEditable ? "unsafeUrl" : "unsafeUrlTenant";
-  return "generic";
+  if (status >= 200 && status < 300 && !code) {
+    return opts.sent.enabled && !toBrainState(body).view.enabled ? ADDRESS_FIRST : null;
+  }
+  if (status === 400 && code === "address_required") return ADDRESS_FIRST;
+  if (status === 400 && code === "unsafe_url") {
+    if (!opts.urlEditable) return { at: opts.from, key: "unsafeUrlTenant" };
+    if (!opts.sent.url?.trim()) return ADDRESS_FIRST;
+    return { at: "url", key: "unsafeUrl" };
+  }
+  if (status === 403 && code === "admin_only") return { at: opts.urlEditable ? "url" : opts.from, key: "adminOnly" };
+  return { at: opts.from, key: "generic" };
 }

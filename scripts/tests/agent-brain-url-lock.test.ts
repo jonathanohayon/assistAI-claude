@@ -184,30 +184,33 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
   const leaky = "Resolves to 127.0.0.1 (loopback)";
   const TENANT = { urlEditable: false };
   const ADMIN = { urlEditable: true };
+  // A switch-on with a real address (the address-first rows are in agent-brain-toggle.test.ts).
+  const key = (status: number, body: BrainResponse | null, who: { urlEditable: boolean }) =>
+    brainSaveError(status, body, { ...who, from: "toggle", sent: { enabled: true, url: MOCK_URL } })?.key ?? null;
   for (const who of [TENANT, ADMIN]) {
-    assert.equal(brainSaveError(403, { error: "admin_only", fields: ["url"] }, who), "adminOnly");
-    assert.equal(brainSaveError(400, { error: "Bad JSON" }, who), "generic");
-    assert.equal(brainSaveError(403, { error: "Forbidden" }, who), "generic");
-    assert.equal(brainSaveError(403, { error: "unsafe_url" }, who), "generic");
-    assert.equal(brainSaveError(500, null, who), "generic");
-    assert.equal(brainSaveError(200, { error: "x" }, who), "generic");
-    assert.equal(brainSaveError(200, { brain: { enabled: true, url: "" } }, who), null);
+    assert.equal(key(403, { error: "admin_only", fields: ["url"] }, who), "adminOnly");
+    assert.equal(key(400, { error: "Bad JSON" }, who), "generic");
+    assert.equal(key(403, { error: "Forbidden" }, who), "generic");
+    assert.equal(key(403, { error: "unsafe_url" }, who), "generic");
+    assert.equal(key(500, null, who), "generic");
+    assert.equal(key(200, { error: "x" }, who), "generic");
+    assert.equal(key(200, { brain: { enabled: true, url: "" } }, who), null);
   }
-  assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, TENANT), "unsafeUrlTenant");
-  assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, ADMIN), "unsafeUrl");
+  assert.equal(key(400, { error: "unsafe_url", message: leaky }, TENANT), "unsafeUrlTenant");
+  assert.equal(key(400, { error: "unsafe_url", message: leaky }, ADMIN), "unsafeUrl");
   // The section passes the view's urlEditable (from the server answer, missing = tenant).
-  for (const [d, key] of [
+  for (const [d, k] of [
     [served(false, { enabled: true, url: MOCK_URL }), "unsafeUrlTenant"],
     [served(undefined, { enabled: true, url: MOCK_URL }), "unsafeUrlTenant"],
     [served(true, { enabled: true, url: MOCK_URL }), "unsafeUrl"],
   ] as const) {
     const { view } = toBrainState(d);
-    assert.equal(brainSaveError(400, { error: "unsafe_url", message: leaky }, { urlEditable: view.urlEditable }), key);
+    assert.equal(key(400, { error: "unsafe_url", message: leaky }, { urlEditable: view.urlEditable }), k);
   }
   assert.match(
     read("app/[locale]/dashboard/settings/agent-brain-section.tsx"),
-    /brainSaveError\(res\.status, d, \{ urlEditable: state\.view\.urlEditable \}\)/,
-    "the section branches on the server's urlEditable",
+    /brainSaveError\(res\.status, d, \{ urlEditable: state\.view\.urlEditable, from, sent: plan\.put \}\)/,
+    "the section branches on the server's urlEditable and on what it sent",
   );
   // Exact copy (tamaraVP).
   assert.equal(
@@ -222,9 +225,11 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
 
   for (const l of LOCALES) {
     const m = messages(l).AgentBrain;
-    for (const key of ["adminOnly", "unsafeUrl", "unsafeUrlTenant", "generic"] as BrainErrorKey[]) {
+    for (const key of ["addressRequired", "adminOnly", "unsafeUrl", "unsafeUrlTenant", "generic"] as BrainErrorKey[]) {
       const urlEditable = key !== "unsafeUrlTenant";
-      const html = render(served(urlEditable, { enabled: true, url: "http://127.0.0.1/x" }), l, { error: key });
+      const html = render(served(urlEditable, { enabled: true, url: "http://127.0.0.1/x" }), l, {
+        error: { at: "toggle", key },
+      });
       assert.match(html, /role="alert"/, `${l}/${key}: alert`);
       assert.ok(html.includes(esc(m.errors[key])), `${l}/${key}: our words`);
       for (const bad of [leaky, "admin_only", "unsafe_url", "loopback"]) {
@@ -255,10 +260,14 @@ assert.equal(toBrainState(served(true, { enabled: false, url: "", secret: "" }))
 // customer's agent off. Every save from this section must carry `enabled`, including a secret-only save.
 {
   const src = read("app/[locale]/dashboard/settings/agent-brain-section.tsx");
-  const saves = src.match(/save\(\{[^}]*\}\)/g) ?? [];
+  const saves = src.match(/save\("\w+", \{[^}]*\}\)/g) ?? [];
   assert.ok(saves.length >= 3, "the section's save calls were found");
   for (const call of saves) assert.match(call, /\benabled\b/, `every save carries enabled: ${call}`);
-  assert.match(src, /save\(\{ enabled: state\.view\.enabled, url: urlDraft, secret: secretDraft \}\)/, "secret-only save keeps the current value");
+  assert.match(
+    src,
+    /save\("secret", \{ enabled: state\.view\.enabled, url: urlDraft, secret: secretDraft \}\)/,
+    "secret-only save keeps the current value",
+  );
   for (const urlEditable of [true, false]) {
     const st = toBrainState(served(urlEditable, { enabled: true, url: MOCK_URL }));
     assert.equal(brainPutBody(st, { enabled: true, secret: "x" }).enabled, true);
