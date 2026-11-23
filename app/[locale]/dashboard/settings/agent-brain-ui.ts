@@ -89,13 +89,12 @@ export type BrainError = { at: BrainErrorAt; key: BrainErrorKey };
 const ADDRESS_FIRST: BrainError = { at: "toggle", key: "addressRequired" };
 
 /**
- * Whether an address can carry the agent: trimmed, starts with "http".
- * Same rule as the server's setAgentBrain (lib/agent-brain.ts), which is
- * server-only (node:crypto, settings), so it can't be imported here: a test
- * pins the two rules together.
+ * Whether an address can carry the agent: trimmed, starts with "http", the
+ * scheme in any case ("HTTPS://…" is usable). The server's rule lives in
+ * server-only modules (node:crypto, dns), so it can't be imported here.
  */
 export function brainUrlUsable(url: string | undefined): boolean {
-  return typeof url === "string" && url.trim().startsWith("http");
+  return typeof url === "string" && url.trim().toLowerCase().startsWith("http");
 }
 
 /**

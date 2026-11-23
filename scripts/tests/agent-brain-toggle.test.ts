@@ -145,22 +145,24 @@ const checkbox = (html: string) => html.match(/<input type="checkbox"[^>]*>/)?.[
   const adminWithUrl = ui.toBrainState(served(true, { enabled: false, url: MOCK_URL }));
   assert.deepEqual(ui.brainSavePlan(adminWithUrl, { enabled: true, url: MOCK_URL }), { put: { enabled: true, url: MOCK_URL } });
 
-  // The client rule is the server's (lib/agent-brain.ts setAgentBrain: trimmed, starts with "http").
-  const server = read("lib/agent-brain.ts");
-  assert.match(server, /const url = next\.url\.trim\(\);/, "server trims");
-  assert.match(server, /next\.enabled && url\.startsWith\("http"\)/, "server rule: starts with http");
+  // The rule (the server's, tamaraVlad #411): trimmed, starts with "http", scheme in any case.
   for (const [url, ok] of [
     [MOCK_URL, true],
     [`  ${MOCK_URL}  `, true],
     ["http://agent.example.test/hook", true],
+    ["HTTPS://agent.example.test/hook", true],
+    ["Https://agent.example.test/hook", true],
     ["", false],
     ["   ", false],
     ["agent.example.test", false],
+    ["ftp://agent.example.test", false],
   ] as const) {
-    const t = url.trim();
-    assert.equal(ui.brainUrlUsable(url), t.startsWith("http"), `same rule as the server: "${url}"`);
-    assert.equal(ui.brainUrlUsable(url), ok);
+    assert.equal(ui.brainUrlUsable(url), ok, `usable: "${url}"`);
   }
+  // An upper-case scheme is an address: no "address first", the PUT goes out with it.
+  const upper = "HTTPS://agent.example.test/hook";
+  assert.deepEqual(ui.brainSavePlan(admin, { enabled: true, url: upper }), { put: { enabled: true, url: upper } });
+  assert.deepEqual(ui.brainSavePlan(admin, { enabled: true, url: ` ${upper} ` }), { put: { enabled: true, url: upper } });
 
   // The section sends only what the plan allows, and only after it.
   const src = read(SECTION);
