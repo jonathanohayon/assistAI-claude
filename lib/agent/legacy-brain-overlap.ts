@@ -10,6 +10,8 @@
 // The alert carries the internal account id only (as the other per-account
 // call-path alerts do): never an email, a url nor a secret.
 
+import { fireSafely } from "./fire-safely";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const LEGACY_BRAIN_OVERLAP_ALERT_PREFIX = "agent_brain_overlap:";
@@ -49,9 +51,16 @@ export async function alertLegacyBrainOverlapSafely(args: {
   clientAgent: { enabled: boolean; url: string } | null | undefined;
   alert: OverlapAlert;
 }): Promise<boolean> {
+  let bothSet: boolean;
   try {
-    if (!legacyAndClientAgentBothSet(args.brain, args.clientAgent)) return false;
-    await args.alert({
+    bothSet = legacyAndClientAgentBothSet(args.brain, args.clientAgent);
+  } catch {
+    // Fail-open: the call payload never depends on this alert.
+    return false;
+  }
+  if (!bothSet) return false;
+  return fireSafely(() =>
+    args.alert({
       key: legacyBrainOverlapAlertKey(args.userId),
       subject: "Old own-agent mechanism overrides the new one",
       body:
@@ -60,10 +69,6 @@ export async function alertLegacyBrainOverlapSafely(args: {
         "Switch the old mechanism off for this account.",
       dedupMs: DAY_MS,
       severity: "warning",
-    });
-    return true;
-  } catch {
-    // Fail-open: the call payload never depends on this alert.
-    return false;
-  }
+    }),
+  );
 }

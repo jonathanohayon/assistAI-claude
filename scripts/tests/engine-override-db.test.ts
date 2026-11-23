@@ -26,6 +26,11 @@
 //      GET shows the sales entry's source "client"; the campaign payload
 //      follows it over the product override; an ignored one falls through to
 //      the product override with ONE deduplicated alert.
+//   7. old own-agent mechanism + new client agent both set: payload
+//      byte-identical whatever the overlap alert sink does; one alert per day.
+//   8. an unsafe external agent address: the unsafe_agent_webhook alert sink
+//      throwing synchronously or rejecting never fails nor changes the
+//      inbound config (byte-identical to the silent-sink response).
 // The session is a test double (scripts/tests/fixtures/campaigns-plan-gate/hooks.mjs).
 // Plain `npm test` skips it. Run it with:  bash scripts/engine-override-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; mock data only (example.test).
@@ -500,6 +505,49 @@ async function main() {
     await db.execute(sql`UPDATE agent_configs SET tools_config = ${toolsBefore}::jsonb WHERE user_id = ${B}`);
     assert.equal(await runB(silent), before, "restored → the pre-section payload");
     console.log(`ok: old+new agent overlap (payload byte-identical with 4 sinks; ${delivered ? "one deduplicated alert" : "no alert in quiet hours"})`);
+  }
+
+  // ── 8. Unsafe external agent address: the alert sink can't fail the config ──
+  // Account B: tenant_agent_brain ON with a refused url (a private literal IP,
+  // so no DNS). The webhook is not served and the unsafe_agent_webhook alert
+  // fires; a sink that throws SYNCHRONOUSLY or rejects on that alert → the
+  // inbound config still serves, byte-identical to the silent-sink response.
+  {
+    const BRAIN = "tenant_agent_brain";
+    await clear();
+    await db.execute(sql`DELETE FROM app_settings WHERE key IN (${BRAIN}, ${LEDGER_SETTING})`);
+    const runB = async (alert: (a: unknown) => Promise<unknown>) => {
+      const res = await buildInboundConfig(new URLSearchParams(`userId=${B}`), { ...LIVE_INBOUND_EFFECTS, alertAdmins: alert });
+      return { status: res.status, body: mask(await res.text()) };
+    };
+    const silent = async () => false;
+    const before = await runB(silent);
+    await db.execute(sql`INSERT INTO app_settings (key, value) VALUES (${BRAIN}, ${JSON.stringify({ [B]: { enabled: true, url: "http://127.0.0.1/hook" } })})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+    const isUnsafe = (a: unknown) => String((a as { key?: unknown }).key) === `unsafe_agent_webhook:${B}`;
+    const seen: unknown[] = [];
+    const collect = async (a: unknown) => (isUnsafe(a) && seen.push(a), true);
+    const syncThrow = ((a: unknown) => {
+      if (isUnsafe(a)) throw new Error("mock sink down (sync)");
+      return Promise.resolve(false);
+    }) as (a: unknown) => Promise<unknown>;
+    const rejects = async (a: unknown) => {
+      if (isUnsafe(a)) throw new Error("mock sink down (async)");
+      return false;
+    };
+    const baseline = await runB(silent);
+    assert.equal(baseline.status, 200, "served");
+    assert.match(baseline.body, /"voiceConfig"/, "a real payload");
+    assert.doesNotMatch(baseline.body, /"agentWebhook"/, "the refused webhook is not served");
+    assert.doesNotMatch(baseline.body, /127\.0\.0\.1\/hook/, "the refused url never reaches the payload");
+    for (const [name, sink] of [["collecting", collect], ["sync throw", syncThrow], ["rejecting", rejects]] as const) {
+      assert.deepEqual(await runB(sink), baseline, `unsafe_agent_webhook sink ${name}: payload byte-identical`);
+    }
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(seen.length, 1, "the unsafe_agent_webhook alert fired once (collecting sink)");
+    await db.execute(sql`DELETE FROM app_settings WHERE key IN (${BRAIN}, ${LEDGER_SETTING})`);
+    assert.deepEqual(await runB(silent), before, "restored → the pre-section payload");
+    console.log("ok: unsafe agent address (payload byte-identical with a sync-throwing / rejecting alert sink)");
   }
 
   console.log("ALL ENGINE-OVERRIDE DB TESTS PASSED");

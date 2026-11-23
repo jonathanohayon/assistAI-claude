@@ -33,6 +33,7 @@ import { receptionistCapabilities } from "@/lib/tools/store";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { fireSafely } from "@/lib/agent/fire-safely";
 import {
   getCapabilitiesDirectiveByPlan,
   getConfigBlocksDirectiveByPlan,
@@ -326,10 +327,13 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // LiveTest) during the tenant's test window verifies forwarding.
   // Fire-and-forget, never delays the config.
   if (phone && !userId) {
-    void fx.markForwardingTestCall(tenant.user.id, {
-      forwardedFrom: params.get("forwardedFrom"),
-      via: "call_start",
-    });
+    // fireSafely: a sync throw is caught too (a bare `void` only ignores the promise).
+    void fireSafely(() =>
+      fx.markForwardingTestCall(tenant.user.id, {
+        forwardedFrom: params.get("forwardedFrom"),
+        via: "call_start",
+      }),
+    );
   }
   const brain = await getAgentBrain(tenant.user.id, fx.reportUnreadable);
   const envOverride = process.env.AGENT_WEBHOOK_URL;
@@ -359,16 +363,19 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
       userId: tenant.user.id,
       metadata: { via, code: refused },
     });
-    void fx.alertAdmins({
-      key: via === "env_override" ? "unsafe_agent_webhook:env" : `unsafe_agent_webhook:${tenant.user.id}`,
-      subject: "External agent address refused",
-      body:
-        via === "env_override"
-          ? "The global AGENT_WEBHOOK_URL is not a safe address. Calls use the normal Tamara until it is fixed."
-          : `The external agent address of account ${tenant.user.id} is not a safe address. Its calls use the normal Tamara until it is changed.`,
-      dedupMs: 24 * 60 * 60 * 1000,
-      severity: "warning",
-    });
+    // fireSafely: a sink that throws (sync or async) never fails the config.
+    void fireSafely(() =>
+      fx.alertAdmins({
+        key: via === "env_override" ? "unsafe_agent_webhook:env" : `unsafe_agent_webhook:${tenant.user.id}`,
+        subject: "External agent address refused",
+        body:
+          via === "env_override"
+            ? "The global AGENT_WEBHOOK_URL is not a safe address. Calls use the normal Tamara until it is fixed."
+            : `The external agent address of account ${tenant.user.id} is not a safe address. Its calls use the normal Tamara until it is changed.`,
+        dedupMs: 24 * 60 * 60 * 1000,
+        severity: "warning",
+      }),
+    );
   }
   if (agentWebhook) {
     await fx.logEvent({
