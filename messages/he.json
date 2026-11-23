@@ -2786,6 +2786,7 @@
     "secretSave": "שמירת הסוד",
     "secretHelp": "הסוכן שלכם בודק <code>X-Tamara-Signature = HMAC-SHA256(raw request body, secret)</code> לפני שהוא מטפל בבקשה.",
     "errors": {
+      "addressRequired": "הזינו קודם את כתובת הסוכן שלכם.",
       "adminOnly": "רק צוות תמרה יכול לשנות את הכתובת הזו.",
       "unsafeUrl": "אי אפשר להשתמש בכתובת הזו.",
       "unsafeUrlTenant": "אי אפשר להשתמש בכתובת הזו. פנו לצוות תמרה כדי לעדכן אותה, או כבו את הסוכן.",

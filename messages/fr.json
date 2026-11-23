@@ -2786,6 +2786,7 @@
     "secretSave": "Enregistrer le secret",
     "secretHelp": "Votre agent vérifie <code>X-Tamara-Signature = HMAC-SHA256(corps brut de la requête, ce secret)</code> avant de traiter la requête.",
     "errors": {
+      "addressRequired": "Indiquez d'abord l'adresse de votre agent.",
       "adminOnly": "Seule l'équipe Tamara peut modifier cette adresse.",
       "unsafeUrl": "Cette adresse ne peut pas être utilisée.",
       "unsafeUrlTenant": "Cette adresse ne peut pas être utilisée. Contactez l'équipe Tamara pour la mettre à jour, ou désactivez l'agent.",
