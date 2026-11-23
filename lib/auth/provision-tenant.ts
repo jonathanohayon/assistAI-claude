@@ -3,11 +3,13 @@ import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";
 import type { Door } from "@/lib/door-values";
 import { seedForNewAccount } from "@/lib/neutral-seed";
+import { recordNotifyRequest } from "@/lib/product-notify";
 import { type PlanKey } from "@/lib/plans";
 import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
 import { signupDoorTrial } from "@/lib/product-trials";
 import { insertProductTrial } from "@/lib/product-trials-start";
-import type { AccountProductsRecord } from "@/lib/product-values";
+import type { AccountProductsRecord, ProductEntry } from "@/lib/product-values";
+import { publicAvailability, signupDoorNotify } from "@/lib/public-offer";
 import {
   getOnboardingGreetingByPlan,
   getOnboardingTemplateByPlan,
@@ -45,8 +47,12 @@ export const SIGNUP_PRODUCTS: AccountProductsRecord = { base: "reception_multi",
 
 export async function provisionTenant(
   input: ProvisionTenantInput,
-  /** Test seam: the env productTrialStartable reads (default process.env). */
-  opts: { env?: Record<string, string | undefined> } = {},
+  opts: {
+    /** Test seam: the env productTrialStartable / publicAvailability read (default process.env). */
+    env?: Record<string, string | undefined>;
+    /** Test seam: the notify-me writer (default recordNotifyRequest). */
+    recordNotify?: (userId: string, product: ProductEntry) => Promise<unknown>;
+  } = {},
 ) {
   const { email, displayName, plan, locale, emailVerified } = input;
 
@@ -85,8 +91,25 @@ export async function provisionTenant(
   // P3: the door's product, when it is not reception, gets its per-product
   // trial (7 days / 30 min) — only if that trial is startable now (flag on
   // AND cap enforced). Otherwise no row: it stays "available" for later.
-  const doorTrial = signupDoorTrial(input.door ?? null, opts.env ?? process.env, TRIAL_CAPS_ENFORCED);
+  const env = opts.env ?? process.env;
+  const doorTrial = signupDoorTrial(input.door ?? null, env, TRIAL_CAPS_ENFORCED);
   if (doorTrial) await insertProductTrial(created.id, doorTrial, new Date());
+
+  // The door's product is NOT usable yet (the public `available` the sign-up
+  // page reads): record its "prévenez-moi" row now, so the page's "you will
+  // be told first" holds without a second click. Usable → no row (the door
+  // trial above applies, or the product simply stays "available"). The two
+  // never overlap: the trial needs the flag on, the record needs it off.
+  // FAIL-OPEN: the account already exists; a failed record never fails the
+  // sign-up (error class only in the log, no PII). Idempotent (ON CONFLICT).
+  const notifyProduct = signupDoorNotify(input.door ?? null, publicAvailability(env));
+  if (notifyProduct) {
+    try {
+      await (opts.recordNotify ?? recordNotifyRequest)(created.id, notifyProduct);
+    } catch (e) {
+      console.error(`[provision-tenant] signup notify record failed: ${e instanceof Error ? e.constructor.name : typeof e}`);
+    }
+  }
 
   // Bootstrap agent_config. Cascade: the admin's per-plan template/greeting
   // (/admin → Persona template) → else a NEUTRAL persona in the account's
