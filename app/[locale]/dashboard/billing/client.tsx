@@ -19,6 +19,8 @@ import {
 import { type Plan, type PlanKey, formatEuro } from "@/lib/plans";
 import { classifyChange } from "@/lib/subscription";
 
+import { renewTarget, renewalView, type RenewalView } from "./renewal-view";
+
 import { DeleteAccountSection } from "../settings/delete-account-section";
 import CallsPerDayChart from "./charts/CallsPerDayChart";
 import { MinutesGauge } from "./charts/MinutesGauge";
@@ -135,6 +137,7 @@ export function BillingClient({
   hintedPlanKey,
   initialBilling,
   email,
+  autoRenew,
 }: {
   plans: Plan[];
   pricing: PlanPricingMap;
@@ -142,6 +145,8 @@ export function BillingClient({
   hintedPlanKey: PlanKey | null;
   initialBilling: Billing;
   email: string;
+  /** Server-decided: can this account really be charged again by itself? */
+  autoRenew: boolean;
 }) {
   const t = useTranslations("DashboardBilling");
   const tPlans = useTranslations("Plans");
@@ -209,10 +214,10 @@ export function BillingClient({
     return null;
   })();
 
-  function openPayment(planKey: PlanKey) {
+  function openPayment(planKey: PlanKey, period: Billing = billing) {
     setPayError(null);
     setPayUrl(null);
-    setPayPeriod(billing);
+    setPayPeriod(period);
     setPayPlan(planKey);
   }
   function closePayment() {
@@ -294,6 +299,12 @@ export function BillingClient({
   const payPlanObj = plans.find((p) => p.key === payPlan) ?? null;
   const threeUp = plans.length > 2;
   const statusLabel = stats ? t(STATUS_LABEL_KEY[stats.status] ?? "statusExpired") : "";
+  const view = stats ? renewalView(stats, autoRenew) : null;
+  const renew = () => {
+    if (!stats) return;
+    const target = renewTarget(currentPlanKey, stats, billing);
+    openPayment(target.plan, target.period);
+  };
 
   return (
     <div className="mt-8 flex flex-col gap-10">
@@ -313,9 +324,10 @@ export function BillingClient({
       )}
 
       {/* ── Current plan header ─────────────────────────────────────────── */}
-      {stats && (
+      {stats && view && (
         <CurrentPlanCard
           stats={stats}
+          view={view}
           statusLabel={statusLabel}
           planName={planName(stats.plan)}
           scheduledPlanName={
@@ -326,6 +338,8 @@ export function BillingClient({
           fmtDate={fmtDate}
           busy={busy}
           onResume={resumeSub}
+          onRenew={renew}
+          renewPending={payPlan === currentPlanKey}
           onClearSchedule={clearSchedule}
           t={t}
         />
@@ -510,30 +524,18 @@ export function BillingClient({
             {t("dangerTitle")}
           </h3>
           <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-            {t("dangerSubtitle")}
+            {t(view?.control ? "dangerSubtitle" : "dangerSubtitleDeleteOnly")}
           </p>
         </div>
-        {stats &&
-          (stats.status === "active" || stats.status === "trialing") &&
-          (stats.autoRenew ? (
-            <button
-              type="button"
-              onClick={cancelSub}
-              disabled={busy}
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-xs font-medium text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:opacity-50"
-            >
-              {t("cancelSubscription")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={resumeSub}
-              disabled={busy}
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300 bg-white px-4 py-2 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
-            >
-              {t("resumeSubscription")}
-            </button>
-          ))}
+        {view && (
+          <RenewalControl
+            control={view.control}
+            busy={busy}
+            onCancel={cancelSub}
+            onResume={resumeSub}
+            t={t}
+          />
+        )}
         <div className="border-t border-red-200 pt-3">
           <p className="text-xs font-semibold text-[var(--color-foreground)]">
             {t("deleteAccountTitle")}
@@ -564,24 +566,30 @@ export function BillingClient({
 
 // ─── Current plan card ───────────────────────────────────────────────────────
 
-function CurrentPlanCard({
+export function CurrentPlanCard({
   stats,
+  view,
   statusLabel,
   planName,
   scheduledPlanName,
   fmtDate,
   busy,
   onResume,
+  onRenew,
+  renewPending,
   onClearSchedule,
   t,
 }: {
-  stats: BillingStats;
+  stats: Pick<BillingStats, "status" | "paidUntil" | "scheduledPlanAt">;
+  view: RenewalView;
   statusLabel: string;
   planName: string;
   scheduledPlanName: string | null;
   fmtDate: (iso: string | null) => string;
   busy: boolean;
   onResume: () => void;
+  onRenew: () => void;
+  renewPending: boolean;
   onClearSchedule: () => void;
   t: ReturnType<typeof useTranslations<"DashboardBilling">>;
 }) {
@@ -595,22 +603,9 @@ function CurrentPlanCard({
           : "bg-red-100 text-red-700";
 
   // No date, no line: "Free trial until —" reads as a bug, not as information.
-  const dateLine = (() => {
-    if (stats.status === "trialing")
-      return stats.trialEndsAt
-        ? t("trialEndsOn", { date: fmtDate(stats.trialEndsAt) })
-        : null;
-    if (stats.status === "trial_paused")
-      return stats.trialEndsAt
-        ? t("pausedSince", { date: fmtDate(stats.trialEndsAt) })
-        : null;
-    if (!stats.paidUntil) return null;
-    if (stats.status === "expired")
-      return t("expiredOn", { date: fmtDate(stats.paidUntil) });
-    if (!stats.autoRenew || stats.cancelledAt)
-      return t("accessUntil", { date: fmtDate(stats.paidUntil) });
-    return t("renewsOn", { date: fmtDate(stats.paidUntil) });
-  })();
+  const dateLine = view.dateLine
+    ? t(view.dateLine.key, { date: fmtDate(view.dateLine.date) })
+    : null;
 
   return (
     <motion.section
@@ -636,6 +631,17 @@ function CurrentPlanCard({
             </p>
           )}
         </div>
+        {view.renewButton && (
+          <button
+            type="button"
+            onClick={onRenew}
+            disabled={busy || renewPending}
+            data-testid="renew-button"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#be185d] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {renewPending ? t("processing") : t("renewButton")}
+          </button>
+        )}
       </div>
 
       {/* Banners */}
@@ -657,7 +663,7 @@ function CurrentPlanCard({
           </button>
         </div>
       )}
-      {!stats.autoRenew && stats.cancelledAt && stats.status === "active" && (
+      {view.cancelledBanner && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-200 bg-amber-50 px-5 py-3">
           <p className="text-xs text-amber-800">
             {t("cancelledBanner", { date: fmtDate(stats.paidUntil) })}
@@ -674,6 +680,46 @@ function CurrentPlanCard({
       )}
     </motion.section>
   );
+}
+
+// ─── Danger zone: cancel / resume ────────────────────────────────────────────
+
+export function RenewalControl({
+  control,
+  busy,
+  onCancel,
+  onResume,
+  t,
+}: {
+  control: RenewalView["control"];
+  busy: boolean;
+  onCancel: () => void;
+  onResume: () => void;
+  t: ReturnType<typeof useTranslations<"DashboardBilling">>;
+}) {
+  if (control === "cancel")
+    return (
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={busy}
+        className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-xs font-medium text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-muted)] disabled:opacity-50"
+      >
+        {t("cancelSubscription")}
+      </button>
+    );
+  if (control === "resume")
+    return (
+      <button
+        type="button"
+        onClick={onResume}
+        disabled={busy}
+        className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300 bg-white px-4 py-2 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+      >
+        {t("resumeSubscription")}
+      </button>
+    );
+  return null;
 }
 
 // ─── Invoices table ──────────────────────────────────────────────────────────
