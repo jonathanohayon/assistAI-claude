@@ -35,11 +35,9 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
 
-  const [{ menu, notifyRequested, trials, trialTerms }, isAdmin, t] = await Promise.all([
-    loadProductPage(session.user.id),
-    sessionIsAdmin(),
-    getTranslations({ locale, namespace: "DashboardNav" }),
-  ]);
+  const { menu, notifyRequested, trials, trialTerms } = await loadProductPage(session.user.id);
+  const isAdmin = await sessionIsAdmin();
+  const t = await getTranslations({ locale, namespace: "DashboardNav" });
   const view = connectPageView({
     menu: menu.connect,
     showClientAgent: clientAgentEnabled(clientAgentMode(), isAdmin),
