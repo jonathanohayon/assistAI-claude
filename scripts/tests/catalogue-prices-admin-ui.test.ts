@@ -6,6 +6,7 @@
 // Run with:  npx tsx scripts/tests/catalogue-prices-admin-ui.test.ts
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -22,6 +23,7 @@ import {
   pricesFieldErrors,
   pricesPatch,
   pricesPutBody,
+  productLabels,
   savePrices,
   type Drafts,
 } from "../../app/admin/engine-override/catalogue-prices-ui";
@@ -29,11 +31,13 @@ import { ProductPricesForm } from "../../app/admin/engine-override/ProductPrices
 import { noEngineOverrides } from "../../lib/engine-override";
 import { defaultProductCatalogue, type ProductCatalogue } from "../../lib/product-catalogue";
 import { catalogueRowWrite, type CatalogueRow } from "../../lib/product-catalogue-row";
-import { PRODUCTS } from "../../lib/product-values";
+import { PRODUCTS, type ProductNames } from "../../lib/product-values";
 import { REPO_ROOT, assertScanRead, scanSources } from "./helpers/source-scan";
 
 const unescape = (h: string) => h.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 const pending: Promise<void>[] = [];
+// The products' names as the server passes them (lib/product-names.ts): DashboardNav, French.
+const NAMES = (JSON.parse(readFileSync(`${REPO_ROOT}/messages/fr.json`, "utf8")) as { DashboardNav: ProductNames }).DashboardNav;
 
 // ── 1. reception_multi add-ons are never editable ───────────────────────────
 {
@@ -48,7 +52,7 @@ const pending: Promise<void>[] = [];
   assert.equal(draftErrors(d)["reception_multi.EUR.addonMonthly"], NOT_SOLD_AS_ADDON);
   assert.deepEqual(pricesPatch(cat, d), {});
   // Rendered as the "Non vendu en option" text: exactly two cells (EUR + ILS), no input there.
-  const html = unescape(renderToStaticMarkup(createElement(ProductPricesForm, { initial: cat })));
+  const html = unescape(renderToStaticMarkup(createElement(ProductPricesForm, { initial: cat, names: NAMES })));
   assert.equal(html.split(NOT_SOLD_AS_ADDON).length - 1, 2);
   assert.ok(!html.includes("Réception multi-sites EUR Option, mensuel"));
   assert.ok(html.includes("Réception multi-sites EUR Prix mensuel"));
@@ -75,7 +79,7 @@ const pending: Promise<void>[] = [];
   // An invalid draft never reaches the patch.
   assert.deepEqual(pricesPatch(defaultProductCatalogue(), { "sales.ILS.minutes": "2.5" }), {});
   // Rendered: annual is derived and read-only.
-  const html = unescape(renderToStaticMarkup(createElement(ProductPricesForm, { initial: defaultProductCatalogue() })));
+  const html = unescape(renderToStaticMarkup(createElement(ProductPricesForm, { initial: defaultProductCatalogue(), names: NAMES })));
   assert.ok(html.includes("Annuel : 890 €"), "annual shown derived");
 }
 
@@ -121,7 +125,7 @@ const pending: Promise<void>[] = [];
 
   // Diff summary: old → new per changed field, catalogue order.
   assert.deepEqual(
-    diffSummary(cat, patch).map((d) => [d.path, d.from, d.to]),
+    diffSummary(cat, patch, productLabels(NAMES)).map((d) => [d.path, d.from, d.to]),
     [
       ["reception.EUR.monthly", 89, 95],
       ["reception.EUR.annual", 890, 950],

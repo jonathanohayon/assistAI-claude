@@ -11,7 +11,7 @@ import { CampaignsPageClient } from "../campaigns/campaigns-page-client";
 import { TenantConfigPage } from "../config/config-page";
 
 /**
- * Menu entry "Ventes" (sales): the outbound call centre (campaigns and their
+ * Menu entry "Centre d'appels" (sales): the outbound call centre (campaigns and their
  * results), formerly /dashboard/campaigns (which redirects here). Same gate
  * as the API (lib/campaigns/plan-gate.ts).
  *   - Not owned (menu preview): the product's own header (name, what it does,

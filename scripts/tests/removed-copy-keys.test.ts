@@ -16,6 +16,10 @@
 // highlighted on any door; the setup checklist is the guide.
 // Connect product name (22/11): Email.usageWarning.entryConnect. The email
 // names the product from DashboardNav.connect, its one key.
+// Sales product name (22/11): Email.usageWarning.entrySales, same reason
+// (DashboardNav.sales, "Centre d'appels").
+// Its campaigns header eyebrow (DashboardCampaigns.kicker, "Centre d'appels"):
+// it repeated the page's own title above "Campagnes sortantes".
 // Run with:  npx tsx scripts/tests/removed-copy-keys.test.ts
 
 import assert from "node:assert/strict";
@@ -37,6 +41,8 @@ const REMOVED: Array<[namespace: string, key: string]> = [
   ["VoiceStudio", "sliders.speed"],
   ["DashboardConfig", "tileStartHere"],
   ["Email", "usageWarning.entryConnect"],
+  ["Email", "usageWarning.entrySales"],
+  ["DashboardCampaigns", "kicker"],
 ];
 // Whole namespaces removed: no translator may be bound to them.
 const REMOVED_NAMESPACES = ["HowItWorks"];

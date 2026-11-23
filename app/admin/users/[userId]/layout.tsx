@@ -17,6 +17,7 @@ import { users } from "@/lib/db/schema";
 import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { accountProductMenu } from "@/lib/product-gates";
+import { productNames } from "@/lib/product-names";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { getDemoUserId } from "@/lib/settings";
 
@@ -92,6 +93,9 @@ export default async function AdminTenantLayout({
     !!target.paidUntil &&
     target.paidUntil.getFullYear() >= 2090;
 
+  // The products' names: their one key each (DashboardNav.<entry>), in French.
+  const names = await productNames("fr");
+
   async function handleLogout() {
     "use server";
     await signOut({ redirect: false });
@@ -150,7 +154,7 @@ export default async function AdminTenantLayout({
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
-            <EngineOverrideLine userId={target.id} />
+            <EngineOverrideLine userId={target.id} names={names} />
           </div>
         </div>
 
