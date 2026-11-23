@@ -16,5 +16,5 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log"'
 pg_start_throwaway live-test-token-limit
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
-env -i PATH="$PATH" HOME="$HOME" LIVE_TEST_LIMIT_DB_URL="$URL" npx tsx scripts/tests/live-test-token-limit-db.test.ts
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LIVE_TEST_LIMIT_DB_URL="$URL" npx tsx scripts/tests/live-test-token-limit-db.test.ts

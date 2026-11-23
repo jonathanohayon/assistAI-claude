@@ -29,7 +29,7 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway demo-sheet
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null 2>&1
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null 2>&1
 
 echo "== 1. baseline route (pre-#323 main, \${DEMO_SHEET_BASE:-8567c7a})"
 mkdir -p "$MAIN"
@@ -44,9 +44,9 @@ git archive "$BASE" | tar -x -C "$MAIN"
 mkdir -p "$MAIN/scripts/tests/fixtures"
 cp -R scripts/tests/fixtures/demo-sheet "$MAIN/scripts/tests/fixtures/"
 cp "$TEST" "$MAIN/scripts/tests/"
-(cd "$MAIN" && env -i PATH="$PATH" HOME="$HOME" DEMO_SHEET_DB_URL="$URL" DEMO_SHEET_PHASE=main \
+(cd "$MAIN" && env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DEMO_SHEET_DB_URL="$URL" DEMO_SHEET_PHASE=main \
   DEMO_SHEET_SNAPSHOT="$SNAP" npx tsx --import "./$HOOKS" "$TEST")
 if [ -n "${DEMO_SHEET_KEEP_SNAPSHOT:-}" ]; then cp "$SNAP" "$DEMO_SHEET_KEEP_SNAPSHOT"; fi
 echo "== 2. this branch"
-env -i PATH="$PATH" HOME="$HOME" DEMO_SHEET_DB_URL="$URL" DEMO_SHEET_PHASE=branch \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DEMO_SHEET_DB_URL="$URL" DEMO_SHEET_PHASE=branch \
   DEMO_SHEET_SNAPSHOT="$SNAP" npx tsx --import "./$HOOKS" "$TEST"

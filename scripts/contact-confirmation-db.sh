@@ -28,7 +28,7 @@ pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null; rm -rf "$DIR" "$DIR.log" "
 pg_start_throwaway contact-confirmation
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
-migrate() { env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
+migrate() { env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null; }
 
 # ── 1. Migration 0051 writes no data ────────────────────────────────────
 # Up to 0051 only (later migrations would hide it from a re-run).
@@ -81,10 +81,10 @@ echo "migration 0051: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 iden
 
 # ── 2. Writes, admin confirm, sends ─────────────────────────────────────
 # Every migration from here on.
-env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 # /api/calls/end calls next-intl's getTranslations: the shared test tsconfig
 # maps "next-intl/server" to a stand-in (scripts/lib/next-intl-stub-tsconfig.sh).
 source scripts/lib/next-intl-stub-tsconfig.sh
 write_next_intl_stub_tsconfig
-env -i PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" CONTACT_CONFIRMATION_TEST_DB_URL="$URL" \
+env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" TSX_TSCONFIG_PATH="$NEXT_INTL_STUB_TSCONFIG" CONTACT_CONFIRMATION_TEST_DB_URL="$URL" \
   npx tsx scripts/tests/contact-confirmation-db.test.ts

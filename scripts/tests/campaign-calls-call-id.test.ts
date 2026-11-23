@@ -11,6 +11,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { clockEnv } from "../lib/test-clock-env.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { campaignCallPublicColumns, campaignCallRow, type CampaignCallInput } from "../../lib/campaigns/campaign-call-row";
@@ -82,7 +83,7 @@ async function main() {
     ((await db.execute(sql`SELECT count(*)::int AS n FROM pg_indexes WHERE indexname = 'campaign_calls_worker_call_id_idx'`)) as unknown as Array<{ n: number }>)[0]!.n;
   const rerunMigrate = () =>
     execFileSync("node", ["scripts/migrate.mjs"], {
-      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DATABASE_URL: url! } as unknown as NodeJS.ProcessEnv,
+      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DATABASE_URL: url!, ...clockEnv() } as unknown as NodeJS.ProcessEnv,
       encoding: "utf8",
     });
 

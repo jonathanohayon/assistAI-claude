@@ -23,6 +23,6 @@ pg_layout
 pg_on_exit 'pg_ctl -D "$DIR" -m fast stop >/dev/null 2>&1 || true; rm -rf "$TMP"'
 pg_start_throwaway finance-by-engine
 [ "$(psql -At "$URL" -c 'select inet_server_port()')" = "$PORT" ]
-CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
+CLEAN=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 "${CLEAN[@]}" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
 "${CLEAN[@]}" ${FINANCE_MAIN_MODULE:+FINANCE_MAIN_MODULE="$FINANCE_MAIN_MODULE"} FINANCE_BY_ENGINE_DB_TEST_URL="$URL" npx tsx --import "./$HOOKS" scripts/tests/finance-by-engine-db.test.ts
