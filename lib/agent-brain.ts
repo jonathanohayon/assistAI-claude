@@ -16,6 +16,7 @@
  */
 import { randomBytes } from "node:crypto";
 
+import { brainAddressUsable } from "@/lib/agent-brain-guard";
 import { openSecret, sealForStorage } from "@/lib/crypto/secret-box";
 import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
 import { getSetting, setSetting } from "@/lib/settings";
@@ -110,25 +111,57 @@ export function storedBrainSecret(
   return secret === existing ? existing : sealForStorage(secret, env);
 }
 
+/** setAgentBrain was asked to enable a brain with no usable address (brainAddressUsable). */
+export class AgentBrainAddressRequiredError extends Error {
+  readonly code = "address_required" as const;
+  constructor() {
+    super("address_required");
+    this.name = "AgentBrainAddressRequiredError";
+  }
+}
+
+export type BrainEntryPlan =
+  | { ok: true; entry: Partial<AgentBrain> }
+  | { ok: false; error: "address_required" };
+
+/**
+ * The row setAgentBrain stores for `next`, given the stored row. Pure.
+ * Enabling without a usable address is REFUSED, never downgraded to
+ * enabled:false: an external mode on without a target would send every turn
+ * nowhere, and a silent downgrade answered 200 to a request it didn't honour.
+ * Nothing is computed on a refusal (no secret generated or rotated).
+ */
+export function planAgentBrainEntry(
+  stored: Partial<AgentBrain> | undefined,
+  next: AgentBrain,
+  opts: { env?: Record<string, string | undefined>; generate?: () => string } = {},
+): BrainEntryPlan {
+  const url = next.url.trim();
+  if (next.enabled && !brainAddressUsable(url)) return { ok: false, error: "address_required" };
+  const enabled = next.enabled;
+  // The STORED value (plain or sealed) is what "keep the existing" keeps:
+  // never opened and re-written here (E1 rewrites no existing secret).
+  const existing = typeof stored?.secret === "string" && stored.secret ? stored.secret : undefined;
+  const secret = nextBrainSecret({ existing, provided: next.secret, enabled, generate: opts.generate });
+  return {
+    ok: true,
+    entry: {
+      enabled,
+      url,
+      ...(secret ? { secret: storedBrainSecret(secret, existing, opts.env) } : {}),
+    },
+  };
+}
+
+/** Throws AgentBrainAddressRequiredError (nothing written) when planAgentBrainEntry refuses. */
 export async function setAgentBrain(
   userId: string,
   next: AgentBrain,
 ): Promise<AgentBrain> {
   const map = await readMap();
-  const url = next.url.trim();
-  // On refuse d'activer sans cible : un mode externe activé sans URL
-  // enverrait chaque tour dans le vide, et l'appelant n'entendrait que la
-  // phrase d'attente sans qu'aucun réglage n'ait l'air faux.
-  const enabled = next.enabled && url.startsWith("http");
-  // The STORED value (plain or sealed) is what "keep the existing" keeps:
-  // never opened and re-written here (E1 rewrites no existing secret).
-  const existing = typeof map[userId]?.secret === "string" && map[userId]?.secret ? map[userId]?.secret : undefined;
-  const secret = nextBrainSecret({ existing, provided: next.secret, enabled });
-  map[userId] = {
-    enabled,
-    url,
-    ...(secret ? { secret: storedBrainSecret(secret, existing) } : {}),
-  };
+  const plan = planAgentBrainEntry(map[userId], next);
+  if (!plan.ok) throw new AgentBrainAddressRequiredError();
+  map[userId] = plan.entry;
   await setSetting(SETTING, JSON.stringify(map));
   return getAgentBrain(userId);
 }

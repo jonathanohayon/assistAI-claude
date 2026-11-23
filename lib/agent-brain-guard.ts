@@ -11,7 +11,18 @@ import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions, type UnsafeUrlCode 
 export type BrainSaveDecision =
   | { ok: true }
   | { ok: false; status: 403; body: { error: "admin_only"; fields: ["url"] } }
+  | { ok: false; status: 400; body: { error: "address_required" } }
   | { ok: false; status: 400; body: { error: "unsafe_url"; message: string } };
+
+/**
+ * THE rule for "this brain has an address the store can switch on": trimmed,
+ * starts with "http". Unchanged from the rule lib/agent-brain.ts setAgentBrain
+ * applied inline (neither widened nor narrowed); it is case-sensitive, so
+ * "HTTPS://…" is not usable even though the SSRF check accepts it.
+ */
+export function brainAddressUsable(url: string): boolean {
+  return url.trim().startsWith("http");
+}
 
 export async function agentBrainSaveDecision(args: {
   /** The stored url ("" = none). */
@@ -25,11 +36,22 @@ export async function agentBrainSaveDecision(args: {
 }): Promise<BrainSaveDecision> {
   const changed = args.url !== args.currentUrl.trim();
   if (changed && !args.isAdmin) return { ok: false, status: 403, body: { error: "admin_only", fields: ["url"] } };
+  // Turning the webhook on with no address at all: its own code, before the
+  // SSRF check (an empty address isn't "unsafe", it is missing). No message:
+  // the copy belongs to the screen.
+  if (args.wantsEnabled && !args.url.trim()) return { ok: false, status: 400, body: { error: "address_required" } };
   // A url being saved, or a webhook being turned on, must be safe. Turning it
   // off (or clearing the url) always passes.
   if ((changed && args.url) || args.wantsEnabled) {
     const r = await checkAgentUrl(args.url, args.check);
     if (!r.ok) return { ok: false, status: 400, body: { error: "unsafe_url", message: SAFE_URL_MESSAGE } };
+  }
+  // A non-empty address that passes the SSRF check but not the store's rule
+  // (e.g. an upper-case "HTTPS://" scheme) used to be stored with
+  // enabled:false and answered 200. It can't be used: unsafe_url, as any
+  // other non-empty address that can't be used.
+  if (args.wantsEnabled && !brainAddressUsable(args.url)) {
+    return { ok: false, status: 400, body: { error: "unsafe_url", message: SAFE_URL_MESSAGE } };
   }
   return { ok: true };
 }
