@@ -110,24 +110,39 @@ export interface DateForCenter {
 }
 
 /**
- * Walk forward day by day starting from `after` (exclusive) — or today
- * Jerusalem time if `after` is omitted — and return the next `count` dates
- * whose canonical center matches `center`. Deterministic, no LLM needed.
+ * Walk forward day by day from `after` — or from today Jerusalem time if
+ * `after` is omitted — and return the next `count` dates whose canonical
+ * center matches `center`. Deterministic, no LLM needed.
+ *
+ * `after` is EXCLUSIVE by default: the date itself is never returned. That is
+ * what the error paths want — they pass the date that was just refused (wrong
+ * centre, or no free slot) and suggest ALTERNATIVES after it.
+ * With `{ inclusive: true }` the date itself is returned first when it is valid
+ * for `center` — what list-dates wants when the caller asks "is <date> open?".
+ * `inclusive` only applies to an explicit `after`; without it the walk always
+ * starts tomorrow (today is never listed).
  *
  * Used by:
- *   - /api/calendar/list-dates (the agent's primary "what's next?" query)
- *   - availability + book error responses (suggested_dates field)
+ *   - /api/calendar/list-dates (the agent's primary "what's next?" query),
+ *     inclusive
+ *   - availability + book + reschedule error responses (suggested_dates),
+ *     exclusive
  */
 export function nextDatesForCenter(
   center: Center,
   count = 3,
   after?: string,
+  opts: { inclusive?: boolean } = {},
 ): DateForCenter[] {
   if (count <= 0) return [];
   const start = after ?? todayJerusalem();
   if (!isRealIsoDate(start)) throw new Error(invalidDateError(start));
   const [y, m, d] = start.split("-").map((s) => Number(s));
   const cursor = new Date(Date.UTC(y, m - 1, d));
+  // Step back one day so the first increment lands on `after` itself.
+  if (after !== undefined && opts.inclusive) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
   const out: DateForCenter[] = [];
   // 60-day horizon is safe — even a once-a-week center yields ~8 hits.
   for (let i = 0; i < 60 && out.length < count; i++) {
