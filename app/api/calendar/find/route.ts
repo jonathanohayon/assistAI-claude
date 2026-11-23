@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
+import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
 import { jerusalemToUTCISO } from "@/lib/tz";
 
 const normalize = (s: string) => s.replace(/[^\d]/g, "");
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest) {
 
   if (!phone) {
     return NextResponse.json({ error: "Téléphone requis" }, { status: 400 });
+  }
+  // A date that does not exist (2026-02-30) would be rolled over to another
+  // day by jerusalemToUTCISO: refuse it before any tenant or Google lookup.
+  if (date && !isRealIsoDate(date)) {
+    return NextResponse.json({ error: invalidDateError(date) }, { status: 400 });
   }
 
   const caller = await resolveAgentCallerGoogle(req);
