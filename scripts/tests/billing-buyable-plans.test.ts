@@ -70,4 +70,29 @@ assert.match(
   /canPurchasePlan\(plan, user\.subscriptionPlan\)/,
 );
 
+// ─── header sentence and annual badge (VP, 23/11) ────────────────────────────
+// A downgrade takes effect at the end of the paid period (no proration), and
+// the annual saving is "2 mois offerts" (10 x monthly), never "−20 %".
+const SUBTITLE: Record<string, string> = {
+  fr: "Vous êtes actuellement sur la formule {planName}. Changez à tout moment, sans pénalité : un changement vers une formule inférieure prend effet à la fin de la période payée.",
+  en: "You're currently on the {planName} plan. Change anytime, no penalty: a move to a lower plan takes effect at the end of the paid period.",
+  he: "כרגע אתם בתוכנית {planName}. אפשר להחליף בכל רגע, ללא קנס: מעבר לתוכנית נמוכה יותר נכנס לתוקף בסוף התקופה ששולמה.",
+};
+// "−20" (U+2212) in any form, any "20 %"/"-20%", and proration in FR/EN/HE.
+const NO_DISCOUNT = /−\s?20|20\s?%|prorat|פרופורציונ/i;
+for (const lang of ["fr", "en", "he"]) {
+  const billing = JSON.parse(read(`messages/${lang}.json`)).DashboardBilling as Record<string, unknown>;
+  assert.equal(billing.currentSubtitle, SUBTITLE[lang], `${lang}: currentSubtitle`);
+  const all = JSON.stringify(billing);
+  assert.doesNotMatch(all, NO_DISCOUNT, `${lang}: Billing copy says no "−20 %" and no proration`);
+}
+// HE addresses the customer in the plural: none of the old singular forms.
+assert.doesNotMatch(SUBTITLE.he, /\bאת\b|החליפי/);
+// the page's own source carries no hard-coded discount either
+for (const f of ["app/[locale]/dashboard/billing/client.tsx", "app/[locale]/dashboard/billing/page.tsx"]) {
+  assert.doesNotMatch(strip(read(f)), NO_DISCOUNT, `${f}: no "−20 %" / proration`);
+}
+// the annual saving is still said once, below the toggle
+assert.match(client, /t\("annualSavings"\)/);
+
 console.log("billing-buyable-plans: ok");
