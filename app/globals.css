@@ -277,3 +277,19 @@ body {
 .scroll-visible::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/*
+ * Horizontal scroll shadows for a code sample on a muted background.
+ * Overlay scrollbars (macOS, iOS, Android) stay hidden until the user
+ * scrolls, so a box that scrolls looks cut. The shadow on an edge shows
+ * only while there is more content on that side (CSS only: the "local"
+ * covers move with the content, the "scroll" shadows stay at the edges).
+ */
+.scroll-shadow-x {
+  background:
+    linear-gradient(to right, var(--color-muted) 40%, transparent) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--color-muted) 40%, transparent) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.2), transparent) left center / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.2), transparent) right center / 12px 100% no-repeat scroll,
+    var(--color-muted);
+}

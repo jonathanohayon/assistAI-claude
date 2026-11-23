@@ -411,7 +411,7 @@ export function AgentUrlView({
         {/* Always the placeholder: the token appears in one place only. */}
         <pre
           dir="ltr"
-          className="scroll-visible mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 text-start font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]"
+          className="scroll-visible scroll-shadow-x mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 text-start font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]"
         >
 {`POST ${t("urlPlaceholder")}
 { "call_id": "…", "turn_id": 1, "language": "fr",

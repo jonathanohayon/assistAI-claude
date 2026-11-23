@@ -48,13 +48,20 @@ for (const l of LOCALES) {
 }
 
 // 1c. The contract samples on Réglages (agent URL card, API key card) scroll
-// inside their own box, with a visible scrollbar, instead of being cut at 390px.
+// inside their own box, with an edge shadow while more content is hidden
+// (overlay scrollbars stay invisible), instead of looking cut at 390px.
 for (const f of ["app/[locale]/dashboard/settings/agent-url-section.tsx", "app/[locale]/dashboard/settings/api-key-section.tsx"]) {
   const src = readFileSync(join(ROOT, f), "utf8");
   const pres = [...src.matchAll(/<pre\b[^>]*className="([^"]*)"/g)].map((m) => m[1]);
   assert.equal(pres.length, 1, `${f}: one <pre>`);
-  for (const c of ["overflow-x-auto", "max-w-full", "scroll-visible"])
+  for (const c of ["overflow-x-auto", "max-w-full", "scroll-visible", "scroll-shadow-x"])
     assert.ok(pres[0].split(/\s+/).includes(c), `${f}: <pre> has ${c}`);
+}
+{
+  const css = readFileSync(join(ROOT, "app/globals.css"), "utf8");
+  const rule = css.match(/\.scroll-shadow-x\s*\{([^}]*)\}/);
+  assert.ok(rule, "globals.css defines .scroll-shadow-x");
+  assert.match(rule[1], /no-repeat local[\s\S]*no-repeat local[\s\S]*no-repeat scroll[\s\S]*no-repeat scroll/, "covers move with the content, shadows stay at the edges");
 }
 
 // 2. The hint names the page with the sidebar's exact label.

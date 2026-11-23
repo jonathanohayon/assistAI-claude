@@ -170,7 +170,7 @@ export function ApiKeySection() {
           GET {origin}/api/v1/transcripts
         </code>
         <p className="mt-2 text-[var(--color-muted-foreground)] [overflow-wrap:anywhere]">{t("apiDocsParams")}</p>
-        <pre dir="ltr" className="scroll-visible mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
+        <pre dir="ltr" className="scroll-visible scroll-shadow-x mt-2 max-w-full overflow-x-auto rounded-lg bg-[var(--color-muted)] p-3 font-mono text-[11px] leading-relaxed text-[var(--color-foreground)]">
 {example}
         </pre>
       </div>
