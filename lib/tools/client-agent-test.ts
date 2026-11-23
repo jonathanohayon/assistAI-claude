@@ -35,9 +35,14 @@ export type ClientAgentTestResult = { ok: true; ms: number } | { ok: false; reas
 
 export type TestFetch = (url: string, init: SafeFetchInit, opts: SafeFetchOptions) => Promise<SafeResponse>;
 
-/** A random id that looks like the worker's hashed call ids. */
+/**
+ * A random id in the same format as the worker's real call ids: 16 lowercase
+ * hex chars (worker src/session-context.ts callIdFromRoomName = sha256(room
+ * name).slice(0, 16), the same value as calls.call_id). One format means a
+ * customer's agent never has to handle a test id differently.
+ */
 export function testCallId(): string {
-  return createHash("sha256").update(randomBytes(16)).digest("hex").slice(0, 32);
+  return createHash("sha256").update(randomBytes(16)).digest("hex").slice(0, 16);
 }
 
 export function clientAgentTestBody(language: string, callId = testCallId()): string {
