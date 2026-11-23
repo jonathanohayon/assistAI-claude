@@ -25,9 +25,11 @@ import {
 import { noEngineOverrides, type EngineOverrides } from "@/lib/engine-override";
 import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/lib/product-catalogue-row";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
-import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialStates } from "@/lib/product-trials";
+import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
+import { TRIAL_PRODUCT_OF_ENTRY, trialStartDecision, type TrialStartAccount } from "@/lib/product-trial-decision";
+import { activeTrialProducts, trialStates, type ProductTrialRow, type TrialCaps, type TrialState } from "@/lib/product-trials";
 import { loadNotifyRequested } from "@/lib/product-notify";
-import type { Product, ProductEntry } from "@/lib/product-values";
+import { PRODUCT_ENTRIES, type Product, type ProductEntry } from "@/lib/product-values";
 import { SETTING_KEYS, getSetting, setSetting } from "@/lib/settings";
 
 export type StoredCatalogue = {
@@ -141,27 +143,59 @@ export async function loadProductTrials(userId: string): Promise<ProductTrialRow
 }
 
 /**
+ * Per entry, the trial state plus, ADDITIVELY, `startable`: the trial POST
+ * (POST /api/dashboard/products/trial with TRIAL_PRODUCT_OF_ENTRY[entry])
+ * would return 201 now. Same decision as the POST (trialStartDecision).
+ */
+export type AccountTrialState = TrialState & { startable: boolean };
+export type AccountTrialStates = Record<ProductEntry, AccountTrialState>;
+
+/**
  * The entitlement plus, ADDITIVELY, each entry's per-product trial state (P3)
  * and the entries the account asked to be notified about ("Prévenez-moi",
  * PRODUCT_ENTRIES order).
  */
-export type AccountProducts = Entitlement & { trials: TrialStates; notifyRequested: ProductEntry[] };
+export type AccountProducts = Entitlement & { trials: AccountTrialStates; notifyRequested: ProductEntry[] };
+
+type Env = Record<string, string | undefined>;
+
+function withStartable(
+  rows: ProductTrialRow[],
+  account: TrialStartAccount | null,
+  now: Date,
+  env: Env,
+  caps: TrialCaps,
+): AccountTrialStates {
+  const states = trialStates(rows, now);
+  const out = {} as AccountTrialStates;
+  for (const e of PRODUCT_ENTRIES) {
+    out[e] = { ...states[e], startable: trialStartDecision(TRIAL_PRODUCT_OF_ENTRY[e], account, env, caps).ok };
+  }
+  return out;
+}
 
 /**
  * The products an account is entitled to. Loads ONLY the explicit pick
  * above (plus its trial rows), for any userId (so the admin ?asUserId=
  * target works). An ACTIVE per-product trial makes its entry entitled for
  * the trial's duration (entitledProducts activeTrials). An unknown account
- * is entitled to nothing (base null), every trial "available", no notify
- * request.
+ * is entitled to nothing (base null), every trial "available" and not
+ * startable, no notify request. `opts` (env, caps) defaults to what the
+ * trial POST reads (process.env, TRIAL_CAPS_ENFORCED).
  */
-export async function accountProducts(userId: string, now: Date = new Date()): Promise<AccountProducts> {
+export async function accountProducts(
+  userId: string,
+  now: Date = new Date(),
+  opts: { env?: Env; caps?: TrialCaps } = {},
+): Promise<AccountProducts> {
+  const env = opts.env ?? process.env;
+  const caps = opts.caps ?? TRIAL_CAPS_ENFORCED;
   const [u] = await db.select(ACCOUNT_PRODUCTS_PICK).from(users).where(eq(users.id, userId)).limit(1);
-  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: trialStates([], now), notifyRequested: [] };
+  if (!u) return { base: null, addons: [], entries: [], source: "grandfathered", trials: withStartable([], null, now, env, caps), notifyRequested: [] };
   const [rows, notifyRequested] = await Promise.all([loadProductTrials(userId), loadNotifyRequested(userId)]);
   return {
     ...entitledProducts({ ...u, activeTrials: activeTrialProducts(rows, now) }),
-    trials: trialStates(rows, now),
+    trials: withStartable(rows, { ...u, trialledProducts: rows.map((r) => r.product) }, now, env, caps),
     notifyRequested,
   };
 }
