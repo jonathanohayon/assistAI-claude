@@ -13,8 +13,10 @@ import { logEvent } from "@/lib/logger";
  * Le changement prend effet au prochain appel — le worker relit
  * `/api/agent/config` à chaque session, il n'y a rien à redéployer.
  *
- * SSRF guard (lib/agent-brain-guard.ts): a new or changed `url` is admin-only
- * (403 admin_only { fields: ["url"] }); a url saved or enabled must pass
+ * A tenant may only switch the own agent OFF: switching it on, a new or
+ * changed `url`, a new or changed `secret` are admin-only (403 admin_only
+ * { fields }, nothing written); an unchanged re-send passes and writes nothing.
+ * SSRF guard (lib/agent-brain-guard.ts): a url saved or enabled must pass
  * checkAgentUrl (400 unsafe_url + one plain message). Enabling with no address
  * at all → 400 address_required (no message), before the url check; the
  * store never silently stores enabled:false for an enabled:true request.
@@ -53,7 +55,16 @@ export async function PUT(request: Request) {
   const wantsEnabled = enabledToSave(body.enabled, current.enabled);
   // A tenant's screen doesn't carry the url: absent / "" keeps the stored one.
   const url = urlToSave(body.url, current.url, isAdmin);
-  const decision = await agentBrainSaveDecision({ currentUrl: current.url, url, wantsEnabled, isAdmin });
+  const decision = await agentBrainSaveDecision({
+    currentUrl: current.url,
+    currentEnabled: current.enabled,
+    currentSecret: current.secret,
+    currentSecretUnreadable: current.secretUnreadable,
+    secret: body.secret,
+    url,
+    wantsEnabled,
+    isAdmin,
+  });
   if (!decision.ok) {
     await logEvent({
       source: "tenant",
@@ -66,13 +77,16 @@ export async function PUT(request: Request) {
     });
     return NextResponse.json(decision.body, { status: decision.status });
   }
+  // A tenant save that changes nothing: nothing written (no secret generated).
+  if (decision.noop) return NextResponse.json({ brain: brainView(current, isAdmin), urlEditable: isAdmin });
 
   let brain;
   try {
     brain = await setAgentBrain(session.user.id, {
       enabled: wantsEnabled,
       url,
-      ...(typeof body.secret === "string" ? { secret: body.secret } : {}),
+      // A tenant never writes a secret (an unchanged one isn't re-sealed).
+      ...(isAdmin && typeof body.secret === "string" ? { secret: body.secret } : {}),
     });
   } catch (e) {
     // Unreachable after agentBrainSaveDecision; kept so the store's refusal

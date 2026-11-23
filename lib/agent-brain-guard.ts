@@ -6,11 +6,17 @@
 //   SERVE (/api/agent/config): a webhook whose url fails the check is not
 //         served — the call gets the normal Tamara.
 
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions, type UnsafeUrlCode } from "@/lib/net/safe-url";
 
+/** The own-agent fields only an admin may change (switch on, address, secret). */
+export type BrainAdminOnlyField = "enabled" | "url" | "secret";
+
 export type BrainSaveDecision =
-  | { ok: true }
-  | { ok: false; status: 403; body: { error: "admin_only"; fields: ["url"] } }
+  /** `noop`: a tenant save that changes nothing — the route writes nothing (no secret generated). */
+  | { ok: true; noop?: true }
+  | { ok: false; status: 403; body: { error: "admin_only"; fields: BrainAdminOnlyField[] } }
   | { ok: false; status: 400; body: { error: "address_required" } }
   | { ok: false; status: 400; body: { error: "unsafe_url"; message: string } };
 
@@ -50,9 +56,48 @@ export function brainAddressUsable(url: string): boolean {
   return /^http/i.test(url.trim());
 }
 
+/**
+ * Does the body's secret CHANGE the stored one? Same reading as the store
+ * (nextBrainSecret): absent / non-string / blank keeps the stored secret, so
+ * it is no change. `stored` is the OPENED value (getAgentBrain opens a sealed
+ * secret); a stored secret that can't be opened can't be proven equal, so any
+ * non-blank value is a change. Constant-time comparison; never logged.
+ */
+export function brainSecretChanged(
+  bodySecret: unknown,
+  stored: { secret?: string; secretUnreadable?: true | boolean },
+): boolean {
+  if (typeof bodySecret !== "string") return false;
+  const provided = bodySecret.trim();
+  if (!provided) return false;
+  if (stored.secretUnreadable || !stored.secret) return true;
+  const digest = (v: string) => createHash("sha256").update(v).digest();
+  return !timingSafeEqual(digest(provided), digest(stored.secret));
+}
+
+/**
+ * THE save decision of PUT /api/dashboard/agent-brain. Pure (the URL check
+ * injected).
+ *   TENANT (not admin): may only switch the own-agent brain OFF. Switching it
+ *     on, changing the address or changing the secret → 403 admin_only, with
+ *     the fields refused (no message). An unchanged re-send is not a change:
+ *     the stored url (after normaliseAgentUrl), the stored secret, or
+ *     enabled:true on a brain already ON all pass. A passing tenant save that
+ *     isn't a switch-off is a `noop`: nothing is written, so the store never
+ *     generates nor re-seals a secret for a tenant.
+ *   ADMIN: every write, under the address rules below.
+ */
 export async function agentBrainSaveDecision(args: {
   /** The stored url ("" = none). */
   currentUrl: string;
+  /** The stored enabled flag. */
+  currentEnabled: boolean;
+  /** The stored secret, OPENED (getAgentBrain); never logged nor returned. */
+  currentSecret?: string;
+  /** E1: a secret is stored but can't be opened. */
+  currentSecretUnreadable?: true | boolean;
+  /** The raw `secret` of the PUT body (absent / blank = unchanged). */
+  secret?: unknown;
   /** The url in the PUT body, trimmed ("" = none). */
   url: string;
   /** The enabled value the save would STORE (enabledToSave), not the raw body field. */
@@ -64,7 +109,15 @@ export async function agentBrainSaveDecision(args: {
   // route already passes urlToSave's normalised value).
   const url = normaliseAgentUrl(args.url);
   const changed = url !== normaliseAgentUrl(args.currentUrl);
-  if (changed && !args.isAdmin) return { ok: false, status: 403, body: { error: "admin_only", fields: ["url"] } };
+  if (!args.isAdmin) {
+    const fields: BrainAdminOnlyField[] = [];
+    if (args.wantsEnabled && !args.currentEnabled) fields.push("enabled");
+    if (changed) fields.push("url");
+    if (brainSecretChanged(args.secret, { secret: args.currentSecret, secretUnreadable: args.currentSecretUnreadable })) {
+      fields.push("secret");
+    }
+    if (fields.length) return { ok: false, status: 403, body: { error: "admin_only", fields } };
+  }
   // Turning the webhook on with no address at all: its own code, before the
   // SSRF check (an empty address isn't "unsafe", it is missing). No message:
   // the copy belongs to the screen.
@@ -82,6 +135,8 @@ export async function agentBrainSaveDecision(args: {
   if (args.wantsEnabled && !brainAddressUsable(url)) {
     return { ok: false, status: 400, body: { error: "unsafe_url", message: SAFE_URL_MESSAGE } };
   }
+  // A tenant's only write is ON → OFF; anything else that got here is unchanged.
+  if (!args.isAdmin && !(args.currentEnabled && !args.wantsEnabled)) return { ok: true, noop: true };
   return { ok: true };
 }
 
