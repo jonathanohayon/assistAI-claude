@@ -102,6 +102,8 @@ export interface DigestInput {
   topErrors: Array<{ event: string; n: number }>;
   heartbeatAgeMin: number | null;
   synthetic: { config: number | "error"; greeting: number | "error" } | null;
+  /** Accounts with the RETIRED own-agent mechanism still on (a count only). Line shown only when > 0. */
+  legacyBrainEnabled?: number;
 }
 
 /** The daily WhatsApp digest (plain text, short). */
@@ -119,5 +121,13 @@ export function formatDigest(d: DigestInput): string {
       `Synthetic check: ${ok ? "OK" : "FAILED"} (config ${d.synthetic.config}, greeting ${d.synthetic.greeting})`,
     );
   }
+  if (d.legacyBrainEnabled && d.legacyBrainEnabled > 0) {
+    lines.push(legacyBrainDigestLine(d.legacyBrainEnabled));
+  }
   return lines.join("\n");
+}
+
+/** The digest line for the retired own-agent mechanism: the count, nothing else. */
+export function legacyBrainDigestLine(n: number): string {
+  return `Ancien mécanisme « votre agent » : ${n} compte(s) encore activé(s)`;
 }
