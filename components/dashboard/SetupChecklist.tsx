@@ -24,8 +24,8 @@ type SetupChecklistProps = {
   door?: Door | null;
   /** "Import contacts" (sales door). `locked` = the plan has no outbound calls: today's upsell. */
   contacts?: { done: boolean; locked: boolean };
-  /** "Paste your agent URL" (connect door), passed only where the Tools tile shows that field. */
-  agentUrl?: { done: boolean };
+  /** "Paste your agent's address" (connect door): opens "Votre agent IA" (ClientAgentBrick); passed only where CLIENT_AGENT is on for the viewer. */
+  clientAgent?: { done: boolean };
   /**
    * "Test it live" (sales door): the dashboard's live test panel, free and
    * ungated like the panel itself. `done` = the account has had a call.
@@ -222,7 +222,7 @@ export function SetupChecklist({
   forwardingVerified = false,
   door,
   contacts,
-  agentUrl,
+  clientAgent,
   liveTest,
 }: SetupChecklistProps) {
   const t = useTranslations("DashboardSetup");
@@ -258,15 +258,15 @@ export function SetupChecklist({
           },
         ]
       : []),
-    ...(agentUrl
+    ...(clientAgent
       ? [
           {
-            id: "agentUrl",
-            done: agentUrl.done,
+            id: "clientAgent",
+            done: clientAgent.done,
             icon: LinkIcon,
-            title: t("agentUrlTitle"),
-            desc: t("agentUrlDesc"),
-            ctaLabel: t("agentUrlCta"),
+            title: t("clientAgentTitle"),
+            desc: t("clientAgentDesc"),
+            ctaLabel: t("clientAgentCta"),
             href: "/dashboard/agent#client-agent",
           },
         ]

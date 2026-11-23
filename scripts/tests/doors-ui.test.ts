@@ -160,11 +160,11 @@ assert.equal(sales.done, 1);
 assert.equal(nextStep(sales.items)?.id, "liveTest", "a new sales account has something to do before paying");
 assert.equal(nextStep([{ id: "contacts", done: false, locked: true }]), null);
 // Connect: the agent address first; absent (not open for the account) → today's order.
-const connectSteps = [{ id: "agentUrl", done: false }, ...base(false)];
-assert.deepEqual(ids(withFirstStep(connectSteps, "connect")), ["agentUrl", ...PRE_PR_STEP_IDS]);
+const connectSteps = [{ id: "clientAgent", done: false }, ...base(false)];
+assert.deepEqual(ids(withFirstStep(connectSteps, "connect")), ["clientAgent", ...PRE_PR_STEP_IDS]);
 assert.deepEqual(ids(withFirstStep(base(false), "connect")), PRE_PR_STEP_IDS);
 // No step added or dropped, for any door; number, forwarding and test call always there.
-const every = [...salesSteps, { id: "agentUrl", done: false }];
+const every = [...salesSteps, { id: "clientAgent", done: false }];
 for (const d of ALL_DOORS) {
   assert.deepEqual(sorted(ids(withFirstStep(every, d))), sorted(ids(every)), "no step added or dropped");
   for (const must of ["number", "forwarding", "testCall"]) assert.ok(ids(withFirstStep(every, d)).includes(must));
@@ -245,7 +245,7 @@ assert.doesNotMatch(code("app/[locale]/dashboard/config-form.tsx"), /applyTileOr
 // Every message key the door uses exists in the three locales.
 for (const locale of ["fr", "en", "he"]) {
   const m = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"));
-  for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "agentUrlTitle", "agentUrlDesc", "agentUrlCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
+  for (const k of ["contactsTitle", "contactsDesc", "contactsCta", "contactsLockedDesc", "contactsLockedCta", "clientAgentTitle", "clientAgentDesc", "clientAgentCta", "liveTestTitle", "liveTestDesc", "liveTestCta"]) {
     assert.equal(typeof m.DashboardSetup[k], "string", `${locale}: DashboardSetup.${k}`);
   }
 }

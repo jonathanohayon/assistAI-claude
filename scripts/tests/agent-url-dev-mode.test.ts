@@ -1,4 +1,5 @@
-// "Agent joignable" (public agent URL) on /dashboard/settings is level-3
+// The public agent URL card ("API : utiliser l'agent Tamara depuis votre
+// propre téléphonie") on /dashboard/settings is level-3
 // content: rendered only in developer mode, admins always (showLevel3).
 // Renders the REAL gate to static HTML in fr/en/he. Mock data only.
 // Run with:  npx tsx scripts/tests/agent-url-dev-mode.test.ts
@@ -54,31 +55,39 @@ for (const l of LOCALES) {
 // Hebrew renders Hebrew, not the French copy.
 {
   const he = render("he", false, true);
-  for (const fr of ["Agent joignable", "Copier", "Régénérer", "Contrat attendu", "URL publique", "<votre-url>"])
+  for (const fr of ["API : utiliser", "téléphonie", "Copier", "Régénérer", "Contrat attendu", "URL publique", "<votre-url>"])
     assert.ok(!he.includes(esc(fr)), `he: no French "${fr}"`);
   assert.match(he, /[֐-׿]/, "he: Hebrew text");
 }
 
-// 3. No hard-coded French left in the component or on the page.
+// 3. No hard-coded French left in the component or on the page. The card
+// lives in Réglages (/dashboard/settings), with the other level-3 card (the
+// API key), since 23/11 (VP); "Connecter votre agent" no longer mounts it.
 {
   const src = read("app/[locale]/dashboard/settings/agent-url-section.tsx");
-  // The card lives on the "Votre agent" page (/dashboard/agent) since the left menu.
-  const page = read("app/[locale]/dashboard/agent/page.tsx");
-  assert.doesNotMatch(read("app/[locale]/dashboard/settings/page.tsx"), /<AgentUrlCard/, "no longer in the settings");
-  for (const fr of ["Agent joignable", "Copier", "Copié", "Régénérer", "Contrat attendu", "Collez-la", "Toute personne", "votre-url", "sous 2 s"]) {
+  const page = read("app/[locale]/dashboard/settings/page.tsx");
+  for (const f of ["app/[locale]/dashboard/agent/page.tsx", "app/[locale]/dashboard/agent/connect-owned.tsx", "app/admin/users/[userId]/agent/page.tsx"])
+    assert.doesNotMatch(read(f).replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, ""), /AgentUrlCard|agent-url-section/, `${f}: the card is no longer on the Connect page`);
+  for (const fr of ["Agent joignable", "API : utiliser", "Copier", "Copié", "Régénérer", "Contrat attendu", "Collez-la", "Toute personne", "votre-url", "sous 2 s"]) {
     assert.ok(!src.includes(fr), `component: no hard-coded "${fr}"`);
     assert.ok(!page.includes(fr), `page: no hard-coded "${fr}"`);
   }
-  // The page renders the gated card, never the bare section.
-  assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /<AgentUrlCard isAdmin=\{isAdmin\} \/>/);
-  assert.match(page, /<ConnectOwnedView[\s\S]*?isAdmin=\{isAdmin\}/);
+  // The settings page renders the gated card (same isAdmin as the API key), never the bare section.
+  assert.match(page, /import \{ AgentUrlCard \} from "\.\/agent-url-section";/);
+  assert.match(page, /<ApiKeyCard isAdmin=\{isAdmin\} \/>[\s\S]*?<AgentUrlCard isAdmin=\{isAdmin\} \/>/, "next to the API key, the level-3 group");
+  assert.match(page, /const isAdmin = me\.role === "admin";/);
   assert.doesNotMatch(page, /<AgentUrlSection/);
+  // Its anchor, for any link to it.
+  assert.match(src, /<section\s+id="agent-url"\s+aria-labelledby="agent-url-title"/);
 }
 
 // 4. French copy kept exactly; same keys in the three languages.
 {
   const fr = messages("fr").AgentUrl;
-  assert.equal(fr.title, "Agent joignable");
+  assert.equal(fr.title, "API : utiliser l'agent Tamara depuis votre propre téléphonie");
+  assert.equal(messages("en").AgentUrl.title, "API: use the Tamara agent from your own phone system");
+  // [HE] to confirm: plural address ("שלכם").
+  assert.equal(messages("he").AgentUrl.title, "API: שימוש בסוכן של תמרה ממערכת הטלפוניה שלכם");
   assert.equal(fr.desc, "Donnez à votre agent une voix et un numéro depuis un service vocal externe, en lui fournissant cette URL.");
   assert.equal(fr.urlLabel, "URL publique de votre agent");
   assert.equal(fr.urlHint, "Collez-la dans un service vocal pour que votre agent réponde au téléphone. Elle utilise la personnalité configurée ci-dessus.");

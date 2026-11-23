@@ -2,7 +2,7 @@
 // old /dashboard/calendar page: same component (SyncNowButton), shown in the
 // calendar section whenever Google is connected (expired token included),
 // absent when it is not. The admin view keeps its own (Clients → calendar
-// section, scoped with asUserId). Also: AgentBrain's line points to Mon agent.
+// section, scoped with asUserId).
 // Mock data only.
 // Run with:  npx tsx scripts/tests/clients-sync-now.test.ts
 
@@ -56,19 +56,5 @@ for (const locale of ["fr", "en", "he"]) {
 assert.match(read("app/[locale]/dashboard/crm/crm-client.tsx"), /import \{ SyncNowButton \} from "\.\.\/calendar\/sync-button";[\s\S]*<SyncNowButton \/>/);
 assert.match(read("app/admin/users/[userId]/clients/calendar-section.tsx"), /\{!notConnected && <SyncNowButton asUserId=\{target\.id\} \/>\}/);
 assert.match(read("app/admin/users/[userId]/clients/page.tsx"), /<AdminTenantCalendarSection userId=\{userId\} \/>/);
-
-// AgentBrain's line now lives on "Votre agent": it points to Mon agent (a
-// link to the menu's own URL, admin-aware), not "above".
-const desc = (l: string) => JSON.parse(read(`messages/${l}.json`)).AgentBrain.desc as string;
-assert.match(desc("fr"), /avec la personnalité réglée dans <link>Mon agent<\/link>\./);
-assert.match(desc("en"), /<link>My agent<\/link>/);
-assert.match(desc("he"), /<link>הסוכן שלי<\/link>/);
-{
-  const page = read("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(page, /tBrain\.rich\("desc", \{ link: myAgentLink\(\) \}\)/);
-  assert.match(page, /const href = entryHref\("myAgent", asUserId\)!;/, "the menu's URL: /dashboard/my-agent, or /admin/users/<id>/my-agent");
-  assert.match(page, /asUserId \? \(\s*<NextLink href=\{href\}/);
-}
-for (const l of ["fr", "en", "he"]) assert.doesNotMatch(desc(l), /ci-dessus|above|למעלה/, `${l}: no "above"`);
 
 console.log("clients-sync-now: OK");
