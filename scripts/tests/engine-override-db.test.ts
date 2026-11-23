@@ -428,6 +428,68 @@ async function main() {
   assert.equal(await campaignA(), todayCampaignA, "cleared everywhere → today's payload, byte for byte");
   console.log(`ok: client sales override (gates, set, re-send, omitted, refused, clear, GET source client, payload, fall-through + ${deliveredSales ? "one alert" : "no alert in quiet hours"})`);
 
+  // ── 7. Old own-agent mechanism + new client agent both set (fail-open) ──
+  // Account B: tenant_agent_brain ON and tools_config.clientAgent enabled with
+  // a url. The alert path never changes the payload: identical bytes with a
+  // silent sink, a collecting sink, a sink that throws synchronously, one that
+  // rejects, and the live one; the live sink records ONE ledger entry per
+  // account per day (none in quiet hours). Mock urls only (example.test).
+  {
+    const { legacyBrainOverlapAlertKey } = await import("../../lib/agent/legacy-brain-overlap");
+    const BRAIN = "tenant_agent_brain";
+    await clear();
+    await db.execute(sql`DELETE FROM app_settings WHERE key = ${BRAIN}`);
+    const runB = async (alert?: (a: unknown) => Promise<unknown>) =>
+      mask(await (await buildInboundConfig(new URLSearchParams(`userId=${B}`), { ...LIVE_INBOUND_EFFECTS, ...(alert ? { alertAdmins: alert } : {}) })).text());
+    const silent = async () => false;
+    const before = await runB(silent);
+    const [{ tc: toolsBefore }] = (await db.execute(sql`SELECT tools_config::text AS tc FROM agent_configs WHERE user_id = ${B}`)) as unknown as Array<{ tc: string | null }>;
+    await db.execute(sql`INSERT INTO app_settings (key, value) VALUES (${BRAIN}, ${JSON.stringify({ [B]: { enabled: true, url: "https://legacy.example.test/hook" } })})
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+    await db.execute(sql`UPDATE agent_configs SET tools_config = jsonb_set(coalesce(tools_config, '{}'::jsonb), '{clientAgent}',
+      ${JSON.stringify({ enabled: true, url: "https://new.example.test/agent", mode: "lead", secret: null })}::jsonb) WHERE user_id = ${B}`);
+    const seen: Array<{ key: string; body: string; subject: string }> = [];
+    const collect = async (a: unknown) => (seen.push(a as { key: string; body: string; subject: string }), true);
+    const syncThrow = ((() => {
+      throw new Error("mock sink down (sync)");
+    }) as unknown) as (a: unknown) => Promise<unknown>;
+    const rejects = async () => {
+      throw new Error("mock sink down (async)");
+    };
+    const baseline = await runB(silent);
+    assert.match(baseline, /"voiceConfig"/, "a real payload");
+    for (const [name, sink] of [["collecting", collect], ["sync throw", syncThrow], ["rejecting", rejects]] as const) {
+      assert.equal(await runB(sink), baseline, `overlap alert sink ${name}: payload byte-identical`);
+    }
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(seen.length, 1, "the collecting sink was called once for the overlapping account");
+    assert.equal(seen[0].key, legacyBrainOverlapAlertKey(B));
+    assert.doesNotMatch(`${seen[0].subject}\n${seen[0].body}`, /example\.test|https?:|@|secret-/, "no url, email nor secret in the alert");
+    // An account without the overlap: no alert.
+    const seenC: unknown[] = [];
+    await buildInboundConfig(new URLSearchParams(`userId=${C}`), { ...LIVE_INBOUND_EFFECTS, alertAdmins: async (a: unknown) => (seenC.push(a), true) });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(seenC.filter((a) => (a as { key: string }).key.startsWith("agent_brain_overlap:")).length, 0, "no overlap → no alert");
+    // The live sink: once per account per day through the alert ledger.
+    await db.execute(sql`DELETE FROM app_settings WHERE key = ${LEDGER_SETTING}`);
+    for (let i = 0; i < 3; i++) assert.equal(await runB(), baseline, "live sink: payload byte-identical");
+    await new Promise((r) => setTimeout(r, 300));
+    const delivered = shouldDeliver("warning", new Date());
+    const raw = await getSetting(LEDGER_SETTING);
+    const keys = raw ? Object.keys(JSON.parse(raw)).filter((k) => k.startsWith("agent_brain_overlap:")) : [];
+    assert.deepEqual(keys, delivered ? [legacyBrainOverlapAlertKey(B)] : [], "ONE ledger entry per account per day (none in quiet hours)");
+    const [{ n }] = (await db.execute(sql`SELECT count(*)::int AS n FROM events WHERE event = 'admin_alert_sent' AND metadata->>'key' = ${legacyBrainOverlapAlertKey(B)}`)) as unknown as Array<{ n: number }>;
+    assert.equal(n, delivered ? 1 : 0, "the overlap alert went out once");
+    // The daily digest's count reads the same map.
+    const { countEnabledLegacyBrains } = await import("../../lib/agent-brain");
+    assert.equal(await countEnabledLegacyBrains(), 1);
+    // Restore B (the overlap only changed what the alert sees, never `before`'s shape).
+    await db.execute(sql`DELETE FROM app_settings WHERE key IN (${BRAIN}, ${LEDGER_SETTING})`);
+    await db.execute(sql`UPDATE agent_configs SET tools_config = ${toolsBefore}::jsonb WHERE user_id = ${B}`);
+    assert.equal(await runB(silent), before, "restored → the pre-section payload");
+    console.log(`ok: old+new agent overlap (payload byte-identical with 4 sinks; ${delivered ? "one deduplicated alert" : "no alert in quiet hours"})`);
+  }
+
   console.log("ALL ENGINE-OVERRIDE DB TESTS PASSED");
   process.exit(0);
 }

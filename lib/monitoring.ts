@@ -3,6 +3,7 @@
 
 import { and, eq, gte, sql } from "drizzle-orm";
 
+import { countEnabledLegacyBrains } from "@/lib/agent-brain";
 import { alertAdmins } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
@@ -102,6 +103,8 @@ export async function runDailyDigest(now = Date.now()) {
   const errors = topErrors.reduce((a, t) => a + t.n, 0);
   const hb = await readHeartbeat();
   const syn = await synthetic();
+  // A count only (never ids / urls); a read failure never blocks the digest.
+  const legacyBrainEnabled = await countEnabledLegacyBrains().catch(() => 0);
 
   const text = formatDigest({
     calls: c?.n ?? 0,
@@ -111,6 +114,7 @@ export async function runDailyDigest(now = Date.now()) {
     topErrors,
     heartbeatAgeMin: hb ? Math.round((now - hb.at) / 60_000) : null,
     synthetic: syn,
+    legacyBrainEnabled,
   });
   const synOk = !syn || (syn.config === 200 && (syn.greeting === 200 || syn.greeting === 204));
   if (!synOk) {
