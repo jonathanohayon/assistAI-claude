@@ -79,11 +79,14 @@ export async function dispatchDueJobs(
     return { claimed: 0, dialed: 0, failed: 0, mode, reason: "CAMPAIGN_DISPATCH is off" };
   }
   if (mode === "dry") {
-    const wouldDial = await dryRunCounts(limit, scope.campaignId);
+    const counted = await dryRunCounts(limit, scope.campaignId);
+    // byCampaign (every tenant's campaign ids) goes to the stored tick only;
+    // the returned result and the log keep the global counts, as before.
+    const { byCampaign, ...wouldDial } = counted;
     console.log(`[dispatch] dry run (${source}): ${JSON.stringify(wouldDial)}`);
     // Observability must never break the dry run.
     try {
-      await recordDryTick(source, wouldDial);
+      await recordDryTick(source, { ...wouldDial, byCampaign });
     } catch (e) {
       console.error("[dispatch] dry tick logging failed", e);
     }
@@ -203,7 +206,7 @@ async function dryRunCounts(limit: number, campaignId?: string): Promise<DryRunC
   `);
   const list = (Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
   return dryRunTotals(
-    list.map((r) => ({ due: Number(r.due ?? 0), freeSlots: Number(r.free_slots ?? 0), inHours: r.in_hours === true })),
+    list.map((r) => ({ id: String(r.id), due: Number(r.due ?? 0), freeSlots: Number(r.free_slots ?? 0), inHours: r.in_hours === true })),
     n,
   );
 }
@@ -213,22 +216,29 @@ async function dryRunCounts(limit: number, campaignId?: string): Promise<DryRunC
  * (so dry = what on would dial): in call hours, at most the campaign's free
  * slots (concurrency − in flight), then the global `limit`.
  */
-export function dryRunTotals(campaigns: Array<{ due: number; freeSlots: number; inHours: boolean }>, limit: number): DryRunCounts {
+export function dryRunTotals(
+  campaigns: Array<{ id: string; due: number; freeSlots: number; inHours: boolean }>,
+  limit: number,
+): DryRunCounts {
   let left = limit;
-  const out: DryRunCounts = { campaignsDue: 0, contactsDue: 0, skippedCallHours: 0, skippedConcurrency: 0 };
+  const out: DryRunCounts = { campaignsDue: 0, contactsDue: 0, skippedCallHours: 0, skippedConcurrency: 0, byCampaign: {} };
+  const by = out.byCampaign!;
   for (const c of campaigns) {
     if (!c.due) continue;
     if (!c.inHours) {
       out.skippedCallHours += c.due;
+      by[c.id] = { due: 0, heldByHours: c.due, heldByConcurrency: 0 };
       continue;
     }
-    out.skippedConcurrency += Math.max(0, c.due - c.freeSlots);
+    const heldByConcurrency = Math.max(0, c.due - c.freeSlots);
+    out.skippedConcurrency += heldByConcurrency;
     const take = Math.min(c.due, Math.max(0, c.freeSlots), left);
     if (take > 0) {
       out.campaignsDue++;
       out.contactsDue += take;
       left -= take;
     }
+    by[c.id] = { due: Math.max(0, take), heldByHours: 0, heldByConcurrency };
   }
   return out;
 }
@@ -295,8 +305,9 @@ async function recordTick(
 
 /**
  * Dry run's tick: the same global key, mode "dry", nothing claimed or dialled,
- * and the would-dial COUNTS (no number, name, campaign title or id). No
- * per-campaign event: dry writes nothing but this one setting.
+ * and the would-dial COUNTS (no number, name or campaign title; campaign ids
+ * only as byCampaign keys). No per-campaign event: dry writes nothing but this
+ * one setting. The row covers EVERY tenant: readers scope it (tickForViewer).
  */
 async function recordDryTick(source: DispatchTick["source"], wouldDial: DryRunCounts): Promise<void> {
   const rows = await db.execute(sql`SELECT count(*)::int AS n FROM campaigns WHERE status = 'running'`);
@@ -314,6 +325,7 @@ async function recordDryTick(source: DispatchTick["source"], wouldDial: DryRunCo
       contactsDue: wouldDial.contactsDue,
       skippedCallHours: wouldDial.skippedCallHours,
       skippedConcurrency: wouldDial.skippedConcurrency,
+      byCampaign: wouldDial.byCampaign ?? {},
     },
   };
   await setSetting(DISPATCH_TICK_KEY, JSON.stringify(tick));

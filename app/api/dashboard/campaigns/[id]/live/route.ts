@@ -9,6 +9,7 @@ import {
   contactRank,
   DISPATCH_TICK_KEY,
   isInCallWindow,
+  tickForViewer,
   type CallWindow,
   type DispatchTick,
 } from "@/lib/campaigns/live";
@@ -135,7 +136,10 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     dispatcher: {
       // CAMPAIGN_DISPATCH as a viewer-safe word (never the env name/value).
       dispatchMode: dispatchMode(),
-      lastTick,
+      // The stored tick covers EVERY tenant's campaigns: scoped per viewer.
+      // This route is admin-only today (requireAdmin), so it serves the full
+      // tick; the tenant scoping holds if the guard is ever widened.
+      lastTick: tickForViewer(lastTick, campaign.id, admin.admin.role === "admin"),
       // Live, not from the last tick: what would block a dial right now.
       blockers: campaignBlockers(
         {

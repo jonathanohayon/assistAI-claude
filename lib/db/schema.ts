@@ -392,6 +392,25 @@ export const usageWarnings = pgTable(
   ],
 );
 
+// Renewal reminder (cron/billing, lib/renewal-reminder.ts): ONE email per
+// account per paid period, a few days before paid_until. The row is the claim,
+// inserted BEFORE the send (ON CONFLICT DO NOTHING): a lost claim = another
+// run sends it. period_end = the paid_until the reminder was about.
+export const renewalReminders = pgTable(
+  "renewal_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [unique("renewal_reminders_once").on(t.userId, t.periodEnd)],
+);
+
 // Per-product trials (P3): 7 days + 30 minutes, no card, ONCE per account ×
 // product. The unique (user_id, product) IS the "once" guarantee: the
 // "Essayer gratuitement" endpoint inserts with ON CONFLICT DO NOTHING.

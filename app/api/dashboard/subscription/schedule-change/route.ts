@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/api/auth-guards";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { logEvent } from "@/lib/logger";
-import { DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
+import { canPurchasePlan, DEFAULT_PLAN_KEY, isValidPlanKey, type PlanKey } from "@/lib/plans";
 import { classifyChange, effectiveDowngradeDate } from "@/lib/subscription";
 
 // POST /api/dashboard/subscription/schedule-change
@@ -18,6 +18,7 @@ import { classifyChange, effectiveDowngradeDate } from "@/lib/subscription";
 //   - plan null → annule un downgrade programmé.
 //   - plan == plan courant → annule (no-op).
 //   - plan upgrade → 400 (doit passer par le paiement).
+//   - plan not publicly offered (and not the current one) → 400 plan_not_available.
 export async function POST(req: NextRequest) {
   const guard = await requireSession();
   if (!guard.ok) return guard.response;
@@ -64,6 +65,12 @@ export async function POST(req: NextRequest) {
   const currentPlan: PlanKey = isValidPlanKey(me.subscriptionPlan)
     ? me.subscriptionPlan
     : DEFAULT_PLAN_KEY;
+  // Same rule as checkout (create-payment): only a publicly offered plan, or
+  // the customer's own current plan (grandfathered legacy plans keep the
+  // no-op path below). A non-public plan is never scheduled.
+  if (!canPurchasePlan(nextPlan, currentPlan)) {
+    return NextResponse.json({ error: "plan_not_available" }, { status: 400 });
+  }
 
   const change = classifyChange(currentPlan, nextPlan);
   if (change === "same") {

@@ -7,9 +7,10 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getLocalizedPlan } from "@/lib/plan-i18n";
 import { getPlanPricingMap } from "@/lib/plan-pricing-storage";
-import { DEFAULT_PLAN_KEY, PLANS, isValidPlanKey } from "@/lib/plans";
+import { DEFAULT_PLAN_KEY, canPurchasePlan, isValidPlanKey } from "@/lib/plans";
 
 import { BillingClient } from "./client";
+import { billingPlanCards } from "./plan-cards";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,10 @@ export default async function BillingPage(props: {
     : DEFAULT_PLAN_KEY;
 
   const currentPlan = getLocalizedPlan(locale, currentPlanKey);
-  const hintedPlanKey = isValidPlanKey(hintedPlan) ? hintedPlan : null;
+  // Only a plan this customer can buy may be hinted (?plan=…), same rule as
+  // the cards and the checkout.
+  const hintedPlanKey =
+    isValidPlanKey(hintedPlan) && canPurchasePlan(hintedPlan, currentPlanKey) ? hintedPlan : null;
   const pricing = await getPlanPricingMap();
 
   const t = await getTranslations({ locale, namespace: "DashboardBilling" });
@@ -61,7 +65,7 @@ export default async function BillingPage(props: {
       </div>
 
       <BillingClient
-        plans={[...PLANS]}
+        plans={billingPlanCards(currentPlanKey)}
         pricing={pricing}
         currentPlanKey={currentPlanKey}
         hintedPlanKey={hintedPlanKey}

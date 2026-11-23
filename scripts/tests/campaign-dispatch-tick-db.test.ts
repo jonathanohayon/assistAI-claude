@@ -132,6 +132,7 @@ async function main() {
     assert.equal(after.campaign_contacts, before.campaign_contacts, "dry: campaign_contacts unchanged");
     assert.deepEqual(changed(before, after), ["app_settings"], "dry: only app_settings (the tick) changes");
     assert.ok("mode" in r && r.mode === "dry" && r.claimed === 0 && r.dialed === 0);
+    assert.ok(!JSON.stringify(r).includes("byCampaign") && !JSON.stringify(r).includes(OPEN), "dry result (cron response): global counts only, no campaign id");
     const raw = await tickRaw();
     assert.ok(raw, "dry: tick written");
     const tick = JSON.parse(raw!);
@@ -144,12 +145,24 @@ async function main() {
       dialed: 0,
       failed: 0,
       runningCampaigns: 2,
-      wouldDial: { campaignsDue: 1, contactsDue: 2, skippedCallHours: 1, skippedConcurrency: 1 },
+      wouldDial: {
+        campaignsDue: 1,
+        contactsDue: 2,
+        skippedCallHours: 1,
+        skippedConcurrency: 1,
+        // OPEN: 3 due, concurrency 2 → 2 now, 1 held; CLOSED: out of hours, 1 held.
+        byCampaign: {
+          [OPEN]: { due: 2, heldByHours: 0, heldByConcurrency: 1 },
+          [CLOSED]: { due: 0, heldByHours: 1, heldByConcurrency: 0 },
+        },
+      },
     });
-    // No number, name, campaign title or id in the tick.
-    for (const pii of ["+1555", "Mock", OPEN_TITLE, CLOSED_TITLE, OPEN, CLOSED, TENANT, "0000-4000"])
+    // No number, name, title or tenant id; campaign ids only as byCampaign keys.
+    for (const pii of ["+1555", "Mock", OPEN_TITLE, CLOSED_TITLE, TENANT])
       assert.ok(!raw!.includes(pii), `dry tick carries no ${pii}`);
-    assert.ok(!/\d{8,}/.test(raw!.replace(tick.at, "")), "dry tick: no long digit run (phone number)");
+    const noIds = JSON.stringify({ ...tick, wouldDial: { ...tick.wouldDial, byCampaign: Object.values(tick.wouldDial.byCampaign) } });
+    assert.ok(!noIds.includes("0000-4000"), "dry tick: campaign ids nowhere but the byCampaign keys");
+    assert.ok(!/\d{8,}/.test(noIds.replace(tick.at, "")), "dry tick: no long digit run (phone number)");
   }
   const contacts = await rows(sql`SELECT status, attempts, claimed_at FROM campaign_contacts`);
   assert.ok(contacts.every((c) => c.status === "queued" && c.attempts === 0 && c.claimed_at === null), "dry: every contact still queued, 0 attempts");
@@ -205,24 +218,69 @@ async function main() {
   console.log("  ok list GET: dispatchMode off/dry/on for the tenant, admin ?asUserId and admin self; campaigns byte-identical; 401 signed out");
 
   // 5. The live snapshot: dispatcher.dispatchMode "dry" and the dry tick as lastTick.
+  //    A second tenant's running campaign is in the same global tick.
+  const TENANT_B = id(0xb2);
+  const B_OPEN = id(0xc3); // tenant B: running, 24/7, concurrency 5, 4 due
+  await db.execute(sql`INSERT INTO users (id, email, password_hash, role, subscription_plan) VALUES
+    (${TENANT_B}, 'tenant-b@example.test', 'x', 'user', 'global')`);
+  await db.execute(sql`INSERT INTO campaigns (id, user_id, name, status, from_number, concurrency, call_window) VALUES
+    (${B_OPEN}, ${TENANT_B}, 'Mock B Campaign', 'running', '+15550100002', 5,
+     ${JSON.stringify({ timezone: "UTC", days: [0, 1, 2, 3, 4, 5, 6], startHour: 0, endHour: 24 })}::jsonb)`);
+  await db.execute(sql`INSERT INTO campaign_contacts (campaign_id, user_id, phone_number, contact_name) VALUES
+    (${B_OPEN}, ${TENANT_B}, '+15550109101', 'Mock B1'), (${B_OPEN}, ${TENANT_B}, '+15550109102', 'Mock B2'),
+    (${B_OPEN}, ${TENANT_B}, '+15550109103', 'Mock B3'), (${B_OPEN}, ${TENANT_B}, '+15550109104', 'Mock B4')`);
   process.env.CAMPAIGN_DISPATCH = "dry";
+  reset();
+  const beforeDry = await allTables();
   await dispatchDueJobs(10, "cron", { ...deps(undefined), env: process.env });
-  g.__campgateSession = { user: { id: ADMIN, email: "admin@example.test" } };
-  const snap = await read(
-    live.GET(new NextRequest(`${B}/api/dashboard/campaigns/${OPEN}/live`, { method: "GET" }), { params: Promise.resolve({ id: OPEN }) }),
-  );
-  assert.equal(snap.status, 200);
-  const dispatcher = snap.body.dispatcher as { dispatchMode: string; lastTick: { mode: string; wouldDial: unknown } | null };
-  assert.equal(dispatcher.dispatchMode, "dry");
-  assert.equal(dispatcher.lastTick?.mode, "dry", "the console sees a tick in dry: no 'never ran' alarm");
-  assert.deepEqual(dispatcher.lastTick?.wouldDial, { campaignsDue: 1, contactsDue: 2, skippedCallHours: 1, skippedConcurrency: 1 });
+  assert.equal(claims + dials, 0, "dry (two tenants): no claim, no dial");
+  assert.deepEqual(changed(beforeDry, await allTables()), ["app_settings"], "dry (two tenants): only the tick written");
+  const stored = JSON.parse((await tickRaw())!);
+  assert.deepEqual(stored.wouldDial.byCampaign[B_OPEN], { due: 4, heldByHours: 0, heldByConcurrency: 0 }, "B's entry is stored");
+  const liveAs = async (session: string, campaignId: string, qs = "") => {
+    g.__campgateSession = { user: { id: session, email: `${session}@example.test` } };
+    const res = await live.GET(new NextRequest(`${B}/api/dashboard/campaigns/${campaignId}/live${qs}`, { method: "GET" }), {
+      params: Promise.resolve({ id: campaignId }),
+    });
+    const text = await res.text();
+    return { status: res.status, text, body: (text ? JSON.parse(text) : {}) as Record<string, unknown> };
+  };
+  // Admin (self and ?asUserId): the full stored tick, every campaign's entry.
+  for (const qs of ["", `?asUserId=${TENANT}`]) {
+    const snap = await liveAs(ADMIN, OPEN, qs);
+    assert.equal(snap.status, 200, `admin ${qs}`);
+    const dispatcher = snap.body.dispatcher as { dispatchMode: string; lastTick: Record<string, unknown> | null };
+    assert.equal(dispatcher.dispatchMode, "dry");
+    assert.equal(dispatcher.lastTick?.mode, "dry", "the console sees a tick in dry: no 'never ran' alarm");
+    assert.deepEqual(dispatcher.lastTick, stored, "admin: the stored tick as is");
+    assert.equal(dispatcher.lastTick?.runningCampaigns, 3);
+    assert.deepEqual((dispatcher.lastTick?.wouldDial as { contactsDue: number }).contactsDue, 6);
+  }
+  // Tenants: the route is admin-only (403, an error body only), so neither
+  // tenant ever reads the global tick, A's or B's campaign alike.
+  for (const [who, session, campaignId] of [
+    ["A on A", TENANT, OPEN],
+    ["B on A", TENANT_B, OPEN],
+    ["B on B", TENANT_B, B_OPEN],
+  ] as const) {
+    const r = await liveAs(session, campaignId);
+    assert.equal(r.status, 403, `tenant ${who}: 403`);
+    assert.deepEqual(r.body, { error: "forbidden" }, `tenant ${who}: error body only`);
+    for (const leak of [OPEN, CLOSED, B_OPEN, "runningCampaigns", "byCampaign", "wouldDial"])
+      assert.ok(!r.text.includes(leak), `tenant ${who}: body never carries ${leak}`);
+  }
+  // The tenant scoping of that very stored tick (tickForViewer, what a
+  // non-admin viewer would get): A's entry only, never B's id or counts.
+  const { tickForViewer } = await import("../../lib/campaigns/live");
+  const aView = JSON.stringify(tickForViewer(stored, OPEN, false));
+  assert.deepEqual(JSON.parse(aView).wouldDial, { byCampaign: { [OPEN]: { due: 2, heldByHours: 0, heldByConcurrency: 1 } } });
+  for (const leak of [B_OPEN, CLOSED, TENANT_B, "runningCampaigns", "contactsDue", "campaignsDue", "skippedCallHours", "skippedConcurrency", '"due":4'])
+    assert.ok(!aView.includes(leak), `tenant A's view never carries ${leak}`);
   process.env.CAMPAIGN_DISPATCH = "on";
-  const snapOn = await read(
-    live.GET(new NextRequest(`${B}/api/dashboard/campaigns/${OPEN}/live`, { method: "GET" }), { params: Promise.resolve({ id: OPEN }) }),
-  );
+  const snapOn = await liveAs(ADMIN, OPEN);
   assert.equal((snapOn.body.dispatcher as { dispatchMode: string }).dispatchMode, "on");
   delete process.env.CAMPAIGN_DISPATCH;
-  console.log("  ok live snapshot: dispatcher.dispatchMode 'dry' with lastTick.mode 'dry' (+ counts); 'on' when on");
+  console.log("  ok live snapshot: admin (self + ?asUserId) gets the full stored tick (byCampaign of both tenants); tenants 403 with no tick; tickForViewer(A) carries only A's entry; 'on' when on");
 
   assert.equal(g.__campgateDials!.length, 0, "the dial module was never reached");
   console.log("ALL CAMPAIGN DISPATCH TICK DB TESTS PASSED");

@@ -1735,7 +1735,7 @@
   "DashboardBilling": {
     "header": "Billing",
     "title": "Your plan.",
-    "currentSubtitle": "You're currently on the {planName} plan. Change anytime, no penalty — billing is prorated.",
+    "currentSubtitle": "You're currently on the {planName} plan. Change anytime, no penalty: a move to a lower plan takes effect at the end of the paid period.",
     "stripeNote": "Payments are secured and processed via HYP.",
     "subscribeCta": "Subscribe",
     "close": "Close",
@@ -2073,6 +2073,10 @@
       "cta": "See my usage",
       "footer": "You receive this email once per threshold and billing period.",
       "entryReception": "Receptionist"
+    },
+    "renewalReminder": {
+      "subject": "Your service stops on {date}",
+      "body": "Your Tamara service stops on {date}. Renew here: {link}"
     }
   },
   "LiveTest": {

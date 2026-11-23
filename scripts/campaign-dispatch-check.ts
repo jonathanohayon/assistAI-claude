@@ -66,7 +66,9 @@ async function main() {
     const after = await snapshot();
     ok("dry: no row touched", diff(before, after).length === 0, diff(before, after).join(","));
     ok("dry: 0 dialled", dials === 0 && r.claimed === 0);
-    const w = "wouldDial" in r ? r.wouldDial : null;
+    const full = "wouldDial" in r ? r.wouldDial : null;
+    // The global counts (byCampaign, keyed by campaign uuid, is proven in campaign-dispatch-tick-db).
+    const w = full ? { campaignsDue: full.campaignsDue, contactsDue: full.contactsDue, skippedCallHours: full.skippedCallHours, skippedConcurrency: full.skippedConcurrency } : null;
     ok("dry: counts", JSON.stringify(w) === JSON.stringify({ campaignsDue: 1, contactsDue: 2, skippedCallHours: 1, skippedConcurrency: 1 }), JSON.stringify(w));
     dryWould = w?.contactsDue ?? -1;
     ok("dry: no number, name or title in the response", !/\+972|\d{8,}|[A-Za-z]{3,} [A-Za-z]{3,}/.test(JSON.stringify(w)));
