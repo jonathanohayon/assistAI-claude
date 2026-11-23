@@ -734,6 +734,7 @@
     "previewBadge": "Preview",
     "previewNote": "Sample data: nothing is saved or sent.",
     "previewSoon": "Coming soon.",
+    "connectAdminClosed": "Admin: the “Your AI agent” card shows once the product is open for this account.",
     "previewNotify": "Notify me",
     "previewNotified": "Noted, we'll let you know.",
     "previewNotifyError": "We couldn't save your request. Please try again.",

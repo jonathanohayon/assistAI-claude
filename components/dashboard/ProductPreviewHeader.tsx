@@ -22,7 +22,8 @@
  *     (notifyRequested, loaded by the server page) sees that line directly.
  *     409 (the product is owned): nothing more, the page reflects it on
  *     reload. Any other failure: a plain inline error, the button stays.
- *     No email is sent; the request is only stored.
+ *     No email is sent; the request is only stored. `notify={false}` (an
+ *     admin, lib/connect-page-view.ts) keeps the line and drops the button.
  * The page shows the product's real screen over sample data below it.
  * Owned pages never render it.
  */
@@ -206,6 +207,7 @@ export function ProductPreviewHeader({
   trial,
   trialTerms,
   asUserId,
+  notify = true,
 }: {
   entry: ProductEntry;
   cta: ProductCta;
@@ -217,6 +219,8 @@ export function ProductPreviewHeader({
   trialTerms?: TrialTerms;
   /** Admin tenant view only: the POSTs carry ?asUserId (no such header there today). */
   asUserId?: string | null;
+  /** "soon": offer "Prévenez-moi" (false for an admin: lib/connect-page-view.ts). */
+  notify?: boolean;
 }) {
   const t = useTranslations("DashboardNav");
   const computed: TrialCtaView = trialCta({ state: "preview", cta }, trial);
@@ -229,7 +233,7 @@ export function ProductPreviewHeader({
       {view.kind === "soon" ? (
         <>
           <p className="mt-4 text-sm font-semibold text-[#9d174d]">{t("previewSoon")}</p>
-          <NotifyMe entry={entry} notifyRequested={notifyRequested} asUserId={asUserId} />
+          {notify && <NotifyMe entry={entry} notifyRequested={notifyRequested} asUserId={asUserId} />}
         </>
       ) : view.kind === "start" && trialTerms ? (
         <TrialStart entry={entry} terms={trialTerms} asUserId={asUserId} />
