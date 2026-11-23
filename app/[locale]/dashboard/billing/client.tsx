@@ -109,16 +109,9 @@ function BillingToggle({
                 className="absolute inset-0 -z-10 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[#f472b6] shadow-sm"
               />
             )}
+            {/* No discount badge: the annual saving is said once, below the
+                toggle (annualSavings, "2 mois offerts"). */}
             {opt === "monthly" ? t("monthly") : t("annual")}
-            {opt === "annual" && (
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wide ${
-                  active ? "bg-white/20 text-white" : "bg-[#fef3c7] text-[#b45309]"
-                }`}
-              >
-                −20%
-              </span>
-            )}
           </button>
         );
       })}
