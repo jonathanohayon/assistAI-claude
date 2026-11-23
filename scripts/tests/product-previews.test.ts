@@ -352,8 +352,8 @@ async function main() {
   for (const [v, admin, on] of [["", false, false], ["", true, false], ["admin", false, false], ["admin", true, true], ["all", false, true], ["junk", true, false]] as const)
     assert.equal(clientAgentEnabled(clientAgentMode({ CLIENT_AGENT: v }), admin), on, `CLIENT_AGENT=${v} admin=${admin}`);
   const connect = read("app/[locale]/dashboard/agent/page.tsx");
-  assert.match(connect, /showClientAgent=\{clientAgentEnabled\(clientAgentMode\(\), isAdmin\)\}/, "the page mounts the brick only where CLIENT_AGENT is on");
-  assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick \/>\}/, "the view follows the page's decision");
+  assert.match(connect, /showClientAgent: clientAgentEnabled\(clientAgentMode\(\), isAdmin\)/, "the page mounts the brick only where CLIENT_AGENT is on");
+  assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick asUserId=\{asUserId\} \/>\}/, "the view follows the page's decision");
   assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /if \(!clientAgentRowVisible\("inbound", served\)\) return null;/, "and the brick follows the server's answer");
   // Previews never touch a server gate: no gate helper is imported by preview code.
   for (const f of ["components/preview/SalesPreview.tsx", "components/preview/ReceptionPreview.tsx", "components/preview/ConnectPreview.tsx", "components/preview/preview-context.tsx", "lib/preview-fetch.ts"])
