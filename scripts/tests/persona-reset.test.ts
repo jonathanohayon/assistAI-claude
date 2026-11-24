@@ -61,4 +61,17 @@ for (const f of ["lib/persona-reset.ts", "lib/persona-reset-rules.ts", "app/api/
   assert.doesNotMatch(code, /seedForNewAccount|getOnboardingTemplateByPlan|getOnboardingGreetingByPlan/, `${f}: no onboarding template`);
 }
 
+// The welcome email's default-persona text (messages/*.json recoPersonaBody)
+// names the same agent as a new account's seed and the admin reset.
+assert.equal(DEFAULT_AGENT_NAME, "Tamara");
+for (const l of ["fr", "en", "he"]) {
+  const body = (JSON.parse(read(`messages/${l}.json`)) as Record<string, Record<string, Record<string, string>>>);
+  const hits = JSON.stringify(body).match(/"recoPersonaBody":"((?:[^"\\]|\\.)*)"/g) ?? [];
+  assert.equal(hits.length, 1, `${l}: one recoPersonaBody`);
+  assert.ok(hits[0].includes(`\\"${DEFAULT_AGENT_NAME}\\"`), `${l}: the welcome email names ${DEFAULT_AGENT_NAME}`);
+  assert.equal(neutralPersona(l, l).agentName, DEFAULT_AGENT_NAME, `${l}: the reset writes the same name`);
+  assert.ok(neutralSeed(l).instructions.includes(DEFAULT_AGENT_NAME) && neutralSeed(l).greeting.includes(DEFAULT_AGENT_NAME), `${l}: the seed text names it`);
+  assert.ok(!neutralSeed(l).instructions.includes("Sarah"), `${l}: no leftover name in the seed`);
+}
+
 console.log("ALL PERSONA-RESET TESTS PASSED");

@@ -1,5 +1,5 @@
 {
-  "id": "08b910ba-ffa5-4718-953b-52145d0a820a",
+  "id": "4fd458c5-3c03-4661-8ce3-7a3a4cf1add6",
   "prevId": "bc3fd93d-16f9-42ed-aed0-ad622bf6fa58",
   "version": "7",
   "dialect": "postgresql",
@@ -586,6 +586,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "connector_id": {
+          "name": "connector_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_agent_reached": {
+          "name": "client_agent_reached",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -607,6 +619,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "calls_connector_id_connectors_id_fk": {
+          "name": "calls_connector_id_connectors_id_fk",
+          "tableFrom": "calls",
+          "tableTo": "connectors",
+          "columnsFrom": [
+            "connector_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1225,6 +1250,158 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.connectors": {
+      "name": "connectors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "voice_config": {
+          "name": "voice_config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "phone_number_id": {
+          "name": "phone_number_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_test_at": {
+          "name": "last_test_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_test_ok": {
+          "name": "last_test_ok",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "connectors_user_id_idx": {
+          "name": "connectors_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "connectors_user_id_users_id_fk": {
+          "name": "connectors_user_id_users_id_fk",
+          "tableFrom": "connectors",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "connectors_phone_number_id_phone_numbers_id_fk": {
+          "name": "connectors_phone_number_id_phone_numbers_id_fk",
+          "tableFrom": "connectors",
+          "tableTo": "phone_numbers",
+          "columnsFrom": [
+            "phone_number_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "connectors_phone_number_id_unique": {
+          "name": "connectors_phone_number_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phone_number_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "connectors_mode_check": {
+          "name": "connectors_mode_check",
+          "value": "\"connectors\".\"mode\" IN ('lead', 'voice')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.contact_confirmation_codes": {
@@ -1907,90 +2084,6 @@
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.persona_resets": {
-      "name": "persona_resets",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "previous": {
-          "name": "previous",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "applied": {
-          "name": "applied",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "by_admin": {
-          "name": "by_admin",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "undone_at": {
-          "name": "undone_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "persona_resets_user_id_users_id_fk": {
-          "name": "persona_resets_user_id_users_id_fk",
-          "tableFrom": "persona_resets",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "persona_resets_by_admin_users_id_fk": {
-          "name": "persona_resets_by_admin_users_id_fk",
-          "tableFrom": "persona_resets",
-          "tableTo": "users",
-          "columnsFrom": [
-            "by_admin"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

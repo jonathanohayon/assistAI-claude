@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The admin persona reset (migration 0062 + /api/admin/users/[userId]/reset-persona)
+# The admin persona reset (migration 0063 + /api/admin/users/[userId]/reset-persona)
 # against a THROWAWAY Postgres (127.0.0.1:<free port>, data in the
 # git-ignored .tmp/ folder), then stops it:
-#   1. migration 0062 writes NO data: on a seeded database at 0061
+#   1. migration 0063 writes NO data: on a seeded database at 0062
 #      (scripts/fixtures/mission-m2a-seed.sql + a mock admin), the md5 of
 #      EVERY public table's rows is identical before and after; the only
 #      schema change is the new persona_resets table; ledger +1; users and
@@ -30,10 +30,10 @@ pg_start_throwaway persona-reset
 CLEAN=(env -i "${DB_CLOCK_ENV[@]}" PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8)
 q() { psql -X -q -At -v ON_ERROR_STOP=1 "$URL" "$@"; }
 
-# ── 1. Migration 0062 writes no data ────────────────────────────────────
+# ── 1. Migration 0063 writes no data ────────────────────────────────────
 source scripts/lib/migrate-upto.sh
-migration_sorts_after_all_before 0062_persona_resets
-migrate_upto 0061_renewal_reminders "$URL" "$TMP/work/m61"
+migration_sorts_after_all_before 0063_persona_resets
+migrate_upto 0062_connectors "$URL" "$TMP/work/m62pre"
 q -f scripts/fixtures/mission-m2a-seed.sql
 q -c "INSERT INTO users (id, email, password_hash, role, locale) VALUES
         ('00000000-0000-4000-8000-0000000000f1', 'mig-admin@example.test', 'x', 'admin', 'fr');
@@ -54,11 +54,11 @@ snap > "$TMP/work/md5-before"
 grep -q '^users|4|' "$TMP/work/md5-before"
 grep -q '^agent_configs|3|' "$TMP/work/md5-before"
 XMIN="$(q -c "SELECT (SELECT string_agg(xmin::text, ',' ORDER BY id) FROM users) || '/' || (SELECT string_agg(xmin::text, ',' ORDER BY id) FROM agent_configs)")"
-migrate_upto 0062_persona_resets "$URL" "$TMP/work/m62"
+migrate_upto 0063_persona_resets "$URL" "$TMP/work/m63"
 snap > "$TMP/work/md5-after"
 schema > "$TMP/work/schema-after"
 if ! diff -u "$TMP/work/md5-before" "$TMP/work/md5-after"; then
-  echo "migration 0062 changed table data" >&2
+  echo "migration 0063 changed table data" >&2
   exit 1
 fi
 SCHEMA_DIFF="$(diff "$TMP/work/schema-before" "$TMP/work/schema-after" | grep '^[<>]' || true)"
@@ -73,16 +73,16 @@ WANT_DIFF="> persona_resets.applied jsonb NO
 [ "$(q -c 'SELECT count(*) FROM persona_resets')" = "0" ]
 [ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
 xmin_now() { q -c "SELECT (SELECT string_agg(xmin::text, ',' ORDER BY id) FROM users) || '/' || (SELECT string_agg(xmin::text, ',' ORDER BY id) FROM agent_configs)"; }
-[ "$(xmin_now)" = "$XMIN" ] || { echo "migration 0062 rewrote users / agent_configs rows" >&2; exit 1; }
+[ "$(xmin_now)" = "$XMIN" ] || { echo "migration 0063 rewrote users / agent_configs rows" >&2; exit 1; }
 # A re-run applies nothing; the raw SQL again is a no-op (idempotent).
-migrate_upto 0062_persona_resets "$URL" "$TMP/work/m62b"
-q -f drizzle/0062_persona_resets.sql 2>/dev/null
+migrate_upto 0063_persona_resets "$URL" "$TMP/work/m63b"
+q -f drizzle/0063_persona_resets.sql 2>/dev/null
 [ "$(q -c 'SELECT count(*) FROM drizzle.__drizzle_migrations')" = "$((LEDGER_BEFORE + 1))" ]
 [ "$(xmin_now)" = "$XMIN" ]
 snap > "$TMP/work/md5-rerun"
 cmp -s "$TMP/work/md5-before" "$TMP/work/md5-rerun"
 md5of() { md5 -q "$1" 2>/dev/null || md5sum "$1" | cut -d' ' -f1; }
-echo "migration 0062: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after (md5 of the per-table list $(md5of "$TMP/work/md5-after")); schema diff = persona_resets only; ledger +1; users + agent_configs xmin unchanged; re-run no-op"
+echo "migration 0063: $(echo "$TABLES" | wc -w | tr -d ' ') tables, row md5 identical before/after (md5 of the per-table list $(md5of "$TMP/work/md5-after")); schema diff = persona_resets only; ledger +1; users + agent_configs xmin unchanged; re-run no-op"
 
 # ── 2. The DB test (every migration from here on), through the real routes ─
 "${CLEAN[@]}" DATABASE_URL="$URL" node scripts/migrate.mjs >/dev/null
