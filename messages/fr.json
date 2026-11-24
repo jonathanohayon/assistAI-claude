@@ -2937,5 +2937,49 @@
   "ClientAgentBrick": {
     "title": "Votre agent IA",
     "intro": "L'adresse de votre propre agent : Tamara lui pose la question pendant les appels et utilise sa réponse."
+  },
+  "ConnectorsList": {
+    "listLabel": "Vos agents",
+    "defaultName": "Votre agent",
+    "mainNumber": "Répond sur votre numéro principal",
+    "noNumber": "Numéro pas encore choisi",
+    "copyNumber": "Copier le numéro",
+    "copied": "Copié",
+    "pill": {
+      "online": "En ligne",
+      "off": "Éteint",
+      "unreachable": "Agent injoignable"
+    },
+    "unreachableNote": "Tamara répond seule en attendant.",
+    "mode": {
+      "lead": "Tamara mène la conversation et interroge votre agent quand elle a besoin d'une réponse.",
+      "voice": "Tamara prête seulement sa voix : votre agent décide quoi dire, elle le dit mot pour mot."
+    },
+    "lastCall": "Dernier appel : {when}",
+    "noCall": "Aucun appel pour l'instant",
+    "switchLabel": "Allumer {name}",
+    "test": "Tester",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "add": {
+      "title": "+ Ajouter un agent",
+      "price": "+ {price}/mois par agent, numéro inclus",
+      "noPrice": "Numéro inclus",
+      "trial": "{max, plural, one {# agent} other {# agents}} pendant l'essai. Activez votre offre pour en ajouter.",
+      "soon": "Bientôt",
+      "max": "{max, plural, one {# agent au maximum} other {# agents au maximum}} sur votre compte."
+    },
+    "empty": {
+      "title": "Branchez votre premier agent",
+      "body": "Votre agent répond au téléphone avec une voix et un numéro Tamara.",
+      "cta": "Commencer"
+    },
+    "deleteDialog": {
+      "title": "Supprimer {name} ?",
+      "released": "Le numéro {number} sera libéré et ne pourra pas être récupéré.",
+      "billing": "Il reste actif jusqu'à la fin de la période payée, sans remboursement.",
+      "confirm": "Supprimer",
+      "cancel": "Annuler"
+    }
   }
 }
