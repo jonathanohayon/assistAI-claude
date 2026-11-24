@@ -21,7 +21,8 @@ const P = "mt-2 text-sm leading-relaxed text-[#334155]";
 const H3 = "mt-4 text-sm font-semibold text-[var(--color-foreground)]";
 // Code words stay left-to-right inside Hebrew sentences.
 const code = (c: ReactNode) => (
-  <code dir="ltr" className="rounded bg-[var(--color-muted)] px-1 font-mono text-[12px] text-[var(--color-foreground)]">
+  // inline-block: one LTR unit that never splits across RTL lines (it wraps inside only if wider than the line).
+  <code dir="ltr" className="inline-block max-w-full break-all rounded bg-[var(--color-muted)] px-1 font-mono text-[12px] text-[var(--color-foreground)]">
     {c}
   </code>
 );
