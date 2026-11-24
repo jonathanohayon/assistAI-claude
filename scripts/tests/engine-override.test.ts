@@ -364,7 +364,8 @@ console.log("ok: voice follows the engine through the equivalence table");
 // ── 4. Source guards ───────────────────────────────────────────────────────
 {
   const inbound = code("lib/agent/session-config/inbound.ts");
-  assert.match(inbound, /const todayVoice = servedInboundVoice\(tenant\.config, tenant\.config\.model \|\| "gpt-realtime-2"\);/);
+  // B2: a connector's own voice on its number, else the account's (today's call, unchanged).
+  assert.match(inbound, /const todayVoice =\s+route\.kind === "connector" && route\.serving\.voice\s+\? servedConnectorVoice\(route\.serving\.voice, tenant\.config\.model \|\| "gpt-realtime-2"\)\s+: servedInboundVoice\(tenant\.config, tenant\.config\.model \|\| "gpt-realtime-2"\);/);
   assert.match(inbound, /const voiceConfig = engineDecision\.apply \? voiceOnEngine\(todayVoice, engineDecision\) : todayVoice;/);
   assert.match(inbound, /decideInboundEngine\(tenant\.user\.id, tenant\.config, fx\.alertAdmins, fx\.engineDeps\)/, "inbound alerts through fx (dry run silent)");
   assert.match(inbound, /\{ path: "inbound", alert: fx\.alertAdmins, today: inboundToday\(tenant\.config\) \}/, "the fail-open alert goes through fx too");

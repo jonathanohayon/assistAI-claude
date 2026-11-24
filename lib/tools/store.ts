@@ -27,6 +27,7 @@ import {
   OUTBOUND_CAPABILITIES,
   TOOLS_VERSION,
   TRANSFER_WHEN,
+  type ClientAgentStored,
   type EffectiveCapabilities,
   type Tools,
 } from "@/lib/tools/contract";
@@ -249,8 +250,15 @@ export function receptionistCapabilities(
   plan: PlanFeatures,
   /** T5: the CLIENT_AGENT switch for this account (default off). */
   clientAgentEnabled = false,
+  /**
+   * B2: the client agent THIS call routes to (a connector's, or off on a
+   * non-connector number), in place of the account-level one. Undefined =
+   * the account-level setting, exactly as before.
+   */
+  clientAgentOverride?: ClientAgentStored,
 ): { tools: Tools; capabilities: EffectiveCapabilities } {
-  const tools = currentReceptionistTools(row, toggles);
+  const stored = currentReceptionistTools(row, toggles);
+  const tools = clientAgentOverride === undefined ? stored : { ...stored, clientAgent: clientAgentOverride };
   return {
     tools,
     capabilities: effectiveCapabilities(
