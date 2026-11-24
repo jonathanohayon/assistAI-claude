@@ -166,7 +166,8 @@ async function wrapper() {
 
 // ── 5. Never read, never served: the connectors columns are pinned ───────
 {
-  const NEVER_READ = ["userId", "name", "lastTestAt", "lastTestOk", "createdAt", "updatedAt"];
+  // deletedAt: only in the WHERE (deleted_at IS NULL), never selected nor served.
+  const NEVER_READ = ["userId", "name", "lastTestAt", "lastTestOk", "createdAt", "updatedAt", "deletedAt"];
   const cols = Object.keys(getTableColumns(connectors));
   for (const c of cols) {
     assert.ok(

@@ -133,7 +133,7 @@ const write = src("lib/connectors/write.ts");
 assert.match(write, /export const generateConnectorSecret = generateClientAgentSecret;/, "the secret is #437's generator (32 random bytes)");
 assert.match(write, /secret: sealForStorage\(secret\)/, "a generated secret is stored sealed");
 assert.equal((write.match(/generatedSecret: secret/g) ?? []).length, 2, "generatedSecret is returned by create and rotate only");
-assert.equal([...write.matchAll(/metadata: \{([^\n]*)\},?\n/g)].length, 4, "every event's metadata is checked");
+assert.equal([...write.matchAll(/metadata: \{([^\n]*)\},?\n/g)].length, 5, "every event's metadata is checked");
 for (const m of write.matchAll(/metadata: \{([^\n]*)\},?\n/g)) {
   // The url only ever reaches metadata as its host name (safeHost).
   const rest = m[1].replace(/safeHost\([\w.]+\)/g, "").replace(/patch\.url !== undefined/g, "");
@@ -145,8 +145,15 @@ for (const r of ["app/api/dashboard/connectors/[id]/route.ts", "app/api/dashboar
   for (const fn of s.matchAll(/export async function (\w+)\([^)]*\) \{\n {2}const gate = await connectorsWriteGate\(req\);\n {2}if \(!gate\.ok\) return gate\.response;/g)) assert.ok(fn[1]);
   assert.equal((s.match(/export async function/g) ?? []).length, (s.match(/const gate = await connectorsWriteGate\(req\);\n {2}if \(!gate\.ok\) return gate\.response;/g) ?? []).length, `${r}: every handler gates first`);
 }
-assert.doesNotMatch(src("app/api/dashboard/connectors/[id]/route.ts"), /export async function DELETE/, "no DELETE in B4 (the soft delete lands in its own PR)");
-assert.doesNotMatch(write, /tx\.delete\(|db\.delete\(/, "B4 deletes no row");
+assert.match(src("app/api/dashboard/connectors/[id]/route.ts"), /export async function DELETE/, "the soft delete route");
+assert.doesNotMatch(write, /\.delete\(connectors\)/, "a connector row is never deleted (soft delete only)");
+assert.match(write, /set\(\{ deletedAt: now, phoneNumberId: null, secret: null, updatedAt: now \}\)/, "soft delete: deleted_at set, number cleared, secret wiped");
+assert.match(write, /body: \{ deletedId: id, numberKept: true, page \}/, "no release before B5: numberKept is always true");
+// Every read of the table in the write path goes through live() (deleted_at IS NULL).
+assert.equal((write.match(/eq\(connectors\.userId/g) ?? []).length, 1, "only live() filters by account");
+for (const f of ["lib/connectors/page.ts", "lib/connectors/route-load.ts"]) {
+  assert.match(src(f), /isNull\(connectors\.deletedAt\)/, `${f} skips soft-deleted rows`);
+}
 const root = src("app/api/dashboard/connectors/route.ts");
 assert.match(root, /export async function POST\(req: NextRequest\) \{\n {2}const gate = await connectorsWriteGate\(req\);/, "POST gates first");
 assert.doesNotMatch(root.split("export async function POST")[0], /connectorsWriteGate\(/, "the GET is not gated by the switch");

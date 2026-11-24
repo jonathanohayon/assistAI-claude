@@ -16,7 +16,10 @@
 //   6. throw injection at each read / a bad row → the response is
 //      byte-identical to the "reception" response + ONE connector_route_failed
 //      alert (daily); an alert sink that throws changes nothing;
-//   7. never served: the connector's name, id and test results.
+//   7. never served: the connector's name, id and test results;
+//   8. a soft-deleted connector (deleted_at set) never routes, even with its
+//      number still on the row: a call to B → reception (another live
+//      connector on A); deleted rows only → zero live rows → legacy.
 // No DNS (injected resolver), no provider call. Plain `npm test` skips it.
 // Run it with:  bash scripts/connector-route-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; mock data only (example.com, +1555).
@@ -247,6 +250,22 @@ async function main() {
     assert.ok(!t.includes(sealed), "the sealed secret is never served");
   }
   console.log("ok: 7. never served: connector name / id / number id / test results / sealed value");
+
+  // ── 8. A soft-deleted connector never routes ───────────────────────────
+  // Worst case: deleted_at set but the number NOT cleared (the DELETE route
+  // clears it too): the deleted_at filter alone keeps it off the call path.
+  const [{ id: PA_ID }] = (await db.execute(sql`SELECT id FROM phone_numbers WHERE phone_number = ${PA}`)) as unknown as Array<{ id: string }>;
+  await db.execute(sql`INSERT INTO connectors (user_id, name, url, mode, secret, phone_number_id, enabled)
+    VALUES (${ACC}, 'Mock bot A', 'https://bot-a.example.com/hook', 'lead', ${sealed}, ${PA_ID}, false)`);
+  await setRow(sql`deleted_at = now()`);
+  reset();
+  assert.equal(await call(onB), recA, "a deleted connector on B → reception (byte-identical)");
+  assert.deepEqual(events.filter((e) => e.event === "connector_route").map((e) => e.metadata), [
+    { kind: "reception", connectorId: null, failed: false, accountAgentIgnored: true },
+  ], "routed as reception, never to the deleted id");
+  await db.execute(sql`DELETE FROM connectors WHERE user_id = ${ACC} AND deleted_at IS NULL`);
+  assert.equal(await call(onB), zeroB, "deleted rows only = zero live rows → legacy (the account-level agent), as before any row");
+  console.log("ok: 8. a soft-deleted connector never routes (B → reception; deleted rows only → legacy)");
 
   await db.execute(sql`DELETE FROM users WHERE id = ${ACC}`);
   console.log("ALL CONNECTOR ROUTE DB TESTS PASSED");

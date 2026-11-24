@@ -1,4 +1,4 @@
-// Connector writes (B4) — SERVER-ONLY. Create / edit / test (delete: its own PR), behind
+// Connector writes (B4) — SERVER-ONLY. Create / edit / soft delete / test, behind
 // CONNECTORS_WRITE (lib/connectors/write-switch.ts, checked by the routes).
 // No number purchase or release here (B5), no payment (B6).
 //
@@ -19,7 +19,7 @@
 // `generatedSecret` (create, and a PATCH with rotateSecret: true). Never
 // selected otherwise; never logged.
 
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs, connectors, phoneNumbers, users } from "@/lib/db/schema";
@@ -28,13 +28,15 @@ import { sealForStorage } from "@/lib/crypto/secret-box";
 import { loadTamaravoxNumbers } from "@/lib/connectors/tamaravox-numbers";
 import { logEvent } from "@/lib/logger";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
-import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow } from "@/lib/products";
+import { activeTrialProducts } from "@/lib/product-trials";
+import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow, loadProductTrials } from "@/lib/products";
 import { generateClientAgentSecret } from "@/lib/tools/client-agent-secret";
 import { runClientAgentTest, type ClientAgentTestResult } from "@/lib/tools/client-agent-test";
 import { parseTools } from "@/lib/tools/store";
 import { DEFAULT_VOICE, parseVoice, type Voice } from "@/lib/voice/contract";
 import { planVoiceWrite } from "@/lib/voice/store";
 
+import { connectorDeletable, connectProductActive } from "./deletable";
 import { canAddConnector } from "./entitlement";
 import { LEGACY_CONNECTOR_ID } from "./legacy";
 import { defaultConnectorLimits } from "./limits";
@@ -85,6 +87,9 @@ const isUniqueNumberViolation = (e: unknown): boolean => {
 // write order: the legacy row stays first.
 const CREATED_NOW = sql`clock_timestamp()` as unknown as Date;
 
+/** The account's LIVE connectors: a soft-deleted row is never read, counted, edited or tested. */
+const live = (userId: string) => and(eq(connectors.userId, userId), isNull(connectors.deletedAt));
+
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function lockAccount(tx: Tx, userId: string) {
@@ -97,7 +102,7 @@ async function lockAccount(tx: Tx, userId: string) {
 }
 
 async function rowCount(tx: Tx, userId: string): Promise<number> {
-  const [r] = await tx.select({ n: count() }).from(connectors).where(eq(connectors.userId, userId));
+  const [r] = await tx.select({ n: count() }).from(connectors).where(live(userId));
   return Number(r?.n ?? 0);
 }
 
@@ -282,7 +287,7 @@ export async function patchConnector(a: ConnectorActor, id: string, patch: Conne
       const [row] = await tx
         .select({ id: connectors.id, voiceConfig: connectors.voiceConfig })
         .from(connectors)
-        .where(and(eq(connectors.id, targetId), eq(connectors.userId, a.userId)))
+        .where(and(eq(connectors.id, targetId), live(a.userId)))
         .limit(1);
       if (!row) refuse(404, { error: "not_found" });
       const set: Partial<typeof connectors.$inferInsert> = {};
@@ -317,6 +322,55 @@ export async function patchConnector(a: ConnectorActor, id: string, patch: Conne
   };
 }
 
+// ── DELETE /api/dashboard/connectors/[id] (soft) ────────────────────────
+
+/**
+ * A SOFT delete: deleted_at set, phone_number_id CLEARED (frees the UNIQUE:
+ * the number stays on the account and can host another connector), the
+ * secret WIPED, the row KEPT (past calls keep their connector_id). No Twilio
+ * release here (B5): numberKept is always true until then.
+ * The first connector while the product is active is refused (the server's
+ * deletable rule, same order as the GET). A deleted row: 404.
+ */
+export async function deleteConnector(a: ConnectorActor, id: string): Promise<WriteOutcome> {
+  if (id === LEGACY_CONNECTOR_ID) return { ok: false, status: 409, body: { error: "legacy_not_deletable" } };
+  if (!isConnectorUuid(id)) return { ok: false, status: 404, body: { error: "not_found" } };
+  const trials = await loadProductTrials(a.userId);
+  let phoneNumberId: string | null = null;
+  const out = await run(async () => {
+    await db.transaction(async (tx) => {
+      const account = await lockAccount(tx, a.userId);
+      if (!account) refuse(404, { error: "not_found" });
+      const rows = await tx
+        .select({ id: connectors.id, phoneNumberId: connectors.phoneNumberId })
+        .from(connectors)
+        .where(live(a.userId))
+        .orderBy(connectors.createdAt, connectors.id);
+      const index = rows.findIndex((r) => r.id === id);
+      if (index < 0) refuse(404, { error: "not_found" });
+      const productActive = connectProductActive({ ...account!, activeTrials: activeTrialProducts(trials, new Date()) });
+      if (!connectorDeletable({ derived: false, index, productActive })) refuse(409, { error: "first_connector_active" });
+      phoneNumberId = rows[index].phoneNumberId;
+      const now = new Date();
+      await tx
+        .update(connectors)
+        .set({ deletedAt: now, phoneNumberId: null, secret: null, updatedAt: now })
+        .where(and(eq(connectors.id, id), live(a.userId)));
+    });
+    return { ok: true, status: 200, body: {} };
+  });
+  if (!out.ok) return out;
+  await logEvent({
+    source: source(a),
+    event: "connector_deleted",
+    message: "Connecteur supprimé (numéro conservé sur le compte)",
+    userId: a.userId,
+    metadata: { connectorId: id, phoneNumberId },
+  });
+  const { page } = await pageAnd(a.userId, null);
+  return { ok: true, status: 200, body: { deletedId: id, numberKept: true, page } };
+}
+
 // ── POST /api/dashboard/connectors/[id]/test ────────────────────────────
 
 const LANGUAGES = ["fr", "he", "en"];
@@ -340,7 +394,7 @@ export async function testConnector(a: ConnectorActor, id: string, language: str
   let url: string;
   let stored: string | null;
   if (id === LEGACY_CONNECTOR_ID) {
-    const [{ n }] = await db.select({ n: count() }).from(connectors).where(eq(connectors.userId, a.userId));
+    const [{ n }] = await db.select({ n: count() }).from(connectors).where(live(a.userId));
     const parsed = Number(n) === 0 && cfg ? parseTools(cfg.toolsConfig) : null;
     const ca = parsed?.ok ? parsed.value.clientAgent : null;
     if (!ca || !ca.enabled || !ca.url.trim()) return { ok: false, status: 404, body: { error: "not_found" } };
@@ -350,7 +404,7 @@ export async function testConnector(a: ConnectorActor, id: string, language: str
     const [row] = await db
       .select({ url: connectors.url, secret: connectors.secret })
       .from(connectors)
-      .where(and(eq(connectors.id, id), eq(connectors.userId, a.userId)))
+      .where(and(eq(connectors.id, id), live(a.userId)))
       .limit(1);
     if (!row) return { ok: false, status: 404, body: { error: "not_found" } };
     url = row.url;
@@ -364,7 +418,7 @@ export async function testConnector(a: ConnectorActor, id: string, language: str
     await db
       .update(connectors)
       .set({ lastTestAt: at, lastTestOk: result.ok })
-      .where(and(eq(connectors.id, id), eq(connectors.userId, a.userId)));
+      .where(and(eq(connectors.id, id), live(a.userId)));
     lastTestAt = at.toISOString();
   }
   await logEvent({

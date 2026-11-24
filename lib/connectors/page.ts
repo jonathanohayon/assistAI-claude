@@ -3,7 +3,7 @@
 // The secret is NEVER selected: the query picks `secret IS NOT NULL` as
 // secretSet (explicit field picks, the admin-routes-no-secrets rule).
 
-import { and, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs, calls, connectors, phoneNumbers, users } from "@/lib/db/schema";
@@ -71,7 +71,8 @@ export async function loadConnectorRows(userId: string): Promise<ConnectorRowPic
     })
     .from(connectors)
     .leftJoin(phoneNumbers, and(eq(phoneNumbers.id, connectors.phoneNumberId), eq(phoneNumbers.userId, connectors.userId)))
-    .where(eq(connectors.userId, userId))
+    // A soft-deleted connector is never listed (nor counted).
+    .where(and(eq(connectors.userId, userId), isNull(connectors.deletedAt)))
     .orderBy(connectors.createdAt, connectors.id);
 }
 

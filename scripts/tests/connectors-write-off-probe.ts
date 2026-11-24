@@ -1,6 +1,6 @@
 // B4 invariant probe (run by scripts/connectors-write-db.sh ONLY, between two
 // worker payload snapshots): with CONNECTORS_WRITE unset, calls EVERY
-// connector write route (POST, PATCH, test; B4 has no DELETE) — as each
+// connector write route (POST, PATCH, DELETE, test) — as each
 // seeded account on its own scope and as the mock admin via ?asUserId — and
 // asserts 404 connectors_write_off. The script then proves the payload bytes
 // identical. Mock seed only; a
@@ -45,6 +45,7 @@ async function main() {
         const out = [
           await collection.POST(mk("/api/dashboard/connectors", "POST", body)),
           await item.PATCH(mk(`/api/dashboard/connectors/${cid}`, "PATCH", { name: "Probe", rotateSecret: true, acknowledgeLegacyConversion: true }), ctx(cid)),
+          await item.DELETE(mk(`/api/dashboard/connectors/${cid}`, "DELETE"), ctx(cid)),
           await testRoute.POST(mk(`/api/dashboard/connectors/${cid}/test`, "POST", {}), ctx(cid)),
         ];
         for (const r of out) {
