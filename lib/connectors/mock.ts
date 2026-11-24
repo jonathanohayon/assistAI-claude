@@ -25,6 +25,8 @@ const base = {
   lastTestAt: null,
   lastTestOk: null,
   secretSet: true,
+  // Set per page by `page()` below, by the server's ONE rule (#444).
+  deletable: false,
 } as const;
 
 export const MOCK_LEGACY: ConnectorView = {
@@ -95,7 +97,18 @@ const page = (
   connectors: ConnectorView[],
   limits: ConnectorsPageView["limits"],
   canAdd: ConnectorsPageView["canAdd"],
-): ConnectorsPageView => ({ connectors, limits, canAdd });
+): ConnectorsPageView => ({ connectors: withServerDeletable(connectors), limits, canAdd });
+
+/**
+ * The server's rule (#444, lib/connectors): the derived legacy card is never
+ * deletable; the FIRST connector (the legacy card when there is one, else the
+ * oldest row) isn't while the product is active (every mock page is); the
+ * others are. The mock mirrors it so fixtures look like real GET answers.
+ */
+function withServerDeletable(connectors: ConnectorView[]): ConnectorView[] {
+  const hasLegacy = connectors.some((c) => c.derived);
+  return connectors.map((c, i) => ({ ...c, deletable: !c.derived && (hasLegacy || i > 0) }));
+}
 
 /** Every state the list can be in. limits.used counts the derived card. */
 export const MOCK_PAGES = {

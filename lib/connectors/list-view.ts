@@ -24,9 +24,9 @@
 //   pill      = exactly one of online / off / unreachable; unreachable adds
 //               the line "Tamara répond seule en attendant.";
 //   deletable = the "…" menu with "Supprimer" exists. Never for the derived
-//               card. Read from ConnectorView.deletable once the BE sends it
-//               (C1b); until then inferred: never the FIRST connector (the
-//               product's included one: only its switch).
+//               card. Read from ConnectorView.deletable (the server's one
+//               rule, #444): never the first connector while the product
+//               is active (only its switch).
 // The add card:
 //   add       = price line "+ {price} par agent, numéro inclus" (amount from
 //               the catalogue; without an amount, no price line);
@@ -107,18 +107,14 @@ function addCard(page: ConnectorsPageView, extraPrice: ConnectorExtraPrice | nul
 }
 
 /**
- * Whether a connector can be deleted. The BE's flag wins when it sends one
- * (C1b: ConnectorView.deletable); until then, every connector but the first.
- * The derived card never, whatever is sent.
+ * Whether a connector can be deleted: the server's ONE rule (#444,
+ * ConnectorView.deletable). The derived card never, whatever is sent.
  */
-function deletableOf(c: ConnectorView, index: number): boolean {
-  if (c.derived) return false;
-  const fromServer = (c as ConnectorView & { deletable?: unknown }).deletable;
-  if (typeof fromServer === "boolean") return fromServer;
-  return index > 0;
+function deletableOf(c: ConnectorView): boolean {
+  return !c.derived && c.deletable === true;
 }
 
-function card(c: ConnectorView, index: number): ConnectorCardView {
+function card(c: ConnectorView): ConnectorCardView {
   const numberLine = c.derived ? "main" : c.numberE164 ? "own" : "none";
   return {
     id: c.id,
@@ -132,7 +128,7 @@ function card(c: ConnectorView, index: number): ConnectorCardView {
     mode: c.mode,
     enabled: c.enabled,
     lastCallAt: c.lastCallAt,
-    deletable: deletableOf(c, index),
+    deletable: deletableOf(c),
   };
 }
 
