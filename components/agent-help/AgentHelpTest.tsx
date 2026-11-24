@@ -27,33 +27,50 @@ export type HelpTestState = "closed" | "loading" | "noUrl" | "ready";
  * Admin tenant view (`asUserId`, set by the admin route only): both requests
  * carry ?asUserId, so the test acts on the tenant viewed.
  */
+type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
+
+/** The load: which state the test area shows (GET on the account shown). */
+export async function loadHelpTestState(asUserId: string | null, f: Fetch = fetch, signal?: AbortSignal): Promise<HelpTestState> {
+  try {
+    const r = await f(agentHelpRequests(asUserId).load, { signal, cache: "no-store" });
+    if (!r.ok) return "noUrl";
+    const d = (await r.json()) as ToolsResponse;
+    return d.clientAgentTool?.visible !== true ? "closed" : d.tools.clientAgent?.url ? "ready" : "noUrl";
+  } catch {
+    return "noUrl";
+  }
+}
+
+/** The test itself (POST on the account shown), in the brick's words. */
+export async function runHelpTest(asUserId: string | null, f: Fetch = fetch): Promise<TestWords> {
+  try {
+    const res = await f(agentHelpRequests(asUserId).test, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    return clientAgentTestWords(res.status, await res.json().catch(() => null));
+  } catch {
+    return { key: "generic" };
+  }
+}
+
 export function AgentHelpTest({ open, asUserId = null }: { open: boolean; asUserId?: string | null }) {
-  const urls = agentHelpRequests(asUserId);
   const [state, setState] = useState<HelpTestState>(open ? "loading" : "closed");
   const [test, setTest] = useState<TestWords | "running" | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const ctrl = new AbortController();
-    fetch(urls.load, { signal: ctrl.signal, cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : Promise.reject(new Error(String(r.status)))))
-      .then((d) => setState(d.clientAgentTool?.visible !== true ? "closed" : d.tools.clientAgent?.url ? "ready" : "noUrl"))
-      .catch(() => setState("noUrl"));
+    void loadHelpTestState(asUserId, fetch, ctrl.signal).then((s) => {
+      if (!ctrl.signal.aborted) setState(s);
+    });
     return () => ctrl.abort();
-  }, [open, urls.load]);
+  }, [open, asUserId]);
 
   const run = async () => {
     setTest("running");
-    try {
-      const res = await fetch(urls.test, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      setTest(clientAgentTestWords(res.status, await res.json().catch(() => null)));
-    } catch {
-      setTest({ key: "generic" });
-    }
+    setTest(await runHelpTest(asUserId));
   };
 
   return <AgentHelpTestView state={state} test={test} onRun={() => void run()} asUserId={asUserId} />;

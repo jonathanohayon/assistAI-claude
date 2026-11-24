@@ -18,7 +18,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { AgentHelpView } from "../../app/[locale]/dashboard/agent/help/help-view";
 import { agentHelpLinks, agentHelpRequests } from "../../components/agent-help/links";
-import { AGENT_CARD_HREF, AgentHelpTestView } from "../../components/agent-help/AgentHelpTest";
+import { AGENT_CARD_HREF, AgentHelpTestView, loadHelpTestState, runHelpTest } from "../../components/agent-help/AgentHelpTest";
 import { AGENT_HELP_HREF, ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
 import { DEFAULT_MATRIX } from "../../lib/plan-features";
@@ -209,11 +209,33 @@ async function main() {
       load: `/api/dashboard/tools?asUserId=${TENANT}`,
       test: `/api/dashboard/tools/client-agent/test?asUserId=${TENANT}`,
     });
-    // The component sends exactly these two.
-    const src = read("components/agent-help/AgentHelpTest.tsx");
-    assert.match(src, /fetch\(urls\.load,/);
-    assert.match(src, /fetch\(urls\.test,/);
-    assert.doesNotMatch(src, /fetch\("\/api/, "no hard-coded request without the account");
+  });
+  await test("the help test's real requests: asUserId on the admin route only", async () => {
+    const seen: { url: string; method: string; body: unknown }[] = [];
+    const fake = async (url: string, init?: RequestInit) => {
+      seen.push({ url, method: init?.method ?? "GET", body: init?.body });
+      const payload = url.includes("/client-agent/test")
+        ? { ok: true, ms: 120 }
+        : { clientAgentTool: { visible: true }, tools: { clientAgent: { url: "https://agent.example.test/ask" } } };
+      return new Response(JSON.stringify(payload), { status: 200 });
+    };
+    // Tenant (own account): no asUserId anywhere.
+    assert.equal(await loadHelpTestState(null, fake), "ready");
+    assert.deepEqual(await runHelpTest(null, fake), { key: "ok", ms: 120 });
+    // Admin route: both requests carry the tenant viewed.
+    assert.equal(await loadHelpTestState(TENANT, fake), "ready");
+    await runHelpTest(TENANT, fake);
+    assert.deepEqual(
+      seen.map((s) => `${s.method} ${s.url}`),
+      [
+        "GET /api/dashboard/tools",
+        "POST /api/dashboard/tools/client-agent/test",
+        `GET /api/dashboard/tools?asUserId=${TENANT}`,
+        `POST /api/dashboard/tools/client-agent/test?asUserId=${TENANT}`,
+      ],
+    );
+    // The test sends no url/secret: the SAVED address of the account shown.
+    assert.ok(seen.filter((s) => s.method === "POST").every((s) => s.body === "{}"));
   });
   await test("only the admin route passes asUserId; the tenant page can't", () => {
     // Tenant page: no query read, no asUserId: a ?asUserId in its URL is ignored.
