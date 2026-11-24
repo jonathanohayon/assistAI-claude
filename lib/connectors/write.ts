@@ -20,7 +20,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs, connectors, phoneNumbers, users } from "@/lib/db/schema";
@@ -82,6 +82,12 @@ const isUniqueNumberViolation = (e: unknown): boolean => {
   return /connectors_phone_number_id_unique/.test(text);
 };
 
+// The list (and the "first connector" rule) orders by created_at, id. now()
+// is the transaction's start: a converted legacy row and the new one written
+// in ONE transaction would tie and order by uuid. clock_timestamp() keeps the
+// write order: the legacy row stays first.
+const CREATED_NOW = sql`clock_timestamp()` as unknown as Date;
+
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function lockAccount(tx: Tx, userId: string) {
@@ -127,6 +133,7 @@ async function insertLegacy(tx: Tx, userId: string, row: LegacyRow): Promise<str
       voiceConfig: null,
       enabled: true,
       phoneNumberId: row.phoneNumberId,
+      createdAt: CREATED_NOW,
     })
     .returning({ id: connectors.id });
   return ins.id;
@@ -229,6 +236,7 @@ export async function createConnector(a: ConnectorActor, input: ConnectorCreate,
           voiceConfig: voice,
           enabled: input.enabled,
           phoneNumberId: num.id,
+          createdAt: CREATED_NOW,
         })
         .returning({ id: connectors.id });
       createdId = ins.id;

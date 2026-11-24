@@ -32,7 +32,7 @@ if (!url) {
 }
 const host = new URL(url).hostname;
 if (host !== "127.0.0.1" && host !== "localhost") throw new Error(`refusing non-local database host ${host}`);
-if (Object.keys(process.env).some((k) => /^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|CAMPAIGN_DISPATCH|CLIENT_AGENT|PRODUCT_ORDERS|CONNECTORS_WRITE|SECRETS_KEY/i.test(k))) {
+if (Object.keys(process.env).some((k) => /^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|CAMPAIGN_DISPATCH|CLIENT_AGENT|PRODUCT_ORDERS|^CONNECTORS_WRITE$|SECRETS_KEY/i.test(k))) {
   throw new Error("refusing to run with provider env or product flags set");
 }
 if (!(globalThis as { __connectorsWriteHooks?: boolean }).__connectorsWriteHooks) throw new Error("module hooks missing: run through scripts/connectors-write-db.sh");
@@ -185,8 +185,6 @@ async function main() {
   // ── 1. Switch unset → 404 everywhere, nothing written ──────────────────
   setEnv("CONNECTORS_WRITE", null);
   const before = await snapshot();
-  const getBefore = await get(); // signed out → handled below
-  void getBefore;
   for (const who of [ADMIN, PAID, LEG]) {
     as(who);
     for (const r of [
