@@ -325,7 +325,7 @@ async function main() {
     const btn = read("components/agent-help/CopyPageLink.tsx").replace(/\/\*[\s\S]*?\*\//g, "");
     assert.match(btn, /writeText\(publicHelpUrl\(window\.location\.origin, locale\)\)/);
     assert.doesNotMatch(btn, /asUserId|\/admin|location\.href|pathname/);
-    assert.match(read("components/agent-help/AgentHelpView.tsx"), /<CopyPageLink locale=\{locale\} label=/);
+    assert.match(read("components/agent-help/AgentHelpContent.tsx"), /<CopyPageLink locale=\{locale\} label=/);
     // The admin route renders the view with locale "fr": the copied URL is /fr/agent-address-help.
     assert.match(read("app/admin/users/[userId]/agent/help/page.tsx"), /locale="fr"/);
   });
@@ -369,11 +369,15 @@ async function main() {
     const src = read("app/[locale]/agent-address-help/page.tsx");
     assert.match(src, /robots: \{ index: false, follow: false \}/);
     assert.doesNotMatch(src, /@\/auth|auth\(\)|@\/lib\/db|drizzle|sessionIsAdmin|requireAdmin|headers\(\)|cookies\(\)/);
-    assert.match(src, /<AgentHelpView locale=\{locale\} variant="public" \/>/);
+    assert.match(src, /<AgentHelpContent locale=\{locale\} variant="public" \/>/);
+    // The public route's graph never reaches the test (its account request, its dashboard namespaces).
+    assert.doesNotMatch(src, /AgentHelpView|AgentHelpTest/);
+    const content = read("components/agent-help/AgentHelpContent.tsx").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    assert.doesNotMatch(content, /AgentHelpTest|fetch\(/);
     assert.match(src, /@\/components\/marketing\/Nav/);
     assert.match(src, /@\/components\/marketing\/Footer/);
     // The shared view imports nothing with an account or a database either.
-    assert.doesNotMatch(read("components/agent-help/AgentHelpView.tsx"), /@\/auth|@\/lib\/db|drizzle/);
+    assert.doesNotMatch(read("components/agent-help/AgentHelpContent.tsx"), /@\/auth|@\/lib\/db|drizzle/);
     // Not in any sitemap: the repo has none (a new one must leave this page out).
     for (const f of ["app/sitemap.ts", "app/sitemap.xml", "public/sitemap.xml"]) {
       let has = false;
