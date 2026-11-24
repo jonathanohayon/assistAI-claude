@@ -217,7 +217,7 @@ assert.deepEqual(pTrial.limits, { max: 1, used: 1, inTrial: true }, "the derived
 assert.deepEqual(pTrial.canAdd, { ok: false, reason: "trial_limit", price: null });
 assert.equal(pTrial.connectors[0].deletable, false, "the derived card is never deletable");
 const pEmpty = connectorsPageView({ connectors: [], account: PAID, limits: L, productActive: true, currency: "EUR", env: OFF });
-assert.deepEqual(pEmpty, { connectors: [], limits: { max: 5, used: 0, inTrial: false }, canAdd: { ok: true, price: null } });
+assert.deepEqual(pEmpty, { connectors: [], limits: { max: 5, used: 0, inTrial: false }, canAdd: { ok: true, price: null }, legacyConversion: { willConvert: false, numberE164: null } });
 console.log("ok: row view + page assembly");
 
 // ── C1b: extra-connector price (parser, row bytes, admin gate cases) ────
@@ -366,8 +366,16 @@ const files = ["app", "lib"].flatMap((d) =>
     .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
     .map((e) => relative(ROOT, join(e.parentPath ?? e.path, e.name))),
 );
-// B3: lib/connectors/call-attribution.ts reads the connector's id only (existence check).
-const allowed = new Set(["lib/db/schema.ts", "lib/connectors/page.ts", "lib/connectors/route-load.ts", "lib/connectors/call-attribution.ts"]);
+// B2: the call-path reader (route-load). B3: lib/connectors/call-attribution.ts
+// reads the connector's id only (existence check). B4: the write path
+// (create / edit / test) is not a call path.
+const allowed = new Set([
+  "lib/db/schema.ts",
+  "lib/connectors/page.ts",
+  "lib/connectors/route-load.ts",
+  "lib/connectors/call-attribution.ts",
+  "lib/connectors/write.ts",
+]);
 assert.doesNotMatch(src("lib/connectors/route-load.ts"), /\.select\(\)/, "the call-path reader: explicit picks only");
 assert.match(src("lib/connectors/call-attribution.ts"), /\.select\(\{ id: connectors\.id \}\)/, "the attribution reader picks the id only");
 assert.doesNotMatch(src("lib/connectors/call-attribution.ts"), /\.select\(\)|connectors\.(secret|url|name|voiceConfig)/, "the attribution reader: id only");

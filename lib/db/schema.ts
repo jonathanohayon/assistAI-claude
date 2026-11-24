@@ -782,6 +782,10 @@ export const connectors = pgTable("connectors", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),
+  // Soft delete (migration 0064): set = deleted. The row is KEPT (past calls
+  // keep their connector_id); its number is cleared and its secret wiped at
+  // deletion. A deleted row never routes, is never listed, never counts.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => [
   index("connectors_user_id_idx").on(t.userId),
   check("connectors_mode_check", sql`${t.mode} IN ('lead', 'voice')`),

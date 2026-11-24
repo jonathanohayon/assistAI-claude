@@ -8,7 +8,7 @@
 // never throws nor rejects: the call is never failed by a connector.
 // CLIENT_AGENT switch off for the account → "legacy" with NO query at all.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { connectors, phoneNumbers } from "@/lib/db/schema";
@@ -49,7 +49,8 @@ async function loadRows(accountId: string): Promise<ConnectorRouteRow[]> {
       phoneNumberId: connectors.phoneNumberId,
     })
     .from(connectors)
-    .where(eq(connectors.userId, accountId));
+    // A soft-deleted connector never routes.
+    .where(and(eq(connectors.userId, accountId), isNull(connectors.deletedAt)));
 }
 
 /**

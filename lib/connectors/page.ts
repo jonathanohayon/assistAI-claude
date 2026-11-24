@@ -3,7 +3,7 @@
 // The secret is NEVER selected: the query picks `secret IS NOT NULL` as
 // secretSet (explicit field picks, the admin-routes-no-secrets rule).
 
-import { and, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { agentConfigs, calls, connectors, phoneNumbers, users } from "@/lib/db/schema";
@@ -16,6 +16,7 @@ import { connectProductActive, withDeletable, type ConnectorCard } from "./delet
 import { canAddConnector, connectorsInTrial, maxConnectors, type ConnectorAccount } from "./entitlement";
 import { connectorRowView, legacyConnectorView, type ConnectorRowPick } from "./legacy";
 import { defaultConnectorLimits, type ConnectorLimits } from "./limits";
+import type { LegacyConversion } from "./materialize";
 import {
   DEFAULT_CONNECTOR_EXTRA_MONTHLY,
   defaultConnectorExtraMonthly,
@@ -39,6 +40,8 @@ export function connectorsPageView(args: {
   currency: ConnectorPriceCurrency;
   prices?: ConnectorExtraMonthly;
   env?: Record<string, string | undefined>;
+  /** B4: omitted = no conversion pending. */
+  legacyConversion?: LegacyConversion;
 }): ConnectorsPageView {
   const used = args.connectors.length;
   const inTrial = connectorsInTrial(args.account);
@@ -48,6 +51,7 @@ export function connectorsPageView(args: {
     connectors: withDeletable(args.connectors, args.productActive),
     limits: { max: maxConnectors(args.account, args.limits), used, inTrial },
     canAdd: canAdd.ok ? { ok: true, price } : { ok: false, reason: canAdd.reason, price },
+    legacyConversion: args.legacyConversion ?? { willConvert: false, numberE164: null },
   };
 }
 
@@ -67,7 +71,8 @@ export async function loadConnectorRows(userId: string): Promise<ConnectorRowPic
     })
     .from(connectors)
     .leftJoin(phoneNumbers, and(eq(phoneNumbers.id, connectors.phoneNumberId), eq(phoneNumbers.userId, connectors.userId)))
-    .where(eq(connectors.userId, userId))
+    // A soft-deleted connector is never listed (nor counted).
+    .where(and(eq(connectors.userId, userId), isNull(connectors.deletedAt)))
     .orderBy(connectors.createdAt, connectors.id);
 }
 
@@ -100,6 +105,7 @@ export async function loadConnectorsPage(
   const prices = row.connectorExtraMonthly ?? defaultConnectorExtraMonthly();
   const productActive = connectProductActive({ ...account, activeTrials: activeTrialProducts(trials, new Date()) });
   let views: ConnectorCard[];
+  let legacyConversion: LegacyConversion = { willConvert: false, numberE164: null };
   if (rows.length) {
     const last = await loadLastCallAt(userId, rows.map((r) => r.id));
     views = rows.map((r) => connectorRowView(r, last.get(r.id) ?? null));
@@ -110,6 +116,8 @@ export async function loadConnectorsPage(
     ]);
     const legacy = legacyConnectorView({ connectorRowCount: 0, toolsConfig: cfg?.toolsConfig ?? null, mainNumber });
     views = legacy ? [legacy] : [];
+    // The same condition as the derived card: it is what a first write converts.
+    legacyConversion = { willConvert: legacy !== null, numberE164: legacy ? legacy.numberE164 : null };
   }
   return connectorsPageView({
     connectors: views,
@@ -120,5 +128,6 @@ export async function loadConnectorsPage(
     currency: currencyForLocale(account.locale),
     prices,
     env,
+    legacyConversion,
   });
 }

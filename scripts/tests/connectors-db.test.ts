@@ -146,7 +146,8 @@ async function main() {
   assert.equal((await get(`?asUserId=${ROWS}`)).status, 403, "a non-admin with a foreign asUserId → 403");
   const t = await get();
   assert.equal(t.status, 200, "tenant → 200");
-  assert.deepEqual(Object.keys(t.body!).sort(), ["canAdd", "connectors", "limits"]);
+  assert.deepEqual(Object.keys(t.body!).sort(), ["canAdd", "connectors", "legacyConversion", "limits"]);
+  assert.deepEqual(t.body!.legacyConversion, { willConvert: true, numberE164: "+15550000501" }, "B4: zero rows + enabled legacy → a conversion is pending, on the main number");
 
   // ── 3. Legacy card ─────────────────────────────────────────────────────
   assert.deepEqual(t.body!.connectors, [
@@ -170,7 +171,7 @@ async function main() {
   assert.deepEqual(t.body!.canAdd, { ok: false, reason: "orders_closed", price: { monthly: 19, currency: "EUR" } }, "paid, one used (the legacy card), PRODUCT_ORDERS off, fr → 19 EUR");
   as(TRIAL);
   const tr = await get();
-  assert.deepEqual(tr.body, { connectors: [], limits: { max: 1, used: 0, inTrial: true }, canAdd: { ok: true, price: null } }, "zero rows + off → none; trial → no price");
+  assert.deepEqual(tr.body, { connectors: [], limits: { max: 1, used: 0, inTrial: true }, canAdd: { ok: true, price: null }, legacyConversion: { willConvert: false, numberE164: null } }, "zero rows + off → none; trial → no price");
 
   // Admin via asUserId: the target's rows (the legacy setting is ignored when rows exist).
   as(ADMIN);
@@ -181,6 +182,7 @@ async function main() {
     [C2, false, "off", "+15550000504", false, true],
   ], ">= 1 row → rows only, oldest first; the oldest is not deletable while the product is active");
   assert.deepEqual(a.body!.canAdd, { ok: false, reason: "orders_closed", price: { monthly: 79, currency: "ILS" } }, "he account → 79 ILS");
+  assert.deepEqual(a.body!.legacyConversion, { willConvert: false, numberE164: null }, "B4: rows exist → no conversion, even with a legacy setting");
   assert.equal(a.body!.connectors[0].numberLabel, "Bot A line");
   assert.ok(!("numberLabel" in a.body!.connectors[1]), "empty label omitted");
   assert.equal(a.body!.connectors[0].lastTestAt, "2026-11-20T10:00:00.000Z");
