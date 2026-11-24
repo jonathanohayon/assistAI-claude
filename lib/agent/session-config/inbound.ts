@@ -34,6 +34,9 @@ import { featuresForPlan } from "@/lib/plan-features";
 import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { fireSafely } from "@/lib/agent/fire-safely";
+import { servedConnectorVoice } from "@/lib/connectors/route";
+import { connectorNoSecretAlertKey, resolveCallRouteSafely, type ConnectorRouteDeps } from "@/lib/connectors/route-load";
+import { CLIENT_AGENT_OFF } from "@/lib/tools/contract";
 import {
   getCapabilitiesDirectiveByPlan,
   getConfigBlocksDirectiveByPlan,
@@ -87,6 +90,8 @@ export interface InboundEffects {
   reportUnreadable: UnreadableReporter;
   /** Options of the serve-time url checks (DNS budget, or an injected resolver). */
   urlCheck: CheckOptions;
+  /** B2: the connector routing reads (tests inject failures); unset = the real ones. */
+  connectorDeps?: ConnectorRouteDeps;
 }
 
 /** The real effects: what the worker's call gets. */
@@ -193,6 +198,21 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
     }
   }
 
+  // ── Connector routing (B2): which client agent THIS call gets ──────────
+  // Zero connector rows (or the CLIENT_AGENT switch off: no query) = "legacy",
+  // today's behaviour exactly. Started now, awaited before the capabilities;
+  // it never rejects (fail-open: an error = Tamara alone + one admin alert).
+  const clientAgentSwitchOn = clientAgentEnabled(clientAgentMode(), tenant.user.role === "admin");
+  const routePromise = resolveCallRouteSafely({
+    accountId: tenant.user.id,
+    // Resolved by userId (web LiveTest / call_me): no dialed number.
+    phone: userId ? null : phone,
+    switchOn: clientAgentSwitchOn,
+    toolsConfig: tenant.config.toolsConfig,
+    deps: fx.connectorDeps,
+    alert: fx.alertAdmins,
+  });
+
   // ── Parallel DB roundtrips ─────────────────────────────────────────────
   // Toutes les lectures suivantes sont indépendantes. Promise.all les
   // groupe en parallèle → on économise ~6x le coût round-trip vs sériel.
@@ -264,6 +284,25 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // une feature autorisée par le plan. Le worker n'enregistre alors plus les
   // tools correspondants, et le prompt annonce la capacité comme désactivée.
   const tileToggles = await getTileToggles(tenant.user.id);
+  const route = await routePromise;
+  if (route.kind !== "legacy") {
+    // fireSafely: an event sink that throws never fails nor changes the config.
+    void fireSafely(() =>
+      fx.logEvent({
+        source: "tenant",
+        event: "connector_route",
+        message: `Appel routé pour ${tenant.user.id} : ${route.kind}`,
+        level: route.kind === "reception" && route.failed ? "error" : "info",
+        userId: tenant.user.id,
+        metadata: {
+          kind: route.kind,
+          connectorId: route.kind === "connector" ? route.connectorId : null,
+          failed: route.kind === "reception" && route.failed === true,
+          accountAgentIgnored: route.kind === "reception" && route.accountAgentIgnored === true,
+        },
+      }),
+    );
+  }
   // Tools brick (T1): ONE function decides what the call gets — the same the
   // screen will show. Orders (record_order) ride on the CRM plan feature and
   // the "Commandes" toggle; transfer on the number (served below).
@@ -273,7 +312,10 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
     Boolean(tenant.user.googleRefreshToken),
     planFeatures,
     // T5: the CLIENT_AGENT switch for this account (off = nothing changes).
-    clientAgentEnabled(clientAgentMode(), tenant.user.role === "admin"),
+    clientAgentSwitchOn,
+    // B2: "legacy" = the account-level setting (undefined, as before); a
+    // connector's number = that connector's agent; any other number = none.
+    route.kind === "legacy" ? undefined : route.kind === "connector" ? route.serving.clientAgent : CLIENT_AGENT_OFF,
   );
   const { features, ordersEnabled } = receptionistCallFields(capabilities, planFeatures);
 
@@ -397,6 +439,28 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // opened = the client agent is NOT served (fail closed, admins alerted).
   const opened = capabilities.clientAgent.active ? openClientAgentTools(tools, fx.reportUnreadable) : { tools, unreadable: false };
   let clientAgentField = opened.unreadable ? {} : clientAgentCallField(capabilities, opened.tools);
+  // B2: never an unsigned call to a connector. Switched on with NO secret =
+  // not served (Tamara answers alone), one admin alert per account per day.
+  if (route.kind === "connector" && "clientAgent" in clientAgentField && !opened.tools.clientAgent.secret) {
+    clientAgentField = {};
+    await fx.logEvent({
+      source: "tenant",
+      event: "client_agent_no_secret",
+      message: `Agent du client ignoré pour ${tenant.user.id} : connecteur sans secret`,
+      level: "error",
+      userId: tenant.user.id,
+      metadata: { connectorId: route.connectorId },
+    });
+    void fireSafely(() =>
+      fx.alertAdmins({
+        key: connectorNoSecretAlertKey(tenant.user.id),
+        subject: "Client agent enabled without a secret",
+        body: `A connector of account ${tenant.user.id} has no secret. Calls on its number use the normal Tamara until a secret is set.`,
+        dedupMs: 24 * 60 * 60 * 1000,
+        severity: "warning",
+      }),
+    );
+  }
   if ("clientAgent" in clientAgentField) {
     const safe = await checkAgentUrl(tools.clientAgent.url, fx.urlCheck);
     if (!safe.ok) {
@@ -426,7 +490,11 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // E2: the admin engine override of the account's reception product. No
   // override (or a client setting, or an ignored one) → apply false → the
   // voice below is today's, untouched. An ignored override alerts the admins.
-  const todayVoice = servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
+  // B2: a connector's own voice when it has one, else the account's (today's).
+  const todayVoice =
+    route.kind === "connector" && route.serving.voice
+      ? servedConnectorVoice(route.serving.voice, tenant.config.model || "gpt-realtime-2")
+      : servedInboundVoice(tenant.config, tenant.config.model || "gpt-realtime-2");
   // Fail-open: a throw inside the decision → apply false (today's bytes) + one alert.
   const { decision: engineDecision } = await decideEngineSafely(
     () => decideInboundEngine(tenant.user.id, tenant.config, fx.alertAdmins, fx.engineDeps),
