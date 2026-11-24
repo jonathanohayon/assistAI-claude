@@ -24,6 +24,7 @@ import {
 } from "@/lib/product-catalogue";
 import { noEngineOverrides, type EngineOverrides } from "@/lib/engine-override";
 import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/lib/product-catalogue-row";
+import { defaultConnectorLimits, type ConnectorLimits } from "@/lib/connectors/limits";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
 import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
 import { TRIAL_PRODUCT_OF_ENTRY, trialStartDecision, type TrialStartAccount } from "@/lib/product-trial-decision";
@@ -36,6 +37,8 @@ export type StoredCatalogue = {
   catalogue: ProductCatalogue;
   /** E2 (additive): the per-product engine overrides; none when absent / invalid. */
   engineOverrides: EngineOverrides;
+  /** B1 (additive): the stored connector limits; undefined = not stored (defaults apply). */
+  connectorLimits?: ConnectorLimits;
   source: "stored" | "default" | "invalid";
 };
 
@@ -86,7 +89,18 @@ const defaultCatalogueDeps: CatalogueDeps = {
 export async function getCatalogueRow(deps: CatalogueDeps = defaultCatalogueDeps): Promise<CatalogueRow> {
   const r = catalogueFromStored(await deps.read(SETTING_KEYS.PRODUCT_CATALOGUE));
   if (r.source === "invalid") deps.onInvalid();
-  return { catalogue: r.catalogue, engineOverrides: r.engineOverrides };
+  return r.connectorLimits
+    ? { catalogue: r.catalogue, engineOverrides: r.engineOverrides, connectorLimits: r.connectorLimits }
+    : { catalogue: r.catalogue, engineOverrides: r.engineOverrides };
+}
+
+/**
+ * The connector limits in force (B1): the stored ones, else the defaults
+ * (also when the row is absent or invalid). Never above HARD_MAX_CONNECTORS:
+ * the row parser refuses more.
+ */
+export async function getConnectorLimits(deps: CatalogueDeps = defaultCatalogueDeps): Promise<ConnectorLimits> {
+  return (await getCatalogueRow(deps)).connectorLimits ?? defaultConnectorLimits();
 }
 
 /** The catalogue in force (stored, else the defaults). Prices only. */
@@ -103,11 +117,20 @@ export async function getEngineOverrides(deps: CatalogueDeps = defaultCatalogueD
  * Writes a catalogue that already passed the strict parse, with its engine
  * overrides. `overrides` omitted = the STORED overrides are kept (a price-only
  * caller never wipes them). No override → the pre-E2 bytes.
+ * B1: `connectorLimits` omitted = the STORED limits are kept (none stored →
+ * none written, the pre-B1 bytes).
  */
-export async function setProductCatalogue(cat: ProductCatalogue, overrides?: EngineOverrides): Promise<void> {
+export async function setProductCatalogue(
+  cat: ProductCatalogue,
+  overrides?: EngineOverrides,
+  connectorLimits?: ConnectorLimits,
+): Promise<void> {
   if (!parseProductCatalogue(cat)) throw new Error("refusing to store an invalid product catalogue");
-  const o = overrides ?? catalogueFromStored(await getSetting(SETTING_KEYS.PRODUCT_CATALOGUE)).engineOverrides;
-  const text = serializeCatalogueRow(cat, o);
+  const needStored = overrides === undefined || connectorLimits === undefined;
+  const stored = needStored ? catalogueFromStored(await getSetting(SETTING_KEYS.PRODUCT_CATALOGUE)) : null;
+  const o = overrides ?? stored!.engineOverrides;
+  const l = connectorLimits ?? stored!.connectorLimits;
+  const text = serializeCatalogueRow(cat, o, l);
   if (!parseCatalogueRow(JSON.parse(text))) throw new Error("refusing to store an invalid product catalogue row");
   await setSetting(SETTING_KEYS.PRODUCT_CATALOGUE, text);
 }

@@ -357,6 +357,12 @@ export const calls = pgTable("calls", {
   // Billing only: never served to the worker, never in the dashboard
   // calls / logs responses.
   product: text("product"),
+  // Connectors (B1, migration 0062): the connector that handled this call,
+  // and whether the client's agent was actually reached during it. NULL =
+  // not reported (every row until B3 writes them). Never served to the
+  // worker, never in the dashboard calls / logs responses (explicit picks).
+  connectorId: uuid("connector_id").references(() => connectors.id, { onDelete: "set null" }),
+  clientAgentReached: boolean("client_agent_reached"),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -724,6 +730,41 @@ export const phoneNumbers = pgTable("phone_numbers", {
     .notNull()
     .default(sql`now()`),
 });
+
+// Connectors (B1, migration 0062): one plugged-in client agent with its OWN
+// dedicated number (lib/connectors/). Several per account. ZERO rows = today's
+// behaviour exactly: the account-level agent_configs.tools_config.clientAgent,
+// shown as a DERIVED card (lib/connectors/legacy.ts) until its first edit
+// writes a row (B4). Not read by any call path in B1; never served to the
+// worker. `secret` is SEALED (lib/crypto/secret-box.ts, E1) and write-only:
+// responses carry `secretSet` only. A number is never shared between two
+// connectors (UNIQUE phone_number_id).
+export const connectors = pgTable("connectors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull().default(""),
+  mode: text("mode").notNull(),
+  secret: text("secret"),
+  voiceConfig: jsonb("voice_config"),
+  enabled: boolean("enabled").notNull().default(true),
+  phoneNumberId: uuid("phone_number_id")
+    .unique("connectors_phone_number_id_unique")
+    .references(() => phoneNumbers.id, { onDelete: "set null" }),
+  lastTestAt: timestamp("last_test_at", { withTimezone: true }),
+  lastTestOk: boolean("last_test_ok"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+}, (t) => [
+  index("connectors_user_id_idx").on(t.userId),
+  check("connectors_mode_check", sql`${t.mode} IN ('lead', 'voice')`),
+]);
 
 // Une ligne par tentative de paiement HYP (abonnement one-shot). L'`id`
 // uuid sert d'Order opaque envoyé à HYP : le handler de retour s'y fie pour
