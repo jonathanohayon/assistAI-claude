@@ -2937,5 +2937,52 @@
   "ClientAgentBrick": {
     "title": "Your AI agent",
     "intro": "Your own agent's address: Tamara asks it during calls and uses its answer."
+  },
+  "ConnectorsList": {
+    "listLabel": "Your agents",
+    "defaultName": "Your agent",
+    "mainNumber": "Answers on your main number",
+    "noNumber": "No number chosen yet",
+    "copyNumber": "Copy number",
+    "copied": "Copied",
+    "pill": {
+      "online": "Online",
+      "off": "Off",
+      "unreachable": "Agent unreachable"
+    },
+    "unreachableNote": "Tamara answers on her own in the meantime.",
+    "mode": {
+      "lead": "Tamara leads the conversation and asks your agent when she needs an answer.",
+      "voice": "Tamara only lends her voice: your agent decides what to say, she says it word for word."
+    },
+    "lastCall": "Last call: {when}",
+    "noCall": "No calls yet",
+    "switchLabel": "Turn on {name}",
+    "test": "Test",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": {
+      "title": "+ Add an agent",
+      "price": "+ {price}/month per agent, number included",
+      "noPrice": "Number included",
+      "trial": "{max, plural, one {# agent} other {# agents}} during the trial. Activate your plan to add more.",
+      "soon": "Soon",
+      "max": "Up to {max, plural, one {# agent} other {# agents}} on your account."
+    },
+    "empty": {
+      "title": "Plug in your first agent",
+      "body": "Your agent answers the phone with a Tamara voice and number.",
+      "cta": "Get started",
+      "offer": "{price}/month, number and {minutes} minutes included",
+      "offerTrial": "Included in your trial"
+    },
+    "deleteDialog": {
+      "title": "Delete {name}?",
+      "released": "The number {number} will be released and cannot be recovered.",
+      "billing": "It stays active until the end of the paid period, with no refund.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "moreActions": "More actions for {name}"
   }
 }

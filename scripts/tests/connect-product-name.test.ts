@@ -36,7 +36,12 @@ for (const l of ["fr", "en", "he"] as const) {
   assert.equal(m.DashboardNav.connect, NAME[l], `${l}: DashboardNav.connect is the product name`);
   assert.equal(m.DashboardNav.myAgent, { fr: "Mon agent", en: "My agent", he: "הסוכן שלי" }[l], `${l}: "Mon agent" unchanged`);
   assert.equal(m.Email.usageWarning.entryConnect, undefined, `${l}: the email has no copy of the name`);
-  for (const [path, s] of strings(m)) assert.ok(!OLD.includes(s.trim()), `${l}: ${path} still reads the old product name "${s}"`);
+  // ConnectorsList.defaultName (VP, 24/11) is the name of the customer's
+  // AGENT on a card whose name is blank, not the product: same words, another actor.
+  for (const [path, s] of strings(m)) {
+    if (path === "ConnectorsList.defaultName") continue;
+    assert.ok(!OLD.includes(s.trim()), `${l}: ${path} still reads the old product name "${s}"`);
+  }
 }
 console.log("ok: the name in fr/en/he, the old label gone");
 
