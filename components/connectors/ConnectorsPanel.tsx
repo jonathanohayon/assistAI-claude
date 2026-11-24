@@ -6,7 +6,10 @@
 // route today, and ONLY those (requests: ./connector-actions.ts):
 //   the legacy (derived) card
 //     switch   → PUT /api/dashboard/tools { tools: { clientAgent: { enabled } } },
-//                the brick's own save request (clientAgentSwitchRequest);
+//                the brick's own save request (clientAgentSwitchRequest). When
+//                that save switched it on without a secret, the server returns
+//                the generated one ONCE (#437): the editor opens and shows it
+//                in the brick's own one-time box (#439), memory only;
 //     Tester   → POST /api/dashboard/tools/client-agent/test, the brick's
 //                test route, on the stored address and secret;
 //     Modifier → opens today's "Votre agent IA" editor (ClientAgentBrick)
@@ -77,6 +80,8 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
   const [scrollToEditor, setScrollToEditor] = useState(false);
+  // The secret the card's switch got back (once): handed to the editor, then forgotten.
+  const [handoff, setHandoff] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   const openEditor = () => {
@@ -111,7 +116,10 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
     // Kept on screen until the next read: switched off, the setting is no
     // longer a derived card for the server, but the user sees what they did.
     setPage((p) => withLegacyEnabled(p, enabled));
+    setHandoff(r.generated);
     setEditorKey((k) => k + 1);
+    // A generated secret is shown once, in the editor's box: open it there.
+    if (r.generated) openEditor();
   };
 
   const onTest = async (id: string) => {
@@ -169,11 +177,19 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
       {editorOpen && (
         <div ref={editorRef} className="scroll-mt-24 space-y-2" data-connector-editor>
           <div className="flex justify-end">
-            <button type="button" className={CLOSE} onClick={() => setEditorOpen(false)} data-editor-close>
+            <button
+              type="button"
+              className={CLOSE}
+              onClick={() => {
+                setEditorOpen(false);
+                setHandoff(null);
+              }}
+              data-editor-close
+            >
               {t("closeEditor")}
             </button>
           </div>
-          <ClientAgentBrick key={editorKey} asUserId={asUserId} onSaved={onSaved} />
+          <ClientAgentBrick key={editorKey} asUserId={asUserId} onSaved={onSaved} initialGenerated={handoff} />
         </div>
       )}
     </div>

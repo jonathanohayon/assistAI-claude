@@ -14,7 +14,10 @@
  *
  * The row: its switch, the agent's address, the mode, a connection test
  * (plain words only) and a WRITE-ONLY signing secret — generated in the
- * browser, shown once until the save, then only "set / not set".
+ * browser, shown once until the save, then only "set / not set". Switched on
+ * with no secret at all, the server makes one and sends it in that save's
+ * answer only (`generatedSecret`): shown once in the same box, kept in this
+ * component's state only (no storage, no URL), gone on a reload.
  *
  * Preview (`sample`): the account doesn't own Votre agent. The brick renders
  * the sample answer and a sample test result, every control disabled; it
@@ -30,6 +33,7 @@ import {
   clientAgentRowVisible,
   clientAgentSaveRefusal,
   clientAgentSaveRequest,
+  clientAgentSavedAnswer,
   clientAgentTestBody,
   clientAgentTestNeedsSave,
   clientAgentTestWords,
@@ -58,11 +62,18 @@ export function ClientAgentBrick({
   asUserId = null,
   sample,
   onSaved,
+  initialGenerated = null,
 }: {
   asUserId?: string | null;
   sample?: ClientAgentSample;
   /** C1b: called after a successful save (the connectors list re-reads its page). */
   onSaved?: () => void;
+  /**
+   * C1b: a secret the server generated in ANOTHER save's answer (the
+   * connectors card's switch), handed over to be shown once in this brick's
+   * own box. Memory only, like `generated`.
+   */
+  initialGenerated?: string | null;
 }) {
   const t = useTranslations("ClientAgentBrick");
   const tTools = useTranslations("ToolsBrick");
@@ -78,6 +89,8 @@ export function ClientAgentBrick({
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // The server-generated secret, from one save's answer: memory only, shown once.
+  const [generated, setGenerated] = useState<string | null>(initialGenerated);
 
   // Load: the same GET the configuration page made. Never in a preview.
   useEffect(() => {
@@ -142,7 +155,10 @@ export function ClientAgentBrick({
         setError(tTools("saveError"));
         return;
       }
-      setServed(data);
+      // `served` never keeps generatedSecret; an answer without one changes nothing.
+      const answer = clientAgentSavedAnswer(data);
+      if (answer.generated) setGenerated(answer.generated);
+      setServed(answer.served);
       setTools(data.tools);
       setBase(data.tools);
       setDirty(false);
@@ -167,7 +183,16 @@ export function ClientAgentBrick({
       <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{t("intro")}</p>
       {/* Preview: one fieldset disables every control of the row. */}
       <fieldset disabled={preview} className="m-0 mt-4 min-w-0 border-0 p-0">
-        <ClientAgentRow served={served} tools={tools} onChange={onChange} asUserId={asUserId} refused={refused} sampleTest={sample?.test} />
+        <ClientAgentRow
+          served={served}
+          tools={tools}
+          onChange={onChange}
+          asUserId={asUserId}
+          refused={refused}
+          sampleTest={sample?.test}
+          generated={generated}
+          onGeneratedDone={() => setGenerated(null)}
+        />
       </fieldset>
       {!preview && (
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
@@ -200,6 +225,8 @@ export function ClientAgentRow({
   asUserId,
   refused,
   sampleTest,
+  generated = null,
+  onGeneratedDone,
 }: {
   served: ToolsResponse;
   tools: Tools;
@@ -207,6 +234,9 @@ export function ClientAgentRow({
   asUserId?: string | null;
   refused: ClientAgentRefusal | null;
   sampleTest?: TestWords;
+  /** The secret the server generated in the last save's answer (memory only). */
+  generated?: string | null;
+  onGeneratedDone?: () => void;
 }) {
   return (
     <ul className="flex flex-col rounded-2xl border border-[#e2e8f0] bg-white">
@@ -224,6 +254,8 @@ export function ClientAgentRow({
             asUserId={asUserId}
             refused={refused}
             sampleTest={sampleTest}
+            generated={generated}
+            onGeneratedDone={onGeneratedDone}
           />
         }
       />
@@ -248,6 +280,8 @@ function ClientAgentSettings({
   asUserId,
   refused,
   sampleTest,
+  generated,
+  onGeneratedDone,
 }: {
   tools: Tools;
   /** The address the server has (to know when a test can't be meaningful yet). */
@@ -257,6 +291,8 @@ function ClientAgentSettings({
   refused: ClientAgentRefusal | null;
   /** Preview: the sample result shown in place of a test (never run). */
   sampleTest?: TestWords;
+  generated: string | null;
+  onGeneratedDone?: () => void;
 }) {
   const t = useTranslations("ToolsBrick.agent");
   const id = useId();
@@ -268,8 +304,9 @@ function ClientAgentSettings({
   // failed save, before it was copied, would force a regenerate.
   const [revealed, setRevealed] = useState<string | null>(null);
   const testBlocked = clientAgentTestNeedsSave(tools, storedUrl);
-  // What the box shows: the secret generated here, else a new one in the draft.
-  const shown = revealed ?? (typeof ca.secret === "string" ? ca.secret : null);
+  // What the box shows: the secret generated here, else the one the server
+  // generated on the last save, else a new one in the draft.
+  const shown = revealed ?? generated ?? (typeof ca.secret === "string" ? ca.secret : null);
   const [test, setTest] = useState<TestWords | "running" | null>(sampleTest ?? null);
   const secret = secretState(tools);
 
@@ -284,6 +321,7 @@ function ClientAgentSettings({
     setConfirming(false);
     setCopied(false);
     const s = generateClientAgentSecret();
+    onGeneratedDone?.();
     setRevealed(s);
     set({ secret: s });
   };
@@ -409,7 +447,14 @@ function ClientAgentSettings({
                   {t("undo")}
                 </button>
               ) : (
-                <button type="button" className={BUTTON} onClick={() => setRevealed(null)}>
+                <button
+                  type="button"
+                  className={BUTTON}
+                  onClick={() => {
+                    setRevealed(null);
+                    onGeneratedDone?.();
+                  }}
+                >
                   {t("copiedDone")}
                 </button>
               )}

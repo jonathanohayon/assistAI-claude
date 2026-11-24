@@ -7,18 +7,25 @@
 // injected so the tests can record what is sent.
 
 import {
+  clientAgentSavedAnswer,
   clientAgentSaveRefusal,
   clientAgentStoredTestRequest,
   clientAgentSwitchRequest,
   clientAgentTestWords,
   type ClientAgentRefusal,
   type TestWords,
+  type ToolsResponse,
 } from "@/components/bricks/tools/tools-ui";
 import type { ConnectorsPageView } from "@/lib/connectors/types";
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
-export type ToggleResult = { ok: true } | { ok: false; refused: ClientAgentRefusal | null };
+/**
+ * `generated`: the secret the server made when this save switched the agent
+ * on without one (#437, `generatedSecret`, once), read exactly as the brick
+ * reads it (clientAgentSavedAnswer); null otherwise.
+ */
+export type ToggleResult = { ok: true; generated: string | null } | { ok: false; refused: ClientAgentRefusal | null };
 
 const qs = (asUserId: string | null | undefined) => (asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "");
 
@@ -28,9 +35,9 @@ export function connectorActions(fetchImpl: FetchLike, asUserId: string | null =
       const req = clientAgentSwitchRequest(enabled, asUserId);
       try {
         const res = await fetchImpl(req.url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: req.body });
-        const data = (await res.json().catch(() => null)) as { tools?: unknown } | null;
+        const data = (await res.json().catch(() => null)) as ToolsResponse | null;
         if (!res.ok || !data?.tools) return { ok: false, refused: clientAgentSaveRefusal(res.status, data) };
-        return { ok: true };
+        return { ok: true, generated: clientAgentSavedAnswer(data).generated };
       } catch {
         return { ok: false, refused: null };
       }

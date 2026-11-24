@@ -3,6 +3,8 @@
 // (lib/crypto/secret-box.ts). Writes seal ONLY a secret the patch provides
 // (the kept one stays as stored: E1 rewrites no existing secret); serving
 // opens it, and an unreadable one means the client agent is NOT served.
+import { randomBytes } from "node:crypto";
+
 import { isSealed, openSecret, sealedSecretRefusal, sealForStorage } from "@/lib/crypto/secret-box";
 import { reportUnreadableSecret, type UnreadableReporter } from "@/lib/crypto/unreadable-secret";
 import type { Tools } from "@/lib/tools/contract";
@@ -42,4 +44,31 @@ export function openClientAgentTools(
   if (r.ok) return { tools: { ...tools, clientAgent: { ...tools.clientAgent, secret: r.value } }, unreadable: false };
   report("client_agent", r.reason);
   return { tools: { ...tools, clientAgent: { ...tools.clientAgent, secret: null } }, unreadable: true };
+}
+
+/**
+ * A new client agent secret, in the SAME format as the screen's
+ * generateClientAgentSecret (components/bricks/tools/tools-ui.ts): 32 random
+ * bytes, base64url, no padding (43 characters).
+ */
+export function generateClientAgentSecret(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+/**
+ * Switching the client agent ON requires a secret (never an unsigned call).
+ * When the value about to be STORED is enabled with no secret (none kept,
+ * none provided), one is generated and sealed for storage (E1). `generated`
+ * is the plain value, for the ONE response of the write that created it;
+ * null when nothing was generated (a kept or provided secret is never
+ * rotated, and turning it off never needs one).
+ */
+export function ensureClientAgentSecret(
+  tools: Tools,
+  generate: () => string = generateClientAgentSecret,
+  env: Env = process.env,
+): { tools: Tools; generated: string | null } {
+  if (!tools.clientAgent.enabled || tools.clientAgent.secret) return { tools, generated: null };
+  const generated = generate();
+  return { tools: { ...tools, clientAgent: { ...tools.clientAgent, secret: sealForStorage(generated, env) } }, generated };
 }

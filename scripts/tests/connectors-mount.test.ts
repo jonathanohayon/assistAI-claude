@@ -154,7 +154,7 @@ const run = async () => {
     const qs = asUserId ? `?asUserId=${asUserId}` : "";
     const r = recorder([TOOLS_OK, { status: 200, body: { ok: true, ms: 412.4 } }, { status: 200, body: MOCK_PAGES.derivedPaid }]);
     const a = connectorActions(r.fetch, asUserId);
-    assert.deepEqual(await a.toggle(false), { ok: true });
+    assert.deepEqual(await a.toggle(false), { ok: true, generated: null });
     assert.deepEqual(await a.test(), { key: "ok", ms: 412 });
     assert.deepEqual(await a.refresh(), JSON.parse(JSON.stringify(MOCK_PAGES.derivedPaid)));
     assert.deepEqual(
@@ -187,6 +187,18 @@ const run = async () => {
     ["throw", { ok: false, refused: null }],
   ];
   for (const [answer, expected] of refusals) assert.deepEqual(await connectorActions(recorder([answer]).fetch).toggle(true), expected);
+  // Switched on without a secret: the server's one-time secret (#437) comes back, read as the brick reads it.
+  const SECRET = "mock-secret-" + "x".repeat(24);
+  assert.deepEqual(
+    await connectorActions(recorder([{ status: 200, body: { ...PREVIEW_CLIENT_AGENT, generatedSecret: SECRET } }]).fetch).toggle(true),
+    { ok: true, generated: SECRET },
+  );
+  for (const junk of ["short", 42, null, "has space in it but long enough"])
+    assert.deepEqual(
+      await connectorActions(recorder([{ status: 200, body: { ...PREVIEW_CLIENT_AGENT, generatedSecret: junk } }]).fetch).toggle(true),
+      { ok: true, generated: null },
+      `implausible generatedSecret ${JSON.stringify(junk)} ignored`,
+    );
   const tests: Array<[{ status: number; body: unknown } | "throw", unknown]> = [
     [{ status: 429, body: { error: "rate_limited" } }, { key: "rateLimited" }],
     [{ status: 403, body: { error: "client_agent_disabled" } }, { key: "disabled" }],
@@ -282,7 +294,14 @@ function checkEditor() {
   assert.match(src, /onEdit=\{\(id\) => \{\s*if \(id === LEGACY_ID\) openEditor\(\);\s*\}\}/, "Modifier (legacy) opens the editor");
   assert.match(src, /onAdd=\{openEditor\}/, "Commencer (empty card) opens the editor");
   assert.match(read("components/connectors/ConnectorsList.tsx"), /onClick=\{onAdd\} data-empty-cta/, "the empty card's button calls onAdd");
-  assert.match(src, /<ClientAgentBrick key=\{editorKey\} asUserId=\{asUserId\} onSaved=\{onSaved\} \/>/, "the brick, scoped to the tenant, re-reads the list once saved");
+  assert.match(
+    src,
+    /<ClientAgentBrick key=\{editorKey\} asUserId=\{asUserId\} onSaved=\{onSaved\} initialGenerated=\{handoff\} \/>/,
+    "the brick, scoped to the tenant, re-reads the list once saved, and shows a secret the switch got back",
+  );
+  assert.match(src, /setHandoff\(r\.generated\);\s*setEditorKey\(\(k\) => k \+ 1\);\s*if \(r\.generated\) openEditor\(\);/, "a generated secret opens the editor");
+  assert.match(src, /setEditorOpen\(false\);\s*setHandoff\(null\);/, "closing the editor forgets it");
+  assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /useState<string \| null>\(initialGenerated\)/, "the brick's own one-time box shows it");
   assert.match(src, /setEditorKey\(\(k\) => k \+ 1\)/, "after the card's switch, the editor reloads the setting");
   assert.equal(EDITOR_HASH, "#client-agent");
   assert.match(read("components/bricks/client-agent/ClientAgentBrick.tsx"), /setDirty\(false\);\s*onSaved\?\.\(\);/, "the brick calls onSaved after a successful save only");
