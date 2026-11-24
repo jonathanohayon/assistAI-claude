@@ -6,8 +6,7 @@ import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerG
 import { logEvent } from "@/lib/logger";
 import { phoneFields } from "@/lib/event-pii";
 import { callIdMeta } from "@/lib/call-id";
-import { atPlace, eventPlaceLine, eventTitle, resolvePlace } from "@/lib/booking-place";
-import { type Center, nextDatesForCenter } from "@/lib/schedule";
+import { atPlace, eventPlaceLine, eventTitle, noteIgnoredCenter, resolvePlace } from "@/lib/booking-place";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
@@ -26,61 +25,16 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { name, phone, email, date, time, duration, description, center } =
+  const { name, phone, email, date, time, duration, description } =
     parsed.value;
 
-  // Where (lib/booking-place.ts): a `location` from the tenant's own sheet
-  // (no weekday rule), or — legacy worker, no `location` key — today's
-  // centre-per-weekday rule, refusing a mismatch ("book Ashdod on a Tuesday").
-  const placed = resolvePlace(body, date);
-  if (!placed.ok && placed.kind === "invalid_date") {
-    await logEvent({
-      source: "calendar",
-      event: "book_invalid_date",
-      message: `Date invalide : ${date}`,
-      level: "warn",
-      metadata: { date, error: placed.error },
-    });
-    return NextResponse.json(
-      { error: placed.error },
-      { status: 400 },
-    );
-  }
-
-  if (!placed.ok) {
-    // Caller booked the wrong center for this date. Hand back the next
-    // valid dates FOR THE CENTER THEY ASKED FOR so the agent can re-propose
-    // without recomputing anything.
-    const resolved = placed.refusal;
-    const suggested = nextDatesForCenter(center as Center, 3, date);
-    await logEvent({
-      source: "calendar",
-      event: "book_wrong_center",
-      message: `Réservation refusée : ${resolved.reason}`,
-      level: "warn",
-      metadata: {
-        name,
-        ...phoneFields("phone", phone),
-        date,
-        time,
-        requestedCenter: center,
-        expectedCenter: resolved.expectedCenter,
-      },
-    });
-    return NextResponse.json(
-      {
-        error: "wrong_day_for_center",
-        message: resolved.reason,
-        expectedCenter: resolved.expectedCenter,
-        expectedLabel: resolved.expectedLabel,
-        suggested_dates: suggested,
-      },
-      { status: 400 },
-    );
-  }
+  // Where (lib/booking-place.ts): a `location` from the tenant's own sheet,
+  // or none. No weekday rule for either request shape; a legacy `center` key
+  // is ignored. (The date itself is already a real date: parseBookingRequest.)
+  const placed = resolvePlace(body);
+  noteIgnoredCenter("book", placed);
   const { place } = placed;
-  // Legacy: `center` in the response and logs, as before. New: `location`.
-  const placeField = place.kind === "legacy" ? { center: place.center } : { location: place.label };
+  const placeField = { location: place.label };
 
   // Refuse bookings in the past (with 5-min grace for clock skew). The agent
   // should never propose a passé créneau, but if it does, we block here.
