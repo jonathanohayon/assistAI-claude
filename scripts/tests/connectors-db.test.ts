@@ -13,6 +13,9 @@
 //      row (trial 1 / paid 5 defaults, a stored paid 7), orders_closed;
 //   5. the admin catalogue PUT: omitted connectorLimits keeps the stored
 //      value, a valid one is written, > 10 is refused with nothing written.
+//   5b. C1b: the extra-connector price (absent = identical row bytes and no
+//      response key, partial written, omitted kept, refused), canAdd.price
+//      (fr → EUR, he → ILS, trial → null), deletable per product state.
 // Plain `npm test` skips it. Run it with:  bash scripts/connectors-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read from
 // the shell. Mock data only (example.test, +1555). Dynamic imports only after
@@ -78,16 +81,16 @@ async function main() {
     (await rows<{ m: string }>(sql`SELECT md5(coalesce(string_agg(c::text, E'\n' ORDER BY c.id), '')) AS m FROM connectors c`))[0].m;
 
   const paidUntil = new Date(Date.now() + 10 * 86400_000).toISOString();
-  const seeds: Array<[string, string, string]> = [
-    [ADMIN, "admin", "active"],
-    [TENANT, "user", "active"],
-    [TRIAL, "user", "trialing"],
-    [ROWS, "user", "active"],
-    [GONE, "user", "active"],
+  const seeds: Array<[string, string, string, string]> = [
+    [ADMIN, "admin", "active", "fr"],
+    [TENANT, "user", "active", "fr"],
+    [TRIAL, "user", "trialing", "fr"],
+    [ROWS, "user", "active", "he"],
+    [GONE, "user", "active", "fr"],
   ];
-  for (const [uid, role, status] of seeds) {
+  for (const [uid, role, status, locale] of seeds) {
     await db.execute(sql`INSERT INTO users (id, email, password_hash, role, subscription_plan, subscription_status, subscription_period, paid_until, email_verified, locale)
-      VALUES (${uid}, ${`${uid.slice(-4)}@connectors.example.test`}, 'x', ${role}, 'premium', ${status}, 'monthly', ${paidUntil}, true, 'fr')`);
+      VALUES (${uid}, ${`${uid.slice(-4)}@connectors.example.test`}, 'x', ${role}, 'premium', ${status}, 'monthly', ${paidUntil}, true, ${locale})`);
   }
   const tools = (enabled: boolean, mode: string, secret: string | null) =>
     JSON.stringify({
@@ -160,22 +163,24 @@ async function main() {
       lastTestAt: null,
       lastTestOk: null,
       secretSet: true,
+      deletable: false,
     },
-  ], "zero rows + enabled legacy → one derived card on the oldest number");
+  ], "zero rows + enabled legacy → one derived card on the oldest number (never deletable)");
   assert.deepEqual(t.body!.limits, { max: 5, used: 1, inTrial: false });
-  assert.deepEqual(t.body!.canAdd, { ok: false, reason: "orders_closed" }, "paid, one used, PRODUCT_ORDERS off");
+  assert.deepEqual(t.body!.canAdd, { ok: false, reason: "orders_closed", price: { monthly: 19, currency: "EUR" } }, "paid, one used (the legacy card), PRODUCT_ORDERS off, fr → 19 EUR");
   as(TRIAL);
   const tr = await get();
-  assert.deepEqual(tr.body, { connectors: [], limits: { max: 1, used: 0, inTrial: true }, canAdd: { ok: true } }, "zero rows + off → none");
+  assert.deepEqual(tr.body, { connectors: [], limits: { max: 1, used: 0, inTrial: true }, canAdd: { ok: true, price: null } }, "zero rows + off → none; trial → no price");
 
   // Admin via asUserId: the target's rows (the legacy setting is ignored when rows exist).
   as(ADMIN);
   const a = await get(`?asUserId=${ROWS}`);
   assert.equal(a.status, 200, "admin via asUserId → 200");
-  assert.deepEqual(a.body!.connectors.map((c) => [c.id, c.derived, c.state, c.numberE164, c.secretSet]), [
-    [C1, false, "online", "+15550000503", true],
-    [C2, false, "off", "+15550000504", false],
-  ], ">= 1 row → rows only, oldest first");
+  assert.deepEqual(a.body!.connectors.map((c) => [c.id, c.derived, c.state, c.numberE164, c.secretSet, c.deletable]), [
+    [C1, false, "online", "+15550000503", true, false],
+    [C2, false, "off", "+15550000504", false, true],
+  ], ">= 1 row → rows only, oldest first; the oldest is not deletable while the product is active");
+  assert.deepEqual(a.body!.canAdd, { ok: false, reason: "orders_closed", price: { monthly: 79, currency: "ILS" } }, "he account → 79 ILS");
   assert.equal(a.body!.connectors[0].numberLabel, "Bot A line");
   assert.ok(!("numberLabel" in a.body!.connectors[1]), "empty label omitted");
   assert.equal(a.body!.connectors[0].lastTestAt, "2026-11-20T10:00:00.000Z");
@@ -183,7 +188,7 @@ async function main() {
   assert.equal(a.body!.connectors[0].lastCallAt, null, "no call with a connector yet");
   for (const r of [t, tr, a]) {
     assert.ok(!r.text.includes(SECRET) && !r.text.includes(LEGACY_SECRET), "no secret value in the body");
-    assert.ok(!/"secret"|"url"|"voiceConfig"|"phoneNumberId"/.test(r.text), "no secret / url / internal key in the body");
+    assert.ok(!/"secret"|"url"|"voiceConfig"|"phoneNumberId"|"locale"|"products"/.test(r.text), "no secret / url / internal key in the body");
   }
   assert.equal(await tableMd5(), before, "GET wrote nothing");
   console.log("ok: GET gate cases (401 / 403 / tenant / admin), shape, legacy card, no secret");
@@ -236,6 +241,44 @@ async function main() {
   const ga = await adminCatalogue.GET();
   assert.deepEqual(((await ga.json()) as Record<string, unknown>).connectorLimits, { trial: 1, paid: 7 }, "admin GET shows the limits");
   console.log("ok: lastCallAt, stored limits, admin PUT gate cases (omitted kept, valid written, > 10 refused)");
+
+  // ── 5b. C1b: the extra-connector price (admin PUT gate cases) ──────────
+  const keysOf = (o: unknown) => Object.keys(o as Record<string, unknown>);
+  assert.ok(!("connectorExtraMonthly" in JSON.parse((await stored())!)), "no price stored yet: the row has no key");
+  assert.deepEqual(keysOf(await (await adminCatalogue.GET()).json()), ["catalogue", "engineOverrides", "engineOptions", "connectorLimits"], "GET: no price key until stored");
+  as(TENANT);
+  assert.equal((await put({ connectorExtraMonthly: { EUR: 25 } })).status, 403, "a tenant cannot write the price");
+  as(ADMIN);
+  const sNoPrice = await stored();
+  const q1 = await put({ catalogue: { connect: { EUR: { monthly: 49 } } } });
+  assert.deepEqual([q1.status, keysOf(q1.body)], [200, ["ok", "catalogue", "engineOverrides", "connectorLimits"]], "omitted, not stored → no key");
+  assert.equal(await stored(), sNoPrice, "omitted, not stored → identical bytes");
+  const q2 = await put({ connectorExtraMonthly: { EUR: 25 } });
+  assert.equal(q2.status, 200);
+  assert.deepEqual(q2.body.connectorExtraMonthly, { EUR: 25, ILS: 79 }, "partial: ILS keeps the default");
+  assert.deepEqual(JSON.parse((await stored())!).connectorExtraMonthly, { EUR: 25, ILS: 79 }, "written");
+  assert.deepEqual(JSON.parse((await stored())!).connectorLimits, { trial: 1, paid: 7 }, "the limits are kept");
+  const q3 = await put({ connectorLimits: { paid: 7 } });
+  assert.deepEqual(q3.body.connectorExtraMonthly, { EUR: 25, ILS: 79 }, "omitted → unchanged");
+  const sPrice = await stored();
+  const q4 = await put({ connectorExtraMonthly: { ILS: -1, USD: 3 } });
+  assert.deepEqual([q4.status, q4.body], [400, { error: "invalid_catalogue", fields: ["connectorExtraMonthly.ILS", "connectorExtraMonthly.USD"] }], "bad price refused");
+  assert.equal(await stored(), sPrice, "the refusal wrote nothing");
+  assert.deepEqual(((await (await adminCatalogue.GET()).json()) as Record<string, unknown>).connectorExtraMonthly, { EUR: 25, ILS: 79 }, "admin GET shows the price");
+  as(TENANT);
+  assert.deepEqual((await get()).body!.canAdd.price, { monthly: 25, currency: "EUR" }, "the page reads the stored price");
+  as(ADMIN);
+  assert.deepEqual((await get(`?asUserId=${ROWS}`)).body!.canAdd.price, { monthly: 79, currency: "ILS" });
+
+  // ── 5c. C1b: deletable follows the product state ───────────────────────
+  await db.execute(sql`UPDATE users SET subscription_status = 'expired' WHERE id = ${ROWS}`);
+  assert.deepEqual((await get(`?asUserId=${ROWS}`)).body!.connectors.map((c) => c.deletable), [true, true], "product inactive → the first is deletable too");
+  await db.execute(sql`UPDATE users SET subscription_status = 'active', products = ${JSON.stringify({ base: "reception", addons: [] })}::jsonb WHERE id = ${ROWS}`);
+  assert.deepEqual((await get(`?asUserId=${ROWS}`)).body!.connectors.map((c) => c.deletable), [true, true], "paid without connect → not active");
+  await db.execute(sql`UPDATE users SET products = ${JSON.stringify({ base: "reception", addons: ["connect"] })}::jsonb WHERE id = ${ROWS}`);
+  assert.deepEqual((await get(`?asUserId=${ROWS}`)).body!.connectors.map((c) => c.deletable), [false, true], "connect add-on → the first is kept");
+  await db.execute(sql`UPDATE users SET products = NULL WHERE id = ${ROWS}`);
+  console.log("ok: extra-connector price (omitted = identical bytes, partial written, refused), deletable per product state");
 
   // ── 6. FK actions ──────────────────────────────────────────────────────
   await db.execute(sql`DELETE FROM phone_numbers WHERE id = ${id(0x504)}`);

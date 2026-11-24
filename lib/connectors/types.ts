@@ -35,7 +35,16 @@ export type ConnectorView = {
   lastTestOk: boolean | null;
   /** Whether a secret is stored. The secret itself is NEVER sent. */
   secretSet: boolean;
+  /**
+   * C1b: whether the card may be deleted (server-side rule,
+   * lib/connectors/deletable.ts). The first connector is not while the
+   * product is active; the derived legacy card never is.
+   */
+  deletable: boolean;
 };
+
+/** C1b: a monthly price in the account's currency. */
+export type ConnectorPrice = { monthly: number; currency: "EUR" | "ILS" };
 
 export type CanAddConnectorReason = "trial_limit" | "max_reached" | "orders_closed";
 
@@ -48,5 +57,14 @@ export type ConnectorsPageView = {
     used: number;
     inTrial: boolean;
   };
-  canAdd: { ok: boolean; reason?: CanAddConnectorReason };
+  canAdd: {
+    ok: boolean;
+    reason?: CanAddConnectorReason;
+    /**
+     * C1b: the price of the NEXT connector when it would be a paid extra
+     * (paid account, >= 1 connector incl. the derived legacy card), else null
+     * (trial, or the first one, included in the product). Display only.
+     */
+    price?: ConnectorPrice | null;
+  };
 };

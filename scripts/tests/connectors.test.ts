@@ -3,7 +3,9 @@
 // unchanged), the entitlement table (trial 1, paid 5, clamp, orders_closed),
 // the legacy card derivation, the row view (no secret), the page assembly,
 // the number-exclusivity rule, and source guards (client-safe types, no
-// secret selected, no call path reads connectors yet). Mock data only.
+// secret selected, no call path reads connectors yet). C1b: the
+// extra-connector price key (parser, absent = identical bytes, admin gate
+// cases), canAdd.price per case, the deletable rule. Mock data only.
 // Run with:  npx tsx scripts/tests/connectors.test.ts
 
 import assert from "node:assert/strict";
@@ -17,6 +19,13 @@ import {
   HARD_MAX_CONNECTORS,
   parseConnectorLimits,
 } from "../../lib/connectors/limits";
+import { connectProductActive, connectorDeletable, withDeletable } from "../../lib/connectors/deletable";
+import {
+  DEFAULT_CONNECTOR_EXTRA_MONTHLY,
+  connectorExtraMonthlyWrite,
+  nextConnectorPrice,
+  parseConnectorExtraMonthly,
+} from "../../lib/connectors/price";
 import { numberConflict } from "../../lib/connectors/number-exclusivity";
 import { connectorsPageView } from "../../lib/connectors/page";
 import { defaultProductCatalogue } from "../../lib/product-catalogue";
@@ -102,7 +111,7 @@ assert.equal(w5.value.connect.EUR.monthly, 59);
 assert.deepEqual(w5.connectorLimits, { trial: 2, paid: 4 });
 // The admin route passes the limits to storage and returns them.
 const routeSrc = src("app/api/admin/product-catalogue/route.ts");
-assert.match(routeSrc, /setProductCatalogue\(w\.value, w\.engineOverrides, w\.connectorLimits\)/);
+assert.match(routeSrc, /setProductCatalogue\(w\.value, w\.engineOverrides, w\.connectorLimits, w\.connectorExtraMonthly\)/);
 assert.match(routeSrc, /\.\.\.\(row\.connectorLimits \? \{ connectorLimits: row\.connectorLimits \} : \{\}\)/, "GET: only when stored");
 assert.match(routeSrc, /\.\.\.\(w\.connectorLimits \? \{ connectorLimits: w\.connectorLimits \} : \{\}\)/, "PUT: only when stored");
 console.log("ok: admin catalogue write — omitted unchanged, valid written, partial, refused (> 10)");
@@ -203,12 +212,137 @@ assert.deepEqual(rv, {
   secretSet: false,
 });
 assert.equal(connectorRowView({ ...row, enabled: true }, null).state, "online");
-const pTrial = connectorsPageView({ connectors: [legacy!], account: TRIAL, limits: L, env: ON });
+const pTrial = connectorsPageView({ connectors: [legacy!], account: TRIAL, limits: L, productActive: true, currency: "EUR", env: ON });
 assert.deepEqual(pTrial.limits, { max: 1, used: 1, inTrial: true }, "the derived card counts as used");
-assert.deepEqual(pTrial.canAdd, { ok: false, reason: "trial_limit" });
-const pEmpty = connectorsPageView({ connectors: [], account: PAID, limits: L, env: OFF });
-assert.deepEqual(pEmpty, { connectors: [], limits: { max: 5, used: 0, inTrial: false }, canAdd: { ok: true } });
+assert.deepEqual(pTrial.canAdd, { ok: false, reason: "trial_limit", price: null });
+assert.equal(pTrial.connectors[0].deletable, false, "the derived card is never deletable");
+const pEmpty = connectorsPageView({ connectors: [], account: PAID, limits: L, productActive: true, currency: "EUR", env: OFF });
+assert.deepEqual(pEmpty, { connectors: [], limits: { max: 5, used: 0, inTrial: false }, canAdd: { ok: true, price: null } });
 console.log("ok: row view + page assembly");
+
+// ── C1b: extra-connector price (parser, row bytes, admin gate cases) ────
+assert.deepEqual({ ...DEFAULT_CONNECTOR_EXTRA_MONTHLY }, { EUR: 19, ILS: 79 });
+assert.notEqual(cat.connect.EUR.addonMonthly, 19, "not the connect add-on price (a different thing)");
+assert.deepEqual(parseConnectorExtraMonthly({ EUR: 19, ILS: 79 }), { EUR: 19, ILS: 79 });
+assert.deepEqual(parseConnectorExtraMonthly({ ILS: 0, EUR: 24.5 }), { EUR: 24.5, ILS: 0 });
+for (const bad of [
+  { EUR: 19 },
+  { EUR: 19, ILS: 79, USD: 20 },
+  { EUR: -1, ILS: 79 },
+  { EUR: "19", ILS: 79 },
+  { EUR: 19, ILS: null },
+  { EUR: 19, ILS: Number.POSITIVE_INFINITY },
+  null,
+  [],
+  19,
+]) assert.equal(parseConnectorExtraMonthly(bad), null, `price refused: ${String(JSON.stringify(bad))}`);
+// Row bytes: absent → identical bytes; present → round trip; malformed → whole row invalid.
+assert.equal(serializeCatalogueRow(cat, none, undefined, undefined), JSON.stringify(cat), "no price → the pre-C1b bytes");
+assert.equal(serializeCatalogueRow(cat, none, { trial: 1, paid: 7 }, undefined), withLimits, "limits only → the B1 bytes");
+const withPrice = serializeCatalogueRow(cat, none, undefined, { EUR: 21, ILS: 85 });
+assert.deepEqual(parseCatalogueRow(JSON.parse(withPrice))?.connectorExtraMonthly, { EUR: 21, ILS: 85 }, "price round trip");
+assert.equal(parseCatalogueRow(JSON.parse(withPrice))?.connectorLimits, undefined, "price only → limits still not stored");
+assert.equal(parseCatalogueRow(JSON.parse(JSON.stringify(cat)))?.connectorExtraMonthly, undefined, "absent → not stored");
+assert.ok(!("connectorExtraMonthly" in parseCatalogueRow(JSON.parse(withLimits))!), "a B1 row parses without the key");
+assert.equal(parseCatalogueRow({ ...cat, connectorExtraMonthly: { EUR: 19 } }), null, "a malformed stored price fails the whole row");
+assert.equal(catalogueFromStored(JSON.stringify({ ...cat, connectorExtraMonthly: { EUR: -1, ILS: 79 } })).source, "invalid");
+assert.deepEqual(catalogueFromStored(withPrice).connectorExtraMonthly, { EUR: 21, ILS: 85 });
+// connectorExtraMonthlyWrite: partial, unknown key, bad value.
+assert.deepEqual(connectorExtraMonthlyWrite({ EUR: 19, ILS: 79 }, { ILS: 99 }), { ok: true, value: { EUR: 19, ILS: 99 } });
+assert.deepEqual(connectorExtraMonthlyWrite({ EUR: 19, ILS: 79 }, {}), { ok: true, value: { EUR: 19, ILS: 79 } });
+// Admin write gate cases: 1. omitted → unchanged (stored and not stored).
+const storedPrice: CatalogueRow = { catalogue: cat, engineOverrides: none, connectorLimits: { trial: 2, paid: 6 }, connectorExtraMonthly: { EUR: 25, ILS: 99 } };
+for (const stored of [storedNone, storedSet, storedPrice]) {
+  for (const body of [{}, { catalogue: { connect: { EUR: { monthly: 49 } } } }, { connectorLimits: { paid: 6 } }]) {
+    const w = catalogueRowWrite(stored, body);
+    assert.ok(w.ok, JSON.stringify(body));
+    assert.deepEqual(w.connectorExtraMonthly, stored.connectorExtraMonthly, "omitted keeps the stored price");
+    if (!stored.connectorExtraMonthly) assert.ok(!("connectorExtraMonthly" in w), "still not stored");
+  }
+}
+// 2. a valid value is written.
+const wp2 = catalogueRowWrite(storedNone, { connectorExtraMonthly: { EUR: 19, ILS: 79 } });
+assert.ok(wp2.ok && wp2.changed, "writing the defaults explicitly stores them");
+assert.deepEqual(wp2.connectorExtraMonthly, { EUR: 19, ILS: 79 });
+assert.equal(wp2.connectorLimits, undefined, "the limits stay unstored");
+// 3. a partial patch keeps the omitted currency (from the defaults when not stored).
+const wp3 = catalogueRowWrite(storedNone, { connectorExtraMonthly: { ILS: 89 } });
+assert.ok(wp3.ok);
+assert.deepEqual(wp3.connectorExtraMonthly, { EUR: 19, ILS: 89 });
+const wp3b = catalogueRowWrite(storedPrice, { connectorExtraMonthly: { EUR: 29 }, connectorLimits: { paid: 8 } });
+assert.ok(wp3b.ok);
+assert.deepEqual([wp3b.connectorExtraMonthly, wp3b.connectorLimits], [{ EUR: 29, ILS: 99 }, { trial: 2, paid: 8 }]);
+// 4. refused, nothing written, every path named.
+for (const [body, fields] of [
+  [{ connectorExtraMonthly: { EUR: -1 } }, ["connectorExtraMonthly.EUR"]],
+  [{ connectorExtraMonthly: { EUR: "19", USD: 20 } }, ["connectorExtraMonthly.EUR", "connectorExtraMonthly.USD"]],
+  [{ connectorExtraMonthly: null }, ["connectorExtraMonthly"]],
+  [{ connectorExtraMonthly: { ILS: -5 }, connectorLimits: { paid: 11 } }, ["connectorExtraMonthly.ILS", "connectorLimits.paid"]],
+  [{ connectorExtraMonthly: { ILS: -5 }, catalogue: { connect: { EUR: { monthly: -1 } } } }, ["catalogue.connect.EUR.monthly", "connectorExtraMonthly.ILS"]],
+] as const) {
+  const w = catalogueRowWrite(storedPrice, body);
+  assert.equal(w.ok, false, JSON.stringify(body));
+  if (!w.ok) assert.deepEqual([...w.fields].sort(), [...fields].sort(), JSON.stringify(body));
+}
+assert.match(routeSrc, /\.\.\.\(row\.connectorExtraMonthly \? \{ connectorExtraMonthly: row\.connectorExtraMonthly \} : \{\}\)/, "GET: price only when stored");
+assert.match(routeSrc, /\.\.\.\(w\.connectorExtraMonthly \? \{ connectorExtraMonthly: w\.connectorExtraMonthly \} : \{\}\)/, "PUT: price only when stored");
+console.log("ok: extra-connector price — parser, absent = identical bytes, admin gate cases");
+
+// ── C1b: canAdd.price per case ──────────────────────────────────────────
+const P = { EUR: 19, ILS: 79 };
+assert.equal(nextConnectorPrice({ inTrial: true, used: 0, currency: "EUR", prices: P }), null, "trial, none");
+assert.equal(nextConnectorPrice({ inTrial: true, used: 1, currency: "ILS", prices: P }), null, "trial, one");
+assert.equal(nextConnectorPrice({ inTrial: false, used: 0, currency: "EUR", prices: P }), null, "paid, none → included");
+assert.deepEqual(nextConnectorPrice({ inTrial: false, used: 1, currency: "EUR", prices: P }), { monthly: 19, currency: "EUR" });
+assert.deepEqual(nextConnectorPrice({ inTrial: false, used: 3, currency: "ILS", prices: P }), { monthly: 79, currency: "ILS" });
+const rowCard = connectorRowView(row, null);
+const page = (account: typeof PAID, cards: typeof rowCard[], currency: "EUR" | "ILS", env: Record<string, string> = ON, prices?: typeof P) =>
+  connectorsPageView({ connectors: cards, account, limits: L, productActive: true, currency, prices, env }).canAdd;
+assert.deepEqual(page(TRIAL, [], "EUR"), { ok: true, price: null }, "trial → null");
+assert.deepEqual(page(PAID, [], "EUR"), { ok: true, price: null }, "paid with 0 → null (included)");
+assert.deepEqual(page(PAID, [rowCard], "EUR"), { ok: true, price: { monthly: 19, currency: "EUR" } }, "paid with 1 → 19 EUR");
+assert.deepEqual(page(PAID, [rowCard], "ILS"), { ok: true, price: { monthly: 79, currency: "ILS" } }, "ILS account → 79 ILS");
+assert.deepEqual(page(PAID, [legacy!], "EUR"), { ok: true, price: { monthly: 19, currency: "EUR" } }, "the derived legacy card counts as the included one");
+assert.deepEqual(page(PAID, [rowCard], "EUR", OFF), { ok: false, reason: "orders_closed", price: { monthly: 19, currency: "EUR" } }, "orders closed still shows the price");
+assert.deepEqual(page(PAID, [rowCard], "EUR", ON, { EUR: 25, ILS: 99 }), { ok: true, price: { monthly: 25, currency: "EUR" } }, "the stored price wins");
+assert.deepEqual(page(ADMIN, [rowCard], "ILS"), { ok: true, price: { monthly: 79, currency: "ILS" } }, "an admin is never in the trial gate");
+console.log("ok: canAdd.price (trial null, included null, 19 EUR, 79 ILS, legacy counts, stored price)");
+
+// ── C1b: deletable ──────────────────────────────────────────────────────
+const dTable: Array<[string, boolean, number, boolean, boolean]> = [
+  ["first row, product active", false, 0, true, false],
+  ["first row, product inactive", false, 0, false, true],
+  ["second row, product active", false, 1, true, true],
+  ["third row, product inactive", false, 2, false, true],
+  ["derived legacy card, active", true, 0, true, false],
+  ["derived legacy card, inactive", true, 0, false, false],
+];
+for (const [label, derived, index, productActive, want] of dTable) assert.equal(connectorDeletable({ derived, index, productActive }), want, label);
+const second = { ...rowCard, id: "00000000-0000-4000-8000-000000000c02" };
+assert.deepEqual(withDeletable([rowCard, second], true).map((c) => c.deletable), [false, true], "oldest first: only the first is kept");
+assert.deepEqual(withDeletable([rowCard, second], false).map((c) => c.deletable), [true, true]);
+assert.deepEqual(withDeletable([legacy!], false).map((c) => c.deletable), [false]);
+const ent = (subscriptionStatus: string | null, products: unknown = null, activeTrials: ("connect" | "sales")[] = []) => ({
+  subscriptionPlan: "premium",
+  subscriptionStatus,
+  products,
+  activeTrials,
+});
+const aTable: Array<[string, ReturnType<typeof ent>, boolean]> = [
+  ["paid, grandfathered", ent("active"), true],
+  ["trialing, grandfathered", ent("trialing"), true],
+  ["trial paused, grandfathered", ent("trial_paused"), true],
+  ["expired", ent("expired"), false],
+  ["canceled", ent("canceled"), false],
+  ["no status", ent(null), false],
+  ["paid, products with connect base", ent("active", { base: "connect", addons: [] }), true],
+  ["paid, products with connect add-on", ent("active", { base: "reception", addons: ["connect"] }), true],
+  ["paid, products without connect", ent("active", { base: "reception", addons: ["sales"] }), false],
+  ["paid, products without connect + active connect trial", ent("active", { base: "reception", addons: [] }, ["connect"]), true],
+  ["expired, products with connect", ent("expired", { base: "connect", addons: [] }), false],
+];
+for (const [label, input, want] of aTable) assert.equal(connectProductActive(input), want, label);
+console.log(`ok: deletable (${dTable.length} rule rows, ${aTable.length} product-active rows)`);
 
 // ── Number exclusivity (pure rule; hooked in B4/B5) ─────────────────────
 assert.equal(numberConflict({ e164: "+15550000103", connectorNumbers: [], tamaravoxNumbers: [] }), null);
@@ -220,6 +354,7 @@ console.log("ok: number exclusivity");
 const typesSrc = src("lib/connectors/types.ts");
 assert.doesNotMatch(typesSrc, /^\s*import\s/m, "lib/connectors/types.ts has zero imports (client-safe)");
 assert.doesNotMatch(src("lib/connectors/limits.ts"), /^\s*import\s/m, "lib/connectors/limits.ts has zero imports (client-safe)");
+assert.doesNotMatch(src("lib/connectors/price.ts"), /^\s*import\s/m, "lib/connectors/price.ts has zero imports (client-safe)");
 const pageSrc = src("lib/connectors/page.ts");
 assert.doesNotMatch(pageSrc, /\.select\(\)/, "explicit picks only");
 assert.doesNotMatch(pageSrc.replace(/\$\{connectors\.secret\} IS NOT NULL/g, ""), /connectors\.secret/, "the secret is only ever tested for IS NOT NULL");
