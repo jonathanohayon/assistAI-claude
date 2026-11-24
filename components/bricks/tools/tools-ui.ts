@@ -36,6 +36,12 @@ export interface ToolsResponse {
   outboundTools?: { visible: boolean };
   /** T5: whether this account's screen shows "Ask your agent" (server decision). */
   clientAgentTool?: { visible: boolean };
+  /**
+   * PUT only, once: the signing secret the server made because "Ask your
+   * agent" was switched on with none stored and none sent. Never in a GET.
+   * Read it with clientAgentSavedAnswer only (never kept in `served`).
+   */
+  generatedSecret?: string;
 }
 
 /**
@@ -346,4 +352,20 @@ export function clientAgentSaveRequest(
   if (Object.keys(tchanges).length === 0) return null;
   const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
   return { url: `/api/dashboard/tools${qs}`, body: JSON.stringify({ tools: tchanges }) };
+}
+
+/** A server-generated secret must look like one: printable, no spaces, 16–256 characters. */
+const PLAUSIBLE_SECRET = /^[\x21-\x7e]{16,256}$/;
+
+/**
+ * A successful tools save → what the screen keeps (`served`, WITHOUT
+ * `generatedSecret`) and the secret to show once (or null). Defensive: only
+ * a plausible string counts; anything else is ignored, as if absent. The
+ * secret lives in the brick's component state only (never storage, never
+ * the URL): a reload drops it and the screen reads "set" from the GET.
+ */
+export function clientAgentSavedAnswer(data: ToolsResponse): { served: ToolsResponse; generated: string | null } {
+  const { generatedSecret: raw, ...served } = data as ToolsResponse & { generatedSecret?: unknown };
+  const generated = typeof raw === "string" && PLAUSIBLE_SECRET.test(raw) ? raw : null;
+  return { served, generated };
 }
