@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { AgentHelpTest } from "@/components/agent-help/AgentHelpTest";
 import { CopyBlock } from "@/components/agent-help/CopyBlock";
-import { Link } from "@/i18n/navigation";
+import { agentHelpLinks, HelpLink } from "@/components/agent-help/links";
 import {
   CLIENT_AGENT_REQUEST_FIELDS,
   exampleRequestText,
@@ -33,14 +33,20 @@ const code = (c: ReactNode) => (
  * A server component (no "use client"): the contract constants come from a
  * server-only module; only the copy buttons and the test are client parts.
  * Never empty: every section renders whatever the switches; only the test
- * area depends on `testOpen` (CLIENT_AGENT for this account).
+ * area depends on `testOpen` (CLIENT_AGENT for the account shown).
+ * `asUserId`: the admin route only (/admin/users/[id]/agent/help, behind
+ * requireAdminPage); the tenant route never passes one.
  */
-export function AgentHelpView({ locale, testOpen }: { locale: string; testOpen: boolean }) {
+export function AgentHelpView({ locale, testOpen, asUserId = null }: { locale: string; testOpen: boolean; asUserId?: string | null }) {
+  const links = agentHelpLinks(asUserId);
   const t = useTranslations("AgentHelp");
   const tModes = useTranslations("ToolsBrick.agent.modes");
   const tNav = useTranslations("DashboardNav");
   const card = useTranslations("ClientAgentBrick")("title");
-  const seconds = new Intl.NumberFormat(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR").format(helpFacts.budgetSeconds);
+  const num = new Intl.NumberFormat(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR");
+  const seconds = num.format(helpFacts.budgetSeconds);
+  const voiceSeconds = num.format(helpFacts.voiceBudgetSeconds);
+  const stall = num.format(helpFacts.stallSeconds);
   const w: ExampleWords = {
     question: t("example.question"),
     callerSaid: t("example.callerSaid"),
@@ -53,9 +59,9 @@ export function AgentHelpView({ locale, testOpen }: { locale: string; testOpen: 
   return (
     <div className="space-y-5" data-agent-help>
       <div>
-        <Link href="/dashboard/agent" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline">
+        <HelpLink href={links.back} admin={links.admin} className="inline-flex min-h-11 items-center text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline">
           {t("back", { page: tNav("connect") })}
-        </Link>
+        </HelpLink>
         <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("title")}</h1>
       </div>
 
@@ -91,7 +97,7 @@ export function AgentHelpView({ locale, testOpen }: { locale: string; testOpen: 
           {CLIENT_AGENT_REQUEST_FIELDS.map((f) => (
             <div key={f} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3" data-field={f}>
               <dt className="shrink-0 sm:w-28">{code(f)}</dt>
-              <dd className="m-0 text-[#334155]">{t.rich(`contract.fields.${f}`, { c: code })}</dd>
+              <dd className="m-0 text-[#334155]">{t.rich(`contract.fields.${f}`, { c: code, turns: helpFacts.historyTurns })}</dd>
             </div>
           ))}
         </dl>
@@ -101,7 +107,7 @@ export function AgentHelpView({ locale, testOpen }: { locale: string; testOpen: 
 
         <h3 className={H3}>{t("contract.timeTitle")}</h3>
         <p className={P} data-fact="budget">
-          {t("contract.time", { seconds })}
+          {t("contract.time", { seconds, voiceSeconds, stall })}
         </p>
 
         <h3 className={H3}>{t("contract.signatureTitle")}</h3>
@@ -133,7 +139,7 @@ export function AgentHelpView({ locale, testOpen }: { locale: string; testOpen: 
         </h2>
         <p className={P}>{t.rich("test.body", { c: code, question: CLIENT_AGENT_TEST_QUESTION })}</p>
         <div className="mt-3">
-          <AgentHelpTest open={testOpen} />
+          <AgentHelpTest open={testOpen} asUserId={asUserId} />
         </div>
       </section>
 

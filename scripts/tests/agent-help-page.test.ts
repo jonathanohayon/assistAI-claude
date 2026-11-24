@@ -17,6 +17,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { AgentHelpView } from "../../app/[locale]/dashboard/agent/help/help-view";
+import { agentHelpLinks, agentHelpRequests } from "../../components/agent-help/links";
 import { AGENT_CARD_HREF, AgentHelpTestView } from "../../components/agent-help/AgentHelpTest";
 import { AGENT_HELP_HREF, ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
@@ -25,6 +26,9 @@ import { toolsFromTileToggles } from "../../lib/tools/adapters";
 import {
   CLIENT_AGENT_REQUEST_FIELDS,
   EXAMPLE_AGENT_URL,
+  WORKER_HISTORY_TURNS,
+  WORKER_STALL_MS,
+  WORKER_VOICE_BUDGET_MS,
   exampleRequestBody,
   exampleRequestText,
   exampleResponseText,
@@ -140,8 +144,14 @@ async function main() {
           assert.match(pre, /overflow-x-auto/);
         }
         // Facts from the constants.
-        const seconds = new Intl.NumberFormat(l === "he" ? "he-IL" : l === "en" ? "en-US" : "fr-FR").format(CLIENT_AGENT_TEST_BUDGET_MS / 1000);
-        assert.ok(html.includes(esc(m.AgentHelp.contract.time.replace("{seconds}", seconds))), "time limit from the constant");
+        const num = new Intl.NumberFormat(l === "he" ? "he-IL" : l === "en" ? "en-US" : "fr-FR");
+        const time = m.AgentHelp.contract.time
+          .replace("{seconds}", num.format(CLIENT_AGENT_TEST_BUDGET_MS / 1000))
+          .replace("{voiceSeconds}", num.format(WORKER_VOICE_BUDGET_MS / 1000))
+          .replace("{stall}", num.format(WORKER_STALL_MS / 1000));
+        assert.ok(html.includes(esc(time)), "time limits from the constants");
+        if (l === "fr") assert.ok(html.includes("en mode voix seule, 2 s"), "voice limit wording");
+        assert.ok(html.includes(esc(m.AgentHelp.contract.fields.history.split("{turns}")[0]) + WORKER_HISTORY_TURNS), "history cap from the constant");
         assert.ok(html.includes(`>${CLIENT_AGENT_SIGNATURE_HEADER}</code>`), "header name from the constant");
         assert.ok(html.includes(`User-Agent: ${CLIENT_AGENT_USER_AGENT}`));
         assert.ok(html.includes(`${CLIENT_AGENT_TEST_MAX_BYTES / 1024} `), "size limit from the constant");
@@ -174,6 +184,58 @@ async function main() {
       for (const c of html.match(/<code[^>]*>/g) ?? []) if (!/<pre/.test(c)) assert.ok(/dir="ltr"/.test(c) || c === "<code>", `inline code ltr: ${c}`);
     });
   }
+
+  // The worker's CALL values (repo assistAI-claude-agent, main 6998aa0). Not
+  // importable from web: pinned here by value, each with its worker file:line.
+  await test("worker values the page shows (main 6998aa0)", () => {
+    // src/brain-mode.ts:42 CLIENT_AGENT_VOICE_BUDGET_MS = TURN_BUDGET_MS; src/agent-webhook.ts:29 TURN_BUDGET_MS = 2000
+    assert.equal(WORKER_VOICE_BUDGET_MS, 2000);
+    // src/client-agent.ts:28 CLIENT_AGENT_HISTORY_TURNS = 6 (history.slice(-6) at :70)
+    assert.equal(WORKER_HISTORY_TURNS, 6);
+    // src/client-agent.ts:26 CLIENT_AGENT_STALL_MS = 700
+    assert.equal(WORKER_STALL_MS, 700);
+    // src/client-agent.ts:24 CLIENT_AGENT_BUDGET_MS = 2500: the lead budget is the web test's
+    assert.equal(CLIENT_AGENT_TEST_BUDGET_MS, 2500);
+    // src/net/agent-post.ts:25 MAX_RESPONSE_BYTES = 64 * 1024: the call's size limit is the web test's
+    assert.equal(CLIENT_AGENT_TEST_MAX_BYTES, 64 * 1024);
+  });
+
+  // Admin tenant view (H1): the help page tests the tenant viewed, never the admin.
+  const TENANT = "11111111-2222-4333-8444-555555555555";
+  await test("help requests carry asUserId only when given", () => {
+    assert.deepEqual(agentHelpRequests(null), { load: "/api/dashboard/tools", test: "/api/dashboard/tools/client-agent/test" });
+    assert.deepEqual(agentHelpRequests(undefined), agentHelpRequests(null));
+    assert.deepEqual(agentHelpRequests(TENANT), {
+      load: `/api/dashboard/tools?asUserId=${TENANT}`,
+      test: `/api/dashboard/tools/client-agent/test?asUserId=${TENANT}`,
+    });
+    // The component sends exactly these two.
+    const src = read("components/agent-help/AgentHelpTest.tsx");
+    assert.match(src, /fetch\(urls\.load,/);
+    assert.match(src, /fetch\(urls\.test,/);
+    assert.doesNotMatch(src, /fetch\("\/api/, "no hard-coded request without the account");
+  });
+  await test("only the admin route passes asUserId; the tenant page can't", () => {
+    // Tenant page: no query read, no asUserId: a ?asUserId in its URL is ignored.
+    const tenantPage = read("app/[locale]/dashboard/agent/help/page.tsx");
+    assert.doesNotMatch(tenantPage, /searchParams|asUserId/);
+    // Admin route: requireAdminPage first, and it passes the tenant id.
+    const adminPage = read("app/admin/users/[userId]/agent/help/page.tsx");
+    const body = adminPage.slice(adminPage.indexOf("export default async function"));
+    assert.match(body, /^[^\n]*\n\s*await requireAdminPage\(\);/, "requireAdminPage first");
+    assert.match(adminPage, /asUserId=\{userId\}/);
+    // The test route refuses asUserId from a non-admin (resolveTargetUserId → 403).
+    const route = read("app/api/dashboard/tools/client-agent/test/route.ts");
+    assert.match(route, /await resolveTargetUserId\(req\)/);
+    assert.match(route, /"forbidden" in r\) return NextResponse\.json\(\{ error: "Forbidden" \}, \{ status: 403 \}\)/);
+  });
+  await test("admin view: page links stay in the admin, on the tenant", () => {
+    const html = wrap("fr", createElement(AgentHelpView, { locale: "fr", testOpen: false, asUserId: TENANT }));
+    const links = agentHelpLinks(TENANT);
+    assert.ok(html.includes(`href="${links.back}"`), "back to the admin Connect page");
+    assert.ok(html.includes(`href="${links.card}"`), "card link in the admin view");
+    assert.ok(!html.includes('href="/fr/dashboard/agent'), "no link to the admin's own dashboard");
+  });
 
   await test("HE copy writes the brand in Latin letters", () => {
     const he = JSON.stringify(messages("he").AgentHelp);
@@ -219,6 +281,9 @@ async function main() {
       assert.ok(at > row.indexOf('type="url"') && at < row.indexOf(esc(m.ToolsBrick.agent.mode)), "near the address field");
       const preview = wrap(l, createElement(ConnectPreview));
       assert.ok(preview.includes(`href="/${l}${AGENT_HELP_HREF}"`), "the preview (CLIENT_AGENT unset) links too");
+      const admin = wrap(l, createElement(ClientAgentRow, { served, tools: publicTools(tools), onChange: () => {}, refused: null, asUserId: TENANT }));
+      assert.ok(admin.includes(`href="/admin/users/${TENANT}/agent/help"`), "admin view: the link carries the tenant id");
+      assert.ok(!admin.includes(`href="/${l}${AGENT_HELP_HREF}"`), "admin view: never the admin's own help page");
     });
   }
 

@@ -2947,7 +2947,7 @@
       "body": "It's your AI agent's public address, starting with <c>https://</c>: during a call, Tamara sends it the question along with what the caller said, and your agent answers with the text Tamara should say.",
       "modes": {
         "lead": "<b>{label}</b>: Tamara runs the call and asks your agent whenever she needs an answer. She tells the caller in their language; she may rephrase it, but repeats prices, dates, times, numbers and names exactly.",
-        "voice": "<b>{label}</b>: your agent decides what to say; Tamara says its answer as is."
+        "voice": "<b>{label}</b>: every sentence the caller says goes to your agent, the opening line included, and Tamara says its answer as is."
       }
     },
     "contract": {
@@ -2957,20 +2957,20 @@
       "fieldsTitle": "The request body",
       "fields": {
         "call_id": "The call's id: 16 lowercase hexadecimal characters.",
-        "turn_id": "The turn number in the call (0 for a test).",
+        "turn_id": "The request's number in the call, from 1 (0 for the opening line in voice-only mode, and for a test).",
         "language": "The call's language: <c>fr</c>, <c>en</c> or <c>he</c>.",
-        "question": "The question Tamara asks your agent.",
-        "caller_said": "What the caller said (empty for a test).",
-        "history": "The call's previous turns, each with <c>role</c> (<c>user</c>: the caller, <c>agent</c>: Tamara) and <c>text</c> (empty for a test)."
+        "question": "The question Tamara asks your agent; in voice-only mode, what the caller said.",
+        "caller_said": "What the caller just said, as transcribed (empty for a test).",
+        "history": "At most the call's last {turns} turns, each with <c>role</c> (<c>user</c>: the caller, <c>agent</c>: Tamara) and <c>text</c> (empty for a test)."
       },
       "responseTitle": "The expected answer",
       "response": "A 2xx status and a JSON body with an <c>answer</c> field: the text Tamara should say, not empty.",
       "timeTitle": "The time limit",
-      "time": "Your agent has {seconds} s to answer, network included. Past that, Tamara stops waiting: she tells the caller she can't check right now and offers to take a message.",
+      "time": "Your agent has {seconds} s to answer, network included; in voice-only mode, {voiceSeconds} s. If it hasn't answered after {stall} s, Tamara says a short holding line. Past the limit, Tamara stops waiting and the request counts as a failure.",
       "signatureTitle": "The signature",
       "signature": "If you generated a signing secret in the \"{card}\" card, every request carries the <c>{header}</c> header: the HMAC-SHA256 of the raw body (the bytes as received), computed with that secret, in hexadecimal. Compute it again on your side and refuse the request if it doesn't match. The secret is shown only once, when it's created: we never send it back.",
       "errorsTitle": "When something goes wrong",
-      "errors": "A status outside 2xx, a redirect (never followed), a body that isn't JSON or an empty <c>answer</c> count as a failure: during a call, Tamara says she can't check right now and offers to take a message. The test also refuses an answer over {kb} KB."
+      "errors": "Going past the time limit, a status outside 2xx, a redirect (never followed), an answer over {kb} KB, a body that isn't JSON or an empty <c>answer</c> count as a failure. During a call, Tamara then says she can't check right now: when she leads the conversation, she offers to take a message; in voice-only mode, she asks the caller to say it again, and if the opening line is what failed, she says her usual greeting."
     },
     "example": {
       "title": "A complete example to copy",

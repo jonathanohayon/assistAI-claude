@@ -2947,7 +2947,7 @@
       "body": "C'est l'adresse publique de votre agent IA, qui commence par <c>https://</c> : pendant un appel, Tamara y envoie la question avec ce que l'appelant a dit, et votre agent répond par le texte que Tamara doit dire.",
       "modes": {
         "lead": "<b>{label}</b> : Tamara conduit l'appel et interroge votre agent quand elle a besoin d'une réponse. Elle la dit à l'appelant dans sa langue ; elle peut la reformuler, mais répète tels quels les prix, dates, heures, nombres et noms.",
-        "voice": "<b>{label}</b> : votre agent décide quoi dire ; Tamara dit sa réponse telle quelle."
+        "voice": "<b>{label}</b> : chaque phrase de l'appelant est envoyée à votre agent, la phrase d'accueil comprise, et Tamara dit sa réponse telle quelle."
       }
     },
     "contract": {
@@ -2957,20 +2957,20 @@
       "fieldsTitle": "Le corps de la requête",
       "fields": {
         "call_id": "L'identifiant de l'appel : 16 caractères hexadécimaux en minuscules.",
-        "turn_id": "Le numéro du tour de parole dans l'appel (0 pour un test).",
+        "turn_id": "Le numéro de la demande dans l'appel, à partir de 1 (0 pour la phrase d'accueil en mode voix seule, et pour un test).",
         "language": "La langue de l'appel : <c>fr</c>, <c>en</c> ou <c>he</c>.",
-        "question": "La question que Tamara pose à votre agent.",
-        "caller_said": "Ce que l'appelant a dit (vide pour un test).",
-        "history": "Les tours précédents de l'appel, chacun avec <c>role</c> (<c>user</c> : l'appelant, <c>agent</c> : Tamara) et <c>text</c> (vide pour un test)."
+        "question": "La question que Tamara pose à votre agent ; en mode voix seule, ce que l'appelant a dit.",
+        "caller_said": "Ce que l'appelant vient de dire, tel que transcrit (vide pour un test).",
+        "history": "Les {turns} derniers tours de l'appel au plus, chacun avec <c>role</c> (<c>user</c> : l'appelant, <c>agent</c> : Tamara) et <c>text</c> (vide pour un test)."
       },
       "responseTitle": "La réponse attendue",
       "response": "Un statut 2xx et un corps JSON avec un champ <c>answer</c> : le texte que Tamara doit dire, non vide.",
       "timeTitle": "Le délai",
-      "time": "Votre agent a {seconds} s pour répondre, réseau compris. Au-delà, Tamara n'attend plus : elle dit à l'appelant qu'elle ne peut pas vérifier pour le moment et propose de prendre un message.",
+      "time": "Votre agent a {seconds} s pour répondre, réseau compris ; en mode voix seule, {voiceSeconds} s. S'il n'a pas encore répondu après {stall} s, Tamara dit une courte phrase d'attente. Au-delà du délai, Tamara n'attend plus et la demande compte comme un échec.",
       "signatureTitle": "La signature",
       "signature": "Si vous avez généré un secret de signature dans la carte « {card} », chaque requête porte l'en-tête <c>{header}</c> : le HMAC-SHA256 du corps brut (les octets tels que reçus), calculé avec ce secret, en hexadécimal. Recalculez-le de votre côté et refusez la requête s'il ne correspond pas. Le secret ne s'affiche qu'une fois, à sa création : nous ne le renvoyons jamais.",
       "errorsTitle": "En cas d'erreur",
-      "errors": "Un statut hors 2xx, une redirection (jamais suivie), un corps qui n'est pas du JSON ou un <c>answer</c> vide comptent comme un échec : pendant un appel, Tamara dit qu'elle ne peut pas vérifier pour le moment et propose de prendre un message. Le test refuse aussi une réponse de plus de {kb} Ko."
+      "errors": "Un dépassement du délai, un statut hors 2xx, une redirection (jamais suivie), une réponse de plus de {kb} Ko, un corps qui n'est pas du JSON ou un <c>answer</c> vide comptent comme un échec. Pendant un appel, Tamara dit alors qu'elle ne peut pas vérifier pour le moment : quand elle mène la conversation, elle propose de prendre un message ; en mode voix seule, elle demande à l'appelant de répéter, et si c'est la phrase d'accueil qui échoue, elle dit son accueil habituel."
     },
     "example": {
       "title": "Un exemple complet à copier",

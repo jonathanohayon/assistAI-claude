@@ -22,11 +22,31 @@ export const EXAMPLE_AGENT_URL = "https://agent.example.test/ask";
 /** Mock call id, in the real format (16 lowercase hex characters). */
 export const EXAMPLE_CALL_ID = "3f9a1c2e7b4d8a60";
 
+/**
+ * The worker's own values for a CALL (repo assistAI-claude-agent, read at
+ * main 6998aa0). The worker isn't importable from web: these are copies,
+ * pinned by scripts/tests/agent-help-page.test.ts with the same file:line.
+ *   voice budget    src/brain-mode.ts:42 CLIENT_AGENT_VOICE_BUDGET_MS = TURN_BUDGET_MS
+ *                   (src/agent-webhook.ts:29 = 2000), used at :216 and :256
+ *   history cap     src/client-agent.ts:28 CLIENT_AGENT_HISTORY_TURNS = 6 (slice at :70)
+ *   holding line    src/client-agent.ts:26 CLIENT_AGENT_STALL_MS = 700
+ *                   (lead: tools/client-agent.ts:55-57; voice: src/brain-mode.ts:200-204)
+ *   lead budget     src/client-agent.ts:24 CLIENT_AGENT_BUDGET_MS = 2500 (= the web test's)
+ *   size limit      src/net/agent-post.ts:25 MAX_RESPONSE_BYTES = 64 KB (= the web test's)
+ */
+export const WORKER_VOICE_BUDGET_MS = 2000;
+export const WORKER_HISTORY_TURNS = 6;
+export const WORKER_STALL_MS = 700;
+
 export const helpFacts = {
   header: CLIENT_AGENT_SIGNATURE_HEADER,
   userAgent: CLIENT_AGENT_USER_AGENT,
-  /** "2.5": the budget in seconds, formatted by the page per locale. */
+  /** "2.5": the lead budget in seconds, formatted by the page per locale. */
   budgetSeconds: CLIENT_AGENT_TEST_BUDGET_MS / 1000,
+  /** "2": voice mode's own budget. */
+  voiceBudgetSeconds: WORKER_VOICE_BUDGET_MS / 1000,
+  stallSeconds: WORKER_STALL_MS / 1000,
+  historyTurns: WORKER_HISTORY_TURNS,
   maxKb: CLIENT_AGENT_TEST_MAX_BYTES / 1024,
 };
 

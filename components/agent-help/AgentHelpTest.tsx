@@ -3,11 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { agentHelpLinks, agentHelpRequests, HelpLink } from "@/components/agent-help/links";
 import { clientAgentTestWords, type TestWords, type ToolsResponse } from "@/components/bricks/tools/tools-ui";
 
 /** Where the help page sends the customer to set the address: the card. */
-export const AGENT_CARD_HREF = "/dashboard/agent#client-agent";
+export const AGENT_CARD_HREF = agentHelpLinks(null).card;
 
 const LINK =
   "inline-flex min-h-11 items-center rounded-lg text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490]";
@@ -24,25 +24,28 @@ export type HelpTestState = "closed" | "loading" | "noUrl" | "ready";
  *           server): no request at all, a line and the link to the card;
  *   noUrl   no saved address: the link to the card, no test spent;
  *   ready   the button.
+ * Admin tenant view (`asUserId`, set by the admin route only): both requests
+ * carry ?asUserId, so the test acts on the tenant viewed.
  */
-export function AgentHelpTest({ open }: { open: boolean }) {
+export function AgentHelpTest({ open, asUserId = null }: { open: boolean; asUserId?: string | null }) {
+  const urls = agentHelpRequests(asUserId);
   const [state, setState] = useState<HelpTestState>(open ? "loading" : "closed");
   const [test, setTest] = useState<TestWords | "running" | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const ctrl = new AbortController();
-    fetch("/api/dashboard/tools", { signal: ctrl.signal, cache: "no-store" })
+    fetch(urls.load, { signal: ctrl.signal, cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<ToolsResponse>) : Promise.reject(new Error(String(r.status)))))
       .then((d) => setState(d.clientAgentTool?.visible !== true ? "closed" : d.tools.clientAgent?.url ? "ready" : "noUrl"))
       .catch(() => setState("noUrl"));
     return () => ctrl.abort();
-  }, [open]);
+  }, [open, urls.load]);
 
   const run = async () => {
     setTest("running");
     try {
-      const res = await fetch("/api/dashboard/tools/client-agent/test", {
+      const res = await fetch(urls.test, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",
@@ -53,18 +56,29 @@ export function AgentHelpTest({ open }: { open: boolean }) {
     }
   };
 
-  return <AgentHelpTestView state={state} test={test} onRun={() => void run()} />;
+  return <AgentHelpTestView state={state} test={test} onRun={() => void run()} asUserId={asUserId} />;
 }
 
 /** The view alone (rendered as-is by the tests). */
-export function AgentHelpTestView({ state, test, onRun }: { state: HelpTestState; test: TestWords | "running" | null; onRun?: () => void }) {
+export function AgentHelpTestView({
+  state,
+  test,
+  onRun,
+  asUserId = null,
+}: {
+  state: HelpTestState;
+  test: TestWords | "running" | null;
+  onRun?: () => void;
+  asUserId?: string | null;
+}) {
+  const links = agentHelpLinks(asUserId);
   const t = useTranslations("AgentHelp.test");
   const tTest = useTranslations("ToolsBrick.agent");
   const card = useTranslations("ClientAgentBrick")("title");
   const cardLink = (
-    <Link href={AGENT_CARD_HREF} className={LINK} data-help-card-link>
+    <HelpLink href={links.card} admin={links.admin} className={LINK} data-help-card-link>
       {t("toCard", { card })}
-    </Link>
+    </HelpLink>
   );
   if (state === "loading") {
     return (
