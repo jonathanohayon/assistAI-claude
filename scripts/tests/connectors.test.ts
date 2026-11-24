@@ -366,8 +366,11 @@ const files = ["app", "lib"].flatMap((d) =>
     .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
     .map((e) => relative(ROOT, join(e.parentPath ?? e.path, e.name))),
 );
-const allowed = new Set(["lib/db/schema.ts", "lib/connectors/page.ts", "lib/connectors/route-load.ts"]);
+// B3: lib/connectors/call-attribution.ts reads the connector's id only (existence check).
+const allowed = new Set(["lib/db/schema.ts", "lib/connectors/page.ts", "lib/connectors/route-load.ts", "lib/connectors/call-attribution.ts"]);
 assert.doesNotMatch(src("lib/connectors/route-load.ts"), /\.select\(\)/, "the call-path reader: explicit picks only");
+assert.match(src("lib/connectors/call-attribution.ts"), /\.select\(\{ id: connectors\.id \}\)/, "the attribution reader picks the id only");
+assert.doesNotMatch(src("lib/connectors/call-attribution.ts"), /\.select\(\)|connectors\.(secret|url|name|voiceConfig)/, "the attribution reader: id only");
 for (const f of files) {
   if (allowed.has(f)) continue;
   const s = src(f);
