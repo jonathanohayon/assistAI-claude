@@ -169,7 +169,8 @@ const sanitizeService = (
   };
 };
 
-const DEFAULT_BUSINESS: BusinessConfig = {
+/** The business JSON of an account with no company facts (also the sanitizer's fallback). Never mutate. */
+export const DEFAULT_BUSINESS: BusinessConfig = {
   identity: { name: "", tagline: "", email: "" },
   centres: [],
   services: [],

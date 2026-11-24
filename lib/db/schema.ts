@@ -424,19 +424,28 @@ export const renewalReminders = pgTable(
 // events table: lib/logger.ts masks phone numbers and emails inside event
 // text, so a prompt holding the business's own number would come back altered.
 // Admin-only, never served to the worker. lib/persona-reset.ts.
-export const personaResets = pgTable("persona_resets", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  previous: jsonb("previous").notNull(),
-  applied: jsonb("applied").notNull(),
-  byAdmin: uuid("by_admin").references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .default(sql`now()`),
-  undoneAt: timestamp("undone_at", { withTimezone: true }),
-});
+// `kind` (0064): 'persona' (the above) or 'company_sheet' (POST
+// …/reset-company-sheet, lib/company-sheet-reset.ts): previous / applied =
+// { business, knowledge, companySheet? } (companySheet absent = SQL NULL).
+// Each kind has its own "latest reset" for the undo rule.
+export const personaResets = pgTable(
+  "persona_resets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    previous: jsonb("previous").notNull(),
+    applied: jsonb("applied").notNull(),
+    byAdmin: uuid("by_admin").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+    kind: text("kind").notNull().default("persona"),
+  },
+  (t) => [check("persona_resets_kind_check", sql`${t.kind} IN ('persona', 'company_sheet')`)],
+);
 
 // Per-product trials (P3): 7 days + 30 minutes, no card, ONCE per account ×
 // product. The unique (user_id, product) IS the "once" guarantee: the

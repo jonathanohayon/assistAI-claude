@@ -21,6 +21,7 @@ import { productNames } from "@/lib/product-names";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { getDemoUserId } from "@/lib/settings";
 
+import { CompanySheetResetControl } from "./CompanySheetResetControl";
 import { DemoAccountToggle } from "./DemoAccountToggle";
 import { EngineOverrideLine } from "./EngineOverrideLine";
 import { PersonaResetControl } from "./PersonaResetControl";
@@ -151,6 +152,7 @@ export default async function AdminTenantLayout({
               />
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
               <PersonaResetControl userId={target.id} />
+              <CompanySheetResetControl userId={target.id} />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
             <EngineOverrideLine userId={target.id} names={names} />

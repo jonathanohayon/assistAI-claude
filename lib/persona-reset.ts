@@ -7,6 +7,9 @@
 // Only instructions, greetingInstructions, agentName and personaConfig (kept
 // in step with the legacy columns, as the admin configs PUT does) are written;
 // every other column of the account is left as is.
+// persona_resets also holds company-sheet resets (kind 'company_sheet',
+// lib/company-sheet-reset.ts): every read here is limited to kind 'persona',
+// so the two kinds never see each other's rows.
 
 import { and, desc, eq, isNull } from "drizzle-orm";
 
@@ -14,6 +17,8 @@ import { db } from "@/lib/db";
 import { agentConfigs, personaResets, users } from "@/lib/db/schema";
 import { inboundPersonaAfterLegacy } from "@/lib/persona/store";
 import { editedSinceReset, neutralPersona, parseSnapshot, type PersonaSnapshot } from "@/lib/persona-reset-rules";
+
+const PERSONA = eq(personaResets.kind, "persona");
 
 export type PersonaResetResult = { status: number; body: Record<string, unknown> };
 
@@ -45,7 +50,7 @@ export async function resetPersonaToNeutral(userId: string, adminId: string): Pr
     const applied: PersonaSnapshot = { ...neutral, personaConfig };
     const [reset] = await tx
       .insert(personaResets)
-      .values({ userId, previous, applied, byAdmin: adminId })
+      .values({ userId, kind: "persona", previous, applied, byAdmin: adminId })
       .returning({ id: personaResets.id, createdAt: personaResets.createdAt });
     await tx
       .update(agentConfigs)
@@ -62,14 +67,14 @@ export async function undoPersonaReset(userId: string, resetId: string, force: b
     const [reset] = await tx
       .select()
       .from(personaResets)
-      .where(and(eq(personaResets.id, resetId), eq(personaResets.userId, userId)))
+      .where(and(eq(personaResets.id, resetId), eq(personaResets.userId, userId), PERSONA))
       .limit(1);
     if (!reset) return { status: 404, body: { error: "reset_not_found" } };
     if (reset.undoneAt) return { status: 409, body: { error: "already_undone" } };
     const [latest] = await tx
       .select({ id: personaResets.id })
       .from(personaResets)
-      .where(eq(personaResets.userId, userId))
+      .where(and(eq(personaResets.userId, userId), PERSONA))
       .orderBy(desc(personaResets.createdAt), desc(personaResets.id))
       .limit(1);
     if (latest?.id !== reset.id) return { status: 409, body: { error: "not_latest_reset" } };
@@ -104,7 +109,7 @@ export async function undoableReset(
   const [latest] = await db
     .select({ id: personaResets.id, createdAt: personaResets.createdAt, applied: personaResets.applied, undoneAt: personaResets.undoneAt })
     .from(personaResets)
-    .where(eq(personaResets.userId, userId))
+    .where(and(eq(personaResets.userId, userId), PERSONA))
     .orderBy(desc(personaResets.createdAt), desc(personaResets.id))
     .limit(1);
   if (!latest || latest.undoneAt) return null;
