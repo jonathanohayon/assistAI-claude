@@ -131,6 +131,10 @@ for (const [name, page] of Object.entries(MOCK_PAGES)) {
     { name: null, number: null, line: "main", del: false, derived: true },
     "derived: default name, no number, main-number line, no delete",
   );
+  // The derived card is never deletable, wherever it sits in the list.
+  const d3 = connectorsListView({ page: p([MOCK_ONLINE, MOCK_LEGACY], false, { ok: true }), extraPrice: EUR });
+  if (d3.kind !== "list") throw new Error("d3");
+  assert.equal(d3.cards[1].canDelete, false, "derived card at index 1: still no delete");
   // A derived card that would carry a number still shows the main-number line, never a number.
   const d2 = connectorsListView({ page: p([{ ...MOCK_LEGACY, numberE164: "+972500000009" }], false, { ok: true }), extraPrice: EUR });
   if (d2.kind !== "list") throw new Error("d2");
