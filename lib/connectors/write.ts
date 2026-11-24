@@ -25,7 +25,7 @@ import { db } from "@/lib/db";
 import { agentConfigs, connectors, phoneNumbers, users } from "@/lib/db/schema";
 import { openStoredSecret } from "@/lib/crypto/unreadable-secret";
 import { sealForStorage } from "@/lib/crypto/secret-box";
-import { loadTamaravoxNumbers } from "@/lib/connectors/tamaravox-numbers";
+import { isTamaravoxNumber, type VoxCheck } from "@/lib/connectors/tamaravox-numbers";
 import { logEvent } from "@/lib/logger";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
 import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow } from "@/lib/products";
@@ -50,7 +50,7 @@ export type ConnectorActor = { userId: string; sessionIsAdmin: boolean; viaAsUse
 
 export type WriteOutcome =
   | { ok: true; status: 200 | 201; body: Record<string, unknown> }
-  | { ok: false; status: 400 | 403 | 404 | 409 | 429; body: { error: string; fields?: string[]; message?: string; [k: string]: unknown } };
+  | { ok: false; status: 400 | 403 | 404 | 409 | 429 | 503; body: { error: string; fields?: string[]; message?: string; [k: string]: unknown } };
 
 /** Thrown inside a transaction to roll it back with a refusal. */
 class Refusal extends Error {
@@ -86,6 +86,8 @@ const isUniqueNumberViolation = (e: unknown): boolean => {
 const CREATED_NOW = sql`clock_timestamp()` as unknown as Date;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+/** A transaction, or the pool for the unlocked reads before one. */
+type Reader = Tx | typeof db;
 
 async function lockAccount(tx: Tx, userId: string) {
   const [account] = await tx
@@ -96,13 +98,13 @@ async function lockAccount(tx: Tx, userId: string) {
   return account ?? null;
 }
 
-async function rowCount(tx: Tx, userId: string): Promise<number> {
+async function rowCount(tx: Reader, userId: string): Promise<number> {
   const [r] = await tx.select({ n: count() }).from(connectors).where(eq(connectors.userId, userId));
   return Number(r?.n ?? 0);
 }
 
 /** The legacy row the next write would write, or null (rows exist / no enabled legacy agent). */
-async function pendingLegacy(tx: Tx, userId: string, rows: number): Promise<{ row: LegacyRow; numberE164: string | null } | null> {
+async function pendingLegacy(tx: Reader, userId: string, rows: number): Promise<{ row: LegacyRow; numberE164: string | null } | null> {
   if (rows > 0) return null;
   const [[cfg], [main]] = await Promise.all([
     tx.select({ toolsConfig: agentConfigs.toolsConfig }).from(agentConfigs).where(eq(agentConfigs.userId, userId)).limit(1),
@@ -155,6 +157,35 @@ async function urlRefusal(url: string | undefined, check?: CheckOptions): Promis
   return r.ok ? null : { ok: false, status: 400, body: { error: "unsafe_url", message: SAFE_URL_MESSAGE, fields: ["url"] } };
 }
 
+const VOX_UNAVAILABLE: Extract<WriteOutcome, { ok: false }> = {
+  ok: false,
+  status: 503,
+  body: { error: "vox_check_unavailable", message: "Réessayez dans un instant." },
+};
+
+/**
+ * The tamaravox check (lib/connectors/tamaravox-numbers.ts), BEFORE the
+ * transaction: no row lock is held during the HTTP call. Unlocked reads find
+ * the numbers this create would put on a connector: the requested one (this
+ * account's) and, when the legacy card would convert, its number too (same
+ * rule). Any "unavailable" → 503, nothing written (FAIL-CLOSED);
+ * "not_configured" = skipped (allowed, alerted inside the check). The
+ * transaction then re-reads under the lock and refuses (503) a number that was
+ * not checked here (a concurrent change between the two reads).
+ */
+async function voxPrecheck(userId: string, phoneNumberId: string): Promise<Map<string, VoxCheck> | null> {
+  const [num] = await db
+    .select({ phoneNumber: phoneNumbers.phoneNumber })
+    .from(phoneNumbers)
+    .where(and(eq(phoneNumbers.id, phoneNumberId), eq(phoneNumbers.userId, userId)))
+    .limit(1);
+  const legacy = await pendingLegacy(db, userId, await rowCount(db, userId));
+  const e164s = [...new Set([num?.phoneNumber, legacy?.numberE164].filter((x): x is string => !!x))];
+  const outcomes = await Promise.all(e164s.map((e) => isTamaravoxNumber(e)));
+  if (outcomes.includes("unavailable")) return null;
+  return new Map(e164s.map((e, i) => [e, outcomes[i]]));
+}
+
 async function run(fn: () => Promise<WriteOutcome>): Promise<WriteOutcome> {
   try {
     return await fn();
@@ -187,7 +218,9 @@ async function pageAnd(userId: string, id: string | null): Promise<{ page: Conne
 export async function createConnector(a: ConnectorActor, input: ConnectorCreate, check?: CheckOptions): Promise<WriteOutcome> {
   const unsafe = await urlRefusal(input.url, check);
   if (unsafe) return unsafe;
-  const [catalogue, vox] = await Promise.all([getCatalogueRow(), loadTamaravoxNumbers()]);
+  const checked = await voxPrecheck(a.userId, input.phoneNumberId);
+  if (!checked) return VOX_UNAVAILABLE;
+  const catalogue = await getCatalogueRow();
   const limits = catalogue.connectorLimits ?? defaultConnectorLimits();
   const secret = generateConnectorSecret();
   let converted: { id: string; phoneNumberId: string | null } | null = null;
@@ -208,6 +241,10 @@ export async function createConnector(a: ConnectorActor, input: ConnectorCreate,
         .limit(1);
       if (!num) refuse(404, { error: "number_not_found" });
       const [held] = await tx.select({ id: connectors.id }).from(connectors).where(eq(connectors.phoneNumberId, num.id)).limit(1);
+      // The numbers checked before the transaction must be the ones written now.
+      const written = [num.phoneNumber, legacy?.numberE164].filter((x): x is string => !!x);
+      if (written.some((e) => !checked.has(e))) refuse(503, VOX_UNAVAILABLE.body);
+      const vox = written.filter((e) => checked.get(e) === "vox");
       const conflict = numberConflict({
         e164: num.phoneNumber,
         connectorNumbers: held || legacy?.row.phoneNumberId === num.id ? [num.phoneNumber] : [],
@@ -215,6 +252,8 @@ export async function createConnector(a: ConnectorActor, input: ConnectorCreate,
       });
       if (conflict === "connector_number") refuse(409, { error: "number_in_use" });
       if (conflict === "tamaravox_number") refuse(409, { error: "tamaravox_number" });
+      // The converted legacy card's number: the same rule.
+      if (legacy?.numberE164 && vox.includes(legacy.numberE164)) refuse(409, { error: "tamaravox_number" });
 
       // Limits: the legacy card counts as one (it is about to become a row).
       const can = canAddConnector({ subscriptionStatus: account!.subscriptionStatus, role: account!.role }, rows + (legacy ? 1 : 0), limits);

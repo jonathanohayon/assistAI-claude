@@ -16,7 +16,14 @@
 //      the acknowledgement 409; a refused write rolls the conversion back;
 //      zero rows + legacy ON + POST on B → 2 rows (legacy on A, new on B),
 //      the events record it; PATCH "legacy" converts too; tools_config untouched;
-//   8. test → last_test_* written, the stored secret opened, no real URL.
+//   8. test → last_test_* written, the stored secret opened, no real URL;
+//   9. the tamaravox check against a LOCAL fake tamaravox server (127.0.0.1,
+//      free port; GET /api/v1/numbers/exists + x-tamaravox-exists-secret):
+//      200 → 409 tamaravox_number (the converted legacy number too), 404 →
+//      201; 500 / a bad secret (401) / a hang past 1.5 s / the server down
+//      → 503 vox_check_unavailable, nothing written;
+//  10. TAMARAVOX_URL / TAMARAVOX_EXISTS_SECRET unset → the check is skipped:
+//      created, and exactly ONE admin alert across two creates.
 // Plain `npm test` skips it. Run it with:  bash scripts/connectors-write-db.sh
 // Only a 127.0.0.1/localhost URL; DATABASE_URL never read from the shell.
 // Mock data only (example.com / example.test, +1555). No network: fetch and
@@ -24,6 +31,8 @@
 
 import assert from "node:assert/strict";
 import dns from "node:dns";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 
 const url = process.env.CONNECTORS_WRITE_DB_TEST_URL;
 if (!url) {
@@ -32,7 +41,7 @@ if (!url) {
 }
 const host = new URL(url).hostname;
 if (host !== "127.0.0.1" && host !== "localhost") throw new Error(`refusing non-local database host ${host}`);
-if (Object.keys(process.env).some((k) => /^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|CAMPAIGN_DISPATCH|CLIENT_AGENT|PRODUCT_ORDERS|^CONNECTORS_WRITE$|SECRETS_KEY/i.test(k))) {
+if (Object.keys(process.env).some((k) => /^(LIVEKIT|TWILIO|RESEND|WHATSAPP|GOOGLE)|OPENAI|REALTIME_API_KEY|EMAIL_FROM|CAMPAIGN_DISPATCH|CLIENT_AGENT|PRODUCT_ORDERS|^CONNECTORS_WRITE$|SECRETS_KEY|TAMARAVOX/i.test(k))) {
   throw new Error("refusing to run with provider env or product flags set");
 }
 if (!(globalThis as { __connectorsWriteHooks?: boolean }).__connectorsWriteHooks) throw new Error("module hooks missing: run through scripts/connectors-write-db.sh");
@@ -41,14 +50,49 @@ process.env.DATABASE_URL = url;
 process.env.SECRETS_KEY = Buffer.alloc(32, 7).toString("base64");
 process.env.SECRETS_KEY_ID = "mocktest";
 
-// Nothing leaves the process: fetch refused; DNS answers a fixed public
+// Nothing leaves the process: fetch refused except to the local fake
+// tamaravox origins (127.0.0.1, this process); DNS answers a fixed public
 // address for *.example.com and fails everything else (recorded).
 const network = { fetch: [] as string[], dns: [] as string[] };
-globalThis.fetch = (async (input: string | URL | Request) => {
+const realFetch = globalThis.fetch;
+const localOrigins = new Set<string>();
+globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
   const u = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (localOrigins.has(new URL(u).origin)) return realFetch(input, init);
   network.fetch.push(u);
   throw new Error(`test: no network (${u})`);
 }) as typeof fetch;
+
+// The fake tamaravox: GET /api/v1/numbers/exists?phone=… with the mock
+// secret → 200 (a body carrying a mock webhook secret, never to be read) if
+// the phone is in `voxSet`, else 404; a wrong secret → 401; mode "500" /
+// "hang" (never answers) for the outages.
+const VOX_SECRET = "mock-exists-secret-0123456789";
+const voxSet = new Set<string>();
+const voxSeen: Array<{ path: string; phone: string | null; secretOk: boolean }> = [];
+let voxMode: "normal" | "500" | "hang" = "normal";
+const fakeVox = http.createServer((req, res) => {
+  const u = new URL(req.url ?? "/", "http://127.0.0.1");
+  const secretOk = req.headers["x-tamaravox-exists-secret"] === VOX_SECRET;
+  voxSeen.push({ path: u.pathname, phone: u.searchParams.get("phone"), secretOk });
+  if (voxMode === "hang") return;
+  if (voxMode === "500") return void res.writeHead(500).end("mock error");
+  if (u.pathname !== "/api/v1/numbers/exists") return void res.writeHead(404).end();
+  if (!secretOk) return void res.writeHead(401).end(JSON.stringify({ error: "unauthorized" }));
+  const phone = u.searchParams.get("phone") ?? "";
+  if (!voxSet.has(phone)) return void res.writeHead(404).end(JSON.stringify({ error: "not_found" }));
+  res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ exists: true, webhookSecret: "mock-vox-webhook-secret-never-read" }));
+});
+async function listen(server: http.Server): Promise<string> {
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+}
+const setVoxEnv = (u: string | null, secret: string | null) => {
+  if (u === null) delete process.env.TAMARAVOX_URL;
+  else process.env.TAMARAVOX_URL = u;
+  if (secret === null) delete process.env.TAMARAVOX_EXISTS_SECRET;
+  else process.env.TAMARAVOX_EXISTS_SECRET = secret;
+};
 (dns.promises as { lookup: unknown }).lookup = async (hostname: string) => {
   network.dns.push(hostname);
   if (hostname === "private.example.com") return [{ address: "10.0.0.7", family: 4 }];
@@ -58,7 +102,6 @@ globalThis.fetch = (async (input: string | URL | Request) => {
 
 const g = globalThis as {
   __campgateSession?: { user: { id: string; email?: string } } | null;
-  __voxNumbers?: string[];
   __agentTests?: Array<{ url: string; secret: string | null; language: string }>;
   __agentTestResult?: { ok: true; ms: number } | { ok: false; reason: string };
 };
@@ -83,6 +126,32 @@ async function main() {
   const item = await import("../../app/api/dashboard/connectors/[id]/route");
   const testRoute = await import("../../app/api/dashboard/connectors/[id]/test/route");
   const adminCatalogue = await import("../../app/api/admin/product-catalogue/route");
+  const { voxCheckDeps } = await import("../../lib/connectors/tamaravox-numbers");
+  const { alertAdmins } = await import("../../lib/alerts");
+
+  // The fake tamaravox, and a closed port for "tamaravox down".
+  const VOX = await listen(fakeVox);
+  const closed = http.createServer();
+  const DOWN = await listen(closed);
+  await new Promise<void>((r) => closed.close(() => r()));
+  localOrigins.add(VOX).add(DOWN);
+  setVoxEnv(VOX, VOX_SECRET);
+  // Admin alerts: the real alertAdmins (its DB ledger dedups), sending
+  // replaced by a recorder; the clock at a daytime instant (no quiet hours).
+  const sentAlerts: Array<{ to: string; subject: string; body: string }> = [];
+  const noon = new Date();
+  noon.setUTCHours(10, 0, 0, 0);
+  voxCheckDeps.alert = (args) =>
+    alertAdmins(args, {
+      emailRecipients: async () => ["ops@connectors-write.example.test"],
+      whatsappRecipients: async () => [],
+      sendEmail: async (to, m) => {
+        sentAlerts.push({ to, ...m });
+        return { ok: true };
+      },
+      sendWhatsApp: async () => false,
+      now: () => noon.getTime(),
+    });
 
   const rows = async <T>(q: ReturnType<typeof sql>) => {
     const r = (await db.execute(q)) as unknown;
@@ -183,11 +252,13 @@ async function main() {
     [31, TRIAL_LEG, "1 day"],
     [40, OTHER, "1 day"],
     [50, ADMIN, "1 day"],
+    [51, ADMIN, "1 day"],
+    [52, ADMIN, "1 day"],
   ];
   for (const [k, uid, age] of owners) {
     await db.execute(sql`INSERT INTO phone_numbers (id, user_id, phone_number, label, created_at) VALUES (${num(k)}, ${uid}, ${e164(k)}, '', now() - ${age}::interval)`);
   }
-  g.__voxNumbers = [e164(11)];
+  voxSet.add(e164(11));
   const create = (k: number, extra: Record<string, unknown> = {}) => ({ name: `Bot ${k}`, url: `https://bot${k}.example.com/hook`, mode: "lead", phoneNumberId: num(k), ...extra });
 
   // ── 1. Switch unset → 404 everywhere, nothing written ──────────────────
@@ -340,8 +411,10 @@ async function main() {
   assert.deepEqual([inUse.status, inUse.body], [409, { error: "number_in_use" }], "another connector's number → 409");
   const foreign = await post(create(40));
   assert.deepEqual([foreign.status, foreign.body], [404, { error: "number_not_found" }], "another account's number → 404");
+  voxSeen.length = 0;
   const vox = await post(create(11));
   assert.deepEqual([vox.status, vox.body], [409, { error: "tamaravox_number" }], "a tamaravox number → 409");
+  assert.deepEqual(voxSeen, [{ path: "/api/v1/numbers/exists", phone: e164(11), secretOk: true }], "asked tamaravox: the path, the E.164, the secret header");
   const unsafe = await post(create(12, { url: "https://private.example.com/hook" }));
   assert.deepEqual([unsafe.status, unsafe.body.error], [400, "unsafe_url"]);
   const badBody = await post({ ...create(12), secret: "mine" });
@@ -368,6 +441,14 @@ async function main() {
   assert.deepEqual([rolledBack.status, rolledBack.body], [409, { error: "orders_closed" }], "paid, the legacy counts as 1: the new one is the 2nd");
   assert.equal((await rowsOf(LEG)).length, 0, "a refused write rolls the conversion back");
   setEnv("PRODUCT_ORDERS", "on");
+  // The converted legacy card's number is checked too (same rule).
+  voxSet.add(e164(20));
+  voxSeen.length = 0;
+  const legVox = await post(create(21, { acknowledgeLegacyConversion: true }));
+  assert.deepEqual([legVox.status, legVox.body], [409, { error: "tamaravox_number" }], "the legacy number is a tamaravox number → 409");
+  assert.deepEqual(voxSeen.map((r) => r.phone).sort(), [e164(20), e164(21)].sort(), "both numbers checked: the new one and the legacy one");
+  assert.equal((await rowsOf(LEG)).length, 0, "nothing written, no conversion");
+  voxSet.delete(e164(20));
   const conv = await post(create(21, { acknowledgeLegacyConversion: true }));
   assert.equal(conv.status, 201, "zero rows + legacy ON + POST on B → created");
   const legRows = await rowsOf(LEG);
@@ -425,6 +506,64 @@ async function main() {
   assert.equal((await patch(X, { name: "hijack" })).status, 404);
   console.log("ok: test (last_test_* written, the stored secret opened, mocked agent)");
 
+  // ── 9. The tamaravox check: outages fail closed ───────────────────────
+  as(OTHER);
+  const before9 = await snapshot();
+  const unavailable = { error: "vox_check_unavailable", message: "Réessayez dans un instant." };
+  voxMode = "500";
+  const r500 = await post(create(40));
+  assert.deepEqual([r500.status, r500.body], [503, unavailable], "tamaravox 500 → 503");
+  voxMode = "normal";
+  setVoxEnv(VOX, "mock-wrong-secret");
+  voxSeen.length = 0;
+  const r401 = await post(create(40));
+  assert.deepEqual([r401.status, r401.body], [503, unavailable], "a bad secret (401) → 503");
+  assert.deepEqual(voxSeen.map((r) => r.secretOk), [false]);
+  setVoxEnv(VOX, VOX_SECRET);
+  voxMode = "hang";
+  const t0 = Date.now();
+  const rHang = await post(create(40));
+  const took = Date.now() - t0;
+  assert.deepEqual([rHang.status, rHang.body], [503, unavailable], "tamaravox hangs → 503");
+  assert.ok(took >= 1400 && took < 4000, `the 1.5 s timeout (${took} ms)`);
+  voxMode = "normal";
+  fakeVox.closeAllConnections();
+  setVoxEnv(DOWN, VOX_SECRET);
+  const rDown = await post(create(40));
+  assert.deepEqual([rDown.status, rDown.body], [503, unavailable], "tamaravox down → 503");
+  assert.equal(await snapshot(), before9, "the outages wrote nothing (connectors, events, agent_configs, users, phone_numbers)");
+  assert.deepEqual(sentAlerts, [], "an outage is not the not-configured alert");
+  setVoxEnv(VOX, VOX_SECRET);
+  voxSeen.length = 0;
+  const rOk = await post(create(40));
+  assert.equal(rOk.status, 201, "not a tamaravox number (404) → 201");
+  assert.deepEqual(voxSeen.map((r) => [r.phone, r.secretOk]), [[e164(40), true]]);
+  console.log("ok: tamaravox check (500 / 401 / hang / down → 503, nothing written; 404 → 201)");
+
+  // ── 10. Not configured → skipped, one alert a day ─────────────────────
+  as(ADMIN);
+  voxSet.add(e164(52)); // a vox number: proves the check is skipped, not answered
+  voxSeen.length = 0;
+  for (const [vars, label] of [[[null, VOX_SECRET], "TAMARAVOX_URL unset"], [[VOX, null], "TAMARAVOX_EXISTS_SECRET unset"]] as const) {
+    setVoxEnv(vars[0], vars[1]);
+    const k = label.startsWith("TAMARAVOX_URL") ? 51 : 52;
+    const r = await post(create(k));
+    assert.equal(r.status, 201, `${label} → created (check skipped)`);
+  }
+  for (let i = 0; i < 50 && sentAlerts.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(voxSeen.length, 0, "not configured: tamaravox never asked");
+  assert.equal(sentAlerts.length, 1, "exactly ONE admin alert across two creates in a day");
+  assert.equal(sentAlerts[0].subject, "Tamaravox number check not configured");
+  const ledger = await one<{ v: string }>(sql`SELECT value AS v FROM app_settings WHERE value LIKE '%vox_check_not_configured%'`);
+  assert.ok(ledger, "the alert ledger holds vox_check_not_configured (24 h dedup)");
+  assert.equal((await rowsOf(ADMIN)).length, 2);
+  setVoxEnv(VOX, VOX_SECRET);
+  console.log("ok: not configured (skipped, created, one alert across two creates)");
+
+  const allEvents = (await rows<{ t: string }>(sql`SELECT coalesce(string_agg(message || coalesce(metadata::text, ''), ' '), '') AS t FROM events`))[0].t;
+  assert.ok(!allEvents.includes(VOX_SECRET) && !allEvents.includes("mock-vox-webhook-secret") && !allEvents.includes("numbers/exists"), "events carry no vox secret, body or URL");
+  fakeVox.close();
   assert.deepEqual(network.fetch, [], "no fetch left the process");
   assert.ok(network.dns.every((h) => h.endsWith(".example.com")), "DNS only for mock example.com names");
   console.log("ALL CONNECTORS WRITE DB TESTS PASSED");
