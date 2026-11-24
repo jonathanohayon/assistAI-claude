@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AgentHelpTest } from "@/components/agent-help/AgentHelpTest";
 import { CopyBlock } from "@/components/agent-help/CopyBlock";
+import { CopyPageLink } from "@/components/agent-help/CopyPageLink";
 import { agentHelpLinks, HelpLink } from "@/components/agent-help/links";
 import {
   CLIENT_AGENT_REQUEST_FIELDS,
@@ -74,6 +75,11 @@ export function AgentHelpView({
           {t("back", { page: tNav("connect") })}
         </HelpLink>
         <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("title")}</h1>
+        {/* Who the page is for, and the link to send them (always the tenant URL). */}
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#334155]" data-for-tech>
+          <span>{t("forTech")}</span>
+          <CopyPageLink locale={locale} label={t("copyLink")} copiedLabel={t("linkCopied")} />
+        </p>
       </div>
 
       <section className={CARD} aria-labelledby="help-what">

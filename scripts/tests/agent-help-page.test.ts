@@ -9,7 +9,10 @@
 
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer as createNetServer } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { NextIntlClientProvider } from "next-intl";
@@ -17,7 +20,7 @@ import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { AgentHelpView } from "../../app/[locale]/dashboard/agent/help/help-view";
-import { agentHelpLinks, agentHelpRequests } from "../../components/agent-help/links";
+import { agentHelpLinks, agentHelpRequests, tenantHelpUrl } from "../../components/agent-help/links";
 import { AGENT_CARD_HREF, AgentHelpTestView, loadHelpTestState, runHelpTest } from "../../components/agent-help/AgentHelpTest";
 import { AGENT_HELP_HREF, ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
@@ -300,6 +303,88 @@ async function main() {
     }
     assert.match(messages("fr").AgentHelp.contract.signature, /^Chaque requête porte l'en-tête <c>\{header\}<\/c> :/);
     assert.match(messages("fr").AgentHelp.contract.signature, /créé à la première activation et affiché une seule fois dans la carte « \{card\} »/);
+  });
+
+  // (a) Who the page is for + "Copier le lien": the TENANT URL, in both views.
+  await test("for-tech line and copy-link button, first under the title, in fr/en/he", () => {
+    for (const l of LOCALES) {
+      const m = messages(l);
+      for (const asUserId of [null, TENANT]) {
+        const html = wrap(l, createElement(AgentHelpView, { locale: l, testOpen: false, asUserId, testLanguage: l }));
+        const line = html.indexOf(esc(m.AgentHelp.forTech));
+        assert.ok(line > html.indexOf("</h1>") && line < html.indexOf(esc(m.AgentHelp.what.title)), `${l}: line between the title and the first section`);
+        assert.ok(html.includes(`data-copy-page-link="true"`) && html.includes(`>${esc(m.AgentHelp.copyLink)}</button>`), `${l}: the button`);
+      }
+    }
+    assert.doesNotMatch(`${messages("he").AgentHelp.forTech} ${messages("he").AgentHelp.copyLink}`, /תמרה/);
+  });
+  await test("the copied URL is the tenant page, never /admin or asUserId", () => {
+    for (const l of LOCALES) assert.equal(tenantHelpUrl("https://app.example.test", l), `https://app.example.test/${l}/dashboard/agent/help`);
+    assert.equal(tenantHelpUrl("https://app.example.test/", "fr"), "https://app.example.test/fr/dashboard/agent/help");
+    // The button copies tenantHelpUrl(this origin, the page's locale); the view gives it the locale only (no asUserId, no admin href).
+    const btn = read("components/agent-help/CopyPageLink.tsx").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(btn, /writeText\(tenantHelpUrl\(window\.location\.origin, locale\)\)/);
+    assert.doesNotMatch(btn, /asUserId|\/admin|location\.href|pathname/);
+    assert.match(read("app/[locale]/dashboard/agent/help/help-view.tsx"), /<CopyPageLink locale=\{locale\} label=/);
+    // The admin route renders the view with the tenant-facing locale "fr": the copied URL is /fr/dashboard/agent/help.
+    assert.match(read("app/admin/users/[userId]/agent/help/page.tsx"), /locale="fr"/);
+  });
+
+  // (b) The Node example always verifies the signature, and refuses to start without the secret.
+  await test("example server: no optional signature check", () => {
+    const src = exampleServerText(words(messages("fr")));
+    assert.doesNotMatch(src, /if \(SECRET\)/);
+    assert.match(src, /if \(!SECRET\) \{\n\s*console\.error\([^)]*AGENT_SECRET is required[^)]*\);\n\s*process\.exit\(1\);\n\}/);
+  });
+  await test("example server, run for real (offline, 127.0.0.1): exits without the secret; checks every request", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "agent-help-example-"));
+    const file = join(dir, "server.mjs");
+    writeFileSync(file, exampleServerText(words(messages("fr"))));
+    const run = (env: Record<string, string>) => spawn(process.execPath, [file], { env: { PATH: process.env.PATH ?? "", ...env } as unknown as NodeJS.ProcessEnv, stdio: ["ignore", "pipe", "pipe"] as const });
+    try {
+      // No AGENT_SECRET: non-zero exit, the clear message, before listening.
+      const noSecret = run({});
+      let err = "";
+      noSecret.stderr.on("data", (d: Buffer) => (err += d));
+      const code = await new Promise<number | null>((r) => noSecret.on("exit", (c: number | null) => r(c)));
+      assert.equal(code, 1);
+      assert.match(err, /AGENT_SECRET is required/);
+
+      // With it, on a free local port: signed → 200 + answer; unsigned or wrong → 401.
+      const port = await new Promise<number>((r) => {
+        const s = createNetServer().listen(0, "127.0.0.1", () => {
+          const p = (s.address() as { port: number }).port;
+          s.close(() => r(p));
+        });
+      });
+      const secret = "mock-example-secret";
+      const srv = run({ AGENT_SECRET: secret, PORT: String(port) });
+      try {
+        const url = `http://127.0.0.1:${port}/ask`;
+        const body = JSON.stringify(exampleRequestBody("fr", words(messages("fr"))));
+        let up = false;
+        for (let i = 0; i < 50 && !up; i++) {
+          try {
+            await fetch(url, { method: "GET" });
+            up = true;
+          } catch {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        }
+        assert.ok(up, "example server listening");
+        const post = (sig?: string) =>
+          fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...(sig === undefined ? {} : { [CLIENT_AGENT_SIGNATURE_HEADER]: sig }) }, body });
+        const ok = await post(createHmac("sha256", secret).update(body).digest("hex"));
+        assert.equal(ok.status, 200);
+        assert.equal(((await ok.json()) as { answer: string }).answer, messages("fr").AgentHelp.example.answer);
+        assert.equal((await post()).status, 401, "unsigned");
+        assert.equal((await post(createHmac("sha256", "other").update(body).digest("hex"))).status, 401, "wrong secret");
+      } finally {
+        srv.kill();
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   await test("HE copy writes the brand in Latin letters", () => {

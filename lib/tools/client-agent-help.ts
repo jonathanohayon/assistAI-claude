@@ -91,8 +91,12 @@ export function exampleServerText(w: ExampleWords): string {
 import { createServer } from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// The signing secret from the "Your AI agent" card.
-const SECRET = process.env.AGENT_SECRET ?? "";
+// The signing secret from the "Your AI agent" card: every request is signed.
+const SECRET = process.env.AGENT_SECRET;
+if (!SECRET) {
+  console.error('AGENT_SECRET is required: copy it from the "Your AI agent" card');
+  process.exit(1);
+}
 
 createServer((req, res) => {
   if (req.method !== "POST") return res.writeHead(405).end();
@@ -100,12 +104,10 @@ createServer((req, res) => {
   req.on("data", (c) => chunks.push(c));
   req.on("end", () => {
     const raw = Buffer.concat(chunks); // sign the raw bytes, as received
-    if (SECRET) {
-      const expected = createHmac("sha256", SECRET).update(raw).digest("hex");
-      const got = String(req.headers["${header}"] ?? "");
-      if (got.length !== expected.length || !timingSafeEqual(Buffer.from(got), Buffer.from(expected))) {
-        return res.writeHead(401).end();
-      }
+    const expected = createHmac("sha256", SECRET).update(raw).digest("hex");
+    const got = String(req.headers["${header}"] ?? "");
+    if (got.length !== expected.length || !timingSafeEqual(Buffer.from(got), Buffer.from(expected))) {
+      return res.writeHead(401).end();
     }
     const { question } = JSON.parse(raw.toString("utf8"));
     // Your agent's logic goes here: answer \`question\` in under ${helpFacts.budgetSeconds} s.

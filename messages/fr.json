@@ -2988,6 +2988,9 @@
   },
   "AgentHelp": {
     "title": "Comment obtenir l'adresse de votre agent",
+    "forTech": "Cette page s'adresse à la personne technique qui gère votre agent. Transmettez-lui ce lien.",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié.",
     "back": "Retour à « {page} »",
     "copy": "Copier",
     "copied": "Copié.",

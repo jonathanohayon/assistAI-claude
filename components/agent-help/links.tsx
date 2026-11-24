@@ -22,6 +22,15 @@ export function agentHelpLinks(asUserId?: string | null): AgentHelpLinks {
 }
 
 /**
+ * The link to hand to the customer's technical person: ALWAYS the
+ * tenant-facing page (/<locale>/dashboard/agent/help), in the admin view too,
+ * never the /admin route and never an asUserId.
+ */
+export function tenantHelpUrl(origin: string, locale: string): string {
+  return `${origin.replace(/\/+$/, "")}/${encodeURIComponent(locale)}${AGENT_HELP_HREF}`;
+}
+
+/**
  * The help page's two requests (the brick's EXISTING routes): ?asUserId only
  * when given, i.e. only on the admin route (the routes refuse it from a
  * non-admin: resolveTargetUserId → 403).
