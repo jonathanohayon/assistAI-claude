@@ -6,8 +6,8 @@
 
 import type { PlanKey } from "@/lib/plans";
 
-/** The Persona brick's default agent name (lib/persona/adapters.ts). */
-export const DEFAULT_AGENT_NAME = "Sarah";
+/** The default agent name of a NEW account and of an admin persona reset ("Tamara", as the product and the welcome email say). Names already stored are never rewritten. The worker-side "Sarah" fallbacks for an empty name (lib/agent/**) are separate and unchanged. */
+export const DEFAULT_AGENT_NAME = "Tamara";
 
 export type SeedLanguage = "fr" | "he" | "en";
 

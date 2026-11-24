@@ -35,7 +35,9 @@ export type LogSource =
   | "summary"
   | "latency"
   | "sync"
-  | "email";
+  | "email"
+  // Admin actions on an account (e.g. persona_reset_neutral).
+  | "admin";
 
 export interface LogEvent {
   source: LogSource;
