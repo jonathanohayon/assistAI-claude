@@ -11,7 +11,8 @@
 // TODO(B7): "unreachable" from the last test / call outcome.
 
 import { parseTools } from "../tools/store";
-import type { ConnectorMode, ConnectorView } from "./types";
+import type { ConnectorCard } from "./deletable";
+import type { ConnectorMode } from "./types";
 
 export const LEGACY_CONNECTOR_ID = "legacy" as const;
 
@@ -24,7 +25,8 @@ export type LegacyInput = {
   mainNumber: { phoneNumber: string; label: string } | null;
 };
 
-export function legacyConnectorView(input: LegacyInput): ConnectorView | null {
+// `deletable` is set by the page (lib/connectors/deletable.ts withDeletable).
+export function legacyConnectorView(input: LegacyInput): ConnectorCard | null {
   if (input.connectorRowCount > 0) return null;
   const parsed = parseTools(input.toolsConfig);
   if (!parsed.ok) return null;
@@ -59,7 +61,7 @@ export type ConnectorRowPick = {
   phoneLabel: string | null;
 };
 
-export function connectorRowView(row: ConnectorRowPick, lastCallAt: Date | null): ConnectorView {
+export function connectorRowView(row: ConnectorRowPick, lastCallAt: Date | null): ConnectorCard {
   return {
     id: row.id,
     name: row.name,

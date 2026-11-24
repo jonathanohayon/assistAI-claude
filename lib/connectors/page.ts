@@ -8,26 +8,46 @@ import { and, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { agentConfigs, calls, connectors, phoneNumbers, users } from "@/lib/db/schema";
 import { oldestTenantNumberWithLabel } from "@/lib/phone/oldest-number";
-import { getConnectorLimits } from "@/lib/products";
+import { currencyForLocale } from "@/lib/hyp";
+import { activeTrialProducts } from "@/lib/product-trials";
+import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow, loadProductTrials } from "@/lib/products";
 
+import { connectProductActive, withDeletable, type ConnectorCard } from "./deletable";
 import { canAddConnector, connectorsInTrial, maxConnectors, type ConnectorAccount } from "./entitlement";
 import { connectorRowView, legacyConnectorView, type ConnectorRowPick } from "./legacy";
-import type { ConnectorLimits } from "./limits";
-import type { ConnectorsPageView, ConnectorView } from "./types";
+import { defaultConnectorLimits, type ConnectorLimits } from "./limits";
+import {
+  DEFAULT_CONNECTOR_EXTRA_MONTHLY,
+  defaultConnectorExtraMonthly,
+  nextConnectorPrice,
+  type ConnectorExtraMonthly,
+  type ConnectorPriceCurrency,
+} from "./price";
+import type { ConnectorsPageView } from "./types";
 
-/** Pure: the page from the account's connector views (rows, else the derived card). */
+/**
+ * Pure: the page from the account's connector cards (rows oldest first, else
+ * the derived card). C1b: `deletable` per card (lib/connectors/deletable.ts,
+ * `productActive` = connectProductActive) and canAdd.price (the next
+ * connector's extra price in `currency`, lib/connectors/price.ts).
+ */
 export function connectorsPageView(args: {
-  connectors: ConnectorView[];
+  connectors: ConnectorCard[];
   account: ConnectorAccount;
   limits: ConnectorLimits;
+  productActive: boolean;
+  currency: ConnectorPriceCurrency;
+  prices?: ConnectorExtraMonthly;
   env?: Record<string, string | undefined>;
 }): ConnectorsPageView {
   const used = args.connectors.length;
+  const inTrial = connectorsInTrial(args.account);
   const canAdd = canAddConnector(args.account, used, args.limits, args.env ?? process.env);
+  const price = nextConnectorPrice({ inTrial, used, currency: args.currency, prices: args.prices ?? DEFAULT_CONNECTOR_EXTRA_MONTHLY });
   return {
-    connectors: args.connectors,
-    limits: { max: maxConnectors(args.account, args.limits), used, inTrial: connectorsInTrial(args.account) },
-    canAdd: canAdd.ok ? { ok: true } : { ok: false, reason: canAdd.reason },
+    connectors: withDeletable(args.connectors, args.productActive),
+    limits: { max: maxConnectors(args.account, args.limits), used, inTrial },
+    canAdd: canAdd.ok ? { ok: true, price } : { ok: false, reason: canAdd.reason, price },
   };
 }
 
@@ -70,13 +90,16 @@ export async function loadConnectorsPage(
   env: Record<string, string | undefined> = process.env,
 ): Promise<ConnectorsPageView | null> {
   const [account] = await db
-    .select({ subscriptionStatus: users.subscriptionStatus, role: users.role })
+    .select({ ...ACCOUNT_PRODUCTS_PICK, role: users.role, locale: users.locale })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   if (!account) return null;
-  const [rows, limits] = await Promise.all([loadConnectorRows(userId), getConnectorLimits()]);
-  let views: ConnectorView[];
+  const [rows, row, trials] = await Promise.all([loadConnectorRows(userId), getCatalogueRow(), loadProductTrials(userId)]);
+  const limits = row.connectorLimits ?? defaultConnectorLimits();
+  const prices = row.connectorExtraMonthly ?? defaultConnectorExtraMonthly();
+  const productActive = connectProductActive({ ...account, activeTrials: activeTrialProducts(trials, new Date()) });
+  let views: ConnectorCard[];
   if (rows.length) {
     const last = await loadLastCallAt(userId, rows.map((r) => r.id));
     views = rows.map((r) => connectorRowView(r, last.get(r.id) ?? null));
@@ -88,5 +111,14 @@ export async function loadConnectorsPage(
     const legacy = legacyConnectorView({ connectorRowCount: 0, toolsConfig: cfg?.toolsConfig ?? null, mainNumber });
     views = legacy ? [legacy] : [];
   }
-  return connectorsPageView({ connectors: views, account, limits, env });
+  return connectorsPageView({
+    connectors: views,
+    account,
+    limits,
+    productActive,
+    // The account's billing currency, as billing-stats / orders resolve it (he → ILS, else EUR).
+    currency: currencyForLocale(account.locale),
+    prices,
+    env,
+  });
 }
