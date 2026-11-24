@@ -195,6 +195,8 @@ async function main() {
   const [p] = await rows<{ i: string; g: string; n: string }>(sql`SELECT instructions AS i, greeting_instructions AS g, agent_name AS n FROM agent_configs WHERE user_id = ${TARGET}`);
   assert.deepEqual(p, { i: PERSONA.instructions, g: PERSONA.greeting, n: PERSONA.agentName });
   assert.equal(await userRow(TARGET, ["company_sheet"]), strip(beforeUser, ["company_sheet"]), "users row untouched apart from company_sheet");
+  const [dn] = await rows<{ d: string }>(sql`SELECT display_name AS d FROM users WHERE id = ${TARGET}`);
+  assert.equal(dn.d, "Mock Display", "display_name is kept (not part of the reset)");
   assert.equal([await cfgRow(OTHER), await userRow(OTHER)].join("|"), otherBefore, "another account untouched");
   const [stored] = await rows<{ id: string; kind: string; previous: Record<string, unknown>; by_admin: string; undone_at: string | null }>(
     sql`SELECT id, kind, previous, by_admin, undone_at FROM persona_resets WHERE user_id = ${TARGET}`,

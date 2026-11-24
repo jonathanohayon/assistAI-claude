@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AdminBadge } from "@/app/[locale]/dashboard/config/shared-ui";
+import { displayNameKeptLine } from "@/lib/company-sheet-reset-copy";
 
 type Undo = { resetId: string; createdAt: string; editedSinceReset: string[] } | null;
 
@@ -17,9 +18,10 @@ const FIELD_LABELS: Record<string, string> = {
  * Admin-only: clears the account's company sheet (company name, places,
  * services and prices, rules, notes, FAQ, and the old knowledge entries),
  * after a confirmation dialog, and offers to undo the latest clear
- * (POST /api/admin/users/[userId]/reset-company-sheet[/undo]).
+ * (POST /api/admin/users/[userId]/reset-company-sheet[/undo]). The display
+ * name (users.display_name) is not part of the reset: the dialog says so.
  */
-export function CompanySheetResetControl({ userId }: { userId: string }) {
+export function CompanySheetResetControl({ userId, displayName }: { userId: string; displayName: string }) {
   const [undo, setUndo] = useState<Undo>(null);
   const [confirming, setConfirming] = useState<"reset" | "undo" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,6 +65,7 @@ export function CompanySheetResetControl({ userId }: { userId: string }) {
   };
 
   const edited = undo?.editedSinceReset ?? [];
+  const keptName = displayNameKeptLine(displayName);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -110,6 +113,7 @@ export function CompanySheetResetControl({ userId }: { userId: string }) {
                   <li>la FAQ ;</li>
                   <li>les anciennes entrées de connaissances.</li>
                 </ul>
+                {keptName && <p className="mb-2">{keptName}</p>}
                 <p>
                   La persona, la voix, la langue et les outils ne changent pas. Les valeurs actuelles sont conservées : le
                   vidage peut être annulé.

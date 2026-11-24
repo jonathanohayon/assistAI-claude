@@ -152,7 +152,7 @@ export default async function AdminTenantLayout({
               />
               <DemoAccountToggle userId={target.id} initialIsDemo={isDemo} />
               <PersonaResetControl userId={target.id} />
-              <CompanySheetResetControl userId={target.id} />
+              <CompanySheetResetControl userId={target.id} displayName={target.displayName} />
               <span className="font-mono">{target.id.slice(0, 8)}…</span>
             </div>
             <EngineOverrideLine userId={target.id} names={names} />

@@ -3,11 +3,14 @@
 // scripts/tests/company-sheet-reset-db.test.ts (bash scripts/company-sheet-reset-db.sh).
 // Run with:  npx tsx scripts/tests/company-sheet-reset.test.ts
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { DEFAULT_BUSINESS, sanitizeBusinessConfig } from "../../lib/business";
 import { clearedSheet, isSheetSnapshot, RESET_KIND, SHEET_FIELDS, sheetEditedSinceReset } from "../../lib/company-sheet-reset-rules";
+import { displayNameKeptLine } from "../../lib/company-sheet-reset-copy";
 import { knowledgeFromInbound } from "../../lib/knowledge/adapters";
 import { inboundKnowledgeBlock } from "../../lib/knowledge/render";
 import { parseUndoBody } from "../../lib/persona-reset-rules";
@@ -86,5 +89,27 @@ assert.match(mig, /ADD COLUMN IF NOT EXISTS "kind" text DEFAULT 'persona' NOT NU
 assert.match(mig, /CHECK \("persona_resets"\."kind" IN \('persona', 'company_sheet'\)\)/);
 assert.match(mig, /EXCEPTION WHEN duplicate_object THEN NULL/);
 assert.doesNotMatch(mig, /\b(UPDATE|DELETE|INSERT|DROP)\b/i, "no data step");
+
+// The dialog's display-name line: users.display_name is kept, and said so.
+assert.equal(displayNameKeptLine("Mock Salon"), "Le nom affiché reste : Mock Salon");
+assert.equal(displayNameKeptLine("  Mock Salon "), "Le nom affiché reste : Mock Salon");
+assert.equal(displayNameKeptLine(""), null, "empty → no line");
+assert.equal(displayNameKeptLine("   "), null, "blank → no line");
+assert.equal(displayNameKeptLine(null), null);
+assert.equal(displayNameKeptLine(undefined), null);
+// Rendered as a React text node, so markup in a name is escaped.
+{
+  const html = renderToStaticMarkup(createElement("p", null, displayNameKeptLine(`<img src=x onerror="alert(1)">`)));
+  assert.equal(html, "<p>Le nom affiché reste : &lt;img src=x onerror=&quot;alert(1)&quot;&gt;</p>");
+}
+const control = read("app/admin/users/[userId]/CompanySheetResetControl.tsx");
+assert.match(control, /const keptName = displayNameKeptLine\(displayName\);/);
+assert.match(control, /\{keptName && <p className="mb-2">\{keptName\}<\/p>\}/, "the line is shown only when there is a name, as text");
+assert.doesNotMatch(control, /dangerouslySetInnerHTML/);
+assert.match(read("app/admin/users/[userId]/layout.tsx"), /<CompanySheetResetControl userId=\{target\.id\} displayName=\{target\.displayName\} \/>/, "the current users.display_name is passed");
+// The copy module imports nothing (client bundle).
+assert.doesNotMatch(read("lib/company-sheet-reset-copy.ts"), /^import /m);
+// The reset never writes display_name.
+assert.doesNotMatch(read("lib/company-sheet-reset.ts"), /display_name|displayName/);
 
 console.log("ALL COMPANY-SHEET-RESET TESTS PASSED");
