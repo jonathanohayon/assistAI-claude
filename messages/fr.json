@@ -1537,6 +1537,8 @@
       "lastTick": "Composeur passé {ago} ({source}) : {dialed, plural, =0 {aucun numéro composé} one {# numéro composé} other {# numéros composés}}.",
       "dryTick": "Mode test : composeur passé {ago}, aucun numéro composé.",
       "dryTickCount": "Mode test : composeur passé {ago}, {n, plural, =0 {aucun appel n’aurait été passé} one {# appel aurait été passé} other {# appels auraient été passés}}.",
+      "dryTickOutsideCallHours": "Mode test : composeur passé {ago}, 0 appel (hors heures d'appel).",
+      "dryTickWaitingCallHours": "{m, plural, one {# en attente des heures d'appel} other {# en attente des heures d'appel}}",
       "sourceStart": "au lancement",
       "sourceCron": "planifié",
       "readyToDial": "Prêt à appeler",

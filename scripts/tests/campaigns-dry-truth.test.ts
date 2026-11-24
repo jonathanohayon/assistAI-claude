@@ -54,9 +54,14 @@ const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "
 const AT = "2026-11-23T10:00:00.000Z";
 const realTick: DispatchTick = { at: AT, source: "cron", claimed: 1, dialed: 1, failed: 0, runningCampaigns: 1 };
 // The agreed contract: in dry the tick is written every time with mode "dry" plus would-dial counts.
+// The console's campaign: the dry line reads only its own byCampaign entry.
+const CID = "11111111-1111-4111-8111-111111111111";
 const dryTick = {
   ...realTick, claimed: 0, dialed: 0, mode: "dry",
-  wouldDial: { campaignsDue: 1, contactsDue: 3, skippedCallHours: 0, skippedConcurrency: 0 },
+  wouldDial: {
+    campaignsDue: 1, contactsDue: 3, skippedCallHours: 0, skippedConcurrency: 0,
+    byCampaign: { [CID]: { due: 3, heldByHours: 0, heldByConcurrency: 0 } },
+  },
 } as DispatchTick;
 const dryTickNoCounts = { ...realTick, claimed: 0, dialed: 0, mode: "dry" } as DispatchTick;
 
@@ -77,13 +82,13 @@ test("dispatchWording: the table (mode × tick)", () => {
     ["off", realTick, true, "launchPausedTitle", "launchOffLine", { kind: "hidden" }],
     // dry: simulation said up front; neutral line for a dry tick, alarm only with no tick
     ["dry", null, false, "launchDryTitle", "launchDryLine", { kind: "neverRan" }],
-    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", contactsDue: 3 }],
-    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", contactsDue: null }],
+    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "count", at: AT, contactsDue: 3, waitingCallHours: 0 }],
+    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "plain", at: AT }],
     ["dry", dryTick, true, "launchDryTitle", "launchDryLine", { kind: "stale" }],
     ["dry", realTick, false, "launchDryTitle", "launchDryLine", { kind: "lastTick" }],
   ];
   for (const [mode, tick, stale, heading, line, health] of TABLE) {
-    const w = dispatchWording(mode, tick, stale);
+    const w = dispatchWording(mode, tick, stale, false, CID);
     const label = `${String(mode)} / ${tick ? ((tick as { mode?: string }).mode ?? "real") : "no tick"} / stale=${stale}`;
     assert.equal(w.heading.key, heading, `heading ${label}`);
     assert.equal(w.heading.tone, heading === "launchTitle" ? "good" : "warn", `tone ${label}`);
@@ -95,11 +100,14 @@ test("dispatchWording: the table (mode × tick)", () => {
 test("dry tick reader: mode word required, counts nested or flat, never invented", () => {
   assert.equal(dryTickCounts(realTick), null, "a real tick is not a dry one");
   assert.equal(dryTickCounts(null), null);
-  assert.deepEqual(dryTickCounts(dryTick), { contactsDue: 3 });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", contactsDue: 2 }), { contactsDue: 2 });
-  assert.deepEqual(dryTickCounts(dryTickNoCounts), { contactsDue: null });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: "3" } }), { contactsDue: null });
-  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", wouldDial: { contactsDue: -1 } }), { contactsDue: null });
+  assert.deepEqual(dryTickCounts(dryTick, CID), { mine: { due: 3, heldByHours: 0, at: null } });
+  // never the global totals: no campaign id, or an older tick without byCampaign → no figure
+  assert.deepEqual(dryTickCounts(dryTick), { mine: null });
+  assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", contactsDue: 2 }, CID), { mine: null });
+  assert.deepEqual(dryTickCounts(dryTickNoCounts, CID), { mine: null });
+  const bad = (due: unknown) => ({ ...realTick, mode: "dry", wouldDial: { byCampaign: { [CID]: { due, heldByHours: 0 } } } });
+  assert.deepEqual(dryTickCounts(bad("3"), CID), { mine: { due: 0, heldByHours: 0, at: null } });
+  assert.deepEqual(dryTickCounts(bad(-1), CID), { mine: { due: 0, heldByHours: 0, at: null } });
 });
 
 test("parseDispatchMode: unknown is null, never 'on'", () => {
@@ -182,7 +190,7 @@ function health(locale: string, mode: unknown, tick: DispatchTick | null, stale 
   function Harness() {
     const t = useTranslations("DashboardCampaigns.live");
     return createElement(DispatcherHealthBlock, {
-      health: dispatchWording(mode, tick, stale).health,
+      health: dispatchWording(mode, tick, stale, false, CID).health,
       tick,
       ago: () => "AGO",
       t,

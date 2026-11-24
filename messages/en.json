@@ -1537,6 +1537,8 @@
       "lastTick": "Dialer ran {ago} ({source}): {dialed, plural, =0 {nothing dialled} one {dialled # number} other {dialled # numbers}}.",
       "dryTick": "Test mode: dialer ran {ago}, nothing dialled.",
       "dryTickCount": "Test mode: dialer ran {ago}, {n, plural, =0 {no call would have been placed} one {# call would have been placed} other {# calls would have been placed}}.",
+      "dryTickOutsideCallHours": "Test mode: dialer ran {ago}, 0 calls (outside call hours).",
+      "dryTickWaitingCallHours": "{m, plural, one {# waiting for call hours} other {# waiting for call hours}}",
       "sourceStart": "on start",
       "sourceCron": "scheduled",
       "readyToDial": "Ready to dial",
