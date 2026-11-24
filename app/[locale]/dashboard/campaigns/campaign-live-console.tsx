@@ -493,12 +493,12 @@ export function DispatcherHealthBlock({
     return (
       <p role="status" className="text-[12px] text-[#475569]">
         {health.line === "plain" ? (
-          t("dryTick", { ago: ago(tick.at) })
+          t("dryTick", { ago: ago(health.at) })
         ) : health.line === "outsideCallHours" ? (
-          t("dryTickOutsideCallHours", { ago: ago(tick.at) })
+          t("dryTickOutsideCallHours", { ago: ago(health.at) })
         ) : (
           <>
-            {t("dryTickCount", { ago: ago(tick.at), n: health.contactsDue })}
+            {t("dryTickCount", { ago: ago(health.at), n: health.contactsDue })}
             {health.waitingCallHours > 0 && (
               <span className="ms-2 inline-block rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[11px] font-medium text-[#334155]">
                 {t("dryTickWaitingCallHours", { m: health.waitingCallHours })}

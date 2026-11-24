@@ -5,8 +5,9 @@
 //   - due = 0, heldByHours > 0                 → "0 calls (outside call hours)";
 //   - both > 0                                 → the count + a separate "waiting for call hours" figure;
 //   - the snapshot says outside the window NOW → "0 calls (outside call hours)", whatever the tick says;
-//   - absent from a cron tick with byCampaign  → 0 (count line, n = 0);
-//   - absent from a START tick, or an old tick without byCampaign → the plain line, no figure.
+//   - absent from a tick with byCampaign       → 0 / 0 (count line, n = 0);
+//   - an old tick without byCampaign           → the plain line, no figure;
+//   - "{ago}" = the entry's own `at` (a campaign start merged it in), else the tick's.
 // Renders the REAL health block to static HTML. Mock data only.
 // Run with:  npx tsx scripts/tests/campaigns-dry-line-one-source.test.ts
 
@@ -44,11 +45,13 @@ function test(name: string, fn: () => void) {
 const AT = "2026-11-23T10:00:00.000Z";
 const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-type Entry = { due: number; heldByHours: number; heldByConcurrency?: number };
-/** A cron (or start) dry tick: global totals deliberately DIFFERENT from any one campaign's entry. */
-function tickOf(by: Record<string, Entry>, source: DispatchTick["source"] = "cron"): DispatchTick {
+type Entry = { due: number; heldByHours: number; heldByConcurrency?: number; at?: string };
+/** A start-merged entry's own instant (the tick's `at` stays the cron's). */
+const START_AT = "2026-11-23T10:00:40.000Z";
+/** A cron dry tick: global totals deliberately DIFFERENT from any one campaign's entry. */
+function tickOf(by: Record<string, Entry>): DispatchTick {
   return {
-    at: AT, source, mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 5,
+    at: AT, source: "cron", mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 5,
     wouldDial: {
       campaignsDue: 4, contactsDue: 40, skippedCallHours: 20, skippedConcurrency: 7,
       byCampaign: Object.fromEntries(Object.entries(by).map(([k, e]) => [k, { heldByConcurrency: 0, ...e }])),
@@ -56,46 +59,50 @@ function tickOf(by: Record<string, Entry>, source: DispatchTick["source"] = "cro
   };
 }
 /** Only A in the tick: `tick(3, 0)` = A due 3, held by hours 0. */
-const tick = (due: number, heldByHours: number, source: DispatchTick["source"] = "cron") =>
-  tickOf({ [A]: { due, heldByHours } }, source);
+const tick = (due: number, heldByHours: number) => tickOf({ [A]: { due, heldByHours } });
 const oldDryTick = {
   at: AT, source: "cron", mode: "dry", claimed: 0, dialed: 0, failed: 0, runningCampaigns: 1,
   wouldDial: { campaignsDue: 1, contactsDue: 3, skippedCallHours: 2, skippedConcurrency: 0 },
 } as DispatchTick;
 
-const COUNT = (contactsDue: number, waitingCallHours: number): DispatcherHealth =>
-  ({ kind: "dryTick", line: "count", contactsDue, waitingCallHours });
-const OUT: DispatcherHealth = { kind: "dryTick", line: "outsideCallHours" };
-const PLAIN: DispatcherHealth = { kind: "dryTick", line: "plain" };
+const COUNT = (contactsDue: number, waitingCallHours: number, at = AT): DispatcherHealth =>
+  ({ kind: "dryTick", line: "count", at, contactsDue, waitingCallHours });
+const OUT = (at = AT): DispatcherHealth => ({ kind: "dryTick", line: "outsideCallHours", at });
+const PLAIN: DispatcherHealth = { kind: "dryTick", line: "plain", at: AT };
 
 // ── 1. The table: (mode, tick, stale, outsideWindowNow, campaignId) → health ─
 test("dispatchWording: one source wins, this campaign's entry only", () => {
   type Row = [label: string, tick: DispatchTick | null, stale: boolean, outsideNow: boolean, id: string | null, want: DispatcherHealth];
   const both = tickOf({ [A]: { due: 3, heldByHours: 0 }, [B]: { due: 0, heldByHours: 2 } });
+  // A restarted after the cron tick: its entry carries its own `at`, B keeps the cron's numbers
+  const restarted = tickOf({ [A]: { due: 3, heldByHours: 0, at: START_AT }, [B]: { due: 0, heldByHours: 2 } });
   const TABLE: Row[] = [
     ["due, none held by hours", tick(3, 0), false, false, A, COUNT(3, 0)],
-    ["nothing due, held by hours", tick(0, 4), false, false, A, OUT],
+    ["nothing due, held by hours", tick(0, 4), false, false, A, OUT()],
     ["both on the same campaign", tick(3, 2), false, false, A, COUNT(3, 2)],
     ["entry 0/0", tick(0, 0), false, false, A, COUNT(0, 0)],
-    // two campaigns: each sees only its own numbers (VP capture (c))
+    // two campaigns: each sees only its own numbers
     ["two campaigns, A's view", both, false, false, A, COUNT(3, 0)],
-    ["two campaigns, B's view", both, false, true, B, OUT],
-    ["two campaigns, B's view, tick only", both, false, false, B, OUT],
-    // absent id: a cron tick counted every running campaign with raw due > 0 → 0
-    ["absent from a cron tick", tick(3, 2), false, false, B, COUNT(0, 0)],
-    // absent from a START tick: only the started campaign was counted → no figure
-    ["absent from a start tick", tick(3, 0, "start"), false, false, B, PLAIN],
-    ["present in a start tick", tick(3, 0, "start"), false, false, A, COUNT(3, 0)],
+    ["two campaigns, B's view", both, false, true, B, OUT()],
+    ["two campaigns, B's view, tick only", both, false, false, B, OUT()],
+    // absent id = 0 / 0, whatever the globals say
+    ["absent id", tick(3, 2), false, false, B, COUNT(0, 0)],
+    // a start-merged entry: "{ago}" from its own `at`; the others keep the cron's numbers and time
+    ["restarted A: its own at", restarted, false, false, A, COUNT(3, 0, START_AT)],
+    ["restarted A, chip outside now: its own at", restarted, false, true, A, OUT(START_AT)],
+    ["B after A's restart: cron numbers, cron at", restarted, false, true, B, OUT()],
+    ["B after A's restart, tick only", restarted, false, false, B, OUT()],
+    ["entry with a bad at: the tick's", tickOf({ [A]: { due: 3, heldByHours: 0, at: "nope" } }), false, false, A, COUNT(3, 0)],
     // the edge: the tick counted before the window closed, the snapshot says outside NOW
-    ["VP capture: due 3, chip outside now", tick(3, 0), false, true, A, OUT],
-    ["held by hours, chip outside now", tick(0, 4), false, true, A, OUT],
-    ["absent from a start tick, chip outside now", tick(3, 0, "start"), false, true, B, OUT],
+    ["VP capture: due 3, chip outside now", tick(3, 0), false, true, A, OUT()],
+    ["held by hours, chip outside now", tick(0, 4), false, true, A, OUT()],
     // never the global totals
     ["old tick without byCampaign", oldDryTick, false, false, A, PLAIN],
-    ["old tick, chip outside now", oldDryTick, false, true, A, OUT],
+    ["old tick, chip outside now", oldDryTick, false, true, A, OUT()],
     ["no campaign id", tick(3, 2), false, false, null, PLAIN],
-    // alarms are not overridden by the chip
+    // alarms are not overridden by the chip; staleness is the caller's, on the tick's own at
     ["stale, chip outside now", tick(3, 0), true, true, A, { kind: "stale" }],
+    ["stale, fresh start entry", restarted, true, false, A, { kind: "stale" }],
     ["no tick, chip outside now", null, false, true, A, { kind: "neverRan" }],
   ];
   for (const [label, t, stale, outsideNow, id, want] of TABLE)
@@ -108,20 +115,31 @@ test("dispatchWording: one source wins, this campaign's entry only", () => {
 });
 
 test("dry tick reader: this campaign's entry, read defensively, never the globals", () => {
-  assert.deepEqual(dryTickCounts(tick(0, 4), A), { mine: { due: 0, heldByHours: 4 } });
-  assert.deepEqual(dryTickCounts(tick(3, 2), A), { mine: { due: 3, heldByHours: 2 } });
-  assert.deepEqual(dryTickCounts(tick(3, 2), B), { mine: { due: 0, heldByHours: 0 } });
-  assert.deepEqual(dryTickCounts(tick(3, 2, "start"), B), { mine: null });
+  assert.deepEqual(dryTickCounts(tick(0, 4), A), { mine: { due: 0, heldByHours: 4, at: null } });
+  assert.deepEqual(dryTickCounts(tick(3, 2), A), { mine: { due: 3, heldByHours: 2, at: null } });
+  assert.deepEqual(dryTickCounts(tick(3, 2), B), { mine: { due: 0, heldByHours: 0, at: null } });
+  assert.deepEqual(
+    dryTickCounts(tickOf({ [A]: { due: 1, heldByHours: 0, at: START_AT } }), A),
+    { mine: { due: 1, heldByHours: 0, at: START_AT } },
+  );
+  for (const badAt of [12, "", "not a date"])
+    assert.deepEqual(
+      dryTickCounts(tickOf({ [A]: { due: 1, heldByHours: 0, at: badAt as string } }), A),
+      { mine: { due: 1, heldByHours: 0, at: null } },
+      String(badAt),
+    );
+  // the start source no longer matters: an absent id is 0 / 0
+  assert.deepEqual(dryTickCounts({ ...tick(3, 0), source: "start" }, B), { mine: { due: 0, heldByHours: 0, at: null } });
   assert.deepEqual(dryTickCounts(oldDryTick, A), { mine: null });
   assert.deepEqual(dryTickCounts({ ...oldDryTick, wouldDial: { byCampaign: [] } }, A), { mine: null }, "array");
-  assert.deepEqual(dryTickCounts({ ...oldDryTick, wouldDial: { byCampaign: { [A]: null } } }, A), { mine: { due: 0, heldByHours: 0 } });
+  assert.deepEqual(dryTickCounts({ ...oldDryTick, wouldDial: { byCampaign: { [A]: null } } }, A), { mine: { due: 0, heldByHours: 0, at: null } });
   // prototype keys are not entries
-  assert.deepEqual(dryTickCounts(tick(3, 0), "constructor"), { mine: { due: 0, heldByHours: 0 } });
-  assert.deepEqual(dryTickCounts(tick(3, 0, "start"), "__proto__"), { mine: null }, "__proto__ is not an entry");
+  assert.deepEqual(dryTickCounts(tick(3, 0), "__proto__"), { mine: { due: 0, heldByHours: 0, at: null } }, "__proto__");
+  assert.deepEqual(dryTickCounts(tick(3, 0), "toString"), { mine: { due: 0, heldByHours: 0, at: null } }, "toString");
   for (const bad of ["2", -1, Number.NaN, null])
     assert.deepEqual(
       dryTickCounts(tickOf({ [A]: { due: 1, heldByHours: bad as number } }), A),
-      { mine: { due: 1, heldByHours: 0 } },
+      { mine: { due: 1, heldByHours: 0, at: null } },
       String(bad),
     );
 });
@@ -133,7 +151,7 @@ function render(locale: string, t: DispatchTick, outsideNow: boolean, id: string
     return createElement(DispatcherHealthBlock, {
       health: dispatchWording("dry", t, false, outsideNow, id).health,
       tick: t,
-      ago: () => "AGO",
+      ago: (iso: string) => (iso === AT ? "AGO" : iso === START_AT ? "AGO_START" : "AGO_OTHER"),
       t: tr,
     });
   }
@@ -184,6 +202,14 @@ test("two campaigns: A shows only its own numbers, B '0 (outside call hours)'", 
     assert.equal(render(l, both, true, B), fmt(l, "dryTickOutsideCallHours", { ago: "AGO" }), `${l} B`);
   }
   assert.equal(render("fr", both, false, A), "Mode test : composeur passé AGO, 3 appels auraient été passés.");
+});
+
+test("a restarted campaign speaks of its own start; the other keeps the cron's numbers and time", () => {
+  const restarted = tickOf({ [A]: { due: 3, heldByHours: 0, at: START_AT }, [B]: { due: 0, heldByHours: 2 } });
+  for (const l of LOCALES) {
+    assert.equal(render(l, restarted, false, A), fmt(l, "dryTickCount", { ago: "AGO_START", n: 3 }), `${l} A`);
+    assert.equal(render(l, restarted, true, B), fmt(l, "dryTickOutsideCallHours", { ago: "AGO" }), `${l} B`);
+  }
 });
 
 test("copy: fr/en/he, ICU plurals, no env or supplier name", () => {

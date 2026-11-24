@@ -82,8 +82,8 @@ test("dispatchWording: the table (mode × tick)", () => {
     ["off", realTick, true, "launchPausedTitle", "launchOffLine", { kind: "hidden" }],
     // dry: simulation said up front; neutral line for a dry tick, alarm only with no tick
     ["dry", null, false, "launchDryTitle", "launchDryLine", { kind: "neverRan" }],
-    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "count", contactsDue: 3, waitingCallHours: 0 }],
-    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "plain" }],
+    ["dry", dryTick, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "count", at: AT, contactsDue: 3, waitingCallHours: 0 }],
+    ["dry", dryTickNoCounts, false, "launchDryTitle", "launchDryLine", { kind: "dryTick", line: "plain", at: AT }],
     ["dry", dryTick, true, "launchDryTitle", "launchDryLine", { kind: "stale" }],
     ["dry", realTick, false, "launchDryTitle", "launchDryLine", { kind: "lastTick" }],
   ];
@@ -100,14 +100,14 @@ test("dispatchWording: the table (mode × tick)", () => {
 test("dry tick reader: mode word required, counts nested or flat, never invented", () => {
   assert.equal(dryTickCounts(realTick), null, "a real tick is not a dry one");
   assert.equal(dryTickCounts(null), null);
-  assert.deepEqual(dryTickCounts(dryTick, CID), { mine: { due: 3, heldByHours: 0 } });
+  assert.deepEqual(dryTickCounts(dryTick, CID), { mine: { due: 3, heldByHours: 0, at: null } });
   // never the global totals: no campaign id, or an older tick without byCampaign → no figure
   assert.deepEqual(dryTickCounts(dryTick), { mine: null });
   assert.deepEqual(dryTickCounts({ ...realTick, mode: "dry", contactsDue: 2 }, CID), { mine: null });
   assert.deepEqual(dryTickCounts(dryTickNoCounts, CID), { mine: null });
   const bad = (due: unknown) => ({ ...realTick, mode: "dry", wouldDial: { byCampaign: { [CID]: { due, heldByHours: 0 } } } });
-  assert.deepEqual(dryTickCounts(bad("3"), CID), { mine: { due: 0, heldByHours: 0 } });
-  assert.deepEqual(dryTickCounts(bad(-1), CID), { mine: { due: 0, heldByHours: 0 } });
+  assert.deepEqual(dryTickCounts(bad("3"), CID), { mine: { due: 0, heldByHours: 0, at: null } });
+  assert.deepEqual(dryTickCounts(bad(-1), CID), { mine: { due: 0, heldByHours: 0, at: null } });
 });
 
 test("parseDispatchMode: unknown is null, never 'on'", () => {
