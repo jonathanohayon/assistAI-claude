@@ -18,6 +18,10 @@
 // when the session ran with the client's agent (the served `clientAgent`
 // key enabled, i.e. the ask_client_agent tool registered). calls/end does
 // NOT parse that field yet: it passes `{ channel }` only.
+// B3 (connectors): a call routed to a CONNECTOR gets 'connect' at calls/end
+// from the signed route token (lib/connectors/call-attribution.ts), merged
+// over this value. A legacy call (zero connector rows, the account-level
+// client agent served) is still NULL here: unchanged.
 
 import type { ProductEntry } from "./product-values";
 
