@@ -90,8 +90,11 @@ export interface InboundEffects {
   reportUnreadable: UnreadableReporter;
   /** Options of the serve-time url checks (DNS budget, or an injected resolver). */
   urlCheck: CheckOptions;
-  /** B2: the connector routing reads (tests inject failures); unset = the real ones. */
-  connectorDeps?: ConnectorRouteDeps;
+  /**
+   * B2: the connector routing reads (tests inject failures); unset = the real
+   * ones; null = routing bypassed (tests: the pre-B2 path, no lookup).
+   */
+  connectorDeps?: ConnectorRouteDeps | null;
 }
 
 /** The real effects: what the worker's call gets. */

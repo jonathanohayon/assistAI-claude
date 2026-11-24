@@ -91,10 +91,14 @@ export async function resolveCallRouteSafely(args: {
   switchOn: boolean;
   /** agent_configs.tools_config as stored. */
   toolsConfig: unknown;
-  deps?: ConnectorRouteDeps;
+  /**
+   * The reads: unset = the real ones; null = routing BYPASSED ("legacy", no
+   * lookup: the pre-B2 code path, used by the zero-rows invariant tests).
+   */
+  deps?: ConnectorRouteDeps | null;
   alert: RouteAlert;
 }): Promise<ResolvedCallRoute> {
-  if (!args.switchOn) return { kind: "legacy" };
+  if (!args.switchOn || args.deps === null) return { kind: "legacy" };
   const deps = args.deps ?? LIVE_CONNECTOR_ROUTE_DEPS;
   try {
     const rows = await deps.loadRows(args.accountId);
