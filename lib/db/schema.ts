@@ -411,6 +411,27 @@ export const renewalReminders = pgTable(
   (t) => [unique("renewal_reminders_once").on(t.userId, t.periodEnd)],
 );
 
+// Admin "reset persona to neutral" (POST /api/admin/users/[userId]/reset-persona):
+// one row per reset, holding the EXACT values it replaced so an admin can undo
+// it (…/reset-persona/undo). `previous` / `applied` =
+// { instructions, greetingInstructions, agentName, personaConfig }. Not in the
+// events table: lib/logger.ts masks phone numbers and emails inside event
+// text, so a prompt holding the business's own number would come back altered.
+// Admin-only, never served to the worker. lib/persona-reset.ts.
+export const personaResets = pgTable("persona_resets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  previous: jsonb("previous").notNull(),
+  applied: jsonb("applied").notNull(),
+  byAdmin: uuid("by_admin").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .default(sql`now()`),
+  undoneAt: timestamp("undone_at", { withTimezone: true }),
+});
+
 // Per-product trials (P3): 7 days + 30 minutes, no card, ONCE per account ×
 // product. The unique (user_id, product) IS the "once" guarantee: the
 // "Essayer gratuitement" endpoint inserts with ON CONFLICT DO NOTHING.
