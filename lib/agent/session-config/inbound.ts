@@ -36,6 +36,7 @@ import { PLANS, type PlanKey } from "@/lib/plans";
 import { fireSafely } from "@/lib/agent/fire-safely";
 import { servedConnectorVoice } from "@/lib/connectors/route";
 import { resolveCallRouteSafely, type ConnectorRouteDeps } from "@/lib/connectors/route-load";
+import { connectorRouteField } from "@/lib/connectors/route-token";
 import { CLIENT_AGENT_OFF } from "@/lib/tools/contract";
 import {
   getCapabilitiesDirectiveByPlan,
@@ -539,6 +540,12 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
     features,
     ordersEnabled,
     ...clientAgentField,
+    // B3: the signed route token, ONLY on a connector route whose client
+    // agent is served (and only when SECRETS_KEY is set); the worker echoes
+    // it back to /api/calls/end. Every other payload: absent (unchanged).
+    ...(route.kind === "connector" && "clientAgent" in clientAgentField
+      ? connectorRouteField(tenant.user.id, route.connectorId)
+      : {}),
     updatedAt,
     // Template per-call avec placeholders {date_fr}, {iso_date}, {time},
     // {caller_hint_block} substitués côté worker à chaque appel.

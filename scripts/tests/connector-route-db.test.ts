@@ -111,7 +111,8 @@ async function main() {
     assert.equal(res.status, 200, `status for ${JSON.stringify(q)}`);
     // Let fire-and-forget sinks run.
     await new Promise((r) => setImmediate(r));
-    return (await res.text()).replace(/"updatedAt":"[^"]+"/g, '"updatedAt":"*"');
+    // B3: the route token carries iat (seconds): normalised here, checked in 2b.
+    return (await res.text()).replace(/"updatedAt":"[^"]+"/g, '"updatedAt":"*"').replace(/"connectorRoute":"[^"]+"/g, '"connectorRoute":"*"');
   };
   const parse = (t: string) => JSON.parse(t) as Record<string, unknown>;
   const without = (t: string, k: string) => {
@@ -145,8 +146,13 @@ async function main() {
   reset();
   const connB = await call(onB);
   assert.deepEqual(parse(connB).clientAgent, { url: BOT_HOOK, secret: CONNECTOR_SECRET, mode: "voice" }, "the connector's agent, secret opened");
-  assert.equal(without(connB, "clientAgent"), without(zeroA, "clientAgent"), "the rest of the payload is the account's");
-  assert.deepEqual(Object.keys(parse(connB)), Object.keys(parse(zeroA)), "same keys, same order (no new served field)");
+  assert.equal(without(without(connB, "clientAgent"), "connectorRoute"), without(zeroA, "clientAgent"), "the rest of the payload is the account's");
+  assert.deepEqual(
+    Object.keys(parse(connB)).filter((k) => k !== "connectorRoute"),
+    Object.keys(parse(zeroA)),
+    "same keys, same order (B3's connectorRoute is the only new served field)",
+  );
+  assert.equal(parse(connB).connectorRoute, "*", "B3: the connector route token is served on the connector route");
   assert.deepEqual(events.filter((e) => e.event === "connector_route").map((e) => e.metadata), [
     { kind: "connector", connectorId: K, failed: false, accountAgentIgnored: false },
   ]);
@@ -161,6 +167,31 @@ async function main() {
   assert.ok(!("clientAgent" in parse(recWeb)), "web (no number) with rows: no clientAgent");
   assert.equal(alerts.length, 0, "no alert on the normal paths");
   console.log("ok: 2. connector on B: its agent (url / mode / opened secret), the rest = the account's; A and web: no clientAgent");
+
+  // ── 2b. B3: the served route token verifies for this account and connector ─
+  {
+    const { verifyConnectorRoute, connectorRouteKey } = await import("../../lib/connectors/route-token");
+    const raw = await buildInboundConfig(new URLSearchParams(onB), fx());
+    const token = ((await raw.json()) as Record<string, unknown>).connectorRoute;
+    assert.equal(typeof token, "string");
+    assert.deepEqual(verifyConnectorRoute(token, { accountId: ACC, key: connectorRouteKey() }), { ok: true, connectorId: K });
+    assert.ok(!(token as string).includes(K), "the id is not served in clear");
+    assert.ok(!("connectorRoute" in parse(recA)) && !("connectorRoute" in parse(recWeb)), "reception payloads: no token");
+    assert.ok(!("connectorRoute" in parse(zeroA)) && !("connectorRoute" in parse(zeroWeb)), "legacy payloads: no token");
+    // No SECRETS_KEY → no token: the rest of the connector payload is unchanged.
+    const saved = { k: process.env.SECRETS_KEY, id: process.env.SECRETS_KEY_ID };
+    delete process.env.SECRETS_KEY;
+    delete process.env.SECRETS_KEY_ID;
+    // A plain secret, so the connector's agent is still served without a key.
+    await setRow(sql`secret = ${CONNECTOR_SECRET}`);
+    const noKey = await call(onB);
+    process.env.SECRETS_KEY = saved.k;
+    process.env.SECRETS_KEY_ID = saved.id;
+    await setRow(sql`secret = ${sealed}`);
+    assert.ok(!("connectorRoute" in parse(noKey)), "no SECRETS_KEY: no token");
+    assert.equal(noKey, without(connB, "connectorRoute"), "no SECRETS_KEY: the connector payload minus the token");
+    console.log("ok: 2b. B3 token: served on the connector route only, verifies (account + connector), absent without SECRETS_KEY");
+  }
 
   // ── 3. The connector OFF ───────────────────────────────────────────────
   await setRow(sql`enabled = false`);
