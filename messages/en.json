@@ -3049,6 +3049,9 @@
     "none": {
       "title": "I don't have an agent",
       "body": "Without an agent, leave \"{card}\" off: Tamara answers your calls on her own. To connect one, you need an online service, at a public address starting with <c>https://</c>, that answers this contract: the example above is a starting point."
+    },
+    "public": {
+      "account": "Have an account? Test your address in your dashboard."
     }
   }
 }

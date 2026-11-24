@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { agentConfigs } from "@/lib/db/schema";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
-import { AgentHelpView } from "./help-view";
+import { AgentHelpView } from "@/components/agent-help/AgentHelpView";
 
 export const dynamic = "force-dynamic";
 

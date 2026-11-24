@@ -21,13 +21,16 @@ export function agentHelpLinks(asUserId?: string | null): AgentHelpLinks {
   return { help: `${base}/help`, card: `${base}#client-agent`, back: base, admin: true };
 }
 
+/** The PUBLIC help page (no sign-in, noindex): app/[locale]/agent-address-help. */
+export const PUBLIC_HELP_PATH = "/agent-address-help";
+
 /**
- * The link to hand to the customer's technical person: ALWAYS the
- * tenant-facing page (/<locale>/dashboard/agent/help), in the admin view too,
- * never the /admin route and never an asUserId.
+ * The link to hand to the customer's technical person: ALWAYS the public
+ * page (/<locale>/agent-address-help), in the admin view too: never the
+ * /admin route, never an asUserId, never a page that needs an account.
  */
-export function tenantHelpUrl(origin: string, locale: string): string {
-  return `${origin.replace(/\/+$/, "")}/${encodeURIComponent(locale)}${AGENT_HELP_HREF}`;
+export function publicHelpUrl(origin: string, locale: string): string {
+  return `${origin.replace(/\/+$/, "")}/${encodeURIComponent(locale)}${PUBLIC_HELP_PATH}`;
 }
 
 /**

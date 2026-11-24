@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
-import { AgentHelpView } from "@/app/[locale]/dashboard/agent/help/help-view";
+import { AgentHelpView } from "@/components/agent-help/AgentHelpView";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import { db } from "@/lib/db";
 import { agentConfigs, users } from "@/lib/db/schema";

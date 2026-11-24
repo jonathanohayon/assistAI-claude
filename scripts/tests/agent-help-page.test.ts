@@ -19,8 +19,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { AgentHelpView } from "../../app/[locale]/dashboard/agent/help/help-view";
-import { agentHelpLinks, agentHelpRequests, tenantHelpUrl } from "../../components/agent-help/links";
+import { AgentHelpView } from "../../components/agent-help/AgentHelpView";
+import { agentHelpLinks, agentHelpRequests, publicHelpUrl } from "../../components/agent-help/links";
 import { AGENT_CARD_HREF, AgentHelpTestView, loadHelpTestState, runHelpTest } from "../../components/agent-help/AgentHelpTest";
 import { AGENT_HELP_HREF, ClientAgentRow } from "../../components/bricks/client-agent/ClientAgentBrick";
 import { ConnectPreview } from "../../components/preview/ConnectPreview";
@@ -305,7 +305,7 @@ async function main() {
     assert.match(messages("fr").AgentHelp.contract.signature, /créé à la première activation et affiché une seule fois dans la carte « \{card\} »/);
   });
 
-  // (a) Who the page is for + "Copier le lien": the TENANT URL, in both views.
+  // (a) Who the page is for + "Copier le lien": the PUBLIC URL, in both views.
   await test("for-tech line and copy-link button, first under the title, in fr/en/he", () => {
     for (const l of LOCALES) {
       const m = messages(l);
@@ -318,16 +318,75 @@ async function main() {
     }
     assert.doesNotMatch(`${messages("he").AgentHelp.forTech} ${messages("he").AgentHelp.copyLink}`, /תמרה/);
   });
-  await test("the copied URL is the tenant page, never /admin or asUserId", () => {
-    for (const l of LOCALES) assert.equal(tenantHelpUrl("https://app.example.test", l), `https://app.example.test/${l}/dashboard/agent/help`);
-    assert.equal(tenantHelpUrl("https://app.example.test/", "fr"), "https://app.example.test/fr/dashboard/agent/help");
-    // The button copies tenantHelpUrl(this origin, the page's locale); the view gives it the locale only (no asUserId, no admin href).
+  await test("the copied URL is the PUBLIC page, never /admin or asUserId", () => {
+    for (const l of LOCALES) assert.equal(publicHelpUrl("https://app.example.test", l), `https://app.example.test/${l}/agent-address-help`);
+    assert.equal(publicHelpUrl("https://app.example.test/", "fr"), "https://app.example.test/fr/agent-address-help");
+    // The button copies publicHelpUrl(this origin, the page's locale); the view gives it the locale only (no asUserId, no admin href).
     const btn = read("components/agent-help/CopyPageLink.tsx").replace(/\/\*[\s\S]*?\*\//g, "");
-    assert.match(btn, /writeText\(tenantHelpUrl\(window\.location\.origin, locale\)\)/);
+    assert.match(btn, /writeText\(publicHelpUrl\(window\.location\.origin, locale\)\)/);
     assert.doesNotMatch(btn, /asUserId|\/admin|location\.href|pathname/);
-    assert.match(read("app/[locale]/dashboard/agent/help/help-view.tsx"), /<CopyPageLink locale=\{locale\} label=/);
-    // The admin route renders the view with the tenant-facing locale "fr": the copied URL is /fr/dashboard/agent/help.
+    assert.match(read("components/agent-help/AgentHelpView.tsx"), /<CopyPageLink locale=\{locale\} label=/);
+    // The admin route renders the view with locale "fr": the copied URL is /fr/agent-address-help.
     assert.match(read("app/admin/users/[userId]/agent/help/page.tsx"), /locale="fr"/);
+  });
+
+  // The PUBLIC page (/<locale>/agent-address-help): generic content, no account.
+  const publicPage = (l: string) => wrap(l, createElement(AgentHelpView, { locale: l, variant: "public" }));
+  for (const l of LOCALES) {
+    const m = messages(l);
+    await test(`${l}: public page renders the generic sections, no test area, no account part`, () => {
+      const html = publicPage(l);
+      assert.ok(html.includes(esc(m.AgentHelp.title)));
+      for (const k of ["what", "contract", "example", "none"]) assert.ok(html.includes(esc(m.AgentHelp[k].title)), k);
+      assert.ok(html.includes(esc(m.AgentHelp.contract.speechNote)), "names may be approximate");
+      assert.equal((html.match(/data-copy-block/g) ?? []).length, 3, "the three examples with Copier");
+      assert.ok(!html.includes(esc(m.AgentHelp.test.title)), "no test area");
+      assert.ok(!html.includes("data-help-test") && !html.includes("data-test-question"), "no test, no account question");
+      assert.ok(!html.includes("data-for-tech") && !html.includes("data-copy-page-link"), "no for-tech line");
+      assert.ok(!html.includes(esc(m.AgentHelp.back.split("{")[0])), "no back link to the dashboard");
+      assert.ok(!/\/admin|asUserId/.test(html), "no admin words");
+      // The bottom link to the account's test page (signed out → the login redirect).
+      assert.ok(html.includes(`href="/${l}${AGENT_HELP_HREF}"`) && html.includes(`>${esc(m.AgentHelp.public.account)}</a>`), "account link");
+      assert.ok(html.lastIndexOf("data-public-account-link") > html.indexOf(esc(m.AgentHelp.none.title)), "at the bottom");
+    });
+  }
+  await test("public page: no request at render", () => {
+    const g = globalThis as unknown as { fetch: typeof fetch };
+    const real = g.fetch;
+    let calls = 0;
+    g.fetch = (async () => {
+      calls++;
+      throw new Error("no fetch on the public page");
+    }) as typeof fetch;
+    try {
+      for (const l of LOCALES) publicPage(l);
+    } finally {
+      g.fetch = real;
+    }
+    assert.equal(calls, 0);
+  });
+  await test("public route: noindex, no auth, no DB, public chrome", () => {
+    const src = read("app/[locale]/agent-address-help/page.tsx");
+    assert.match(src, /robots: \{ index: false, follow: false \}/);
+    assert.doesNotMatch(src, /@\/auth|auth\(\)|@\/lib\/db|drizzle|sessionIsAdmin|requireAdmin|headers\(\)|cookies\(\)/);
+    assert.match(src, /<AgentHelpView locale=\{locale\} variant="public" \/>/);
+    assert.match(src, /@\/components\/marketing\/Nav/);
+    assert.match(src, /@\/components\/marketing\/Footer/);
+    // The shared view imports nothing with an account or a database either.
+    assert.doesNotMatch(read("components/agent-help/AgentHelpView.tsx"), /@\/auth|@\/lib\/db|drizzle/);
+    // Not in any sitemap: the repo has none (a new one must leave this page out).
+    for (const f of ["app/sitemap.ts", "app/sitemap.xml", "public/sitemap.xml"]) {
+      let has = false;
+      try {
+        read(f);
+        has = true;
+      } catch {}
+      if (has) assert.doesNotMatch(read(f), /agent-address-help/, f);
+    }
+  });
+  await test("harness: the public page is on the public lists", () => {
+    assert.match(read("scripts/public-paths.mjs"), /"\/agent-address-help"/);
+    for (const f of ["scripts/check-public-bundle.mjs", "scripts/check-tenant-words.mjs"]) assert.match(read(f), /from "\.\/public-paths\.mjs"/, f);
   });
 
   // (b) The Node example always verifies the signature, and refuses to start without the secret.

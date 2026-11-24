@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 
-import { tenantHelpUrl } from "@/components/agent-help/links";
+import { publicHelpUrl } from "@/components/agent-help/links";
 
 /**
- * "Copier le lien": copies the TENANT-facing URL of the help page
- * (tenantHelpUrl: this origin + /<locale>/dashboard/agent/help), the same in
- * the admin tenant view: never the /admin URL, never an asUserId.
+ * "Copier le lien": copies the PUBLIC help page's URL (publicHelpUrl: this
+ * origin + /<locale>/agent-address-help), the same in the admin tenant view:
+ * never the /admin URL, never an asUserId.
  */
 export function CopyPageLink({ locale, label, copiedLabel }: { locale: string; label: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
@@ -17,7 +17,7 @@ export function CopyPageLink({ locale, label, copiedLabel }: { locale: string; l
         type="button"
         data-copy-page-link
         onClick={() => {
-          navigator.clipboard?.writeText(tenantHelpUrl(window.location.origin, locale)).then(
+          navigator.clipboard?.writeText(publicHelpUrl(window.location.origin, locale)).then(
             () => setCopied(true),
             () => {},
           );

@@ -24,6 +24,7 @@
 // on both sides: they are shared by the public pricing and /dashboard/billing.
 
 import { publicWordRules, visibleText, wordHits } from "./tenant-words-match.mjs";
+import { PUBLIC_PATHS } from "./public-paths.mjs";
 
 const [base, email, password] = process.argv.slice(2);
 if (!base || !email || !password) {
@@ -33,8 +34,7 @@ if (!base || !email || !password) {
 
 // NextAuth basePath (auth.ts).
 const AUTH = "/api/admin/auth";
-// The public pages of the harness's public-pages-check.mjs ("" = the home).
-const PUBLIC_PATHS = ["", "/login", "/signup", "/verify-email", "/forgot-password", "/sales", "/connect"];
+// The public pages: scripts/public-paths.mjs (one list for every public scan).
 // The tenant pages of check-tenant-bundle.mjs, plus onboarding.
 // The left menu's pages first; the old URLs after them (they redirect: a 307
 // is skipped, the page it lands on is checked under its own path).

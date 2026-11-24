@@ -3049,6 +3049,9 @@
     "none": {
       "title": "Je n'ai pas d'agent",
       "body": "Sans agent, laissez « {card} » désactivé : Tamara répond seule à vos appels. Pour en brancher un, il vous faut un service en ligne, sur une adresse publique qui commence par <c>https://</c>, qui répond à ce contrat : l'exemple ci-dessus en est le point de départ."
+    },
+    "public": {
+      "account": "Vous avez un compte ? Testez votre adresse dans votre espace."
     }
   }
 }

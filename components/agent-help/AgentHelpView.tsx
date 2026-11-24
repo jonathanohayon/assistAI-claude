@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { AgentHelpTest } from "@/components/agent-help/AgentHelpTest";
 import { CopyBlock } from "@/components/agent-help/CopyBlock";
 import { CopyPageLink } from "@/components/agent-help/CopyPageLink";
-import { agentHelpLinks, HelpLink } from "@/components/agent-help/links";
+import { AGENT_HELP_HREF, agentHelpLinks, HelpLink } from "@/components/agent-help/links";
+import { Link } from "@/i18n/navigation";
 import {
   CLIENT_AGENT_REQUEST_FIELDS,
   exampleRequestText,
@@ -37,19 +38,25 @@ const code = (c: ReactNode) => (
  * area depends on `testOpen` (CLIENT_AGENT for the account shown).
  * `asUserId`: the admin route only (/admin/users/[id]/agent/help, behind
  * requireAdminPage); the tenant route never passes one.
+ * `variant="public"` (/[locale]/agent-address-help, signed out): the generic
+ * content only: no back link, no "for the technical person" line, no test
+ * area (so no account request), and a link to the dashboard page instead.
  */
 export function AgentHelpView({
   locale,
-  testOpen,
+  variant = "dashboard",
+  testOpen = false,
   asUserId = null,
-  testLanguage,
+  testLanguage = null,
 }: {
   locale: string;
-  testOpen: boolean;
+  variant?: "dashboard" | "public";
+  testOpen?: boolean;
   asUserId?: string | null;
   /** The account's primaryLanguage: the test route asks its question in it (unknown = fr). */
-  testLanguage: string | null;
+  testLanguage?: string | null;
 }) {
+  const isPublic = variant === "public";
   const links = agentHelpLinks(asUserId);
   const t = useTranslations("AgentHelp");
   const tModes = useTranslations("ToolsBrick.agent.modes");
@@ -71,15 +78,19 @@ export function AgentHelpView({
   return (
     <div className="space-y-5" data-agent-help>
       <div>
-        <HelpLink href={links.back} admin={links.admin} className="inline-flex min-h-11 items-center text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline">
-          {t("back", { page: tNav("connect") })}
-        </HelpLink>
+        {!isPublic && (
+          <HelpLink href={links.back} admin={links.admin} className="inline-flex min-h-11 items-center text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline">
+            {t("back", { page: tNav("connect") })}
+          </HelpLink>
+        )}
         <h1 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("title")}</h1>
-        {/* Who the page is for, and the link to send them (always the tenant URL). */}
-        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#334155]" data-for-tech>
-          <span>{t("forTech")}</span>
-          <CopyPageLink locale={locale} label={t("copyLink")} copiedLabel={t("linkCopied")} />
-        </p>
+        {/* Who the page is for, and the link to send them (always the PUBLIC page's URL). */}
+        {!isPublic && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#334155]" data-for-tech>
+            <span>{t("forTech")}</span>
+            <CopyPageLink locale={locale} label={t("copyLink")} copiedLabel={t("linkCopied")} />
+          </p>
+        )}
       </div>
 
       <section className={CARD} aria-labelledby="help-what">
@@ -154,21 +165,24 @@ export function AgentHelpView({
         </div>
       </section>
 
-      <section className={CARD} aria-labelledby="help-test">
-        <h2 id="help-test" className={H2}>
-          {t("test.title")}
-        </h2>
-        <p className={P}>
-          {t.rich("test.body", {
-            question: clientAgentTestQuestion(testLanguage ?? "fr"),
-            // The question is in the ACCOUNT's language, which may differ from the page's: its own direction.
-            q: (c) => <bdi dir="auto" data-test-question>{c}</bdi>,
-          })}
-        </p>
-        <div className="mt-3">
-          <AgentHelpTest open={testOpen} asUserId={asUserId} />
-        </div>
-      </section>
+      {/* The test acts on an account: the dashboard only. */}
+      {!isPublic && (
+        <section className={CARD} aria-labelledby="help-test">
+          <h2 id="help-test" className={H2}>
+            {t("test.title")}
+          </h2>
+          <p className={P}>
+            {t.rich("test.body", {
+              question: clientAgentTestQuestion(testLanguage ?? "fr"),
+              // The question is in the ACCOUNT's language, which may differ from the page's: its own direction.
+              q: (c) => <bdi dir="auto" data-test-question>{c}</bdi>,
+            })}
+          </p>
+          <div className="mt-3">
+            <AgentHelpTest open={testOpen} asUserId={asUserId} />
+          </div>
+        </section>
+      )}
 
       <section className={CARD} aria-labelledby="help-none">
         <h2 id="help-none" className={H2}>
@@ -176,6 +190,15 @@ export function AgentHelpView({
         </h2>
         <p className={P}>{t.rich("none.body", { c: code, card })}</p>
       </section>
+
+      {/* Public: the way to the test, in the customer's space (signed out → the login redirect). */}
+      {isPublic && (
+        <p className="text-sm" data-public-account-link>
+          <Link href={AGENT_HELP_HREF} className="inline-flex min-h-11 items-center font-semibold text-[#0e7490] underline-offset-2 hover:underline">
+            {t("public.account")}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
