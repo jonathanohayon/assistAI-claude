@@ -51,7 +51,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").repl
 const wrap = (locale: string, el: ReturnType<typeof createElement>) =>
   renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, el));
 const page = (locale: string, testOpen: boolean) => wrap(locale, createElement(AgentHelpView, { locale, testOpen }));
-const words = (m: Record<string, any>) => ({
+const words = (m: { AgentHelp: { example: Record<string, string> } }) => ({
   question: m.AgentHelp.example.question,
   callerSaid: m.AgentHelp.example.callerSaid,
   prevUser: m.AgentHelp.example.prevUser,
