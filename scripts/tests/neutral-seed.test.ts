@@ -34,9 +34,11 @@ const other = seedForNewAccount("premium", "he", { global: "ADMIN TEMPLATE" }, {
 assert.equal(other.instructions, neutralSeed("he").instructions, "another plan's template doesn't apply");
 assert.equal(seedForNewAccount("global", "fr", { global: "   " }, {}).instructions, neutralSeed("fr").instructions, "blank template → neutral");
 
-// (a) Two importers only: account CREATION (inserts only), and the internal
+// (a) Three importers only: account CREATION (inserts only), the internal
 //     reset endpoint (INTERNAL_SECRET-gated ops: "apply what a new account
-//     gets"). Nothing else may write the neutral seed onto an account.
+//     gets"), and the admin persona reset rules (lib/persona-reset-rules.ts,
+//     behind requireAdmin, undoable; asserted in persona-reset.test.ts).
+//     Nothing else may write the neutral seed onto an account.
 // Import lines of any form (alias or relative path), searched in Node: no shell quoting.
 const IMPORT_RE = /\bfrom\s+["'][^"']*neutral-seed["']|\bimport\(\s*["'][^"']*neutral-seed["']\s*\)/;
 // Resolved from this file's location (cwd-independent), and every file is read.
@@ -55,7 +57,7 @@ assertScanRead(scan, "neutral-seed importers", {
   absent: ["scripts/tests"],
 });
 const importers = scan.files.filter((f) => f !== "lib/neutral-seed.ts" && IMPORT_RE.test(scan.text.get(f)!));
-assert.deepEqual(importers, ["app/api/admin/internal-apply-default-prompt/route.ts", "lib/auth/provision-tenant.ts"]);
+assert.deepEqual(importers, ["app/api/admin/internal-apply-default-prompt/route.ts", "lib/auth/provision-tenant.ts", "lib/persona-reset-rules.ts"]);
 // The search catches every import form (probe on strings, not files).
 for (const line of [`import { x } from "@/lib/neutral-seed";`, `import { x } from "../neutral-seed";`, `import { x } from '../../lib/neutral-seed';`, `await import("../neutral-seed")`])
   assert.match(line, IMPORT_RE, line);

@@ -25,6 +25,7 @@ import {
 import { noEngineOverrides, type EngineOverrides } from "@/lib/engine-override";
 import { parseCatalogueRow, serializeCatalogueRow, type CatalogueRow } from "@/lib/product-catalogue-row";
 import { defaultConnectorLimits, type ConnectorLimits } from "@/lib/connectors/limits";
+import { defaultConnectorExtraMonthly, type ConnectorExtraMonthly } from "@/lib/connectors/price";
 import { entitledProducts, type Entitlement } from "@/lib/product-entitlement";
 import { TRIAL_CAPS_ENFORCED } from "@/lib/product-trial-caps";
 import { TRIAL_PRODUCT_OF_ENTRY, trialStartDecision, type TrialStartAccount } from "@/lib/product-trial-decision";
@@ -39,6 +40,8 @@ export type StoredCatalogue = {
   engineOverrides: EngineOverrides;
   /** B1 (additive): the stored connector limits; undefined = not stored (defaults apply). */
   connectorLimits?: ConnectorLimits;
+  /** C1b (additive): the stored extra-connector price; undefined = not stored (defaults apply). */
+  connectorExtraMonthly?: ConnectorExtraMonthly;
   source: "stored" | "default" | "invalid";
 };
 
@@ -89,9 +92,20 @@ const defaultCatalogueDeps: CatalogueDeps = {
 export async function getCatalogueRow(deps: CatalogueDeps = defaultCatalogueDeps): Promise<CatalogueRow> {
   const r = catalogueFromStored(await deps.read(SETTING_KEYS.PRODUCT_CATALOGUE));
   if (r.source === "invalid") deps.onInvalid();
-  return r.connectorLimits
-    ? { catalogue: r.catalogue, engineOverrides: r.engineOverrides, connectorLimits: r.connectorLimits }
-    : { catalogue: r.catalogue, engineOverrides: r.engineOverrides };
+  return {
+    catalogue: r.catalogue,
+    engineOverrides: r.engineOverrides,
+    ...(r.connectorLimits ? { connectorLimits: r.connectorLimits } : {}),
+    ...(r.connectorExtraMonthly ? { connectorExtraMonthly: r.connectorExtraMonthly } : {}),
+  };
+}
+
+/**
+ * The extra-connector price in force (C1b): the stored one, else the
+ * defaults (19 EUR / 79 ILS), also when the row is absent or invalid.
+ */
+export async function getConnectorExtraMonthly(deps: CatalogueDeps = defaultCatalogueDeps): Promise<ConnectorExtraMonthly> {
+  return (await getCatalogueRow(deps)).connectorExtraMonthly ?? defaultConnectorExtraMonthly();
 }
 
 /**
@@ -119,18 +133,21 @@ export async function getEngineOverrides(deps: CatalogueDeps = defaultCatalogueD
  * caller never wipes them). No override → the pre-E2 bytes.
  * B1: `connectorLimits` omitted = the STORED limits are kept (none stored →
  * none written, the pre-B1 bytes).
+ * C1b: `connectorExtraMonthly` omitted = the STORED price is kept, likewise.
  */
 export async function setProductCatalogue(
   cat: ProductCatalogue,
   overrides?: EngineOverrides,
   connectorLimits?: ConnectorLimits,
+  connectorExtraMonthly?: ConnectorExtraMonthly,
 ): Promise<void> {
   if (!parseProductCatalogue(cat)) throw new Error("refusing to store an invalid product catalogue");
-  const needStored = overrides === undefined || connectorLimits === undefined;
+  const needStored = overrides === undefined || connectorLimits === undefined || connectorExtraMonthly === undefined;
   const stored = needStored ? catalogueFromStored(await getSetting(SETTING_KEYS.PRODUCT_CATALOGUE)) : null;
   const o = overrides ?? stored!.engineOverrides;
   const l = connectorLimits ?? stored!.connectorLimits;
-  const text = serializeCatalogueRow(cat, o, l);
+  const e = connectorExtraMonthly ?? stored!.connectorExtraMonthly;
+  const text = serializeCatalogueRow(cat, o, l, e);
   if (!parseCatalogueRow(JSON.parse(text))) throw new Error("refusing to store an invalid product catalogue row");
   await setSetting(SETTING_KEYS.PRODUCT_CATALOGUE, text);
 }

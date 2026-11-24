@@ -39,11 +39,13 @@ export async function GET() {
   const row = await getCatalogueRow();
   // B1: `connectorLimits` only when stored (absent = DEFAULT_CONNECTOR_LIMITS,
   // lib/connectors/limits.ts), so a row without limits answers the pre-B1 bytes.
+  // C1b: `connectorExtraMonthly` likewise only when stored (lib/connectors/price.ts).
   return NextResponse.json({
     catalogue: row.catalogue,
     engineOverrides: row.engineOverrides,
     engineOptions: await engineOptions(),
     ...(row.connectorLimits ? { connectorLimits: row.connectorLimits } : {}),
+    ...(row.connectorExtraMonthly ? { connectorExtraMonthly: row.connectorExtraMonthly } : {}),
   });
 }
 
@@ -53,7 +55,9 @@ export async function GET() {
 // with 400 naming it when the worker doesn't honour it for that product),
 // null clears it, omitted keeps it. B1: top-level `connectorLimits:
 // { trial?, paid? }` (integers 0..10, > 10 refused), omitted keeps the
-// stored limits; responses carry `connectorLimits` only once stored. Any unknown key or invalid value → 400
+// stored limits; responses carry `connectorLimits` only once stored.
+// C1b: top-level `connectorExtraMonthly: { EUR?, ILS? }` (numbers >= 0),
+// omitted keeps the stored price; carried in responses only once stored. Any unknown key or invalid value → 400
 // naming every offending path, and nothing is written.
 export async function PUT(req: NextRequest) {
   const guard = await requireAdmin();
@@ -63,7 +67,7 @@ export async function PUT(req: NextRequest) {
   const w = catalogueRowWrite(stored, body);
   if (!w.ok) return NextResponse.json({ error: w.error, fields: w.fields }, { status: 400 });
   if (w.changed) {
-    await setProductCatalogue(w.value, w.engineOverrides, w.connectorLimits);
+    await setProductCatalogue(w.value, w.engineOverrides, w.connectorLimits, w.connectorExtraMonthly);
     await logEvent({
       source: "web",
       event: "admin_settings_updated",
@@ -77,5 +81,6 @@ export async function PUT(req: NextRequest) {
     catalogue: w.value,
     engineOverrides: w.engineOverrides,
     ...(w.connectorLimits ? { connectorLimits: w.connectorLimits } : {}),
+    ...(w.connectorExtraMonthly ? { connectorExtraMonthly: w.connectorExtraMonthly } : {}),
   });
 }

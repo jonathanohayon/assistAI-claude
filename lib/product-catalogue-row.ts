@@ -24,6 +24,13 @@ import {
   parseConnectorLimits,
   type ConnectorLimits,
 } from "./connectors/limits";
+import {
+  CONNECTOR_EXTRA_MONTHLY_KEY,
+  connectorExtraMonthlyWrite,
+  defaultConnectorExtraMonthly,
+  parseConnectorExtraMonthly,
+  type ConnectorExtraMonthly,
+} from "./connectors/price";
 import { catalogueWrite, parseProductCatalogue, type ProductCatalogue } from "./product-catalogue";
 import { PRODUCTS, type Product } from "./product-values";
 
@@ -32,11 +39,15 @@ export const ENGINE_OVERRIDE_KEY = "engineOverride";
 // B1 (additive): the row may also carry a TOP-LEVEL `connectorLimits`
 // ({ trial, paid }, lib/connectors/limits.ts). Absent = the defaults, and the
 // row's bytes are exactly what they were before B1.
+// C1b (additive): likewise a TOP-LEVEL `connectorExtraMonthly` ({ EUR, ILS },
+// lib/connectors/price.ts), the monthly price of one extra connector.
 export type CatalogueRow = {
   catalogue: ProductCatalogue;
   engineOverrides: EngineOverrides;
   /** Stored connector limits; undefined = not stored (DEFAULT_CONNECTOR_LIMITS apply). */
   connectorLimits?: ConnectorLimits;
+  /** C1b: stored extra-connector price; undefined = not stored (DEFAULT_CONNECTOR_EXTRA_MONTHLY apply). */
+  connectorExtraMonthly?: ConnectorExtraMonthly;
 };
 
 const isPlainObject = (x: unknown): x is Record<string, unknown> =>
@@ -53,12 +64,20 @@ export function parseCatalogueRow(x: unknown): CatalogueRow | null {
   const prices: Record<string, unknown> = {};
   const overrides = noEngineOverrides();
   let connectorLimits: ConnectorLimits | undefined;
+  let connectorExtraMonthly: ConnectorExtraMonthly | undefined;
   for (const [p, byCur] of Object.entries(x)) {
     if (p === CONNECTOR_LIMITS_KEY) {
       // A malformed (or > HARD_MAX_CONNECTORS) value fails the whole row.
       const l = parseConnectorLimits(byCur);
       if (!l) return null;
       connectorLimits = l;
+      continue;
+    }
+    if (p === CONNECTOR_EXTRA_MONTHLY_KEY) {
+      // A malformed value fails the whole row.
+      const e = parseConnectorExtraMonthly(byCur);
+      if (!e) return null;
+      connectorExtraMonthly = e;
       continue;
     }
     if (isPlainObject(byCur) && Object.prototype.hasOwnProperty.call(byCur, ENGINE_OVERRIDE_KEY)) {
@@ -74,7 +93,12 @@ export function parseCatalogueRow(x: unknown): CatalogueRow | null {
   }
   const catalogue = parseProductCatalogue(prices);
   if (!catalogue) return null;
-  return connectorLimits ? { catalogue, engineOverrides: overrides, connectorLimits } : { catalogue, engineOverrides: overrides };
+  return {
+    catalogue,
+    engineOverrides: overrides,
+    ...(connectorLimits ? { connectorLimits } : {}),
+    ...(connectorExtraMonthly ? { connectorExtraMonthly } : {}),
+  };
 }
 
 /**
@@ -86,8 +110,9 @@ export function serializeCatalogueRow(
   cat: ProductCatalogue,
   overrides: EngineOverrides = noEngineOverrides(),
   connectorLimits?: ConnectorLimits,
+  connectorExtraMonthly?: ConnectorExtraMonthly,
 ): string {
-  if (!hasAnyEngineOverride(overrides) && !connectorLimits) return JSON.stringify(cat);
+  if (!hasAnyEngineOverride(overrides) && !connectorLimits && !connectorExtraMonthly) return JSON.stringify(cat);
   const row: Record<string, unknown> = {};
   for (const p of Object.keys(cat) as Product[]) {
     const o = overrides[p];
@@ -95,6 +120,8 @@ export function serializeCatalogueRow(
   }
   // B1: connector limits, when stored, follow the products.
   if (connectorLimits) row[CONNECTOR_LIMITS_KEY] = { trial: connectorLimits.trial, paid: connectorLimits.paid };
+  // C1b: the extra-connector price, when stored, follows them.
+  if (connectorExtraMonthly) row[CONNECTOR_EXTRA_MONTHLY_KEY] = { EUR: connectorExtraMonthly.EUR, ILS: connectorExtraMonthly.ILS };
   return JSON.stringify(row);
 }
 
@@ -105,6 +132,8 @@ export type CatalogueRowWrite =
       engineOverrides: EngineOverrides;
       /** The limits to store: the stored ones when omitted (undefined = still not stored). */
       connectorLimits?: ConnectorLimits;
+      /** The extra-connector price to store: the stored one when omitted (undefined = still not stored). */
+      connectorExtraMonthly?: ConnectorExtraMonthly;
       changed: boolean;
     }
   | { ok: false; error: "invalid_catalogue"; fields: string[] };
@@ -122,6 +151,11 @@ export type CatalogueRowWrite =
  *   - present        → each present field an integer 0..HARD_MAX_CONNECTORS
  *     (> 10 refused, never clamped), omitted fields keep their value, an
  *     unknown key is refused, naming `connectorLimits.<field>`.
+ * C1b: top-level `connectorExtraMonthly: { EUR?, ILS? }` (lib/connectors/price.ts)
+ *   - omitted        → the stored price is kept (or stays unstored);
+ *   - present        → each present currency a finite number >= 0, omitted
+ *     currencies keep their value, an unknown key is refused, naming
+ *     `connectorExtraMonthly.<currency>`.
  * Any refusal → nothing is written (every offending path is named).
  */
 export function catalogueRowWrite(stored: CatalogueRow, body: unknown): CatalogueRowWrite {
@@ -134,6 +168,15 @@ export function catalogueRowWrite(stored: CatalogueRow, body: unknown): Catalogu
     const lw = connectorLimitsWrite(stored.connectorLimits ?? defaultConnectorLimits(), rawLimits);
     if (lw.ok) nextLimits = lw.value;
     else bad.push(...lw.fields);
+    body = restBody;
+    priceBody = restBody;
+  }
+  let nextExtra = stored.connectorExtraMonthly ? { ...stored.connectorExtraMonthly } : undefined;
+  if (isPlainObject(body) && Object.prototype.hasOwnProperty.call(body, CONNECTOR_EXTRA_MONTHLY_KEY)) {
+    const { [CONNECTOR_EXTRA_MONTHLY_KEY]: rawExtra, ...restBody } = body;
+    const ew = connectorExtraMonthlyWrite(stored.connectorExtraMonthly ?? defaultConnectorExtraMonthly(), rawExtra);
+    if (ew.ok) nextExtra = ew.value;
+    else bad.push(...ew.fields);
     body = restBody;
     priceBody = restBody;
   }
@@ -174,8 +217,9 @@ export function catalogueRowWrite(stored: CatalogueRow, body: unknown): Catalogu
     value: w.value,
     engineOverrides: nextOverrides,
     ...(nextLimits ? { connectorLimits: nextLimits } : {}),
+    ...(nextExtra ? { connectorExtraMonthly: nextExtra } : {}),
     changed:
-      serializeCatalogueRow(w.value, nextOverrides, nextLimits) !==
-      serializeCatalogueRow(stored.catalogue, stored.engineOverrides, stored.connectorLimits),
+      serializeCatalogueRow(w.value, nextOverrides, nextLimits, nextExtra) !==
+      serializeCatalogueRow(stored.catalogue, stored.engineOverrides, stored.connectorLimits, stored.connectorExtraMonthly),
   };
 }
