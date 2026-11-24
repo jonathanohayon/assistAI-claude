@@ -54,7 +54,16 @@ const LINK = `inline-flex min-h-11 cursor-pointer items-center rounded-lg text-s
 const SAVE =
   "inline-flex min-h-11 items-center justify-center rounded-full bg-[#be185d] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#9d174d] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2";
 
-export function ClientAgentBrick({ asUserId = null, sample }: { asUserId?: string | null; sample?: ClientAgentSample }) {
+export function ClientAgentBrick({
+  asUserId = null,
+  sample,
+  onSaved,
+}: {
+  asUserId?: string | null;
+  sample?: ClientAgentSample;
+  /** C1b: called after a successful save (the connectors list re-reads its page). */
+  onSaved?: () => void;
+}) {
   const t = useTranslations("ClientAgentBrick");
   const tTools = useTranslations("ToolsBrick");
   const tConfig = useTranslations("DashboardConfig");
@@ -137,6 +146,7 @@ export function ClientAgentBrick({ asUserId = null, sample }: { asUserId?: strin
       setTools(data.tools);
       setBase(data.tools);
       setDirty(false);
+      onSaved?.();
       setSavedAt(new Date().toLocaleTimeString(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR"));
     } catch {
       setError(tTools("saveError"));
