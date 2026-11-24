@@ -7,7 +7,6 @@
 // and is consumed by the book / availability / reschedule routes so the
 // constraint can never be bypassed.
 //
-// See lib/schedule.ts for the companion centre/day rules.
 import type { calendar_v3 } from "@googleapis/calendar";
 
 import { logEvent } from "@/lib/logger";
@@ -218,4 +217,64 @@ export async function computeFreeSlots(
 
   const busy = blockingIntervals(res.data.items || []);
   return freeSlotsFromBusy(date, durationMin, busy, Date.now());
+}
+
+/** How far ahead list-dates looks for a day with a free slot (one Google read). */
+export const LIST_DATES_HORIZON_DAYS = 30;
+/** Bounds of list-dates `count`. */
+export const LIST_DATES_MIN = 1;
+export const LIST_DATES_MAX = 10;
+
+/** `iso` + `n` calendar days (YYYY-MM-DD, UTC civil arithmetic, no TZ drift). */
+export function addDaysIso(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map((s) => Number(s));
+  const t = new Date(Date.UTC(y, m - 1, d + n));
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
+}
+
+/**
+ * The first `count` days among `days` (YYYY-MM-DD, ascending) with at least
+ * one free start for a `durationMin` service: the same slot logic as
+ * computeFreeSlots (08–20 read window, 09–18 business hours, overlap guard),
+ * in ONE events.list over the whole span (paged) instead of one per day.
+ */
+export async function datesWithFreeSlots(
+  calendar: calendar_v3.Calendar,
+  calendarId: string,
+  days: string[],
+  durationMin: number,
+  count: number,
+): Promise<string[]> {
+  if (days.length === 0 || count <= 0) return [];
+  const timeMin = jerusalemToUTCISO(days[0], "08:00:00");
+  const timeMax = jerusalemToUTCISO(days[days.length - 1], "20:00:00");
+  const items: calendar_v3.Schema$Event[] = [];
+  let pageToken: string | undefined;
+  do {
+    const res = await timedEventsList(
+      calendar,
+      {
+        calendarId,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        timeZone: JERUSALEM_TZ,
+        maxResults: 2500,
+        ...(pageToken ? { pageToken } : {}),
+      },
+      "datesWithFreeSlots",
+    );
+    items.push(...(res.data.items || []));
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  const busy = blockingIntervals(items);
+  const now = Date.now();
+  const out: string[] = [];
+  for (const day of days) {
+    if (out.length >= count) break;
+    if (freeSlotsFromBusy(day, durationMin, busy, now).length > 0) out.push(day);
+  }
+  return out;
 }

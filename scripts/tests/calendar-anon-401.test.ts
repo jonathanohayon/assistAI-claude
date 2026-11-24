@@ -12,7 +12,11 @@
 // scripts/tests/fixtures/calendar-anon-401.authorized.json was recorded with
 // RECORD_FIXTURE=1 on the commit that only adds the injection seam (the
 // pre-fix behaviour); this test asserts byte-equal status + body + Google calls
-// against it.
+// against it. Re-recorded on fix/calendar-legacy-neutral for the entries
+// whose body has no `location` key (availability, list-dates, book,
+// reschedule): they pinned the first customer's weekday-to-centre rule
+// ("center":"ashdod", "RDV Ashdod — …", "Centre : Ashdod"); they now get the
+// neutral answer of `location: null`. Every other entry is unchanged.
 //
 // Run with:  npx tsx scripts/tests/calendar-anon-401.test.ts
 //   (re-record: RECORD_FIXTURE=1 npx tsx scripts/tests/calendar-anon-401.test.ts)

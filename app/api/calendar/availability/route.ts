@@ -2,25 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { computeFreeSlots } from "@/lib/calendar-conflict";
 import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
-import { isNewShape, locationLabel } from "@/lib/booking-place";
-import {
-  type Center,
-  centerForDate,
-  dayNameFr,
-  labelFor,
-  nextDatesForCenter,
-} from "@/lib/schedule";
+import { noteIgnoredCenter, oldWorkerLabel, resolvePlace } from "@/lib/booking-place";
+import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
 
 export async function POST(req: NextRequest) {
   // No internal secret and no session → 401 before anything else.
   const gate = await requireAgentCaller(req);
   if (!gate.ok) return gate.response;
   const body = (await req.json()) as Record<string, unknown>;
-  const { date, center, duration } = body as { date?: string; center?: string; duration?: number };
-  // With a `location` (the tenant's own place, new worker): no weekday rule,
-  // no centre label (lib/booking-place.ts). Without: today's behaviour.
-  const newShape = isNewShape(body);
-  const location = locationLabel(body.location);
+  const { date, duration } = body as { date?: string; duration?: number };
+  // The tenant's own place (`location`), or none. No weekday rule, no centre
+  // label, for either request shape (lib/booking-place.ts).
+  const placed = resolvePlace(body);
+  noteIgnoredCenter("availability", placed);
+  const location = placed.place.label;
   // Slots must fit the requested service length, not a fixed 30 min.
   const durationMin =
     typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? Math.round(duration) : 30;
@@ -31,37 +26,9 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-
-  // Compute the unique centre open that day. If the agent asked for a
-  // specific centre, refuse to look up availability there if the day says
-  // otherwise — saves a Google round-trip and forces the LLM to suggest
-  // the right one.
-  let allowedCenter: Center;
-  try {
-    allowedCenter = centerForDate(date); // also validates the date (both shapes)
-  } catch (e) {
-    return NextResponse.json(
-      { error: (e as Error).message },
-      { status: 400 },
-    );
-  }
-
-  if (!newShape && center && center !== allowedCenter) {
-    // The agent asked for a center that isn't open this day. Don't just say
-    // no — return the next valid dates for THE CENTER THE CALLER WANTED so
-    // the agent can directly propose them ("Jérusalem est fermé lundi, mais
-    // mardi 12 ça marche"). Eliminates a re-derivation step on the LLM.
-    const suggested = nextDatesForCenter(center as Center, 3, date);
-    return NextResponse.json({
-      error: "wrong_day_for_center",
-      date,
-      weekday: dayNameFr(date),
-      requested_center: center,
-      open_center_that_day: allowedCenter,
-      open_label_that_day: labelFor(allowedCenter),
-      suggested_dates: suggested,
-      message: `Le ${date} (${dayNameFr(date)}), seul ${labelFor(allowedCenter)} est ouvert. Prochaines dates pour ${labelFor(center as Center)} : ${suggested.map((d) => `${d.weekday} ${d.date}`).join(", ")}.`,
-    });
+  // A date that does not exist (2026-02-30) is refused, never rolled over.
+  if (!isRealIsoDate(date)) {
+    return NextResponse.json({ error: invalidDateError(date) }, { status: 400 });
   }
 
   const caller = await resolveAgentCallerGoogle(req);
@@ -92,28 +59,13 @@ export async function POST(req: NextRequest) {
       durationMin,
     );
 
-    if (newShape) {
-      return NextResponse.json({
-        date,
-        location,
-        available_slots: slots,
-        ...(slots.length === 0 ? { reason: `Plus de créneau disponible pour le ${date}.` } : {}),
-      });
-    }
-    const suggested = slots.length === 0
-      ? nextDatesForCenter(allowedCenter, 3, date)
-      : [];
     return NextResponse.json({
       date,
-      center: allowedCenter,
-      label: labelFor(allowedCenter),
+      location,
+      // Old-worker body only: the neutral label its texts interpolate.
+      ...oldWorkerLabel(placed),
       available_slots: slots,
-      ...(slots.length === 0
-        ? {
-            reason: `Plus de créneau disponible pour le ${date}. Prochaines dates ${labelFor(allowedCenter)} : ${suggested.map((d) => `${d.weekday} ${d.date}`).join(", ")}.`,
-            suggested_dates: suggested,
-          }
-        : {}),
+      ...(slots.length === 0 ? { reason: `Plus de créneau disponible pour le ${date}.` } : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erreur calendrier";

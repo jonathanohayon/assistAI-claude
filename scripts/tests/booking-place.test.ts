@@ -2,67 +2,72 @@
 // Run with:  npx tsx scripts/tests/booking-place.test.ts
 import assert from "node:assert/strict";
 
-import { atPlace, eventPlaceLine, eventTitle, locationLabel, nameFromTitle, resolvePlace } from "../../lib/booking-place";
-import { CENTERS, validateBooking } from "../../lib/schedule";
+import {
+  OLD_WORKER_LABEL,
+  atPlace,
+  datedEntry,
+  eventPlaceLine,
+  eventTitle,
+  locationLabel,
+  nameFromTitle,
+  oldWorkerLabel,
+  resolvePlace,
+  weekdayFr,
+} from "../../lib/booking-place";
+import { FIRST_CUSTOMER_FACTS } from "./first-customer-facts";
 
-// LEGACY (no `location` key): exactly today's behaviour and texts, for every
-// weekday × every requested centre (or none).
-const dates = ["2026-11-15", "2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20", "2026-11-21"];
-let n = 0;
-for (const date of dates) {
-  for (const requested of [null, ...CENTERS]) {
-    const body = requested ? { center: requested } : {};
-    const got = resolvePlace(body, date);
-    const old = validateBooking(date, requested);
-    if (!old.ok) {
-      assert.ok(!got.ok && got.kind === "wrong_center");
-      assert.deepEqual(got.refusal, old);
-    } else {
-      assert.ok(got.ok && got.place.kind === "legacy");
-      const p = got.place;
-      assert.equal(p.kind === "legacy" && p.center, old.center);
-      // The former expressions, verbatim:
-      assert.equal(eventTitle(p, "Dana"), `RDV ${old.label} — Dana`);
-      assert.equal(eventPlaceLine(p), `Centre : ${old.label}`);
-      assert.equal(`pour Dana${atPlace(p)}`, `pour Dana à ${old.label}`);
-      assert.equal(nameFromTitle(`RDV ${old.label} — Dana`, p), "Dana");
-      assert.equal(nameFromTitle("RDV — Dana", p), null, "legacy keeps its former pattern");
-    }
-    n++;
-  }
-}
-assert.equal(n, 28);
-assert.deepEqual(resolvePlace({ center: "jerusalem" }, "nope"), {
-  ok: false, kind: "invalid_date", error: "date invalide : nope (YYYY-MM-DD attendu)",
-});
+const NONE = { kind: "location", label: null };
 
-// NEW (`location` key present): NO weekday rule, whatever the day or centre.
-for (const date of dates) {
-  for (const center of [undefined, ...CENTERS]) {
-    const r = resolvePlace({ location: "Salon Rivoli", ...(center ? { center } : {}) }, date);
-    assert.deepEqual(r, { ok: true, place: { kind: "location", label: "Salon Rivoli" } });
-  }
+// Old worker body (no `location` key): exactly the new shape with location
+// null, whatever the centre asked for; the centre is flagged as ignored.
+for (const center of ["jerusalem", "ashdod", "natanya", "haifa", "", 42, null]) {
+  assert.deepEqual(resolvePlace({ center }), { place: NONE, oldWorker: true, ignoredCenter: true }, `old worker body center ${String(center)}`);
 }
-const none = resolvePlace({ location: null }, "2026-11-16");
-assert.ok(none.ok);
-const p0 = none.place;
+assert.deepEqual(resolvePlace({}), { place: NONE, oldWorker: true, ignoredCenter: false }, "old worker body without center");
+assert.deepEqual(resolvePlace({ location: null }), { place: NONE, oldWorker: false, ignoredCenter: false });
+
+// New worker body (`location` key present): the tenant's place; a stray
+// centre next to it is not a legacy request (nothing to log).
+for (const center of [undefined, "jerusalem", "ashdod", "natanya"]) {
+  const r = resolvePlace({ location: "Salon Rivoli", ...(center ? { center } : {}) });
+  assert.deepEqual(r, { place: { kind: "location", label: "Salon Rivoli" }, oldWorker: false, ignoredCenter: false });
+}
+
+const p0 = resolvePlace({ center: "natanya" }).place;
 assert.equal(eventTitle(p0, "Dana"), "RDV — Dana");
 assert.equal(eventPlaceLine(p0), "");
 assert.equal(atPlace(p0), "");
-assert.equal(nameFromTitle("RDV — Dana", p0), "Dana");
-const named = resolvePlace({ location: "  Salon Rivoli " }, "2026-11-16");
-assert.ok(named.ok);
-assert.equal(eventTitle(named.place, "Dana"), "RDV Salon Rivoli — Dana");
-assert.equal(eventPlaceLine(named.place), "Lieu : Salon Rivoli");
-assert.equal(nameFromTitle("RDV Jérusalem — Dana", named.place), "Dana");
+assert.equal(nameFromTitle("RDV — Dana"), "Dana");
+const named = resolvePlace({ location: "  Salon Rivoli " }).place;
+assert.equal(eventTitle(named, "Dana"), "RDV Salon Rivoli — Dana");
+assert.equal(eventPlaceLine(named), "Lieu : Salon Rivoli");
+assert.equal(atPlace(named), " à Salon Rivoli");
+// A title written before this change ("RDV <centre> — <name>") still yields the name.
+assert.equal(nameFromTitle("RDV Studio Nord — Dana"), "Dana");
+assert.equal(nameFromTitle("Custom title"), null);
 assert.equal(locationLabel("x".repeat(500))?.length, 120);
 assert.equal(locationLabel(42), null);
+assert.equal(locationLabel("   "), null);
 
-// No first-customer fact in the new path's texts.
-const FACTS = /jérusalem|jerusalem|ashdod|natanya|netanya|prestige|centre :/i;
-for (const r of [none, named]) {
-  assert.ok(r.ok);
-  for (const t of [eventTitle(r.place, "Dana"), eventPlaceLine(r.place), atPlace(r.place)]) assert.doesNotMatch(t, FACTS);
+// Old-worker body: the neutral label and day names its texts read; none for the new shape.
+assert.equal(OLD_WORKER_LABEL, "l'établissement");
+assert.deepEqual(oldWorkerLabel(resolvePlace({ center: "ashdod" })), { label: "l'établissement" });
+assert.deepEqual(oldWorkerLabel(resolvePlace({})), { label: "l'établissement" });
+assert.deepEqual(oldWorkerLabel(resolvePlace({ location: null })), {});
+assert.deepEqual(oldWorkerLabel(resolvePlace({ location: "Salon Rivoli" })), {});
+assert.deepEqual(datedEntry(resolvePlace({ center: "ashdod" }), "2026-11-30"), { date: "2026-11-30", weekday: "lundi" });
+assert.deepEqual(datedEntry(resolvePlace({ location: null }), "2026-11-30"), { date: "2026-11-30" });
+const week = ["2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28"].map(weekdayFr);
+assert.deepEqual(week, ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"]);
+assert.equal(weekdayFr("2028-02-29"), "mardi");
+
+// No first-customer fact in any text, for either shape.
+for (const body of [{ center: "jerusalem" }, { center: "ashdod" }, { center: "natanya" }, {}, { location: null }, { location: "Salon Rivoli" }]) {
+  const { place } = resolvePlace(body);
+  for (const t of [eventTitle(place, "Dana"), eventPlaceLine(place), atPlace(place)]) {
+    assert.doesNotMatch(t, FIRST_CUSTOMER_FACTS);
+    assert.doesNotMatch(t, /centre :/i);
+  }
 }
 
 console.log("ALL BOOKING-PLACE TESTS PASSED");

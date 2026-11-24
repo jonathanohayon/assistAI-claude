@@ -1,13 +1,15 @@
 // POST /api/calendar/list-dates: `after` is INCLUSIVE and, when present, the
-// response says whether the requested date itself is open for the centre.
-// The error paths that suggest ALTERNATIVES (availability / book / reschedule
-// suggested_dates) keep excluding the date that was just refused.
+// response says whether the requested date itself is open (has a free slot).
+// There is no weekday-to-centre rule any more: a `center` key is ignored and
+// "open" means "at least one free slot", the availability slot logic.
 //
-// Live-call bug this guards: asked "is Tuesday 24 open?" for Jérusalem with
-// after = 2026-11-24, the old list started on Wed 25 and the agent told the
-// caller the centre does not open on Tuesdays.
+// Live-call bug this guards: asked "is Tuesday 24 open?" with after =
+// 2026-11-24, the old list started on Wed 25 and the agent told the caller
+// the place does not open on Tuesdays.
 //
-// The handlers run for real, outside Next. No DB, no network, frozen clock.
+// The handlers run for real, outside Next, as the worker (internal secret +
+// tenant phone), with an in-memory Google calendar. No DB, no network, frozen
+// clock.
 // Run with:  npx tsx scripts/tests/list-dates-inclusive.test.ts
 
 import assert from "node:assert/strict";
@@ -19,8 +21,6 @@ process.env.INTERNAL_SECRET = SECRET;
 delete process.env.DATABASE_URL;
 
 // Frozen clock: Monday 2026-11-23 12:00 in Jerusalem (10:00 UTC).
-// Calendar that week: Mon 23 (Ashdod), Tue 24 (Jérusalem), Wed 25 (Natanya),
-// Thu 26 / Fri 27 / Sat 28 / Sun 29 (Jérusalem), Mon 30 (Ashdod).
 const FIXED = Date.UTC(2026, 10, 23, 10, 0, 0);
 const RealDate = Date;
 class FixedDate extends RealDate {
@@ -38,6 +38,12 @@ globalThis.fetch = (async (input: unknown) => {
   throw new Error(`outbound fetch blocked in test: ${String(input)}`);
 }) as typeof fetch;
 
+const WORKER_PHONE = "+15555550100";
+const WORKER_USER = "user-worker-mock";
+// Wed 2026-11-25 is fully booked 09:00–18:00; every other day is free.
+const FULL = { id: "full", summary: "Busy", start: { dateTime: "2026-11-25T09:00:00+02:00" }, end: { dateTime: "2026-11-25T18:00:00+02:00" } };
+const calendar = { events: { list: async () => ({ data: { items: [FULL] } }) } };
+
 type Body = Record<string, unknown>;
 
 async function post(mod: string, route: string, body: Body): Promise<{ status: number; text: string; json: Body }> {
@@ -45,7 +51,7 @@ async function post(mod: string, route: string, body: Body): Promise<{ status: n
   const res: Response = await POST(
     new NextRequest(`https://example.test/api/${route}`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-internal-secret": SECRET },
+      headers: { "content-type": "application/json", "x-internal-secret": SECRET, "x-tenant-phone": WORKER_PHONE },
       body: JSON.stringify(body),
     }),
   );
@@ -66,9 +72,17 @@ async function test(name: string, fn: () => Promise<void> | void) {
 }
 
 async function main() {
+  const google = await import("../../lib/google");
+  const deps = google.agentCallerDeps as unknown as Record<string, unknown>;
+  deps.auth = async () => null;
+  deps.resolveTenantByPhone = async (phone: string) => (phone === WORKER_PHONE ? { user: { id: WORKER_USER } } : null);
+  deps.getTenantGoogleClients = async (userId: string) =>
+    userId === WORKER_USER ? { calendar, sheets: {}, calendarId: "cal-mock", sheetId: "sheet-mock" } : null;
+  // lib/schedule.ts is no longer used by any route; its own helper stays
+  // exclusive until its removal step.
   const schedule = await import("../../lib/schedule");
 
-  await test("after on a valid day is inclusive: Tue for Jerusalem lists Tue first", async () => {
+  await test("after on a free day is inclusive: Tue 24 is listed first", async () => {
     const r = await listDates({ center: "jerusalem", count: 3, after: "2026-11-24" });
     assert.equal(r.status, 200);
     assert.deepEqual(dates(r.json), ["2026-11-24", "2026-11-26", "2026-11-27"]);
@@ -76,46 +90,44 @@ async function main() {
     assert.equal(r.json.requested_date_open, true);
   });
 
-  await test("after on a non-matching day: Wed for Jerusalem lists Thu first, requested_date_open false", async () => {
-    const r = await listDates({ center: "jerusalem", count: 2, after: "2026-11-25" });
+  await test("after on a full day: Wed 25 skipped, requested_date_open false", async () => {
+    const r = await listDates({ location: null, count: 2, after: "2026-11-25" });
     assert.equal(r.status, 200);
     assert.deepEqual(dates(r.json), ["2026-11-26", "2026-11-27"]);
     assert.equal(r.json.requested_date, "2026-11-25");
     assert.equal(r.json.requested_date_open, false);
   });
 
-  await test("requested_date_open follows centerForDate for every centre", async () => {
-    // Wed 25 is Natanya's day: open for natanya, closed for the two others.
-    for (const [center, open] of [["natanya", true], ["ashdod", false], ["jerusalem", false]] as const) {
-      const r = await listDates({ center, count: 1, after: "2026-11-25" });
-      assert.equal(r.json.requested_date_open, open, center);
-      assert.equal(r.json.requested_date_open, schedule.centerForDate("2026-11-25") === center);
+  await test("no weekday rule: the same answer for every centre, any centre or none", async () => {
+    // Old-worker bodies (no `location` key) all get the same answer.
+    const ref = await listDates({ count: 1, after: "2026-11-30" });
+    assert.equal(ref.json.requested_date_open, true);
+    assert.deepEqual(dates(ref.json), ["2026-11-30"]);
+    for (const center of ["natanya", "ashdod", "jerusalem", "haifa", ""]) {
+      const r = await listDates({ ...(center ? { center } : {}), count: 1, after: "2026-11-30" });
+      assert.equal(r.text, ref.text, String(center));
     }
-    // Mon 30 for Ashdod: open, and listed first.
-    const r = await listDates({ center: "ashdod", count: 2, after: "2026-11-30" });
-    assert.equal(r.json.requested_date_open, true);
-    assert.deepEqual(dates(r.json), ["2026-11-30", "2026-12-07"]);
   });
 
-  await test("response with after: existing keys first, in their order, then the two new keys", async () => {
-    const r = await listDates({ center: "jerusalem", count: 1, after: "2026-11-24" });
-    assert.deepEqual(Object.keys(r.json), ["center", "label", "dates", "requested_date", "requested_date_open"]);
+  await test("response with after: keys in order, location echoed", async () => {
+    const r = await listDates({ location: "Mock Studio", count: 1, after: "2026-11-24" });
+    assert.deepEqual(Object.keys(r.json), ["location", "dates", "requested_date", "requested_date_open"]);
     assert.equal(
       r.text,
-      '{"center":"jerusalem","label":"Jérusalem","dates":[{"date":"2026-11-24","weekday":"mardi"}],"requested_date":"2026-11-24","requested_date_open":true}',
+      '{"location":"Mock Studio","dates":[{"date":"2026-11-24"}],"requested_date":"2026-11-24","requested_date_open":true}',
     );
   });
 
-  await test("without after: no new keys, byte-identical to before (walk starts tomorrow)", async () => {
+  await test("without after: no requested_* keys, the walk starts tomorrow", async () => {
     const r = await listDates({ center: "jerusalem", count: 3 });
     assert.equal(r.status, 200);
+    // Old-worker body: the neutral label and French day names its texts read.
     assert.equal(
       r.text,
-      '{"center":"jerusalem","label":"Jérusalem","dates":[{"date":"2026-11-24","weekday":"mardi"},{"date":"2026-11-26","weekday":"jeudi"},{"date":"2026-11-27","weekday":"vendredi"}]}',
+      `{"location":null,"label":"l'établissement","dates":[{"date":"2026-11-24","weekday":"mardi"},{"date":"2026-11-26","weekday":"jeudi"},{"date":"2026-11-27","weekday":"vendredi"}]}`,
     );
-    // Today (Mon 23, Ashdod's day) is still never listed without after.
-    const a = await listDates({ center: "ashdod", count: 1 });
-    assert.equal(a.text, '{"center":"ashdod","label":"Ashdod","dates":[{"date":"2026-11-30","weekday":"lundi"}]}');
+    const n = await listDates({ location: null, count: 3 });
+    assert.equal(n.text, '{"location":null,"dates":[{"date":"2026-11-24"},{"date":"2026-11-26"},{"date":"2026-11-27"}]}');
   });
 
   await test("bad after is validated as before: ignored, same body as no after", async () => {
@@ -127,13 +139,12 @@ async function main() {
     }
   });
 
-  await test("bad center is still a 400 with the same body", async () => {
-    const r = await listDates({ center: "haifa", after: "2026-11-24" });
-    assert.equal(r.status, 400);
-    assert.equal(
-      r.text,
-      '{"error":"center invalide. Valeurs : jerusalem, ashdod, natanya","valid_centers":["jerusalem","ashdod","natanya"]}',
-    );
+  await test("an unknown or missing center is no longer an error (no town list in any body)", async () => {
+    for (const body of [{ center: "haifa", after: "2026-11-24" }, { after: "2026-11-24" }, {}]) {
+      const r = await listDates(body);
+      assert.equal(r.status, 200, r.text);
+      assert.doesNotMatch(r.text, /jerusalem|j[ée]rusalem|ashdod|natanya|center invalide|valid_centers/i);
+    }
   });
 
   await test("nextDatesForCenter default stays exclusive (the suggested_dates callers)", () => {
@@ -155,27 +166,6 @@ async function main() {
       schedule.nextDatesForCenter("ashdod", 1, undefined, { inclusive: true }).map((d) => d.date),
       ["2026-11-30"],
     );
-  });
-
-  await test("availability wrong_day_for_center: suggested_dates byte-identical, requested date excluded", async () => {
-    // Ashdod asked on Mon 30 would be right; ask Ashdod on Tue 24 (Jérusalem's day).
-    const r = await post("../../app/api/calendar/availability/route", "calendar/availability", {
-      date: "2026-11-24",
-      center: "ashdod",
-    });
-    assert.equal(r.status, 200);
-    assert.equal(
-      r.text,
-      '{"error":"wrong_day_for_center","date":"2026-11-24","weekday":"mardi","requested_center":"ashdod","open_center_that_day":"jerusalem","open_label_that_day":"Jérusalem","suggested_dates":[{"date":"2026-11-30","weekday":"lundi"},{"date":"2026-12-07","weekday":"lundi"},{"date":"2026-12-14","weekday":"lundi"}],"message":"Le 2026-11-24 (mardi), seul Jérusalem est ouvert. Prochaines dates pour Ashdod : lundi 2026-11-30, lundi 2026-12-07, lundi 2026-12-14."}',
-    );
-    // Ashdod on its own day (Mon 30) but routed as wrong_day by asking Jérusalem:
-    // the suggestions for Jérusalem start after Mon 30, not on it.
-    const j = await post("../../app/api/calendar/availability/route", "calendar/availability", {
-      date: "2026-11-30",
-      center: "jerusalem",
-    });
-    const s = (j.json.suggested_dates as { date: string }[]).map((d) => d.date);
-    assert.deepEqual(s, ["2026-12-01", "2026-12-03", "2026-12-04"]);
   });
 
   console.log(`\nlist-dates-inclusive: ${passed} passed`);

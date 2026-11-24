@@ -3,8 +3,8 @@
     "status": 200,
     "body": {
       "date": "2030-01-07",
-      "center": "ashdod",
-      "label": "Ashdod",
+      "location": null,
+      "label": "l'établissement",
       "available_slots": [
         "09:00",
         "09:30",
@@ -43,8 +43,8 @@
     "status": 200,
     "body": {
       "date": "2030-01-07",
-      "center": "ashdod",
-      "label": "Ashdod",
+      "location": null,
+      "label": "l'établissement",
       "available_slots": [
         "09:00",
         "09:30",
@@ -156,22 +156,35 @@
   "calendar/list-dates :: worker": {
     "status": 200,
     "body": {
-      "center": "ashdod",
-      "label": "Ashdod",
+      "location": null,
+      "label": "l'établissement",
       "dates": [
         {
           "date": "2030-01-07",
           "weekday": "lundi"
         },
         {
-          "date": "2030-01-14",
-          "weekday": "lundi"
+          "date": "2030-01-08",
+          "weekday": "mardi"
         }
       ],
       "requested_date": "2030-01-07",
       "requested_date_open": true
     },
-    "google": []
+    "google": [
+      {
+        "api": "calendar.events.list",
+        "args": {
+          "calendarId": "cal-user-worker-mock",
+          "timeMin": "2030-01-07T06:00:00.000Z",
+          "timeMax": "2030-02-05T18:00:00.000Z",
+          "singleEvents": true,
+          "orderBy": "startTime",
+          "timeZone": "Asia/Jerusalem",
+          "maxResults": 2500
+        }
+      }
+    ]
   },
   "calendar/list-dates :: session": {
     "status": 401,
@@ -186,8 +199,8 @@
       "success": true,
       "eventId": "evt-new",
       "link": "https://calendar.example.test/evt-new",
-      "center": "ashdod",
-      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client à Ashdod"
+      "location": null,
+      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client"
     },
     "google": [
       {
@@ -206,8 +219,8 @@
         "args": {
           "calendarId": "cal-user-worker-mock",
           "requestBody": {
-            "summary": "RDV Ashdod — Mock Client",
-            "description": "Rendez-vous\nCentre : Ashdod\nTel : +15555550123",
+            "summary": "RDV — Mock Client",
+            "description": "Rendez-vous\nTel : +15555550123",
             "start": {
               "dateTime": "2030-01-07T14:00:00",
               "timeZone": "Asia/Jerusalem"
@@ -227,8 +240,8 @@
       "success": true,
       "eventId": "evt-new",
       "link": "https://calendar.example.test/evt-new",
-      "center": "ashdod",
-      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client à Ashdod"
+      "location": null,
+      "summary": "RDV confirmé le 2030-01-07 à 14:00 pour Mock Client"
     },
     "google": [
       {
@@ -247,8 +260,8 @@
         "args": {
           "calendarId": "cal-user-session-mock",
           "requestBody": {
-            "summary": "RDV Ashdod — Mock Client",
-            "description": "Rendez-vous\nCentre : Ashdod\nTel : +15555550123",
+            "summary": "RDV — Mock Client",
+            "description": "Rendez-vous\nTel : +15555550123",
             "start": {
               "dateTime": "2030-01-07T14:00:00",
               "timeZone": "Asia/Jerusalem"
@@ -467,8 +480,8 @@
     "body": {
       "success": true,
       "eventId": "evt-1",
-      "center": "ashdod",
-      "summary": "RDV déplacé au 2030-01-07 à 15:00 (Ashdod)."
+      "location": null,
+      "summary": "RDV déplacé au 2030-01-07 à 15:00."
     },
     "google": [
       {
@@ -495,7 +508,6 @@
           "calendarId": "cal-user-worker-mock",
           "eventId": "evt-1",
           "requestBody": {
-            "summary": "RDV Ashdod — Mock Client",
             "start": {
               "dateTime": "2030-01-07T15:00:00",
               "timeZone": "Asia/Jerusalem"
@@ -514,8 +526,8 @@
     "body": {
       "success": true,
       "eventId": "evt-1",
-      "center": "ashdod",
-      "summary": "RDV déplacé au 2030-01-07 à 15:00 (Ashdod)."
+      "location": null,
+      "summary": "RDV déplacé au 2030-01-07 à 15:00."
     },
     "google": [
       {
@@ -542,7 +554,6 @@
           "calendarId": "cal-user-session-mock",
           "eventId": "evt-1",
           "requestBody": {
-            "summary": "RDV Ashdod — Mock Client",
             "start": {
               "dateTime": "2030-01-07T15:00:00",
               "timeZone": "Asia/Jerusalem"

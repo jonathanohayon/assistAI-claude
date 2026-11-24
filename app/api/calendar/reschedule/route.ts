@@ -3,9 +3,8 @@ import { computeFreeSlots, findConflicts } from "@/lib/calendar-conflict";
 import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
 import { logEvent } from "@/lib/logger";
 import { callIdMeta } from "@/lib/call-id";
-import { eventTitle, nameFromTitle, resolvePlace } from "@/lib/booking-place";
+import { eventTitle, nameFromTitle, noteIgnoredCenter, resolvePlace } from "@/lib/booking-place";
 import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
-import { type Center, nextDatesForCenter } from "@/lib/schedule";
 import { JERUSALEM_TZ, addMinutesJerusalem, jerusalemToUTCISO } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
@@ -13,12 +12,11 @@ export async function POST(req: NextRequest) {
   const gate = await requireAgentCaller(req);
   if (!gate.ok) return gate.response;
   const body = (await req.json()) as Record<string, unknown>;
-  const { eventId, newDate, newTime, duration, center } = body as {
+  const { eventId, newDate, newTime, duration } = body as {
     eventId?: string;
     newDate?: string;
     newTime?: string;
     duration?: number;
-    center?: string;
   };
 
   if (!eventId || !newDate || !newTime) {
@@ -28,52 +26,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Center/day rule — identical to book. Reject moving a RDV onto a day whose
-  // centre doesn't match the one requested (center is optional ; null = just
-  // compute the canonical centre for newDate). validateBooking throws on a
-  // malformed date.
-  // With a `location` (the tenant's own place, new worker) there is no
-  // weekday rule (lib/booking-place.ts).
-  // A date that does not exist (2026-02-30) is refused on both shapes; the
-  // legacy one already was (resolvePlace → centerForDate), with this text.
+  // Where (lib/booking-place.ts): a `location` from the tenant's own sheet,
+  // or none. No weekday rule for either request shape; a legacy `center` key
+  // is ignored. A date that does not exist (2026-02-30) is refused.
   if (!isRealIsoDate(newDate)) {
     return NextResponse.json({ error: invalidDateError(newDate) }, { status: 400 });
   }
-  const placed = resolvePlace(body, newDate);
-  if (!placed.ok && placed.kind === "invalid_date") {
-    return NextResponse.json({ error: placed.error }, { status: 400 });
-  }
-  if (!placed.ok) {
-    const resolved = placed.refusal;
-    const suggested = nextDatesForCenter(center as Center, 3, newDate);
-    await logEvent({
-      source: "calendar",
-      event: "reschedule_wrong_center",
-      message: `Déplacement refusé : ${resolved.reason}`,
-      level: "warn",
-      metadata: {
-        eventId,
-        newDate,
-        newTime,
-        requestedCenter: center,
-        expectedCenter: resolved.expectedCenter,
-      },
-    });
-    return NextResponse.json(
-      {
-        error: "wrong_day_for_center",
-        message: resolved.reason,
-        expectedCenter: resolved.expectedCenter,
-        expectedLabel: resolved.expectedLabel,
-        suggested_dates: suggested,
-      },
-      { status: 400 },
-    );
-  }
-
+  const placed = resolvePlace(body);
+  noteIgnoredCenter("reschedule", placed);
   const { place } = placed;
-  // Legacy: `center` in the response and logs, as before. New: `location`.
-  const placeField = place.kind === "legacy" ? { center: place.center } : { location: place.label };
+  const placeField = { location: place.label };
 
   // Refuse moving a RDV into the past (5-min grace for clock skew) — same as book.
   try {
@@ -169,13 +131,11 @@ export async function POST(req: NextRequest) {
 
     const endParts = addMinutesJerusalem(newDate, newTime, durationMin);
 
-    // Keep the centre label correct when the move crosses centres (e.g. a
-    // Jerusalem-Tuesday RDV moved to a Monday becomes Ashdod). Parse the client
-    // name out of "RDV {label} — {name}"; leave the summary untouched if it
-    // doesn't follow that shape (custom titles, manual events).
-    // With a `location` but no place given, the title is left as it is.
+    // With a place given, retitle "RDV {place} — {name}" (the client name
+    // parsed out of our own title shape; custom / manual titles untouched).
+    // With no place, the title is left as it is.
     const oldSummary = existing.data.summary ?? "";
-    const clientName = nameFromTitle(oldSummary, place);
+    const clientName = nameFromTitle(oldSummary);
     const newSummaryField = clientName && place.label ? eventTitle(place, clientName) : undefined;
 
     const updated = await caller.calendar.events.patch({
