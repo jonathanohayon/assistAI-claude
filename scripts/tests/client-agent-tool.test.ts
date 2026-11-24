@@ -14,7 +14,8 @@ import { clientAgentCallField, receptionistCallFields, toolsFromTileToggles } fr
 import { clientAgentEnabled, clientAgentMode } from "../../lib/tools/client-agent-switch";
 import {
   CLIENT_AGENT_TEST_BUDGET_MS,
-  CLIENT_AGENT_TEST_QUESTION,
+  CLIENT_AGENT_TEST_QUESTIONS,
+  clientAgentTestQuestion,
   runClientAgentTest,
   testCallId,
   type TestFetch,
@@ -213,12 +214,31 @@ async function main() {
     assert.match(parsed.call_id, /^[0-9a-f]{16}$/);
     assert.equal(parsed.turn_id, 0);
     assert.equal(parsed.language, "he");
-    assert.equal(parsed.question, CLIENT_AGENT_TEST_QUESTION);
+    assert.equal(parsed.question, "מה שעות הפתיחה שלכם?");
     assert.equal(parsed.caller_said, "");
     assert.deepEqual(parsed.history, []);
     assert.equal(s.headers["X-Tamara-Signature"], createHmac("sha256", "mock-secret").update(s.body).digest("hex"));
     assert.equal(s.timeoutMs, CLIENT_AGENT_TEST_BUDGET_MS);
     assert.equal(CLIENT_AGENT_TEST_BUDGET_MS, 2500);
+  });
+  await run("test: the question follows the language (fr / en / he; anything else → fr), the body's language is unchanged", async () => {
+    const cases: Array<[string, string]> = [
+      ["fr", "Quels sont vos horaires d'ouverture ?"],
+      ["en", "What are your opening hours?"],
+      ["he", "מה שעות הפתיחה שלכם?"],
+      ["de", "Quels sont vos horaires d'ouverture ?"],
+      ["", "Quels sont vos horaires d'ouverture ?"],
+      ["toString", "Quels sont vos horaires d'ouverture ?"],
+    ];
+    for (const [language, question] of cases) {
+      assert.equal(clientAgentTestQuestion(language), question, language);
+      let body = "";
+      await runClientAgentTest({ url: SAFE, secret: null, language }, { fetch: async (_u, i) => ((body = i.body!), reply(200, '{"answer":"ok"}')) });
+      const parsed = JSON.parse(body);
+      assert.equal(parsed.question, question, language);
+      assert.equal(parsed.language, language, "the body's language stays as passed");
+    }
+    assert.deepEqual(Object.keys(CLIENT_AGENT_TEST_QUESTIONS).sort(), ["en", "fr", "he"]);
   });
   await run("test: testCallId() is 16 hex chars, like the worker's real call ids", async () => {
     for (let i = 0; i < 20; i++) assert.match(testCallId(), /^[0-9a-f]{16}$/);

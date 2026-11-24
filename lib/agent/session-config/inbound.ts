@@ -46,6 +46,9 @@ import {
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
 
+/** The dedup key of the "client agent enabled without a secret" admin alert. */
+export const clientAgentNoSecretAlertKey = (userId: string) => `client_agent_no_secret:${userId}`;
+
 /** DNS budget of the serve-time webhook check (call setup path). */
 const SERVE_DNS_TIMEOUT_MS = 500;
 import {
@@ -397,6 +400,29 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // opened = the client agent is NOT served (fail closed, admins alerted).
   const opened = capabilities.clientAgent.active ? openClientAgentTools(tools, fx.reportUnreadable) : { tools, unreadable: false };
   let clientAgentField = opened.unreadable ? {} : clientAgentCallField(capabilities, opened.tools);
+  // Never an unsigned call: switched on with NO secret (a row saved before
+  // ON required one) = the client agent is NOT served (Tamara answers
+  // alone), one admin alert per account per day. The rest of the payload
+  // is unchanged.
+  if ("clientAgent" in clientAgentField && !opened.tools.clientAgent.secret) {
+    clientAgentField = {};
+    await fx.logEvent({
+      source: "tenant",
+      event: "client_agent_no_secret",
+      message: `Agent du client ignoré pour ${tenant.user.id} : activé sans secret`,
+      level: "error",
+      userId: tenant.user.id,
+    });
+    void fireSafely(() =>
+      fx.alertAdmins({
+        key: clientAgentNoSecretAlertKey(tenant.user.id),
+        subject: "Client agent enabled without a secret",
+        body: `The client agent of account ${tenant.user.id} is switched on without a secret. Its calls use the normal Tamara until a secret is set (switching it off and on again creates one).`,
+        dedupMs: 24 * 60 * 60 * 1000,
+        severity: "warning",
+      }),
+    );
+  }
   if ("clientAgent" in clientAgentField) {
     const safe = await checkAgentUrl(tools.clientAgent.url, fx.urlCheck);
     if (!safe.ok) {
