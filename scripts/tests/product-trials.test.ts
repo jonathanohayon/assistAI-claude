@@ -165,8 +165,12 @@ assert.match(caps, /sales:\s*SALES_TRIAL_CAP_ENFORCED/, "the sales cap reads the
 assert.match(caps, /reception:\s*false/);
 assert.match(caps, /reception_multi:\s*false/);
 assert.match(caps, /connect:\s*false/);
-// The trial POST and sign-up both use the enforced caps (never ALL_ON-like literals).
-assert.match(code("lib/product-trials-start.ts"), /productTrialStartable\(product, env, TRIAL_CAPS_ENFORCED\)/);
+// The trial POST, accountProducts' startable and sign-up all use the enforced
+// caps (never ALL_ON-like literals). The POST's check is trialStartDecision
+// (lib/product-trial-decision.ts), which calls productTrialStartable.
+assert.match(code("lib/product-trials-start.ts"), /trialStartDecision\(product, [^;]*, env, TRIAL_CAPS_ENFORCED\)/);
+assert.match(code("lib/products.ts"), /trialStartDecision\(TRIAL_PRODUCT_OF_ENTRY\[e\], account, env, TRIAL_CAPS_ENFORCED\)/);
+assert.match(code("lib/product-trial-decision.ts"), /productTrialStartable\(product, env, caps\)/);
 assert.match(code("lib/auth/provision-tenant.ts"), /signupDoorTrial\([^)]*TRIAL_CAPS_ENFORCED\)/);
 // Pure modules stay pure.
 const imports = (p: string) => [...readFileSync(p, "utf8").matchAll(/^\s*import\b[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);

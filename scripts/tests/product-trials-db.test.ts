@@ -18,7 +18,9 @@
 //      queued, attempt given back, one event without PII) once the minutes
 //      are used or the trial ended;
 //   6. the inbound trial gate (call answering) is unchanged by trial rows;
-//   7. billing-stats: usageByProduct.trials for a record-holder (additive).
+//   7. billing-stats: usageByProduct.trials for a record-holder (additive);
+//   8. trials[entry].startable equals "the POST returns 201" for every
+//      seeded account, through the route.
 // Plain `npm test` skips it. Run it with:  bash scripts/product-trials-db.sh
 // Only a 127.0.0.1/localhost URL is accepted; DATABASE_URL is never read from
 // the shell. Mock data only (example.test, +1555). Dynamic imports only after
@@ -196,7 +198,17 @@ async function main() {
   // ── 3. accountProducts: additive trials, active = entitled ─────────────
   {
     const avail = { state: "available" };
-    const a = await accountProducts(TENANT);
+    // `startable` is additive inside trials[entry]; these checks pin the
+    // pre-existing fields byte-identical (startable is checked in 3b).
+    const strip = <T extends { trials: Record<string, { startable: boolean }> }>(x: T) => {
+      const trials: Record<string, unknown> = {};
+      for (const [e, t] of Object.entries(x.trials)) {
+        const { startable: _s, ...rest } = t;
+        trials[e] = rest;
+      }
+      return { ...x, trials } as unknown as Omit<T, "trials"> & { trials: Record<string, Record<string, unknown>> };
+    };
+    const a = strip(await accountProducts(TENANT));
     assert.deepEqual(Object.keys(a), ["base", "addons", "entries", "source", "trials", "notifyRequested"]);
     assert.equal(a.trials.sales.state, "active");
     assert.ok(a.trials.sales.endsAt);
@@ -204,12 +216,12 @@ async function main() {
     assert.deepEqual(a.trials.connect, avail);
     assert.deepEqual([a.base, a.addons, a.entries, a.source], ["reception_multi", ["sales"], ["reception", "sales"], "products"], "the active trial entitles sales");
     await db.execute(sql`UPDATE account_product_trials SET started_at = now() - interval '8 days', ends_at = now() - interval '1 day' WHERE user_id = ${TENANT}`);
-    const b = await accountProducts(TENANT);
+    const b = strip(await accountProducts(TENANT));
     assert.equal(b.trials.sales.state, "used");
     assert.deepEqual([b.base, b.addons, b.entries], ["reception_multi", [], ["reception"]], "an ended trial entitles nothing");
-    const none = await accountProducts(GF);
+    const none = strip(await accountProducts(GF));
     assert.deepEqual(none.trials, { reception: avail, sales: avail, connect: avail });
-    const unknown = await accountProducts(id(0xfff));
+    const unknown = strip(await accountProducts(id(0xfff)));
     assert.deepEqual(unknown, { base: null, addons: [], entries: [], source: "grandfathered", trials: { reception: avail, sales: avail, connect: avail }, notifyRequested: [] });
   }
   console.log("ok: accountProducts.trials (available / active / used), active entitles the entry, ended does not");
@@ -569,6 +581,34 @@ async function main() {
     assert.ok(!("usageByProduct" in gf), "grandfathered: still no usageByProduct");
   }
   console.log("ok: billing-stats usageByProduct.trials additive; grandfathered unchanged");
+
+  // ── 8. trials[entry].startable ⇔ the POST returns 201, every account ──
+  {
+    const { TRIAL_PRODUCT_OF_ENTRY } = await import("../../lib/product-trial-decision");
+    const { PRODUCT_ENTRIES } = await import("../../lib/product-values");
+    const accounts = [...(await rows<{ id: string }>(sql`SELECT id FROM users ORDER BY id`)).map((r) => r.id), id(0xfff)];
+    let created = 0;
+    let checked = 0;
+    // (a) Through the real route (enforced caps, process.env), as the admin.
+    const envs: Array<Record<string, string>> = [{}, { CAMPAIGN_DISPATCH: "dry", CLIENT_AGENT: "admin" }, { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" }];
+    for (const env of envs) {
+      await withEnv(env, async () => {
+        for (const uid of accounts)
+          for (const e of PRODUCT_ENTRIES) {
+            const { startable } = (await accountProducts(uid)).trials[e];
+            as(ADMIN);
+            const r = await post({ product: TRIAL_PRODUCT_OF_ENTRY[e] }, uid === ADMIN ? "" : `?asUserId=${uid}`);
+            assert.equal(r.status === 201, startable, `route ${uid} ${e} ${JSON.stringify(env)}: startable ${startable}, POST ${r.status} ${String(r.body?.error ?? "")}`);
+            if (r.status === 201) created++;
+            checked++;
+          }
+      });
+    }
+    // Once started (or refused), nothing is startable again for the same account.
+    for (const uid of accounts) for (const e of PRODUCT_ENTRIES) assert.equal((await accountProducts(uid, new Date(), { env: { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" } })).trials[e].startable, false, `after ${uid} ${e}`);
+    assert.ok(created > 0, "some starts were accepted");
+    console.log(`ok: startable ⇔ POST 201 on ${accounts.length} accounts, ${checked} checks (${created} created)`);
+  }
 
   console.log("ALL PRODUCT-TRIALS DB TESTS PASSED");
   process.exit(0);

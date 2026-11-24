@@ -37,4 +37,9 @@ export interface DryRunCampaignCounts {
   heldByHours: number;
   /** Its due contacts beyond its free slots (in hours only). */
   heldByConcurrency: number;
+  /**
+   * Set only on an entry a campaign START merged into the cron's tick (its
+   * own instant; the tick's `at` stays the cron's). Absent = from the tick.
+   */
+  at?: string;
 }
