@@ -1537,6 +1537,8 @@
       "lastTick": "החייגן רץ {ago} ({source}): {dialed, plural, =0 {לא חויג אף מספר} one {חויג מספר אחד} other {חויגו # מספרים}}.",
       "dryTick": "מצב בדיקה: החייגן רץ {ago}, לא חויג אף מספר.",
       "dryTickCount": "מצב בדיקה: החייגן רץ {ago}, {n, plural, =0 {לא הייתה מתבצעת אף שיחה} one {הייתה מתבצעת שיחה אחת} other {היו מתבצעות # שיחות}}.",
+      "dryTickOutsideCallHours": "מצב בדיקה: החייגן רץ {ago}, 0 שיחות (מחוץ לשעות החיוג).",
+      "dryTickWaitingCallHours": "{m, plural, one {אחד ממתין לשעות החיוג} other {# ממתינים לשעות החיוג}}",
       "sourceStart": "בהפעלה",
       "sourceCron": "מתוזמן",
       "readyToDial": "מוכן לחייג",
