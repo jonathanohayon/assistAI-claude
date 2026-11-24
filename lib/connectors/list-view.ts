@@ -9,6 +9,9 @@
 //            agent" (never an empty page). It opens the wizard when the
 //            account may add one; otherwise it carries the same lock as the
 //            add card (trial_limit / max_reached / orders_closed).
+//            Its offer line: in a trial "Inclus dans votre essai"; paid, the
+//            base offer from the catalogue "{price}/mois, numéro et
+//            {minutes} minutes inclus" (basePrice INPUT; null → no line).
 //   list   = one card per connector, in the server's order (oldest first),
 //            then the add card LAST.
 //
@@ -20,8 +23,10 @@
 //               "none"  a real connector whose number is not bought yet;
 //   pill      = exactly one of online / off / unreachable; unreachable adds
 //               the line "Tamara répond seule en attendant.";
-//   canDelete = never for the derived card, never for the FIRST connector
-//               (the product's included one: only its switch).
+//   deletable = the "…" menu with "Supprimer" exists. Never for the derived
+//               card. Read from ConnectorView.deletable once the BE sends it
+//               (C1b); until then inferred: never the FIRST connector (the
+//               product's included one: only its switch).
 // The add card:
 //   add       = price line "+ {price} par agent, numéro inclus" (amount from
 //               the catalogue; without an amount, no price line);
@@ -33,16 +38,30 @@
 // paid account's FIRST connector is included, so the BE says ok for it even
 // with PRODUCT_ORDERS off: lib/connectors/entitlement.ts, count >= 1 only).
 
-import type { CatalogueCurrency } from "../product-catalogue";
+import type { CatalogueCurrency, ProductCatalogue } from "../product-catalogue";
 import type { CanAddConnectorReason, ConnectorMode, ConnectorState, ConnectorsPageView, ConnectorView } from "./types";
 
 /** The monthly price of ONE extra connector, as read from the catalogue. */
 export type ConnectorExtraPrice = { monthly: number; currency: CatalogueCurrency };
 
+/** The connect product's base offer (1 connector + its number + minutes), from the catalogue. */
+export type ConnectorBasePrice = { monthly: number; currency: CatalogueCurrency; minutes: number };
+
+/**
+ * The base offer as the pricing screens read it (lib/pricing-grid.ts gridCard:
+ * the catalogue row cat[product][currency], monthly + minutes).
+ */
+export function connectorBasePrice(cat: ProductCatalogue, currency: CatalogueCurrency): ConnectorBasePrice {
+  const row = cat.connect[currency];
+  return { monthly: row.monthly, currency, minutes: row.minutes };
+}
+
 export type ConnectorsListInput = {
   page: ConnectorsPageView;
   /** null = the catalogue has no amount to show: the add card shows no price. */
   extraPrice: ConnectorExtraPrice | null;
+  /** The base offer for the empty card; null = no price line. Ignored in a trial. */
+  basePrice: ConnectorBasePrice | null;
 };
 
 export type ConnectorCardView = {
@@ -61,7 +80,8 @@ export type ConnectorCardView = {
   enabled: boolean;
   /** ISO timestamp, or null: "Aucun appel pour l'instant". */
   lastCallAt: string | null;
-  canDelete: boolean;
+  /** The "…" menu (with "Supprimer") renders only when true. */
+  deletable: boolean;
 };
 
 export type AddCardView =
@@ -70,8 +90,11 @@ export type AddCardView =
   | { kind: "max"; max: number }
   | { kind: "soon" };
 
+/** The empty card's offer line. */
+export type EmptyOfferView = { kind: "trial" } | { kind: "price"; price: ConnectorBasePrice } | null;
+
 export type ConnectorsListView =
-  | { kind: "empty"; add: AddCardView }
+  | { kind: "empty"; add: AddCardView; offer: EmptyOfferView }
   | { kind: "list"; cards: ConnectorCardView[]; add: AddCardView };
 
 function addCard(page: ConnectorsPageView, extraPrice: ConnectorExtraPrice | null): AddCardView {
@@ -81,6 +104,18 @@ function addCard(page: ConnectorsPageView, extraPrice: ConnectorExtraPrice | nul
   if (reason === "orders_closed") return { kind: "soon" };
   // max_reached, and any refusal without a reason: locked with the max (never "add").
   return { kind: "max", max: page.limits.max };
+}
+
+/**
+ * Whether a connector can be deleted. The BE's flag wins when it sends one
+ * (C1b: ConnectorView.deletable); until then, every connector but the first.
+ * The derived card never, whatever is sent.
+ */
+function deletableOf(c: ConnectorView, index: number): boolean {
+  if (c.derived) return false;
+  const fromServer = (c as ConnectorView & { deletable?: unknown }).deletable;
+  if (typeof fromServer === "boolean") return fromServer;
+  return index > 0;
 }
 
 function card(c: ConnectorView, index: number): ConnectorCardView {
@@ -97,13 +132,16 @@ function card(c: ConnectorView, index: number): ConnectorCardView {
     mode: c.mode,
     enabled: c.enabled,
     lastCallAt: c.lastCallAt,
-    canDelete: !c.derived && index > 0,
+    deletable: deletableOf(c, index),
   };
 }
 
-export function connectorsListView({ page, extraPrice }: ConnectorsListInput): ConnectorsListView {
+export function connectorsListView({ page, extraPrice, basePrice }: ConnectorsListInput): ConnectorsListView {
   const add = addCard(page, extraPrice);
-  if (page.connectors.length === 0) return { kind: "empty", add };
+  if (page.connectors.length === 0) {
+    const offer: EmptyOfferView = page.limits.inTrial ? { kind: "trial" } : basePrice ? { kind: "price", price: basePrice } : null;
+    return { kind: "empty", add, offer };
+  }
   return { kind: "list", cards: page.connectors.map(card), add };
 }
 
@@ -113,8 +151,8 @@ export function connectorsListView({ page, extraPrice }: ConnectorsListInput): C
 // two to the same output for every currency × locale.
 const NUMBER_LOCALE: Record<string, string> = { fr: "fr-FR", he: "he-IL", en: "en-US" };
 
-/** The extra-connector price as the pricing screens write it. */
-export function formatConnectorPrice(price: ConnectorExtraPrice, locale: string): string {
+/** A connector price (extra or base) as the pricing screens write it. */
+export function formatConnectorPrice(price: { monthly: number; currency: CatalogueCurrency }, locale: string): string {
   const whole = Number.isInteger(price.monthly);
   return new Intl.NumberFormat(NUMBER_LOCALE[locale] ?? "fr-FR", {
     style: "currency",

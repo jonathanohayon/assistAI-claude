@@ -2972,7 +2972,9 @@
     "empty": {
       "title": "Branchez votre premier agent",
       "body": "Votre agent répond au téléphone avec une voix et un numéro Tamara.",
-      "cta": "Commencer"
+      "cta": "Commencer",
+      "offer": "{price}/mois, numéro et {minutes} minutes inclus",
+      "offerTrial": "Inclus dans votre essai"
     },
     "deleteDialog": {
       "title": "Supprimer {name} ?",
@@ -2980,6 +2982,7 @@
       "billing": "Il reste actif jusqu'à la fin de la période payée, sans remboursement.",
       "confirm": "Supprimer",
       "cancel": "Annuler"
-    }
+    },
+    "moreActions": "Plus d'actions pour {name}"
   }
 }

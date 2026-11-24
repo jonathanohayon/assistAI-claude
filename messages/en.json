@@ -2972,7 +2972,9 @@
     "empty": {
       "title": "Plug in your first agent",
       "body": "Your agent answers the phone with a Tamara voice and number.",
-      "cta": "Get started"
+      "cta": "Get started",
+      "offer": "{price}/month, number and {minutes} minutes included",
+      "offerTrial": "Included in your trial"
     },
     "deleteDialog": {
       "title": "Delete {name}?",
@@ -2980,6 +2982,7 @@
       "billing": "It stays active until the end of the paid period, with no refund.",
       "confirm": "Delete",
       "cancel": "Cancel"
-    }
+    },
+    "moreActions": "More actions for {name}"
   }
 }

@@ -28,20 +28,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ConnectPageContent } from "../../app/[locale]/dashboard/agent/connect-view";
 import {
   AddConnectorCard,
+  CardMenu,
+  ConnectorCard,
   ConnectorsList,
   DeleteConnectorDialog,
   EmptyConnectorsCard,
 } from "../../components/connectors/ConnectorsList";
 import {
+  connectorBasePrice,
   connectorsListView,
   formatConnectorPrice,
   type AddCardView,
+  type ConnectorBasePrice,
   type ConnectorExtraPrice,
   type ConnectorsListView,
 } from "../../lib/connectors/list-view";
 import { MOCK_EXTRA_PRICE, MOCK_LEGACY, MOCK_NOW, MOCK_OFF, MOCK_ONLINE, MOCK_PAGES, MOCK_UNREACHABLE } from "../../lib/connectors/mock";
 import type { ConnectorsPageView, ConnectorView } from "../../lib/connectors/types";
-import { formatGridMoney } from "../../lib/pricing-grid";
+import { menuKeyAction } from "../../lib/connectors/menu-keys";
+import { formatGridMoney, gridCard } from "../../lib/pricing-grid";
+import { DEFAULT_PRODUCT_CATALOGUE, defaultProductCatalogue } from "../../lib/product-catalogue";
 import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "../../lib/product-trials";
 
 type ProviderProps = ComponentProps<typeof NextIntlClientProvider>;
@@ -63,8 +69,14 @@ const html = (l: string, node: ReactNode) =>
   );
 const C = (l: Locale) => messages(l).ConnectorsList;
 const count = (s: string, needle: string) => s.split(needle).length - 1;
-const list = (l: Locale, page: ConnectorsPageView, extraPrice: ConnectorExtraPrice | null = MOCK_EXTRA_PRICE.EUR) =>
-  html(l, createElement(ConnectorsList, { page, extraPrice, now: MOCK_NOW }));
+// The connect product's base offer, read from the catalogue like the pricing screens.
+const BASE = connectorBasePrice(DEFAULT_PRODUCT_CATALOGUE, "EUR");
+const list = (
+  l: Locale,
+  page: ConnectorsPageView,
+  extraPrice: ConnectorExtraPrice | null = MOCK_EXTRA_PRICE.EUR,
+  basePrice: ConnectorBasePrice | null = BASE,
+) => html(l, createElement(ConnectorsList, { page, extraPrice, basePrice, now: MOCK_NOW }));
 
 const EUR = MOCK_EXTRA_PRICE.EUR;
 
@@ -95,7 +107,7 @@ const TABLE: Row[] = [
   ["paid, 1, refused without reason", p([MOCK_ONLINE], false, { ok: false }), "list", { kind: "max", max: 5 }],
 ];
 for (const [name, page, kind, add] of TABLE) {
-  const v = connectorsListView({ page, extraPrice: EUR });
+  const v = connectorsListView({ page, extraPrice: EUR, basePrice: BASE });
   assert.equal(v.kind, kind, `${name}: ${kind}`);
   assert.deepEqual(v.add, add, `${name}: add card`);
   if (page.canAdd.ok) assert.equal(v.add.kind, "add", `${name}: canAdd.ok is never locked, never "Bientôt"`);
@@ -103,7 +115,7 @@ for (const [name, page, kind, add] of TABLE) {
 // canAdd.ok → never "soon", for every mock page and both prices.
 for (const [name, page] of Object.entries(MOCK_PAGES)) {
   for (const price of [EUR, null]) {
-    const v = connectorsListView({ page, extraPrice: price });
+    const v = connectorsListView({ page, extraPrice: price, basePrice: BASE });
     if (page.canAdd.ok) assert.deepEqual(v.add, { kind: "add", price }, `${name}: open add card`);
     else assert.notEqual(v.add.kind, "add", `${name}: refused → locked`);
   }
@@ -111,11 +123,11 @@ for (const [name, page] of Object.entries(MOCK_PAGES)) {
 
 // The cards, field by field.
 {
-  const v = connectorsListView({ page: MOCK_PAGES.threePaid, extraPrice: EUR });
+  const v = connectorsListView({ page: MOCK_PAGES.threePaid, extraPrice: EUR, basePrice: BASE });
   assert.equal(v.kind, "list");
   if (v.kind !== "list") throw new Error("unreachable");
   assert.deepEqual(
-    v.cards.map((c) => [c.id, c.pill, c.unreachableNote, c.numberLine, c.number, c.canDelete, c.enabled, c.mode]),
+    v.cards.map((c) => [c.id, c.pill, c.unreachableNote, c.numberLine, c.number, c.deletable, c.enabled, c.mode]),
     [
       [MOCK_ONLINE.id, "online", false, "own", "+972500000001", false, true, "lead"],
       [MOCK_OFF.id, "off", false, "own", "+33199000002", true, false, "voice"],
@@ -124,30 +136,30 @@ for (const [name, page] of Object.entries(MOCK_PAGES)) {
     "three cards: pill, note, number, delete only after the first",
   );
   assert.equal(v.cards[1].numberLabel, "Paris");
-  const d = connectorsListView({ page: MOCK_PAGES.derivedPaid, extraPrice: EUR });
+  const d = connectorsListView({ page: MOCK_PAGES.derivedPaid, extraPrice: EUR, basePrice: BASE });
   if (d.kind !== "list") throw new Error("derived: a list");
   assert.deepEqual(
-    { name: d.cards[0].name, number: d.cards[0].number, line: d.cards[0].numberLine, del: d.cards[0].canDelete, derived: d.cards[0].derived },
+    { name: d.cards[0].name, number: d.cards[0].number, line: d.cards[0].numberLine, del: d.cards[0].deletable, derived: d.cards[0].derived },
     { name: null, number: null, line: "main", del: false, derived: true },
     "derived: default name, no number, main-number line, no delete",
   );
   // The derived card is never deletable, wherever it sits in the list.
-  const d3 = connectorsListView({ page: p([MOCK_ONLINE, MOCK_LEGACY], false, { ok: true }), extraPrice: EUR });
+  const d3 = connectorsListView({ page: p([MOCK_ONLINE, MOCK_LEGACY], false, { ok: true }), extraPrice: EUR, basePrice: BASE });
   if (d3.kind !== "list") throw new Error("d3");
-  assert.equal(d3.cards[1].canDelete, false, "derived card at index 1: still no delete");
+  assert.equal(d3.cards[1].deletable, false, "derived card at index 1: still no delete");
   // A derived card that would carry a number still shows the main-number line, never a number.
-  const d2 = connectorsListView({ page: p([{ ...MOCK_LEGACY, numberE164: "+972500000009" }], false, { ok: true }), extraPrice: EUR });
+  const d2 = connectorsListView({ page: p([{ ...MOCK_LEGACY, numberE164: "+972500000009" }], false, { ok: true }), extraPrice: EUR, basePrice: BASE });
   if (d2.kind !== "list") throw new Error("d2");
   assert.equal(d2.cards[0].number, null);
   assert.equal(d2.cards[0].numberLine, "main");
   // A real connector without a number yet.
-  const n = connectorsListView({ page: MOCK_PAGES.maxReached, extraPrice: EUR });
+  const n = connectorsListView({ page: MOCK_PAGES.maxReached, extraPrice: EUR, basePrice: BASE });
   if (n.kind !== "list") throw new Error("n");
   assert.equal(n.cards[3].numberLine, "none");
   assert.equal(n.cards[3].number, null);
   // Blank names → the default name.
   for (const blank of ["", "   ", "\t"]) {
-    const b = connectorsListView({ page: p([MOCK_ONLINE, { ...MOCK_OFF, name: blank }], false, { ok: true }), extraPrice: EUR });
+    const b = connectorsListView({ page: p([MOCK_ONLINE, { ...MOCK_OFF, name: blank }], false, { ok: true }), extraPrice: EUR, basePrice: BASE });
     if (b.kind !== "list") throw new Error("b");
     assert.equal(b.cards[1].name, null, `blank name ${JSON.stringify(blank)} → default`);
     assert.equal(b.cards[0].name, "Agent ventes");
@@ -168,7 +180,16 @@ for (const l of LOCALES) {
   assert.equal(count(three, 'role="switch"'), 3, `${l}: a switch per card`);
   assert.equal(count(three, `>${esc(c.test)}</button>`), 3, `${l}: Tester per card`);
   assert.equal(count(three, `>${esc(c.edit)}</button>`), 3, `${l}: Modifier per card`);
-  assert.equal(count(three, 'data-delete="true"'), 2, `${l}: Supprimer on all but the first`);
+  // "Supprimer" lives in a "…" menu: the button on all but the first card, the menu closed.
+  assert.equal(count(three, "data-card-menu-button"), 2, `${l}: the "…" menu on all but the first`);
+  assert.equal(count(three, 'aria-haspopup="menu"'), 2, `${l}: a menu button`);
+  assert.equal(count(three, 'aria-expanded="false"'), 2, `${l}: closed by default`);
+  assert.ok(!three.includes("data-delete") && !three.includes('role="menu"'), `${l}: no visible "Supprimer" until opened`);
+  assert.ok(three.includes(`aria-label="${esc(c.moreActions.replace("{name}", "Support FR"))}"`), `${l}: the menu button is named`);
+  // Height parity: every action row is ONE non-wrapping row of the same controls.
+  const rows = three.match(/<div class="[^"]*" data-actions="true">/g) ?? [];
+  assert.equal(rows.length, 3, `${l}: an action row per card`);
+  for (const r of rows) assert.ok(r.includes("flex-nowrap") && !r.includes("flex-wrap "), `${l}: the action row never wraps`);
   assert.ok(three.includes('>+972 50-000-0001</span>') && three.includes(">+33 1 99 00 00 02</span>"), `${l}: numbers, grouped`);
   assert.ok(three.includes('dir="ltr"'), `${l}: the number reads left to right`);
   assert.equal(count(three, `>${esc(c.copyNumber)}</span>`), 3, `${l}: copy per number`);
@@ -200,7 +221,7 @@ for (const l of LOCALES) {
   assert.ok(der.includes(`>${esc(c.defaultName)}</h3>`), `${l}: the derived card's default name`);
   assert.ok(der.includes(esc(c.mainNumber)), `${l}: "Répond sur votre numéro principal"`);
   assert.ok(!der.includes('data-number="true"') && !der.includes(esc(c.copyNumber)), `${l}: derived, no number, no copy`);
-  assert.ok(!der.includes("data-delete"), `${l}: derived, no delete`);
+  assert.ok(!der.includes("data-delete") && !der.includes("data-card-menu"), `${l}: derived, no delete, no "…" button at all`);
   assert.equal(count(der, 'role="switch"'), 1, `${l}: derived keeps its switch`);
   assert.ok(list(l, MOCK_PAGES.derivedPaidOrdersOff).includes('data-add-lock="soon"'), `${l}: second connector while closed → Bientôt`);
 
@@ -219,7 +240,19 @@ for (const l of LOCALES) {
     assert.ok(e.includes(`data-empty-cta="true">${esc(c.empty.cta)}</button>`), `${l} ${name}: open (the first is included)`);
     assert.ok(!e.includes("data-connectors-list") && !e.includes("data-add-card") && !e.includes("data-add-lock"), `${l} ${name}: one card only, no lock`);
   }
-  const eClosed = html(l, createElement(EmptyConnectorsCard, { add: { kind: "soon" } }));
+  // The empty card's offer: trial → "Inclus dans votre essai"; paid → the catalogue's base offer.
+  const eTrial = list(l, MOCK_PAGES.emptyTrial);
+  assert.ok(eTrial.includes(`data-empty-offer="trial">${esc(c.empty.offerTrial)}</p>`), `${l}: trial offer line`);
+  assert.ok(!eTrial.includes('data-empty-offer="price"'), `${l}: no price in a trial`);
+  const cur = l === "he" ? "ILS" : "EUR";
+  const base = connectorBasePrice(DEFAULT_PRODUCT_CATALOGUE, cur);
+  const wantOffer = c.empty.offer.replace("{price}", formatGridMoney(base.monthly, cur, l)).replace("{minutes}", String(base.minutes));
+  for (const name of ["emptyPaid", "emptyPaidOrdersOff"] as const) {
+    const e = list(l, MOCK_PAGES[name], MOCK_EXTRA_PRICE[cur], base);
+    assert.ok(e.includes(`data-empty-offer="price">${esc(wantOffer)}</p>`), `${l} ${name}: the catalogue's base offer`);
+  }
+  assert.ok(!list(l, MOCK_PAGES.emptyPaid, EUR, null).includes("data-empty-offer"), `${l}: no base price → no line, never a default`);
+  const eClosed = html(l, createElement(EmptyConnectorsCard, { add: { kind: "soon" }, offer: null }));
   assert.ok(eClosed.includes(`>${esc(c.empty.title)}</h2>`) && eClosed.includes('data-add-lock="soon"') && !eClosed.includes("data-empty-cta"), `${l}: empty + BE refusal → the lock, still a card`);
 
   // HE copy: Tamara in Latin letters, never the Hebrew spelling.
@@ -274,6 +307,72 @@ assert.ok(list("he", MOCK_PAGES.threePaid, MOCK_EXTRA_PRICE.ILS).includes("₪")
 // No amount literal in the list's code: every amount comes from the input.
 for (const f of ["components/connectors/ConnectorsList.tsx", "lib/connectors/list-view.ts"]) {
   assert.doesNotMatch(read(f), /\b(19|79|49|199)\b/, `${f}: no price literal`);
+}
+
+// ── 3b. The base offer: the catalogue's connect row, as the pricing screens read it ──
+for (const cur of ["EUR", "ILS"] as const) {
+  const g = gridCard(DEFAULT_PRODUCT_CATALOGUE, "connect", cur, "monthly");
+  assert.deepEqual(connectorBasePrice(DEFAULT_PRODUCT_CATALOGUE, cur), { monthly: g.price, currency: cur, minutes: g.minutes }, `${cur}: same numbers as the pricing grid`);
+  // Change the catalogue → the empty card's text changes.
+  const cat = defaultProductCatalogue();
+  cat.connect[cur].monthly = 57;
+  cat.connect[cur].minutes = 130;
+  const changed = connectorBasePrice(cat, cur);
+  assert.deepEqual(changed, { monthly: 57, currency: cur, minutes: 130 });
+  for (const l of LOCALES) {
+    const a = list(l, MOCK_PAGES.emptyPaid, EUR, connectorBasePrice(DEFAULT_PRODUCT_CATALOGUE, cur));
+    const b = list(l, MOCK_PAGES.emptyPaid, EUR, changed);
+    assert.notEqual(a, b, `${l} ${cur}: a catalogue change changes the empty card`);
+    assert.ok(b.includes(esc(formatGridMoney(57, cur, l))) && b.includes("130"), `${l} ${cur}: 57 and 130 shown`);
+  }
+}
+// The offer in the view: trial wins over any price; paid shows the input; null → none.
+assert.deepEqual(connectorsListView({ page: MOCK_PAGES.emptyTrial, extraPrice: EUR, basePrice: BASE }), { kind: "empty", add: { kind: "add", price: EUR }, offer: { kind: "trial" } });
+assert.deepEqual(connectorsListView({ page: MOCK_PAGES.emptyPaid, extraPrice: EUR, basePrice: BASE }), { kind: "empty", add: { kind: "add", price: EUR }, offer: { kind: "price", price: BASE } });
+assert.deepEqual(connectorsListView({ page: MOCK_PAGES.emptyPaid, extraPrice: EUR, basePrice: null }), { kind: "empty", add: { kind: "add", price: EUR }, offer: null });
+assert.equal(C("fr").empty.offer, "{price}/mois, numéro et {minutes} minutes inclus");
+assert.equal(C("fr").empty.offerTrial, "Inclus dans votre essai");
+
+// ── 3c. The "…" menu ────────────────────────────────────────────────────────
+for (const l of LOCALES) {
+  const c = C(l);
+  // Open (as after a click): one menu, one item "Supprimer".
+  const open = html(l, createElement(CardMenu, { label: "x", onDelete() {}, defaultOpen: true }));
+  assert.ok(open.includes('aria-expanded="true"') && open.includes('role="menu"'), `${l}: the menu opens`);
+  assert.equal(count(open, 'role="menuitem"'), 1, `${l}: one item`);
+  assert.ok(open.includes(`data-delete="true">${esc(c.delete)}</button>`), `${l}: the item is "Supprimer"`);
+  assert.match(open, /aria-controls="([^"]+)"[\s\S]*id="\1"/, `${l}: the button controls the menu`);
+  // A deletable card renders the menu; a non-deletable one does not render the button at all.
+  const v = connectorsListView({ page: MOCK_PAGES.threePaid, extraPrice: EUR, basePrice: BASE });
+  if (v.kind !== "list") throw new Error("list");
+  const first = html(l, createElement(ConnectorCard, { card: v.cards[0], now: MOCK_NOW, onDelete() {} }));
+  assert.ok(!first.includes("data-card-menu"), `${l}: first card, no "…" even with a handler`);
+  const second = html(l, createElement(ConnectorCard, { card: v.cards[1], now: MOCK_NOW, onDelete() {} }));
+  assert.equal(count(second, "data-card-menu-button"), 1, `${l}: deletable card, one "…"`);
+}
+// The menu item opens the dialog: in ConnectorsList the card's onDelete sets the
+// dialog's connector, and the item calls onDelete (source guard: no DOM here;
+// the real click → dialog path is shown in the captures).
+{
+  const src = read("components/connectors/ConnectorsList.tsx");
+  assert.match(src, /onDelete=\{c\.deletable \? \(\) => setDeleting\(c\) : undefined\}/, "the card's onDelete opens the dialog for that connector");
+  assert.match(src, /\{deleting && \(\s*<DeleteConnectorDialog/, "the dialog renders for the connector being deleted");
+  assert.match(src, /role="menuitem"[\s\S]{0,200}onClick=\{\(\) => \{\s*setOpen\(false\);\s*onDelete\(\);/, "the menu item closes the menu and calls onDelete");
+  assert.doesNotMatch(src.replace(/role="menuitem"[\s\S]*?data-delete/, ""), /data-delete(?![-\w])/, "no other Supprimer button outside the menu");
+}
+// Keyboard (WAI-ARIA menu button).
+for (const k of ["Enter", " ", "ArrowDown", "ArrowUp"]) assert.equal(menuKeyAction("button", false, k), "open", `button ${JSON.stringify(k)} opens`);
+assert.equal(menuKeyAction("button", true, "Escape"), "close", "Escape on the button closes");
+assert.equal(menuKeyAction("menu", true, "Escape"), "close", "Escape in the menu closes");
+assert.equal(menuKeyAction("menu", true, "Tab"), "close", "Tab out of the menu closes");
+assert.equal(menuKeyAction("button", false, "Escape"), null);
+assert.equal(menuKeyAction("button", false, "a"), null);
+// The BE's deletable flag (C1b) wins over the index rule, never on the derived card.
+{
+  const withFlag = (c: ConnectorView, deletable: boolean) => ({ ...c, deletable }) as ConnectorView;
+  const v = connectorsListView({ page: p([withFlag(MOCK_ONLINE, true), withFlag(MOCK_OFF, false), withFlag(MOCK_LEGACY, true)], false, { ok: true }), extraPrice: EUR, basePrice: BASE });
+  if (v.kind !== "list") throw new Error("flag");
+  assert.deepEqual(v.cards.map((c) => c.deletable), [true, false, false], "server flag read; derived never");
 }
 
 // ── 8. The delete dialog ────────────────────────────────────────────────────

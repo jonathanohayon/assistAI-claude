@@ -7,7 +7,7 @@
 // call the injected callbacks, nothing else (no request). Not mounted on a
 // live page yet (it ships with GET /api/dashboard/connectors).
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { FOCUS } from "@/components/bricks/controls";
@@ -16,9 +16,12 @@ import {
   connectorsListView,
   formatConnectorPrice,
   type AddCardView,
+  type ConnectorBasePrice,
   type ConnectorCardView,
   type ConnectorExtraPrice,
+  type EmptyOfferView,
 } from "@/lib/connectors/list-view";
+import { menuKeyAction } from "@/lib/connectors/menu-keys";
 import type { ConnectorState, ConnectorsPageView } from "@/lib/connectors/types";
 
 export type ConnectorsListCallbacks = {
@@ -34,6 +37,8 @@ export type ConnectorsListProps = ConnectorsListCallbacks & {
   page: ConnectorsPageView;
   /** The extra-connector monthly price, read from the catalogue by the caller. */
   extraPrice: ConnectorExtraPrice | null;
+  /** The connect product's base offer (connectorBasePrice(catalogue, currency)), for the empty card. */
+  basePrice: ConnectorBasePrice | null;
   /** "Now" for the relative dates (tests and captures pin it). */
   now?: string | Date;
 };
@@ -50,19 +55,19 @@ const PILL: Record<ConnectorState, string> = {
 };
 const DOT: Record<ConnectorState, string> = { online: "bg-[#059669]", off: "bg-[#94a3b8]", unreachable: "bg-[#dc2626]" };
 
-export function ConnectorsList({ page, extraPrice, now, ...cb }: ConnectorsListProps) {
+export function ConnectorsList({ page, extraPrice, basePrice, now, ...cb }: ConnectorsListProps) {
   const t = useTranslations("ConnectorsList");
-  const view = connectorsListView({ page, extraPrice });
+  const view = connectorsListView({ page, extraPrice, basePrice });
   const [deleting, setDeleting] = useState<ConnectorCardView | null>(null);
 
-  if (view.kind === "empty") return <EmptyConnectorsCard add={view.add} onAdd={cb.onAdd} />;
+  if (view.kind === "empty") return <EmptyConnectorsCard add={view.add} offer={view.offer} onAdd={cb.onAdd} />;
 
   return (
     <section aria-label={t("listLabel")}>
       <ul className="grid list-none gap-4 p-0 sm:grid-cols-2" data-connectors-list>
         {view.cards.map((c) => (
           <li key={c.id} className="min-w-0">
-            <ConnectorCard card={c} now={now} {...cb} onDelete={c.canDelete ? () => setDeleting(c) : undefined} />
+            <ConnectorCard card={c} now={now} {...cb} onDelete={c.deletable ? () => setDeleting(c) : undefined} />
           </li>
         ))}
         <li className="min-w-0">
@@ -146,7 +151,8 @@ export function ConnectorCard({
           : t("noCall")}
       </p>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-[#f1f5f9] pt-3">
+      {/* ONE row that never wraps: every card's actions take the same height. */}
+      <div className="mt-auto flex flex-nowrap items-center gap-2 border-t border-[#f1f5f9] pt-3" data-actions>
         <Switch checked={card.enabled} label={t("switchLabel", { name })} onChange={(v) => onToggle?.(card.id, v)} />
         <button type="button" className={BUTTON} onClick={() => onTest?.(card.id)}>
           {t("test")}
@@ -154,13 +160,95 @@ export function ConnectorCard({
         <button type="button" className={BUTTON} onClick={() => onEdit?.(card.id)}>
           {t("edit")}
         </button>
-        {card.canDelete && onDelete && (
-          <button type="button" className={`${DANGER} ms-auto`} onClick={onDelete} data-delete>
-            {t("delete")}
-          </button>
-        )}
+        {card.deletable && onDelete && <CardMenu label={t("moreActions", { name })} onDelete={onDelete} />}
       </div>
     </article>
+  );
+}
+
+/**
+ * The card's "…" menu button (WAI-ARIA menu button): one item, "Supprimer",
+ * which opens the confirmation dialog. Rendered only on a deletable card.
+ * Keys: lib/connectors/menu-keys.ts. A click outside closes it.
+ */
+export function CardMenu({ label, onDelete, defaultOpen = false }: { label: string; onDelete: () => void; defaultOpen?: boolean }) {
+  const t = useTranslations("ConnectorsList");
+  const [open, setOpen] = useState(defaultOpen);
+  const id = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const item = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    item.current?.focus();
+    const away = (e: PointerEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+
+  const close = (refocus: boolean) => {
+    setOpen(false);
+    if (refocus) button.current?.focus();
+  };
+
+  return (
+    <div ref={root} className="relative ms-auto shrink-0" data-card-menu>
+      <button
+        ref={button}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? `${id}-menu` : undefined}
+        aria-label={label}
+        className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl text-lg font-bold leading-none text-[#475569] hover:bg-[#f1f5f9] ${FOCUS}`}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          const a = menuKeyAction("button", open, e.key);
+          if (a === "open") {
+            e.preventDefault();
+            setOpen(true);
+          } else if (a === "close") {
+            e.preventDefault();
+            close(true);
+          }
+        }}
+        data-card-menu-button
+      >
+        <span aria-hidden>…</span>
+      </button>
+      {open && (
+        <div
+          id={`${id}-menu`}
+          role="menu"
+          aria-label={label}
+          className="absolute bottom-full end-0 z-20 mb-1 min-w-40 rounded-xl border border-[#e2e8f0] bg-white p-1 shadow-lg"
+          onKeyDown={(e) => {
+            const a = menuKeyAction("menu", open, e.key);
+            if (a === "close") {
+              if (e.key === "Escape") e.preventDefault();
+              close(e.key === "Escape");
+            }
+          }}
+        >
+          <button
+            ref={item}
+            type="button"
+            role="menuitem"
+            className={`${DANGER} w-full justify-start`}
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            data-delete
+          >
+            {t("delete")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -263,12 +351,20 @@ export function AddConnectorCard({ add, onAdd }: { add: AddCardView; onAdd?: () 
   );
 }
 
-export function EmptyConnectorsCard({ add, onAdd }: { add: AddCardView; onAdd?: () => void }) {
+export function EmptyConnectorsCard({ add, offer, onAdd }: { add: AddCardView; offer: EmptyOfferView; onAdd?: () => void }) {
   const t = useTranslations("ConnectorsList");
+  const locale = useLocale();
   return (
     <section className={`${CARD} flex flex-col items-center gap-3 px-6 py-12 text-center sm:py-16`} data-connectors-empty>
       <h2 className="font-display text-2xl tracking-tight text-[var(--color-foreground)] sm:text-3xl">{t("empty.title")}</h2>
       <p className="max-w-md text-sm text-[#475569]">{t("empty.body")}</p>
+      {offer && (
+        <p className="text-sm font-semibold text-[#be185d]" data-empty-offer={offer.kind}>
+          {offer.kind === "trial"
+            ? t("empty.offerTrial")
+            : t("empty.offer", { price: formatConnectorPrice(offer.price, locale), minutes: offer.price.minutes })}
+        </p>
+      )}
       {add.kind === "add" ? (
         <button type="button" className={`${PRIMARY} mt-2`} onClick={onAdd} data-empty-cta>
           {t("empty.cta")}
