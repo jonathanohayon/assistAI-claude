@@ -3,7 +3,7 @@
 // The connectors list on the live Connect page (C1b). The server sends the
 // page (lib/connectors/mount.ts, the same reader as GET
 // /api/dashboard/connectors); this file wires the actions that have a real
-// route today, and ONLY those:
+// route today, and ONLY those (requests: ./connector-actions.ts):
 //   the legacy (derived) card
 //     switch   → PUT /api/dashboard/tools { tools: { clientAgent: { enabled } } },
 //                the brick's own save request (clientAgentSwitchRequest);
@@ -18,26 +18,23 @@
 //     so they are disabled with one plain line (ConnectorsList.actionsSoon).
 //   "+ Ajouter un agent": the wizard (C2) does not exist: drawn disabled
 //     with "Bientôt : ajoutez vos agents ici." (addSoon).
-// ?asUserId on EVERY request in the admin tenant view.
+// ?asUserId on EVERY request in the admin tenant view. The door's deep link
+// (/dashboard/agent#client-agent, the editor's anchor) opens the editor.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { ClientAgentBrick } from "@/components/bricks/client-agent/ClientAgentBrick";
 import { FOCUS } from "@/components/bricks/controls";
-import {
-  clientAgentSaveRefusal,
-  clientAgentStoredTestRequest,
-  clientAgentSwitchRequest,
-  clientAgentTestWords,
-  type ClientAgentRefusal,
-  type TestWords,
-} from "@/components/bricks/tools/tools-ui";
+import type { ClientAgentRefusal, TestWords } from "@/components/bricks/tools/tools-ui";
+import { connectorActions } from "@/components/connectors/connector-actions";
 import { ConnectorsList, type CardActions } from "@/components/connectors/ConnectorsList";
 import type { ConnectorBasePrice, ConnectorCardView, ConnectorExtraPrice } from "@/lib/connectors/list-view";
 import type { ConnectorsPageView } from "@/lib/connectors/types";
 
 export const LEGACY_ID = "legacy";
+/** The editor's anchor (ClientAgentBrick's section id), as the door's first step links it. */
+export const EDITOR_HASH = "#client-agent";
 
 export type ConnectorsPanelProps = {
   page: ConnectorsPageView;
@@ -45,11 +42,12 @@ export type ConnectorsPanelProps = {
   basePrice: ConnectorBasePrice | null;
   /** Admin tenant view: every request carries ?asUserId. */
   asUserId?: string | null;
+  /** The server's "now" for the relative dates (same text on the server and in the browser). */
+  now?: string;
   /** Tests and captures: start with the editor open. */
   initialEditorOpen?: boolean;
 };
 
-const qs = (asUserId: string | null | undefined) => (asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "");
 const CLOSE = `inline-flex min-h-11 cursor-pointer items-center rounded-lg px-2 text-sm font-semibold text-[#0e7490] underline-offset-2 hover:underline ${FOCUS}`;
 
 type Note = { kind: "test"; words: TestWords | "running" } | { kind: "switch"; refused: ClientAgentRefusal | null };
@@ -67,81 +65,74 @@ export function cardActionsMode(card: Pick<ConnectorCardView, "id" | "derived">)
   return card.derived && card.id === LEGACY_ID ? "live" : "soon";
 }
 
-export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId = null, initialEditorOpen = false }: ConnectorsPanelProps) {
+export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId = null, now, initialEditorOpen = false }: ConnectorsPanelProps) {
   const t = useTranslations("ConnectorsList");
   const tAgent = useTranslations("ToolsBrick.agent");
   const tTools = useTranslations("ToolsBrick");
+  const actions = useMemo(() => connectorActions((url, init) => fetch(url, init), asUserId), [asUserId]);
   const [page, setPage] = useState(initial);
   const [editorOpen, setEditorOpen] = useState(initialEditorOpen);
   // A new key remounts the editor: it re-reads the setting after the card's switch wrote it.
   const [editorKey, setEditorKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
   const [scrollToEditor, setScrollToEditor] = useState(false);
-
-  useEffect(() => {
-    if (!scrollToEditor || !editorOpen) return;
-    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setScrollToEditor(false);
-  }, [scrollToEditor, editorOpen]);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const openEditor = () => {
     setEditorOpen(true);
     setScrollToEditor(true);
   };
 
-  // After the editor saved: the page as the server now reads it (the setting
-  // may have become, or stopped being, the derived card).
-  const refresh = useCallback(() => {
-    fetch(`/api/dashboard/connectors${qs(asUserId)}`, { cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<ConnectorsPageView>) : Promise.reject(new Error(String(r.status)))))
-      .then((p) => setPage(p))
-      .catch(() => {});
-  }, [asUserId]);
+  // Arriving on the editor's anchor (the connect door's first step) opens it.
+  useEffect(() => {
+    if (window.location.hash !== EDITOR_HASH) return;
+    const id = window.setTimeout(() => {
+      setEditorOpen(true);
+      setScrollToEditor(true);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (!scrollToEditor || !editorOpen) return;
+    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const id = window.setTimeout(() => setScrollToEditor(false), 0);
+    return () => window.clearTimeout(id);
+  }, [scrollToEditor, editorOpen]);
 
   const onToggle = async (id: string, enabled: boolean) => {
     if (id !== LEGACY_ID || busy) return;
-    const req = clientAgentSwitchRequest(enabled, asUserId);
     setBusy(true);
     setNote(null);
-    try {
-      const res = await fetch(req.url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: req.body });
-      const data = (await res.json().catch(() => null)) as { tools?: unknown } | null;
-      if (!res.ok || !data?.tools) {
-        setNote({ kind: "switch", refused: clientAgentSaveRefusal(res.status, data) });
-        return;
-      }
-      // Kept on screen until the next read: switched off, the setting is no
-      // longer a derived card for the server, but the user sees what they did.
-      setPage((p) => withLegacyEnabled(p, enabled));
-      setEditorKey((k) => k + 1);
-    } catch {
-      setNote({ kind: "switch", refused: null });
-    } finally {
-      setBusy(false);
-    }
+    const r = await actions.toggle(enabled);
+    setBusy(false);
+    if (!r.ok) return setNote({ kind: "switch", refused: r.refused });
+    // Kept on screen until the next read: switched off, the setting is no
+    // longer a derived card for the server, but the user sees what they did.
+    setPage((p) => withLegacyEnabled(p, enabled));
+    setEditorKey((k) => k + 1);
   };
 
   const onTest = async (id: string) => {
     if (id !== LEGACY_ID) return;
-    const req = clientAgentStoredTestRequest(asUserId);
     setNote({ kind: "test", words: "running" });
-    try {
-      const res = await fetch(req.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: req.body });
-      setNote({ kind: "test", words: clientAgentTestWords(res.status, await res.json().catch(() => null)) });
-    } catch {
-      setNote({ kind: "test", words: { key: "generic" } });
-    }
+    setNote({ kind: "test", words: await actions.test() });
+  };
+
+  // After the editor saved: the page as the server now reads it (the setting
+  // may have become, or stopped being, the derived card).
+  const onSaved = () => {
+    void actions.refresh().then((p) => {
+      if (p) setPage(p);
+    });
   };
 
   const noteNode = (n: Note | null) => {
     if (!n) return undefined;
     if (n.kind === "switch") {
       return (
-        <span className="font-semibold text-[#b91c1c]">
-          {n.refused === "disabled" ? tAgent("refused.disabled") : tTools("saveError")}
-        </span>
+        <span className="font-semibold text-[#b91c1c]">{n.refused === "disabled" ? tAgent("refused.disabled") : tTools("saveError")}</span>
       );
     }
     if (n.words === "running") return <span className="text-[#475569]">{tAgent("testing")}</span>;
@@ -165,6 +156,7 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
         page={page}
         extraPrice={extraPrice}
         basePrice={basePrice}
+        now={now}
         actionsFor={actionsFor}
         addSoon
         onToggle={(id, v) => void onToggle(id, v)}
@@ -181,7 +173,7 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
               {t("closeEditor")}
             </button>
           </div>
-          <ClientAgentBrick key={editorKey} asUserId={asUserId} onSaved={refresh} />
+          <ClientAgentBrick key={editorKey} asUserId={asUserId} onSaved={onSaved} />
         </div>
       )}
     </div>

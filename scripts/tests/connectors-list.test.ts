@@ -11,7 +11,7 @@
 //      PRODUCT_ORDERS off and 0 connectors is OPEN (the first is included).
 //   7. An empty / blank name shows the localized default name.
 //   8. The delete dialog: the number line + the billing line.
-//   9. The live Connect page is unchanged: it mounts none of this.
+//   9. The live Connect page mounts the list in the owned view only (C1b).
 //  10. Source guards: the mock is imported by no live code; no file under
 //      app/ names a fixture or imports the mock.
 // Run with:  npx tsx scripts/tests/connectors-list.test.ts
@@ -187,7 +187,7 @@ for (const l of LOCALES) {
   assert.ok(!three.includes("data-delete") && !three.includes('role="menu"'), `${l}: no visible "Supprimer" until opened`);
   assert.ok(three.includes(`aria-label="${esc(c.moreActions.replace("{name}", "Support FR"))}"`), `${l}: the menu button is named`);
   // Height parity: every action row is ONE non-wrapping row of the same controls.
-  const rows = three.match(/<div class="[^"]*" data-actions="true">/g) ?? [];
+  const rows = three.match(/<div class="[^"]*" data-actions="live">/g) ?? [];
   assert.equal(rows.length, 3, `${l}: an action row per card`);
   for (const r of rows) assert.ok(r.includes("flex-nowrap") && !r.includes("flex-wrap "), `${l}: the action row never wraps`);
   assert.ok(three.includes('>+972 50-000-0001</span>') && three.includes(">+33 1 99 00 00 02</span>"), `${l}: numbers, grouped`);
@@ -355,7 +355,8 @@ for (const l of LOCALES) {
 // the real click → dialog path is shown in the captures).
 {
   const src = read("components/connectors/ConnectorsList.tsx");
-  assert.match(src, /onDelete=\{c\.deletable \? \(\) => setDeleting\(c\) : undefined\}/, "the card's onDelete opens the dialog for that connector");
+  // C1b: and only on a card whose actions are live (a "soon" card has no menu).
+  assert.match(src, /onDelete=\{c\.deletable && actions\.mode === "live" \? \(\) => setDeleting\(c\) : undefined\}/, "the card's onDelete opens the dialog for that connector");
   assert.match(src, /\{deleting && \(\s*<DeleteConnectorDialog/, "the dialog renders for the connector being deleted");
   assert.match(src, /role="menuitem"[\s\S]{0,200}onClick=\{\(\) => \{\s*setOpen\(false\);\s*onDelete\(\);/, "the menu item closes the menu and calls onDelete");
   assert.doesNotMatch(src.replace(/role="menuitem"[\s\S]*?data-delete/, ""), /data-delete(?![-\w])/, "no other Supprimer button outside the menu");
@@ -387,21 +388,23 @@ for (const l of LOCALES) {
   assert.ok(!noNum.includes("data-delete-released") && noNum.includes("data-delete-billing"), `${l}: no number → no released line`);
 }
 
-// ── 9. The live Connect page is unchanged ───────────────────────────────────
-// It mounts nothing of the list: its files import none of it, and its
-// rendered HTML (brick and preview, fr/en/he) holds none of the list's copy.
-for (const f of ["app/[locale]/dashboard/agent/page.tsx", "app/[locale]/dashboard/agent/connect-view.tsx", "app/[locale]/dashboard/agent/connect-owned.tsx"]) {
-  assert.doesNotMatch(read(f), /connectors\/|ConnectorsList/, `${f}: imports nothing of the connectors list`);
-}
+// ── 9. The live Connect page (C1b) ──────────────────────────────────────────
+// The list is mounted ONLY in the owned view, through ConnectorsPanel (the
+// page's mount tests: connectors-mount.test.ts). The closed preview holds
+// none of the list's copy, whatever connectors are passed.
+assert.match(read("app/[locale]/dashboard/agent/connect-owned.tsx"), /import \{ ConnectorsPanel \} from "@\/components\/connectors\/ConnectorsPanel";/);
+assert.doesNotMatch(read("app/[locale]/dashboard/agent/connect-view.tsx"), /ConnectorsList|ConnectorsPanel/, "the view itself mounts no list");
 const TERMS = { days: PRODUCT_TRIAL_DAYS, minutes: PRODUCT_TRIAL_MINUTES };
 for (const l of LOCALES) {
   const c = C(l);
   const marks = [c.empty.title, c.add.title, c.mainNumber, c.unreachableNote, c.pill.unreachable];
-  for (const view of [{ kind: "brick" } as const, { kind: "preview", cta: "soon", notify: true, adminNote: false } as const]) {
-    const out = html(l, createElement(ConnectPageContent, { view, title: messages(l).DashboardNav.connect, trialNote: null, trialTerms: TERMS }));
-    for (const m of marks) assert.ok(!out.includes(esc(m)), `${l} ${view.kind}: live page has no "${m}"`);
-    assert.ok(!/data-connectors|data-connector=|data-add-card/.test(out), `${l} ${view.kind}: no list markup`);
-  }
+  const connectors = { page: MOCK_PAGES.derivedPaid, extraPrice: EUR, basePrice: BASE, now: MOCK_NOW };
+  const view = { kind: "preview", cta: "soon", notify: true, adminNote: false } as const;
+  const out = html(l, createElement(ConnectPageContent, { view, title: messages(l).DashboardNav.connect, trialNote: null, trialTerms: TERMS, connectors }));
+  for (const m of marks) assert.ok(!out.includes(esc(m)), `${l} preview: no "${m}"`);
+  assert.ok(!/data-connectors|data-connector=|data-add-card/.test(out), `${l} preview: no list markup`);
+  const owned = html(l, createElement(ConnectPageContent, { view: { kind: "brick" }, title: messages(l).DashboardNav.connect, trialNote: null, trialTerms: TERMS, connectors }));
+  assert.ok(owned.includes("data-connectors-panel") && owned.includes(esc(c.mainNumber)), `${l} owned: the list`);
 }
 
 // ── 10. Source guards ───────────────────────────────────────────────────────

@@ -23,14 +23,22 @@ export type ConnectorsMount = {
   page: ConnectorsPageView;
   extraPrice: ConnectorExtraPrice | null;
   basePrice: ConnectorBasePrice | null;
+  /** The server's "now" (ISO): the relative dates render the same on the server and in the browser. */
+  now: string;
 };
 
 /** Pure: the list's inputs from the page, the catalogue and the account's currency. */
-export function connectorsMount(page: ConnectorsPageView, catalogue: ProductCatalogue, currency: ConnectorPriceCurrency): ConnectorsMount {
+export function connectorsMount(
+  page: ConnectorsPageView,
+  catalogue: ProductCatalogue,
+  currency: ConnectorPriceCurrency,
+  now: Date = new Date(),
+): ConnectorsMount {
   return {
     page,
     extraPrice: page.canAdd.price ?? null,
     basePrice: connectorBasePrice(catalogue, currency),
+    now: now.toISOString(),
   };
 }
 

@@ -36,7 +36,13 @@ export function ConnectOwnedView({ title, trialNote, showClientAgent, asUserId =
       {trialNote}
       {showClientAgent &&
         (connectors ? (
-          <ConnectorsPanel page={connectors.page} extraPrice={connectors.extraPrice} basePrice={connectors.basePrice} asUserId={asUserId} />
+          <ConnectorsPanel
+            page={connectors.page}
+            extraPrice={connectors.extraPrice}
+            basePrice={connectors.basePrice}
+            now={connectors.now}
+            asUserId={asUserId}
+          />
         ) : (
           <ClientAgentBrick asUserId={asUserId} />
         ))}

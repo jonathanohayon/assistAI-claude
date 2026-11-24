@@ -62,7 +62,7 @@ for (const l of LOCALES) {
 
 // 3. No hard-coded French left in the component or on the page. The card
 // lives in Réglages (/dashboard/settings), with the other level-3 card (the
-// API key), since 23/11 (VP); "Connecter votre agent" no longer mounts it.
+// API key), since 23/11 (VP); "Connecter vos agents" no longer mounts it.
 {
   const src = read("app/[locale]/dashboard/settings/agent-url-section.tsx");
   const page = read("app/[locale]/dashboard/settings/page.tsx");

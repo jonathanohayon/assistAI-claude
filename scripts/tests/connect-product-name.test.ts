@@ -1,7 +1,10 @@
-// The connect product is named by what the customer does: "Connecter votre
-// agent" / "Connect your agent" / "חיבור הסוכן שלכם" (VP, 22/11), so it can't
-// be confused with the shared entry "Mon agent" right below it. ONE message
-// key names it everywhere: DashboardNav.connect.
+// The connect product is named by what the customer does: "Connecter vos
+// agents" / "Connect your agents" / "חיבור הסוכנים שלכם" (VP, 24/11, C1b: the
+// plural, since an account can plug in several agents; was "Connecter votre
+// agent", 22/11), so it can't be confused with the shared entry "Mon agent"
+// right below it. ONE message key names it everywhere: DashboardNav.connect.
+//   0. C1b: no message and no source string keeps the SINGULAR product name
+//      or the doors' singular sentences (sign-up, welcome, preview pitch).
 //   1. The three locales carry the new name; the old product label ("Votre
 //      agent" / "Your agent" / "הסוכן שלכם" as a whole string) is gone from
 //      every message file, and so is the email's own copy of it
@@ -23,8 +26,23 @@ import { ENTRY_LABEL_KEY } from "../../lib/dashboard-nav";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
-const NAME = { fr: "Connecter votre agent", en: "Connect your agent", he: "חיבור הסוכן שלכם" } as const;
+const NAME = { fr: "Connecter vos agents", en: "Connect your agents", he: "חיבור הסוכנים שלכם" } as const;
 const OLD = ["Votre agent", "Your agent", "הסוכן שלכם"];
+// C1b: the singular name (22/11) and the doors' singular sentences, anywhere in a string.
+const SINGULAR: RegExp[] = [
+  /Connecter votre agent/,
+  /Connect your agent(?!s)/,
+  /חיבור הסוכן שלכם/,
+  /branchement de votre agent/,
+  /Connecting your agent(?!s)/,
+  /voix et un numéro à votre agent/,
+  /Give your agent a voice/,
+  /תנו לסוכן שלכם קול/,
+  /Branchez l'agent IA que vous avez déjà/,
+  /Plug in the AI agent you already have/,
+  /Branchez votre propre agent/,
+  /Connect your own agent(?!s)/,
+];
 
 // ── 1. Messages ────────────────────────────────────────────────────────────
 function* strings(o: unknown, path = ""): Generator<[string, string]> {
@@ -38,12 +56,21 @@ for (const l of ["fr", "en", "he"] as const) {
   assert.equal(m.Email.usageWarning.entryConnect, undefined, `${l}: the email has no copy of the name`);
   // ConnectorsList.defaultName (VP, 24/11) is the name of the customer's
   // AGENT on a card whose name is blank, not the product: same words, another actor.
+  assert.equal(m.Pricing.grid.products.connect.name, NAME[l], `${l}: the pricing card names it the same`);
   for (const [path, s] of strings(m)) {
     if (path === "ConnectorsList.defaultName") continue;
     assert.ok(!OLD.includes(s.trim()), `${l}: ${path} still reads the old product name "${s}"`);
+    // "Votre agent IA" (the editor's own name) and "Votre agent" (the default
+    // agent name) are not the product: none of the patterns matches them.
+    for (const re of SINGULAR) assert.doesNotMatch(s, re, `${l}: ${path} still reads the singular "${s}"`);
   }
+  assert.equal(m.ClientAgentBrick.title, { fr: "Votre agent IA", en: "Your AI agent", he: "סוכן ה-AI שלכם" }[l], `${l}: the editor keeps its name`);
+  assert.equal(m.ConnectorsList.defaultName, { fr: "Votre agent", en: "Your agent", he: "הסוכן שלכם" }[l], `${l}: the default agent name kept`);
 }
-console.log("ok: the name in fr/en/he, the old label gone");
+// The singular guard catches what it must (mutation proof, in memory).
+assert.ok(SINGULAR.some((re) => re.test("Connecter votre agent")) && SINGULAR.some((re) => re.test("Connect your agent")));
+assert.ok(!SINGULAR.some((re) => re.test("Connect your agents")) && !SINGULAR.some((re) => re.test("Votre agent IA")));
+console.log("ok: the plural name in fr/en/he, the old labels gone"); 
 
 // ── 2. Every product-name site reads DashboardNav.connect ─────────────────
 assert.equal(ENTRY_LABEL_KEY.connect, "connect", "sidebar: the connect entry's label is DashboardNav.connect");
@@ -68,7 +95,7 @@ assert.equal(ENTRY_LABEL_KEY.connect, "connect", "sidebar: the connect entry's l
 
   const admin = read("app/admin/users/[userId]/agent/page.tsx");
   assert.match(admin, /getTranslations\(\{ locale: "fr", namespace: "DashboardNav" \}\)/);
-  assert.match(admin, /<ConnectPageContent [^>]*title=\{t\("connect"\)\}/, "admin tenant view: the title is DashboardNav.connect");
+  assert.match(admin, /<ConnectPageContent\s[^>]*title=\{t\("connect"\)\}/, "admin tenant view: the title is DashboardNav.connect");
 
   const email = read("lib/email.ts");
   const fn = email.slice(email.indexOf("export async function sendUsageWarningEmail"));
@@ -97,7 +124,9 @@ for (const dir of ["app", "components", "lib"]) {
   for (const file of sources(join(ROOT, dir))) {
     const rel = relative(ROOT, file);
     for (const line of stripComments(readFileSync(file, "utf8")).split("\n")) {
-      const hit = OLD.some((n) => line.includes(`"${n}"`) || line.includes(`'${n}'`) || line.includes(`>${n}<`) || new RegExp(`>\\s*${n}\\s*$`).test(line) || line.trim() === n);
+      const hit =
+        OLD.some((n) => line.includes(`"${n}"`) || line.includes(`'${n}'`) || line.includes(`>${n}<`) || new RegExp(`>\\s*${n}\\s*$`).test(line) || line.trim() === n) ||
+        SINGULAR.some((re) => re.test(line));
       if (hit && !ALLOWED.has(`${rel}: ${line.trim()}`)) offenders.push(`${rel}: ${line.trim()}`);
     }
   }
