@@ -9,6 +9,7 @@ import { sendOwnerRecapWhatsApp, toRecapLocale } from "@/lib/owner-recap-whatsap
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { callInsertValues, parseCallEndBody } from "@/lib/call-end-body";
+import { attributionFromToken } from "@/lib/connectors/call-attribution";
 import { db } from "@/lib/db";
 import { calls, events } from "@/lib/db/schema";
 import { getTenantGoogleClients } from "@/lib/google";
@@ -124,9 +125,13 @@ export async function POST(req: NextRequest) {
   }
   const { user, config: cfg } = tenant;
 
+  // B3: the connector this call was routed to, READ BACK from the signed
+  // token session-config served (never re-evaluated here). Absent / invalid
+  // / any error = {} (today's row). Never throws.
+  const attribution = await attributionFromToken(parsed.connectorRoute, user.id);
   const [callRow] = await db
     .insert(calls)
-    .values(callInsertValues(parsed, user.id, callId))
+    .values({ ...callInsertValues(parsed, user.id, callId), ...attribution })
     .returning();
 
   await logEvent({
