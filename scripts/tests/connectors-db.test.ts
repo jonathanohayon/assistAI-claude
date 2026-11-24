@@ -20,6 +20,8 @@
 
 import assert from "node:assert/strict";
 
+import type { ConnectorsPageView } from "../../lib/connectors/types";
+
 const url = process.env.CONNECTORS_DB_TEST_URL;
 if (!url) {
   console.log("skip: connectors DB part (no CONNECTORS_DB_TEST_URL — see scripts/connectors-db.sh)");
@@ -62,7 +64,15 @@ async function main() {
   const get = async (qs = "") => {
     const res = await route.GET(new NextRequest(`http://localhost/api/dashboard/connectors${qs}`));
     const text = await res.text();
-    return { status: res.status, text, body: text ? (JSON.parse(text) as Record<string, any>) : null };
+    return { status: res.status, text, body: text ? (JSON.parse(text) as ConnectorsPageView) : null };
+  };
+  // The driver error's text (drizzle wraps the pg error in `cause`).
+  const errText = (e: unknown): string => {
+    if (e instanceof Error) {
+      const cause = e.cause instanceof Error ? e.cause.message : "";
+      return `${cause} ${e.message}`;
+    }
+    return String(e);
   };
   const tableMd5 = async () =>
     (await rows<{ m: string }>(sql`SELECT md5(coalesce(string_agg(c::text, E'\n' ORDER BY c.id), '')) AS m FROM connectors c`))[0].m;
@@ -111,12 +121,12 @@ async function main() {
            (${C2}, ${ROWS}, 'Bot B', '', 'voice', NULL, false, ${id(0x504)}, NULL, NULL, now() - interval '1 day')`);
   await assert.rejects(
     db.execute(sql`INSERT INTO connectors (user_id, name, mode) VALUES (${ROWS}, 'bad', 'chat')`),
-    (e: any) => /connectors_mode_check/.test(String(e?.cause?.message ?? e?.message ?? e)),
+    (e: unknown) => /connectors_mode_check/.test(errText(e)),
     "mode CHECK",
   );
   await assert.rejects(
     db.execute(sql`INSERT INTO connectors (user_id, name, mode, phone_number_id) VALUES (${ROWS}, 'dup', 'lead', ${id(0x503)})`),
-    (e: any) => /connectors_phone_number_id_unique/.test(String(e?.cause?.message ?? e?.message ?? e)),
+    (e: unknown) => /connectors_phone_number_id_unique/.test(errText(e)),
     "one number per connector",
   );
   assert.equal(await count(sql`SELECT count(*)::int AS n FROM connectors`), 2);
@@ -162,7 +172,7 @@ async function main() {
   as(ADMIN);
   const a = await get(`?asUserId=${ROWS}`);
   assert.equal(a.status, 200, "admin via asUserId → 200");
-  assert.deepEqual(a.body!.connectors.map((c: any) => [c.id, c.derived, c.state, c.numberE164, c.secretSet]), [
+  assert.deepEqual(a.body!.connectors.map((c) => [c.id, c.derived, c.state, c.numberE164, c.secretSet]), [
     [C1, false, "online", "+15550000503", true],
     [C2, false, "off", "+15550000504", false],
   ], ">= 1 row → rows only, oldest first");
@@ -194,7 +204,7 @@ async function main() {
     const res = await adminCatalogue.PUT(
       new NextRequest("http://localhost/api/admin/product-catalogue", { method: "PUT", body: JSON.stringify(body), headers: { "content-type": "application/json" } }),
     );
-    return { status: res.status, body: (await res.json()) as Record<string, any> };
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> };
   };
   const stored = async () => (await rows<{ value: string }>(sql`SELECT value FROM app_settings WHERE key = 'product_catalogue_v1'`))[0]?.value ?? null;
   as(TENANT);
@@ -224,7 +234,7 @@ async function main() {
   const a3 = await get(`?asUserId=${ROWS}`);
   assert.deepEqual(a3.body!.limits, { max: 7, used: 2, inTrial: false }, "the page reads the stored limits");
   const ga = await adminCatalogue.GET();
-  assert.deepEqual(((await ga.json()) as any).connectorLimits, { trial: 1, paid: 7 }, "admin GET shows the limits");
+  assert.deepEqual(((await ga.json()) as Record<string, unknown>).connectorLimits, { trial: 1, paid: 7 }, "admin GET shows the limits");
   console.log("ok: lastCallAt, stored limits, admin PUT gate cases (omitted kept, valid written, > 10 refused)");
 
   // ── 6. FK actions ──────────────────────────────────────────────────────
