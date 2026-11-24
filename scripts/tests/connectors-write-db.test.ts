@@ -1,12 +1,12 @@
-// Connectors B4 (create / edit / delete / test, behind CONNECTORS_WRITE)
+// Connectors B4 (create / edit / test, behind CONNECTORS_WRITE; no DELETE:
+// the soft delete lands in its own PR, Next answers 405)
 // against a THROWAWAY Postgres, through the real route handlers:
-//   1. switch unset → every write route 404 connectors_write_off, nothing
+//   1. switch unset → every write route (POST, PATCH, test) 404 connectors_write_off, nothing
 //      written (connectors / events / agent_configs / users md5), GET unchanged;
 //   2. admin mode: an admin session 201 (via ?asUserId, source "admin"), a
 //      tenant 404;
 //   3. on: create (the secret ONCE, sealed at rest, enabled by default),
-//      patch (omitted kept, rotate), delete (first while active 409, a
-//      second 200 + numberKept, the number stays on the account);
+//      patch (omitted kept, rotate), DELETE → 405 (no handler);
 //   4. the 4 gate cases on PATCH (voiceConfig.engine is admin-only);
 //   5. limits: trial 1 → trial_limit; paid 2nd → orders_closed (PRODUCT_ORDERS
 //      off); the hard 10 → max_reached;
@@ -64,7 +64,7 @@ const g = globalThis as {
 };
 const id = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 const ADMIN = id(0xad);
-const PAID = id(0x41); // paid, no legacy: create / patch / delete / gate cases / hard 10
+const PAID = id(0x41); // paid, no legacy: create / patch / gate cases / hard 10
 const LEG = id(0x42); // paid, legacy agent enabled, numbers A (oldest) + B
 const TRIAL_LEG = id(0x43); // trialing, legacy agent enabled: PATCH "legacy", trial limit
 const OTHER = id(0x44); // another account (its number)
@@ -113,7 +113,15 @@ async function main() {
     call((req) => collection.POST(req), "POST", `/api/dashboard/connectors${qs(asUserId)}`, "", body);
   const patch = (cid: string, body: unknown, asUserId?: string) =>
     call(item.PATCH, "PATCH", `/api/dashboard/connectors/${cid}${qs(asUserId)}`, cid, body);
-  const del = (cid: string, asUserId?: string) => call(item.DELETE, "DELETE", `/api/dashboard/connectors/${cid}${qs(asUserId)}`, cid);
+  // No DELETE handler: what Next's route module answers for a missing method
+  // (autoImplementMethods, the dispatch table AppRouteRouteModule.resolve uses).
+  const { autoImplementMethods } = await import("next/dist/server/route-modules/app-route/helpers/auto-implement-methods");
+  assert.ok(!("DELETE" in item), "the [id] route exports no DELETE");
+  const del = async (cid: string, asUserId?: string) => {
+    const methods = autoImplementMethods(item as never) as unknown as Record<string, (req: unknown, ctx: unknown) => Promise<Response>>;
+    const res = await methods.DELETE(new NextRequest(`http://localhost/api/dashboard/connectors/${cid}${qs(asUserId)}`, { method: "DELETE" }), { params: Promise.resolve({ id: cid }) });
+    return { status: res.status };
+  };
   const test = (cid: string, body: unknown = {}, asUserId?: string) =>
     call(testRoute.POST, "POST", `/api/dashboard/connectors/${cid}/test${qs(asUserId)}`, cid, body);
   const get = async (asUserId?: string) => {
@@ -192,8 +200,6 @@ async function main() {
       await post(create(21, { acknowledgeLegacyConversion: true })),
       await patch("legacy", { name: "x", acknowledgeLegacyConversion: true }),
       await patch(id(0xc0), { name: "x" }),
-      await del(id(0xc0)),
-      await del("legacy"),
       await test(id(0xc0)),
       await test("legacy"),
     ]) {
@@ -212,7 +218,7 @@ async function main() {
   assert.equal((await post(create(1))).status, 401, "signed out → 401");
   as(PAID);
   assert.equal((await post(create(1), OTHER)).status, 403, "a tenant with a foreign asUserId → 403");
-  console.log("ok: switch off (404 connectors_write_off on all 4 routes, nothing written, GET unchanged)");
+  console.log("ok: switch off (404 connectors_write_off on POST / PATCH / test, nothing written, GET unchanged)");
 
   // ── 2. Admin mode ──────────────────────────────────────────────────────
   setEnv("CONNECTORS_WRITE", "admin");
@@ -328,9 +334,7 @@ async function main() {
   console.log("ok: limits (orders_closed, hard 10 → max_reached)");
 
   // ── 6. Number conflicts ────────────────────────────────────────────────
-  // Free one slot (delete #10, not the first).
-  const ids = (await rowsOf(PAID)).map((r) => r.id);
-  assert.equal((await del(ids[9])).status, 200);
+  // At 10 rows: the number checks answer before the limit.
   const before6 = await md5("connectors");
   const inUse = await post(create(2));
   assert.deepEqual([inUse.status, inUse.body], [409, { error: "number_in_use" }], "another connector's number → 409");
@@ -345,18 +349,14 @@ async function main() {
   assert.equal(await md5("connectors"), before6, "conflicts wrote nothing");
   console.log("ok: number conflicts (connector 409, foreign 404, tamaravox 409)");
 
-  // ── Delete ─────────────────────────────────────────────────────────────
-  const first = await del(ids[0]);
-  assert.deepEqual([first.status, first.body], [409, { error: "first_connector_active" }], "the first while the product is active → 409");
-  const second = await del(ids[1]);
-  assert.equal(second.status, 200);
-  assert.deepEqual([second.body.deletedId, second.body.numberKept], [ids[1], true], "a second → 200 + numberKept");
-  assert.equal(await n(sql`SELECT count(*)::int AS n FROM phone_numbers WHERE id = ${num(2)} AND user_id = ${PAID}`), 1, "the number stays on the account");
-  assert.equal((await post(create(2))).status, 201, "the kept number can host a new connector");
-  assert.equal((await del("legacy")).status, 409, "legacy → 409 legacy_not_deletable");
-  assert.equal((await del(id(0xbad))).status, 404);
-  assert.deepEqual((await eventsOf(PAID, "connector_deleted")).length, 2);
-  console.log("ok: delete (first active 409, second 200 + numberKept, number kept)");
+  // ── DELETE: removed from B4 (the soft delete lands in its own PR) ─────
+  const before7 = await snapshot();
+  for (const cid of [X, "legacy", id(0xbad)]) assert.equal((await del(cid)).status, 405, "DELETE → 405 (no handler)");
+  as(ADMIN);
+  assert.equal((await del(X, PAID)).status, 405);
+  as(PAID);
+  assert.equal(await snapshot(), before7, "a DELETE writes nothing");
+  console.log("ok: DELETE → 405 (no handler), nothing written");
 
   // ── 7. The legacy materialization ──────────────────────────────────────
   as(LEG);
@@ -422,7 +422,6 @@ async function main() {
   assert.equal((await test(id(0xbad))).status, 404);
   as(OTHER);
   assert.equal((await test(X)).status, 404, "another account's connector → 404");
-  assert.equal((await del(X)).status, 404);
   assert.equal((await patch(X, { name: "hijack" })).status, 404);
   console.log("ok: test (last_test_* written, the stored secret opened, mocked agent)");
 

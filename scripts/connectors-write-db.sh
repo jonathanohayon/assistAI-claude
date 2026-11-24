@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Connectors B4 (create / edit / delete / test, behind CONNECTORS_WRITE)
+# Connectors B4 (create / edit / test, behind CONNECTORS_WRITE; no DELETE)
 # against a THROWAWAY Postgres (127.0.0.1:<free port>, data in the
 # git-ignored .tmp/ folder), then stops it:
 #   1. scripts/tests/connectors-write-db.test.ts (switch per value, CRUD,
-#      the 4 gate cases, limits, number conflicts, delete rules, the secret
+#      the 4 gate cases, limits, number conflicts, DELETE 405, the secret
 #      once, the legacy materialization, test → last_test_*);
 #   2. worker payloads, an in-tree invariant (no main-vs-branch diff): with
 #      CONNECTORS_WRITE unset, scripts/config-bytes-snapshot.ts before and

@@ -1,4 +1,4 @@
-// Connector writes (B4) — SERVER-ONLY. Create / edit / delete / test, behind
+// Connector writes (B4) — SERVER-ONLY. Create / edit / test (delete: its own PR), behind
 // CONNECTORS_WRITE (lib/connectors/write-switch.ts, checked by the routes).
 // No number purchase or release here (B5), no payment (B6).
 //
@@ -28,15 +28,13 @@ import { sealForStorage } from "@/lib/crypto/secret-box";
 import { loadTamaravoxNumbers } from "@/lib/connectors/tamaravox-numbers";
 import { logEvent } from "@/lib/logger";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
-import { activeTrialProducts } from "@/lib/product-trials";
-import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow, loadProductTrials } from "@/lib/products";
+import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow } from "@/lib/products";
 import { generateClientAgentSecret } from "@/lib/tools/client-agent-secret";
 import { runClientAgentTest, type ClientAgentTestResult } from "@/lib/tools/client-agent-test";
 import { parseTools } from "@/lib/tools/store";
 import { DEFAULT_VOICE, parseVoice, type Voice } from "@/lib/voice/contract";
 import { planVoiceWrite } from "@/lib/voice/store";
 
-import { connectorDeletable, connectProductActive } from "./deletable";
 import { canAddConnector } from "./entitlement";
 import { LEGACY_CONNECTOR_ID } from "./legacy";
 import { defaultConnectorLimits } from "./limits";
@@ -317,45 +315,6 @@ export async function patchConnector(a: ConnectorActor, id: string, patch: Conne
     status: 200,
     body: { connector, ...(secret ? { generatedSecret: secret } : {}), ...(c ? { legacyConvertedId: c.id } : {}), page },
   };
-}
-
-// ── DELETE /api/dashboard/connectors/[id] ───────────────────────────────
-
-export async function deleteConnector(a: ConnectorActor, id: string): Promise<WriteOutcome> {
-  if (id === LEGACY_CONNECTOR_ID) return { ok: false, status: 409, body: { error: "legacy_not_deletable" } };
-  if (!isConnectorUuid(id)) return { ok: false, status: 404, body: { error: "not_found" } };
-  const trials = await loadProductTrials(a.userId);
-  let phoneNumberId: string | null = null;
-  const out = await run(async () => {
-    await db.transaction(async (tx) => {
-      const account = await lockAccount(tx, a.userId);
-      if (!account) refuse(404, { error: "not_found" });
-      const rows = await tx
-        .select({ id: connectors.id, phoneNumberId: connectors.phoneNumberId })
-        .from(connectors)
-        .where(eq(connectors.userId, a.userId))
-        .orderBy(connectors.createdAt, connectors.id);
-      const index = rows.findIndex((r) => r.id === id);
-      if (index < 0) refuse(404, { error: "not_found" });
-      // The server's ONE rule (lib/connectors/deletable.ts), same order as the GET.
-      const productActive = connectProductActive({ ...account!, activeTrials: activeTrialProducts(trials, new Date()) });
-      if (!connectorDeletable({ derived: false, index, productActive })) refuse(409, { error: "first_connector_active" });
-      phoneNumberId = rows[index].phoneNumberId;
-      await tx.delete(connectors).where(and(eq(connectors.id, id), eq(connectors.userId, a.userId)));
-    });
-    return { ok: true, status: 200, body: {} };
-  });
-  if (!out.ok) return out;
-  await logEvent({
-    source: source(a),
-    event: "connector_deleted",
-    message: "Connecteur supprimé (numéro conservé)",
-    userId: a.userId,
-    metadata: { connectorId: id, phoneNumberId },
-  });
-  const { page } = await pageAnd(a.userId, null);
-  // B4 releases nothing: the number stays on the account (B5 releases it).
-  return { ok: true, status: 200, body: { deletedId: id, numberKept: true, page } };
 }
 
 // ── POST /api/dashboard/connectors/[id]/test ────────────────────────────
