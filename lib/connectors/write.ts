@@ -13,12 +13,11 @@
 // true (409 legacy_conversion_unacknowledged otherwise), so the FE can't skip
 // the notice. A refused write rolls the conversion back with it.
 //
-// Secrets: generated here (32 random bytes, base64url), stored sealed
+// Secrets: generated here (#437's generateClientAgentSecret: 32 random
+// bytes, base64url), stored sealed
 // (lib/crypto/secret-box.ts sealForStorage, E1), returned ONCE as
 // `generatedSecret` (create, and a PATCH with rotateSecret: true). Never
 // selected otherwise; never logged.
-
-import { randomBytes } from "node:crypto";
 
 import { and, asc, count, eq, sql } from "drizzle-orm";
 
@@ -31,6 +30,7 @@ import { logEvent } from "@/lib/logger";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
 import { activeTrialProducts } from "@/lib/product-trials";
 import { ACCOUNT_PRODUCTS_PICK, getCatalogueRow, loadProductTrials } from "@/lib/products";
+import { generateClientAgentSecret } from "@/lib/tools/client-agent-secret";
 import { runClientAgentTest, type ClientAgentTestResult } from "@/lib/tools/client-agent-test";
 import { parseTools } from "@/lib/tools/store";
 import { DEFAULT_VOICE, parseVoice, type Voice } from "@/lib/voice/contract";
@@ -64,9 +64,8 @@ const refuse = (status: Extract<WriteOutcome, { ok: false }>["status"], body: Ex
   throw new Refusal({ ok: false, status, body });
 };
 
-export function generateConnectorSecret(): string {
-  return randomBytes(32).toString("base64url");
-}
+/** #437's generator: the same format as the client agent brick (32 random bytes, base64url). */
+export const generateConnectorSecret = generateClientAgentSecret;
 
 /** The url's host name only, for event metadata (never the path, query string or userinfo). */
 function safeHost(url: string): string | null {

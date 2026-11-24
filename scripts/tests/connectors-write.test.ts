@@ -130,7 +130,7 @@ console.log(`ok: legacy materialization (${none.length + 3} cases)`);
 
 // ── Source guards ───────────────────────────────────────────────────────
 const write = src("lib/connectors/write.ts");
-assert.match(write, /randomBytes\(32\)\.toString\("base64url"\)/, "the secret is 32 random bytes");
+assert.match(write, /export const generateConnectorSecret = generateClientAgentSecret;/, "the secret is #437's generator (32 random bytes)");
 assert.match(write, /secret: sealForStorage\(secret\)/, "a generated secret is stored sealed");
 assert.equal((write.match(/generatedSecret: secret/g) ?? []).length, 2, "generatedSecret is returned by create and rotate only");
 assert.equal([...write.matchAll(/metadata: \{([^\n]*)\},?\n/g)].length, 5, "every event's metadata is checked");
