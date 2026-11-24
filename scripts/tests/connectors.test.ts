@@ -15,7 +15,6 @@ import { connectorRowView, legacyConnectorView } from "../../lib/connectors/lega
 import {
   DEFAULT_CONNECTOR_LIMITS,
   HARD_MAX_CONNECTORS,
-  connectorLimitsWrite,
   parseConnectorLimits,
 } from "../../lib/connectors/limits";
 import { numberConflict } from "../../lib/connectors/number-exclusivity";
