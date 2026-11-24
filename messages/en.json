@@ -2963,6 +2963,7 @@
         "caller_said": "What the caller just said, as transcribed (empty for a test).",
         "history": "At most the call's last {turns} turns, each with <c>role</c> (<c>user</c>: the caller, <c>agent</c>: Tamara) and <c>text</c> (empty for a test)."
       },
+      "speechNote": "The question comes from the caller's voice, transcribed or rephrased by Tamara: names and spellings can be approximate, so your agent should be tolerant (for example, match a misspelled name to the closest one).",
       "responseTitle": "The expected answer",
       "response": "A 2xx status and a JSON body with an <c>answer</c> field: the text Tamara should say, not empty.",
       "timeTitle": "The time limit",

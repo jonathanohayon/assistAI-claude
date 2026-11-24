@@ -2963,6 +2963,7 @@
         "caller_said": "Ce que l'appelant vient de dire, tel que transcrit (vide pour un test).",
         "history": "Les {turns} derniers tours de l'appel au plus, chacun avec <c>role</c> (<c>user</c> : l'appelant, <c>agent</c> : Tamara) et <c>text</c> (vide pour un test)."
       },
+      "speechNote": "La question vient de la voix de l'appelant, transcrite ou reformulée par Tamara : les noms et l'orthographe peuvent être approximatifs, votre agent doit donc être tolérant (par exemple, rapprocher un nom mal orthographié du plus proche).",
       "responseTitle": "La réponse attendue",
       "response": "Un statut 2xx et un corps JSON avec un champ <c>answer</c> : le texte que Tamara doit dire, non vide.",
       "timeTitle": "Le délai",

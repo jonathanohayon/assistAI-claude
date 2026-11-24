@@ -101,6 +101,10 @@ export function AgentHelpView({ locale, testOpen, asUserId = null }: { locale: s
             </div>
           ))}
         </dl>
+        {/* The question comes from speech: names can be approximate (VP, after a real demo call). */}
+        <p className={P} data-fact="speech">
+          {t("contract.speechNote")}
+        </p>
 
         <h3 className={H3}>{t("contract.responseTitle")}</h3>
         <p className={P}>{t.rich("contract.response", { c: code })}</p>

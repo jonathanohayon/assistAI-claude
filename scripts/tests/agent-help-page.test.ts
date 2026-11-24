@@ -151,6 +151,11 @@ async function main() {
           .replace("{stall}", num.format(WORKER_STALL_MS / 1000));
         assert.ok(html.includes(esc(time)), "time limits from the constants");
         if (l === "fr") assert.ok(html.includes("en mode voix seule, 2 s"), "voice limit wording");
+        // The speech note: one sentence, right after the fields.
+        assert.equal(typeof m.AgentHelp.contract.speechNote, "string");
+        assert.equal(m.AgentHelp.contract.speechNote.split(/[.?!](\s|$)/).filter((x: string) => x.trim()).length, 1, "one sentence");
+        const note = html.indexOf(esc(m.AgentHelp.contract.speechNote));
+        assert.ok(note > html.lastIndexOf('data-field="') && note < html.indexOf(esc(m.AgentHelp.contract.responseTitle)), "speech note under the fields");
         assert.ok(html.includes(esc(m.AgentHelp.contract.fields.history.split("{turns}")[0]) + WORKER_HISTORY_TURNS), "history cap from the constant");
         assert.ok(html.includes(`>${CLIENT_AGENT_SIGNATURE_HEADER}</code>`), "header name from the constant");
         assert.ok(html.includes(`User-Agent: ${CLIENT_AGENT_USER_AGENT}`));
@@ -236,6 +241,11 @@ async function main() {
     );
     // The test sends no url/secret: the SAVED address of the account shown.
     assert.ok(seen.filter((s) => s.method === "POST").every((s) => s.body === "{}"));
+    // The component passes its asUserId to both (effects don't run in a static render).
+    const src = read("components/agent-help/AgentHelpTest.tsx");
+    assert.match(src, /loadHelpTestState\(asUserId, fetch, ctrl\.signal\)/);
+    assert.match(src, /runHelpTest\(asUserId\)/);
+    assert.doesNotMatch(src, /fetch\("\/api/, "no request built without the account");
   });
   await test("only the admin route passes asUserId; the tenant page can't", () => {
     // Tenant page: no query read, no asUserId: a ?asUserId in its URL is ignored.
