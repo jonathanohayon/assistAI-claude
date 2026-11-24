@@ -99,10 +99,11 @@ async function main() {
   });
 
   await test("no weekday rule: the same answer for every centre, any centre or none", async () => {
-    const ref = await listDates({ location: null, count: 1, after: "2026-11-30" });
+    // Old-worker bodies (no `location` key) all get the same answer.
+    const ref = await listDates({ count: 1, after: "2026-11-30" });
     assert.equal(ref.json.requested_date_open, true);
     assert.deepEqual(dates(ref.json), ["2026-11-30"]);
-    for (const center of ["natanya", "ashdod", "jerusalem", "haifa", undefined]) {
+    for (const center of ["natanya", "ashdod", "jerusalem", "haifa", ""]) {
       const r = await listDates({ ...(center ? { center } : {}), count: 1, after: "2026-11-30" });
       assert.equal(r.text, ref.text, String(center));
     }
@@ -120,7 +121,13 @@ async function main() {
   await test("without after: no requested_* keys, the walk starts tomorrow", async () => {
     const r = await listDates({ center: "jerusalem", count: 3 });
     assert.equal(r.status, 200);
-    assert.equal(r.text, '{"location":null,"dates":[{"date":"2026-11-24"},{"date":"2026-11-26"},{"date":"2026-11-27"}]}');
+    // Old-worker body: the neutral label and French day names its texts read.
+    assert.equal(
+      r.text,
+      `{"location":null,"label":"l'établissement","dates":[{"date":"2026-11-24","weekday":"mardi"},{"date":"2026-11-26","weekday":"jeudi"},{"date":"2026-11-27","weekday":"vendredi"}]}`,
+    );
+    const n = await listDates({ location: null, count: 3 });
+    assert.equal(n.text, '{"location":null,"dates":[{"date":"2026-11-24"},{"date":"2026-11-26"},{"date":"2026-11-27"}]}');
   });
 
   await test("bad after is validated as before: ignored, same body as no after", async () => {

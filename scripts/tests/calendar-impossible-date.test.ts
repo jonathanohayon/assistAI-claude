@@ -171,13 +171,13 @@ async function main() {
     // `after` with a free slot, the date itself here.
     const r = await post("../../app/api/calendar/list-dates/route", "calendar/list-dates", { center: "ashdod", count: 1, after: "2026-02-28" });
     assert.equal(r.status, 200);
-    assert.deepEqual(r.body.dates, [{ date: "2026-02-28" }]);
+    assert.deepEqual(r.body.dates, [{ date: "2026-02-28", weekday: "samedi" }]);
   }
   {
     // list-dates: an `after` that is not YYYY-MM-DD is still ignored (from tomorrow), as before.
     const r = await post("../../app/api/calendar/list-dates/route", "calendar/list-dates", { center: "ashdod", count: 1, after: "next monday" });
     assert.equal(r.status, 200);
-    assert.deepEqual(r.body.dates, [{ date: "2025-12-02" }]);
+    assert.deepEqual(r.body.dates, [{ date: "2025-12-02", weekday: "mardi" }]);
   }
   {
     const r = await post("../../app/api/calendar/book/route", "calendar/book", { ...BOOK, date: "2026-03-03" });

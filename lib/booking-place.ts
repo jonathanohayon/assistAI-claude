@@ -6,7 +6,8 @@
 // rules reach the agent through the sheet's "location rules".
 //
 // A request WITHOUT a `location` key (the worker before it sends one) is
-// handled EXACTLY like `location: null`. Its `center` key, if any, is ignored:
+// handled EXACTLY like `location: null` (plus the neutral `label` / `weekday`
+// fields that worker's texts read, see OLD_WORKER_LABEL). Its `center` key, if any, is ignored:
 // the weekday-to-centre rule of lib/schedule.ts belonged to the first
 // customer only (account deleted), and applying it to every account named that
 // customer's towns in calls, refusals and event titles. No route may import
@@ -19,9 +20,39 @@ export type Place = { kind: "location"; label: string | null };
 
 export type PlaceResult = {
   place: Place;
+  /** No `location` key: the worker that predates it (it may send `center`). */
+  oldWorker: boolean;
   /** The body carried a legacy `center` key that was ignored (log only). */
   ignoredCenter: boolean;
 };
+
+/**
+ * The old worker interpolates `label` into its tool texts ("à ${label}",
+ * "(centre ${label})", "pour ${label}") and `weekday` into its date lists
+ * ("${weekday} ${date}"). Without them the model would read "undefined".
+ * So, for old-worker bodies ONLY, availability and list-dates add this
+ * neutral, truthful label and the real French day name of each date. The
+ * new-shape responses stay without them (byte-identical).
+ */
+export const OLD_WORKER_LABEL = "l'établissement";
+
+const DAY_NAMES_FR = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
+/** French day name of a real YYYY-MM-DD date (UTC civil arithmetic, no TZ drift). */
+export function weekdayFr(iso: string): string {
+  const [y, m, d] = iso.split("-").map((x) => Number(x));
+  return DAY_NAMES_FR[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] ?? "";
+}
+
+/** `{ label }` for an old-worker body, `{}` for the new shape. */
+export function oldWorkerLabel(r: PlaceResult): { label?: string } {
+  return r.oldWorker ? { label: OLD_WORKER_LABEL } : {};
+}
+
+/** A list-dates entry: `{ date }`, plus `weekday` for an old-worker body. */
+export function datedEntry(r: PlaceResult, date: string): { date: string; weekday?: string } {
+  return r.oldWorker ? { date, weekday: weekdayFr(date) } : { date };
+}
 
 export function isNewShape(body: Record<string, unknown>): boolean {
   return "location" in body;
@@ -35,6 +66,7 @@ export function locationLabel(v: unknown): string | null {
 export function resolvePlace(body: Record<string, unknown>): PlaceResult {
   return {
     place: { kind: "location", label: isNewShape(body) ? locationLabel(body.location) : null },
+    oldWorker: !isNewShape(body),
     ignoredCenter: !isNewShape(body) && "center" in body,
   };
 }

@@ -5,7 +5,11 @@
 //
 // Two request shapes, both tested on every route:
 //   - "old worker body": a `center` key (or none), NO `location` key. Handled
-//     EXACTLY like the new worker body with `location: null`; `center` ignored.
+//     like the new worker body with `location: null`; `center` ignored. On
+//     availability and list-dates it also gets the neutral `label`
+//     ("l'établissement") and real French `weekday`s that worker's texts
+//     read, so none of them renders "undefined" (pinned below with the
+//     worker's own templates).
 //   - "new worker body": a `location` key (string or null), no `center`.
 //     Byte-identical to before this change on availability / book /
 //     reschedule (literals recorded from the pre-change routes with the same
@@ -61,6 +65,13 @@ globalThis.fetch = (async (input: unknown) => {
   outbound.push(`fetch:${String(input)}`);
   throw new Error(`outbound fetch blocked in test: ${String(input)}`);
 }) as typeof fetch;
+
+// Weekday names are generic; the facts list contains them only because the
+// first customer's rule was per weekday. They are exempted from the
+// FIRST_CUSTOMER_FACTS check (old-worker list-dates carries real day names);
+// the TOWN check stays strict.
+const DAY_NAMES = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/gi;
+const withoutDayNames = (t: string) => t.replace(DAY_NAMES, "<day>");
 
 // The three towns in every spelling seen (fr / en / he), on top of the shared list.
 const TOWNS = /natan[iy]a|netan[iy]a|j[ée]rusal[ae]m|yerushalayim|ashdod|ירושלים|אשדוד|נתניה/i;
@@ -247,19 +258,22 @@ async function main() {
     assert.equal(loose.text, none.text);
   });
 
-  // ── Old worker bodies: neutral, exactly the new shape with location null ──
-  await test("old worker body: availability with center = new worker body with location null", async () => {
+  // ── Old worker bodies: neutral, the new shape with location null, plus ──
+  // ── the neutral `label` / `weekday` fields that worker's texts read.    ──
+  await test("old worker body: availability with center = new worker body with location null + neutral label", async () => {
     for (const date of DATES) {
-      const expected = await post("availability", { date, duration: 30, location: null });
+      const nullBody = await post("availability", { date, duration: 30, location: null });
+      const { date: d, location, ...rest } = JSON.parse(nullBody.text) as Record<string, unknown>;
+      const expectedText = JSON.stringify({ date: d, location, label: "l'établissement", ...rest });
       for (const center of [...CENTERS, undefined]) {
         const body = { date, duration: 30, ...(center ? { center } : {}) };
         const got = await post("availability", body);
         assert.equal(got.status, 200, `${JSON.stringify(body)} → ${got.text}`);
-        assert.equal(got.text, expected.text, JSON.stringify(body));
-        assert.deepEqual(got.google, expected.google, JSON.stringify(body));
+        assert.equal(got.text, expectedText, JSON.stringify(body));
+        assert.deepEqual(got.google, nullBody.google, JSON.stringify(body));
         const j = JSON.parse(got.text);
         assert.equal(j.location, null);
-        assert.ok(!("center" in j) && !("label" in j) && !("suggested_dates" in j) && !("error" in j));
+        assert.ok(!("center" in j) && !("suggested_dates" in j) && !("error" in j));
         if (date !== FULL_DAY) assert.ok((j.available_slots as string[]).length > 0, "working slots");
       }
     }
@@ -299,17 +313,29 @@ async function main() {
     }
   });
 
-  await test("old worker body: list-dates with center (valid, unknown or missing) = new worker body with location null", async () => {
+  await test("old worker body: list-dates with center (valid, unknown or missing) = new worker body with location null + label + weekday", async () => {
+    const DAY = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+    const dayOf = (iso: string) => DAY[new RealDate(`${iso}T12:00:00Z`).getUTCDay()];
     for (const after of [undefined, "2026-11-23", FULL_DAY, "2026-11-25"]) {
-      const expected = await post("listDates", { location: null, count: 3, ...(after ? { after } : {}) });
+      const nullBody = JSON.parse((await post("listDates", { location: null, count: 3, ...(after ? { after } : {}) })).text);
+      const { location, dates, ...rest } = nullBody as { location: null; dates: { date: string }[] };
+      const expectedText = JSON.stringify({
+        location,
+        label: "l'établissement",
+        dates: dates.map(({ date }) => ({ date, weekday: dayOf(date) })),
+        ...rest,
+      });
       for (const center of [...CENTERS, "haifa", "", undefined]) {
         const body = { count: 3, ...(after ? { after } : {}), ...(center !== undefined ? { center } : {}) };
         const got = await post("listDates", body);
         assert.equal(got.status, 200, `${JSON.stringify(body)} → ${got.text}`);
-        assert.equal(got.text, expected.text, JSON.stringify(body));
+        assert.equal(got.text, expectedText, JSON.stringify(body));
         assert.ok((JSON.parse(got.text).dates as unknown[]).length > 0, "working dates");
       }
     }
+    // The real day names: Mon 23 → lundi, Wed 25 → mercredi.
+    const r = JSON.parse((await post("listDates", { center: "ashdod", count: 2, after: "2026-11-23" })).text);
+    assert.deepEqual(r.dates, [{ date: "2026-11-23", weekday: "lundi" }, { date: "2026-11-25", weekday: "mercredi" }]);
   });
 
   await test("old worker body: no first-customer fact or town in any response, error, title or description", async () => {
@@ -317,7 +343,7 @@ async function main() {
     const check = (label: string, o: Outcome, facts: boolean) => {
       for (const t of [o.text, writes(o)]) {
         assert.doesNotMatch(t, TOWNS, `${label}: ${t}`);
-        if (facts) assert.doesNotMatch(t, FIRST_CUSTOMER_FACTS, `${label}: ${t}`);
+        if (facts) assert.doesNotMatch(withoutDayNames(t), FIRST_CUSTOMER_FACTS, `${label}: ${t}`);
       }
       seen.push(label);
     };
@@ -350,6 +376,93 @@ async function main() {
       check(`conflict ${center}`, c, false);
     }
     assert.ok(seen.length >= 3 * (4 * 4 + 1 + 6 + 1));
+  });
+
+  await test("old worker body: the old worker's exact tool texts render with no 'undefined' and no town", async () => {
+    // Template logic copied from the worker's main tools/calendar.ts
+    // (formatSuggested, formatListDates, check_availability, book_appointment,
+    // reschedule_appointment, formatRefusal minus its digit-run neutral text,
+    // which can only remove content).
+    type SuggestedDate = { date: string; weekday: string };
+    type J = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const formatSuggested = (suggested?: SuggestedDate[]) =>
+      suggested && suggested.length > 0 ? suggested.map((d) => `${d.weekday} ${d.date}`).join(", ") : "";
+    const formatRefusal = (data: J) => {
+      const reason =
+        typeof data.message === "string" && data.message.trim() ? data.message : typeof data.error === "string" ? data.error : "erreur inconnue";
+      return `Impossible : ${reason.slice(0, 200)}`;
+    };
+    const formatListDates = (data: J) => {
+      if (data.error) return `Erreur : ${data.error}`;
+      const dates = data.dates ?? [];
+      const list =
+        dates.length === 0
+          ? `Aucune date trouvée pour ${data.label}.`
+          : `Prochaines dates ouvertes à ${data.label} : ${formatSuggested(dates)}.`;
+      if (typeof data.requested_date_open !== "boolean" || !data.requested_date) return list;
+      const verdict = data.requested_date_open
+        ? `Le ${data.requested_date} est ouvert à ${data.label}.`
+        : `Le ${data.requested_date} n'est pas ouvert à ${data.label}.`;
+      return `${verdict} ${list}`;
+    };
+    const formatAvailability = (data: J, date: string) => {
+      if (data.error === "wrong_day_for_center") return `${data.message} Propose une de ces dates à la cliente.`;
+      if (data.error) return formatRefusal(data);
+      if (data.reason && data.suggested_dates) return `${data.reason}`;
+      if (data.reason) return `${data.reason} Veux-tu un créneau à ${data.label} le ${date} ?`;
+      const slots = data.available_slots ?? [];
+      if (slots.length === 0) return `Aucun créneau disponible le ${date} à ${data.label}.`;
+      return `Le ${date} (centre ${data.label}), créneaux libres : ${slots.join(", ")}`;
+    };
+    const formatBook = (data: J, date: string, time: string, name: string) => {
+      if (!data.success) {
+        if (data.error === "wrong_day_for_center") {
+          const next = formatSuggested(data.suggested_dates);
+          return `${data.message ?? data.error}${next ? ` Propose plutôt : ${next}.` : ""}`;
+        }
+        if (data.error === "slot_conflict") return data.message ?? "Ce créneau chevauche un rendez-vous existant. Propose une autre heure.";
+        if (data.expectedLabel) return `${data.error} (Le bon centre pour le ${date} est ${data.expectedLabel}.)`;
+        return formatRefusal(data);
+      }
+      return data.summary ?? `RDV confirmé le ${date} à ${time} pour ${name}.`;
+    };
+    const formatReschedule = (data: J) => {
+      if (data.error === "wrong_day_for_center") {
+        const next = formatSuggested(data.suggested_dates);
+        return `${data.message ?? data.error}${next ? ` Propose plutôt : ${next}.` : ""}`;
+      }
+      if (data.error === "slot_conflict") return data.message ?? "Ce créneau chevauche un rendez-vous existant. Propose une autre heure.";
+      if (data.error) return formatRefusal(data);
+      return data.summary ?? "RDV déplacé.";
+    };
+
+    const texts: string[] = [];
+    for (const center of CENTERS) {
+      for (const date of [...DATES, "2026-02-30"]) {
+        // The old worker sends `center` (optional on availability / reschedule).
+        for (const c of [center, undefined]) {
+          texts.push(formatAvailability(JSON.parse((await post("availability", { date, center: c, duration: 30 })).text), date));
+          texts.push(formatReschedule(JSON.parse((await post("reschedule", { eventId: "evt-1", newDate: date, newTime: "15:00", center: c })).text)));
+        }
+        texts.push(formatBook(JSON.parse((await post("book", { ...BOOK, date, center })).text), date, BOOK.time, BOOK.name));
+        texts.push(formatListDates(JSON.parse((await post("listDates", { center, count: 3, after: date })).text)));
+      }
+      texts.push(formatListDates(JSON.parse((await post("listDates", { center, count: 3 })).text)));
+      // No date with a free slot within the horizon: "Aucune date trouvée pour …".
+      texts.push(formatListDates(JSON.parse((await post("listDates", { center, count: 3, after: "2026-11-25", duration: 540 })).text)));
+      texts.push(formatBook(JSON.parse((await post("book", { ...BOOK, date: "2026-11-26", time: "11:00", center })).text), "2026-11-26", "11:00", BOOK.name));
+    }
+    for (const t of texts) {
+      assert.doesNotMatch(t, /undefined|null|\[object/i, t);
+      assert.doesNotMatch(t, TOWNS, t);
+    }
+    // The texts read as intended.
+    assert.ok(texts.includes("Le 2026-11-25 (centre l'établissement), créneaux libres : 09:00, 09:30, 10:00, 10:30, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30, 17:00, 17:30"));
+    assert.ok(texts.includes("Plus de créneau disponible pour le 2026-11-24. Veux-tu un créneau à l'établissement le 2026-11-24 ?"));
+    assert.ok(texts.includes("Le 2026-11-24 n'est pas ouvert à l'établissement. Prochaines dates ouvertes à l'établissement : mercredi 2026-11-25, jeudi 2026-11-26, vendredi 2026-11-27."));
+    assert.ok(texts.includes("Le 2026-11-25 n'est pas ouvert à l'établissement. Aucune date trouvée pour l'établissement."));
+    assert.ok(texts.includes("RDV confirmé le 2026-11-25 à 14:00 pour Mock Client"));
+    assert.ok(texts.includes("RDV déplacé au 2026-11-26 à 15:00."));
   });
 
   await test("old worker body: the ignored center is logged, without its value", async () => {

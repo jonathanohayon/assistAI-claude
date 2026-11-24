@@ -4,6 +4,7 @@
     "body": {
       "date": "2030-01-07",
       "location": null,
+      "label": "l'établissement",
       "available_slots": [
         "09:00",
         "09:30",
@@ -43,6 +44,7 @@
     "body": {
       "date": "2030-01-07",
       "location": null,
+      "label": "l'établissement",
       "available_slots": [
         "09:00",
         "09:30",
@@ -155,12 +157,15 @@
     "status": 200,
     "body": {
       "location": null,
+      "label": "l'établissement",
       "dates": [
         {
-          "date": "2030-01-07"
+          "date": "2030-01-07",
+          "weekday": "lundi"
         },
         {
-          "date": "2030-01-08"
+          "date": "2030-01-08",
+          "weekday": "mardi"
         }
       ],
       "requested_date": "2030-01-07",

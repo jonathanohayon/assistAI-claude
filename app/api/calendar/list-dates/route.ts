@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireInternalSecret } from "@/lib/api/auth-guards";
 import { parseJsonBody } from "@/lib/api/request-parsing";
-import { noteIgnoredCenter, resolvePlace } from "@/lib/booking-place";
+import { datedEntry, noteIgnoredCenter, oldWorkerLabel, resolvePlace } from "@/lib/booking-place";
 import {
   LIST_DATES_HORIZON_DAYS,
   LIST_DATES_MAX,
@@ -22,7 +22,9 @@ import { jerusalemDateOffset } from "@/lib/tz";
 //
 // Both request shapes are handled the same way (lib/booking-place.ts):
 // `location` (string | null) is echoed; a legacy `center` key is ignored, and
-// a missing or unknown one is not an error. There is no weekday rule.
+// a missing or unknown one is not an error. There is no weekday rule. An
+// old-worker body (no `location` key) also gets `label` ("l'établissement")
+// and a French `weekday` on each date, which that worker's texts read.
 //
 // Auth: the INTERNAL_SECRET gate (the worker only), then the tenant routing
 // headers, like the other calendar routes.
@@ -79,7 +81,10 @@ export async function POST(req: NextRequest) {
     const found = await datesWithFreeSlots(caller.calendar, caller.calendarId, days, durationMin, n);
     return NextResponse.json({
       location: placed.place.label,
-      dates: found.map((date) => ({ date })),
+      // Old-worker body only: the neutral label and the day names its texts
+      // interpolate (lib/booking-place.ts OLD_WORKER_LABEL).
+      ...oldWorkerLabel(placed),
+      dates: found.map((date) => datedEntry(placed, date)),
       ...(afterDate !== undefined
         ? { requested_date: afterDate, requested_date_open: found[0] === afterDate }
         : {}),

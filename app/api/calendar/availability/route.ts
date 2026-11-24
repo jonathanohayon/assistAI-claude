@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { computeFreeSlots } from "@/lib/calendar-conflict";
 import { AGENT_CALLER_UNAUTHORIZED_BODY, requireAgentCaller, resolveAgentCallerGoogle } from "@/lib/google";
-import { noteIgnoredCenter, resolvePlace } from "@/lib/booking-place";
+import { noteIgnoredCenter, oldWorkerLabel, resolvePlace } from "@/lib/booking-place";
 import { invalidDateError, isRealIsoDate } from "@/lib/iso-date";
 
 export async function POST(req: NextRequest) {
@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       date,
       location,
+      // Old-worker body only: the neutral label its texts interpolate.
+      ...oldWorkerLabel(placed),
       available_slots: slots,
       ...(slots.length === 0 ? { reason: `Plus de créneau disponible pour le ${date}.` } : {}),
     });
