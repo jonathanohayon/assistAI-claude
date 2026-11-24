@@ -46,7 +46,7 @@ export function ConnectPageContent({ view, title, trialNote, notifyRequested = f
           {t("connectAdminClosed")}
         </p>
       )}
-      <ConnectPreview />
+      <ConnectPreview asUserId={asUserId} />
     </>
   );
 }

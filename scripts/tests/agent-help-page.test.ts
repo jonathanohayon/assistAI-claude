@@ -316,6 +316,10 @@ async function main() {
       const admin = wrap(l, createElement(ClientAgentRow, { served, tools: publicTools(tools), onChange: () => {}, refused: null, asUserId: TENANT }));
       assert.ok(admin.includes(`href="/admin/users/${TENANT}/agent/help"`), "admin view: the link carries the tenant id");
       assert.ok(!admin.includes(`href="/${l}${AGENT_HELP_HREF}"`), "admin view: never the admin's own help page");
+      // Admin view of a tenant whose Connect page is the preview: same rule.
+      const adminPreview = wrap(l, createElement(ConnectPreview, { asUserId: TENANT }));
+      assert.ok(adminPreview.includes(`href="/admin/users/${TENANT}/agent/help"`), "admin preview: the link carries the tenant id");
+      assert.ok(read("app/[locale]/dashboard/agent/connect-view.tsx").includes("<ConnectPreview asUserId={asUserId} />"), "the page passes it");
     });
   }
 

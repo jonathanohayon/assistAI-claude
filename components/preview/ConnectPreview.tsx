@@ -14,10 +14,14 @@ import { PreviewFrame } from "./PreviewFrame";
 
 const SAMPLE = { served: PREVIEW_CLIENT_AGENT, test: PREVIEW_CLIENT_AGENT_TEST };
 
-export function ConnectPreview() {
+/**
+ * `asUserId`: the admin tenant view. The preview still makes no request; it
+ * only points the card's help link at the admin route for that tenant.
+ */
+export function ConnectPreview({ asUserId = null }: { asUserId?: string | null }) {
   return (
     <PreviewFrame>
-      <ClientAgentBrick sample={SAMPLE} />
+      <ClientAgentBrick sample={SAMPLE} asUserId={asUserId} />
     </PreviewFrame>
   );
 }
