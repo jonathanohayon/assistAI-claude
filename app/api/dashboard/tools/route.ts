@@ -37,6 +37,11 @@ export const dynamic = "force-dynamic";
 //     CLIENT_AGENT is off for the account: 403 client_agent_disabled
 //     { fields }. GET adds clientAgentTool { visible } (server decision,
 //     never the switch value).
+//     Switching it ON requires a secret: a PUT whose stored result is
+//     enabled with no secret (none kept, none sent) GENERATES one, stores it
+//     sealed and returns it ONCE, as the top-level `generatedSecret` (a
+//     string) of that PUT's 200 body only — never in a GET, a later PUT,
+//     a log or an event.
 
 type Scope = { userId: string; agentId: string | null };
 
@@ -75,7 +80,7 @@ const outboundRow = (userId: string, agentId: string) =>
     .limit(1);
 
 /** The GET body, computed from what is stored now. */
-async function view(s: Scope): Promise<Response> {
+async function view(s: Scope, once: { generatedSecret?: string } = {}): Promise<Response> {
   const [account, matrix, isAdmin] = await Promise.all([accountOf(s.userId), getPlanFeatureMatrix(), sessionIsAdmin()]);
   if (!account) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const plan = featuresForPlan(matrix, account.plan);
@@ -112,6 +117,8 @@ async function view(s: Scope): Promise<Response> {
     ...(outboundVisible === null ? {} : { outboundTools: { visible: outboundVisible } }),
     clientAgentTool: { visible: clientAgentVisible },
     ...(isAdmin ? { admin: { toolNames: TOOL_NAMES } } : {}),
+    // The secret this PUT generated (the brick switched on without one): once.
+    ...(once.generatedSecret ? { generatedSecret: once.generatedSecret } : {}),
   });
 }
 
@@ -143,5 +150,5 @@ export async function PUT(req: NextRequest) {
     message: s.agentId ? "Outbound agent tools updated" : "Tools updated",
     userId: s.userId,
   });
-  return view(s);
+  return view(s, { generatedSecret: w.generatedSecret });
 }

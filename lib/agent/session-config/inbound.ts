@@ -35,7 +35,7 @@ import { getPlanFeatureMatrix } from "@/lib/plan-features-storage";
 import { PLANS, type PlanKey } from "@/lib/plans";
 import { fireSafely } from "@/lib/agent/fire-safely";
 import { servedConnectorVoice } from "@/lib/connectors/route";
-import { connectorNoSecretAlertKey, resolveCallRouteSafely, type ConnectorRouteDeps } from "@/lib/connectors/route-load";
+import { resolveCallRouteSafely, type ConnectorRouteDeps } from "@/lib/connectors/route-load";
 import { CLIENT_AGENT_OFF } from "@/lib/tools/contract";
 import {
   getCapabilitiesDirectiveByPlan,
@@ -48,6 +48,9 @@ import {
   getSpokenPhoneDirectiveByPlan,
   getSpokenTimeDirectiveByPlan,
 } from "@/lib/settings";
+
+/** The dedup key of the "client agent enabled without a secret" admin alert. */
+export const clientAgentNoSecretAlertKey = (userId: string) => `client_agent_no_secret:${userId}`;
 
 /** DNS budget of the serve-time webhook check (call setup path). */
 const SERVE_DNS_TIMEOUT_MS = 500;
@@ -442,23 +445,32 @@ export async function buildInboundConfig(params: URLSearchParams, fx: InboundEff
   // opened = the client agent is NOT served (fail closed, admins alerted).
   const opened = capabilities.clientAgent.active ? openClientAgentTools(tools, fx.reportUnreadable) : { tools, unreadable: false };
   let clientAgentField = opened.unreadable ? {} : clientAgentCallField(capabilities, opened.tools);
-  // B2: never an unsigned call to a connector. Switched on with NO secret =
-  // not served (Tamara answers alone), one admin alert per account per day.
-  if (route.kind === "connector" && "clientAgent" in clientAgentField && !opened.tools.clientAgent.secret) {
+  // Never an unsigned call: switched on with NO secret (an account-level
+  // row saved before ON required one, or a connector without one) = the
+  // client agent is NOT served (Tamara answers alone), one admin alert per
+  // account per day (one key for both routes). The rest of the payload is
+  // unchanged.
+  if ("clientAgent" in clientAgentField && !opened.tools.clientAgent.secret) {
     clientAgentField = {};
     await fx.logEvent({
       source: "tenant",
       event: "client_agent_no_secret",
-      message: `Agent du client ignoré pour ${tenant.user.id} : connecteur sans secret`,
+      message:
+        route.kind === "connector"
+          ? `Agent du client ignoré pour ${tenant.user.id} : connecteur sans secret`
+          : `Agent du client ignoré pour ${tenant.user.id} : activé sans secret`,
       level: "error",
       userId: tenant.user.id,
-      metadata: { connectorId: route.connectorId },
+      ...(route.kind === "connector" ? { metadata: { connectorId: route.connectorId } } : {}),
     });
     void fireSafely(() =>
       fx.alertAdmins({
-        key: connectorNoSecretAlertKey(tenant.user.id),
+        key: clientAgentNoSecretAlertKey(tenant.user.id),
         subject: "Client agent enabled without a secret",
-        body: `A connector of account ${tenant.user.id} has no secret. Calls on its number use the normal Tamara until a secret is set.`,
+        body:
+          route.kind === "connector"
+            ? `A connector of account ${tenant.user.id} has no secret. Calls on its number use the normal Tamara until a secret is set.`
+            : `The client agent of account ${tenant.user.id} is switched on without a secret. Its calls use the normal Tamara until a secret is set (switching it off and on again creates one).`,
         dedupMs: 24 * 60 * 60 * 1000,
         severity: "warning",
       }),
