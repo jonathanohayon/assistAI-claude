@@ -7,6 +7,7 @@ import { getEngineLanguages } from "@/lib/engine-languages-storage";
 import { getCostRates } from "@/lib/finance/rates-storage";
 import { logEvent } from "@/lib/logger";
 import { catalogueRowWrite } from "@/lib/product-catalogue-row";
+import { defaultConnectorLimits } from "@/lib/connectors/limits";
 import { PRODUCTS } from "@/lib/product-values";
 import { getCatalogueRow, setProductCatalogue } from "@/lib/products";
 
@@ -37,14 +38,22 @@ export async function GET() {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
   const row = await getCatalogueRow();
-  return NextResponse.json({ catalogue: row.catalogue, engineOverrides: row.engineOverrides, engineOptions: await engineOptions() });
+  return NextResponse.json({
+    catalogue: row.catalogue,
+    engineOverrides: row.engineOverrides,
+    // B1: the connector limits in force (stored, else the defaults).
+    connectorLimits: row.connectorLimits ?? defaultConnectorLimits(),
+    engineOptions: await engineOptions(),
+  });
 }
 
 // PUT — body `{ catalogue: <partial> }`. Only the fields present are written;
 // everything omitted keeps its stored value (an empty body changes nothing).
 // `catalogue.<product>.engineOverride`: { engine, model } sets it (refused
 // with 400 naming it when the worker doesn't honour it for that product),
-// null clears it, omitted keeps it. Any unknown key or invalid value → 400
+// null clears it, omitted keeps it. B1: top-level `connectorLimits:
+// { trial?, paid? }` (integers 0..10, > 10 refused), omitted keeps the
+// stored limits. Any unknown key or invalid value → 400
 // naming every offending path, and nothing is written.
 export async function PUT(req: NextRequest) {
   const guard = await requireAdmin();
@@ -54,7 +63,7 @@ export async function PUT(req: NextRequest) {
   const w = catalogueRowWrite(stored, body);
   if (!w.ok) return NextResponse.json({ error: w.error, fields: w.fields }, { status: 400 });
   if (w.changed) {
-    await setProductCatalogue(w.value, w.engineOverrides);
+    await setProductCatalogue(w.value, w.engineOverrides, w.connectorLimits);
     await logEvent({
       source: "web",
       event: "admin_settings_updated",
@@ -63,5 +72,10 @@ export async function PUT(req: NextRequest) {
       metadata: { keys: ["product_catalogue"] },
     });
   }
-  return NextResponse.json({ ok: true, catalogue: w.value, engineOverrides: w.engineOverrides });
+  return NextResponse.json({
+    ok: true,
+    catalogue: w.value,
+    engineOverrides: w.engineOverrides,
+    connectorLimits: w.connectorLimits ?? defaultConnectorLimits(),
+  });
 }

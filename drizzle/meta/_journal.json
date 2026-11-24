@@ -435,6 +435,13 @@
       "when": 1795461385526,
       "tag": "0061_renewal_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795516857580,
+      "tag": "0062_connectors",
+      "breakpoints": true
     }
   ]
 }

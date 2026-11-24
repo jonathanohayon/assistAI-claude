@@ -17,12 +17,27 @@ import {
   parseEngineOverride,
   type EngineOverrides,
 } from "./engine-override";
+import {
+  CONNECTOR_LIMITS_KEY,
+  connectorLimitsWrite,
+  defaultConnectorLimits,
+  parseConnectorLimits,
+  type ConnectorLimits,
+} from "./connectors/limits";
 import { catalogueWrite, parseProductCatalogue, type ProductCatalogue } from "./product-catalogue";
 import { PRODUCTS, type Product } from "./product-values";
 
 export const ENGINE_OVERRIDE_KEY = "engineOverride";
 
-export type CatalogueRow = { catalogue: ProductCatalogue; engineOverrides: EngineOverrides };
+// B1 (additive): the row may also carry a TOP-LEVEL `connectorLimits`
+// ({ trial, paid }, lib/connectors/limits.ts). Absent = the defaults, and the
+// row's bytes are exactly what they were before B1.
+export type CatalogueRow = {
+  catalogue: ProductCatalogue;
+  engineOverrides: EngineOverrides;
+  /** Stored connector limits; undefined = not stored (DEFAULT_CONNECTOR_LIMITS apply). */
+  connectorLimits?: ConnectorLimits;
+};
 
 const isPlainObject = (x: unknown): x is Record<string, unknown> =>
   typeof x === "object" && x !== null && !Array.isArray(x);
@@ -37,7 +52,15 @@ export function parseCatalogueRow(x: unknown): CatalogueRow | null {
   if (!isPlainObject(x)) return null;
   const prices: Record<string, unknown> = {};
   const overrides = noEngineOverrides();
+  let connectorLimits: ConnectorLimits | undefined;
   for (const [p, byCur] of Object.entries(x)) {
+    if (p === CONNECTOR_LIMITS_KEY) {
+      // A malformed (or > HARD_MAX_CONNECTORS) value fails the whole row.
+      const l = parseConnectorLimits(byCur);
+      if (!l) return null;
+      connectorLimits = l;
+      continue;
+    }
     if (isPlainObject(byCur) && Object.prototype.hasOwnProperty.call(byCur, ENGINE_OVERRIDE_KEY)) {
       if (!(PRODUCTS as readonly string[]).includes(p)) return null;
       const { [ENGINE_OVERRIDE_KEY]: raw, ...rest } = byCur;
@@ -50,7 +73,8 @@ export function parseCatalogueRow(x: unknown): CatalogueRow | null {
     }
   }
   const catalogue = parseProductCatalogue(prices);
-  return catalogue ? { catalogue, engineOverrides: overrides } : null;
+  if (!catalogue) return null;
+  return connectorLimits ? { catalogue, engineOverrides: overrides, connectorLimits } : { catalogue, engineOverrides: overrides };
 }
 
 /**
@@ -58,18 +82,31 @@ export function parseCatalogueRow(x: unknown): CatalogueRow | null {
  * pre-E2 bytes); else `engineOverride` follows EUR / ILS on the products that
  * have one.
  */
-export function serializeCatalogueRow(cat: ProductCatalogue, overrides: EngineOverrides = noEngineOverrides()): string {
-  if (!hasAnyEngineOverride(overrides)) return JSON.stringify(cat);
+export function serializeCatalogueRow(
+  cat: ProductCatalogue,
+  overrides: EngineOverrides = noEngineOverrides(),
+  connectorLimits?: ConnectorLimits,
+): string {
+  if (!hasAnyEngineOverride(overrides) && !connectorLimits) return JSON.stringify(cat);
   const row: Record<string, unknown> = {};
   for (const p of Object.keys(cat) as Product[]) {
     const o = overrides[p];
     row[p] = o ? { ...cat[p], [ENGINE_OVERRIDE_KEY]: o } : cat[p];
   }
+  // B1: connector limits, when stored, follow the products.
+  if (connectorLimits) row[CONNECTOR_LIMITS_KEY] = { trial: connectorLimits.trial, paid: connectorLimits.paid };
   return JSON.stringify(row);
 }
 
 export type CatalogueRowWrite =
-  | { ok: true; value: ProductCatalogue; engineOverrides: EngineOverrides; changed: boolean }
+  | {
+      ok: true;
+      value: ProductCatalogue;
+      engineOverrides: EngineOverrides;
+      /** The limits to store: the stored ones when omitted (undefined = still not stored). */
+      connectorLimits?: ConnectorLimits;
+      changed: boolean;
+    }
   | { ok: false; error: "invalid_catalogue"; fields: string[] };
 
 /**
@@ -80,12 +117,26 @@ export type CatalogueRowWrite =
  *   - { engine, model } → strict shape AND honoured for that product
  *     (lib/engine-resolve.ts honouredOptions, VP (ii)); a not-honoured
  *     engine / model is refused, naming `catalogue.<p>.engineOverride.<engine|model>`.
+ * B1: top-level `connectorLimits: { trial?, paid? }` (lib/connectors/limits.ts)
+ *   - omitted        → the stored limits are kept (or stay unstored);
+ *   - present        → each present field an integer 0..HARD_MAX_CONNECTORS
+ *     (> 10 refused, never clamped), omitted fields keep their value, an
+ *     unknown key is refused, naming `connectorLimits.<field>`.
  * Any refusal → nothing is written (every offending path is named).
  */
 export function catalogueRowWrite(stored: CatalogueRow, body: unknown): CatalogueRowWrite {
   const nextOverrides = structuredClone(stored.engineOverrides);
   const bad: string[] = [];
   let priceBody = body;
+  let nextLimits = stored.connectorLimits ? { ...stored.connectorLimits } : undefined;
+  if (isPlainObject(body) && Object.prototype.hasOwnProperty.call(body, CONNECTOR_LIMITS_KEY)) {
+    const { [CONNECTOR_LIMITS_KEY]: rawLimits, ...restBody } = body;
+    const lw = connectorLimitsWrite(stored.connectorLimits ?? defaultConnectorLimits(), rawLimits);
+    if (lw.ok) nextLimits = lw.value;
+    else bad.push(...lw.fields);
+    body = restBody;
+    priceBody = restBody;
+  }
   if (isPlainObject(body) && isPlainObject(body.catalogue)) {
     const patch: Record<string, unknown> = {};
     for (const [p, byCur] of Object.entries(body.catalogue)) {
@@ -122,6 +173,9 @@ export function catalogueRowWrite(stored: CatalogueRow, body: unknown): Catalogu
     ok: true,
     value: w.value,
     engineOverrides: nextOverrides,
-    changed: serializeCatalogueRow(w.value, nextOverrides) !== serializeCatalogueRow(stored.catalogue, stored.engineOverrides),
+    ...(nextLimits ? { connectorLimits: nextLimits } : {}),
+    changed:
+      serializeCatalogueRow(w.value, nextOverrides, nextLimits) !==
+      serializeCatalogueRow(stored.catalogue, stored.engineOverrides, stored.connectorLimits),
   };
 }

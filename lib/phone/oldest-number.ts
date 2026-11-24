@@ -24,3 +24,18 @@ export async function oldestTenantNumber(userId: string, database: Database = db
   const [row] = await oldestTenantNumberQuery(userId, database);
   return row?.phoneNumber ?? null;
 }
+
+// The oldest number with its label (connectors, B1: the derived legacy card
+// rides on it). Same ordering as oldestTenantNumberQuery.
+export async function oldestTenantNumberWithLabel(
+  userId: string,
+  database: Database = db,
+): Promise<{ phoneNumber: string; label: string } | null> {
+  const [row] = await database
+    .select({ phoneNumber: phoneNumbers.phoneNumber, label: phoneNumbers.label })
+    .from(phoneNumbers)
+    .where(eq(phoneNumbers.userId, userId))
+    .orderBy(asc(phoneNumbers.createdAt), asc(phoneNumbers.id))
+    .limit(1);
+  return row ?? null;
+}
