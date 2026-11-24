@@ -5,7 +5,7 @@
 //
 // - What a reset writes (the values of an account that never had a sheet):
 //     agent_configs.business  = DEFAULT_BUSINESS (lib/business.ts)
-//     agent_configs.knowledge = [] (the column default: no legacy entries)
+//     agent_configs knowledge = [] (the column default: no legacy entries)
 //     users.company_sheet     = NULL (what sign-up leaves; built lazily from
 //                               `business` on read)
 //   The legacy `knowledge` array MUST be cleared too: the inbound prompt

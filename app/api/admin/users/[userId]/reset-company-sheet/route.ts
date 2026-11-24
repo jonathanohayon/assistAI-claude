@@ -7,7 +7,7 @@ import { logEvent } from "@/lib/logger";
 import { isUuid } from "@/lib/persona-reset-rules";
 
 // ADMIN ONLY. Clears an account's company sheet (lib/company-sheet-reset-rules.ts):
-// agent_configs.business = DEFAULT_BUSINESS, agent_configs.knowledge = [] (the
+// agent_configs.business = DEFAULT_BUSINESS, the agent_configs knowledge array = [] (the
 // deprecated array, which calls would otherwise serve again) and
 // users.company_sheet = NULL. The replaced values are stored first in
 // persona_resets (kind 'company_sheet'), so POST …/reset-company-sheet/undo can
