@@ -292,18 +292,42 @@ export function parseDispatchMode(v: unknown): DispatchMode | null {
   return v === "off" || v === "dry" || v === "on" ? v : null;
 }
 
+/** This campaign's share of a dry tick (lib/campaigns/dispatch-mode.ts DryRunCampaignCounts). */
+export interface DryTickMine {
+  /** What it would dial now (counted AFTER the call-hours filter). */
+  due: number;
+  /** Its due contacts held back by its call hours (never part of `due`). */
+  heldByHours: number;
+  /** The entry's own instant (a campaign start merged it in); null = the tick's `at`. */
+  at: string | null;
+}
+
 /**
- * What a dry tick carries. The dispatcher writes `mode: "dry"` and, when it
- * has them, the would-dial counts (under `wouldDial`, or flat on the tick).
- * Read defensively: an older tick has neither. null = not a dry tick.
+ * What a dry tick says about ONE campaign. The tick is global (every running
+ * campaign): only `wouldDial.byCampaign[campaignId]` is read, NEVER the global
+ * totals, so a console never shows another campaign's numbers.
+ *   - null: not a dry tick;
+ *   - { mine: null }: nothing this campaign can claim — an older tick without
+ *     `byCampaign`, or no campaign id;
+ *   - { mine }: its entry; an id absent from a tick that has `byCampaign` is
+ *     0 / 0 (the cron writes every running campaign with raw due > 0, and a
+ *     campaign start only replaces its OWN entry, stamped with its own `at`).
+ * Read defensively: a bad number reads as 0, a bad `at` as null.
  */
-export function dryTickCounts(tick: unknown): { contactsDue: number | null } | null {
+export function dryTickCounts(tick: unknown, campaignId?: string | null): { mine: DryTickMine | null } | null {
   if (!tick || typeof tick !== "object") return null;
-  const t = tick as { mode?: unknown; wouldDial?: unknown; contactsDue?: unknown };
+  const t = tick as { mode?: unknown; wouldDial?: unknown };
   if (t.mode !== "dry") return null;
-  const src = t.wouldDial && typeof t.wouldDial === "object" ? (t.wouldDial as { contactsDue?: unknown }) : t;
-  const n = src.contactsDue;
-  return { contactsDue: typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : null };
+  const by =
+    t.wouldDial && typeof t.wouldDial === "object" ? (t.wouldDial as { byCampaign?: unknown }).byCampaign : undefined;
+  if (!campaignId || !by || typeof by !== "object" || Array.isArray(by)) return { mine: null };
+  // A prototype key ("__proto__", "toString") has no counts: it reads as 0 / 0 like an absent id.
+  const entry = (by as Record<string, unknown>)[campaignId];
+  if (!entry || typeof entry !== "object") return { mine: { due: 0, heldByHours: 0, at: null } };
+  const e = entry as { due?: unknown; heldByHours?: unknown; at?: unknown };
+  const count = (n: unknown) => (typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
+  const at = typeof e.at === "string" && Number.isFinite(Date.parse(e.at)) ? e.at : null;
+  return { mine: { due: count(e.due), heldByHours: count(e.heldByHours), at } };
 }
 
 export type DispatcherHealth =
@@ -313,8 +337,21 @@ export type DispatcherHealth =
   | { kind: "neverRan" }
   /** Last tick older than the stale limit: the amber alarm. */
   | { kind: "stale" }
-  /** The dispatcher ran in test mode: a neutral line, the count only when present. */
-  | { kind: "dryTick"; contactsDue: number | null }
+  /**
+   * The dispatcher ran in test mode: a neutral line. ONE source wins, so the
+   * line never shows a count next to the "outside call hours" chip:
+   *   - "plain": nothing this campaign can claim (see dryTickCounts), no number invented;
+   *   - "count": what THIS campaign would have dialled, plus, as a SEPARATE
+   *     figure, its contacts waiting for call hours (0 = not shown);
+   *   - "outsideCallHours": nothing would be dialled because of call hours,
+   *     or the live snapshot says the campaign is outside its window NOW
+   *     (the chip wins over an older tick's count).
+   * `at` = the instant the line's "{ago}" speaks of: this campaign's own entry
+   * when a start stamped it, else the tick's (staleness stays on the tick's).
+   */
+  | { kind: "dryTick"; line: "plain"; at: string }
+  | { kind: "dryTick"; line: "count"; at: string; contactsDue: number; waitingCallHours: number }
+  | { kind: "dryTick"; line: "outsideCallHours"; at: string }
   /** The dispatcher ran for real: today's "last ran" line. */
   | { kind: "lastTick" };
 
@@ -331,12 +368,16 @@ export interface DispatchWording {
  * The ONE wording for the platform call switch, from what is known: the mode
  * (null = not known yet: today's wording, no claim either way) and the last
  * dispatcher tick. `stale` = the tick is older than the console's limit (the
- * caller owns the clock).
+ * caller owns the clock). `outsideWindowNow` = the live snapshot's own blocker
+ * says the campaign is outside its call window now (the chip on screen).
+ * `campaignId` = the console's campaign: only its own dry-tick entry is read.
  */
 export function dispatchWording(
   mode: unknown,
   tick: { at: string } | null | undefined,
   stale = false,
+  outsideWindowNow = false,
+  campaignId: string | null = null,
 ): DispatchWording {
   const known = parseDispatchMode(mode);
   const heading = launchHeading(known);
@@ -346,8 +387,18 @@ export function dispatchWording(
   else if (!tick) health = { kind: "neverRan" };
   else if (stale) health = { kind: "stale" };
   else {
-    const dry = dryTickCounts(tick);
-    health = dry ? { kind: "dryTick", contactsDue: dry.contactsDue } : { kind: "lastTick" };
+    const dry = dryTickCounts(tick, campaignId);
+    health = dry ? dryTickHealth(dry, outsideWindowNow, tick.at) : { kind: "lastTick" };
   }
   return { heading, launchLine, health };
+}
+
+/** The dry line, one source winning: the chip (now) over the tick, then the tick's own split. */
+function dryTickHealth(dry: { mine: DryTickMine | null }, outsideWindowNow: boolean, tickAt: string): DispatcherHealth {
+  const mine = dry.mine;
+  const at = mine?.at ?? tickAt;
+  if (outsideWindowNow) return { kind: "dryTick", line: "outsideCallHours", at };
+  if (!mine) return { kind: "dryTick", line: "plain", at };
+  if (mine.due === 0 && mine.heldByHours > 0) return { kind: "dryTick", line: "outsideCallHours", at };
+  return { kind: "dryTick", line: "count", at, contactsDue: mine.due, waitingCallHours: mine.heldByHours };
 }
