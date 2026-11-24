@@ -358,14 +358,18 @@ assert.doesNotMatch(src("lib/connectors/price.ts"), /^\s*import\s/m, "lib/connec
 const pageSrc = src("lib/connectors/page.ts");
 assert.doesNotMatch(pageSrc, /\.select\(\)/, "explicit picks only");
 assert.doesNotMatch(pageSrc.replace(/\$\{connectors\.secret\} IS NOT NULL/g, ""), /connectors\.secret/, "the secret is only ever tested for IS NOT NULL");
-// B1 changes no call path: nothing outside the connectors page / schema reads the table or the new calls columns.
+// Nothing outside the connectors page / schema / the B2 call-path reader
+// (lib/connectors/route-load.ts, its picks pinned in connector-route.test.ts)
+// reads the table or the new calls columns.
 const files = ["app", "lib"].flatMap((d) =>
   readdirSync(join(ROOT, d), { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && /\.(ts|tsx)$/.test(e.name))
     .map((e) => relative(ROOT, join(e.parentPath ?? e.path, e.name))),
 );
-// B4: the write path (create / edit / delete / test) is not a call path.
-const allowed = new Set(["lib/db/schema.ts", "lib/connectors/page.ts", "lib/connectors/write.ts"]);
+// B2: the call-path reader (route-load). B4: the write path (create / edit /
+// delete / test) is not a call path.
+const allowed = new Set(["lib/db/schema.ts", "lib/connectors/page.ts", "lib/connectors/route-load.ts", "lib/connectors/write.ts"]);
+assert.doesNotMatch(src("lib/connectors/route-load.ts"), /\.select\(\)/, "the call-path reader: explicit picks only");
 for (const f of files) {
   if (allowed.has(f)) continue;
   const s = src(f);
