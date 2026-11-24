@@ -38,7 +38,8 @@ import {
   CLIENT_AGENT_SIGNATURE_HEADER,
   CLIENT_AGENT_TEST_BUDGET_MS,
   CLIENT_AGENT_TEST_MAX_BYTES,
-  CLIENT_AGENT_TEST_QUESTION,
+  CLIENT_AGENT_TEST_QUESTIONS,
+  clientAgentTestQuestion,
   CLIENT_AGENT_USER_AGENT,
   runClientAgentTest,
   type TestFetch,
@@ -54,7 +55,8 @@ const LOCALES = ["fr", "en", "he"] as const;
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const wrap = (locale: string, el: ReturnType<typeof createElement>) =>
   renderToStaticMarkup(createElement(NextIntlClientProvider, { locale, messages: messages(locale), timeZone: "UTC" } as ProviderProps, el));
-const page = (locale: string, testOpen: boolean) => wrap(locale, createElement(AgentHelpView, { locale, testOpen }));
+const page = (locale: string, testOpen: boolean, testLanguage: string | null = locale) =>
+  wrap(locale, createElement(AgentHelpView, { locale, testOpen, testLanguage }));
 const words = (m: { AgentHelp: { example: Record<string, string> } }) => ({
   question: m.AgentHelp.example.question,
   callerSaid: m.AgentHelp.example.callerSaid,
@@ -160,7 +162,10 @@ async function main() {
         assert.ok(html.includes(`>${CLIENT_AGENT_SIGNATURE_HEADER}</code>`), "header name from the constant");
         assert.ok(html.includes(`User-Agent: ${CLIENT_AGENT_USER_AGENT}`));
         assert.ok(html.includes(`${CLIENT_AGENT_TEST_MAX_BYTES / 1024} `), "size limit from the constant");
-        assert.ok(html.includes(esc(CLIENT_AGENT_TEST_QUESTION)), "the trial question");
+        // The trial question in the account's language (here = the page's), with its own direction.
+        assert.ok(html.includes(`<bdi dir="auto" data-test-question="true">${esc(clientAgentTestQuestion(l))}</bdi>`), "the trial question");
+        // Every request is signed: no "if a secret is set" left in the contract (#439).
+        assert.ok(html.includes(esc(m.AgentHelp.contract.signature.split("<c>")[0])), "signature paragraph");
         // Both modes, labelled as on the card.
         for (const mode of ["lead", "voice"]) assert.ok(html.includes(esc(m.ToolsBrick.agent.modes[mode])), mode);
         // Test area: closed = the line and the card link, no button.
@@ -262,11 +267,39 @@ async function main() {
     assert.match(route, /"forbidden" in r\) return NextResponse\.json\(\{ error: "Forbidden" \}, \{ status: 403 \}\)/);
   });
   await test("admin view: page links stay in the admin, on the tenant", () => {
-    const html = wrap("fr", createElement(AgentHelpView, { locale: "fr", testOpen: false, asUserId: TENANT }));
+    const html = wrap("fr", createElement(AgentHelpView, { locale: "fr", testOpen: false, asUserId: TENANT, testLanguage: "he" }));
     const links = agentHelpLinks(TENANT);
     assert.ok(html.includes(`href="${links.back}"`), "back to the admin Connect page");
     assert.ok(html.includes(`href="${links.card}"`), "card link in the admin view");
     assert.ok(!html.includes('href="/fr/dashboard/agent'), "no link to the admin's own dashboard");
+  });
+
+  await test("the trial question follows the ACCOUNT's language, as the test route (#437)", () => {
+    for (const lang of ["fr", "en", "he"] as const) {
+      // A French page for an account whose agent speaks `lang`.
+      const html = page("fr", false, lang);
+      assert.ok(html.includes(esc(CLIENT_AGENT_TEST_QUESTIONS[lang])), lang);
+      for (const other of ["fr", "en", "he"] as const) if (other !== lang) assert.ok(!html.includes(esc(CLIENT_AGENT_TEST_QUESTIONS[other])), `${lang}: not ${other}`);
+    }
+    // No config row / an unknown language: French, like the route.
+    assert.ok(page("en", false, null).includes(esc(CLIENT_AGENT_TEST_QUESTIONS.fr)));
+    assert.ok(page("en", false, "de").includes(esc(CLIENT_AGENT_TEST_QUESTIONS.fr)));
+    // Both pages read the account's primaryLanguage: the session's, or the tenant viewed.
+    assert.match(read("app/[locale]/dashboard/agent/help/page.tsx"), /agentConfigs\.userId, session\.user\.id\)[\s\S]*testLanguage=\{cfg\?\.primaryLanguage \?\? null\}/);
+    assert.match(read("app/admin/users/[userId]/agent/help/page.tsx"), /agentConfigs\.userId, userId\)[\s\S]*testLanguage=\{cfg\?\.primaryLanguage \?\? null\}/);
+    // And the route still picks the account's primaryLanguage when the body has none (the help test sends "{}").
+    assert.match(read("app/api/dashboard/tools/client-agent/test/route.ts"), /LANGUAGES\.includes\(cfg\?\.primaryLanguage \?\? ""\)/);
+  });
+
+  await test("signature: every request, secret from the first activation (#439)", () => {
+    for (const l of LOCALES) {
+      const sig = messages(l).AgentHelp.contract.signature as string;
+      assert.ok(sig.includes("{header}") && sig.includes("{card}"), l);
+      const method = messages(l).AgentHelp.contract.method as string;
+      assert.doesNotMatch(`${sig} ${method}`, /si un secret|when a .*secret is set|if you generated|אם יצרתם|אם הוגדר סוד/i, `${l}: no conditional signature`);
+    }
+    assert.match(messages("fr").AgentHelp.contract.signature, /^Chaque requête porte l'en-tête <c>\{header\}<\/c> :/);
+    assert.match(messages("fr").AgentHelp.contract.signature, /créé à la première activation et affiché une seule fois dans la carte « \{card\} »/);
   });
 
   await test("HE copy writes the brand in Latin letters", () => {

@@ -1,8 +1,11 @@
+import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
+import { db } from "@/lib/db";
+import { agentConfigs } from "@/lib/db/schema";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
 import { AgentHelpView } from "./help-view";
@@ -28,10 +31,14 @@ export default async function AgentHelpPage(props: { params: Promise<{ locale: s
   const { locale } = await props.params;
   const session = await auth();
   if (!session?.user?.id) redirect(`/${locale}/login`);
-  const isAdmin = await sessionIsAdmin();
+  const [isAdmin, [cfg]] = await Promise.all([
+    sessionIsAdmin(),
+    // The test question's language: the account's, as the test route picks it.
+    db.select({ primaryLanguage: agentConfigs.primaryLanguage }).from(agentConfigs).where(eq(agentConfigs.userId, session.user.id)).limit(1),
+  ]);
   return (
     <main className={MAIN}>
-      <AgentHelpView locale={locale} testOpen={clientAgentEnabled(clientAgentMode(), isAdmin)} />
+      <AgentHelpView locale={locale} testOpen={clientAgentEnabled(clientAgentMode(), isAdmin)} testLanguage={cfg?.primaryLanguage ?? null} />
     </main>
   );
 }

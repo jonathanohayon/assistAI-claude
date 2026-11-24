@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { agentConfigs, outboundAgents } from "@/lib/db/schema";
 import { checkAgentUrl, SAFE_URL_MESSAGE, type CheckOptions } from "@/lib/net/safe-url";
 import { getTileToggles, setTileTogglesIn } from "@/lib/tile-toggles";
-import { clientAgentSecretRefused, sealClientAgentSecretWrite } from "@/lib/tools/client-agent-secret";
+import { clientAgentSecretRefused, ensureClientAgentSecret, sealClientAgentSecretWrite } from "@/lib/tools/client-agent-secret";
 import {
   clientAgentRefused,
   currentOutboundTools,
@@ -19,7 +19,12 @@ import {
 } from "@/lib/tools/store";
 
 export type ToolsWriteResult =
-  | { ok: true }
+  /**
+   * `generatedSecret`: the client agent secret this write created (the
+   * brick was switched on with none). Plain, returned ONCE by this response;
+   * absent otherwise.
+   */
+  | { ok: true; generatedSecret?: string }
   | { ok: false; status: 400 | 403 | 404; body: { error: string; fields?: string[]; message?: string } };
 
 /**
@@ -84,11 +89,13 @@ export async function writeTools(
     const refused = clientAgentRefused(currentReceptionistTools(row, toggles), plan.tools, clientAgentEnabled);
     if (refused.length) return { ok: false, status: 403, body: { error: "client_agent_disabled", fields: refused } };
     await setTileTogglesIn(tx, userId, plan.toggles);
+    // E1: a secret the patch provides is stored sealed (SECRETS_KEY set).
+    // ON requires a secret: enabled with none → one is generated (sealed).
+    const ensured = ensureClientAgentSecret(sealClientAgentSecretWrite(plan.columns.toolsConfig, patch));
     await tx
       .update(agentConfigs)
       .set({
-        // E1: a secret the patch provides is stored sealed (SECRETS_KEY set).
-        toolsConfig: jsonb(sealClientAgentSecretWrite(plan.columns.toolsConfig, patch)),
+        toolsConfig: jsonb(ensured.tools),
         transferNumber: plan.columns.transferNumber,
         transferNumberParked: plan.columns.transferNumberParked,
         // Verified numbers (N1): a NEW kept transfer number is recorded
@@ -97,6 +104,6 @@ export async function writeTools(
         updatedAt: new Date(),
       } as never)
       .where(eq(agentConfigs.userId, userId));
-    return { ok: true };
+    return ensured.generated ? { ok: true, generatedSecret: ensured.generated } : { ok: true };
   });
 }

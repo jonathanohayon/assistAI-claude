@@ -12,7 +12,7 @@ import {
   helpFacts,
   type ExampleWords,
 } from "@/lib/tools/client-agent-help";
-import { CLIENT_AGENT_TEST_QUESTION } from "@/lib/tools/client-agent-test";
+import { clientAgentTestQuestion } from "@/lib/tools/client-agent-test";
 import { CLIENT_AGENT_MODES } from "@/lib/tools/contract";
 
 const CARD = "rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6";
@@ -37,7 +37,18 @@ const code = (c: ReactNode) => (
  * `asUserId`: the admin route only (/admin/users/[id]/agent/help, behind
  * requireAdminPage); the tenant route never passes one.
  */
-export function AgentHelpView({ locale, testOpen, asUserId = null }: { locale: string; testOpen: boolean; asUserId?: string | null }) {
+export function AgentHelpView({
+  locale,
+  testOpen,
+  asUserId = null,
+  testLanguage,
+}: {
+  locale: string;
+  testOpen: boolean;
+  asUserId?: string | null;
+  /** The account's primaryLanguage: the test route asks its question in it (unknown = fr). */
+  testLanguage: string | null;
+}) {
   const links = agentHelpLinks(asUserId);
   const t = useTranslations("AgentHelp");
   const tModes = useTranslations("ToolsBrick.agent.modes");
@@ -141,7 +152,13 @@ export function AgentHelpView({ locale, testOpen, asUserId = null }: { locale: s
         <h2 id="help-test" className={H2}>
           {t("test.title")}
         </h2>
-        <p className={P}>{t.rich("test.body", { c: code, question: CLIENT_AGENT_TEST_QUESTION })}</p>
+        <p className={P}>
+          {t.rich("test.body", {
+            question: clientAgentTestQuestion(testLanguage ?? "fr"),
+            // The question is in the ACCOUNT's language, which may differ from the page's: its own direction.
+            q: (c) => <bdi dir="auto" data-test-question>{c}</bdi>,
+          })}
+        </p>
         <div className="mt-3">
           <AgentHelpTest open={testOpen} asUserId={asUserId} />
         </div>

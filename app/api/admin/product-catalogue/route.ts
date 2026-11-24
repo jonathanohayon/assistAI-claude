@@ -37,14 +37,27 @@ export async function GET() {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
   const row = await getCatalogueRow();
-  return NextResponse.json({ catalogue: row.catalogue, engineOverrides: row.engineOverrides, engineOptions: await engineOptions() });
+  // B1: `connectorLimits` only when stored (absent = DEFAULT_CONNECTOR_LIMITS,
+  // lib/connectors/limits.ts), so a row without limits answers the pre-B1 bytes.
+  // C1b: `connectorExtraMonthly` likewise only when stored (lib/connectors/price.ts).
+  return NextResponse.json({
+    catalogue: row.catalogue,
+    engineOverrides: row.engineOverrides,
+    engineOptions: await engineOptions(),
+    ...(row.connectorLimits ? { connectorLimits: row.connectorLimits } : {}),
+    ...(row.connectorExtraMonthly ? { connectorExtraMonthly: row.connectorExtraMonthly } : {}),
+  });
 }
 
 // PUT — body `{ catalogue: <partial> }`. Only the fields present are written;
 // everything omitted keeps its stored value (an empty body changes nothing).
 // `catalogue.<product>.engineOverride`: { engine, model } sets it (refused
 // with 400 naming it when the worker doesn't honour it for that product),
-// null clears it, omitted keeps it. Any unknown key or invalid value → 400
+// null clears it, omitted keeps it. B1: top-level `connectorLimits:
+// { trial?, paid? }` (integers 0..10, > 10 refused), omitted keeps the
+// stored limits; responses carry `connectorLimits` only once stored.
+// C1b: top-level `connectorExtraMonthly: { EUR?, ILS? }` (numbers >= 0),
+// omitted keeps the stored price; carried in responses only once stored. Any unknown key or invalid value → 400
 // naming every offending path, and nothing is written.
 export async function PUT(req: NextRequest) {
   const guard = await requireAdmin();
@@ -54,7 +67,7 @@ export async function PUT(req: NextRequest) {
   const w = catalogueRowWrite(stored, body);
   if (!w.ok) return NextResponse.json({ error: w.error, fields: w.fields }, { status: 400 });
   if (w.changed) {
-    await setProductCatalogue(w.value, w.engineOverrides);
+    await setProductCatalogue(w.value, w.engineOverrides, w.connectorLimits, w.connectorExtraMonthly);
     await logEvent({
       source: "web",
       event: "admin_settings_updated",
@@ -63,5 +76,11 @@ export async function PUT(req: NextRequest) {
       metadata: { keys: ["product_catalogue"] },
     });
   }
-  return NextResponse.json({ ok: true, catalogue: w.value, engineOverrides: w.engineOverrides });
+  return NextResponse.json({
+    ok: true,
+    catalogue: w.value,
+    engineOverrides: w.engineOverrides,
+    ...(w.connectorLimits ? { connectorLimits: w.connectorLimits } : {}),
+    ...(w.connectorExtraMonthly ? { connectorExtraMonthly: w.connectorExtraMonthly } : {}),
+  });
 }

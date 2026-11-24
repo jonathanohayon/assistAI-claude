@@ -2939,6 +2939,53 @@
     "title": "Your AI agent",
     "intro": "Your own agent's address: Tamara asks it during calls and uses its answer."
   },
+  "ConnectorsList": {
+    "listLabel": "Your agents",
+    "defaultName": "Your agent",
+    "mainNumber": "Answers on your main number",
+    "noNumber": "No number chosen yet",
+    "copyNumber": "Copy number",
+    "copied": "Copied",
+    "pill": {
+      "online": "Online",
+      "off": "Off",
+      "unreachable": "Agent unreachable"
+    },
+    "unreachableNote": "Tamara answers on her own in the meantime.",
+    "mode": {
+      "lead": "Tamara leads the conversation and asks your agent when she needs an answer.",
+      "voice": "Tamara only lends her voice: your agent decides what to say, she says it word for word."
+    },
+    "lastCall": "Last call: {when}",
+    "noCall": "No calls yet",
+    "switchLabel": "Turn on {name}",
+    "test": "Test",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": {
+      "title": "+ Add an agent",
+      "price": "+ {price}/month per agent, number included",
+      "noPrice": "Number included",
+      "trial": "{max, plural, one {# agent} other {# agents}} during the trial. Activate your plan to add more.",
+      "soon": "Soon",
+      "max": "Up to {max, plural, one {# agent} other {# agents}} on your account."
+    },
+    "empty": {
+      "title": "Plug in your first agent",
+      "body": "Your agent answers the phone with a Tamara voice and number.",
+      "cta": "Get started",
+      "offer": "{price}/month, number and {minutes} minutes included",
+      "offerTrial": "Included in your trial"
+    },
+    "deleteDialog": {
+      "title": "Delete {name}?",
+      "released": "The number {number} will be released and cannot be recovered.",
+      "billing": "It stays active until the end of the paid period, with no refund.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "moreActions": "More actions for {name}"
+  },
   "AgentHelp": {
     "title": "How to get your agent's address",
     "back": "Back to {page}",
@@ -2955,7 +3002,7 @@
     "contract": {
       "title": "The contract",
       "methodTitle": "Method and headers",
-      "method": "A <c>POST</c> request with a JSON body, and the headers <c>Content-Type: application/json</c>, <c>User-Agent: {ua}</c> and, when a signing secret is set, <c>{header}</c>.",
+      "method": "A <c>POST</c> request with a JSON body, and the headers <c>Content-Type: application/json</c>, <c>User-Agent: {ua}</c> and <c>{header}</c> (the signature, below).",
       "fieldsTitle": "The request body",
       "fields": {
         "call_id": "The call's id: 16 lowercase hexadecimal characters.",
@@ -2971,7 +3018,7 @@
       "timeTitle": "The time limit",
       "time": "Your agent has {seconds} s to answer, network included; in voice-only mode, {voiceSeconds} s. If it hasn't answered after {stall} s, Tamara says a short holding line. Past the limit, Tamara stops waiting and the request counts as a failure.",
       "signatureTitle": "The signature",
-      "signature": "If you generated a signing secret in the \"{card}\" card, every request carries the <c>{header}</c> header: the HMAC-SHA256 of the raw body (the bytes as received), computed with that secret, in hexadecimal. Compute it again on your side and refuse the request if it doesn't match. The secret is shown only once, when it's created: we never send it back.",
+      "signature": "Every request carries the <c>{header}</c> header: the HMAC-SHA256 of the raw body (the bytes as received), computed with your signing secret, in hexadecimal. The secret is created when you first switch your agent on and shown only once in the \"{card}\" card: copy it then, we never send it back. Compute the signature again on your side and refuse the request if it doesn't match.",
       "errorsTitle": "When something goes wrong",
       "errors": "Going past the time limit, a status outside 2xx, a redirect (never followed), an answer over {kb} KB, a body that isn't JSON or an empty <c>answer</c> count as a failure. During a call, Tamara then says she can't check right now: when she leads the conversation, she offers to take a message; in voice-only mode, she asks the caller to say it again, and if the opening line is what failed, she says her usual greeting."
     },
@@ -2989,7 +3036,7 @@
     },
     "test": {
       "title": "Test my address",
-      "body": "The test sends the saved address a trial question, <c>{question}</c>, in the format above (signed when a secret is set), and checks that an answer arrives in time, in the right format.",
+      "body": "The test sends the saved address a trial question, \"<q>{question}</q>\", in the format above (signed when a secret is set), and checks that an answer arrives in time, in the right format.",
       "button": "Test my address",
       "loading": "Loading…",
       "closed": "The test opens when connecting your agent is open for your account.",

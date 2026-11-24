@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AgentHelpView } from "@/app/[locale]/dashboard/agent/help/help-view";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { agentConfigs, users } from "@/lib/db/schema";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +18,17 @@ export const dynamic = "force-dynamic";
 export default async function AdminTenantAgentHelpPage(props: { params: Promise<{ userId: string }> }) {
   await requireAdminPage();
   const { userId } = await props.params;
-  const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+  const [[target], [cfg]] = await Promise.all([
+    db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1),
+    // The test question's language: the TENANT's, as the test route picks it.
+    db.select({ primaryLanguage: agentConfigs.primaryLanguage }).from(agentConfigs).where(eq(agentConfigs.userId, userId)).limit(1),
+  ]);
   if (!target) redirect("/admin");
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-6 sm:px-6">
-      <AgentHelpView locale="fr" testOpen={clientAgentEnabled(clientAgentMode(), target.role === "admin")} asUserId={userId} />
+      <AgentHelpView locale="fr" testOpen={clientAgentEnabled(clientAgentMode(), target.role === "admin")} asUserId={userId}
+        testLanguage={cfg?.primaryLanguage ?? null}
+      />
     </main>
   );
 }
