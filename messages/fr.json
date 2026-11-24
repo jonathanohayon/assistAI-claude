@@ -2774,7 +2774,8 @@
         "unsafeUrl": "Cette adresse ne peut pas être utilisée : indiquez une adresse publique qui commence par <l>https://</l>."
       },
       "copiedDone": "C'est copié",
-      "saveFirstToTest": "Enregistrez d'abord pour tester."
+      "saveFirstToTest": "Enregistrez d'abord pour tester.",
+      "howToGet": "Comment obtenir cette adresse ?"
     }
   },
   "AgentUrl": {
@@ -2935,5 +2936,66 @@
   "ClientAgentBrick": {
     "title": "Votre agent IA",
     "intro": "L'adresse de votre propre agent : Tamara lui pose la question pendant les appels et utilise sa réponse."
+  },
+  "AgentHelp": {
+    "title": "Comment obtenir l'adresse de votre agent",
+    "back": "Retour à « {page} »",
+    "copy": "Copier",
+    "copied": "Copié.",
+    "what": {
+      "title": "L'adresse, en une phrase",
+      "body": "C'est l'adresse publique de votre agent IA, qui commence par <c>https://</c> : pendant un appel, Tamara y envoie la question avec ce que l'appelant a dit, et votre agent répond par le texte que Tamara doit dire.",
+      "modes": {
+        "lead": "<b>{label}</b> : Tamara conduit l'appel et interroge votre agent quand elle a besoin d'une réponse. Elle la dit à l'appelant dans sa langue ; elle peut la reformuler, mais répète tels quels les prix, dates, heures, nombres et noms.",
+        "voice": "<b>{label}</b> : votre agent décide quoi dire ; Tamara dit sa réponse telle quelle."
+      }
+    },
+    "contract": {
+      "title": "Le contrat",
+      "methodTitle": "Méthode et en-têtes",
+      "method": "Une requête <c>POST</c> avec un corps JSON, et les en-têtes <c>Content-Type: application/json</c>, <c>User-Agent: {ua}</c> et, si un secret de signature est défini, <c>{header}</c>.",
+      "fieldsTitle": "Le corps de la requête",
+      "fields": {
+        "call_id": "L'identifiant de l'appel : 16 caractères hexadécimaux en minuscules.",
+        "turn_id": "Le numéro du tour de parole dans l'appel (0 pour un test).",
+        "language": "La langue de l'appel : <c>fr</c>, <c>en</c> ou <c>he</c>.",
+        "question": "La question que Tamara pose à votre agent.",
+        "caller_said": "Ce que l'appelant a dit (vide pour un test).",
+        "history": "Les tours précédents de l'appel, chacun avec <c>role</c> (<c>user</c> : l'appelant, <c>agent</c> : Tamara) et <c>text</c> (vide pour un test)."
+      },
+      "responseTitle": "La réponse attendue",
+      "response": "Un statut 2xx et un corps JSON avec un champ <c>answer</c> : le texte que Tamara doit dire, non vide.",
+      "timeTitle": "Le délai",
+      "time": "Votre agent a {seconds} s pour répondre, réseau compris. Au-delà, Tamara n'attend plus : elle dit à l'appelant qu'elle ne peut pas vérifier pour le moment et propose de prendre un message.",
+      "signatureTitle": "La signature",
+      "signature": "Si vous avez généré un secret de signature dans la carte « {card} », chaque requête porte l'en-tête <c>{header}</c> : le HMAC-SHA256 du corps brut (les octets tels que reçus), calculé avec ce secret, en hexadécimal. Recalculez-le de votre côté et refusez la requête s'il ne correspond pas. Le secret ne s'affiche qu'une fois, à sa création : nous ne le renvoyons jamais.",
+      "errorsTitle": "En cas d'erreur",
+      "errors": "Un statut hors 2xx, une redirection (jamais suivie), un corps qui n'est pas du JSON ou un <c>answer</c> vide comptent comme un échec : pendant un appel, Tamara dit qu'elle ne peut pas vérifier pour le moment et propose de prendre un message. Le test refuse aussi une réponse de plus de {kb} Ko."
+    },
+    "example": {
+      "title": "Un exemple complet à copier",
+      "intro": "Une requête de Tamara, la réponse attendue, et un petit serveur Node sans dépendance qui vérifie la signature et répond. Les valeurs sont fictives.",
+      "request": "La requête",
+      "response": "La réponse",
+      "server": "Le serveur (Node)",
+      "question": "Quels sont vos horaires d'ouverture samedi ?",
+      "callerSaid": "Bonjour, vous êtes ouverts samedi ?",
+      "prevUser": "Bonjour.",
+      "prevAgent": "Bonjour, que puis-je faire pour vous ?",
+      "answer": "Le samedi, nous sommes ouverts de 9 h à 13 h."
+    },
+    "test": {
+      "title": "Tester mon adresse",
+      "body": "Le test envoie à l'adresse enregistrée une question d'essai, <c>{question}</c>, dans le format ci-dessus (signée si un secret est défini), et vérifie qu'une réponse arrive à temps, au bon format.",
+      "button": "Tester mon adresse",
+      "loading": "Chargement…",
+      "closed": "Le test s'ouvre quand la connexion de votre agent est ouverte pour votre compte.",
+      "noUrl": "Enregistrez d'abord l'adresse de votre agent dans la carte « {card} ».",
+      "toCard": "Aller à la carte « {card} »"
+    },
+    "none": {
+      "title": "Je n'ai pas d'agent",
+      "body": "Sans agent, laissez « {card} » désactivé : Tamara répond seule à vos appels. Pour en brancher un, il vous faut un service en ligne, sur une adresse publique qui commence par <c>https://</c>, qui répond à ce contrat : l'exemple ci-dessus en est le point de départ."
+    }
   }
 }

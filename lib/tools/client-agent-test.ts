@@ -17,6 +17,9 @@ export const CLIENT_AGENT_TEST_BUDGET_MS = 2500;
 /** A test answer is one short sentence: anything bigger is refused. */
 export const CLIENT_AGENT_TEST_MAX_BYTES = 64 * 1024;
 export const CLIENT_AGENT_TEST_QUESTION = "What are your opening hours?";
+/** The signature header (the worker's name). The help page shows it. */
+export const CLIENT_AGENT_SIGNATURE_HEADER = "X-Tamara-Signature";
+export const CLIENT_AGENT_USER_AGENT = "Tamara-Voice/1.0";
 
 export type ClientAgentTestReason =
   /** No url stored or posted. */
@@ -81,8 +84,8 @@ export async function runClientAgentTest(
   if (!args.url) return { ok: false, reason: "no_agent_url" };
   const now = deps.now ?? Date.now;
   const body = clientAgentTestBody(args.language);
-  const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": "Tamara-Voice/1.0" };
-  if (args.secret) headers["X-Tamara-Signature"] = signBody(body, args.secret);
+  const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": CLIENT_AGENT_USER_AGENT };
+  if (args.secret) headers[CLIENT_AGENT_SIGNATURE_HEADER] = signBody(body, args.secret);
   const startedAt = now();
   let res: SafeResponse;
   try {

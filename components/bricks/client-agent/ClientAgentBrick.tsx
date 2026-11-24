@@ -41,7 +41,11 @@ import {
   type TestWords,
   type ToolsResponse,
 } from "@/components/bricks/tools/tools-ui";
+import { Link } from "@/i18n/navigation";
 import { CLIENT_AGENT_MODES, type ClientAgentMode } from "@/lib/tools/contract";
+
+/** The help page for the address field ("Comment obtenir cette adresse ?"). */
+export const AGENT_HELP_HREF = "/dashboard/agent/help";
 
 export interface ClientAgentSample {
   /** A GET /api/dashboard/tools answer (lib/preview-samples.ts). */
@@ -336,6 +340,10 @@ function ClientAgentSettings({
         <p id={urlHintId} className={HINT}>
           {t.rich("urlHint", { l: ltr })}
         </p>
+        {/* A link, not a control: it stays usable in the read-only preview too. */}
+        <Link href={AGENT_HELP_HREF} className={LINK} data-agent-help-link>
+          {t("howToGet")}
+        </Link>
         {refused === "unsafeUrl" && (
           <p id={urlErrorId} role="alert" className={`mt-2 ${ALERT}`}>
             {t.rich("refused.unsafeUrl", { l: ltr })}

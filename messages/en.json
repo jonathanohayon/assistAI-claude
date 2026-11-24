@@ -2774,7 +2774,8 @@
         "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
       },
       "copiedDone": "I've copied it",
-      "saveFirstToTest": "Save first to test."
+      "saveFirstToTest": "Save first to test.",
+      "howToGet": "How do I get this address?"
     }
   },
   "AgentUrl": {
@@ -2935,5 +2936,66 @@
   "ClientAgentBrick": {
     "title": "Your AI agent",
     "intro": "Your own agent's address: Tamara asks it during calls and uses its answer."
+  },
+  "AgentHelp": {
+    "title": "How to get your agent's address",
+    "back": "Back to {page}",
+    "copy": "Copy",
+    "copied": "Copied.",
+    "what": {
+      "title": "The address, in one sentence",
+      "body": "It's your AI agent's public address, starting with <c>https://</c>: during a call, Tamara sends it the question along with what the caller said, and your agent answers with the text Tamara should say.",
+      "modes": {
+        "lead": "<b>{label}</b>: Tamara runs the call and asks your agent whenever she needs an answer. She tells the caller in their language; she may rephrase it, but repeats prices, dates, times, numbers and names exactly.",
+        "voice": "<b>{label}</b>: your agent decides what to say; Tamara says its answer as is."
+      }
+    },
+    "contract": {
+      "title": "The contract",
+      "methodTitle": "Method and headers",
+      "method": "A <c>POST</c> request with a JSON body, and the headers <c>Content-Type: application/json</c>, <c>User-Agent: {ua}</c> and, when a signing secret is set, <c>{header}</c>.",
+      "fieldsTitle": "The request body",
+      "fields": {
+        "call_id": "The call's id: 16 lowercase hexadecimal characters.",
+        "turn_id": "The turn number in the call (0 for a test).",
+        "language": "The call's language: <c>fr</c>, <c>en</c> or <c>he</c>.",
+        "question": "The question Tamara asks your agent.",
+        "caller_said": "What the caller said (empty for a test).",
+        "history": "The call's previous turns, each with <c>role</c> (<c>user</c>: the caller, <c>agent</c>: Tamara) and <c>text</c> (empty for a test)."
+      },
+      "responseTitle": "The expected answer",
+      "response": "A 2xx status and a JSON body with an <c>answer</c> field: the text Tamara should say, not empty.",
+      "timeTitle": "The time limit",
+      "time": "Your agent has {seconds} s to answer, network included. Past that, Tamara stops waiting: she tells the caller she can't check right now and offers to take a message.",
+      "signatureTitle": "The signature",
+      "signature": "If you generated a signing secret in the \"{card}\" card, every request carries the <c>{header}</c> header: the HMAC-SHA256 of the raw body (the bytes as received), computed with that secret, in hexadecimal. Compute it again on your side and refuse the request if it doesn't match. The secret is shown only once, when it's created: we never send it back.",
+      "errorsTitle": "When something goes wrong",
+      "errors": "A status outside 2xx, a redirect (never followed), a body that isn't JSON or an empty <c>answer</c> count as a failure: during a call, Tamara says she can't check right now and offers to take a message. The test also refuses an answer over {kb} KB."
+    },
+    "example": {
+      "title": "A complete example to copy",
+      "intro": "A request from Tamara, the expected answer, and a small Node server with no dependency that checks the signature and answers. The values are made up.",
+      "request": "The request",
+      "response": "The answer",
+      "server": "The server (Node)",
+      "question": "What are your opening hours on Saturday?",
+      "callerSaid": "Hi, are you open on Saturday?",
+      "prevUser": "Hello.",
+      "prevAgent": "Hello, how can I help you?",
+      "answer": "On Saturday we're open from 9 am to 1 pm."
+    },
+    "test": {
+      "title": "Test my address",
+      "body": "The test sends the saved address a trial question, <c>{question}</c>, in the format above (signed when a secret is set), and checks that an answer arrives in time, in the right format.",
+      "button": "Test my address",
+      "loading": "Loading…",
+      "closed": "The test opens when connecting your agent is open for your account.",
+      "noUrl": "First save your agent's address in the \"{card}\" card.",
+      "toCard": "Go to the \"{card}\" card"
+    },
+    "none": {
+      "title": "I don't have an agent",
+      "body": "Without an agent, leave \"{card}\" off: Tamara answers your calls on her own. To connect one, you need an online service, at a public address starting with <c>https://</c>, that answers this contract: the example above is a starting point."
+    }
   }
 }

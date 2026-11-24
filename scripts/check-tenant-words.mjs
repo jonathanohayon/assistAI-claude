@@ -43,6 +43,7 @@ const TENANT_PATHS = [
   "/dashboard/reception/forwarding",
   "/dashboard/sales",
   "/dashboard/agent",
+  "/dashboard/agent/help",
   "/dashboard/my-agent",
   "/dashboard/calls",
   "/dashboard/clients",
