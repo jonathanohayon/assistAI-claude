@@ -104,7 +104,8 @@ assert.deepEqual(w5.connectorLimits, { trial: 2, paid: 4 });
 // The admin route passes the limits to storage and returns them.
 const routeSrc = src("app/api/admin/product-catalogue/route.ts");
 assert.match(routeSrc, /setProductCatalogue\(w\.value, w\.engineOverrides, w\.connectorLimits\)/);
-assert.match(routeSrc, /connectorLimits: row\.connectorLimits \?\? defaultConnectorLimits\(\)/);
+assert.match(routeSrc, /\.\.\.\(row\.connectorLimits \? \{ connectorLimits: row\.connectorLimits \} : \{\}\)/, "GET: only when stored");
+assert.match(routeSrc, /\.\.\.\(w\.connectorLimits \? \{ connectorLimits: w\.connectorLimits \} : \{\}\)/, "PUT: only when stored");
 console.log("ok: admin catalogue write — omitted unchanged, valid written, partial, refused (> 10)");
 
 // ── Entitlement table ───────────────────────────────────────────────────

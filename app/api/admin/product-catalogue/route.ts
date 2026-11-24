@@ -7,7 +7,6 @@ import { getEngineLanguages } from "@/lib/engine-languages-storage";
 import { getCostRates } from "@/lib/finance/rates-storage";
 import { logEvent } from "@/lib/logger";
 import { catalogueRowWrite } from "@/lib/product-catalogue-row";
-import { defaultConnectorLimits } from "@/lib/connectors/limits";
 import { PRODUCTS } from "@/lib/product-values";
 import { getCatalogueRow, setProductCatalogue } from "@/lib/products";
 
@@ -38,12 +37,13 @@ export async function GET() {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
   const row = await getCatalogueRow();
+  // B1: `connectorLimits` only when stored (absent = DEFAULT_CONNECTOR_LIMITS,
+  // lib/connectors/limits.ts), so a row without limits answers the pre-B1 bytes.
   return NextResponse.json({
     catalogue: row.catalogue,
     engineOverrides: row.engineOverrides,
-    // B1: the connector limits in force (stored, else the defaults).
-    connectorLimits: row.connectorLimits ?? defaultConnectorLimits(),
     engineOptions: await engineOptions(),
+    ...(row.connectorLimits ? { connectorLimits: row.connectorLimits } : {}),
   });
 }
 
@@ -53,7 +53,7 @@ export async function GET() {
 // with 400 naming it when the worker doesn't honour it for that product),
 // null clears it, omitted keeps it. B1: top-level `connectorLimits:
 // { trial?, paid? }` (integers 0..10, > 10 refused), omitted keeps the
-// stored limits. Any unknown key or invalid value → 400
+// stored limits; responses carry `connectorLimits` only once stored. Any unknown key or invalid value → 400
 // naming every offending path, and nothing is written.
 export async function PUT(req: NextRequest) {
   const guard = await requireAdmin();
@@ -76,6 +76,6 @@ export async function PUT(req: NextRequest) {
     ok: true,
     catalogue: w.value,
     engineOverrides: w.engineOverrides,
-    connectorLimits: w.connectorLimits ?? defaultConnectorLimits(),
+    ...(w.connectorLimits ? { connectorLimits: w.connectorLimits } : {}),
   });
 }

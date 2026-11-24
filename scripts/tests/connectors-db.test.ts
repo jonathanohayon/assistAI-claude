@@ -201,6 +201,10 @@ async function main() {
   assert.equal((await put({ connectorLimits: { paid: 7 } })).status, 403, "a tenant cannot write the catalogue");
   as(ADMIN);
   assert.deepEqual(await getConnectorLimits(), { trial: 1, paid: 5 }, "no row → defaults");
+  const g0 = (await (await adminCatalogue.GET()).json()) as Record<string, unknown>;
+  assert.deepEqual(Object.keys(g0), ["catalogue", "engineOverrides", "engineOptions"], "nothing stored → the pre-B1 keys");
+  const p0 = await put({ catalogue: { connect: { EUR: { monthly: 49 } } } });
+  assert.deepEqual(Object.keys(p0.body), ["ok", "catalogue", "engineOverrides"], "PUT without limits → the pre-B1 keys");
   const p1 = await put({ connectorLimits: { paid: 7 } });
   assert.equal(p1.status, 200);
   assert.deepEqual(p1.body.connectorLimits, { trial: 1, paid: 7 });
