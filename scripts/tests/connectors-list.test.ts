@@ -32,6 +32,7 @@ import {
   ConnectorCard,
   ConnectorsList,
   DeleteConnectorDialog,
+  deleteNumberLine,
   EmptyConnectorsCard,
 } from "../../components/connectors/ConnectorsList";
 import {
@@ -277,6 +278,10 @@ for (const l of LOCALES) {
   assert.equal(fr.defaultName, "Votre agent");
   assert.equal(C("en").defaultName, "Your agent");
   assert.equal(C("he").defaultName, "הסוכן שלכם");
+  // Until B5 the number stays on the account; "libéré" only when the server says numberKept: false.
+  assert.equal(fr.deleteDialog.kept, "Le numéro {number} reste sur votre compte.");
+  assert.equal(C("en").deleteDialog.kept, "The number {number} stays on your account.");
+  assert.equal(C("he").deleteDialog.kept, "המספר {number} נשאר בחשבון שלכם.");
   assert.equal(fr.deleteDialog.released, "Le numéro {number} sera libéré et ne pourra pas être récupéré.");
   assert.equal(fr.deleteDialog.billing, "Il reste actif jusqu'à la fin de la période payée, sans remboursement.");
   // The relative date, rendered.
@@ -381,11 +386,26 @@ for (const l of LOCALES) {
   const d = C(l).deleteDialog;
   const out = html(l, createElement(DeleteConnectorDialog, { name: "Support FR", number: "+33199000002", onCancel() {}, onConfirm() {} }));
   assert.ok(out.includes('role="alertdialog"'), `${l}: an alert dialog`);
-  assert.ok(out.includes(esc(d.released.replace("{number}", "⁦+33 1 99 00 00 02⁩"))), `${l}: the released line with the number`);
+  const kept = esc(d.kept.replace("{number}", "⁦+33 1 99 00 00 02⁩"));
+  const released = esc(d.released.replace("{number}", "⁦+33 1 99 00 00 02⁩"));
+  // Default (no word from the server): the number stays on the account, never "libéré".
+  assert.ok(out.includes(kept) && out.includes('data-delete-number="kept"'), `${l}: "reste sur votre compte" by default`);
+  assert.ok(!out.includes(released) && !out.includes(esc(d.released.split("{number}")[1])), `${l}: no "sera libéré" by default`);
+  const keptTrue = html(l, createElement(DeleteConnectorDialog, { name: "S", number: "+33199000002", numberKept: true, onCancel() {}, onConfirm() {} }));
+  assert.ok(keptTrue.includes(kept) && !keptTrue.includes(released), `${l}: numberKept true → kept`);
+  const freed = html(l, createElement(DeleteConnectorDialog, { name: "S", number: "+33199000002", numberKept: false, onCancel() {}, onConfirm() {} }));
+  assert.ok(freed.includes(released) && !freed.includes(kept) && freed.includes('data-delete-number="released"'), `${l}: only numberKept === false → "sera libéré"`);
   assert.ok(out.includes(esc(d.billing)), `${l}: the billing line`);
   assert.ok(out.includes(`>${esc(d.cancel)}</button>`) && out.includes(`>${esc(d.confirm)}</button>`), `${l}: cancel + confirm`);
   const noNum = html(l, createElement(DeleteConnectorDialog, { name: "X", number: null, onCancel() {}, onConfirm() {} }));
-  assert.ok(!noNum.includes("data-delete-released") && noNum.includes("data-delete-billing"), `${l}: no number → no released line`);
+  assert.ok(!noNum.includes("data-delete-number") && noNum.includes("data-delete-billing"), `${l}: no number → no number line`);
+}
+{
+  // The choice, exhaustively; and the list itself never passes numberKept (the server has no such field yet).
+  assert.equal(deleteNumberLine(undefined), "kept");
+  assert.equal(deleteNumberLine(true), "kept");
+  assert.equal(deleteNumberLine(false), "released");
+  assert.match(read("components/connectors/ConnectorsList.tsx"), /<DeleteConnectorDialog\s+name=\{deleting\.name \?\? t\("defaultName"\)\}\s+number=\{deleting\.number\}\s+onCancel=/, "the list passes no numberKept: kept");
 }
 
 // ── 9. The live Connect page (C1b) ──────────────────────────────────────────

@@ -459,15 +459,28 @@ export function EmptyConnectorsCard({ add, offer, onAdd }: { add: AddCardView; o
   );
 }
 
+/**
+ * The number line of the delete dialog. Until BE step B5, deleting a
+ * connector frees the number FROM THE CONNECTOR but the number stays on the
+ * account: "reste sur votre compte". Only the server may say otherwise, with
+ * `numberKept: false` (B5); nothing here ever guesses "libéré".
+ */
+export function deleteNumberLine(numberKept: boolean | undefined): "kept" | "released" {
+  return numberKept === false ? "released" : "kept";
+}
+
 export function DeleteConnectorDialog({
   name,
   number,
+  numberKept,
   onCancel,
   onConfirm,
 }: {
   name: string;
-  /** E.164, or null when the connector has no number (no "libéré" line). */
+  /** E.164, or null when the connector has no number (no number line). */
   number: string | null;
+  /** The server's word on the number (B5). Absent or true = it stays on the account. */
+  numberKept?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -491,9 +504,9 @@ export function DeleteConnectorDialog({
         </h2>
         <div id="connector-delete-body" className="mt-2 space-y-2 text-sm text-[#334155]">
           {number && (
-            <p data-delete-released>
+            <p data-delete-number={deleteNumberLine(numberKept)}>
               {/* LRI … PDI: the number stays left-to-right inside Hebrew text. */}
-              {t("released", { number: `⁦${formatPhone(number)}⁩` })}
+              {t(deleteNumberLine(numberKept), { number: `⁦${formatPhone(number)}⁩` })}
             </p>
           )}
           <p data-delete-billing>{t("billing")}</p>

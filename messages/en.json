@@ -2979,6 +2979,7 @@
     },
     "deleteDialog": {
       "title": "Delete {name}?",
+      "kept": "The number {number} stays on your account.",
       "released": "The number {number} will be released and cannot be recovered.",
       "billing": "It stays active until the end of the paid period, with no refund.",
       "confirm": "Delete",

@@ -2979,6 +2979,7 @@
     },
     "deleteDialog": {
       "title": "Supprimer {name} ?",
+      "kept": "Le numéro {number} reste sur votre compte.",
       "released": "Le numéro {number} sera libéré et ne pourra pas être récupéré.",
       "billing": "Il reste actif jusqu'à la fin de la période payée, sans remboursement.",
       "confirm": "Supprimer",
