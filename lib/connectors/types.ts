@@ -68,4 +68,12 @@ export type ConnectorsPageView = {
      */
     price?: ConnectorPrice | null;
   };
+  /**
+   * B4: whether the account's NEXT connector write (creating a connector, or
+   * editing the derived legacy card) first turns the legacy setting into a
+   * real connector on the main number. The FE shows the notice once, before
+   * saving, and sends `acknowledgeLegacyConversion: true` with that write.
+   * Always sent by the GET; absent (older fixtures) = no conversion.
+   */
+  legacyConversion?: { willConvert: boolean; numberE164: string | null };
 };
