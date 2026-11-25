@@ -354,6 +354,24 @@ export function clientAgentSaveRequest(
   return { url: `/api/dashboard/tools${qs}`, body: JSON.stringify({ tools: tchanges }) };
 }
 
+/**
+ * C1b: the legacy connector card's switch. EXACTLY the request the brick's
+ * save sends when only its switch changed (clientAgentSaveRequest: PUT
+ * /api/dashboard/tools, { tools: { clientAgent: { enabled } } }, ?asUserId
+ * for the admin view), so the server applies the same rules. The test pins
+ * the two byte for byte.
+ */
+export function clientAgentSwitchRequest(enabled: boolean, asUserId?: string | null): { url: string; body: string } {
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+  return { url: `/api/dashboard/tools${qs}`, body: JSON.stringify({ tools: { clientAgent: { enabled } } }) };
+}
+
+/** C1b: the legacy card's "Tester": the brick's test route, on the STORED address and secret (empty body). */
+export function clientAgentStoredTestRequest(asUserId?: string | null): { url: string; body: string } {
+  const qs = asUserId ? `?asUserId=${encodeURIComponent(asUserId)}` : "";
+  return { url: `/api/dashboard/tools/client-agent/test${qs}`, body: "{}" };
+}
+
 /** A server-generated secret must look like one: printable, no spaces, 16–256 characters. */
 const PLAUSIBLE_SECRET = /^[\x21-\x7e]{16,256}$/;
 

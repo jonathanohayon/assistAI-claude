@@ -58,7 +58,23 @@ const LINK = `inline-flex min-h-11 cursor-pointer items-center rounded-lg text-s
 const SAVE =
   "inline-flex min-h-11 items-center justify-center rounded-full bg-[#be185d] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#9d174d] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0e7490] focus-visible:ring-offset-2";
 
-export function ClientAgentBrick({ asUserId = null, sample }: { asUserId?: string | null; sample?: ClientAgentSample }) {
+export function ClientAgentBrick({
+  asUserId = null,
+  sample,
+  onSaved,
+  initialGenerated = null,
+}: {
+  asUserId?: string | null;
+  sample?: ClientAgentSample;
+  /** C1b: called after a successful save (the connectors list re-reads its page). */
+  onSaved?: () => void;
+  /**
+   * C1b: a secret the server generated in ANOTHER save's answer (the
+   * connectors card's switch), handed over to be shown once in this brick's
+   * own box. Memory only, like `generated`.
+   */
+  initialGenerated?: string | null;
+}) {
   const t = useTranslations("ClientAgentBrick");
   const tTools = useTranslations("ToolsBrick");
   const tConfig = useTranslations("DashboardConfig");
@@ -74,7 +90,7 @@ export function ClientAgentBrick({ asUserId = null, sample }: { asUserId?: strin
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   // The server-generated secret, from one save's answer: memory only, shown once.
-  const [generated, setGenerated] = useState<string | null>(null);
+  const [generated, setGenerated] = useState<string | null>(initialGenerated);
 
   // Load: the same GET the configuration page made. Never in a preview.
   useEffect(() => {
@@ -146,6 +162,7 @@ export function ClientAgentBrick({ asUserId = null, sample }: { asUserId?: strin
       setTools(data.tools);
       setBase(data.tools);
       setDirty(false);
+      onSaved?.();
       setSavedAt(new Date().toLocaleTimeString(locale === "he" ? "he-IL" : locale === "en" ? "en-US" : "fr-FR"));
     } catch {
       setError(tTools("saveError"));

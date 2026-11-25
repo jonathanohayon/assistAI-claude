@@ -1,4 +1,4 @@
-// What the "Connecter votre agent" page shows: ONE pure decision, so the page
+// What the "Connecter vos agents" page shows: ONE pure decision, so the page
 // can never be a title and nothing else (P1, 23/11: with CLIENT_AGENT unset an
 // admin owns every entry, the brick was hidden, the page was empty).
 //

@@ -242,7 +242,7 @@ assert.equal(subjects.size, 6, "six distinct subjects (3 locales × 2 thresholds
   const he = renderUsageWarningEmail({ locale: "he", entry: "reception", threshold: 100, usedMinutes: 200, includedMinutes: 200, overageRate: "1.5 ₪" }, stringsFor("he"), navNames("he"));
   assert.match(he.subject, /פקידת קבלה/);
   const connect = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "0.39 €" }, stringsFor("fr"), navNames("fr"));
-  assert.equal(connect.subject, "Vous avez utilisé 80 % des minutes de l'offre « Connecter votre agent »", "connect: named by DashboardNav.connect");
+  assert.equal(connect.subject, "Vous avez utilisé 80 % des minutes de l'offre « Connecter vos agents »", "connect: named by DashboardNav.connect");
   const sales = renderUsageWarningEmail({ locale: "fr", entry: "sales", threshold: 100, usedMinutes: 400, includedMinutes: 400, overageRate: "0.39 €" }, stringsFor("fr"), navNames("fr"));
   assert.equal(sales.subject, "Vous avez utilisé toutes les minutes de l'offre « Centre d'appels »", "sales: named by DashboardNav.sales");
   const html = renderUsageWarningEmail({ locale: "fr", entry: "connect", threshold: 80, usedMinutes: 80, includedMinutes: 100, overageRate: "<b>" }, stringsFor("fr"), navNames("fr")).html;

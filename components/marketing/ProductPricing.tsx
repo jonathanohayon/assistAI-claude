@@ -1,7 +1,7 @@
 "use client";
 
 // The public pricing section on the PRODUCT grid (F3a): one card per base
-// product (Réception, Réception multi-sites, Centre d'appels, Connecter votre agent).
+// product (Réception, Réception multi-sites, Centre d'appels, Connecter vos agents).
 // Rendered by components/marketing/Pricing.tsx ONLY when the route says new
 // orders are sold (grid "products"); otherwise the page keeps today's plan
 // cards. Every number comes from the product catalogue the route serves

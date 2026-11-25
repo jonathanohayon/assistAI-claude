@@ -121,9 +121,9 @@ const welcome = (l: string, p: Partial<WProps> & Pick<WProps, "door">) =>
 // The welcome title, per door × locale: the sign-up "soon" subtitle's first
 // sentence (Signup.<door>SubtitleSoon, #405) after "Bienvenue." [HE] to confirm.
 const WELCOME_TITLES: Record<string, Record<"connect" | "sales", string>> = {
-  fr: { connect: "Bienvenue. Le branchement de votre agent ouvre bientôt.", sales: "Bienvenue. Le centre d'appels ouvre bientôt." },
-  en: { connect: "Welcome. Connecting your agent opens soon.", sales: "Welcome. The call center opens soon." },
-  he: { connect: "ברוכים הבאים. חיבור הסוכן שלכם ייפתח בקרוב.", sales: "ברוכים הבאים. מוקד השיחות ייפתח בקרוב." },
+  fr: { connect: "Bienvenue. Le branchement de vos agents ouvre bientôt.", sales: "Bienvenue. Le centre d'appels ouvre bientôt." },
+  en: { connect: "Welcome. Connecting your agents opens soon.", sales: "Welcome. The call center opens soon." },
+  he: { connect: "ברוכים הבאים. חיבור הסוכנים שלכם ייפתח בקרוב.", sales: "ברוכים הבאים. מוקד השיחות ייפתח בקרוב." },
 };
 for (const l of LOCALES) {
   const s = messages(l).Signup;

@@ -3,11 +3,12 @@
 // The connectors LIST (C1): one card per connector, then "+ Ajouter un agent"
 // last; ONE large card when there is none. What each card shows is decided by
 // lib/connectors/list-view.ts (pure); this file only draws it.
-// UI ONLY in this step: the switch, Tester, Modifier, Ajouter and Supprimer
-// call the injected callbacks, nothing else (no request). Not mounted on a
-// live page yet (it ships with GET /api/dashboard/connectors).
+// UI ONLY: the switch, Tester, Modifier, Ajouter and Supprimer call the
+// injected callbacks, nothing else (no request). Mounted on the live Connect
+// page by components/connectors/ConnectorsPanel.tsx (C1b), which wires the
+// actions that have a real route and marks the others "soon".
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { FOCUS } from "@/components/bricks/controls";
@@ -33,6 +34,16 @@ export type ConnectorsListCallbacks = {
   onDelete?: (id: string) => void;
 };
 
+/**
+ * C1b: how a card's actions behave, per card.
+ *   live = the switch, Tester and Modifier call the callbacks;
+ *   soon = they are disabled, no "…" menu, and ONE plain line says the
+ *          settings come later (a card whose actions have no route yet).
+ * `busy` disables the switch while its save runs; `note` is one status line
+ * under the actions (a test result, a refused save).
+ */
+export type CardActions = { mode: "live" | "soon"; busy?: boolean; note?: ReactNode };
+
 export type ConnectorsListProps = ConnectorsListCallbacks & {
   page: ConnectorsPageView;
   /** The extra-connector monthly price, read from the catalogue by the caller. */
@@ -41,6 +52,14 @@ export type ConnectorsListProps = ConnectorsListCallbacks & {
   basePrice: ConnectorBasePrice | null;
   /** "Now" for the relative dates (tests and captures pin it). */
   now?: string | Date;
+  /** C1b: per card (default: live, not busy, no note). */
+  actionsFor?: (card: ConnectorCardView) => CardActions;
+  /**
+   * C1b: the add wizard (C2) does not exist yet: an OPEN add card is drawn
+   * disabled (its title and price line kept) with "Bientôt : ajoutez vos
+   * agents ici.". Locked cards (trial / max / soon) keep their own words.
+   */
+  addSoon?: boolean;
 };
 
 const CARD = "rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-sm sm:p-6";
@@ -55,7 +74,7 @@ const PILL: Record<ConnectorState, string> = {
 };
 const DOT: Record<ConnectorState, string> = { online: "bg-[#059669]", off: "bg-[#94a3b8]", unreachable: "bg-[#dc2626]" };
 
-export function ConnectorsList({ page, extraPrice, basePrice, now, ...cb }: ConnectorsListProps) {
+export function ConnectorsList({ page, extraPrice, basePrice, now, actionsFor, addSoon = false, ...cb }: ConnectorsListProps) {
   const t = useTranslations("ConnectorsList");
   const view = connectorsListView({ page, extraPrice, basePrice });
   const [deleting, setDeleting] = useState<ConnectorCardView | null>(null);
@@ -65,13 +84,22 @@ export function ConnectorsList({ page, extraPrice, basePrice, now, ...cb }: Conn
   return (
     <section aria-label={t("listLabel")}>
       <ul className="grid list-none gap-4 p-0 sm:grid-cols-2" data-connectors-list>
-        {view.cards.map((c) => (
-          <li key={c.id} className="min-w-0">
-            <ConnectorCard card={c} now={now} {...cb} onDelete={c.deletable ? () => setDeleting(c) : undefined} />
-          </li>
-        ))}
+        {view.cards.map((c) => {
+          const actions = actionsFor?.(c) ?? LIVE;
+          return (
+            <li key={c.id} className="min-w-0">
+              <ConnectorCard
+                card={c}
+                now={now}
+                {...cb}
+                actions={actions}
+                onDelete={c.deletable && actions.mode === "live" ? () => setDeleting(c) : undefined}
+              />
+            </li>
+          );
+        })}
         <li className="min-w-0">
-          <AddConnectorCard add={view.add} onAdd={cb.onAdd} />
+          <AddConnectorCard add={view.add} onAdd={cb.onAdd} soon={addSoon} />
         </li>
       </ul>
       {deleting && (
@@ -89,6 +117,8 @@ export function ConnectorsList({ page, extraPrice, basePrice, now, ...cb }: Conn
   );
 }
 
+const LIVE: CardActions = { mode: "live" };
+
 export function ConnectorCard({
   card,
   now,
@@ -96,9 +126,11 @@ export function ConnectorCard({
   onTest,
   onEdit,
   onDelete,
+  actions = LIVE,
 }: {
   card: ConnectorCardView;
   now?: string | Date;
+  actions?: CardActions;
   onToggle?: (id: string, enabled: boolean) => void;
   onTest?: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -109,6 +141,8 @@ export function ConnectorCard({
   const format = useFormatter();
   const name = card.name ?? t("defaultName");
   const nameId = `connector-${card.id}-name`;
+  const soon = actions.mode === "soon";
+  const soonId = `connector-${card.id}-soon`;
   return (
     <article
       aria-labelledby={nameId}
@@ -152,16 +186,32 @@ export function ConnectorCard({
       </p>
 
       {/* ONE row that never wraps: every card's actions take the same height. */}
-      <div className="mt-auto flex flex-nowrap items-center gap-2 border-t border-[#f1f5f9] pt-3" data-actions>
-        <Switch checked={card.enabled} label={t("switchLabel", { name })} onChange={(v) => onToggle?.(card.id, v)} />
-        <button type="button" className={BUTTON} onClick={() => onTest?.(card.id)}>
+      <div className="mt-auto flex flex-nowrap items-center gap-2 border-t border-[#f1f5f9] pt-3" data-actions={actions.mode}>
+        <Switch
+          checked={card.enabled}
+          label={t("switchLabel", { name })}
+          disabled={soon || actions.busy === true}
+          describedBy={soon ? soonId : undefined}
+          onChange={(v) => onToggle?.(card.id, v)}
+        />
+        <button type="button" className={BUTTON} disabled={soon} aria-describedby={soon ? soonId : undefined} onClick={() => onTest?.(card.id)} data-test-action>
           {t("test")}
         </button>
-        <button type="button" className={BUTTON} onClick={() => onEdit?.(card.id)}>
+        <button type="button" className={BUTTON} disabled={soon} aria-describedby={soon ? soonId : undefined} onClick={() => onEdit?.(card.id)} data-edit-action>
           {t("edit")}
         </button>
-        {card.deletable && onDelete && <CardMenu label={t("moreActions", { name })} onDelete={onDelete} />}
+        {card.deletable && onDelete && !soon && <CardMenu label={t("moreActions", { name })} onDelete={onDelete} />}
       </div>
+      {soon && (
+        <p id={soonId} className="-mt-1 text-sm text-[#475569]" data-actions-soon>
+          {t("actionsSoon")}
+        </p>
+      )}
+      {actions.note && (
+        <div role="status" aria-live="polite" className="-mt-1 text-sm" data-card-note>
+          {actions.note}
+        </div>
+      )}
     </article>
   );
 }
@@ -278,15 +328,29 @@ function NumberLine({ e164, label }: { e164: string; label: string | null }) {
   );
 }
 
-function Switch({ checked, label, onChange }: { checked: boolean; label: string; onChange: (v: boolean) => void }) {
+function Switch({
+  checked,
+  label,
+  onChange,
+  disabled = false,
+  describedBy,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  describedBy?: string;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-describedby={describedBy}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="group me-1 inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-1 focus:outline-none"
+      className="group me-1 inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-full px-1 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span
         aria-hidden
@@ -321,9 +385,28 @@ function LockLine({ add }: { add: Exclude<AddCardView, { kind: "add" }> }) {
   );
 }
 
-export function AddConnectorCard({ add, onAdd }: { add: AddCardView; onAdd?: () => void }) {
+export function AddConnectorCard({ add, onAdd, soon = false }: { add: AddCardView; onAdd?: () => void; soon?: boolean }) {
   const t = useTranslations("ConnectorsList");
   const locale = useLocale();
+  // Pre-C2: the open add card's words, but nothing to click (no hover, no handler).
+  if (add.kind === "add" && soon) {
+    return (
+      <div
+        aria-disabled="true"
+        className="flex h-full min-h-40 w-full cursor-not-allowed flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] p-5 text-center"
+        data-add-card="add"
+        data-add-soon
+      >
+        <span className="font-display text-lg text-[#64748b]">{t("add.title")}</span>
+        <span className="text-sm text-[#475569]" data-add-price>
+          {add.price ? t("add.price", { price: formatConnectorPrice(add.price, locale) }) : t("add.noPrice")}
+        </span>
+        <span className="mt-1 text-sm font-semibold text-[#475569]" data-add-soon-line>
+          {t("add.soonLine")}
+        </span>
+      </div>
+    );
+  }
   if (add.kind === "add") {
     return (
       <button
@@ -376,15 +459,28 @@ export function EmptyConnectorsCard({ add, offer, onAdd }: { add: AddCardView; o
   );
 }
 
+/**
+ * The number line of the delete dialog. Until BE step B5, deleting a
+ * connector frees the number FROM THE CONNECTOR but the number stays on the
+ * account: "reste sur votre compte". Only the server may say otherwise, with
+ * `numberKept: false` (B5); nothing here ever guesses "libéré".
+ */
+export function deleteNumberLine(numberKept: boolean | undefined): "kept" | "released" {
+  return numberKept === false ? "released" : "kept";
+}
+
 export function DeleteConnectorDialog({
   name,
   number,
+  numberKept,
   onCancel,
   onConfirm,
 }: {
   name: string;
-  /** E.164, or null when the connector has no number (no "libéré" line). */
+  /** E.164, or null when the connector has no number (no number line). */
   number: string | null;
+  /** The server's word on the number (B5). Absent or true = it stays on the account. */
+  numberKept?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -408,9 +504,9 @@ export function DeleteConnectorDialog({
         </h2>
         <div id="connector-delete-body" className="mt-2 space-y-2 text-sm text-[#334155]">
           {number && (
-            <p data-delete-released>
+            <p data-delete-number={deleteNumberLine(numberKept)}>
               {/* LRI … PDI: the number stays left-to-right inside Hebrew text. */}
-              {t("released", { number: `⁦${formatPhone(number)}⁩` })}
+              {t(deleteNumberLine(numberKept), { number: `⁦${formatPhone(number)}⁩` })}
             </p>
           )}
           <p data-delete-billing>{t("billing")}</p>

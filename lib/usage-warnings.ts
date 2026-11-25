@@ -92,7 +92,7 @@ export const BILLING_URL = "https://aitamara.com/dashboard/billing";
 /**
  * `navNames`: the sales and connect products' names, read from the ONE key
  * that names each of them everywhere (DashboardNav.sales, "Centre d'appels";
- * DashboardNav.connect, "Connecter votre agent"). The email keeps no copy of
+ * DashboardNav.connect, "Connecter vos agents"). The email keeps no copy of
  * its own. Reception keeps its own wording ("Réceptionniste").
  */
 export function renderUsageWarningEmail(

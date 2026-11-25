@@ -115,20 +115,20 @@ type DoorCopy = { title: string; usable: string; soon: string };
 const EXPECTED: Record<"connect" | "sales", Record<Locale, DoorCopy>> = {
   connect: {
     fr: {
-      title: "Donnez une voix et un numéro à votre agent",
+      title: "Donnez une voix et un numéro à vos agents",
       usable:
-        "Branchez l'agent IA que vous avez déjà\u00a0: il répond au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
-      soon: "Le branchement de votre agent ouvre bientôt. Créez votre compte\u00a0: vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
+        "Branchez les agents IA que vous avez déjà\u00a0: ils répondent au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
+      soon: "Le branchement de vos agents ouvre bientôt. Créez votre compte\u00a0: vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
     },
     en: {
-      title: "Give your agent a voice and a number",
-      usable: "Plug in the AI agent you already have: it answers the phone with a Tamara voice and number. No credit card.",
-      soon: "Connecting your agent opens soon. Create your account: you'll be the first to know, and you can already try Reception.",
+      title: "Give your agents a voice and a number",
+      usable: "Plug in the AI agents you already have: they answer the phone with a Tamara voice and number. No credit card.",
+      soon: "Connecting your agents opens soon. Create your account: you'll be the first to know, and you can already try Reception.",
     },
     he: {
-      title: "תנו לסוכן שלכם קול ומספר",
-      usable: "חברו את סוכן ה-AI שכבר יש לכם: הוא עונה לטלפון עם קול ומספר של Tamara. ללא כרטיס אשראי.",
-      soon: "חיבור הסוכן שלכם ייפתח בקרוב. צרו חשבון: אתם תהיו הראשונים לדעת, וכבר עכשיו אפשר לנסות את הקבלה.",
+      title: "תנו לסוכנים שלכם קול ומספר",
+      usable: "חברו את סוכני ה-AI שכבר יש לכם: הם עונים לטלפון עם קול ומספר של Tamara. ללא כרטיס אשראי.",
+      soon: "חיבור הסוכנים שלכם ייפתח בקרוב. צרו חשבון: אתם תהיו הראשונים לדעת, וכבר עכשיו אפשר לנסות את הקבלה.",
     },
   },
   sales: {

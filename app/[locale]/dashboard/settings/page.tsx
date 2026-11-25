@@ -175,7 +175,7 @@ export default async function SettingsPage(props: {
         {/* The agent's public URL (AgentUrl.title: using the Tamara agent
             from the customer's own phone system), level-3 like the API key:
             rendered only in developer mode (admins always). Anchor:
-            #agent-url. Moved here from "Connecter votre agent" (VP, 23/11). */}
+            #agent-url. Moved here from "Connecter vos agents" (VP, 23/11). */}
         <AgentUrlCard isAdmin={isAdmin} />
 
         {/* Danger zone */}

@@ -4,7 +4,7 @@
 // and pinned by scripts/tests/dashboard-nav.test.ts.
 //
 // Two blocks:
-//   products: Réception · Centre d'appels · Connecter votre agent, the account's own product
+//   products: Réception · Centre d'appels · Connecter vos agents, the account's own product
 //             (its door) first;
 //   shared:   Mon agent · Appels · Clients · Abonnement · Réglages.
 // The door only ORDERS the products; the menu never adds or removes an entry.
