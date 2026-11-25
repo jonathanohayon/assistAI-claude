@@ -49,7 +49,7 @@ export const GRID_SIGNUP_HREF: Readonly<Record<Product, string>> = {
 // not the per-product trial of F4: its length and minutes come from there,
 // and the products it covers are what a trialing account is entitled to
 // (lib/product-entitlement.ts rule 2: reception_multi, i.e. Réception).
-// Ventes and Connecter votre agent are not in it: their cards say so and
+// Ventes and Connecter vos agents are not in it: their cards say so and
 // their CTA is a neutral "create my account" (still sign-up).
 // The same ICU arguments as every other trial message (lib/trial-copy.ts).
 export const SIGNUP_TRIAL = TRIAL_COPY_VALUES;

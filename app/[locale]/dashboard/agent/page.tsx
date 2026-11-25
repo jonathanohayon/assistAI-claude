@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { ProductTrialNote } from "@/components/dashboard/ProductTrialNote";
 import { sessionIsAdmin } from "@/lib/api/auth-guards";
 import { connectPageView } from "@/lib/connect-page-view";
+import { loadConnectorsMount } from "@/lib/connectors/mount";
 import { loadProductPage } from "@/lib/product-gates";
 import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-switch";
 
@@ -15,13 +16,15 @@ export const dynamic = "force-dynamic";
 const MAIN = "mx-auto w-full max-w-3xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8";
 
 /**
- * Menu entry "Connecter votre agent" (connect): the customer's own agent.
+ * Menu entry "Connecter vos agents" (connect): the customer's own agents.
  * What it shows is ONE decision (lib/connect-page-view.ts), from the menu
  * state, whether CLIENT_AGENT lets the "Votre agent IA" brick show for the
  * account (read here on the server), and whether the viewer is an admin:
  *   - brick: owned AND the brick can show: the title, the running trial's
- *     line (F4), then ClientAgentBrick (the agent's address, its mode, secret
- *     and test, with its own save). Nothing else, for a tenant and an admin
+ *     line (F4), then the connectors list (C1b), read here on the server
+ *     with the same function as GET /api/dashboard/connectors; its legacy
+ *     card's "Modifier" (or the empty card's "Commencer") opens
+ *     ClientAgentBrick in place. Nothing else, for a tenant and an admin
  *     alike (founder, 23/11; the public URL card lives in Réglages).
  *   - preview: anything else, including owned while the brick can't show (an
  *     admin owns every entry, even with CLIENT_AGENT unset): the product's
@@ -43,6 +46,8 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
     showClientAgent: clientAgentEnabled(clientAgentMode(), isAdmin),
     isAdmin,
   });
+  // Read only where the list shows: the closed preview makes no query of it.
+  const connectors = view.kind === "brick" ? await loadConnectorsMount(session.user.id) : null;
 
   return (
     <main className={MAIN}>
@@ -53,6 +58,7 @@ export default async function ConnectPage(props: { params: Promise<{ locale: str
         notifyRequested={notifyRequested.includes("connect")}
         trial={trials.connect}
         trialTerms={trialTerms}
+        connectors={connectors}
       />
     </main>
   );

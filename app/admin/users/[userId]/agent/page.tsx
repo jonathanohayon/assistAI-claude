@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { ConnectPageContent } from "@/app/[locale]/dashboard/agent/connect-view";
 import { requireAdminPage } from "@/lib/auth/require-admin-page";
 import { connectPageView } from "@/lib/connect-page-view";
+import { loadConnectorsMount } from "@/lib/connectors/mount";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { loadProductPage } from "@/lib/product-gates";
@@ -12,11 +13,11 @@ import { clientAgentEnabled, clientAgentMode } from "@/lib/tools/client-agent-sw
 
 export const dynamic = "force-dynamic";
 
-// Admin tenant view, menu entry "Connecter votre agent" (connect): the SAME
+// Admin tenant view, menu entry "Connecter vos agents" (connect): the SAME
 // decision as the tenant's own page (lib/connect-page-view.ts), from the
 // TENANT's menu and the TENANT's CLIENT_AGENT result, the viewer being an
-// admin: the client-agent brick scoped with asUserId where it can show for
-// that account; otherwise the closed product's preview (header, no
+// admin: the TENANT's connectors list (C1b, loaded for that account), every
+// request scoped with asUserId, where it can show for that account; otherwise the closed product's preview (header, no
 // "Prévenez-moi", the admin line, the sample brick). Never a title alone. The
 // title is the product's one name key (DashboardNav.connect), in French like
 // the rest of the admin. Gate: requireAdminPage.
@@ -32,9 +33,17 @@ export default async function AdminTenantConnectPage(props: { params: Promise<{ 
     showClientAgent: clientAgentEnabled(clientAgentMode(), target.role === "admin"),
     isAdmin: true,
   });
+  const connectors = view.kind === "brick" ? await loadConnectorsMount(userId) : null;
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-6 sm:px-6">
-      <ConnectPageContent view={view} title={t("connect")} trial={trials.connect} trialTerms={trialTerms} asUserId={userId} />
+      <ConnectPageContent
+        view={view}
+        title={t("connect")}
+        trial={trials.connect}
+        trialTerms={trialTerms}
+        asUserId={userId}
+        connectors={connectors}
+      />
     </main>
   );
 }

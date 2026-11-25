@@ -195,7 +195,7 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   assert.match(connect, /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/);
   assert.match(connect, /showClientAgent: clientAgentEnabled\(clientAgentMode\(\), isAdmin\)/, "connect: the Ask-your-agent brick only where it is on");
-  assert.match(code("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent && <ClientAgentBrick asUserId=\{asUserId\} \/>\}/, "connect: the view follows it");
+  assert.match(code("app/[locale]/dashboard/agent/connect-owned.tsx"), /\{showClientAgent &&\s*\(connectors \? \(\s*<ConnectorsPanel\s[^>]*asUserId=\{asUserId\}\s*\/>\s*\) : \(\s*<ClientAgentBrick asUserId=\{asUserId\} \/>\s*\)\)\}/, "connect: the view follows it");
   for (const f of ["app/[locale]/dashboard/clients/page.tsx", "app/[locale]/dashboard/reception/forwarding/page.tsx", "app/[locale]/dashboard/settings/page.tsx", "app/[locale]/dashboard/billing/page.tsx"])
     assert.match(code(f), /if \(!session\?\.user\?\.id\) redirect\(`\/\$\{locale\}\/login`\);/, `${f}: signed-in`);
   const clients = code("app/[locale]/dashboard/clients/page.tsx");
@@ -214,7 +214,7 @@ for (const l of ["fr", "en", "he"]) assert.doesNotMatch(read(`messages/${l}.json
     assert.match(code(f), /await requireAdminPage\(\);/, `${f}: admin gate`);
   const adminConnect = code("app/admin/users/[userId]/agent/page.tsx");
   assert.match(adminConnect, /await requireAdminPage\(\);/, "admin Votre agent: admin gate");
-  assert.match(adminConnect, /<ConnectPageContent [^>]*asUserId=\{userId\}/, "admin Votre agent: the brick (or the closed preview), scoped to the tenant");
+  assert.match(adminConnect, /<ConnectPageContent\s[^>]*asUserId=\{userId\}/, "admin Votre agent: the brick (or the closed preview), scoped to the tenant");
 }
 
 // ── 5. Config sections: the same form, each page its tiles ──────────────────
@@ -410,7 +410,7 @@ assert.equal(sectionGridClass(undefined), sectionGridClass("reception"));
   assert.match(fr, /aria-expanded="false"/, "the drawer starts closed");
   assert.doesNotMatch(fr, /role="dialog"/, "closed drawer: not in the page");
   const he = html("he", navBlocks("reception", OWNED));
-  for (const w of ["הסוכן שלכם", "הסוכן שלי", "מוקד שיחות", "שיחות", "לקוחות", "מנוי", "הגדרות"]) assert.ok(he.includes(w), `he: ${w}`);
+  for (const w of ["הסוכנים שלכם", "הסוכן שלי", "מוקד שיחות", "שיחות", "לקוחות", "מנוי", "הגדרות"]) assert.ok(he.includes(w), `he: ${w}`);
   for (const l of ["fr", "en", "he"]) {
     const nav = JSON.parse(read(`messages/${l}.json`)).DashboardNav;
     assert.deepEqual(Object.keys(nav).sort(), Object.keys(JSON.parse(read("messages/fr.json")).DashboardNav).sort(), `${l}: same keys`);

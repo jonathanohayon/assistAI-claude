@@ -320,7 +320,7 @@
           "body": "Your agent calls your contacts for you and notes the result of each call."
         },
         "connect": {
-          "name": "Connect your agent",
+          "name": "Connect your agents",
           "body": "Already have an AI agent? Tamara gives it a voice and a phone number."
         }
       },
@@ -532,9 +532,9 @@
     "title": "Create your voice agent",
     "subtitle": "Up and running in 2 minutes. No commitment, no credit card.",
     "accountBadge": "Free account, no credit card",
-    "connectTitle": "Give your agent a voice and a number",
-    "connectSubtitleUsable": "Plug in the AI agent you already have: it answers the phone with a Tamara voice and number. No credit card.",
-    "connectSubtitleSoon": "Connecting your agent opens soon. Create your account: you'll be the first to know, and you can already try Reception.",
+    "connectTitle": "Give your agents a voice and a number",
+    "connectSubtitleUsable": "Plug in the AI agents you already have: they answer the phone with a Tamara voice and number. No credit card.",
+    "connectSubtitleSoon": "Connecting your agents opens soon. Create your account: you'll be the first to know, and you can already try Reception.",
     "salesTitle": "Create your call center",
     "salesSubtitleUsable": "Your agent calls your contacts and records the outcome of every call. No credit card.",
     "salesSubtitleSoon": "The call center opens soon. Create your account: you'll be the first to know, and you can already try Reception.",
@@ -676,7 +676,7 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "subtitleWhatsapp": "we'll assign you a dedicated number — included in the free trial.",
-    "welcomeTitleConnect": "Welcome. Connecting your agent opens soon.",
+    "welcomeTitleConnect": "Welcome. Connecting your agents opens soon.",
     "welcomeTitleSales": "Welcome. The call center opens soon.",
     "welcomeRecorded": "Your request is recorded: you'll be the first to know.",
     "welcomeRecording": "Recording your request…",
@@ -717,7 +717,7 @@
     "blockShared": "Shared",
     "reception": "Reception",
     "sales": "Call center",
-    "connect": "Connect your agent",
+    "connect": "Connect your agents",
     "myAgent": "My agent",
     "calls": "Calls",
     "clients": "Clients",
@@ -727,7 +727,7 @@
     "stateTry": "Free trial",
     "pitchReception": "Your agent answers the phone for you, day and night.",
     "pitchSales": "Your agent calls your contacts for you and notes how each call went.",
-    "pitchConnect": "Connect your own agent: it answers the phone with a Tamara voice and number.",
+    "pitchConnect": "Connect your own agents: they answer the phone with a Tamara voice and number.",
     "previewTry": "Try it free",
     "previewBadge": "Preview",
     "previewNote": "Sample data: nothing is saved or sent.",
@@ -2968,6 +2968,7 @@
       "noPrice": "Number included",
       "trial": "{max, plural, one {# agent} other {# agents}} during the trial. Activate your plan to add more.",
       "soon": "Soon",
+      "soonLine": "Coming soon: add your agents here.",
       "max": "Up to {max, plural, one {# agent} other {# agents}} on your account."
     },
     "empty": {
@@ -2979,12 +2980,15 @@
     },
     "deleteDialog": {
       "title": "Delete {name}?",
+      "kept": "The number {number} stays on your account.",
       "released": "The number {number} will be released and cannot be recovered.",
       "billing": "It stays active until the end of the paid period, with no refund.",
       "confirm": "Delete",
       "cancel": "Cancel"
     },
-    "moreActions": "More actions for {name}"
+    "moreActions": "More actions for {name}",
+    "actionsSoon": "Coming soon: this agent's settings will be here.",
+    "closeEditor": "Close"
   },
   "AgentHelp": {
     "title": "How to get your agent's address",

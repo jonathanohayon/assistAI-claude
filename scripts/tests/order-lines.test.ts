@@ -261,7 +261,7 @@ const ALL_ON = { CAMPAIGN_DISPATCH: "on", CLIENT_AGENT: "all" };
   const fr1 = renderOrderConfirmationEmail({ lines, period: "monthly", amount: 227.5, currency: "EUR", locale: "fr" }, tFor("fr"));
   assert.equal(fr1.subject, fr.Email.subscriptionConfirmation.subject.replace("{plan}", "Clinique / Multi-sites"));
   assert.ok(fr1.text.includes("Clinique / Multi-sites — 169 €"), fr1.text);
-  assert.ok(fr1.text.includes("Connecter votre agent (option) — 39 €"), fr1.text);
+  assert.ok(fr1.text.includes("Connecter vos agents (option) — 39 €"), fr1.text);
   assert.ok(fr1.text.includes("Dépassement Réception — 50 min — 19,50 €"), fr1.text);
   assert.ok(fr1.text.includes("227,50 €"), fr1.text);
   assert.ok(fr1.html.includes('dir="ltr"'));

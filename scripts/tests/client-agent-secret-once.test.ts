@@ -150,7 +150,10 @@ const putAnswer: ToolsResponse = { ...afterSave, generatedSecret: GENERATED };
   assert.doesNotMatch(brick, /\.generatedSecret|generatedSecret\s*[:,}]|\[\s*["'`]generatedSecret/, "the brick never reads the raw field");
   assert.match(brick, /const answer = clientAgentSavedAnswer\(data\);\s*if \(answer\.generated\) setGenerated\(answer\.generated\);\s*setServed\(answer\.served\);/, "stripped before it is kept; absent = unchanged");
   assert.doesNotMatch(brick, /setServed\(data\)/, "the raw answer is never kept");
-  assert.match(brick, /const \[generated, setGenerated\] = useState<string \| null>\(null\);/, "component state, starts empty (a reload drops it)");
+  // Component state, starts empty (a reload drops it); C1b: or with the secret the
+  // connectors card's switch got back from ITS save (memory only, ConnectorsPanel).
+  assert.match(brick, /const \[generated, setGenerated\] = useState<string \| null>\(initialGenerated\);/, "component state (a reload drops it)");
+  assert.match(brick, /initialGenerated = null,/, "starts empty unless handed one");
   assert.match(brick, /generated=\{generated\}\s*onGeneratedDone=\{\(\) => setGenerated\(null\)\}/);
   assert.match(brick, /const shown = revealed \?\? generated \?\? /);
   assert.match(brick, /setRevealed\(null\);\s*onGeneratedDone\?\.\(\);[\s\S]*?t\("copiedDone"\)/, '"copied" closes it');

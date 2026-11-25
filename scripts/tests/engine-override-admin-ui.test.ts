@@ -74,7 +74,7 @@ const pending: Promise<void>[] = [];
   assert.match(h, /Catalogue des produits/);
   const reception = rowOf(h, "Réception");
   const sales = rowOf(h, SALES);
-  const connect = rowOf(h, "Connecter votre agent");
+  const connect = rowOf(h, "Connecter vos agents");
   // Réception: every engine honoured (Gemini / Grok on the worker's env model).
   for (const e of ["OpenAI", "Gemini", "Grok (xAI)"]) assert.equal(isDisabled(reception, e), false, `reception ${e} enabled`);
   assert.doesNotMatch(reception, /data-not-honoured/);
@@ -84,7 +84,7 @@ const pending: Promise<void>[] = [];
   assert.equal(isDisabled(sales, "Grok (xAI)"), true);
   assert.match(sales, new RegExp(`Grisé \\(Gemini, Grok \\(xAI\\)\\) : ${NOT_HONOURED_LINE.replace(/\./g, "\\.")}`));
   assert.equal((sales.match(/data-not-honoured/g) ?? []).length, 1, "one line per row");
-  // Connecter votre agent: nothing honoured.
+  // Connecter vos agents: nothing honoured.
   for (const e of ["OpenAI", "Gemini", "Grok (xAI)"]) assert.equal(isDisabled(connect, e), true, `connect ${e} disabled`);
   assert.match(connect, /Pas encore pris en charge pour ce produit\./);
   // "Aucun (choix du compte)" on every line, always selectable.
@@ -181,7 +181,7 @@ const renderBanner = (d: EngineLineData, extra: Record<string, unknown> = {}) =>
   const h = renderBanner(banner());
   assert.match(h, /Réception<\/span> : <span[^>]*><strong[^>]*>OpenAI · gpt-realtime-2<\/strong> · <span data-source="true">choix du compte<\/span> · <span data-cost="true">0,30 \$\/min · estimation/);
   assert.match(h, /OpenAI · gpt-realtime-2\.1<\/strong> · <span data-source="true">imposé pour le produit<\/span> · <span data-cost="true">—</);
-  assert.match(h, /Connecter votre agent<\/span> : l'agent du client répond, aucun moteur imposé\./);
+  assert.match(h, /Connecter vos agents<\/span> : l'agent du client répond, aucun moteur imposé\./);
   // The server's ignored flag, in French.
   assert.match(h, /data-ignored[^>]*>Moteur imposé ignoré \(Gemini · modèle par défaut du moteur\) : il ne parle pas hébreu\. Une alerte admin est levée à l'appel\./);
   // The client setting is the existing one, linked.

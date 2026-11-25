@@ -1,4 +1,4 @@
-// "Connecter votre agent" is ONE clear screen (founder + VP, 23/11): the
+// "Connecter vos agents" is ONE clear screen (founder + VP, 23/11): the
 // title, the running trial's line, the "Votre agent IA" brick. Nothing else,
 // for a tenant AND an admin.
 //   1. The owned view, tenant and admin (CLIENT_AGENT=all, as the page decides
@@ -87,7 +87,15 @@ for (const l of LOCALES) {
 {
   const view = code("app/[locale]/dashboard/agent/connect-owned.tsx");
   assert.doesNotMatch(view, /isAdmin|adminBrain|AdminBrain|AgentUrl|agent-url/);
-  assert.match(view, /\{trialNote\}\s*\{showClientAgent && <ClientAgentBrick asUserId=\{asUserId\} \/>\}\s*<\/section>/, "title, trial note, brick: in this order, last");
+  // C1b: the connectors list (its Modifier / Commencer open the brick), or the brick alone when the list was not read.
+  assert.match(
+    view,
+    /\{trialNote\}\s*\{showClientAgent &&\s*\(connectors \? \(\s*<ConnectorsPanel\s[^>]*\/>\s*\) : \(\s*<ClientAgentBrick asUserId=\{asUserId\} \/>\s*\)\)\}\s*<\/section>/,
+    "title, trial note, then the list (or the brick): in this order, last",
+  );
+  // The door's deep link (#client-agent) opens the editor that the list mounts.
+  assert.match(read("components/connectors/ConnectorsPanel.tsx"), /EDITOR_HASH = "#client-agent"/);
+  assert.match(read("components/connectors/ConnectorsPanel.tsx"), /if \(window\.location\.hash !== EDITOR_HASH\) return;\s*const id = window\.setTimeout\(\(\) => \{\s*setEditorOpen\(true\);/);
   const page = code("app/[locale]/dashboard/agent/page.tsx");
   assert.doesNotMatch(page, /AgentBrain|tBrain|adminBrain|AgentUrl|myAgentLink/);
   assert.match(page, /trialNote=\{<ProductTrialNote trial=\{trials\.connect\} inline \/>\}/, "the trial note (F4) is kept");

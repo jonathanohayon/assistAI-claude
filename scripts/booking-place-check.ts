@@ -2,8 +2,9 @@
 // throwaway Postgres seeded with mock rows (+97220000000 = account …0a, no
 // Google connected).
 //   OUT=/tmp/x.json DATABASE_URL=<throwaway> INTERNAL_SECRET=mock npx tsx scripts/booking-place-check.ts
-// - LEGACY requests (no `location` key): written to OUT — run on main and
-//   on the branch and diff (must be byte-identical).
+// - LEGACY requests (no `location` key): written to OUT. Since
+//   fix/calendar-legacy-neutral they get the answer of `location: null` (no
+//   weekday rule, the `center` key ignored), so they differ from older trees.
 // - NEW requests (with `location`) + the company-sheet rule reaching the
 //   agent's instructions: asserted (branch only, CHECK_NEW=1).
 import { writeFileSync } from "node:fs";
@@ -20,7 +21,7 @@ const H = () => ({
   "x-tenant-phone": "+97220000000",
   "content-type": "application/json",
 });
-const MON = "2030-01-07"; // a Monday (legacy rule: Ashdod only)
+const MON = "2030-01-07"; // a Monday (the former rule: Ashdod only)
 const TUE = "2030-01-08";
 
 async function main() {
@@ -53,7 +54,7 @@ async function main() {
   const wrongCentreEvents = async () =>
     (await db.select({ n: sql<number>`count(*)::int` }).from(events).where(eq(events.event, "book_wrong_center")))[0].n;
 
-  ok("legacy: wrong centre refused", legacy.bookWrongCentre.status === 400 && legacy.bookWrongCentre.text.includes("wrong_day_for_center"));
+  ok("legacy: no weekday rule either (centre ignored)", legacy.bookWrongCentre.status === 409 && !legacy.bookWrongCentre.text.includes("wrong_day"), `${legacy.bookWrongCentre.status} ${legacy.bookWrongCentre.text}`);
   // NEW: a `location` — the weekday rule no longer applies; the request goes
   // on to the calendar (409 = this mock account has no Google connected).
   const before = await wrongCentreEvents();

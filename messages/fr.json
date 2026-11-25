@@ -320,7 +320,7 @@
           "body": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel."
         },
         "connect": {
-          "name": "Connecter votre agent",
+          "name": "Connecter vos agents",
           "body": "Vous avez déjà un agent IA ? Tamara lui donne une voix et un numéro de téléphone."
         }
       },
@@ -532,9 +532,9 @@
     "title": "Créez votre agent vocal",
     "subtitle": "Opérationnel en 2 minutes. Sans engagement, sans carte bancaire.",
     "accountBadge": "Compte gratuit, sans carte bancaire",
-    "connectTitle": "Donnez une voix et un numéro à votre agent",
-    "connectSubtitleUsable": "Branchez l'agent IA que vous avez déjà : il répond au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
-    "connectSubtitleSoon": "Le branchement de votre agent ouvre bientôt. Créez votre compte : vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
+    "connectTitle": "Donnez une voix et un numéro à vos agents",
+    "connectSubtitleUsable": "Branchez les agents IA que vous avez déjà : ils répondent au téléphone avec une voix et un numéro Tamara. Sans carte bancaire.",
+    "connectSubtitleSoon": "Le branchement de vos agents ouvre bientôt. Créez votre compte : vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
     "salesTitle": "Créez votre centre d'appels",
     "salesSubtitleUsable": "Votre agent appelle vos contacts et note le résultat de chaque appel. Sans carte bancaire.",
     "salesSubtitleSoon": "Le centre d'appels ouvre bientôt. Créez votre compte : vous serez prévenu en premier, et vous pouvez déjà essayer la Réception.",
@@ -676,7 +676,7 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "subtitleWhatsapp": "on vous attribue un numéro dédié — inclus dans l'essai gratuit.",
-    "welcomeTitleConnect": "Bienvenue. Le branchement de votre agent ouvre bientôt.",
+    "welcomeTitleConnect": "Bienvenue. Le branchement de vos agents ouvre bientôt.",
     "welcomeTitleSales": "Bienvenue. Le centre d'appels ouvre bientôt.",
     "welcomeRecorded": "Votre demande est enregistrée : vous serez prévenu en premier.",
     "welcomeRecording": "Enregistrement de votre demande…",
@@ -717,7 +717,7 @@
     "blockShared": "Commun",
     "reception": "Réception",
     "sales": "Centre d'appels",
-    "connect": "Connecter votre agent",
+    "connect": "Connecter vos agents",
     "myAgent": "Mon agent",
     "calls": "Appels",
     "clients": "Clients",
@@ -727,7 +727,7 @@
     "stateTry": "Essai gratuit",
     "pitchReception": "Votre agent répond au téléphone à votre place, de jour comme de nuit.",
     "pitchSales": "Votre agent appelle vos contacts pour vous et note le résultat de chaque appel.",
-    "pitchConnect": "Branchez votre propre agent : il répond au téléphone avec une voix et un numéro Tamara.",
+    "pitchConnect": "Branchez vos propres agents : ils répondent au téléphone avec une voix et un numéro Tamara.",
     "previewTry": "Essayer gratuitement",
     "previewBadge": "Aperçu",
     "previewNote": "Données d'exemple : rien n'est enregistré ni envoyé.",
@@ -2968,6 +2968,7 @@
       "noPrice": "Numéro inclus",
       "trial": "{max, plural, one {# agent} other {# agents}} pendant l'essai. Activez votre offre pour en ajouter.",
       "soon": "Bientôt",
+      "soonLine": "Bientôt : ajoutez vos agents ici.",
       "max": "{max, plural, one {# agent au maximum} other {# agents au maximum}} sur votre compte."
     },
     "empty": {
@@ -2979,12 +2980,15 @@
     },
     "deleteDialog": {
       "title": "Supprimer {name} ?",
+      "kept": "Le numéro {number} reste sur votre compte.",
       "released": "Le numéro {number} sera libéré et ne pourra pas être récupéré.",
       "billing": "Il reste actif jusqu'à la fin de la période payée, sans remboursement.",
       "confirm": "Supprimer",
       "cancel": "Annuler"
     },
-    "moreActions": "Plus d'actions pour {name}"
+    "moreActions": "Plus d'actions pour {name}",
+    "actionsSoon": "Bientôt : les réglages de cet agent arrivent ici.",
+    "closeEditor": "Fermer"
   },
   "AgentHelp": {
     "title": "Comment obtenir l'adresse de votre agent",

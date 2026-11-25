@@ -22,6 +22,18 @@ export interface CallEndInput {
   realtimeModel: string | null;
   /** LiveKit room name (lib/call-id.ts); null for older workers. */
   callId: string | null;
+  /**
+   * B3, optional (worker >= B3): whether the client's agent was actually
+   * reached during the call. Strict: a boolean, else null (absent, or any
+   * other type: never an error).
+   */
+  clientAgentReached: boolean | null;
+  /**
+   * B3, optional: the signed connector route token session-config served,
+   * echoed back as received (verified later, lib/connectors/call-attribution.ts).
+   * undefined when absent.
+   */
+  connectorRoute: unknown;
 }
 
 export function parseCallEndBody(raw: unknown): CallEndInput {
@@ -41,6 +53,8 @@ export function parseCallEndBody(raw: unknown): CallEndInput {
         : null,
     realtimeModel: str(b.realtimeModel).slice(0, 80) || null,
     callId: parseCallId(b.callId),
+    clientAgentReached: typeof b.clientAgentReached === "boolean" ? b.clientAgentReached : null,
+    connectorRoute: b.connectorRoute,
   };
 }
 
@@ -60,5 +74,8 @@ export function callInsertValues(input: CallEndInput, userId: string, callId: st
     callId: callId ?? "",
     // Only the channel today (lib/call-product.ts): NULL = reception.
     product: productForCall({ channel: input.channel }),
+    // B3: only when the worker reported it; absent = the column's NULL default
+    // (the inserted values are then exactly today's).
+    ...(input.clientAgentReached !== null ? { clientAgentReached: input.clientAgentReached } : {}),
   };
 }
