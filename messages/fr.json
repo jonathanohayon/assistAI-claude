@@ -2948,9 +2948,17 @@
     "pill": {
       "online": "En ligne",
       "off": "Éteint",
-      "unreachable": "Agent injoignable"
+      "unreachable": "Agent injoignable",
+      "setup_incomplete": "À terminer",
+      "unknown": "À vérifier"
     },
     "unreachableNote": "Tamara répond seule en attendant.",
+    "setupLine": {
+      "no_secret": "Générez un secret pour que votre agent réponde.",
+      "secret_unreadable": "Régénérez le secret de votre agent : l'ancien n'est plus utilisable.",
+      "unsafe_url": "Corrigez l'adresse de votre agent : elle ne peut pas être utilisée.",
+      "generic": "Ouvrez « Modifier » pour finir le réglage."
+    },
     "mode": {
       "lead": "Tamara mène la conversation et interroge votre agent quand elle a besoin d'une réponse.",
       "voice": "Tamara prête seulement sa voix : votre agent décide quoi dire, elle le dit mot pour mot."

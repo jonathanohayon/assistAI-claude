@@ -21,8 +21,15 @@
 //                       principal" instead of a number;
 //               "own"   its own number is shown;
 //               "none"  a real connector whose number is not bought yet;
-//   pill      = exactly one of online / off / unreachable; unreachable adds
-//               the line "Tamara répond seule en attendant.";
+//   pill      = exactly one of online / off / unreachable / setup_incomplete,
+//               or "unknown" for a state this build does not know (a newer
+//               server): a neutral pill. unreachable adds the line "Tamara
+//               répond seule en attendant." (red); setup_incomplete adds ONE
+//               amber line picked by setupIssue (no_secret / secret_unreadable
+//               / unsafe_url), the generic "Ouvrez « Modifier »…" for any
+//               other or missing issue; "unknown" adds the generic line too;
+//   derived   = the legacy card, on OR off (B7 sends it switched off too): it
+//               is a normal card either way, never the empty state;
 //   deletable = the "…" menu with "Supprimer" exists. Never for the derived
 //               card. Read from ConnectorView.deletable (the server's one
 //               rule, #444): never the first connector while the product
@@ -40,6 +47,51 @@
 
 import type { CatalogueCurrency, ProductCatalogue } from "../product-catalogue";
 import type { CanAddConnectorReason, ConnectorMode, ConnectorState, ConnectorsPageView, ConnectorView } from "./types";
+
+/** The card's pill: a known state, or "unknown" for a value this build does not know. */
+export type CardPill = ConnectorState | "unknown";
+
+/** The issues the server names (ConnectorView.setupIssue). */
+export type SetupIssue = NonNullable<ConnectorView["setupIssue"]>;
+
+/** The line under an amber (or neutral) pill: a named issue, or the generic one. */
+export type SetupLine = SetupIssue | "generic";
+
+// `satisfies Record<Union, true>`: tsc fails when a value is added to the
+// union and not here (or listed here and not in the union). The runtime
+// lookup then maps anything else (a newer server's value) to the fallback.
+const KNOWN_STATES = { online: true, off: true, unreachable: true, setup_incomplete: true } satisfies Record<ConnectorState, true>;
+const KNOWN_ISSUES = { no_secret: true, secret_unreadable: true, unsafe_url: true } satisfies Record<SetupIssue, true>;
+
+const has = (table: object, key: unknown): boolean => typeof key === "string" && Object.prototype.hasOwnProperty.call(table, key);
+
+/** A state as the card draws it: the known ones as is, anything else "unknown" (never a crash). */
+export function cardPillOf(state: unknown): CardPill {
+  return has(KNOWN_STATES, state) ? (state as ConnectorState) : "unknown";
+}
+
+/** The amber line for a setup issue: a named issue, else (other value, missing) the generic line. */
+export function setupLineOf(issue: unknown): SetupLine {
+  return has(KNOWN_ISSUES, issue) ? (issue as SetupIssue) : "generic";
+}
+
+/** The line under the pill, per pill. A switch: tsc fails here on a new state. */
+function setupLineFor(pill: CardPill, issue: unknown): SetupLine | null {
+  switch (pill) {
+    case "setup_incomplete":
+      return setupLineOf(issue);
+    case "unknown":
+      return "generic";
+    case "online":
+    case "off":
+    case "unreachable":
+      return null;
+    default: {
+      const never: never = pill;
+      return never;
+    }
+  }
+}
 
 /** The monthly price of ONE extra connector, as read from the catalogue. */
 export type ConnectorExtraPrice = { monthly: number; currency: CatalogueCurrency };
@@ -73,9 +125,11 @@ export type ConnectorCardView = {
   number: string | null;
   numberLabel: string | null;
   numberLine: "own" | "main" | "none";
-  pill: ConnectorState;
+  pill: CardPill;
   /** "Tamara répond seule en attendant." under the red pill. */
   unreachableNote: boolean;
+  /** The one line under an amber setup_incomplete (or neutral unknown) pill; null otherwise. */
+  setupLine: SetupLine | null;
   mode: ConnectorMode;
   enabled: boolean;
   /** ISO timestamp, or null: "Aucun appel pour l'instant". */
@@ -115,6 +169,7 @@ function deletableOf(c: ConnectorView): boolean {
 }
 
 function card(c: ConnectorView): ConnectorCardView {
+  const pill = cardPillOf(c.state);
   const numberLine = c.derived ? "main" : c.numberE164 ? "own" : "none";
   return {
     id: c.id,
@@ -123,8 +178,9 @@ function card(c: ConnectorView): ConnectorCardView {
     number: numberLine === "own" ? c.numberE164 : null,
     numberLabel: numberLine === "own" ? (c.numberLabel ?? null) : null,
     numberLine,
-    pill: c.state,
-    unreachableNote: c.state === "unreachable",
+    pill,
+    unreachableNote: pill === "unreachable",
+    setupLine: setupLineFor(pill, c.setupIssue),
     mode: c.mode,
     enabled: c.enabled,
     lastCallAt: c.lastCallAt,
