@@ -26,7 +26,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { ConnectPageContent } from "../../app/[locale]/dashboard/agent/connect-view";
 import { ConnectorsList } from "../../components/connectors/ConnectorsList";
-import { withLegacyEnabled } from "../../components/connectors/ConnectorsPanel";
+import { connectorActions, type FetchLike } from "../../components/connectors/connector-actions";
+import { switchLegacyCard, withLegacyEnabled } from "../../components/connectors/ConnectorsPanel";
 import { cardPillOf, connectorBasePrice, connectorsListView, setupLineOf, type CardPill, type SetupLine } from "../../lib/connectors/list-view";
 import {
   MOCK_EXTRA_PRICE,
@@ -42,6 +43,7 @@ import {
 } from "../../lib/connectors/mock";
 import type { ConnectorsMount } from "../../lib/connectors/mount";
 import type { ConnectorsPageView, ConnectorView } from "../../lib/connectors/types";
+import { PREVIEW_CLIENT_AGENT } from "../../lib/preview-samples";
 import { DEFAULT_PRODUCT_CATALOGUE } from "../../lib/product-catalogue";
 import { PRODUCT_TRIAL_DAYS, PRODUCT_TRIAL_MINUTES } from "../../lib/product-trials";
 
@@ -289,4 +291,97 @@ assert.match(C("he").pill.setup_incomplete, /[֐-׿]/);
   assert.match(view, /const never: never = pill;/);
 }
 console.log("ok: exhaustiveness");
-console.log("connectors-state-b7: OK");
+
+// ── 7. The legacy switch re-reads the server's page ─────────────────────────
+// PUT, then GET /api/dashboard/connectors (asUserId in the admin view); the
+// switched state shows while the GET runs and stays if it fails.
+type Call = { url: string; method: string; body: string | undefined };
+type Answer = { status: number; body: unknown } | "throw";
+function recorder(answers: Answer[]): { fetch: FetchLike; calls: Call[] } {
+  const calls: Call[] = [];
+  let i = 0;
+  return {
+    calls,
+    fetch: async (url, init) => {
+      calls.push({ url, method: init?.method ?? "GET", body: init?.body as string | undefined });
+      const a = answers[Math.min(i++, answers.length - 1)];
+      if (a === "throw") throw new Error("network");
+      return new Response(JSON.stringify(a.body), { status: a.status, headers: { "Content-Type": "application/json" } });
+    },
+  };
+}
+const TOOLS_OK = { status: 200, body: PREVIEW_CLIENT_AGENT };
+/** Runs the switch against a page state the way the panel does; returns every page shown. */
+async function switchOn(start: ConnectorsPageView, enabled: boolean, answers: Answer[], asUserId: string | null = null) {
+  const r = recorder(answers);
+  let page = start;
+  const shown: ConnectorsPageView[] = [];
+  const result = await switchLegacyCard(connectorActions(r.fetch, asUserId), enabled, {
+    saved: () => {
+      page = withLegacyEnabled(page, enabled);
+      shown.push(page);
+    },
+    reread: (p) => {
+      page = p;
+      shown.push(page);
+    },
+  });
+  return { result, calls: r.calls, shown, page };
+}
+const runSwitch = async () => {
+  const SETUP = MOCK_PAGES.derivedSetupNoSecret;
+  for (const asUserId of [null, "u-tenant-1"] as const) {
+    const qs = asUserId ? `?asUserId=${asUserId}` : "";
+    const s = await switchOn(MOCK_PAGES.derivedOff, true, [TOOLS_OK, { status: 200, body: SETUP }], asUserId);
+    assert.deepEqual(s.result, { ok: true, generated: null });
+    assert.deepEqual(
+      s.calls.map((c) => [c.method, c.url]),
+      [
+        ["PUT", `/api/dashboard/tools${qs}`],
+        ["GET", `/api/dashboard/connectors${qs}`],
+      ],
+      `asUserId=${asUserId}: PUT then GET`,
+    );
+    assert.equal(s.calls[0].body, '{"tools":{"clientAgent":{"enabled":true}}}');
+    // While the GET runs: the switched state; then the server's.
+    assert.deepEqual(
+      s.shown.map((p) => p.connectors[0].state),
+      ["online", "setup_incomplete"],
+      `asUserId=${asUserId}: optimistic, then the server's state`,
+    );
+    for (const l of LOCALES) {
+      const card = cardOf(list(l, s.page), "legacy");
+      assert.equal(pillOf(card)?.[2], "setup_incomplete", `${l}: the server's pill after switch-on`);
+      assert.ok(pillOf(card)?.[1].endsWith(AMBER.pill) && card.includes('data-setup-line="no_secret"'), `${l}: amber pill + its line`);
+    }
+  }
+  // The GET fails (status or network): the PUT's result stays, nothing new.
+  for (const bad of [{ status: 500, body: null }, "throw"] as Answer[]) {
+    const s = await switchOn(MOCK_PAGES.derivedOff, true, [TOOLS_OK, bad]);
+    assert.deepEqual(s.result, { ok: true, generated: null });
+    assert.deepEqual(s.calls.map((c) => c.method), ["PUT", "GET"]);
+    assert.deepEqual(s.shown.map((p) => p.connectors[0].state), ["online"], "GET failed: the switched state only");
+    assert.deepEqual(s.page, withLegacyEnabled(MOCK_PAGES.derivedOff, true));
+  }
+  // The PUT is refused: no GET, nothing shown.
+  const refused = await switchOn(MOCK_PAGES.derivedPaid, false, [{ status: 500, body: null }]);
+  assert.deepEqual(refused.result, { ok: false, refused: null });
+  assert.deepEqual(refused.calls.map((c) => c.method), ["PUT"], "refused: no re-read");
+  assert.deepEqual(refused.shown, []);
+  // Switched off: the server's derived "off" card replaces the optimistic one.
+  const off = await switchOn(MOCK_PAGES.derivedPaid, false, [TOOLS_OK, { status: 200, body: MOCK_PAGES.derivedOff }]);
+  assert.deepEqual(off.page, JSON.parse(JSON.stringify(MOCK_PAGES.derivedOff)));
+  // The panel's switch goes through switchLegacyCard (not a bare toggle).
+  const panel = read("components/connectors/ConnectorsPanel.tsx");
+  assert.match(panel, /await switchLegacyCard\(actions, enabled, \{/);
+  assert.equal(panel.split("actions.toggle(").length - 1, 1, "toggle is called only inside switchLegacyCard");
+  console.log("ok: the switch re-reads the server's page");
+};
+
+runSwitch().then(
+  () => console.log("connectors-state-b7: OK"),
+  (e) => {
+    console.error(e);
+    process.exit(1);
+  },
+);
