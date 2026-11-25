@@ -3046,7 +3046,7 @@
       "body": "The test sends the saved address a trial question, \"<q>{question}</q>\", in the format above (signed when a secret is set), and checks that an answer arrives in time, in the right format.",
       "button": "Test my address",
       "loading": "Loading…",
-      "closed": "The test opens when connecting your agent is open for your account.",
+      "closed": "The test opens when connecting your agents is open for your account.",
       "noUrl": "First save your agent's address in the \"{card}\" card.",
       "toCard": "Go to the \"{card}\" card"
     },

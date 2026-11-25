@@ -3046,7 +3046,7 @@
       "body": "Le test envoie à l'adresse enregistrée une question d'essai, « <q>{question}</q> », dans le format ci-dessus (signée si un secret est défini), et vérifie qu'une réponse arrive à temps, au bon format.",
       "button": "Tester mon adresse",
       "loading": "Chargement…",
-      "closed": "Le test s'ouvre quand la connexion de votre agent est ouverte pour votre compte.",
+      "closed": "Le test s'ouvre quand le branchement de vos agents est ouvert pour votre compte.",
       "noUrl": "Enregistrez d'abord l'adresse de votre agent dans la carte « {card} ».",
       "toCard": "Aller à la carte « {card} »"
     },
