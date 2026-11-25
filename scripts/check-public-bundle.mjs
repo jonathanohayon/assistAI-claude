@@ -10,6 +10,7 @@
 // isn't 200 (redirect, 404) is reported and skipped. Exit 1 on any match.
 // Same pages as the gate-tools public-pages-check.mjs it was copied from.
 import { hits } from "./tenant-bundle-match.mjs";
+import { PUBLIC_PATHS } from "./public-paths.mjs";
 
 const [base] = process.argv.slice(2);
 if (!base) {
@@ -17,7 +18,6 @@ if (!base) {
   process.exit(2);
 }
 
-const PUBLIC_PATHS = ["", "/login", "/signup", "/verify-email", "/forgot-password", "/sales", "/connect"];
 const PAGES = ["fr", "en", "he"].flatMap((l) => PUBLIC_PATHS.map((p) => `/${l}${p}`));
 
 const chunkPaths = (text) => new Set([...text.matchAll(/\/_next\/static\/[A-Za-z0-9_\-./~]+?\.js/g)].map((m) => m[0]));

@@ -302,7 +302,7 @@ assert.deepEqual(mergeSectionOrder(["voice"], ["prompt"]), ["voice", "prompt"]);
   const connect = code("app/[locale]/dashboard/agent/page.tsx");
   // Connect decides through lib/connect-page-view.ts (pinned by connect-page-view.test.ts).
   assert.match(connect, /\{ menu, notifyRequested, trials, trialTerms \}[\s\S]*?loadProductPage\(session\.user\.id\)[\s\S]*?connectPageView\(\{\s*menu: menu\.connect,/);
-  assert.match(code("app/[locale]/dashboard/agent/connect-view.tsx"), /<ProductPreviewHeader\s+entry="connect"\s+cta=\{view\.cta\}\s+notifyRequested=\{notifyRequested\}\s+notify=\{view\.notify\}\s+trial=\{trial\}\s+trialTerms=\{trialTerms\}[\s\S]*?<ConnectPreview \/>/);
+  assert.match(code("app/[locale]/dashboard/agent/connect-view.tsx"), /<ProductPreviewHeader\s+entry="connect"\s+cta=\{view\.cta\}\s+notifyRequested=\{notifyRequested\}\s+notify=\{view\.notify\}\s+trial=\{trial\}\s+trialTerms=\{trialTerms\}[\s\S]*?<ConnectPreview asUserId=\{asUserId\} \/>/);
   const form = code("app/[locale]/dashboard/config-form.tsx");
   assert.match(form, /\{gridHeading && \(\s*<div className="mb-4">\s*<h2/, "the generic heading is switchable");
   assert.match(code("app/[locale]/dashboard/config/config-page.tsx"), /gridHeading=\{gridHeading\}/);

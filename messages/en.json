@@ -2776,7 +2776,8 @@
         "unsafeUrl": "This address can't be used: enter a public address starting with <l>https://</l>."
       },
       "copiedDone": "I've copied it",
-      "saveFirstToTest": "Save first to test."
+      "saveFirstToTest": "Save first to test.",
+      "howToGet": "How do I get this address?"
     }
   },
   "AgentUrl": {
@@ -2988,5 +2989,73 @@
     "moreActions": "More actions for {name}",
     "actionsSoon": "Coming soon: this agent's settings will be here.",
     "closeEditor": "Close"
+  },
+  "AgentHelp": {
+    "title": "How to get your agent's address",
+    "forTech": "This page is for the technical person who manages your agent. Send them this link.",
+    "copyLink": "Copy the link",
+    "linkCopied": "Link copied.",
+    "back": "Back to {page}",
+    "copy": "Copy",
+    "copied": "Copied.",
+    "what": {
+      "title": "The address, in one sentence",
+      "body": "It's your AI agent's public address, starting with <c>https://</c>: during a call, Tamara sends it the question along with what the caller said, and your agent answers with the text Tamara should say.",
+      "modes": {
+        "lead": "<b>{label}</b>: Tamara runs the call and asks your agent whenever she needs an answer. She tells the caller in their language; she may rephrase it, but repeats prices, dates, times, numbers and names exactly.",
+        "voice": "<b>{label}</b>: every sentence the caller says goes to your agent, the opening line included, and Tamara says its answer as is."
+      }
+    },
+    "contract": {
+      "title": "The contract",
+      "methodTitle": "Method and headers",
+      "method": "A <c>POST</c> request with a JSON body, and the headers <c>Content-Type: application/json</c>, <c>User-Agent: {ua}</c> and <c>{header}</c> (the signature, below).",
+      "fieldsTitle": "The request body",
+      "fields": {
+        "call_id": "The call's id: 16 lowercase hexadecimal characters.",
+        "turn_id": "The request's number in the call, from 1 (0 for the opening line in voice-only mode, and for a test).",
+        "language": "The call's language: <c>fr</c>, <c>en</c> or <c>he</c>.",
+        "question": "The question Tamara asks your agent; in voice-only mode, what the caller said.",
+        "caller_said": "What the caller just said, as transcribed (empty for a test).",
+        "history": "At most the call's last {turns} turns, each with <c>role</c> (<c>user</c>: the caller, <c>agent</c>: Tamara) and <c>text</c> (empty for a test)."
+      },
+      "speechNote": "The question comes from the caller's voice, transcribed or rephrased by Tamara: names and spellings can be approximate, so your agent should be tolerant (for example, match a misspelled name to the closest one).",
+      "responseTitle": "The expected answer",
+      "response": "A 2xx status and a JSON body with an <c>answer</c> field: the text Tamara should say, not empty.",
+      "timeTitle": "The time limit",
+      "time": "Your agent has {seconds} s to answer, network included; in voice-only mode, {voiceSeconds} s. If it hasn't answered after {stall} s, Tamara says a short holding line. Past the limit, Tamara stops waiting and the request counts as a failure.",
+      "signatureTitle": "The signature",
+      "signature": "Every request carries the <c>{header}</c> header: the HMAC-SHA256 of the raw body (the bytes as received), computed with your signing secret, in hexadecimal. The secret is created when you first switch your agent on and shown only once in the \"{card}\" card: copy it then, we never send it back. Compute the signature again on your side and refuse the request if it doesn't match.",
+      "errorsTitle": "When something goes wrong",
+      "errors": "Going past the time limit, a status outside 2xx, a redirect (never followed), an answer over {kb} KB, a body that isn't JSON or an empty <c>answer</c> count as a failure. During a call, Tamara then says she can't check right now: when she leads the conversation, she offers to take a message; in voice-only mode, she asks the caller to say it again, and if the opening line is what failed, she says her usual greeting."
+    },
+    "example": {
+      "title": "A complete example to copy",
+      "intro": "A request from Tamara, the expected answer, and a small Node server with no dependency that checks the signature and answers. The values are made up.",
+      "request": "The request",
+      "response": "The answer",
+      "server": "The server (Node)",
+      "question": "What are your opening hours on Saturday?",
+      "callerSaid": "Hi, are you open on Saturday?",
+      "prevUser": "Hello.",
+      "prevAgent": "Hello, how can I help you?",
+      "answer": "On Saturday we're open from 9 am to 1 pm."
+    },
+    "test": {
+      "title": "Test my address",
+      "body": "The test sends the saved address a trial question, \"<q>{question}</q>\", in the format above (signed when a secret is set), and checks that an answer arrives in time, in the right format.",
+      "button": "Test my address",
+      "loading": "Loading…",
+      "closed": "The test opens when connecting your agents is open for your account.",
+      "noUrl": "First save your agent's address in the \"{card}\" card.",
+      "toCard": "Go to the \"{card}\" card"
+    },
+    "none": {
+      "title": "I don't have an agent",
+      "body": "Without an agent, leave \"{card}\" off: Tamara answers your calls on her own. To connect one, you need an online service, at a public address starting with <c>https://</c>, that answers this contract: the example above is a starting point."
+    },
+    "public": {
+      "account": "Have an account? Test your address in your dashboard."
+    }
   }
 }

@@ -59,7 +59,7 @@ export function ConnectPageContent({
           {t("connectAdminClosed")}
         </p>
       )}
-      <ConnectPreview />
+      <ConnectPreview asUserId={asUserId} />
     </>
   );
 }
