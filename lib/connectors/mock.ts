@@ -93,6 +93,33 @@ export const MOCK_NO_NUMBER: ConnectorView = {
   secretSet: false,
 };
 
+/**
+ * B7 states, which no server sends yet. The derived card switched OFF (B7
+ * keeps it on the page instead of dropping it).
+ */
+export const MOCK_LEGACY_OFF: ConnectorView = { ...MOCK_LEGACY, enabled: false, state: "off", lastCallAt: null };
+
+/** The derived card whose setup is incomplete, with one issue (or none: the generic line). */
+export const mockLegacySetup = (setupIssue?: ConnectorView["setupIssue"]): ConnectorView => ({
+  ...MOCK_LEGACY,
+  state: "setup_incomplete",
+  ...(setupIssue ? { setupIssue } : {}),
+  secretSet: setupIssue !== "no_secret",
+});
+
+/** A real connector whose setup is incomplete (its actions are "soon" until B4). */
+export const MOCK_SETUP_ROW: ConnectorView = {
+  ...base,
+  id: "00000000-0000-4000-8000-000000000006",
+  name: "Agent à terminer",
+  numberE164: "+972500000006",
+  mode: "lead",
+  enabled: true,
+  state: "setup_incomplete",
+  setupIssue: "unsafe_url",
+  lastCallAt: null,
+};
+
 const page = (
   connectors: ConnectorView[],
   limits: ConnectorsPageView["limits"],
@@ -128,6 +155,14 @@ export const MOCK_PAGES = {
     { max: 5, used: 5, inTrial: false },
     { ok: false, reason: "max_reached" },
   ),
+  // B7 (not sent by any server yet).
+  derivedOff: page([MOCK_LEGACY_OFF], { max: 5, used: 1, inTrial: false }, { ok: true }),
+  derivedOffTrial: page([MOCK_LEGACY_OFF], { max: 1, used: 1, inTrial: true }, { ok: false, reason: "trial_limit" }),
+  derivedSetupNoSecret: page([mockLegacySetup("no_secret")], { max: 5, used: 1, inTrial: false }, { ok: true }),
+  derivedSetupSecretUnreadable: page([mockLegacySetup("secret_unreadable")], { max: 5, used: 1, inTrial: false }, { ok: true }),
+  derivedSetupUnsafeUrl: page([mockLegacySetup("unsafe_url")], { max: 5, used: 1, inTrial: false }, { ok: true }),
+  derivedSetupGeneric: page([mockLegacySetup()], { max: 5, used: 1, inTrial: false }, { ok: true }),
+  rowsWithSetup: page([MOCK_ONLINE, MOCK_SETUP_ROW, MOCK_UNREACHABLE], { max: 5, used: 3, inTrial: false }, { ok: true }),
 } satisfies Record<string, ConnectorsPageView>;
 
 export type MockPageName = keyof typeof MOCK_PAGES;

@@ -6,7 +6,11 @@
 // route today, and ONLY those (requests: ./connector-actions.ts):
 //   the legacy (derived) card
 //     switch   → PUT /api/dashboard/tools { tools: { clientAgent: { enabled } } },
-//                the brick's own save request (clientAgentSwitchRequest). When
+//                the brick's own save request (clientAgentSwitchRequest).
+//                Switched ON, then GET /api/dashboard/connectors: the card
+//                shows the SERVER's state (B7: it may be setup_incomplete),
+//                the switched state only while that read runs or when it
+//                fails. Switched OFF: the switched "Éteint" card, no read. When
 //                that save switched it on without a secret, the server returns
 //                the generated one ONCE (#437): the editor opens and shows it
 //                in the brick's own one-time box (#439), memory only;
@@ -30,7 +34,7 @@ import { useTranslations } from "next-intl";
 import { ClientAgentBrick } from "@/components/bricks/client-agent/ClientAgentBrick";
 import { FOCUS } from "@/components/bricks/controls";
 import type { ClientAgentRefusal, TestWords } from "@/components/bricks/tools/tools-ui";
-import { connectorActions } from "@/components/connectors/connector-actions";
+import { connectorActions, type ToggleResult } from "@/components/connectors/connector-actions";
 import { ConnectorsList, type CardActions } from "@/components/connectors/ConnectorsList";
 import type { ConnectorBasePrice, ConnectorCardView, ConnectorExtraPrice } from "@/lib/connectors/list-view";
 import type { ConnectorsPageView } from "@/lib/connectors/types";
@@ -61,6 +65,34 @@ export function withLegacyEnabled(page: ConnectorsPageView, enabled: boolean): C
     ...page,
     connectors: page.connectors.map((c) => (c.id === LEGACY_ID ? { ...c, enabled, state: enabled ? "online" : "off" } : c)),
   };
+}
+
+type Actions = Pick<ReturnType<typeof connectorActions>, "toggle" | "refresh">;
+
+/**
+ * The legacy card's switch: PUT, then, only after a successful switch ON,
+ * the page as the server now reads it (where setup_incomplete matters).
+ * `saved` runs right after the PUT (the caller shows the switched state and
+ * hands a generated secret to the editor); `reread` runs with the GET's
+ * page, and never when the GET fails (the PUT's result stays on screen,
+ * nothing new is shown).
+ * Switched OFF: no read. Today's server drops a disabled derived card, so a
+ * read would show the empty card, which looks like a deletion (VP: never).
+ * Follow-up AFTER B7 (not now): once the server sends the derived "off"
+ * card, the off path may re-read too.
+ */
+export async function switchLegacyCard(
+  actions: Actions,
+  enabled: boolean,
+  on: { saved: (r: Extract<ToggleResult, { ok: true }>) => void; reread: (page: ConnectorsPageView) => void },
+): Promise<ToggleResult> {
+  const r = await actions.toggle(enabled);
+  if (!r.ok) return r;
+  on.saved(r);
+  if (!enabled) return r;
+  const fresh = await actions.refresh();
+  if (fresh) on.reread(fresh);
+  return r;
 }
 
 /** Whether a card's actions have a route today: only the derived legacy card's. */
@@ -110,16 +142,21 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
     if (id !== LEGACY_ID || busy) return;
     setBusy(true);
     setNote(null);
-    const r = await actions.toggle(enabled);
+    // The switch stays disabled until the re-read is back: no older answer
+    // can overwrite a newer switch.
+    const result = await switchLegacyCard(actions, enabled, {
+      saved: (r) => {
+        // The switched state: kept when OFF; when ON, while the server is re-read (and if that read fails).
+        setPage((p) => withLegacyEnabled(p, enabled));
+        setHandoff(r.generated);
+        setEditorKey((k) => k + 1);
+        // A generated secret is shown once, in the editor's box: open it there.
+        if (r.generated) openEditor();
+      },
+      reread: setPage,
+    });
     setBusy(false);
-    if (!r.ok) return setNote({ kind: "switch", refused: r.refused });
-    // Kept on screen until the next read: switched off, the setting is no
-    // longer a derived card for the server, but the user sees what they did.
-    setPage((p) => withLegacyEnabled(p, enabled));
-    setHandoff(r.generated);
-    setEditorKey((k) => k + 1);
-    // A generated secret is shown once, in the editor's box: open it there.
-    if (r.generated) openEditor();
+    if (!result.ok) setNote({ kind: "switch", refused: result.refused });
   };
 
   const onTest = async (id: string) => {

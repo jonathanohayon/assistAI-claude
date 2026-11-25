@@ -13,7 +13,7 @@ export type ConnectorMode = "lead" | "voice";
  * The card's state pill. "unreachable" is computed in a later step (B7);
  * until then a card is "off" when disabled, else "online".
  */
-export type ConnectorState = "online" | "off" | "unreachable";
+export type ConnectorState = "online" | "off" | "unreachable" | "setup_incomplete";
 
 export type ConnectorView = {
   /** The row's uuid, or "legacy" for the derived card. */
@@ -28,6 +28,7 @@ export type ConnectorView = {
   /** True only for the legacy card derived from tools_config.clientAgent. */
   derived: boolean;
   state: ConnectorState;
+  setupIssue?: "no_secret" | "secret_unreadable" | "unsafe_url";
   /** ISO timestamp of the last call on this connector, or null. */
   lastCallAt: string | null;
   /** ISO timestamp of the last "Test" run, or null. */

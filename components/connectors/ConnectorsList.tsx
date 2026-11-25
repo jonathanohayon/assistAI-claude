@@ -17,13 +17,14 @@ import {
   connectorsListView,
   formatConnectorPrice,
   type AddCardView,
+  type CardPill,
   type ConnectorBasePrice,
   type ConnectorCardView,
   type ConnectorExtraPrice,
   type EmptyOfferView,
 } from "@/lib/connectors/list-view";
 import { menuKeyAction } from "@/lib/connectors/menu-keys";
-import type { ConnectorState, ConnectorsPageView } from "@/lib/connectors/types";
+import type { ConnectorsPageView } from "@/lib/connectors/types";
 
 export type ConnectorsListCallbacks = {
   onToggle?: (id: string, enabled: boolean) => void;
@@ -67,12 +68,24 @@ const BUTTON = `inline-flex min-h-11 cursor-pointer items-center justify-center 
 const DANGER = `inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl px-3 text-sm font-semibold text-[#b91c1c] hover:bg-[#fef2f2] ${FOCUS}`;
 const PRIMARY = `inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full bg-[#be185d] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#9d174d] ${FOCUS}`;
 
-const PILL: Record<ConnectorState, string> = {
+// Record<CardPill, …>: tsc fails when a state has no colour. Red is ONLY
+// "unreachable"; setup_incomplete is the app's amber (the warning chips'
+// border/bg/text and dot); "unknown" (a state this build does not know) is
+// neutral, like "off".
+const PILL: Record<CardPill, string> = {
   online: "border-[#a7f3d0] bg-[#ecfdf5] text-[#047857]",
   off: "border-[#e2e8f0] bg-[#f1f5f9] text-[#475569]",
   unreachable: "border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]",
+  setup_incomplete: "border-[#fde68a] bg-[#fffbeb] text-[#92400e]",
+  unknown: "border-[#e2e8f0] bg-[#f1f5f9] text-[#475569]",
 };
-const DOT: Record<ConnectorState, string> = { online: "bg-[#059669]", off: "bg-[#94a3b8]", unreachable: "bg-[#dc2626]" };
+const DOT: Record<CardPill, string> = {
+  online: "bg-[#059669]",
+  off: "bg-[#94a3b8]",
+  unreachable: "bg-[#dc2626]",
+  setup_incomplete: "bg-[#f59e0b]",
+  unknown: "bg-[#94a3b8]",
+};
 
 export function ConnectorsList({ page, extraPrice, basePrice, now, actionsFor, addSoon = false, ...cb }: ConnectorsListProps) {
   const t = useTranslations("ConnectorsList");
@@ -167,6 +180,15 @@ export function ConnectorCard({
       {card.unreachableNote && (
         <p className="-mt-1 text-sm font-medium text-[#b91c1c]" data-unreachable-note>
           {t("unreachableNote")}
+        </p>
+      )}
+
+      {card.setupLine && (
+        <p
+          className={`-mt-1 text-sm font-medium ${card.pill === "setup_incomplete" ? "text-[#92400e]" : "text-[#475569]"}`}
+          data-setup-line={card.setupLine}
+        >
+          {t(`setupLine.${card.setupLine}`)}
         </p>
       )}
 

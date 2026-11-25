@@ -2949,9 +2949,17 @@
     "pill": {
       "online": "Online",
       "off": "Off",
-      "unreachable": "Agent unreachable"
+      "unreachable": "Agent unreachable",
+      "setup_incomplete": "To finish",
+      "unknown": "To check"
     },
     "unreachableNote": "Tamara answers on her own in the meantime.",
+    "setupLine": {
+      "no_secret": "Generate a secret so your agent can answer.",
+      "secret_unreadable": "Regenerate your agent's secret: the old one can no longer be used.",
+      "unsafe_url": "Fix your agent's address: it can't be used.",
+      "generic": "Open “Edit” to finish the setup."
+    },
     "mode": {
       "lead": "Tamara leads the conversation and asks your agent when she needs an answer.",
       "voice": "Tamara only lends her voice: your agent decides what to say, she says it word for word."
