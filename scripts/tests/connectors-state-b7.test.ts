@@ -368,9 +368,24 @@ const runSwitch = async () => {
   assert.deepEqual(refused.result, { ok: false, refused: null });
   assert.deepEqual(refused.calls.map((c) => c.method), ["PUT"], "refused: no re-read");
   assert.deepEqual(refused.shown, []);
-  // Switched off: the server's derived "off" card replaces the optimistic one.
-  const off = await switchOn(MOCK_PAGES.derivedPaid, false, [TOOLS_OK, { status: 200, body: MOCK_PAGES.derivedOff }]);
-  assert.deepEqual(off.page, JSON.parse(JSON.stringify(MOCK_PAGES.derivedOff)));
+  // Switched OFF: PUT only, no re-read (today's server would answer without the
+  // derived card → the empty card, which looks like a deletion). The card stays "Éteint".
+  const EMPTY_TODAY = { status: 200, body: MOCK_PAGES.emptyPaid };
+  for (const asUserId of [null, "u-tenant-1"] as const) {
+    const qs = asUserId ? `?asUserId=${asUserId}` : "";
+    const off = await switchOn(MOCK_PAGES.derivedPaid, false, [TOOLS_OK, EMPTY_TODAY], asUserId);
+    assert.deepEqual(off.result, { ok: true, generated: null });
+    assert.deepEqual(off.calls.map((c) => [c.method, c.url]), [["PUT", `/api/dashboard/tools${qs}`]], `asUserId=${asUserId}: OFF → PUT only`);
+    assert.equal(off.calls[0].body, '{"tools":{"clientAgent":{"enabled":false}}}');
+    assert.deepEqual(off.shown.map((p) => p.connectors.map((c) => c.state)), [["off"]], "OFF: the switched card only");
+    for (const l of LOCALES) {
+      const out = owned(l, off.page);
+      assert.ok(!out.includes("data-connectors-empty"), `${l} OFF: never the empty state`);
+      const card = cardOf(out, "legacy");
+      assert.equal(pillOf(card)?.[4], esc(C(l).pill.off), `${l} OFF: "Éteint"`);
+      assert.match(card, /role="switch" aria-checked="false"/, `${l} OFF: the switch off`);
+    }
+  }
   // The panel's switch goes through switchLegacyCard (not a bare toggle).
   const panel = read("components/connectors/ConnectorsPanel.tsx");
   assert.match(panel, /await switchLegacyCard\(actions, enabled, \{/);

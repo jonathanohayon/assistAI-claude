@@ -6,10 +6,11 @@
 // route today, and ONLY those (requests: ./connector-actions.ts):
 //   the legacy (derived) card
 //     switch   → PUT /api/dashboard/tools { tools: { clientAgent: { enabled } } },
-//                the brick's own save request (clientAgentSwitchRequest), then
-//                GET /api/dashboard/connectors: the card shows the SERVER's
-//                state (B7: it may be setup_incomplete), the switched state
-//                only while that read runs or when it fails. When
+//                the brick's own save request (clientAgentSwitchRequest).
+//                Switched ON, then GET /api/dashboard/connectors: the card
+//                shows the SERVER's state (B7: it may be setup_incomplete),
+//                the switched state only while that read runs or when it
+//                fails. Switched OFF: the switched "Éteint" card, no read. When
 //                that save switched it on without a secret, the server returns
 //                the generated one ONCE (#437): the editor opens and shows it
 //                in the brick's own one-time box (#439), memory only;
@@ -69,11 +70,16 @@ export function withLegacyEnabled(page: ConnectorsPageView, enabled: boolean): C
 type Actions = Pick<ReturnType<typeof connectorActions>, "toggle" | "refresh">;
 
 /**
- * The legacy card's switch: PUT, then (only when it succeeded) the page as
- * the server now reads it. `saved` runs right after the PUT (the caller shows
- * the switched state and hands a generated secret to the editor); `reread`
- * runs with the GET's page, and never when the GET fails (the PUT's result
- * stays on screen, nothing new is shown).
+ * The legacy card's switch: PUT, then, only after a successful switch ON,
+ * the page as the server now reads it (where setup_incomplete matters).
+ * `saved` runs right after the PUT (the caller shows the switched state and
+ * hands a generated secret to the editor); `reread` runs with the GET's
+ * page, and never when the GET fails (the PUT's result stays on screen,
+ * nothing new is shown).
+ * Switched OFF: no read. Today's server drops a disabled derived card, so a
+ * read would show the empty card, which looks like a deletion (VP: never).
+ * Follow-up AFTER B7 (not now): once the server sends the derived "off"
+ * card, the off path may re-read too.
  */
 export async function switchLegacyCard(
   actions: Actions,
@@ -83,6 +89,7 @@ export async function switchLegacyCard(
   const r = await actions.toggle(enabled);
   if (!r.ok) return r;
   on.saved(r);
+  if (!enabled) return r;
   const fresh = await actions.refresh();
   if (fresh) on.reread(fresh);
   return r;
@@ -139,7 +146,7 @@ export function ConnectorsPanel({ page: initial, extraPrice, basePrice, asUserId
     // can overwrite a newer switch.
     const result = await switchLegacyCard(actions, enabled, {
       saved: (r) => {
-        // The switched state while the server is re-read (and if that read fails).
+        // The switched state: kept when OFF; when ON, while the server is re-read (and if that read fails).
         setPage((p) => withLegacyEnabled(p, enabled));
         setHandoff(r.generated);
         setEditorKey((k) => k + 1);
